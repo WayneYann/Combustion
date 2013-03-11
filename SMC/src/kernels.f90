@@ -3,7 +3,7 @@ module kernels_module
   use chemistry_module, only : nspecies, molecular_weight, Ru
   use derivative_stencil_module, only : stencil_ng, first_deriv_8, first_deriv_6, &
        first_deriv_4, first_deriv_l3, first_deriv_r3, first_deriv_rb, first_deriv_lb, &
-       M8, M8T, M6, M4, M2, BRB, BLB, D8, D6, D4
+       M8, M8T, M6, M6T, M4, M4T, M2, BRB, BLB, D8, D6, D4
   use variables_module
   implicit none
 
@@ -1050,7 +1050,7 @@ contains
          lo,hi,slo,shi,dlo,dhi,finlo,finhi,foulo,fouhi,physbclo,physbchi,dxinv)
 
     call diffterm_2(q,qlo,qhi,rhs,rlo,rhi, mu,xi,lam,dxy, &
-         lo,hi,slo,shi,dlo,dhi,finlo,finhi,foulo,fouhi,physbclo,physbchi,dx2inv)
+         lo,hi,slo,shi,dlo,dhi,finlo,finhi,foulo,fouhi,physbclo,physbchi,dxinv,dx2inv)
 
     rhs_g     (lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),:) = &
          rhs_g(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),:) &
@@ -2091,13 +2091,13 @@ contains
 
   
   subroutine diffterm_2(q,qlo,qhi,rhs,rlo,rhi,mu,xi,lam,dxy, &
-       lo,hi,slo,shi,dlo,dhi,finlo,finhi,foulo,fouhi,physbclo,physbchi,dx2inv)
-    use probin_module, only : reset_N2
+       lo,hi,slo,shi,dlo,dhi,finlo,finhi,foulo,fouhi,physbclo,physbchi,dxinv,dx2inv)
+    use probin_module, only : reset_inactive_species
     integer,         intent(in):: lo(3),hi(3),slo(3),shi(3),dlo(3),dhi(3)
     integer,         intent(in):: qlo(3),qhi(3),rlo(3),rhi(3)
     logical,         intent(in):: physbclo(3),physbchi(3)
     double precision,intent(in):: finlo(3),finhi(3),foulo(3),fouhi(3)
-    double precision,intent(in):: dx2inv(3)
+    double precision,intent(in):: dxinv(3),dx2inv(3)
     double precision,intent(in)   :: q (qlo(1):qhi(1),qlo(2):qhi(2),qlo(3):qhi(3),nprim)
     double precision,intent(in)   :: mu(qlo(1):qhi(1),qlo(2):qhi(2),qlo(3):qhi(3))
     double precision,intent(in)   :: xi(qlo(1):qhi(1),qlo(2):qhi(2),qlo(3):qhi(3))
@@ -2112,13 +2112,14 @@ contains
     ! dxe: diffusion coefficient of X in equation for energy
     ! dpe: diffusion coefficient of p in equation for energy
 
-    integer          :: i,j,k,n, qxn, qyn, qhn
+    integer          :: i,j,k,n, qxn, qyn, qhn, iryn
 
-    double precision :: Yhalf, hhalf
     double precision :: mmtmp8(8,lo(1):hi(1)+1)
     double precision, allocatable, dimension(:,:,:,:) :: M8p
-    double precision, allocatable, dimension(:,:,:) :: Hry
+    double precision, allocatable, dimension(:,:,:) :: sumdrY, sumrYv, gradp
+    double precision :: ry_c, ene_c
 
+    double precision :: hhalf, sumdrytmp, sumryvtmp, gradptmp
     double precision :: Htot, Htmp(nspecies), Ytmp(nspecies)
     double precision :: M6p(6), M6X(6), mmtmp6(6)
     double precision :: M4p(4), M4X(4), mmtmp4(4)
@@ -2127,6 +2128,9 @@ contains
     double precision :: rhstmp(nspecies), rhstot, rhsene
     double precision :: Hcell(0:1,2:ncons)
     integer :: iface
+
+    logical :: add_v_correction
+    add_v_correction = .not. reset_inactive_species
 
     allocate(vsp(dlo(1):dhi(1),dlo(2):dhi(2),dlo(3):dhi(3)))
 
@@ -2137,9 +2141,10 @@ contains
     allocate(Hg(lo(1):hi(1)+1,lo(2):hi(2)+1,lo(3):hi(3)+1,2:ncons))
 
     allocate(M8p(8,lo(1):hi(1)+1,lo(2):hi(2)+1,lo(3):hi(3)+1))
-    if (.not.reset_N2) then
-       allocate(Hry(  lo(1):hi(1)+1,lo(2):hi(2)+1,lo(3):hi(3)+1))
-    end if
+
+    allocate(sumdrY(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3)))
+    allocate(sumrYv(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3)))
+    allocate(gradp (lo(1):hi(1),lo(2):hi(2),lo(3):hi(3)))
 
     do k=dlo(3),dhi(3)
        do j=dlo(2),dhi(2)
@@ -2209,12 +2214,16 @@ contains
     end do
 
     do n = 1, nspecies
+
+       if (n .eq. iias) cycle  ! inactive speices
+
        qxn = qx1+n-1
+       iryn = iry1+n-1
 
        do k=lo(3),hi(3)
           do j=lo(2),hi(2)   
              do i=slo(1),shi(1)+1
-                Hg(i,j,k,iry1+n-1) = dot_product(dpy(i-4:i+3,j,k,n), M8p(:,i,j,k))
+                Hg(i,j,k,iryn) = dot_product(dpy(i-4:i+3,j,k,n), M8p(:,i,j,k))
              end do
           end do
        end do
@@ -2224,46 +2233,17 @@ contains
              do i=slo(1),shi(1)+1
                 mmtmp8(1:8,i) = matmul(M8T, q(i-4:i+3,j,k,qxn))
                 Hg(i,j,k,iene) = Hg(i,j,k,iene) + dot_product(dxe(i-4:i+3,j,k,n), mmtmp8(1:8,i))
-                Hg(i,j,k,iry1+n-1) = Hg(i,j,k,iry1+n-1) &
+                Hg(i,j,k,iryn) = Hg(i,j,k,iryn) &
                      + dot_product(dxy(i-4:i+3,j,k,n), mmtmp8(1:8,i))
              end do
-
           end do
        end do
+
     end do
 
-    if (.not.reset_N2) then
-       ! correction
-       Hry = 0.d0
-
-       do n = 1, nspecies
-          do k=lo(3),hi(3)
-             do j=lo(2),hi(2)
-                do i=slo(1),shi(1)+1
-                   Hry(i,j,k) = Hry(i,j,k) + Hg(i,j,k,iry1+n-1)
-                end do
-             end do
-          end do
-       end do
-    
-       do n = 1, nspecies
-          qyn = qy1+n-1
-          qhn = qh1+n-1
-          do k=lo(3),hi(3)
-             do j=lo(2),hi(2)
-                do i=slo(1),shi(1)+1
-                   Yhalf = 0.5d0*(q(i-1,j,k,qyn) + q(i,j,k,qyn))
-                   hhalf = 0.5d0*(q(i-1,j,k,qhn) + q(i,j,k,qhn))
-                   Hg(i,j,k,iry1+n-1) = Hg(i,j,k,iry1+n-1)- (Yhalf*Hry(i,j,k))
-                   Hg(i,j,k,iene) = Hg(i,j,k,iene) - (Yhalf*Hry(i,j,k))*hhalf
-                end do
-             end do
-          end do
-       end do
-    end if
-
     ! add x-direction rhs
-    do n=2,ncons
+
+    do n=2,iene
        do k=lo(3),hi(3)
           do j=lo(2),hi(2)
              do i=slo(1),shi(1)
@@ -2272,6 +2252,87 @@ contains
           end do
        end do
     end do
+       
+    sumdrY = 0.d0
+    do n=iry1,ncons
+
+       if (n.eq.iry_ias) cycle
+
+       do k=lo(3),hi(3)
+          do j=lo(2),hi(2)
+             do i=slo(1),shi(1)
+                sumdry(i,j,k) = sumdry(i,j,k) + (Hg(i+1,j,k,n) - Hg(i,j,k,n)) * dx2inv(1)
+                rhs(i,j,k,n)  =  rhs(i,j,k,n) + (Hg(i+1,j,k,n) - Hg(i,j,k,n)) * dx2inv(1)
+             end do
+          end do
+       end do
+
+    end do
+
+    do k=lo(3),hi(3)
+       do j=lo(2),hi(2)
+          do i=slo(1),shi(1)
+             gradp(i,j,k) = dxinv(1) * first_deriv_8(q(i-4:i+4,j,k,qpres))
+          end do
+       end do
+    end do
+       
+    sumryv = 0.d0
+    do n = 1, nspecies
+
+       if (n.eq.iias) cycle
+
+       qxn = qx1+n-1
+       do k=lo(3),hi(3)
+          do j=lo(2),hi(2)
+             do i=slo(1),shi(1)
+                sumryv(i,j,k) = sumryv(i,j,k) + dpy(i,j,k,n)*gradp(i,j,k)  &
+                     + dxy(i,j,k,n)*dxinv(1)*first_deriv_8(q(i-4:i+4,j,k,qxn))
+             end do
+          end do
+       end do
+
+    end do
+
+    if (add_v_correction) then
+
+       do n=1,nspecies
+          qyn = qy1+n-1
+          qhn = qh1+n-1
+          iryn = iry1+n-1
+          
+          do k=lo(3),hi(3)
+             do j=lo(2),hi(2)
+                do i=slo(1),shi(1)
+                   ry_c = q(i,j,k,qyn)*sumdry(i,j,k) + sumryv(i,j,k)*dxinv(1) * &
+                        first_deriv_8(q(i-4:i+4,j,k,qyn))
+                   ene_c = ry_c*q(i,j,k,qhn) + q(i,j,k,qyn)*sumryv(i,j,k)*dxinv(1)* &
+                        first_deriv_8(q(i-4:i+4,j,k,qhn))
+                   rhs(i,j,k,iene) = rhs(i,j,k,iene) - ene_c
+                   rhs(i,j,k,iryn) = rhs(i,j,k,iryn) - ry_c
+                end do
+             end do
+          end do
+       end do
+
+    else
+    
+       n = iias
+       qhn = qh1+n-1
+       iryn = iry1+n-1
+
+       do k=lo(3),hi(3)
+          do j=lo(2),hi(2)
+             do i=slo(1),shi(1)
+                ene_c = sumdry(i,j,k)*q(i,j,k,qhn) + sumryv(i,j,k)*dxinv(1)* &
+                     first_deriv_8(q(i-4:i+4,j,k,qhn))
+                rhs(i,j,k,iene) = rhs(i,j,k,iene) - ene_c
+                rhs(i,j,k,iryn) = rhs(i,j,k,iryn) - sumdry(i,j,k)
+             end do
+          end do
+       end do
+       
+    end if
 
     ! ------- END x-direction -------
 
@@ -2318,12 +2379,16 @@ contains
     end do
 
     do n = 1, nspecies
+
+       if (n .eq. iias) cycle  ! inactive speices
+
        qxn = qx1+n-1
+       iryn = iry1+n-1
 
        do k=lo(3),hi(3)
           do j=slo(2),shi(2)+1
              do i=lo(1),hi(1)
-                Hg(i,j,k,iry1+n-1) = dot_product(dpy(i,j-4:j+3,k,n), M8p(:,i,j,k))
+                Hg(i,j,k,iryn) = dot_product(dpy(i,j-4:j+3,k,n), M8p(:,i,j,k))
              end do
           end do
        end do
@@ -2333,7 +2398,7 @@ contains
              do i=lo(1),hi(1)
                 mmtmp8(1:8,i) = matmul(M8T, q(i,j-4:j+3,k,qxn))
                 Hg(i,j,k,iene) = Hg(i,j,k,iene) + dot_product(dxe(i,j-4:j+3,k,n), mmtmp8(1:8,i))
-                Hg(i,j,k,iry1+n-1) = Hg(i,j,k,iry1+n-1) &
+                Hg(i,j,k,iryn) = Hg(i,j,k,iryn) &
                      + dot_product(dxy(i,j-4:j+3,k,n), mmtmp8(1:8,i))
              end do
           end do
@@ -2341,38 +2406,9 @@ contains
 
     end do
        
-    if (.not.reset_N2) then
-       ! correction
-       Hry = 0.d0
-
-       do n = 1, nspecies
-          do k=lo(3),hi(3)
-             do j=slo(2),shi(2)+1
-                do i=lo(1),hi(1)
-                   Hry(i,j,k) = Hry(i,j,k) + Hg(i,j,k,iry1+n-1)
-                end do
-             end do
-          end do
-       end do
-
-       do n = 1, nspecies
-          qyn = qy1+n-1
-          qhn = qh1+n-1
-          do k=lo(3),hi(3)
-             do j=slo(2),shi(2)+1
-                do i=lo(1),hi(1)
-                   Yhalf = 0.5d0*(q(i,j-1,k,qyn) + q(i,j,k,qyn))
-                   hhalf = 0.5d0*(q(i,j-1,k,qhn) + q(i,j,k,qhn))
-                   Hg(i,j,k,iry1+n-1) = Hg(i,j,k,iry1+n-1)- (Yhalf*Hry(i,j,k))
-                   Hg(i,j,k,iene) = Hg(i,j,k,iene) - (Yhalf*Hry(i,j,k))*hhalf
-                end do
-             end do
-          end do
-       end do
-    end if
-
     ! add y-direction rhs
-    do n=2,ncons
+
+    do n=2,iene
        do k=lo(3),hi(3)
           do j=slo(2),shi(2)
              do i=lo(1),hi(1)
@@ -2381,6 +2417,87 @@ contains
           end do
        end do
     end do
+
+    sumdrY = 0.d0
+    do n=iry1,ncons
+
+       if (n.eq.iry_ias) cycle
+
+       do k=lo(3),hi(3)
+          do j=slo(2),shi(2)
+             do i=lo(1),hi(1)
+                sumdry(i,j,k) = sumdry(i,j,k) + (Hg(i,j+1,k,n) - Hg(i,j,k,n)) * dx2inv(2)
+                rhs(i,j,k,n)  =  rhs(i,j,k,n) + (Hg(i,j+1,k,n) - Hg(i,j,k,n)) * dx2inv(2)
+             end do
+          end do
+       end do
+
+    end do
+
+    do k=lo(3),hi(3)
+       do j=slo(2),shi(2)
+          do i=lo(1),hi(1)
+             gradp(i,j,k) = dxinv(2) * first_deriv_8(q(i,j-4:j+4,k,qpres))
+          end do
+       end do
+    end do
+    
+    sumryv = 0.d0
+    do n = 1, nspecies
+
+       if (n.eq.iias) cycle
+
+       qxn = qx1+n-1
+       do k=lo(3),hi(3)
+          do j=slo(2),shi(2)
+             do i=lo(1),hi(1)
+                sumryv(i,j,k) = sumryv(i,j,k) + dpy(i,j,k,n)*gradp(i,j,k)  &
+                     + dxy(i,j,k,n)*dxinv(2)*first_deriv_8(q(i,j-4:j+4,k,qxn))
+             end do
+          end do
+       end do
+
+    end do
+
+    if (add_v_correction) then
+
+       do n=1,nspecies
+          qyn = qy1+n-1
+          qhn = qh1+n-1
+          iryn = iry1+n-1
+
+          do k=lo(3),hi(3)
+             do j=slo(2),shi(2)
+                do i=lo(1),hi(1)
+                   ry_c = q(i,j,k,qyn)*sumdry(i,j,k) + sumryv(i,j,k)*dxinv(2) * &
+                        first_deriv_8(q(i,j-4:j+4,k,qyn))
+                   ene_c = ry_c*q(i,j,k,qhn) + q(i,j,k,qyn)*sumryv(i,j,k)*dxinv(2)* &
+                        first_deriv_8(q(i,j-4:j+4,k,qhn))
+                   rhs(i,j,k,iene) = rhs(i,j,k,iene) - ene_c
+                   rhs(i,j,k,iryn) = rhs(i,j,k,iryn) - ry_c
+                end do
+             end do
+          end do
+       end do
+
+    else
+
+       n = iias
+       qhn = qh1+n-1
+       iryn = iry1+n-1
+
+       do k=lo(3),hi(3)
+          do j=slo(2),shi(2)
+             do i=lo(1),hi(1)
+                ene_c = sumdry(i,j,k)*q(i,j,k,qhn) + sumryv(i,j,k)*dxinv(2)* &
+                     first_deriv_8(q(i,j-4:j+4,k,qhn))
+                rhs(i,j,k,iene) = rhs(i,j,k,iene) - ene_c
+                rhs(i,j,k,iryn) = rhs(i,j,k,iryn) - sumdry(i,j,k)
+             end do
+          end do
+       end do
+
+    end if
 
     ! ------- END y-direction -------
 
@@ -2427,12 +2544,16 @@ contains
     end do
 
     do n = 1, nspecies
+
+       if (n .eq. iias) cycle  ! inactive speices
+
        qxn = qx1+n-1
+       iryn = iry1+n-1
 
        do k=slo(3),shi(3)+1
           do j=lo(2),hi(2)
              do i=lo(1),hi(1)
-                Hg(i,j,k,iry1+n-1) = dot_product(dpy(i,j,k-4:k+3,n), M8p(:,i,j,k))
+                Hg(i,j,k,iryn) = dot_product(dpy(i,j,k-4:k+3,n), M8p(:,i,j,k))
              end do
           end do
        end do
@@ -2442,45 +2563,17 @@ contains
              do i=lo(1),hi(1)
                 mmtmp8(1:8,i) = matmul(M8T, q(i,j,k-4:k+3,qxn))
                 Hg(i,j,k,iene) = Hg(i,j,k,iene) + dot_product(dxe(i,j,k-4:k+3,n), mmtmp8(1:8,i))
-                Hg(i,j,k,iry1+n-1) = Hg(i,j,k,iry1+n-1) &
+                Hg(i,j,k,iryn) = Hg(i,j,k,iryn) &
                      + dot_product(dxy(i,j,k-4:k+3,n), mmtmp8(1:8,i))
              end do
           end do
        end do
+
     end do
-
-    if (.not.reset_N2) then
-       ! correction
-       Hry = 0.d0
-
-       do n = 1, nspecies
-          do k=slo(3),shi(3)+1
-             do j=lo(2),hi(2)
-                do i=lo(1),hi(1)
-                   Hry(i,j,k) = Hry(i,j,k) + Hg(i,j,k,iry1+n-1)
-                end do
-             end do
-          end do
-       end do
-
-       do n = 1, nspecies
-          qyn = qy1+n-1
-          qhn = qh1+n-1
-          do k=slo(3),shi(3)+1
-             do j=lo(2),hi(2)
-                do i=lo(1),hi(1)
-                   Yhalf = 0.5d0*(q(i,j,k-1,qyn) + q(i,j,k,qyn))
-                   hhalf = 0.5d0*(q(i,j,k-1,qhn) + q(i,j,k,qhn))
-                   Hg(i,j,k,iry1+n-1) = Hg(i,j,k,iry1+n-1)- (Yhalf*Hry(i,j,k))
-                   Hg(i,j,k,iene) = Hg(i,j,k,iene) - (Yhalf*Hry(i,j,k))*hhalf
-                end do
-             end do
-          end do
-       end do
-    end if
     
     ! add z-direction rhs
-    do n=2,ncons
+
+    do n=2,iene
        do k=slo(3),shi(3)
           do j=lo(2),hi(2)
              do i=lo(1),hi(1)
@@ -2490,6 +2583,87 @@ contains
        end do
     end do
     
+    sumdrY = 0.d0
+    do n=iry1,ncons
+
+       if (n.eq.iry_ias) cycle
+
+       do k=slo(3),shi(3)
+          do j=lo(2),hi(2)
+             do i=lo(1),hi(1)
+                sumdry(i,j,k) = sumdry(i,j,k) + (Hg(i,j,k+1,n) - Hg(i,j,k,n)) * dx2inv(3)
+                rhs(i,j,k,n)  =  rhs(i,j,k,n) + (Hg(i,j,k+1,n) - Hg(i,j,k,n)) * dx2inv(3)
+             end do
+          end do
+       end do
+
+    end do
+    
+    do k=slo(3),shi(3)
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+             gradp(i,j,k) = dxinv(3) * first_deriv_8(q(i,j,k-4:k+4,qpres))
+          end do
+       end do
+    end do
+    
+    sumryv = 0.d0
+    do n = 1, nspecies
+
+       if (n.eq.iias) cycle
+
+       qxn = qx1+n-1
+       do k=slo(3),shi(3)
+          do j=lo(2),hi(2)
+             do i=lo(1),hi(1)
+                sumryv(i,j,k) = sumryv(i,j,k) + dpy(i,j,k,n)*gradp(i,j,k)  &
+                     + dxy(i,j,k,n)*dxinv(3)*first_deriv_8(q(i,j,k-4:k+4,qxn))
+             end do
+          end do
+       end do
+
+    end do
+
+    if (add_v_correction) then
+
+       do n=1,nspecies
+          qyn = qy1+n-1
+          qhn = qh1+n-1
+          iryn = iry1+n-1
+
+          do k=slo(3),shi(3)
+             do j=lo(2),hi(2)
+                do i=lo(1),hi(1)
+                   ry_c = q(i,j,k,qyn)*sumdry(i,j,k) + sumryv(i,j,k)*dxinv(3) * &
+                        first_deriv_8(q(i,j,k-4:k+4,qyn))
+                   ene_c = ry_c*q(i,j,k,qhn) + q(i,j,k,qyn)*sumryv(i,j,k)*dxinv(3)* &
+                        first_deriv_8(q(i,j,k-4:k+4,qhn))
+                   rhs(i,j,k,iene) = rhs(i,j,k,iene) - ene_c
+                   rhs(i,j,k,iryn) = rhs(i,j,k,iryn) - ry_c
+                end do
+             end do
+          end do
+       end do
+
+    else
+
+       n = iias
+       qhn = qh1+n-1
+       iryn = iry1+n-1
+
+       do k=slo(3),shi(3)
+          do j=lo(2),hi(2)
+             do i=lo(1),hi(1)
+                ene_c = sumdry(i,j,k)*q(i,j,k,qhn) + sumryv(i,j,k)*dxinv(3)* &
+                     first_deriv_8(q(i,j,k-4:k+4,qhn))
+                rhs(i,j,k,iene) = rhs(i,j,k,iene) - ene_c
+                rhs(i,j,k,iryn) = rhs(i,j,k,iryn) - sumdry(i,j,k)
+             end do
+          end do
+       end do
+
+    end if
+
     ! ------- END z-direction -------
 
     !
@@ -2606,42 +2780,74 @@ contains
                 Hcell(iface,imz) = dot_product(mmtmp4, q(i-2:i+1,j,k,qw))
 
                 mmtmp4 = matmul(lam(i-2:i+1,j,k), M4)
-                M4p = matmul(M4,  q(i-2:i+1,j,k,qpres))
+                M4p = matmul(M4T,  q(i-2:i+1,j,k,qpres))
                 Hcell(iface,iene) = dot_product(mmtmp4, q(i-2:i+1,j,k,qtemp))      &
                      &            + dot_product(      dpe(i-2:i+1,j,k), M4p)
 
-                Htot = 0.d0
                 do n = 1, nspecies
+                   if (n .eq. iias) cycle  ! inactive speices
+                   
                    qxn = qx1+n-1
-                   qyn = qy1+n-1
-
-                   M4X = matmul(M4, q(i-2:i+1,j,k,qxn))
-                
-                   Htmp(n) = dot_product(dpy(i-2:i+1,j,k,n), M4p) &
-                        +    dot_product(dxy(i-2:i+1,j,k,n), M4X)
-
+                   iryn = iry1+n-1
+                   M4X = matmul(M4T, q(i-2:i+1,j,k,qxn))
                    Hcell(iface,iene) = Hcell(iface,iene) &
                         +    dot_product(dxe(i-2:i+1,j,k,n), M4X)
-
-                   Htot = Htot + Htmp(n)
-                   Ytmp(n) = 0.5d0*(q(i-1,j,k,qyn) + q(i,j,k,qyn))
+                   Hcell(iface,iryn) = dot_product(dpy(i-2:i+1,j,k,n), M4p) &
+                        + dot_product(dxy(i-2:i+1,j,k,n), M4X)
                 end do
 
-                do n = 1, nspecies
-                   Hcell(iface,iry1+n-1) = Htmp(n) - Ytmp(n)*Htot
-                end do
-
-                do n = 1, nspecies
-                   qhn = qh1+n-1
-                   hhalf = 0.5d0*(q(i-1,j,k,qhn) + q(i,j,k,qhn))
-                   Hcell(iface,iene) =  Hcell(iface,iene) - Ytmp(n)*Htot*hhalf
-                end do
              end do
 
              i = lo(1)+2
-             do n=2,ncons
+
+             do n=2,iene
                 rhs(i,j,k,n) = rhs(i,j,k,n) + (Hcell(1,n) - Hcell(0,n)) * dx2inv(1)
              end do
+
+             sumdrytmp = 0.d0
+             do n=iry1,ncons
+                if (n.eq.iry_ias) cycle
+                sumdrytmp = sumdrytmp + (Hcell(1,n) - Hcell(0,n)) * dx2inv(1)
+                rhs(i,j,k,n)  =  rhs(i,j,k,n) + (Hcell(1,n) - Hcell(0,n)) * dx2inv(1)
+             end do
+
+             gradptmp = dxinv(1) * first_deriv_4(q(i-2:i+2,j,k,qpres))
+
+             sumryv = 0.d0
+             do n = 1, nspecies
+                if (n.eq.iias) cycle
+                qxn = qx1+n-1
+                sumryvtmp = sumryvtmp + dpy(i,j,k,n)*gradptmp  &
+                     + dxy(i,j,k,n)*dxinv(1)*first_deriv_4(q(i-2:i+2,j,k,qxn))
+             end do
+
+             if (add_v_correction) then
+
+                do n=1,nspecies
+                   qyn = qy1+n-1
+                   qhn = qh1+n-1
+                   iryn = iry1+n-1
+          
+                   ry_c = q(i,j,k,qyn)*sumdrytmp + sumryvtmp*dxinv(1) * &
+                        first_deriv_4(q(i-2:i+2,j,k,qyn))
+                   ene_c = ry_c*q(i,j,k,qhn) + q(i,j,k,qyn)*sumryvtmp*dxinv(1)* &
+                        first_deriv_4(q(i-2:i+2,j,k,qhn))
+                   rhs(i,j,k,iene) = rhs(i,j,k,iene) - ene_c
+                   rhs(i,j,k,iryn) = rhs(i,j,k,iryn) - ry_c
+                end do
+
+             else
+    
+                n = iias
+                qhn = qh1+n-1
+                iryn = iry1+n-1
+
+                ene_c = sumdrytmp*q(i,j,k,qhn) + sumryvtmp*dxinv(1)* &
+                     first_deriv_4(q(i-2:i+2,j,k,qhn))
+                rhs(i,j,k,iene) = rhs(i,j,k,iene) - ene_c
+                rhs(i,j,k,iryn) = rhs(i,j,k,iryn) - sumdrytmp
+       
+             end if
 
              !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
              ! use 6th-order stencil for cell lo(1)+3,j,k
@@ -2656,42 +2862,74 @@ contains
                 Hcell(iface,imz) = dot_product(mmtmp6, q(i-3:i+2,j,k,qw))
 
                 mmtmp6 = matmul(lam(i-3:i+2,j,k), M6)
-                M6p = matmul(M6,  q(i-3:i+2,j,k,qpres))
+                M6p = matmul(M6T,  q(i-3:i+2,j,k,qpres))
                 Hcell(iface,iene) = dot_product(mmtmp6, q(i-3:i+2,j,k,qtemp)) &
                      &            + dot_product(      dpe(i-3:i+2,j,k), M6p)
 
-                Htot = 0.d0
                 do n = 1, nspecies
+                   if (n .eq. iias) cycle  ! inactive speices
                    qxn = qx1+n-1
-                   qyn = qy1+n-1
-
-                   M6X = matmul(M6, q(i-3:i+2,j,k,qxn))
-                
-                   Htmp(n) = dot_product(dpy(i-3:i+2,j,k,n), M6p) &
-                        +    dot_product(dxy(i-3:i+2,j,k,n), M6X)
-
+                   iryn = iry1+n-1
+                   M6X = matmul(M6T, q(i-3:i+2,j,k,qxn))
                    Hcell(iface,iene) = Hcell(iface,iene) &
                         +    dot_product(dxe(i-3:i+2,j,k,n), M6X)
-
-                   Htot = Htot + Htmp(n)
-                   Ytmp(n) = 0.5d0*(q(i-1,j,k,qyn) + q(i,j,k,qyn))
+                   Hcell(iface,iryn) = dot_product(dpy(i-3:i+2,j,k,n), M6p) &
+                        +    dot_product(dxy(i-3:i+2,j,k,n), M6X)
                 end do
 
-                do n = 1, nspecies
-                   Hcell(iface,iry1+n-1) = Htmp(n) - Ytmp(n)*Htot
-                end do
-
-                do n = 1, nspecies
-                   qhn = qh1+n-1
-                   hhalf = 0.5d0*(q(i-1,j,k,qhn) + q(i,j,k,qhn))
-                   Hcell(iface,iene) =  Hcell(iface,iene) - Ytmp(n)*Htot*hhalf 
-                end do
              end do
 
              i = lo(1)+3
-             do n=2,ncons
+
+             do n=2,iene
                 rhs(i,j,k,n) = rhs(i,j,k,n) + (Hcell(1,n) - Hcell(0,n)) * dx2inv(1)
              end do
+
+             sumdrytmp = 0.d0
+             do n=iry1,ncons
+                if (n.eq.iry_ias) cycle
+                sumdrytmp = sumdrytmp + (Hcell(1,n) - Hcell(0,n)) * dx2inv(1)
+                rhs(i,j,k,n)  =  rhs(i,j,k,n) + (Hcell(1,n) - Hcell(0,n)) * dx2inv(1)
+             end do
+
+             gradptmp = dxinv(1) * first_deriv_6(q(i-3:i+3,j,k,qpres))
+
+             sumryv = 0.d0
+             do n = 1, nspecies
+                if (n.eq.iias) cycle
+                qxn = qx1+n-1
+                sumryvtmp = sumryvtmp + dpy(i,j,k,n)*gradptmp  &
+                     + dxy(i,j,k,n)*dxinv(1)*first_deriv_6(q(i-3:i+3,j,k,qxn))
+             end do
+
+             if (add_v_correction) then
+
+                do n=1,nspecies
+                   qyn = qy1+n-1
+                   qhn = qh1+n-1
+                   iryn = iry1+n-1
+          
+                   ry_c = q(i,j,k,qyn)*sumdrytmp + sumryvtmp*dxinv(1) * &
+                        first_deriv_6(q(i-3:i+3,j,k,qyn))
+                   ene_c = ry_c*q(i,j,k,qhn) + q(i,j,k,qyn)*sumryvtmp*dxinv(1)* &
+                        first_deriv_6(q(i-3:i+3,j,k,qhn))
+                   rhs(i,j,k,iene) = rhs(i,j,k,iene) - ene_c
+                   rhs(i,j,k,iryn) = rhs(i,j,k,iryn) - ry_c
+                end do
+
+             else
+    
+                n = iias
+                qhn = qh1+n-1
+                iryn = iry1+n-1
+
+                ene_c = sumdrytmp*q(i,j,k,qhn) + sumryvtmp*dxinv(1)* &
+                     first_deriv_6(q(i-3:i+3,j,k,qhn))
+                rhs(i,j,k,iene) = rhs(i,j,k,iene) - ene_c
+                rhs(i,j,k,iryn) = rhs(i,j,k,iryn) - sumdrytmp
+       
+             end if
+
           end do
        end do
     end if
@@ -2715,42 +2953,73 @@ contains
                 Hcell(iface,imz) = dot_product(mmtmp6, q(i-3:i+2,j,k,qw))
 
                 mmtmp6 = matmul(lam(i-3:i+2,j,k), M6)
-                M6p = matmul(M6,  q(i-3:i+2,j,k,qpres))
+                M6p = matmul(M6T,  q(i-3:i+2,j,k,qpres))
                 Hcell(iface,iene) = dot_product(mmtmp6, q(i-3:i+2,j,k,qtemp)) &
                      &            + dot_product(      dpe(i-3:i+2,j,k), M6p)
 
-                Htot = 0.d0
                 do n = 1, nspecies
+                   if (n .eq. iias) cycle  ! inactive speices
                    qxn = qx1+n-1
-                   qyn = qy1+n-1
-
-                   M6X = matmul(M6, q(i-3:i+2,j,k,qxn))
-                
-                   Htmp(n) = dot_product(dpy(i-3:i+2,j,k,n), M6p) &
-                        +    dot_product(dxy(i-3:i+2,j,k,n), M6X)
-
+                   iryn = iry1+n-1
+                   M6X = matmul(M6T, q(i-3:i+2,j,k,qxn))
                    Hcell(iface,iene) = Hcell(iface,iene) &
-                        +    dot_product(dxe(i-3:i+2,j,k,n), M6X)
-
-                   Htot = Htot + Htmp(n)
-                   Ytmp(n) = 0.5d0*(q(i-1,j,k,qyn) + q(i,j,k,qyn))
+                        +    dot_product(dxe(i-3:i+2,j,k,n), M6X)                
+                   Hcell(iface,iryn) = dot_product(dpy(i-3:i+2,j,k,n), M6p) &
+                        +    dot_product(dxy(i-3:i+2,j,k,n), M6X)
                 end do
 
-                do n = 1, nspecies
-                   Hcell(iface,iry1+n-1) = Htmp(n) - Ytmp(n)*Htot
-                end do
-
-                do n = 1, nspecies
-                   qhn = qh1+n-1
-                   hhalf = 0.5d0*(q(i-1,j,k,qhn) + q(i,j,k,qhn))
-                   Hcell(iface,iene) =  Hcell(iface,iene) - Ytmp(n)*Htot*hhalf
-                end do
              end do
 
              i = hi(1)-3
-             do n=2,ncons
+
+             do n=2,iene
                 rhs(i,j,k,n) = rhs(i,j,k,n) + (Hcell(1,n) - Hcell(0,n)) * dx2inv(1)
              end do
+
+             sumdrytmp = 0.d0
+             do n=iry1,ncons
+                if (n.eq.iry_ias) cycle
+                sumdrytmp = sumdrytmp + (Hcell(1,n) - Hcell(0,n)) * dx2inv(1)
+                rhs(i,j,k,n)  =  rhs(i,j,k,n) + (Hcell(1,n) - Hcell(0,n)) * dx2inv(1)
+             end do
+
+             gradptmp = dxinv(1) * first_deriv_6(q(i-3:i+3,j,k,qpres))
+
+             sumryv = 0.d0
+             do n = 1, nspecies
+                if (n.eq.iias) cycle
+                qxn = qx1+n-1
+                sumryvtmp = sumryvtmp + dpy(i,j,k,n)*gradptmp  &
+                     + dxy(i,j,k,n)*dxinv(1)*first_deriv_6(q(i-3:i+3,j,k,qxn))
+             end do
+
+             if (add_v_correction) then
+
+                do n=1,nspecies
+                   qyn = qy1+n-1
+                   qhn = qh1+n-1
+                   iryn = iry1+n-1
+          
+                   ry_c = q(i,j,k,qyn)*sumdrytmp + sumryvtmp*dxinv(1) * &
+                        first_deriv_6(q(i-3:i+3,j,k,qyn))
+                   ene_c = ry_c*q(i,j,k,qhn) + q(i,j,k,qyn)*sumryvtmp*dxinv(1)* &
+                        first_deriv_6(q(i-3:i+3,j,k,qhn))
+                   rhs(i,j,k,iene) = rhs(i,j,k,iene) - ene_c
+                   rhs(i,j,k,iryn) = rhs(i,j,k,iryn) - ry_c
+                end do
+
+             else
+    
+                n = iias
+                qhn = qh1+n-1
+                iryn = iry1+n-1
+
+                ene_c = sumdrytmp*q(i,j,k,qhn) + sumryvtmp*dxinv(1)* &
+                     first_deriv_6(q(i-3:i+3,j,k,qhn))
+                rhs(i,j,k,iene) = rhs(i,j,k,iene) - ene_c
+                rhs(i,j,k,iryn) = rhs(i,j,k,iryn) - sumdrytmp
+       
+             end if
 
              !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
              ! use 4th-order stencil for cell hi(1)-2,j,k
@@ -2765,42 +3034,74 @@ contains
                 Hcell(iface,imz) = dot_product(mmtmp4, q(i-2:i+1,j,k,qw))
 
                 mmtmp4 = matmul(lam(i-2:i+1,j,k), M4)
-                M4p = matmul(M4,  q(i-2:i+1,j,k,qpres))
+                M4p = matmul(M4T,  q(i-2:i+1,j,k,qpres))
                 Hcell(iface,iene) = dot_product(mmtmp4, q(i-2:i+1,j,k,qtemp)) &
                      &            + dot_product(      dpe(i-2:i+1,j,k), M4p)
 
-                Htot = 0.d0
                 do n = 1, nspecies
+                   if (n .eq. iias) cycle  ! inactive speices
                    qxn = qx1+n-1
-                   qyn = qy1+n-1
+                   iryn = iry1+n-1
 
-                   M4X = matmul(M4, q(i-2:i+1,j,k,qxn))
-                
-                   Htmp(n) = dot_product(dpy(i-2:i+1,j,k,n), M4p) &
-                        +    dot_product(dxy(i-2:i+1,j,k,n), M4X)
-
+                   M4X = matmul(M4T, q(i-2:i+1,j,k,qxn))
                    Hcell(iface,iene) = Hcell(iface,iene) &
                         +    dot_product(dxe(i-2:i+1,j,k,n), M4X)
-
-                   Htot = Htot + Htmp(n)
-                   Ytmp(n) = 0.5d0*(q(i-1,j,k,qyn) + q(i,j,k,qyn))
+                   Hcell(iface,iryn) = dot_product(dpy(i-2:i+1,j,k,n), M4p) &
+                        +    dot_product(dxy(i-2:i+1,j,k,n), M4X)
                 end do
 
-                do n = 1, nspecies
-                   Hcell(iface,iry1+n-1) = Htmp(n) - Ytmp(n)*Htot
-                end do
-
-                do n = 1, nspecies
-                   qhn = qh1+n-1
-                   hhalf = 0.5d0*(q(i-1,j,k,qhn) + q(i,j,k,qhn))
-                   Hcell(iface,iene) =  Hcell(iface,iene) - Ytmp(n)*Htot*hhalf
-                end do
              end do
 
              i = hi(1)-2
-             do n=2,ncons
+
+             do n=2,iene
                 rhs(i,j,k,n) = rhs(i,j,k,n) + (Hcell(1,n) - Hcell(0,n)) * dx2inv(1)
              end do
+
+             sumdrytmp = 0.d0
+             do n=iry1,ncons
+                if (n.eq.iry_ias) cycle
+                sumdrytmp = sumdrytmp + (Hcell(1,n) - Hcell(0,n)) * dx2inv(1)
+                rhs(i,j,k,n)  =  rhs(i,j,k,n) + (Hcell(1,n) - Hcell(0,n)) * dx2inv(1)
+             end do
+
+             gradptmp = dxinv(1) * first_deriv_4(q(i-2:i+2,j,k,qpres))
+
+             sumryv = 0.d0
+             do n = 1, nspecies
+                if (n.eq.iias) cycle
+                qxn = qx1+n-1
+                sumryvtmp = sumryvtmp + dpy(i,j,k,n)*gradptmp  &
+                     + dxy(i,j,k,n)*dxinv(1)*first_deriv_4(q(i-2:i+2,j,k,qxn))
+             end do
+
+             if (add_v_correction) then
+
+                do n=1,nspecies
+                   qyn = qy1+n-1
+                   qhn = qh1+n-1
+                   iryn = iry1+n-1
+          
+                   ry_c = q(i,j,k,qyn)*sumdrytmp + sumryvtmp*dxinv(1) * &
+                        first_deriv_4(q(i-2:i+2,j,k,qyn))
+                   ene_c = ry_c*q(i,j,k,qhn) + q(i,j,k,qyn)*sumryvtmp*dxinv(1)* &
+                        first_deriv_4(q(i-2:i+2,j,k,qhn))
+                   rhs(i,j,k,iene) = rhs(i,j,k,iene) - ene_c
+                   rhs(i,j,k,iryn) = rhs(i,j,k,iryn) - ry_c
+                end do
+
+             else
+    
+                n = iias
+                qhn = qh1+n-1
+                iryn = iry1+n-1
+
+                ene_c = sumdrytmp*q(i,j,k,qhn) + sumryvtmp*dxinv(1)* &
+                     first_deriv_4(q(i-2:i+2,j,k,qhn))
+                rhs(i,j,k,iene) = rhs(i,j,k,iene) - ene_c
+                rhs(i,j,k,iryn) = rhs(i,j,k,iryn) - sumdrytmp
+       
+             end if
 
              !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
              ! use 2nd-order stencil for cell hi(1)-1,j,k
@@ -3019,42 +3320,74 @@ contains
                 Hcell(iface,imy) = dot_product(mmtmp4, q(i,j-2:j+1,k,qv))
 
                 mmtmp4 = matmul(lam(i,j-2:j+1,k), M4)
-                M4p = matmul(M4,  q(i,j-2:j+1,k,qpres))
+                M4p = matmul(M4T,  q(i,j-2:j+1,k,qpres))
                 Hcell(iface,iene) = dot_product(mmtmp4, q(i,j-2:j+1,k,qtemp)) &
                      &            + dot_product(      dpe(i,j-2:j+1,k), M4p)
 
-                Htot = 0.d0
                 do n = 1, nspecies
+                   if (n .eq. iias) cycle  ! inactive speices
+
                    qxn = qx1+n-1
-                   qyn = qy1+n-1
-
-                   M4X = matmul(M4, q(i,j-2:j+1,k,qxn))
-                
-                   Htmp(n) = dot_product(dpy(i,j-2:j+1,k,n), M4p) &
-                        +    dot_product(dxy(i,j-2:j+1,k,n), M4X)
-
+                   iryn = iry1+n-1
+                   M4X = matmul(M4T, q(i,j-2:j+1,k,qxn))
                    Hcell(iface,iene) = Hcell(iface,iene) &
                         +    dot_product(dxe(i,j-2:j+1,k,n), M4X)
-
-                   Htot = Htot + Htmp(n)
-                   Ytmp(n) = 0.5d0*(q(i,j-1,k,qyn) + q(i,j,k,qyn))
+                   Hcell(iface,iryn) = dot_product(dpy(i,j-2:j+1,k,n), M4p) &
+                        +    dot_product(dxy(i,j-2:j+1,k,n), M4X)
                 end do
 
-                do n = 1, nspecies
-                   Hcell(iface,iry1+n-1) = Htmp(n) - Ytmp(n)*Htot
-                end do
-
-                do n = 1, nspecies
-                   qhn = qh1+n-1
-                   hhalf = 0.5d0*(q(i,j-1,k,qhn) + q(i,j,k,qhn))
-                   Hcell(iface,iene) =  Hcell(iface,iene) - Ytmp(n)*Htot*hhalf
-                end do
              end do
 
              j = lo(2)+2
-             do n=2,ncons
+
+             do n=2,iene
                 rhs(i,j,k,n) = rhs(i,j,k,n) + (Hcell(1,n) - Hcell(0,n)) * dx2inv(2)
              end do
+
+             sumdrytmp = 0.d0
+             do n=iry1,ncons
+                if (n.eq.iry_ias) cycle
+                sumdrytmp = sumdrytmp + (Hcell(1,n) - Hcell(0,n)) * dx2inv(2)
+                rhs(i,j,k,n)  =  rhs(i,j,k,n) + (Hcell(1,n) - Hcell(0,n)) * dx2inv(2)
+             end do
+
+             gradptmp = dxinv(2) * first_deriv_4(q(i,j-2:j+2,k,qpres))
+
+             sumryv = 0.d0
+             do n = 1, nspecies
+                if (n.eq.iias) cycle
+                qxn = qx1+n-1
+                sumryvtmp = sumryvtmp + dpy(i,j,k,n)*gradptmp  &
+                     + dxy(i,j,k,n)*dxinv(2)*first_deriv_4(q(i,j-2:j+2,k,qxn))
+             end do
+
+             if (add_v_correction) then
+
+                do n=1,nspecies
+                   qyn = qy1+n-1
+                   qhn = qh1+n-1
+                   iryn = iry1+n-1
+          
+                   ry_c = q(i,j,k,qyn)*sumdrytmp + sumryvtmp*dxinv(2) * &
+                        first_deriv_4(q(i,j-2:j+2,k,qyn))
+                   ene_c = ry_c*q(i,j,k,qhn) + q(i,j,k,qyn)*sumryvtmp*dxinv(2)* &
+                        first_deriv_4(q(i,j-2:j+2,k,qhn))
+                   rhs(i,j,k,iene) = rhs(i,j,k,iene) - ene_c
+                   rhs(i,j,k,iryn) = rhs(i,j,k,iryn) - ry_c
+                end do
+
+             else
+    
+                n = iias
+                qhn = qh1+n-1
+                iryn = iry1+n-1
+
+                ene_c = sumdrytmp*q(i,j,k,qhn) + sumryvtmp*dxinv(2)* &
+                     first_deriv_4(q(i,j-2:j+2,k,qhn))
+                rhs(i,j,k,iene) = rhs(i,j,k,iene) - ene_c
+                rhs(i,j,k,iryn) = rhs(i,j,k,iryn) - sumdrytmp
+       
+             end if
           end do
 
           !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -3071,42 +3404,73 @@ contains
                 Hcell(iface,imy) = dot_product(mmtmp6, q(i,j-3:j+2,k,qv))
 
                 mmtmp6 = matmul(lam(i,j-3:j+2,k), M6)
-                M6p = matmul(M6,  q(i,j-3:j+2,k,qpres))
+                M6p = matmul(M6T,  q(i,j-3:j+2,k,qpres))
                 Hcell(iface,iene) = dot_product(mmtmp6, q(i,j-3:j+2,k,qtemp))      &
                      &            + dot_product(      dpe(i,j-3:j+2,k), M6p)
 
-                Htot = 0.d0
                 do n = 1, nspecies
+                   if (n .eq. iias) cycle  ! inactive speices
                    qxn = qx1+n-1
-                   qyn = qy1+n-1
-
-                   M6X = matmul(M6, q(i,j-3:j+2,k,qxn))
-                
-                   Htmp(n) = dot_product(dpy(i,j-3:j+2,k,n), M6p) &
-                        +    dot_product(dxy(i,j-3:j+2,k,n), M6X)
-
+                   iryn = iry1+n-1
+                   M6X = matmul(M6T, q(i,j-3:j+2,k,qxn))
                    Hcell(iface,iene) = Hcell(iface,iene) &
                         +    dot_product(dxe(i,j-3:j+2,k,n), M6X)
-
-                   Htot = Htot + Htmp(n)
-                   Ytmp(n) = 0.5d0*(q(i,j-1,k,qyn) + q(i,j,k,qyn))
+                   Hcell(iface,iryn) = dot_product(dpy(i,j-3:j+2,k,n), M6p) &
+                        +    dot_product(dxy(i,j-3:j+2,k,n), M6X)
                 end do
 
-                do n = 1, nspecies
-                   Hcell(iface,iry1+n-1) = Htmp(n) - Ytmp(n)*Htot
-                end do
-
-                do n = 1, nspecies
-                   qhn = qh1+n-1
-                   hhalf = 0.5d0*(q(i,j-1,k,qhn) + q(i,j,k,qhn))
-                   Hcell(iface,iene) =  Hcell(iface,iene) - Ytmp(n)*Htot*hhalf
-                end do
              end do
 
              j = lo(2)+3
-             do n=2,ncons
+
+             do n=2,iene
                 rhs(i,j,k,n) = rhs(i,j,k,n) + (Hcell(1,n) - Hcell(0,n)) * dx2inv(2)
              end do
+
+             sumdrytmp = 0.d0
+             do n=iry1,ncons
+                if (n.eq.iry_ias) cycle
+                sumdrytmp = sumdrytmp + (Hcell(1,n) - Hcell(0,n)) * dx2inv(2)
+                rhs(i,j,k,n)  =  rhs(i,j,k,n) + (Hcell(1,n) - Hcell(0,n)) * dx2inv(2)
+             end do
+
+             gradptmp = dxinv(2) * first_deriv_6(q(i,j-3:j+3,k,qpres))
+
+             sumryv = 0.d0
+             do n = 1, nspecies
+                if (n.eq.iias) cycle
+                qxn = qx1+n-1
+                sumryvtmp = sumryvtmp + dpy(i,j,k,n)*gradptmp  &
+                     + dxy(i,j,k,n)*dxinv(2)*first_deriv_6(q(i,j-3:j+3,k,qxn))
+             end do
+
+             if (add_v_correction) then
+
+                do n=1,nspecies
+                   qyn = qy1+n-1
+                   qhn = qh1+n-1
+                   iryn = iry1+n-1
+          
+                   ry_c = q(i,j,k,qyn)*sumdrytmp + sumryvtmp*dxinv(2) * &
+                        first_deriv_6(q(i,j-3:j+3,k,qyn))
+                   ene_c = ry_c*q(i,j,k,qhn) + q(i,j,k,qyn)*sumryvtmp*dxinv(2)* &
+                        first_deriv_6(q(i,j-3:j+3,k,qhn))
+                   rhs(i,j,k,iene) = rhs(i,j,k,iene) - ene_c
+                   rhs(i,j,k,iryn) = rhs(i,j,k,iryn) - ry_c
+                end do
+
+             else
+    
+                n = iias
+                qhn = qh1+n-1
+                iryn = iry1+n-1
+
+                ene_c = sumdrytmp*q(i,j,k,qhn) + sumryvtmp*dxinv(2)* &
+                     first_deriv_6(q(i,j-3:j+3,k,qhn))
+                rhs(i,j,k,iene) = rhs(i,j,k,iene) - ene_c
+                rhs(i,j,k,iryn) = rhs(i,j,k,iryn) - sumdrytmp
+       
+             end if
           end do
        end do
     end if
@@ -3130,42 +3494,73 @@ contains
                 Hcell(iface,imy) = dot_product(mmtmp6, q(i,j-3:j+2,k,qv))
 
                 mmtmp6 = matmul(lam(i,j-3:j+2,k), M6)
-                M6p = matmul(M6,  q(i,j-3:j+2,k,qpres))
+                M6p = matmul(M6T,  q(i,j-3:j+2,k,qpres))
                 Hcell(iface,iene) = dot_product(mmtmp6, q(i,j-3:j+2,k,qtemp))      &
                      &            + dot_product(      dpe(i,j-3:j+2,k), M6p)
 
-                Htot = 0.d0
                 do n = 1, nspecies
+                   if (n .eq. iias) cycle  ! inactive speices
                    qxn = qx1+n-1
-                   qyn = qy1+n-1
-
-                   M6X = matmul(M6, q(i,j-3:j+2,k,qxn))
-                
-                   Htmp(n) = dot_product(dpy(i,j-3:j+2,k,n), M6p) &
-                        +    dot_product(dxy(i,j-3:j+2,k,n), M6X)
-
+                   iryn = iry1+n-1
+                   M6X = matmul(M6T, q(i,j-3:j+2,k,qxn))
                    Hcell(iface,iene) = Hcell(iface,iene) &
                         +    dot_product(dxe(i,j-3:j+2,k,n), M6X)
-
-                   Htot = Htot + Htmp(n)
-                   Ytmp(n) = 0.5d0*(q(i,j-1,k,qyn) + q(i,j,k,qyn))
+                   Hcell(iface,iryn) = dot_product(dpy(i,j-3:j+2,k,n), M6p) &
+                        +    dot_product(dxy(i,j-3:j+2,k,n), M6X)
                 end do
 
-                do n = 1, nspecies
-                   Hcell(iface,iry1+n-1) = Htmp(n) - Ytmp(n)*Htot
-                end do
-
-                do n = 1, nspecies
-                   qhn = qh1+n-1
-                   hhalf = 0.5d0*(q(i,j-1,k,qhn) + q(i,j,k,qhn))
-                   Hcell(iface,iene) =  Hcell(iface,iene) - Ytmp(n)*Htot*hhalf
-                end do
              end do
 
              j = hi(2)-3
-             do n=2,ncons
+
+             do n=2,iene
                 rhs(i,j,k,n) = rhs(i,j,k,n) + (Hcell(1,n) - Hcell(0,n)) * dx2inv(2)
              end do
+
+             sumdrytmp = 0.d0
+             do n=iry1,ncons
+                if (n.eq.iry_ias) cycle
+                sumdrytmp = sumdrytmp + (Hcell(1,n) - Hcell(0,n)) * dx2inv(2)
+                rhs(i,j,k,n)  =  rhs(i,j,k,n) + (Hcell(1,n) - Hcell(0,n)) * dx2inv(2)
+             end do
+
+             gradptmp = dxinv(2) * first_deriv_6(q(i,j-3:j+3,k,qpres))
+
+             sumryv = 0.d0
+             do n = 1, nspecies
+                if (n.eq.iias) cycle
+                qxn = qx1+n-1
+                sumryvtmp = sumryvtmp + dpy(i,j,k,n)*gradptmp  &
+                     + dxy(i,j,k,n)*dxinv(2)*first_deriv_6(q(i,j-3:j+3,k,qxn))
+             end do
+
+             if (add_v_correction) then
+
+                do n=1,nspecies
+                   qyn = qy1+n-1
+                   qhn = qh1+n-1
+                   iryn = iry1+n-1
+          
+                   ry_c = q(i,j,k,qyn)*sumdrytmp + sumryvtmp*dxinv(2) * &
+                        first_deriv_6(q(i,j-3:j+3,k,qyn))
+                   ene_c = ry_c*q(i,j,k,qhn) + q(i,j,k,qyn)*sumryvtmp*dxinv(2)* &
+                        first_deriv_6(q(i,j-3:j+3,k,qhn))
+                   rhs(i,j,k,iene) = rhs(i,j,k,iene) - ene_c
+                   rhs(i,j,k,iryn) = rhs(i,j,k,iryn) - ry_c
+                end do
+
+             else
+    
+                n = iias
+                qhn = qh1+n-1
+                iryn = iry1+n-1
+
+                ene_c = sumdrytmp*q(i,j,k,qhn) + sumryvtmp*dxinv(2)* &
+                     first_deriv_6(q(i,j-3:j+3,k,qhn))
+                rhs(i,j,k,iene) = rhs(i,j,k,iene) - ene_c
+                rhs(i,j,k,iryn) = rhs(i,j,k,iryn) - sumdrytmp
+       
+             end if
           end do
 
           !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -3182,42 +3577,74 @@ contains
                 Hcell(iface,imy) = dot_product(mmtmp4, q(i,j-2:j+1,k,qv))
 
                 mmtmp4 = matmul(lam(i,j-2:j+1,k), M4)
-                M4p = matmul(M4,  q(i,j-2:j+1,k,qpres))
+                M4p = matmul(M4T,  q(i,j-2:j+1,k,qpres))
                 Hcell(iface,iene) = dot_product(mmtmp4, q(i,j-2:j+1,k,qtemp)) &
                      &            + dot_product(      dpe(i,j-2:j+1,k), M4p)
 
-                Htot = 0.d0
                 do n = 1, nspecies
+                   if (n .eq. iias) cycle  ! inactive speices
+
                    qxn = qx1+n-1
-                   qyn = qy1+n-1
-
-                   M4X = matmul(M4, q(i,j-2:j+1,k,qxn))
-                
-                   Htmp(n) = dot_product(dpy(i,j-2:j+1,k,n), M4p) &
-                        +    dot_product(dxy(i,j-2:j+1,k,n), M4X)
-
+                   iryn = iry1+n-1
+                   M4X = matmul(M4T, q(i,j-2:j+1,k,qxn))
                    Hcell(iface,iene) = Hcell(iface,iene) &
                         +    dot_product(dxe(i,j-2:j+1,k,n), M4X)
-
-                   Htot = Htot + Htmp(n)
-                   Ytmp(n) = 0.5d0*(q(i,j-1,k,qyn) + q(i,j,k,qyn))
+                   Hcell(iface,iryn) = dot_product(dpy(i,j-2:j+1,k,n), M4p) &
+                        +    dot_product(dxy(i,j-2:j+1,k,n), M4X)
                 end do
 
-                do n = 1, nspecies
-                   Hcell(iface,iry1+n-1) = Htmp(n) - Ytmp(n)*Htot
-                end do
-
-                do n = 1, nspecies
-                   qhn = qh1+n-1
-                   hhalf = 0.5d0*(q(i,j-1,k,qhn) + q(i,j,k,qhn))
-                   Hcell(iface,iene) =  Hcell(iface,iene) - Ytmp(n)*Htot*hhalf
-                end do
              end do
 
              j = hi(2)-2
-             do n=2,ncons
+
+             do n=2,iene
                 rhs(i,j,k,n) = rhs(i,j,k,n) + (Hcell(1,n) - Hcell(0,n)) * dx2inv(2)
              end do
+
+             sumdrytmp = 0.d0
+             do n=iry1,ncons
+                if (n.eq.iry_ias) cycle
+                sumdrytmp = sumdrytmp + (Hcell(1,n) - Hcell(0,n)) * dx2inv(2)
+                rhs(i,j,k,n)  =  rhs(i,j,k,n) + (Hcell(1,n) - Hcell(0,n)) * dx2inv(2)
+             end do
+
+             gradptmp = dxinv(2) * first_deriv_4(q(i,j-2:j+2,k,qpres))
+
+             sumryv = 0.d0
+             do n = 1, nspecies
+                if (n.eq.iias) cycle
+                qxn = qx1+n-1
+                sumryvtmp = sumryvtmp + dpy(i,j,k,n)*gradptmp  &
+                     + dxy(i,j,k,n)*dxinv(2)*first_deriv_4(q(i,j-2:j+2,k,qxn))
+             end do
+
+             if (add_v_correction) then
+
+                do n=1,nspecies
+                   qyn = qy1+n-1
+                   qhn = qh1+n-1
+                   iryn = iry1+n-1
+          
+                   ry_c = q(i,j,k,qyn)*sumdrytmp + sumryvtmp*dxinv(2) * &
+                        first_deriv_4(q(i,j-2:j+2,k,qyn))
+                   ene_c = ry_c*q(i,j,k,qhn) + q(i,j,k,qyn)*sumryvtmp*dxinv(2)* &
+                        first_deriv_4(q(i,j-2:j+2,k,qhn))
+                   rhs(i,j,k,iene) = rhs(i,j,k,iene) - ene_c
+                   rhs(i,j,k,iryn) = rhs(i,j,k,iryn) - ry_c
+                end do
+
+             else
+    
+                n = iias
+                qhn = qh1+n-1
+                iryn = iry1+n-1
+
+                ene_c = sumdrytmp*q(i,j,k,qhn) + sumryvtmp*dxinv(2)* &
+                     first_deriv_4(q(i,j-2:j+2,k,qhn))
+                rhs(i,j,k,iene) = rhs(i,j,k,iene) - ene_c
+                rhs(i,j,k,iryn) = rhs(i,j,k,iryn) - sumdrytmp
+       
+             end if
           end do
 
           !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -3446,42 +3873,74 @@ contains
                 Hcell(iface,imz) = dot_product(mmtmp4, q(i,j,k-2:k+1,qw))
 
                 mmtmp4 = matmul(lam(i,j,k-2:k+1), M4)
-                M4p = matmul(M4,  q(i,j,k-2:k+1,qpres))
+                M4p = matmul(M4T,  q(i,j,k-2:k+1,qpres))
                 Hcell(iface,iene) = dot_product(mmtmp4, q(i,j,k-2:k+1,qtemp)) &
                      &            + dot_product(      dpe(i,j,k-2:k+1), M4p)
 
-                Htot = 0.d0
                 do n = 1, nspecies
+                   if (n .eq. iias) cycle  ! inactive speices
+
                    qxn = qx1+n-1
-                   qyn = qy1+n-1
-
-                   M4X = matmul(M4, q(i,j,k-2:k+1,qxn))
-                
-                   Htmp(n) = dot_product(dpy(i,j,k-2:k+1,n), M4p) &
-                        +    dot_product(dxy(i,j,k-2:k+1,n), M4X)
-
+                   iryn = iry1+n-1
+                   M4X = matmul(M4T, q(i,j,k-2:k+1,qxn))
                    Hcell(iface,iene) = Hcell(iface,iene) &
                         +    dot_product(dxe(i,j,k-2:k+1,n), M4X)
-
-                   Htot = Htot + Htmp(n)
-                   Ytmp(n) = 0.5d0*(q(i,j,k-1,qyn) + q(i,j,k,qyn))
+                   Hcell(iface,iryn) = dot_product(dpy(i,j,k-2:k+1,n), M4p) &
+                        +    dot_product(dxy(i,j,k-2:k+1,n), M4X)
                 end do
 
-                do n = 1, nspecies
-                   Hcell(iface,iry1+n-1) = Htmp(n) - Ytmp(n)*Htot
-                end do
-
-                do n = 1, nspecies
-                   qhn = qh1+n-1
-                   hhalf = 0.5d0*(q(i,j,k-1,qhn) + q(i,j,k,qhn))
-                   Hcell(iface,iene) =  Hcell(iface,iene) - Ytmp(n)*Htot*hhalf
-                end do
              end do
 
              k = lo(3)+2
-             do n=2,ncons
+
+             do n=2,iene
                 rhs(i,j,k,n) = rhs(i,j,k,n) + (Hcell(1,n) - Hcell(0,n)) * dx2inv(3)
              end do
+
+             sumdrytmp = 0.d0
+             do n=iry1,ncons
+                if (n.eq.iry_ias) cycle
+                sumdrytmp = sumdrytmp + (Hcell(1,n) - Hcell(0,n)) * dx2inv(3)
+                rhs(i,j,k,n)  =  rhs(i,j,k,n) + (Hcell(1,n) - Hcell(0,n)) * dx2inv(3)
+             end do
+
+             gradptmp = dxinv(3) * first_deriv_4(q(i,j,k-2:k+2,qpres))
+
+             sumryv = 0.d0
+             do n = 1, nspecies
+                if (n.eq.iias) cycle
+                qxn = qx1+n-1
+                sumryvtmp = sumryvtmp + dpy(i,j,k,n)*gradptmp  &
+                     + dxy(i,j,k,n)*dxinv(3)*first_deriv_4(q(i,j,k-2:k+2,qxn))
+             end do
+
+             if (add_v_correction) then
+
+                do n=1,nspecies
+                   qyn = qy1+n-1
+                   qhn = qh1+n-1
+                   iryn = iry1+n-1
+          
+                   ry_c = q(i,j,k,qyn)*sumdrytmp + sumryvtmp*dxinv(3) * &
+                        first_deriv_4(q(i,j,k-2:k+2,qyn))
+                   ene_c = ry_c*q(i,j,k,qhn) + q(i,j,k,qyn)*sumryvtmp*dxinv(3)* &
+                        first_deriv_4(q(i,j,k-2:k+2,qhn))
+                   rhs(i,j,k,iene) = rhs(i,j,k,iene) - ene_c
+                   rhs(i,j,k,iryn) = rhs(i,j,k,iryn) - ry_c
+                end do
+
+             else
+    
+                n = iias
+                qhn = qh1+n-1
+                iryn = iry1+n-1
+
+                ene_c = sumdrytmp*q(i,j,k,qhn) + sumryvtmp*dxinv(3)* &
+                     first_deriv_4(q(i,j,k-2:k+2,qhn))
+                rhs(i,j,k,iene) = rhs(i,j,k,iene) - ene_c
+                rhs(i,j,k,iryn) = rhs(i,j,k,iryn) - sumdrytmp
+       
+             end if
           end do
        end do
 
@@ -3500,42 +3959,73 @@ contains
                 Hcell(iface,imz) = dot_product(mmtmp6, q(i,j,k-3:k+2,qw))
 
                 mmtmp6 = matmul(lam(i,j,k-3:k+2), M6)
-                M6p = matmul(M6,  q(i,j,k-3:k+2,qpres))
+                M6p = matmul(M6T,  q(i,j,k-3:k+2,qpres))
                 Hcell(iface,iene) = dot_product(mmtmp6, q(i,j,k-3:k+2,qtemp)) &
                      &            + dot_product(      dpe(i,j,k-3:k+2), M6p)
 
-                Htot = 0.d0
                 do n = 1, nspecies
+                   if (n .eq. iias) cycle  ! inactive speices
                    qxn = qx1+n-1
-                   qyn = qy1+n-1
-
-                   M6X = matmul(M6, q(i,j,k-3:k+2,qxn))
-                
-                   Htmp(n) = dot_product(dpy(i,j,k-3:k+2,n), M6p) &
-                        +    dot_product(dxy(i,j,k-3:k+2,n), M6X)
-
+                   iryn = iry1+n-1
+                   M6X = matmul(M6T, q(i,j,k-3:k+2,qxn))
                    Hcell(iface,iene) = Hcell(iface,iene) &
                         +    dot_product(dxe(i,j,k-3:k+2,n), M6X)
-
-                   Htot = Htot + Htmp(n)
-                   Ytmp(n) = 0.5d0*(q(i,j,k-1,qyn) + q(i,j,k,qyn))
+                   Hcell(iface,iryn) = dot_product(dpy(i,j,k-3:k+2,n), M6p) &
+                        +    dot_product(dxy(i,j,k-3:k+2,n), M6X)
                 end do
 
-                do n = 1, nspecies
-                   Hcell(iface,iry1+n-1) = Htmp(n) - Ytmp(n)*Htot
-                end do
-
-                do n = 1, nspecies
-                   qhn = qh1+n-1
-                   hhalf = 0.5d0*(q(i,j,k-1,qhn) + q(i,j,k,qhn))
-                   Hcell(iface,iene) =  Hcell(iface,iene) - Ytmp(n)*Htot*hhalf
-                end do
              end do
 
              k = lo(3)+3
-             do n=2,ncons
+
+             do n=2,iene
                 rhs(i,j,k,n) = rhs(i,j,k,n) + (Hcell(1,n) - Hcell(0,n)) * dx2inv(3)
              end do
+
+             sumdrytmp = 0.d0
+             do n=iry1,ncons
+                if (n.eq.iry_ias) cycle
+                sumdrytmp = sumdrytmp + (Hcell(1,n) - Hcell(0,n)) * dx2inv(3)
+                rhs(i,j,k,n)  =  rhs(i,j,k,n) + (Hcell(1,n) - Hcell(0,n)) * dx2inv(3)
+             end do
+
+             gradptmp = dxinv(3) * first_deriv_6(q(i,j,k-3:k+3,qpres))
+
+             sumryv = 0.d0
+             do n = 1, nspecies
+                if (n.eq.iias) cycle
+                qxn = qx1+n-1
+                sumryvtmp = sumryvtmp + dpy(i,j,k,n)*gradptmp  &
+                     + dxy(i,j,k,n)*dxinv(3)*first_deriv_6(q(i,j,k-3:k+3,qxn))
+             end do
+
+             if (add_v_correction) then
+
+                do n=1,nspecies
+                   qyn = qy1+n-1
+                   qhn = qh1+n-1
+                   iryn = iry1+n-1
+          
+                   ry_c = q(i,j,k,qyn)*sumdrytmp + sumryvtmp*dxinv(3) * &
+                        first_deriv_6(q(i,j,k-3:k+3,qyn))
+                   ene_c = ry_c*q(i,j,k,qhn) + q(i,j,k,qyn)*sumryvtmp*dxinv(3)* &
+                        first_deriv_6(q(i,j,k-3:k+3,qhn))
+                   rhs(i,j,k,iene) = rhs(i,j,k,iene) - ene_c
+                   rhs(i,j,k,iryn) = rhs(i,j,k,iryn) - ry_c
+                end do
+
+             else
+    
+                n = iias
+                qhn = qh1+n-1
+                iryn = iry1+n-1
+
+                ene_c = sumdrytmp*q(i,j,k,qhn) + sumryvtmp*dxinv(3)* &
+                     first_deriv_6(q(i,j,k-3:k+3,qhn))
+                rhs(i,j,k,iene) = rhs(i,j,k,iene) - ene_c
+                rhs(i,j,k,iryn) = rhs(i,j,k,iryn) - sumdrytmp
+       
+             end if
           end do
        end do
     end if
@@ -3559,42 +4049,73 @@ contains
                 Hcell(iface,imz) = dot_product(mmtmp6, q(i,j,k-3:k+2,qw))
 
                 mmtmp6 = matmul(lam(i,j,k-3:k+2), M6)
-                M6p = matmul(M6,  q(i,j,k-3:k+2,qpres))
+                M6p = matmul(M6T,  q(i,j,k-3:k+2,qpres))
                 Hcell(iface,iene) = dot_product(mmtmp6, q(i,j,k-3:k+2,qtemp)) &
                      &            + dot_product(      dpe(i,j,k-3:k+2), M6p)
 
-                Htot = 0.d0
                 do n = 1, nspecies
+                   if (n .eq. iias) cycle  ! inactive speices
                    qxn = qx1+n-1
-                   qyn = qy1+n-1
-
-                   M6X = matmul(M6, q(i,j,k-3:k+2,qxn))
-                
-                   Htmp(n) = dot_product(dpy(i,j,k-3:k+2,n), M6p) &
-                        +    dot_product(dxy(i,j,k-3:k+2,n), M6X)
-
+                   iryn = iry1+n-1
+                   M6X = matmul(M6T, q(i,j,k-3:k+2,qxn))
                    Hcell(iface,iene) = Hcell(iface,iene) &
                         +    dot_product(dxe(i,j,k-3:k+2,n), M6X)
-
-                   Htot = Htot + Htmp(n)
-                   Ytmp(n) = 0.5d0*(q(i,j,k-1,qyn) + q(i,j,k,qyn))
+                   Hcell(iface,iryn) = dot_product(dpy(i,j,k-3:k+2,n), M6p) &
+                        +    dot_product(dxy(i,j,k-3:k+2,n), M6X)
                 end do
 
-                do n = 1, nspecies
-                   Hcell(iface,iry1+n-1) = Htmp(n) - Ytmp(n)*Htot
-                end do
-
-                do n = 1, nspecies
-                   qhn = qh1+n-1
-                   hhalf = 0.5d0*(q(i,j,k-1,qhn) + q(i,j,k,qhn))
-                   Hcell(iface,iene) =  Hcell(iface,iene) - Ytmp(n)*Htot*hhalf
-                end do
              end do
 
              k = hi(3)-3
-             do n=2,ncons
+
+             do n=2,iene
                 rhs(i,j,k,n) = rhs(i,j,k,n) + (Hcell(1,n) - Hcell(0,n)) * dx2inv(3)
              end do
+
+             sumdrytmp = 0.d0
+             do n=iry1,ncons
+                if (n.eq.iry_ias) cycle
+                sumdrytmp = sumdrytmp + (Hcell(1,n) - Hcell(0,n)) * dx2inv(3)
+                rhs(i,j,k,n)  =  rhs(i,j,k,n) + (Hcell(1,n) - Hcell(0,n)) * dx2inv(3)
+             end do
+
+             gradptmp = dxinv(3) * first_deriv_6(q(i,j,k-3:k+3,qpres))
+
+             sumryv = 0.d0
+             do n = 1, nspecies
+                if (n.eq.iias) cycle
+                qxn = qx1+n-1
+                sumryvtmp = sumryvtmp + dpy(i,j,k,n)*gradptmp  &
+                     + dxy(i,j,k,n)*dxinv(3)*first_deriv_6(q(i,j,k-3:k+3,qxn))
+             end do
+
+             if (add_v_correction) then
+
+                do n=1,nspecies
+                   qyn = qy1+n-1
+                   qhn = qh1+n-1
+                   iryn = iry1+n-1
+          
+                   ry_c = q(i,j,k,qyn)*sumdrytmp + sumryvtmp*dxinv(3) * &
+                        first_deriv_6(q(i,j,k-3:k+3,qyn))
+                   ene_c = ry_c*q(i,j,k,qhn) + q(i,j,k,qyn)*sumryvtmp*dxinv(3)* &
+                        first_deriv_6(q(i,j,k-3:k+3,qhn))
+                   rhs(i,j,k,iene) = rhs(i,j,k,iene) - ene_c
+                   rhs(i,j,k,iryn) = rhs(i,j,k,iryn) - ry_c
+                end do
+
+             else
+    
+                n = iias
+                qhn = qh1+n-1
+                iryn = iry1+n-1
+
+                ene_c = sumdrytmp*q(i,j,k,qhn) + sumryvtmp*dxinv(3)* &
+                     first_deriv_6(q(i,j,k-3:k+3,qhn))
+                rhs(i,j,k,iene) = rhs(i,j,k,iene) - ene_c
+                rhs(i,j,k,iryn) = rhs(i,j,k,iryn) - sumdrytmp
+       
+             end if
           end do
        end do
 
@@ -3613,42 +4134,74 @@ contains
                 Hcell(iface,imz) = dot_product(mmtmp4, q(i,j,k-2:k+1,qw))
 
                 mmtmp4 = matmul(lam(i,j,k-2:k+1), M4)
-                M4p = matmul(M4,  q(i,j,k-2:k+1,qpres))
+                M4p = matmul(M4T,  q(i,j,k-2:k+1,qpres))
                 Hcell(iface,iene) = dot_product(mmtmp4, q(i,j,k-2:k+1,qtemp)) &
                      &            + dot_product(      dpe(i,j,k-2:k+1), M4p)
 
-                Htot = 0.d0
                 do n = 1, nspecies
+                   if (n .eq. iias) cycle  ! inactive speices
+
                    qxn = qx1+n-1
-                   qyn = qy1+n-1
-
-                   M4X = matmul(M4, q(i,j,k-2:k+1,qxn))
-                
-                   Htmp(n) = dot_product(dpy(i,j,k-2:k+1,n), M4p) &
-                        +    dot_product(dxy(i,j,k-2:k+1,n), M4X)
-
+                   iryn = iry1+n-1
+                   M4X = matmul(M4T, q(i,j,k-2:k+1,qxn))
                    Hcell(iface,iene) = Hcell(iface,iene) &
                         +    dot_product(dxe(i,j,k-2:k+1,n), M4X)
-
-                   Htot = Htot + Htmp(n)
-                   Ytmp(n) = 0.5d0*(q(i,j,k-1,qyn) + q(i,j,k,qyn))
+                   Hcell(iface,iryn) = dot_product(dpy(i,j,k-2:k+1,n), M4p) &
+                        +    dot_product(dxy(i,j,k-2:k+1,n), M4X)
                 end do
 
-                do n = 1, nspecies
-                   Hcell(iface,iry1+n-1) = Htmp(n) - Ytmp(n)*Htot
-                end do
-
-                do n = 1, nspecies
-                   qhn = qh1+n-1
-                   hhalf = 0.5d0*(q(i,j,k-1,qhn) + q(i,j,k,qhn))
-                   Hcell(iface,iene) =  Hcell(iface,iene) - Ytmp(n)*Htot*hhalf
-                end do
              end do
 
              k = hi(3)-2
-             do n=2,ncons
+
+             do n=2,iene
                 rhs(i,j,k,n) = rhs(i,j,k,n) + (Hcell(1,n) - Hcell(0,n)) * dx2inv(3)
              end do
+
+             sumdrytmp = 0.d0
+             do n=iry1,ncons
+                if (n.eq.iry_ias) cycle
+                sumdrytmp = sumdrytmp + (Hcell(1,n) - Hcell(0,n)) * dx2inv(3)
+                rhs(i,j,k,n)  =  rhs(i,j,k,n) + (Hcell(1,n) - Hcell(0,n)) * dx2inv(3)
+             end do
+
+             gradptmp = dxinv(3) * first_deriv_4(q(i,j,k-2:k+2,qpres))
+
+             sumryv = 0.d0
+             do n = 1, nspecies
+                if (n.eq.iias) cycle
+                qxn = qx1+n-1
+                sumryvtmp = sumryvtmp + dpy(i,j,k,n)*gradptmp  &
+                     + dxy(i,j,k,n)*dxinv(3)*first_deriv_4(q(i,j,k-2:k+2,qxn))
+             end do
+
+             if (add_v_correction) then
+
+                do n=1,nspecies
+                   qyn = qy1+n-1
+                   qhn = qh1+n-1
+                   iryn = iry1+n-1
+          
+                   ry_c = q(i,j,k,qyn)*sumdrytmp + sumryvtmp*dxinv(3) * &
+                        first_deriv_4(q(i,j,k-2:k+2,qyn))
+                   ene_c = ry_c*q(i,j,k,qhn) + q(i,j,k,qyn)*sumryvtmp*dxinv(3)* &
+                        first_deriv_4(q(i,j,k-2:k+2,qhn))
+                   rhs(i,j,k,iene) = rhs(i,j,k,iene) - ene_c
+                   rhs(i,j,k,iryn) = rhs(i,j,k,iryn) - ry_c
+                end do
+
+             else
+    
+                n = iias
+                qhn = qh1+n-1
+                iryn = iry1+n-1
+
+                ene_c = sumdrytmp*q(i,j,k,qhn) + sumryvtmp*dxinv(3)* &
+                     first_deriv_4(q(i,j,k-2:k+2,qhn))
+                rhs(i,j,k,iene) = rhs(i,j,k,iene) - ene_c
+                rhs(i,j,k,iryn) = rhs(i,j,k,iryn) - sumdrytmp
+       
+             end if
           end do
        end do
 
@@ -3773,7 +4326,7 @@ contains
     end do
 
     deallocate(Hg,dpy,dxe,dpe,vsp,M8p)
-    if (.not.reset_N2) deallocate(Hry)
+    deallocate(sumdrY,sumryv,gradp)
 
   end subroutine diffterm_2
 

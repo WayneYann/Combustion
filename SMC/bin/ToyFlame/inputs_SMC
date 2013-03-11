@@ -2,8 +2,6 @@
 
  verbose = 2
 
- stencil_type = "narrow"  ! narrow or S3D
-
  stop_time = 3.d-3
  max_step  = 10
  restart = -1

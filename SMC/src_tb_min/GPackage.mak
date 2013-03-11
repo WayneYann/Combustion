@@ -8,9 +8,17 @@ f90sources += derivative_stencil.f90
 f90sources += initialize.f90
 
 ifdef EXPAND
-  f90sources += kernels_exp.f90
+  ifdef K_USE_STACK
+    f90sources += kernels_stack_exp.f90
+  else
+    f90sources += kernels_exp.f90
+  endif
 else
-  f90sources += kernels.f90
+  ifdef K_USE_STACK
+    f90sources += kernels_stack.f90
+  else
+    f90sources += kernels.f90
+  endif
 endif
 
 f90sources += make_plot_variables.f90

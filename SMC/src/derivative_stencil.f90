@@ -41,7 +41,7 @@ module derivative_stencil_module
   double precision, private, parameter :: M8_47 = 3557.d0/44100.d0, M8_48 = -2083.d0/117600.d0
 
   ! coefficients for 6th-order stencil of second derivatives
-  double precision, save, dimension(6,6) :: M6
+  double precision, save, dimension(6,6) :: M6, M6T
   !
   ! optimized for more zeros
   ! double precision, private, parameter :: M6_36 = 1.d0/90.d0
@@ -50,7 +50,7 @@ module derivative_stencil_module
   double precision, private, parameter :: M6_36 = 281.d0/3600.d0
 
   ! coefficients for 4th-order stencil of second derivatives
-  double precision, save, dimension(4,4) :: M4
+  double precision, save, dimension(4,4) :: M4, M4T
 
   ! coefficients for 2nd-order stencil of second derivatives
   double precision, save, dimension(2,2) :: M2
@@ -200,6 +200,8 @@ contains
     M6(5,6) = -M6(2,1)
     M6(6,6) = -M6(1,1)
 
+    M6T = transpose(M6)
+
     ! 4th-order
     M4(1,1) = 1.d0/8.d0
     M4(2,1) = -1.d0/6.d0
@@ -220,6 +222,8 @@ contains
     M4(2,4) = -M4(3,1)
     M4(3,4) = -M4(2,1)
     M4(4,4) = -M4(1,1)
+
+    M4T = transpose(M4)
 
     ! 2nd-order stencil
     M2(1,1) = -0.5d0
