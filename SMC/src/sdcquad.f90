@@ -71,12 +71,12 @@ contains
     allocate(sdc%mfencap, sdc%encap, sdc%nset_ad, sdc%nset_r, sdc%exp_ad, sdc%exp_r, sdc%mrset)
 
     call sdc_multifab_build(sdc%encap, c_loc(sdc%mfencap), err)
-    call sdc_nset_build(sdc%nset_ad, nnodes(1), qtype, "AD", err)
-    call sdc_nset_build(sdc%nset_r, nnodes(2), qtype, "R", err)
-    call sdc_exp_build(sdc%exp_ad, f1eval, "AD", err)
-    call sdc_exp_build(sdc%exp_r, f2eval, "R", err)
+    call sdc_nset_build(sdc%nset_ad, nnodes(1), qtype, "AD" // c_null_char, err)
+    call sdc_nset_build(sdc%nset_r, nnodes(2), qtype, "R" // c_null_char, err)
+    call sdc_exp_build(sdc%exp_ad, f1eval, "AD" // c_null_char, err)
+    call sdc_exp_build(sdc%exp_r, f2eval, "R" // c_null_char, err)
 
-    call sdc_mrset_build(sdc%mrset, 2, "ADR", err)
+    call sdc_mrset_build(sdc%mrset, 2, "ADR" // c_null_char, err)
     call sdc_mrset_add_nset(sdc%mrset, sdc%nset_ad, c_loc(sdc%exp_ad), sdc%encap, c_loc(ctx), 0, err)
 
     call sdc_hook_add(sdc%mrset%hooks, SDC_HOOK_PRE_UPDATE, post, err)
@@ -86,11 +86,17 @@ contains
        call sdc_mrset_add_nset(sdc%mrset, sdc%nset_r, c_loc(sdc%exp_r), sdc%encap, c_loc(ctx), SDC_MR_LOCAL, err)
     case ("global")
        call sdc_mrset_add_nset(sdc%mrset, sdc%nset_r, c_loc(sdc%exp_r), sdc%encap, c_loc(ctx), SDC_MR_GLOBAL, err)
+       if (err .ne. 0) then
+          call sdc_nset_print(sdc%nset_ad, 2)
+          call sdc_nset_print(sdc%nset_r, 2)
+          stop "NODES DO NOT NEST PROPERLY"
+       end if
     case ("repeated")
        call sdc_mrset_add_nset(sdc%mrset, sdc%nset_r, c_loc(sdc%exp_r), sdc%encap, c_loc(ctx), SDC_MR_REPEATED, err)
     case default
        stop "UNKNOWN MULTIRATE TYPE: should be one of 'local', 'global', or 'repeated'"
     end select
+
   end subroutine sdc_build_multi_rate
 
 
@@ -124,6 +130,7 @@ contains
        call sdc_srset_setup(sdc%srset, err)
     else 
        call sdc_mrset_setup(sdc%mrset, err)
+       ! call sdc_mrset_print(sdc%mrset, 2)
     end if
     
     if (err .ne. 0) then
