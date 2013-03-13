@@ -1,0 +1,34 @@
+ &fortin
+  probtype = 'dme_ignition'
+
+  V_in = .249
+  pertmag = 0.0000
+  standoff = -.012
+  standoff = -.0126
+
+  max_trac_lev = 3
+  flametracval = 3.e-5
+  flametracval = 1.e-8
+  max_temp_lev = 0
+  temperr = 500
+  tempgrad = 300.0
+  max_vort_lev = 0
+  vorterr = 600.
+  vorterr = 1000.
+  phi_in = 0.7
+  T_in = 298.
+ /
+ &heattransin
+  pamb = 101325.
+  pamb = 4053000.
+  dpdt_factor = .3
+ /
+  &flctin
+ /
+  &control
+  tau_control = 6.e-4
+  tau_control = 2.e-4
+  sest = .249
+  h_control = .003
+  changeMax_control = .2
+ /
