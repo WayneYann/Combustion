@@ -72,4 +72,18 @@ contains
     deallocate(elem_names,spec_names,molecular_weight,inv_mwt)
   end subroutine chemistry_close
 
+
+  function get_species_index(name) result (iname)
+    character(len=*), intent(in) :: name
+    integer :: iname
+    integer :: i
+    iname = -1
+    do i = 1, nspecies
+       if (trim(spec_names(i)) .eq. trim(name)) then
+          iname = i
+          exit
+       end if
+    end do
+  end function get_species_index
+
 end module chemistry_module

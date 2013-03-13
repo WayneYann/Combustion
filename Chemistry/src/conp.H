@@ -1,3 +1,3 @@
-      integer NP, NRHO, NWT, NZ, iN2, NEQ, nchemdiag, nstiff
-      common /conpcom/ NP, NRHO, NWT, NZ, iN2, NEQ, nchemdiag, nstiff
+      integer NP, NRHO, NWT, NZ, iN2, NEQ, nchemdiag
+      common /conpcom/ NP, NRHO, NWT, NZ, iN2, NEQ, nchemdiag
       save /conpcom/

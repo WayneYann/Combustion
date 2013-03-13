@@ -68,6 +68,10 @@ vpath %.F   $(VPATH_LOCATIONS)
 vpath %.f   $(VPATH_LOCATIONS)
 vpath %.f90 $(VPATH_LOCATIONS)
 
+# Include mech name in exec
+chemOptionsSuffix = $(addprefix $(optionsSuffix), .$(CHEMISTRY_MODEL))
+executable        = $(addsuffix $(chemOptionsSuffix).ex, $(EBASE))
+
 all: $(executable)
 
 include $(BOXLIB_DIR)/Tools/C_mk/Make.rules

@@ -4,7 +4,6 @@ module advance_module
   use derivative_stencil_module
   use kernels_module
   use multifab_module
-  use omp_module
   use nscbc_module
   use smc_bc_module
   use threadbox_module
@@ -22,6 +21,8 @@ module advance_module
   private
   public advance, overlapped_part, srf1eval, srf1post, mrf1eval, mrf2eval
 
+  integer, public :: count_ad = 0, count_r = 0
+
 contains
 
   subroutine advance(U, dt, courno, dx, sdc, istep)
@@ -32,7 +33,7 @@ contains
     double precision,  intent(inout) :: dt, courno
     double precision,  intent(in   ) :: dx(U%dim)
     integer,           intent(in   ) :: istep
-    type(sdc_t),       intent(in   ) :: sdc
+    type(sdc_t),       intent(inout) :: sdc
 
     select case(advance_method)
     case(1)
@@ -109,14 +110,14 @@ contains
     type(multifab),    intent(inout) :: U
     double precision,  intent(inout) :: dt, courno
     double precision,  intent(in   ) :: dx(U%dim)
-    type(sdc_t),       intent(in   ) :: sdc
+    type(sdc_t),       intent(inout) :: sdc
     integer,           intent(in   ) :: istep
 
     logical :: update_courno
     double precision :: courno_proc
 
     integer :: k
-    double precision :: res
+    double precision :: res0, res1
     type(layout) :: la
     type(multifab), target :: R
 
@@ -154,30 +155,47 @@ contains
 
     if (sdc%tol_residual > 0.d0) then
        la = get_layout(U)
+       call build(R, la, ncons, 0)
     end if
+
+    res0 = -1.0d0
 
     call build(bpt_sdc_iter, "sdc_iter")
     do k = 1, sdc%iters
+       call sdc_srset_integrate(sdc%srset, dt)
        call sdc_srset_sweep(sdc%srset, 0.0d0, dt)
 
        ! check residual
        if (sdc%tol_residual > 0.d0) then
-          call build(R, la, ncons, 0)
           call sdc_srset_residual(sdc%srset, dt, mfptr(R))
-          call parallel_reduce(res, norm_inf(R), MPI_MAX)
-          call destroy(R)
+          call parallel_reduce(res1, norm_l2(R), MPI_MAX)
 
           if (parallel_IOProcessor()) then
-             print *, "SDC: iter:", k, "residual:", res
+             if (res0 > 0.0d0) then
+                print *, "SDC: iter:", k, "residual:", res1, res0/res1
+             else
+                print *, "SDC: iter:", k, "residual:", res1
+             end if
           end if
 
-          if (res < sdc%tol_residual) &
+          if (res0 > 0.0d0) then
+             if (abs(res0 / res1 - 1.0d0) < sdc%tol_residual) &
                exit
+          end if
+
+          res0 = res1
        end if
     end do
     call destroy(bpt_sdc_iter)
 
     call sdc_srset_get_qend(sdc%srset, mfptr(U))    
+
+    call reset_density(U)
+    call impose_hard_bc(U)
+
+    if (sdc%tol_residual > 0.d0) then
+       call destroy(R)
+    end if
 
   end subroutine advance_sdc
 
@@ -220,7 +238,7 @@ contains
     call c_f_pointer(Fptr, Uprime)
     call c_f_pointer(ctxptr, ctx)
 
-    call dUdt_AD(U, Uprime, ctx%dx)
+    call dUdt(U, Uprime, ctx%dx, include_r=.false.)
   end subroutine mrf1eval
 
   subroutine mrf2eval(Fptr, Uptr, t, ctxptr) bind(c)
@@ -234,7 +252,7 @@ contains
     call c_f_pointer(Fptr, Uprime)
     call c_f_pointer(ctxptr, ctx)
 
-    call dUdt_R(U, Uprime, ctx%dx)
+    call dUdt(U, Uprime, ctx%dx, include_ad=.false.)
   end subroutine mrf2eval
 
 
@@ -249,14 +267,14 @@ contains
     type(multifab),    intent(inout) :: U
     double precision,  intent(inout) :: dt, courno
     double precision,  intent(in   ) :: dx(U%dim)
-    type(sdc_t),       intent(in   ) :: sdc
+    type(sdc_t),       intent(inout) :: sdc
     integer,           intent(in   ) :: istep
 
     logical :: update_courno
     double precision :: courno_proc
 
     integer :: k
-    double precision :: res
+    double precision :: res0, res1
     type(layout) :: la
     type(multifab), target :: R
 
@@ -297,7 +315,10 @@ contains
 
     if (sdc%tol_residual > 0.d0) then
        la = get_layout(U)
+       call build(R, la, ncons, 0)
     end if
+
+    res0 = -1.0d0
 
     call build(bpt_sdc_iter, "sdc_iter")
     do k = 1, sdc%iters
@@ -307,22 +328,34 @@ contains
 
        ! check residual
        if (sdc%tol_residual > 0.d0) then
-          call build(R, la, ncons, 0)
           call sdc_mrset_residual(sdc%mrset, dt, mfptr(R))
-          call parallel_reduce(res, norm_inf(R), MPI_MAX)
-          call destroy(R)
+          call parallel_reduce(res1, norm_l2(R), MPI_MAX)
 
           if (parallel_IOProcessor()) then
-             print *, "SDC: iter:", k, "residual:", res
+             if (res0 > 0.0d0) then
+                print *, "SDC: iter:", k, "residual:", res1, res0/res1
+             else
+                print *, "SDC: iter:", k, "residual:", res1
+             end if
           end if
 
-          if (res < sdc%tol_residual) &
+          if (res0 > 0.0d0) then
+             if (abs(res0 / res1 - 1.0d0) < sdc%tol_residual) &
                exit
+          end if
+
+          res0 = res1
        end if
     end do
 
     call sdc_mrset_get_qend(sdc%mrset, mfptr(U))
 
+    call reset_density(U)
+    call impose_hard_bc(U)
+
+    if (sdc%tol_residual > 0.d0) then
+       call destroy(R)
+    end if
   end subroutine advance_multi_sdc
 
 
@@ -418,23 +451,22 @@ contains
     type(multifab),   intent(inout) :: U1
     double precision, intent(in   ) :: a, b, c
 
-    integer :: lo(U1%dim), hi(U1%dim), i, j, k, m, n, nc, tid
+    integer :: lo(U1%dim), hi(U1%dim), i, j, k, m, n, nc
     double precision, pointer, dimension(:,:,:,:) :: u1p, u2p, upp
 
     nc = ncomp(U1)
 
-    !$omp parallel private(tid,i,j,k,m,n,lo,hi,u1p,u2p,upp)
-    tid = omp_get_thread_num()
+    !$omp parallel private(i,j,k,m,n,lo,hi,u1p,u2p,upp)
     do n=1,nfabs(U1)
 
-       if (.not.tb_worktodo(tid,n)) cycle
+       if (.not.tb_worktodo(n)) cycle
 
        u1p => dataptr(U1,    n)
        u2p => dataptr(U2,    n)
        upp => dataptr(Uprime,n)
 
-       lo = tb_get_valid_lo(tid, n)
-       hi = tb_get_valid_hi(tid, n)
+       lo = tb_get_valid_lo(n)
+       hi = tb_get_valid_hi(n)
 
        do m = 1, nc
           do k = lo(3),hi(3)
@@ -449,28 +481,6 @@ contains
     !$omp end parallel
 
   end subroutine update_rk3
-
-
-  !
-  ! Compute advection/diffusion part of dU/dt given U.
-  !
-  subroutine dUdt_AD (U, Uprime, dx)
-    type(multifab),   intent(inout) :: U, Uprime
-    double precision, intent(in   ) :: dx(U%dim)
-
-    call dUdt(U, Uprime, dx, include_r=.false.)
-  end subroutine dUdt_AD
-
-
-  !
-  ! Compute reaction part of dU/dt given U.
-  !
-  subroutine dUdt_R (U, Uprime, dx)
-    type(multifab),   intent(inout) :: U, Uprime
-    double precision, intent(in   ) :: dx(U%dim)
-
-    call dUdt(U, Uprime, dx, include_ad=.false.)
-  end subroutine dUdt_R
 
 
   !
@@ -492,7 +502,7 @@ contains
     integer ::    lo(U%dim),    hi(U%dim)
     integer ::   dlo(U%dim),   dhi(U%dim)
     integer ::   blo(U%dim),   bhi(U%dim)
-    integer :: n, ng, tid
+    integer :: n, ng, iblock
     integer :: ng_ctoprim, ng_gettrans
 
     logical :: update_courno
@@ -544,6 +554,9 @@ contains
        ng_ctoprim = 0
     end if
 
+    if (inc_ad) count_ad = count_ad + 1
+    if (inc_r)  count_r  = count_r  + 1
+
     !
     ! Calculate primitive variables based on U
     !
@@ -572,11 +585,10 @@ contains
        ! chemistry
        !
        call build(bpt_chemterm, "chemterm")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
-       !$omp parallel private(tid,n,qp,upp,qlo,qhi,uplo,uphi,lo,hi)
-       tid = omp_get_thread_num()
+       !$omp parallel private(n,qp,upp,qlo,qhi,uplo,uphi,lo,hi)
        do n=1,nfabs(Q)
 
-          if (.not.tb_worktodo(tid,n)) cycle
+          if (.not.tb_worktodo(n)) cycle
 
           qp  => dataptr(Q,n)
           upp => dataptr(Uprime,n)
@@ -586,8 +598,8 @@ contains
           uplo = lbound(upp)
           uphi = ubound(upp)
           
-          lo = tb_get_valid_lo(tid,n)
-          hi = tb_get_valid_hi(tid,n)
+          lo = tb_get_valid_lo(n)
+          hi = tb_get_valid_hi(n)
           
           call chemterm_3d(lo,hi,qp,qlo(1:3),qhi(1:3),upp,uplo(1:3),uphi(1:3))
        end do
@@ -655,12 +667,11 @@ contains
        ! Hyperbolic and Transport terms
        !
        call build(bpt_hypdiffterm, "hypdiffterm")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
-       !$omp parallel private(tid,n,lo,hi,up,ulo,uhi,upp,uplo,uphi,qp,qlo,qhi) &
+       !$omp parallel private(n,iblock,lo,hi,up,ulo,uhi,upp,uplo,uphi,qp,qlo,qhi) &
        !$omp private(fp,flo,fhi,mup,xip,lamp,Ddp,dlo,dhi,blo,bhi)
-       tid = omp_get_thread_num()
        do n=1,nfabs(Q)
           
-          if (.not.tb_worktodo(tid,n)) cycle
+          if (.not.tb_worktodo(n)) cycle
           
           up => dataptr(U,n)
           upp=> dataptr(Uprime,n)
@@ -679,19 +690,21 @@ contains
           uphi = ubound(upp)
           flo = lbound(fp)
           fhi = ubound(fp)
-          
-          lo = tb_get_valid_lo(tid,n)
-          hi = tb_get_valid_hi(tid,n)
 
           call get_data_lo_hi(n,dlo,dhi)
           call get_boxbc(n,blo,bhi)
+          
+          do iblock = 1, tb_get_nblocks(n)
+             lo = tb_get_block_lo(iblock,n)
+             hi = tb_get_block_hi(iblock,n)
 
-          call hypterm_3d(lo,hi,dx,up,ulo(1:3),uhi(1:3),qp,qlo(1:3),qhi(1:3),&
-               upp,uplo(1:3),uphi(1:3),dlo,dhi,blo,bhi)
+             call hypterm_3d(lo,hi,dx,up,ulo(1:3),uhi(1:3),qp,qlo(1:3),qhi(1:3),&
+                  upp,uplo(1:3),uphi(1:3),dlo,dhi,blo,bhi)
           
-          call narrow_diffterm_3d(lo,hi,dx,qp,qlo(1:3),qhi(1:3),upp,uplo(1:3),uphi(1:3), &
-               fp,flo(1:3),fhi(1:3),mup,xip,lamp,Ddp,dlo,dhi,blo,bhi)
-          
+             call narrow_diffterm_3d(lo,hi,dx,qp,qlo(1:3),qhi(1:3),upp,uplo(1:3),uphi(1:3), &
+                  fp,flo(1:3),fhi(1:3),mup,xip,lamp,Ddp,dlo,dhi,blo,bhi)
+          end do
+
        end do
        !$omp end parallel
        call destroy(bpt_hypdiffterm)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
@@ -721,23 +734,22 @@ contains
     double precision, intent(in) :: dx(Q%dim)
     double precision, intent(inout) :: courno
 
-    integer :: n, lo(Q%dim), hi(Q%dim), qlo(4), qhi(4), tid
+    integer :: n, lo(Q%dim), hi(Q%dim), qlo(4), qhi(4)
     double precision :: courno_thread
     double precision, pointer :: qp(:,:,:,:)
 
-    !$omp parallel private(tid, n, lo, hi, qlo, qhi, qp, courno_thread) &
+    !$omp parallel private(n, lo, hi, qlo, qhi, qp, courno_thread) &
     !$omp reduction(max:courno)
-    tid = omp_get_thread_num()
     do n=1,nfabs(Q)
 
-       if (.not.tb_worktodo(tid,n)) cycle
+       if (.not.tb_worktodo(n)) cycle
 
        qp => dataptr(Q,n)
        qlo = lbound(qp)
        qhi = ubound(qp)
 
-       lo = tb_get_valid_lo(tid, n)
-       hi = tb_get_valid_hi(tid, n)
+       lo = tb_get_valid_lo(n)
+       hi = tb_get_valid_hi(n)
        
        courno_thread = 0.d0
 
@@ -758,7 +770,7 @@ contains
     type(multifab),   intent(inout) :: U
     type(mf_fb_data), intent(inout) :: U_fb_data
 
-    integer :: tid, ng, ng_ctoprim, ng_gettrans, n, lo(U%dim), hi(U%dim)
+    integer :: ng, ng_ctoprim, ng_gettrans, n, lo(U%dim), hi(U%dim)
     integer :: qlo(4), qhi(4), uplo(4), uphi(4)
     type(layout)     :: la
     type(multifab)   :: Q, Uprime, mu, xi, lam, Ddiag
@@ -770,7 +782,8 @@ contains
     la = get_layout(U)
 
     call multifab_build(Q, la, nprim, ng)
-
+    call tb_multifab_setval(Q, 0.d0, .true.)
+    
     call multifab_build(Uprime, la, ncons, 0)
     call tb_multifab_setval(Uprime, 0.d0)
 
@@ -790,11 +803,10 @@ contains
 
     call multifab_fill_boundary_test(U, U_fb_data)
 
-    !$omp parallel private(tid,n,qp,upp,qlo,qhi,uplo,uphi,lo,hi)
-    tid = omp_get_thread_num()
+    !$omp parallel private(n,qp,upp,qlo,qhi,uplo,uphi,lo,hi)
     do n=1,nfabs(Q)
 
-       if (.not.tb_worktodo(tid,n)) cycle
+       if (.not.tb_worktodo(n)) cycle
 
        qp  => dataptr(Q,n)
        upp => dataptr(Uprime,n)
@@ -804,8 +816,8 @@ contains
        uplo = lbound(upp)
        uphi = ubound(upp)
 
-       lo = tb_get_valid_lo(tid,n)
-       hi = tb_get_valid_hi(tid,n)
+       lo = tb_get_valid_lo(n)
+       hi = tb_get_valid_hi(n)
 
        call chemterm_3d(lo,hi,qp,qlo(1:3),qhi(1:3),upp,uplo(1:3),uphi(1:3))
     end do

@@ -63,7 +63,7 @@ overlap_in_trial                    logical            .false.
 # category: algorithm
 #-----------------------------------------------------------------------------
 
-# Time-stepping scheme (1=RK3, 2=SDC, 3=MRSDC, 4=PFASST)
+# Time-stepping scheme (1=RK3, 2=SDC, 3=MRSDC)
 advance_method                      integer           1
 
 # "narrow" is the new stencil, and wide or S3D is the S3D type stencil
@@ -118,6 +118,9 @@ sdc_iters                           integer            5
 # sdc residual tolerance: if the sdc residual drops below this, sdc
 # iterations are cut short
 sdc_tol_residual                    real               -1.d100
+
+# multi-rate type (1 = repeated, 2 = local)
+sdc_multirate_type                  character          "local"
 
 
 #-----------------------------------------------------------------------------
@@ -259,6 +262,9 @@ plot_base_name                      character          "plt"
 # prefix to use in checkpoint file names
 check_base_name                     character          "chk"
 
+# profiling information file name (if profiling enabled)
+bl_prof_name                        character          "bl_prof_res"
+
 # If lUsingNFiles = .true., use this many processors to write checkpoint
 # and plotfiles.  Fortran has the unfortunate feature of each processor
 # only being able to write out 1-2GB each without crashing.
@@ -289,11 +295,9 @@ inlet_eta                           real               30.d0
 # category: physics/chemistry
 #-----------------------------------------------------------------------------
 
-# If true, reset rho*Y(N2), rather than normalize diffusion flux
-reset_N2                            logical            .false.
-
-# Typically this should be N2.
-N2_name                             character          "N2"
+# If true, reset inactive species (e.g., N2), rather than normalize diffusion flux
+reset_inactive_species              logical            .false.
+inactive_species_name               character          "N2"
 
 # use bulk viscosity?
 use_bulk_viscosity                  logical            .true.

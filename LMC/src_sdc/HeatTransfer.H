@@ -320,7 +320,8 @@ protected:
                                     MultiFab&       mf_new,
                                     Real            dt,
                                     const MultiFab& Force,
-                                    int             nCompF);
+                                    int             nCompF,
+                                    bool            use_stiff_solver = true);
 
     virtual void calcViscosity (const Real time,
                                 const Real dt,
@@ -382,6 +383,9 @@ protected:
                           Real      time,
                           int       nGrow,
                           Real      scale);
+
+  DistributionMapping getFuncCountDM (const BoxArray& bxba, int ngrow);
+
 
     //
     // Functions related to full-transport model
@@ -468,6 +472,7 @@ protected:
     void set_htt_hmixTYP ();
 
     void set_typical_values(bool restart);
+    void reset_typical_values(const MultiFab& S);
     
     virtual void checkPoint (const std::string& dir,
                              std::ostream&      os,
@@ -556,8 +561,10 @@ protected:
     static int         calcDiffusivity_count;
     static Real        new_T_threshold;
     static Array<Real> typical_values;
-
-    static int sdc_iterMAX;
+    static bool        avg_down_chem;
+    static int         reset_typical_vals_int;
+    static std::map<std::string,Real> typical_values_FileVals;
+    static int         sdc_iterMAX;
     
     static int nGrowAdvForcing;
     bool       updateFluxReg;

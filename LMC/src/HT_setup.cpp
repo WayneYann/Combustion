@@ -497,9 +497,7 @@ HeatTransfer::variableSetUp ()
         
         getChemSolve().set_species_Yscales(speciesScaleFile);
     }
-    int ncycle_vode=15000; pp.query("ncycle_vode",ncycle_vode);
     int verbose_vode=0; pp.query("verbose_vode",verbose_vode);
-    getChemSolve().set_max_vode_subcycles(ncycle_vode);
     if (verbose_vode!=0)
         getChemSolve().set_verbose_vode();
 

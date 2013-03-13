@@ -1827,14 +1827,15 @@ NavierStokes::mac_project (Real      time,
                            Real      dt,
                            MultiFab& Sold, 
                            MultiFab* divu,
-                           int       have_divu)
+                           int       have_divu,
+                           bool increment_vel_register)
 {
     if (verbose && ParallelDescriptor::IOProcessor())
         std::cout << "... mac_projection\n";
 
     const Real strt_time = ParallelDescriptor::second();
 
-    mac_projector->mac_project(level,u_mac,Sold,dt,time,*divu,have_divu);
+    mac_projector->mac_project(level,u_mac,Sold,dt,time,*divu,have_divu,increment_vel_register);
 
     create_umac_grown();
 
@@ -4238,7 +4239,7 @@ NavierStokes::computeNewDt (int                   finest_level,
     }
 
     n_factor = 1;
-    for (int i = 0; i <= max_level; i++)
+    for (int i = 0; i <= finest_level; i++)
     {
         n_factor   *= n_cycle[i];
         dt_level[i] = dt_0/( (Real)n_factor );
@@ -4263,12 +4264,6 @@ NavierStokes::computeInitialDt (int                   finest_level,
     //
     const int max_level = parent->maxLevel();
 
-    n_cycle[0] = 1;
-    for (int i = 1; i <= max_level; i++)
-    {
-        n_cycle[i] = sub_cycle ? parent->MaxRefRatio(i-1) : 1;
-    }
-
     Real dt_0    = 1.0e+100;
     int n_factor = 1;
     for (int i = 0; i <= finest_level; i++)
@@ -4287,7 +4282,7 @@ NavierStokes::computeInitialDt (int                   finest_level,
     }
 
     n_factor = 1;
-    for (int i = 0; i <= max_level; i++)
+    for (int i = 0; i <= finest_level; i++)
     {
         n_factor   *= n_cycle[i];
         dt_level[i] = dt_0/( (Real)n_factor );
@@ -4980,7 +4975,8 @@ NavierStokes::avgDown (const BoxArray& cgrids,
 {
     BL_ASSERT(cgrids == S_crse.boxArray());
     BL_ASSERT(fgrids == S_fine.boxArray());
-    BL_ASSERT(S_crse.nComp() == S_fine.nComp());
+    BL_ASSERT(S_crse.nComp() >= scomp + ncomp);
+    BL_ASSERT(S_fine.nComp() >= scomp + ncomp);
 
     NavierStokes& flev = getLevel(f_level);
     NavierStokes& clev = getLevel(c_level);
@@ -6774,8 +6770,28 @@ NavierStokes::create_umac_grown ()
         }
     }
 
+    //
+    // Now we set the boundary data
+    // FillBoundary fills grow cells that overlap valid regions.
+    // HOEXTRAPTOCC fills outside of domain cells.
+    // FillPeriodicBoundary refills grow cells that lie across a 
+    //      periodic boundary.
+    //
+    const Real* xlo = geom.ProbLo(); //these aren't actually used by the FORT method
+    const Real* dx  = geom.CellSize();
     for (int n = 0; n < BL_SPACEDIM; ++n)
     {
+        Box dm = geom.Domain();
+        dm.surroundingNodes(n);
+        const int*  lo  = dm.loVect();
+        const int*  hi  = dm.hiVect();
+        for (MFIter mfi(u_mac[n]); mfi.isValid(); ++mfi)
+        {
+            FArrayBox& fab = u_mac[n][mfi];
+            const int*  dlo = fab.loVect();
+            const int*  dhi = fab.hiVect();
+            FORT_HOEXTRAPTOCC(fab.dataPtr(),ARLIM(dlo),ARLIM(dhi),lo,hi,dx,xlo);
+        }
         u_mac[n].FillBoundary();
         geom.FillPeriodicBoundary(u_mac[n]);
     }

@@ -1,10 +1,10 @@
 program main
 
   use BoxLib
-  use parallel
   use layout_module
   use bl_prof_module
   use multifab_module
+  use probin_module, only: bl_prof_name
 
   implicit none
 
@@ -19,12 +19,9 @@ program main
 
   call smc()
 
-  call layout_flush_copyassoc_cache ()
-  !
-  ! TODO -- add ability to specify filename via inputs file.
-  !
-  call bl_prof_glean("bl_prof_res")
+  call layout_flush_copyassoc_cache()
 
+  call bl_prof_glean(bl_prof_name)
   call bl_prof_finalize()
 
   r2 = parallel_wtime() - r1

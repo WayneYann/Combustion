@@ -32,7 +32,7 @@ module derivative_stencil_module
   ! d(a*du/dx)/dx = H_{i+1/2} - H_{i-1/2},
   ! where H = a.M.u
   !
-  double precision, save, dimension(8,8) :: M8
+  double precision, save, dimension(8,8) :: M8, M8T
   !
   ! optimized for more zeros
   !  double precision, private, parameter :: M8_47 = 683.d0/10080.d0, M8_48 = -1.d0/224.d0
@@ -41,7 +41,7 @@ module derivative_stencil_module
   double precision, private, parameter :: M8_47 = 3557.d0/44100.d0, M8_48 = -2083.d0/117600.d0
 
   ! coefficients for 6th-order stencil of second derivatives
-  double precision, save, dimension(6,6) :: M6
+  double precision, save, dimension(6,6) :: M6, M6T
   !
   ! optimized for more zeros
   ! double precision, private, parameter :: M6_36 = 1.d0/90.d0
@@ -50,7 +50,7 @@ module derivative_stencil_module
   double precision, private, parameter :: M6_36 = 281.d0/3600.d0
 
   ! coefficients for 4th-order stencil of second derivatives
-  double precision, save, dimension(4,4) :: M4
+  double precision, save, dimension(4,4) :: M4, M4T
 
   ! coefficients for 2nd-order stencil of second derivatives
   double precision, save, dimension(2,2) :: M2
@@ -73,7 +73,7 @@ contains
     if (trim(stencil_type) == "narrow") then
        stencil = narrow
     else if (trim(stencil_type) == "S3D" .or. trim(stencil_type) == "wide") then
-!       stencil = wide
+       ! stencil = wide
        call bl_error("S3D stencil type not supported")
     else
        call bl_error("unknow stencil_type")
@@ -154,6 +154,9 @@ contains
     M8(7,8) = -M8(2,1)
     M8(8,8) = -M8(1,1)
 
+    M8T = transpose(M8)
+    
+
     ! 6th-order
     M6(1,1) = -11.d0/180.d0 + M6_36
     M6(2,1) = 7.d0/60.d0 - 3.d0 * M6_36
@@ -197,6 +200,8 @@ contains
     M6(5,6) = -M6(2,1)
     M6(6,6) = -M6(1,1)
 
+    M6T = transpose(M6)
+
     ! 4th-order
     M4(1,1) = 1.d0/8.d0
     M4(2,1) = -1.d0/6.d0
@@ -217,6 +222,8 @@ contains
     M4(2,4) = -M4(3,1)
     M4(3,4) = -M4(2,1)
     M4(4,4) = -M4(1,1)
+
+    M4T = transpose(M4)
 
     ! 2nd-order stencil
     M2(1,1) = -0.5d0

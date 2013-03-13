@@ -69,7 +69,7 @@ c     Take fuel mixture from pmf file
             
          endif
 
-      else if (trim(probtype).eq.BL_PROB_DIFFUSION) then
+      else if (trim(probtype).eq.BL_PROB_JET_DIFFUSION) then
 
 c     A diffusion flame
          fuelZone = getZone(domnlo(1), domnlo(2), domnlo(3))
@@ -215,7 +215,7 @@ c ::: -----------------------------------------------------------
             call bl_pd_abort(' ')
          endif
 
-      elseif (trim(probtype).eq.BL_PROB_DIFFUSION) then
+      elseif (trim(probtype).eq.BL_PROB_JET_DIFFUSION) then
 
          if (RegionID .eq. BL_YLO) then
 
@@ -259,7 +259,7 @@ c ::: -----------------------------------------------------------
          write(6,*) 'Available: '
          write(6,*) '            ',BL_PROB_PREMIXED_FIXED_INFLOW
          write(6,*) '            ',BL_PROB_PREMIXED_CONTROLLED_INFLOW
-         write(6,*) '            ',BL_PROB_DIFFUSION
+         write(6,*) '            ',BL_PROB_JET_DIFFUSION
          call bl_pd_abort(' ')
       endif
       end
@@ -469,7 +469,7 @@ c                 blend here if needed
             end do
          end do
 
-      else if ((trim(probtype).eq.BL_PROB_DIFFUSION)) then
+      else if ((trim(probtype).eq.BL_PROB_JET_DIFFUSION)) then
 
          fuelZone = getZone(domnlo(1), domnlo(2), domnlo(3))
          airZone  = getZone(domnhi(1), domnhi(2), domnhi(3))
@@ -1133,13 +1133,11 @@ c ::: -----------------------------------------------------------
          do k = lo(3), domlo(3)-1
             do j = lo(2),hi(2)
                do i = lo(1), hi(1)
-                  adv(i,j,k) = time
+                  adv(i,j,k) = 0.0d0
                enddo
             enddo
          enddo
       endif    
-      
-c      call fillWithZeros(adv,DIMS(adv),domlo,domhi,bc)
 
       end
 

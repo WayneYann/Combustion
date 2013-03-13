@@ -18,6 +18,9 @@
 #endif
 
 #define BL_PROB_JET_DIFFUSION 'diffusion_two-stream'
+#define BL_PROB_PREMIXED_FIXED_INFLOW 'premixed_fixed-inflow'
+#define BL_PROB_PREMIXED_CONTROLLED_INFLOW 'premixed_controlled-inflow'
+#define BL_PROB_PREMIXED_FREE 'premixed_free'
 #define BL_PROB_UNDEFINED 'undefined_problem'
 
 

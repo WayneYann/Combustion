@@ -39,9 +39,9 @@ contains
 
   subroutine init_data_3d(lo,hi,ng,dx,cons,phlo,phhi)
 
-    use variables_module, only : irho, imx,imy,imz,iene,iry1,ncons
+    use variables_module, only : irho, imx,imy,imz,iene,iry1,ncons, iH2, iO2, iN2
     use chemistry_module, only : nspecies, patm
-    use probin_module,    only : prob_type, pertmag, rfire, Tinit, uinit, vinit, winit
+    use probin_module, only : prob_type, pertmag, rfire, Tinit, uinit, vinit, winit, prob_dim
 
     integer,          intent(in   ) :: lo(3),hi(3),ng
     double precision, intent(in   ) :: dx(3),phlo(3),phhi(3)
@@ -52,7 +52,7 @@ contains
 
     double precision pmf_vals(nspecies+3)
     double precision Xt(nspecies), Yt(nspecies)
-    double precision rhot,u1t,u2t,u3t,Tt,et
+    double precision rhot,u1t,u2t,u3t,Tt,et,Pt,kx,ky,kz
     integer :: iwrk
     double precision :: rwrk
 
@@ -78,14 +78,14 @@ contains
     deallocate(seed)
 
     nimages = 0
-    if (prob_type == 3) &
+    if (prob_type == 3 .or. prob_type == 4) &
          nimages = 3
 
     cons = 0.0d0
 
     !$omp parallel do &
     !$omp private(i,j,k,n,x,y,z,r,pmf_vals) &
-    !$omp private(Xt,Yt,rhot,u1t,u2t,u3t,Tt,et,iwrk,rwrk) &
+    !$omp private(Pt,Xt,Yt,rhot,u1t,u2t,u3t,kx,ky,kz,Tt,et,iwrk,rwrk) &
     !$omp private(rfront,phi,theta,xtemp,xloc,yloc,zloc,l,m,ctr) &
     !$omp private(ii,jj,kk)
     do k=lo(3),hi(3)
@@ -139,11 +139,13 @@ contains
                 rfront = 0.d0
              else if (prob_type .eq. 3) then
 
+             else if (prob_type .eq. 4) then
+
              else
                 call bl_error("Unknown prob_type")
              end if
 
-             if (prob_type .ne. 3) then
+             if (prob_type .eq. 1 .or. prob_type .eq. 2) then
                 call pmf(rfront,rfront,pmf_vals,n)
 
                 if (n .ne. nspecies+3) then
@@ -157,18 +159,21 @@ contains
              end if
 
              if (prob_type .eq. 1) then
+                Pt = patm
                 Tt = pmf_vals(1)
                 u1t = 0.d0 ! pmf_vals(2) * x/r
                 u2t = 0.d0 ! pmf_vals(2) * y/r
                 u3t = 0.d0 ! pmf_vals(2) * z/r
 
              else if (prob_type .eq. 2) then
+                Pt = Patm
                 Tt = Tinit
                 u1t = uinit
                 u2t = vinit
                 u3t = winit
              else if (prob_type .eq. 3) then
 
+                Pt = Patm
                 Tt = 300.0d0
 
                 do kk = -nimages, nimages
@@ -192,15 +197,68 @@ contains
                 u3t = winit
 
                 Xt = 0.0d0
-                Xt(1) = 0.116d0
-                Xt(2) = 0.23d0
-                Xt(9) = 1.0d0 - Xt(1) - Xt(2)
+                Xt(iH2) = 0.116d0
+                Xt(iO2) = 0.23d0
+                Xt(iN2) = 1.0d0 - Xt(iH2) - Xt(iO2)
+
+             else if (prob_type .eq. 4 ) then
+
+                Pt = Patm
+                Tt = 300.0d0
+
+                Xt = 0.0d0
+                Xt(iH2) = 0.10d0
+                Xt(iO2) = 0.25d0
+
+                do kk = -nimages, nimages
+                   do jj = -nimages, nimages
+                      do ii = -nimages, nimages
+
+                         if (prob_dim .eq. 2) then
+                            z = 0.d0
+                         else
+                            z = phlo(3) + dx(3)*k + kk * (phhi(3) - phlo(3))
+                         end if
+                         y = phlo(2) + dx(2)*j + jj * (phhi(2) - phlo(2))
+                         x = phlo(1) + dx(1)*i + ii * (phhi(1) - phlo(1))
+                         r = sqrt(x**2+y**2+z**2)
+                         
+                         Pt = Pt    + 0.1d0*patm * exp(-(r / rfire)**2)
+                         Tt = Tt      + 1100.0d0 * exp(-(r / rfire)**2)
+                         Xt(iH2) = Xt(iH2) + 0.025d0 * exp(-(r / rfire)**2)
+                         Xt(iO2) = Xt(iO2) - 0.050d0 * exp(-(r / rfire)**2)
+
+                      end do
+                   end do
+
+                   if (prob_dim .eq. 2) exit  ! only one image in z-direction
+
+                end do
+
+                kx = 2.d0*Pi/(phhi(1) - phlo(1))
+                ky = 2.d0*Pi/(phhi(2) - phlo(2))
+                kz = 2.d0*Pi/(phhi(3) - phlo(3))
+
+                x = phlo(1) + dx(1)*i
+                y = phlo(2) + dx(2)*j
+                if (prob_dim .eq. 2) then
+                   z = 0.d0
+                else
+                   z = phlo(3) + dx(3)*k
+                end if
+
+                u1t =  sin(kx*x)*cos(ky*y)*cos(kz*z) * 300.d0
+                u2t = -cos(kx*x)*sin(ky*y)*cos(kz*z) * 300.d0
+                u3t = 0.d0
+              
+                Xt(iN2) = 1.0d0 - Xt(iH2) - Xt(iO2)
+
              else
                 call bl_error("Unknown prob_type")
              end if
 
              CALL CKXTY (Xt, IWRK, RWRK, Yt)
-             CALL CKRHOY(patm,Tt,Yt,IWRK,RWRK,rhot)
+             CALL CKRHOY(Pt,Tt,Yt,IWRK,RWRK,rhot)
              call CKUBMS(Tt,Yt,IWRK,RWRK,et)
 
              cons(i,j,k,irho) = rhot

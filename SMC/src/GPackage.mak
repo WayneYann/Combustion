@@ -24,6 +24,12 @@ f90sources += smc_bc.f90
 f90sources += smcdata.f90
 f90sources += threadbox.f90
 f90sources += time.f90
-f90sources += transport_properties.f90
+
+ifdef CONVERGENCE
+  f90sources += trans_prop_conv.f90
+else
+  f90sources += transport_properties.f90
+endif
+
 f90sources += variables.f90
 f90sources += write_job_info.f90

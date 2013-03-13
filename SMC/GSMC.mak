@@ -80,6 +80,9 @@ else ifeq ($(CHEMISTRY_MODEL),GRI30)
   vpath %.f  $(VPATH_LOCATIONS) $(CHEMISTRY_DIR)/data/gri/PMFs
 endif
 
+ifdef CONVERGENCE
+  CFLAGS += -DCONVERGENCE
+endif
 
 # any include directories
 Fmincludes += $(SMC_SRC)

@@ -1,6 +1,7 @@
 module threadbox_module
 
   use bl_error_module
+  use parallel
   use omp_module
   use layout_module
   use multifab_module
@@ -64,6 +65,10 @@ contains
     integer, intent(in) :: ng_in
 
     call destroy_threadbox()
+
+    if (nboxes(la) < parallel_nprocs()) then
+       call bl_error('ERROR: more MPI ranks than boxes')
+    end if
 
     ndim = la%lap%dim
     if (ndim .eq. 2) then

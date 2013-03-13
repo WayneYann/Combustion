@@ -4,9 +4,10 @@ EXEname := lmc.exe
 #
 # Choose pmf file
 #
-#pmf_source := ../../../../Chemistry/data/gri/PMFs/gri30_070.f
-pmf_source := ../../../../Chemistry/data/chem-H/PMFs/chemHSoln_seed_0.00.f
-
+#pmf_source := ../../../Chemistry/data/gri/PMFs/gri30_070.f
+pmf_source := ../../../Chemistry/data/chem-H/PMFs/chemHSoln_seed_0.00.f
+#pmf_source := ../../../Chemistry/data/Lu/PMFs/LuDME_0700.f
+#pmf_source := ./LuDME_0700.f
 #
 # Choose reaction mechanism
 # Use GRI30 for pmf_source := gri30_070.f
@@ -15,6 +16,7 @@ pmf_source := ../../../../Chemistry/data/chem-H/PMFs/chemHSoln_seed_0.00.f
 #
 #REACTION_MECHANISM=GRI30
 REACTION_MECHANISM=CHEMH
+#REACTION_MECHANISM=LUDME
 
 ifeq (${USE_INTEL},TRUE)
   CCOMP := icpc -Wno-deprecated -g -Wunused-variable -DBL_ICC_VERSION=10.1 -DBL_MAJOR_VERSION=10 -DBL_MINOR_VERSION=1 -DBL_FORT_USE_UNDERSCORE
@@ -27,13 +29,16 @@ else
 endif
 
 ifeq ($(REACTION_MECHANISM),GRI30)
-  mech_source += ../../../../Chemistry/data/gri/Trash/FROM_LMC/gri30.cpp
+  mech_source += ../../../Chemistry/data/gri/Trash/FROM_LMC/gri30.cpp
 endif
 ifeq ($(REACTION_MECHANISM),CHEMH)
-  mech_source += ../../../../Chemistry/data/chem-H/chem-H.cpp
+  mech_source += ../../../Chemistry/data/chem-H/chem-H.cpp
+endif
+ifeq ($(REACTION_MECHANISM),LUDME)
+  mech_source += ../../../Chemistry/data/Lu/LuDME.cpp
 endif
 
-chem_sources := CD.f ../../../../Chemistry/src/vode.f ../../../../Chemistry/src/EGini.f ../../../../Chemistry/src/EGSlib.f
+chem_sources := CD.f ../../../Chemistry/src/vode.f ../../../Chemistry/src/EGini.f ../../../Chemistry/src/EGSlib.f
 
 pmf_object := $(pmf_source:%.f=%.o)
 mech_object := $(mech_source:%.cpp=%.o)

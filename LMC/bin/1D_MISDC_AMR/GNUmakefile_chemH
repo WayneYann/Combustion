@@ -4,8 +4,8 @@ EXEname := lmc.exe
 #
 # Choose pmf file
 #
-#pmf_source := ../../../../Chemistry/data/gri/PMFs/gri30_070.f
-pmf_source := ../../../../Chemistry/data/chem-H/PMFs/chemHSoln_seed_0.00.f
+#pmf_source := ../../../Chemistry/data/gri/PMFs/gri30_070.f
+pmf_source := ../../../Chemistry/data/chem-H/PMFs/chemHSoln_seed_0.00.f
 
 #
 # Choose reaction mechanism
@@ -27,13 +27,13 @@ else
 endif
 
 ifeq ($(REACTION_MECHANISM),GRI30)
-  mech_source += ../../../../Chemistry/data/gri/Trash/FROM_LMC/gri30.cpp
+  mech_source += ../../../Chemistry/data/gri/Trash/FROM_LMC/gri30.cpp
 endif
 ifeq ($(REACTION_MECHANISM),CHEMH)
-  mech_source += ../../../../Chemistry/data/chem-H/chem-H.cpp
+  mech_source += ../../../Chemistry/data/chem-H/chem-H.cpp
 endif
 
-chem_sources := CD.f ../../../../Chemistry/src/vode.f ../../../../Chemistry/src/EGini.f ../../../../Chemistry/src/EGSlib.f
+chem_sources := CD.f ../../../Chemistry/src/vode.f ../../../Chemistry/src/EGini.f ../../../Chemistry/src/EGSlib.f
 
 pmf_object := $(pmf_source:%.f=%.o)
 mech_object := $(mech_source:%.cpp=%.o)

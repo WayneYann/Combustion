@@ -996,14 +996,12 @@ c ::: -----------------------------------------------------------
       call filcc (adv,DIMS(adv),domlo,domhi,delta,xlo,bc)
 
       if (bc(2,1).eq.EXT_DIR.and.lo(2).lt.domlo(2)) then
-         do j = lo(2),hi(2)
+         do j = lo(2), domlo(2)-1
             do i = lo(1), hi(1)
-               adv(i,j) = time
+               adv(i,j) = 0.0d0
             enddo
          enddo
-      endif    
-      
-c      call fillWithZeros(adv,DIMS(adv),domlo,domhi,bc)
+      endif
 
       end
 

@@ -9,3 +9,6 @@ Tinit                   real            800.d0
 uinit                   real            127.4d0
 vinit                   real            -203.2d0
 winit                   real            138.1d0
+
+# parameters for prob_type 4
+prob_dim                integer         2
