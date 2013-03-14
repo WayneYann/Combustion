@@ -8008,16 +8008,16 @@ HeatTransfer::calc_dpdt (Real      time,
     const FArrayBox& peos = Peos[mfi];
     const FArrayBox D_DECL(&u=u_mac[0][i], &v=u_mac[1][i], &w=u_mac[2][i]);
 
-    FORT_COMPUTE_UGRADP(peos.dataPtr(),   ARLIM(peos.loVect()),   ARLIM(peos.hiVect()),
-                        ugradp.dataPtr(), ARLIM(ugradp.loVect()), ARLIM(ugradp.hiVect()),
-                        u.dataPtr(),      ARLIM(u.loVect()),      ARLIM(u.hiVect()),
-                        v.dataPtr(),      ARLIM(v.loVect()),      ARLIM(v.hiVect()),
+    //    FORT_COMPUTE_UGRADP(peos.dataPtr(),   ARLIM(peos.loVect()),   ARLIM(peos.hiVect()),
+    //                        ugradp.dataPtr(), ARLIM(ugradp.loVect()), ARLIM(ugradp.hiVect()),
+    //                        u.dataPtr(),      ARLIM(u.loVect()),      ARLIM(u.hiVect()),
+    //                        v.dataPtr(),      ARLIM(v.loVect()),      ARLIM(v.hiVect()),
 #if (BL_SPACEDIM == 3)
-                        w.dataPtr(),      ARLIM(w.loVect()),      ARLIM(w.hiVect()),
+    //                        w.dataPtr(),      ARLIM(w.loVect()),      ARLIM(w.hiVect()),
 #endif
-                        lo,hi,dx);
+    //                        lo,hi,dx);
 
-    dpdt[i].plus(ugradp,vbox,0,0,1);
+    //    dpdt[i].plus(ugradp,vbox,0,0,1);
     dpdt[i].divide(Peos[mfi],vbox,0,0,1);
     dpdt[i].mult(dpdt_factor,vbox);
   }
