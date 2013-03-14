@@ -31,10 +31,10 @@
     double precision, intent(in) :: cons(-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng,ncons)
     double precision, intent(out) :: qin(nqin,qlo(1):qhi(1),qlo(2):qhi(2),qlo(3):qhi(3))
 
-    integer :: i, j, k, iwrk
+    integer :: i, j, k, iwrk, ierr
     double precision :: rhoinv, ei, rwrk
 
-    !$omp parallel private(i,j,k,iwrk,rhoinv, ei, rwrk)
+    !$omp parallel private(i,j,k,iwrk,rhoinv, ei, rwrk, ierr)
     !$omp do collapse(2)
     do k=qlo(3),qhi(3)
     do j=qlo(2),qhi(2)
@@ -47,7 +47,7 @@
        
        ei = rhoinv*cons(i,j,k,iene) - 0.5d0*(qin(iuin,i,j,k)**2  &
             + qin(ivin,i,j,k)**2 + qin(iwin,i,j,k)**2)
-       call feeytt(ei, qin(iYin1:,i,j,k), iwrk, rwrk, qin(iTin,i,j,k))
+       call get_t_given_ey(ei, qin(iYin1:,i,j,k), iwrk, rwrk, qin(iTin,i,j,k), ierr)
     end do
     end do
     end do
