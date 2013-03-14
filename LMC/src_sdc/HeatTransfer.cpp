@@ -1348,25 +1348,27 @@ HeatTransfer::reset_typical_values(const MultiFab& S)
   }
 
   // If typVals specified in inputs, these take precedence componentwise
-  for (std::map<std::string,Real>::const_iterator it=typical_values_FileVals.begin(), 
-         End=typical_values_FileVals.end(); it!=End; ++it) {
-    int idx = getChemSolve().index(it->first);
-    if (idx>=0) {
-      typical_values[first_spec+idx] = it->second;
-    } else {
-      if (it->first == "Temp") {
-        typical_values[Temp] = it->second;
-      }
-      else if (it->first == "RhoH") {
-        typical_values[RhoH] = it->second;
-      }
-      else if (it->first == "Trac") {
-        typical_values[Trac] = it->second;
-      }
-      else if (it->first == "Vel") {
-        for (int d=0; d<BL_SPACEDIM; ++d) {
-          typical_values[d] = it->second;
-        }
+  if (parent->levelSteps(0) == 0) {
+    for (std::map<std::string,Real>::const_iterator it=typical_values_FileVals.begin(), 
+	   End=typical_values_FileVals.end(); it!=End; ++it) {
+      int idx = getChemSolve().index(it->first);
+      if (idx>=0) {
+	typical_values[first_spec+idx] = it->second;
+      } else {
+	if (it->first == "Temp") {
+	  typical_values[Temp] = it->second;
+	}
+	else if (it->first == "RhoH") {
+	  typical_values[RhoH] = it->second;
+	}
+	else if (it->first == "Trac") {
+	  typical_values[Trac] = it->second;
+	}
+	else if (it->first == "Vel") {
+	  for (int d=0; d<BL_SPACEDIM; ++d) {
+	    typical_values[d] = it->second;
+	  }
+	}
       }
     }
   }
