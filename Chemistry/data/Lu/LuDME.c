@@ -1,15 +1,3 @@
-/*  -*- C -*-  */
-/*
- * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
- *
- *                                -*- author -*-
- *                             -*- organization -*-
- *                    (C) -*- years -*-  All Rights Reserved
- *
- * <LicenseText>
- *
- * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
- */
 
 #include <math.h>
 #include <stdio.h>
@@ -245,7 +233,6 @@
 #endif
 
 /*function declarations */
-extern "C" {
 void molecularWeight(double * wt);
 void gibbs(double * species, double * tc);
 void helmholtz(double * species, double * tc);
@@ -343,8 +330,6 @@ int feznddim_();
 const char* femechfile_();
 const char* fesymname_(int sn);
 int fesymnum_(const char* s1);
-}
-
 
 /*A few mechanism parameters */
 void CKINDX(int * iwrk, double * rwrk, int * mm, int * kk, int * ii, int * nfit)
@@ -8412,8 +8397,6 @@ void productionRate(double * wdot, double * sc, double T)
     double troe_c;                  /*TROE intermediate */
     double troe_n;                  /*TROE intermediate */
 
-    double X;                       /*SRI intermediate */
-    double F_sri;                   /*SRI intermediate */
     double tc[] = { log(T), T, T*T, T*T*T, T*T*T*T }; /*temperature cache */
 
     double invT = 1.0 / tc[1];
@@ -11365,8 +11348,6 @@ void progressRate(double * qdot, double * sc, double T)
     double troe_c;                  /*TROE intermediate */
     double troe_n;                  /*TROE intermediate */
 
-    double X;                       /*SRI intermediate */
-    double F_sri;                   /*SRI intermediate */
     double tc[] = { log(T), T, T*T, T*T*T, T*T*T*T }; /*temperature cache */
 
     double invT = 1.0 / tc[1];
@@ -13643,8 +13624,6 @@ void progressRateFR(double * q_f, double * q_r, double * sc, double T)
     double troe_c;                  /*TROE intermediate */
     double troe_n;                  /*TROE intermediate */
 
-    double X;                       /*SRI intermediate */
-    double F_sri;                   /*SRI intermediate */
     double tc[] = { log(T), T, T*T, T*T*T, T*T*T*T }; /*temperature cache */
 
     double invT = 1.0 / tc[1];
@@ -17850,7 +17829,7 @@ void cv_R(double * species, double * tc)
 {
 
     /*temperature */
-    double T = tc[1], invT = 1.0 / T;
+    double T = tc[1];
 
     /*species with midpoint at T=1376 kelvin */
     if (T < 1376) {
@@ -18487,7 +18466,7 @@ void cp_R(double * species, double * tc)
 {
 
     /*temperature */
-    double T = tc[1], invT = 1.0 / T;
+    double T = tc[1];
 
     /*species with midpoint at T=1376 kelvin */
     if (T < 1376) {
@@ -20554,7 +20533,7 @@ void speciesEntropy(double * species, double * tc)
 {
 
     /*temperature */
-    double T = tc[1], invT = 1.0 / T;
+    double T = tc[1];
 
     /*species with midpoint at T=1376 kelvin */
     if (T < 1376) {
@@ -21697,8 +21676,8 @@ const char* fesymname_(int sn)
 #elif defined(BL_FORT_USE_UNDERSCORE)
 #define egtransetLENIMC egtransetlenimc_
 #endif
-extern "C" { void egtransetLENIMC(int* LENIMC) {
-  *LENIMC =          158;}}
+void egtransetLENIMC(int* LENIMC) {
+  *LENIMC =          158;}
 #if defined(BL_FORT_USE_UPPERCASE)
 #define egtransetLENRMC EGTRANSETLENRMC
 #elif defined(BL_FORT_USE_LOWERCASE)
@@ -21706,8 +21685,8 @@ extern "C" { void egtransetLENIMC(int* LENIMC) {
 #elif defined(BL_FORT_USE_UNDERSCORE)
 #define egtransetLENRMC egtransetlenrmc_
 #endif
-extern "C" { void egtransetLENRMC(int* LENRMC) {
-  *LENRMC =        30264;}}
+void egtransetLENRMC(int* LENRMC) {
+  *LENRMC =        30264;}
 #if defined(BL_FORT_USE_UPPERCASE)
 #define egtransetNO EGTRANSETNO
 #elif defined(BL_FORT_USE_LOWERCASE)
@@ -21715,8 +21694,8 @@ extern "C" { void egtransetLENRMC(int* LENRMC) {
 #elif defined(BL_FORT_USE_UNDERSCORE)
 #define egtransetNO egtransetno_
 #endif
-extern "C" { void egtransetNO(int* NO) {
-  *NO =            4;}}
+void egtransetNO(int* NO) {
+  *NO =            4;}
 #if defined(BL_FORT_USE_UPPERCASE)
 #define egtransetKK EGTRANSETKK
 #elif defined(BL_FORT_USE_LOWERCASE)
@@ -21724,8 +21703,8 @@ extern "C" { void egtransetNO(int* NO) {
 #elif defined(BL_FORT_USE_UNDERSCORE)
 #define egtransetKK egtransetkk_
 #endif
-extern "C" { void egtransetKK(int* KK) {
-  *KK =           39;}}
+void egtransetKK(int* KK) {
+  *KK =           39;}
 #if defined(BL_FORT_USE_UPPERCASE)
 #define egtransetNLITE EGTRANSETNLITE
 #elif defined(BL_FORT_USE_LOWERCASE)
@@ -21733,8 +21712,8 @@ extern "C" { void egtransetKK(int* KK) {
 #elif defined(BL_FORT_USE_UNDERSCORE)
 #define egtransetNLITE egtransetnlite_
 #endif
-extern "C" { void egtransetNLITE(int* NLITE) {
-  *NLITE =            2;}}
+void egtransetNLITE(int* NLITE) {
+  *NLITE =            2;}
 #if defined(BL_FORT_USE_UPPERCASE)
 #define egtransetPATM EGTRANSETPATM
 #elif defined(BL_FORT_USE_LOWERCASE)
@@ -21742,8 +21721,8 @@ extern "C" { void egtransetNLITE(int* NLITE) {
 #elif defined(BL_FORT_USE_UNDERSCORE)
 #define egtransetPATM egtransetpatm_
 #endif
-extern "C" { void egtransetPATM(double* PATM) {
-  *PATM =   0.1013250000000000E+07;}}
+void egtransetPATM(double* PATM) {
+  *PATM =   0.1013250000000000E+07;}
 #if defined(BL_FORT_USE_UPPERCASE)
 #define egtransetWT EGTRANSETWT
 #elif defined(BL_FORT_USE_LOWERCASE)
@@ -21751,7 +21730,7 @@ extern "C" { void egtransetPATM(double* PATM) {
 #elif defined(BL_FORT_USE_UNDERSCORE)
 #define egtransetWT egtransetwt_
 #endif
-extern "C" { void egtransetWT(double* WT) {
+void egtransetWT(double* WT) {
   WT[           0] =   0.1007969975471497E+01;
   WT[           1] =   0.2015939950942993E+01;
   WT[           2] =   0.1402709031105042E+02;
@@ -21791,7 +21770,7 @@ extern "C" { void egtransetWT(double* WT) {
   WT[          36] =   0.9205178117752075E+02;
   WT[          37] =   0.1090591512918472E+03;
   WT[          38] =   0.2801339912414551E+02;
-};  }
+};
 #if defined(BL_FORT_USE_UPPERCASE)
 #define egtransetEPS EGTRANSETEPS
 #elif defined(BL_FORT_USE_LOWERCASE)
@@ -21799,7 +21778,7 @@ extern "C" { void egtransetWT(double* WT) {
 #elif defined(BL_FORT_USE_UNDERSCORE)
 #define egtransetEPS egtranseteps_
 #endif
-extern "C" { void egtransetEPS(double* EPS) {
+void egtransetEPS(double* EPS) {
   EPS[           0] =   0.1450000000000000E+03;
   EPS[           1] =   0.3800000000000000E+02;
   EPS[           2] =   0.1440000000000000E+03;
@@ -21839,7 +21818,7 @@ extern "C" { void egtransetEPS(double* EPS) {
   EPS[          36] =   0.3294000000000000E+03;
   EPS[          37] =   0.3294000000000000E+03;
   EPS[          38] =   0.9753000000000000E+02;
-};  }
+};
 #if defined(BL_FORT_USE_UPPERCASE)
 #define egtransetSIG EGTRANSETSIG
 #elif defined(BL_FORT_USE_LOWERCASE)
@@ -21847,7 +21826,7 @@ extern "C" { void egtransetEPS(double* EPS) {
 #elif defined(BL_FORT_USE_UNDERSCORE)
 #define egtransetSIG egtransetsig_
 #endif
-extern "C" { void egtransetSIG(double* SIG) {
+void egtransetSIG(double* SIG) {
   SIG[           0] =   0.2050000000000000E+01;
   SIG[           1] =   0.2920000000000000E+01;
   SIG[           2] =   0.3800000000000000E+01;
@@ -21887,7 +21866,7 @@ extern "C" { void egtransetSIG(double* SIG) {
   SIG[          36] =   0.4624000000000000E+01;
   SIG[          37] =   0.4624000000000000E+01;
   SIG[          38] =   0.3621000000000000E+01;
-};  }
+};
 #if defined(BL_FORT_USE_UPPERCASE)
 #define egtransetDIP EGTRANSETDIP
 #elif defined(BL_FORT_USE_LOWERCASE)
@@ -21895,7 +21874,7 @@ extern "C" { void egtransetSIG(double* SIG) {
 #elif defined(BL_FORT_USE_UNDERSCORE)
 #define egtransetDIP egtransetdip_
 #endif
-extern "C" { void egtransetDIP(double* DIP) {
+void egtransetDIP(double* DIP) {
   DIP[           0] =   0.0000000000000000E+00;
   DIP[           1] =   0.0000000000000000E+00;
   DIP[           2] =   0.0000000000000000E+00;
@@ -21935,7 +21914,7 @@ extern "C" { void egtransetDIP(double* DIP) {
   DIP[          36] =   0.0000000000000000E+00;
   DIP[          37] =   0.0000000000000000E+00;
   DIP[          38] =   0.0000000000000000E+00;
-};  }
+};
 #if defined(BL_FORT_USE_UPPERCASE)
 #define egtransetPOL EGTRANSETPOL
 #elif defined(BL_FORT_USE_LOWERCASE)
@@ -21943,7 +21922,7 @@ extern "C" { void egtransetDIP(double* DIP) {
 #elif defined(BL_FORT_USE_UNDERSCORE)
 #define egtransetPOL egtransetpol_
 #endif
-extern "C" { void egtransetPOL(double* POL) {
+void egtransetPOL(double* POL) {
   POL[           0] =   0.0000000000000000E+00;
   POL[           1] =   0.7900000000000000E+00;
   POL[           2] =   0.0000000000000000E+00;
@@ -21983,7 +21962,7 @@ extern "C" { void egtransetPOL(double* POL) {
   POL[          36] =   0.0000000000000000E+00;
   POL[          37] =   0.0000000000000000E+00;
   POL[          38] =   0.1760000000000000E+01;
-};  }
+};
 #if defined(BL_FORT_USE_UPPERCASE)
 #define egtransetZROT EGTRANSETZROT
 #elif defined(BL_FORT_USE_LOWERCASE)
@@ -21991,7 +21970,7 @@ extern "C" { void egtransetPOL(double* POL) {
 #elif defined(BL_FORT_USE_UNDERSCORE)
 #define egtransetZROT egtransetzrot_
 #endif
-extern "C" { void egtransetZROT(double* ZROT) {
+void egtransetZROT(double* ZROT) {
   ZROT[           0] =   0.0000000000000000E+00;
   ZROT[           1] =   0.2800000000000000E+03;
   ZROT[           2] =   0.0000000000000000E+00;
@@ -22031,7 +22010,7 @@ extern "C" { void egtransetZROT(double* ZROT) {
   ZROT[          36] =   0.1000000000000000E+01;
   ZROT[          37] =   0.1000000000000000E+01;
   ZROT[          38] =   0.4000000000000000E+01;
-};  }
+};
 #if defined(BL_FORT_USE_UPPERCASE)
 #define egtransetNLIN EGTRANSETNLIN
 #elif defined(BL_FORT_USE_LOWERCASE)
@@ -22039,7 +22018,7 @@ extern "C" { void egtransetZROT(double* ZROT) {
 #elif defined(BL_FORT_USE_UNDERSCORE)
 #define egtransetNLIN egtransetnlin_
 #endif
-extern "C" { void egtransetNLIN(int* NLIN) {
+void egtransetNLIN(int* NLIN) {
   NLIN[           0] =            0;
   NLIN[           1] =            1;
   NLIN[           2] =            1;
@@ -22079,7 +22058,7 @@ extern "C" { void egtransetNLIN(int* NLIN) {
   NLIN[          36] =            2;
   NLIN[          37] =            2;
   NLIN[          38] =            1;
-};  }
+};
 #if defined(BL_FORT_USE_UPPERCASE)
 #define egtransetCOFLAM EGTRANSETCOFLAM
 #elif defined(BL_FORT_USE_LOWERCASE)
@@ -22087,7 +22066,7 @@ extern "C" { void egtransetNLIN(int* NLIN) {
 #elif defined(BL_FORT_USE_UNDERSCORE)
 #define egtransetCOFLAM egtransetcoflam_
 #endif
-extern "C" { void egtransetCOFLAM(double* COFLAM) {
+void egtransetCOFLAM(double* COFLAM) {
   COFLAM[           0] =  -0.8554281253040258E+00;
   COFLAM[           1] =   0.3652691486294877E+01;
   COFLAM[           2] =  -0.3980303020607808E+00;
@@ -22244,7 +22223,7 @@ extern "C" { void egtransetCOFLAM(double* COFLAM) {
   COFLAM[         153] =  -0.3528394988071363E+01;
   COFLAM[         154] =   0.6455858113801279E+00;
   COFLAM[         155] =  -0.3194427362954873E-01;
-};  }
+};
 #if defined(BL_FORT_USE_UPPERCASE)
 #define egtransetCOFETA EGTRANSETCOFETA
 #elif defined(BL_FORT_USE_LOWERCASE)
@@ -22252,7 +22231,7 @@ extern "C" { void egtransetCOFLAM(double* COFLAM) {
 #elif defined(BL_FORT_USE_UNDERSCORE)
 #define egtransetCOFETA egtransetcofeta_
 #endif
-extern "C" { void egtransetCOFETA(double* COFETA) {
+void egtransetCOFETA(double* COFETA) {
   COFETA[           0] =  -0.2040534341454124E+02;
   COFETA[           1] =   0.3652691486295009E+01;
   COFETA[           2] =  -0.3980303020608006E+00;
@@ -22409,7 +22388,7 @@ extern "C" { void egtransetCOFETA(double* COFETA) {
   COFETA[         153] =   0.2388167035581858E+01;
   COFETA[         154] =  -0.2341208182867099E+00;
   COFETA[         155] =   0.1047727172770704E-01;
-};  }
+};
 #if defined(BL_FORT_USE_UPPERCASE)
 #define egtransetCOFD EGTRANSETCOFD
 #elif defined(BL_FORT_USE_LOWERCASE)
@@ -22417,7 +22396,7 @@ extern "C" { void egtransetCOFETA(double* COFETA) {
 #elif defined(BL_FORT_USE_UNDERSCORE)
 #define egtransetCOFD egtransetcofd_
 #endif
-extern "C" { void egtransetCOFD(double* COFD) {
+void egtransetCOFD(double* COFD) {
   COFD[           0] =  -0.1519084593013382E+02;
   COFD[           1] =   0.4384306309333000E+01;
   COFD[           2] =  -0.3557550068895214E+00;
@@ -28502,7 +28481,7 @@ extern "C" { void egtransetCOFD(double* COFD) {
   COFD[        6081] =   0.3460858520880728E+01;
   COFD[        6082] =  -0.2401164641793465E+00;
   COFD[        6083] =   0.1064270570979806E-01;
-};  }
+};
 
 
 

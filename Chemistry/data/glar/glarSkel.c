@@ -1,10 +1,8 @@
 
-#include <iostream>
 #include <math.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-
 
 #if defined(BL_FORT_USE_UPPERCASE)
 #define CKINDX CKINDX
@@ -234,7 +232,6 @@
 #endif
 
 /*function declarations */
-extern "C" {
 void molecularWeight(double * wt);
 void gibbs(double * species, double * tc);
 void helmholtz(double * species, double * tc);
@@ -321,18 +318,26 @@ void CKEQYP(double * P, double * T, double * y, int * iwrk, double *rwrk, double
 void CKEQXP(double * P, double * T, double * x, int * iwrk, double *rwrk, double * eqcon);
 void CKEQYR(double * rho, double * T, double * y, int * iwrk, double *rwrk, double * eqcon);
 void CKEQXR(double * rho, double * T, double * x, int * iwrk, double *rwrk, double * eqcon);
-int  feeytt_(double * e, double * y, int * iwrk, double *rwrk, double * t);
-void fephity_(double * phi, int * iwrk, double *rwrk, double * y);
-void feytphi_(double * y, int * iwrk, double *rwrk, double * phi);
-void fectyr_(double * c, double * rho, int * iwrk, double *rwrk, double * y);
-void fecvrhs_(double * time, double * phi, double * phidot, double * rckwrk, int * ickwrk);
-int fecvdim_();
-void fezndrhs_(double * time, double * z, double * zdot, double * rckwrk, int * ickwrk);
-int feznddim_();
-char* femechfile_();
-char* fesymname_(int sn);
-int fesymnum_(const char* s1);
-}
+
+/*
+** Inverse of molecular weights.
+** So we can multiply instead of divide in places.
+*/
+static const double imw[15] = { 1.0 / 1.007970,
+                                1.0 / 15.999400,
+                                1.0 / 17.007370,
+                                1.0 / 2.015940,
+                                1.0 / 31.998800,
+                                1.0 / 33.006770,
+                                1.0 / 18.015340,
+                                1.0 / 34.014740,
+                                1.0 / 30.006100,
+                                1.0 / 46.005500,
+                                1.0 / 44.012800,
+                                1.0 / 15.014670,
+                                1.0 / 14.006700,
+                                1.0 / 29.021370,
+                                1.0 / 28.013400 };
 
 
 /*A few mechanism parameters */
@@ -344,16 +349,6 @@ void CKINDX(int * iwrk, double * rwrk, int * mm, int * kk, int * ii, int * nfit)
     *nfit = -1; /*Why do you need this anyway ?  */
 }
 
-
-/*Dummy ckinit */
-void fginit_(int * leniwk, int * lenrwk, int * lencwk, int * linc, int * lout, int * ickwrk, double * rckwrk, char * cckwrk )
-{
-    if ((*lout) != 0) {
-        /* printf(" ***       Congratulations       *** \n"); */
-        /* printf(" * You are using the Fuego Library * \n"); */
-        /* printf(" *****    Say NO to cklib.f    ***** \n"); */
-    }
-}
 
 
 /* ckxnum... for parsing strings  */
@@ -396,7 +391,7 @@ void CKSNUM(char * line, int * nexp, int * lout, char * kray, int * nn, int * kn
 
 
 /* Returns the char strings of element names */
-void CKSYME(int * kname, int * plenkname)
+void CKSYME(int * kname, int * plenkname )
 {
     int i; /*Loop Counter */
     int lenkname = *plenkname;
@@ -416,6 +411,7 @@ void CKSYME(int * kname, int * plenkname)
     /* N  */
     kname[ 2*lenkname + 0 ] = 'N';
     kname[ 2*lenkname + 1 ] = ' ';
+
 }
 
 
@@ -515,8 +511,7 @@ void CKSYMS(int * kname, int * plenkname )
 void CKRP(int * ickwrk, double * rckwrk, double * ru, double * ruc, double * pa)
 {
      *ru  = 8.31451e+07; 
-     //*ruc = 1.987; 
-     *ruc = (*ru)/4.184e7; 
+     *ruc = 1.98721558317399615845; 
      *pa  = 1.01325e+06; 
 }
 
@@ -550,21 +545,21 @@ void CKPX(double * rho, double * T, double * x, int * iwrk, double * rwrk, doubl
 void CKPY(double * rho, double * T, double * y, int * iwrk, double * rwrk, double * P)
 {
     double YOW = 0;/* for computing mean MW */
-    YOW += y[0]/1.007970; /*H */
-    YOW += y[1]/15.999400; /*O */
-    YOW += y[2]/17.007370; /*OH */
-    YOW += y[3]/2.015940; /*H2 */
-    YOW += y[4]/31.998800; /*O2 */
-    YOW += y[5]/33.006770; /*HO2 */
-    YOW += y[6]/18.015340; /*H2O */
-    YOW += y[7]/34.014740; /*H2O2 */
-    YOW += y[8]/30.006100; /*NO */
-    YOW += y[9]/46.005500; /*NO2 */
-    YOW += y[10]/44.012800; /*N2O */
-    YOW += y[11]/15.014670; /*NH */
-    YOW += y[12]/14.006700; /*N */
-    YOW += y[13]/29.021370; /*NNH */
-    YOW += y[14]/28.013400; /*N2 */
+    YOW += y[0]*imw[0]; /*H */
+    YOW += y[1]*imw[1]; /*O */
+    YOW += y[2]*imw[2]; /*OH */
+    YOW += y[3]*imw[3]; /*H2 */
+    YOW += y[4]*imw[4]; /*O2 */
+    YOW += y[5]*imw[5]; /*HO2 */
+    YOW += y[6]*imw[6]; /*H2O */
+    YOW += y[7]*imw[7]; /*H2O2 */
+    YOW += y[8]*imw[8]; /*NO */
+    YOW += y[9]*imw[9]; /*NO2 */
+    YOW += y[10]*imw[10]; /*N2O */
+    YOW += y[11]*imw[11]; /*NH */
+    YOW += y[12]*imw[12]; /*N */
+    YOW += y[13]*imw[13]; /*NNH */
+    YOW += y[14]*imw[14]; /*N2 */
     *P = *rho * 8.31451e+07 * (*T) * YOW; /*P = rho*R*T/W */
 
     return;
@@ -632,21 +627,21 @@ void CKRHOX(double * P, double * T, double * x, int * iwrk, double * rwrk, doubl
 void CKRHOY(double * P, double * T, double * y, int * iwrk, double * rwrk, double * rho)
 {
     double YOW = 0;/* for computing mean MW */
-    YOW += y[0]/1.007970; /*H */
-    YOW += y[1]/15.999400; /*O */
-    YOW += y[2]/17.007370; /*OH */
-    YOW += y[3]/2.015940; /*H2 */
-    YOW += y[4]/31.998800; /*O2 */
-    YOW += y[5]/33.006770; /*HO2 */
-    YOW += y[6]/18.015340; /*H2O */
-    YOW += y[7]/34.014740; /*H2O2 */
-    YOW += y[8]/30.006100; /*NO */
-    YOW += y[9]/46.005500; /*NO2 */
-    YOW += y[10]/44.012800; /*N2O */
-    YOW += y[11]/15.014670; /*NH */
-    YOW += y[12]/14.006700; /*N */
-    YOW += y[13]/29.021370; /*NNH */
-    YOW += y[14]/28.013400; /*N2 */
+    YOW += y[0]*imw[0]; /*H */
+    YOW += y[1]*imw[1]; /*O */
+    YOW += y[2]*imw[2]; /*OH */
+    YOW += y[3]*imw[3]; /*H2 */
+    YOW += y[4]*imw[4]; /*O2 */
+    YOW += y[5]*imw[5]; /*HO2 */
+    YOW += y[6]*imw[6]; /*H2O */
+    YOW += y[7]*imw[7]; /*H2O2 */
+    YOW += y[8]*imw[8]; /*NO */
+    YOW += y[9]*imw[9]; /*NO2 */
+    YOW += y[10]*imw[10]; /*N2O */
+    YOW += y[11]*imw[11]; /*NH */
+    YOW += y[12]*imw[12]; /*N */
+    YOW += y[13]*imw[13]; /*NNH */
+    YOW += y[14]*imw[14]; /*N2 */
     *rho = *P / (8.31451e+07 * (*T) * YOW); /*rho = P*W/(R*T) */
 
     return;
@@ -697,21 +692,21 @@ void CKWT(int * iwrk, double * rwrk, double * wt)
 void CKMMWY(double *y, int * iwrk, double * rwrk, double * wtm)
 {
     double YOW = 0;/* see Eq 3 in CK Manual */
-    YOW += y[0]/1.007970; /*H */
-    YOW += y[1]/15.999400; /*O */
-    YOW += y[2]/17.007370; /*OH */
-    YOW += y[3]/2.015940; /*H2 */
-    YOW += y[4]/31.998800; /*O2 */
-    YOW += y[5]/33.006770; /*HO2 */
-    YOW += y[6]/18.015340; /*H2O */
-    YOW += y[7]/34.014740; /*H2O2 */
-    YOW += y[8]/30.006100; /*NO */
-    YOW += y[9]/46.005500; /*NO2 */
-    YOW += y[10]/44.012800; /*N2O */
-    YOW += y[11]/15.014670; /*NH */
-    YOW += y[12]/14.006700; /*N */
-    YOW += y[13]/29.021370; /*NNH */
-    YOW += y[14]/28.013400; /*N2 */
+    YOW += y[0]*imw[0]; /*H */
+    YOW += y[1]*imw[1]; /*O */
+    YOW += y[2]*imw[2]; /*OH */
+    YOW += y[3]*imw[3]; /*H2 */
+    YOW += y[4]*imw[4]; /*O2 */
+    YOW += y[5]*imw[5]; /*HO2 */
+    YOW += y[6]*imw[6]; /*H2O */
+    YOW += y[7]*imw[7]; /*H2O2 */
+    YOW += y[8]*imw[8]; /*NO */
+    YOW += y[9]*imw[9]; /*NO2 */
+    YOW += y[10]*imw[10]; /*N2O */
+    YOW += y[11]*imw[11]; /*NH */
+    YOW += y[12]*imw[12]; /*N */
+    YOW += y[13]*imw[13]; /*NNH */
+    YOW += y[14]*imw[14]; /*N2 */
     *wtm = 1.0 / YOW;
 
     return;
@@ -783,21 +778,21 @@ void CKYTX(double * y, int * iwrk, double * rwrk, double * x)
 {
     double YOW = 0; /*See Eq 4, 6 in CK Manual */
     /*Compute inverse of mean molecular wt first */
-    YOW += y[0]/1.007970; /*H */
-    YOW += y[1]/15.999400; /*O */
-    YOW += y[2]/17.007370; /*OH */
-    YOW += y[3]/2.015940; /*H2 */
-    YOW += y[4]/31.998800; /*O2 */
-    YOW += y[5]/33.006770; /*HO2 */
-    YOW += y[6]/18.015340; /*H2O */
-    YOW += y[7]/34.014740; /*H2O2 */
-    YOW += y[8]/30.006100; /*NO */
-    YOW += y[9]/46.005500; /*NO2 */
-    YOW += y[10]/44.012800; /*N2O */
-    YOW += y[11]/15.014670; /*NH */
-    YOW += y[12]/14.006700; /*N */
-    YOW += y[13]/29.021370; /*NNH */
-    YOW += y[14]/28.013400; /*N2 */
+    YOW += y[0]*imw[0]; /*H */
+    YOW += y[1]*imw[1]; /*O */
+    YOW += y[2]*imw[2]; /*OH */
+    YOW += y[3]*imw[3]; /*H2 */
+    YOW += y[4]*imw[4]; /*O2 */
+    YOW += y[5]*imw[5]; /*HO2 */
+    YOW += y[6]*imw[6]; /*H2O */
+    YOW += y[7]*imw[7]; /*H2O2 */
+    YOW += y[8]*imw[8]; /*NO */
+    YOW += y[9]*imw[9]; /*NO2 */
+    YOW += y[10]*imw[10]; /*N2O */
+    YOW += y[11]*imw[11]; /*NH */
+    YOW += y[12]*imw[12]; /*N */
+    YOW += y[13]*imw[13]; /*NNH */
+    YOW += y[14]*imw[14]; /*N2 */
     /*Now compute conversion */
     x[0] = y[0]/(1.007970*YOW); 
     x[1] = y[1]/(15.999400*YOW); 
@@ -825,39 +820,39 @@ void CKYTCP(double * P, double * T, double * y, int * iwrk, double * rwrk, doubl
     double YOW = 0; 
     double PWORT; 
     /*Compute inverse of mean molecular wt first */
-    YOW += y[0]/1.007970; /*H */
-    YOW += y[1]/15.999400; /*O */
-    YOW += y[2]/17.007370; /*OH */
-    YOW += y[3]/2.015940; /*H2 */
-    YOW += y[4]/31.998800; /*O2 */
-    YOW += y[5]/33.006770; /*HO2 */
-    YOW += y[6]/18.015340; /*H2O */
-    YOW += y[7]/34.014740; /*H2O2 */
-    YOW += y[8]/30.006100; /*NO */
-    YOW += y[9]/46.005500; /*NO2 */
-    YOW += y[10]/44.012800; /*N2O */
-    YOW += y[11]/15.014670; /*NH */
-    YOW += y[12]/14.006700; /*N */
-    YOW += y[13]/29.021370; /*NNH */
-    YOW += y[14]/28.013400; /*N2 */
+    YOW += y[0]*imw[0]; /*H */
+    YOW += y[1]*imw[1]; /*O */
+    YOW += y[2]*imw[2]; /*OH */
+    YOW += y[3]*imw[3]; /*H2 */
+    YOW += y[4]*imw[4]; /*O2 */
+    YOW += y[5]*imw[5]; /*HO2 */
+    YOW += y[6]*imw[6]; /*H2O */
+    YOW += y[7]*imw[7]; /*H2O2 */
+    YOW += y[8]*imw[8]; /*NO */
+    YOW += y[9]*imw[9]; /*NO2 */
+    YOW += y[10]*imw[10]; /*N2O */
+    YOW += y[11]*imw[11]; /*NH */
+    YOW += y[12]*imw[12]; /*N */
+    YOW += y[13]*imw[13]; /*NNH */
+    YOW += y[14]*imw[14]; /*N2 */
     /*PW/RT (see Eq. 7) */
     PWORT = (*P)/(YOW * 8.31451e+07 * (*T)); 
     /*Now compute conversion */
-    c[0] = PWORT * y[0]/1.007970; 
-    c[1] = PWORT * y[1]/15.999400; 
-    c[2] = PWORT * y[2]/17.007370; 
-    c[3] = PWORT * y[3]/2.015940; 
-    c[4] = PWORT * y[4]/31.998800; 
-    c[5] = PWORT * y[5]/33.006770; 
-    c[6] = PWORT * y[6]/18.015340; 
-    c[7] = PWORT * y[7]/34.014740; 
-    c[8] = PWORT * y[8]/30.006100; 
-    c[9] = PWORT * y[9]/46.005500; 
-    c[10] = PWORT * y[10]/44.012800; 
-    c[11] = PWORT * y[11]/15.014670; 
-    c[12] = PWORT * y[12]/14.006700; 
-    c[13] = PWORT * y[13]/29.021370; 
-    c[14] = PWORT * y[14]/28.013400; 
+    c[0] = PWORT * y[0]*imw[0]; 
+    c[1] = PWORT * y[1]*imw[1]; 
+    c[2] = PWORT * y[2]*imw[2]; 
+    c[3] = PWORT * y[3]*imw[3]; 
+    c[4] = PWORT * y[4]*imw[4]; 
+    c[5] = PWORT * y[5]*imw[5]; 
+    c[6] = PWORT * y[6]*imw[6]; 
+    c[7] = PWORT * y[7]*imw[7]; 
+    c[8] = PWORT * y[8]*imw[8]; 
+    c[9] = PWORT * y[9]*imw[9]; 
+    c[10] = PWORT * y[10]*imw[10]; 
+    c[11] = PWORT * y[11]*imw[11]; 
+    c[12] = PWORT * y[12]*imw[12]; 
+    c[13] = PWORT * y[13]*imw[13]; 
+    c[14] = PWORT * y[14]*imw[14]; 
 
     return;
 }
@@ -867,21 +862,21 @@ void CKYTCP(double * P, double * T, double * y, int * iwrk, double * rwrk, doubl
 void CKYTCR(double * rho, double * T, double * y, int * iwrk, double * rwrk, double * c)
 {
     /*See Eq 8 (Temperature not used) */
-    c[0] = (*rho) * y[0]/1.007970; 
-    c[1] = (*rho) * y[1]/15.999400; 
-    c[2] = (*rho) * y[2]/17.007370; 
-    c[3] = (*rho) * y[3]/2.015940; 
-    c[4] = (*rho) * y[4]/31.998800; 
-    c[5] = (*rho) * y[5]/33.006770; 
-    c[6] = (*rho) * y[6]/18.015340; 
-    c[7] = (*rho) * y[7]/34.014740; 
-    c[8] = (*rho) * y[8]/30.006100; 
-    c[9] = (*rho) * y[9]/46.005500; 
-    c[10] = (*rho) * y[10]/44.012800; 
-    c[11] = (*rho) * y[11]/15.014670; 
-    c[12] = (*rho) * y[12]/14.006700; 
-    c[13] = (*rho) * y[13]/29.021370; 
-    c[14] = (*rho) * y[14]/28.013400; 
+    c[0] = (*rho) * y[0]*imw[0]; 
+    c[1] = (*rho) * y[1]*imw[1]; 
+    c[2] = (*rho) * y[2]*imw[2]; 
+    c[3] = (*rho) * y[3]*imw[3]; 
+    c[4] = (*rho) * y[4]*imw[4]; 
+    c[5] = (*rho) * y[5]*imw[5]; 
+    c[6] = (*rho) * y[6]*imw[6]; 
+    c[7] = (*rho) * y[7]*imw[7]; 
+    c[8] = (*rho) * y[8]*imw[8]; 
+    c[9] = (*rho) * y[9]*imw[9]; 
+    c[10] = (*rho) * y[10]*imw[10]; 
+    c[11] = (*rho) * y[11]*imw[11]; 
+    c[12] = (*rho) * y[12]*imw[12]; 
+    c[13] = (*rho) * y[13]*imw[13]; 
+    c[14] = (*rho) * y[14]*imw[14]; 
 
     return;
 }
@@ -1042,7 +1037,7 @@ void CKCTY(double * c, int * iwrk, double * rwrk, double * y)
 void CKCPOR(double *T, int * iwrk, double * rwrk, double * cpor)
 {
     double tT = *T; /*temporary temperature */
-    double tc[] = { log(tT), tT, tT*tT, tT*tT*tT, tT*tT*tT*tT }; /*temperature cache */
+    double tc[] = { 0, tT, tT*tT, tT*tT*tT, tT*tT*tT*tT }; /*temperature cache */
     cp_R(cpor, tc);
 }
 
@@ -1052,7 +1047,7 @@ void CKCPOR(double *T, int * iwrk, double * rwrk, double * cpor)
 void CKHORT(double *T, int * iwrk, double * rwrk, double * hort)
 {
     double tT = *T; /*temporary temperature */
-    double tc[] = { log(tT), tT, tT*tT, tT*tT*tT, tT*tT*tT*tT }; /*temperature cache */
+    double tc[] = { 0, tT, tT*tT, tT*tT*tT, tT*tT*tT*tT }; /*temperature cache */
     speciesEnthalpy(hort, tc);
 }
 
@@ -1073,7 +1068,7 @@ void CKCVML(double *T, int * iwrk, double * rwrk, double * cvml)
 {
     int id; /*loop counter */
     double tT = *T; /*temporary temperature */
-    double tc[] = { log(tT), tT, tT*tT, tT*tT*tT, tT*tT*tT*tT }; /*temperature cache */
+    double tc[] = { 0, tT, tT*tT, tT*tT*tT, tT*tT*tT*tT }; /*temperature cache */
     cv_R(cvml, tc);
 
     /*convert to chemkin units */
@@ -1089,7 +1084,7 @@ void CKCPML(double *T, int * iwrk, double * rwrk, double * cpml)
 {
     int id; /*loop counter */
     double tT = *T; /*temporary temperature */
-    double tc[] = { log(tT), tT, tT*tT, tT*tT*tT, tT*tT*tT*tT }; /*temperature cache */
+    double tc[] = { 0, tT, tT*tT, tT*tT*tT, tT*tT*tT*tT }; /*temperature cache */
     cp_R(cpml, tc);
 
     /*convert to chemkin units */
@@ -1105,7 +1100,7 @@ void CKUML(double *T, int * iwrk, double * rwrk, double * uml)
 {
     int id; /*loop counter */
     double tT = *T; /*temporary temperature */
-    double tc[] = { log(tT), tT, tT*tT, tT*tT*tT, tT*tT*tT*tT }; /*temperature cache */
+    double tc[] = { 0, tT, tT*tT, tT*tT*tT, tT*tT*tT*tT }; /*temperature cache */
     double RT = 8.31451e+07*tT; /*R*T */
     speciesInternalEnergy(uml, tc);
 
@@ -1122,7 +1117,7 @@ void CKHML(double *T, int * iwrk, double * rwrk, double * hml)
 {
     int id; /*loop counter */
     double tT = *T; /*temporary temperature */
-    double tc[] = { log(tT), tT, tT*tT, tT*tT*tT, tT*tT*tT*tT }; /*temperature cache */
+    double tc[] = { 0, tT, tT*tT, tT*tT*tT, tT*tT*tT*tT }; /*temperature cache */
     double RT = 8.31451e+07*tT; /*R*T */
     speciesEnthalpy(hml, tc);
 
@@ -1187,24 +1182,24 @@ void CKSML(double *T, int * iwrk, double * rwrk, double * sml)
 void CKCVMS(double *T, int * iwrk, double * rwrk, double * cvms)
 {
     double tT = *T; /*temporary temperature */
-    double tc[] = { log(tT), tT, tT*tT, tT*tT*tT, tT*tT*tT*tT }; /*temperature cache */
+    double tc[] = { 0, tT, tT*tT, tT*tT*tT, tT*tT*tT*tT }; /*temperature cache */
     cv_R(cvms, tc);
     /*multiply by R/molecularweight */
-    cvms[0] *= 82482613.569848; /*H */
-    cvms[1] *= 5196444.866683; /*O */
-    cvms[2] *= 4888468.940230; /*OH */
-    cvms[3] *= 41241306.784924; /*H2 */
-    cvms[4] *= 2598222.433341; /*O2 */
-    cvms[5] *= 2518877.187922; /*HO2 */
-    cvms[6] *= 4614955.920899; /*H2O */
-    cvms[7] *= 2444234.470115; /*H2O2 */
-    cvms[8] *= 2770769.943445; /*NO */
-    cvms[9] *= 1807175.229049; /*NO2 */
-    cvms[10] *= 1888995.928457; /*N2O */
-    cvms[11] *= 5537251.234959; /*NH */
-    cvms[12] *= 5935730.757423; /*N */
-    cvms[13] *= 2864785.501167; /*NNH */
-    cvms[14] *= 2967865.378712; /*N2 */
+    cvms[0] *= 8.248767324424338e+07; /*H */
+    cvms[1] *= 5.196763628636074e+06; /*O */
+    cvms[2] *= 4.888768810227566e+06; /*OH */
+    cvms[3] *= 4.124383662212169e+07; /*H2 */
+    cvms[4] *= 2.598381814318037e+06; /*O2 */
+    cvms[5] *= 2.519031701678171e+06; /*HO2 */
+    cvms[6] *= 4.615239012974499e+06; /*H2O */
+    cvms[7] *= 2.444384405113783e+06; /*H2O2 */
+    cvms[8] *= 2.770939908885194e+06; /*NO */
+    cvms[9] *= 1.807286085359359e+06; /*NO2 */
+    cvms[10] *= 1.889111803838883e+06; /*N2O */
+    cvms[11] *= 5.537590902763763e+06; /*NH */
+    cvms[12] *= 5.936094868884177e+06; /*N */
+    cvms[13] *= 2.864961233739138e+06; /*NNH */
+    cvms[14] *= 2.968047434442088e+06; /*N2 */
 }
 
 
@@ -1213,24 +1208,24 @@ void CKCVMS(double *T, int * iwrk, double * rwrk, double * cvms)
 void CKCPMS(double *T, int * iwrk, double * rwrk, double * cpms)
 {
     double tT = *T; /*temporary temperature */
-    double tc[] = { log(tT), tT, tT*tT, tT*tT*tT, tT*tT*tT*tT }; /*temperature cache */
+    double tc[] = { 0, tT, tT*tT, tT*tT*tT, tT*tT*tT*tT }; /*temperature cache */
     cp_R(cpms, tc);
     /*multiply by R/molecularweight */
-    cpms[0] *= 82482613.569848; /*H */
-    cpms[1] *= 5196444.866683; /*O */
-    cpms[2] *= 4888468.940230; /*OH */
-    cpms[3] *= 41241306.784924; /*H2 */
-    cpms[4] *= 2598222.433341; /*O2 */
-    cpms[5] *= 2518877.187922; /*HO2 */
-    cpms[6] *= 4614955.920899; /*H2O */
-    cpms[7] *= 2444234.470115; /*H2O2 */
-    cpms[8] *= 2770769.943445; /*NO */
-    cpms[9] *= 1807175.229049; /*NO2 */
-    cpms[10] *= 1888995.928457; /*N2O */
-    cpms[11] *= 5537251.234959; /*NH */
-    cpms[12] *= 5935730.757423; /*N */
-    cpms[13] *= 2864785.501167; /*NNH */
-    cpms[14] *= 2967865.378712; /*N2 */
+    cpms[0] *= 8.248767324424338e+07; /*H */
+    cpms[1] *= 5.196763628636074e+06; /*O */
+    cpms[2] *= 4.888768810227566e+06; /*OH */
+    cpms[3] *= 4.124383662212169e+07; /*H2 */
+    cpms[4] *= 2.598381814318037e+06; /*O2 */
+    cpms[5] *= 2.519031701678171e+06; /*HO2 */
+    cpms[6] *= 4.615239012974499e+06; /*H2O */
+    cpms[7] *= 2.444384405113783e+06; /*H2O2 */
+    cpms[8] *= 2.770939908885194e+06; /*NO */
+    cpms[9] *= 1.807286085359359e+06; /*NO2 */
+    cpms[10] *= 1.889111803838883e+06; /*N2O */
+    cpms[11] *= 5.537590902763763e+06; /*NH */
+    cpms[12] *= 5.936094868884177e+06; /*N */
+    cpms[13] *= 2.864961233739138e+06; /*NNH */
+    cpms[14] *= 2.968047434442088e+06; /*N2 */
 }
 
 
@@ -1238,24 +1233,24 @@ void CKCPMS(double *T, int * iwrk, double * rwrk, double * cpms)
 void CKUMS(double *T, int * iwrk, double * rwrk, double * ums)
 {
     double tT = *T; /*temporary temperature */
-    double tc[] = { log(tT), tT, tT*tT, tT*tT*tT, tT*tT*tT*tT }; /*temperature cache */
+    double tc[] = { 0, tT, tT*tT, tT*tT*tT, tT*tT*tT*tT }; /*temperature cache */
     double RT = 8.31451e+07*tT; /*R*T */
     speciesInternalEnergy(ums, tc);
-    ums[0] *= RT/1.007970; /*H */
-    ums[1] *= RT/15.999400; /*O */
-    ums[2] *= RT/17.007370; /*OH */
-    ums[3] *= RT/2.015940; /*H2 */
-    ums[4] *= RT/31.998800; /*O2 */
-    ums[5] *= RT/33.006770; /*HO2 */
-    ums[6] *= RT/18.015340; /*H2O */
-    ums[7] *= RT/34.014740; /*H2O2 */
-    ums[8] *= RT/30.006100; /*NO */
-    ums[9] *= RT/46.005500; /*NO2 */
-    ums[10] *= RT/44.012800; /*N2O */
-    ums[11] *= RT/15.014670; /*NH */
-    ums[12] *= RT/14.006700; /*N */
-    ums[13] *= RT/29.021370; /*NNH */
-    ums[14] *= RT/28.013400; /*N2 */
+    ums[0] *= RT*imw[0]; /*H */
+    ums[1] *= RT*imw[1]; /*O */
+    ums[2] *= RT*imw[2]; /*OH */
+    ums[3] *= RT*imw[3]; /*H2 */
+    ums[4] *= RT*imw[4]; /*O2 */
+    ums[5] *= RT*imw[5]; /*HO2 */
+    ums[6] *= RT*imw[6]; /*H2O */
+    ums[7] *= RT*imw[7]; /*H2O2 */
+    ums[8] *= RT*imw[8]; /*NO */
+    ums[9] *= RT*imw[9]; /*NO2 */
+    ums[10] *= RT*imw[10]; /*N2O */
+    ums[11] *= RT*imw[11]; /*NH */
+    ums[12] *= RT*imw[12]; /*N */
+    ums[13] *= RT*imw[13]; /*NNH */
+    ums[14] *= RT*imw[14]; /*N2 */
 }
 
 
@@ -1263,24 +1258,24 @@ void CKUMS(double *T, int * iwrk, double * rwrk, double * ums)
 void CKHMS(double *T, int * iwrk, double * rwrk, double * hms)
 {
     double tT = *T; /*temporary temperature */
-    double tc[] = { log(tT), tT, tT*tT, tT*tT*tT, tT*tT*tT*tT }; /*temperature cache */
+    double tc[] = { 0, tT, tT*tT, tT*tT*tT, tT*tT*tT*tT }; /*temperature cache */
     double RT = 8.31451e+07*tT; /*R*T */
     speciesEnthalpy(hms, tc);
-    hms[0] *= RT/1.007970; /*H */
-    hms[1] *= RT/15.999400; /*O */
-    hms[2] *= RT/17.007370; /*OH */
-    hms[3] *= RT/2.015940; /*H2 */
-    hms[4] *= RT/31.998800; /*O2 */
-    hms[5] *= RT/33.006770; /*HO2 */
-    hms[6] *= RT/18.015340; /*H2O */
-    hms[7] *= RT/34.014740; /*H2O2 */
-    hms[8] *= RT/30.006100; /*NO */
-    hms[9] *= RT/46.005500; /*NO2 */
-    hms[10] *= RT/44.012800; /*N2O */
-    hms[11] *= RT/15.014670; /*NH */
-    hms[12] *= RT/14.006700; /*N */
-    hms[13] *= RT/29.021370; /*NNH */
-    hms[14] *= RT/28.013400; /*N2 */
+    hms[0] *= RT*imw[0]; /*H */
+    hms[1] *= RT*imw[1]; /*O */
+    hms[2] *= RT*imw[2]; /*OH */
+    hms[3] *= RT*imw[3]; /*H2 */
+    hms[4] *= RT*imw[4]; /*O2 */
+    hms[5] *= RT*imw[5]; /*HO2 */
+    hms[6] *= RT*imw[6]; /*H2O */
+    hms[7] *= RT*imw[7]; /*H2O2 */
+    hms[8] *= RT*imw[8]; /*NO */
+    hms[9] *= RT*imw[9]; /*NO2 */
+    hms[10] *= RT*imw[10]; /*N2O */
+    hms[11] *= RT*imw[11]; /*NH */
+    hms[12] *= RT*imw[12]; /*N */
+    hms[13] *= RT*imw[13]; /*NNH */
+    hms[14] *= RT*imw[14]; /*N2 */
 }
 
 
@@ -1291,21 +1286,21 @@ void CKGMS(double *T, int * iwrk, double * rwrk, double * gms)
     double tc[] = { log(tT), tT, tT*tT, tT*tT*tT, tT*tT*tT*tT }; /*temperature cache */
     double RT = 8.31451e+07*tT; /*R*T */
     gibbs(gms, tc);
-    gms[0] *= RT/1.007970; /*H */
-    gms[1] *= RT/15.999400; /*O */
-    gms[2] *= RT/17.007370; /*OH */
-    gms[3] *= RT/2.015940; /*H2 */
-    gms[4] *= RT/31.998800; /*O2 */
-    gms[5] *= RT/33.006770; /*HO2 */
-    gms[6] *= RT/18.015340; /*H2O */
-    gms[7] *= RT/34.014740; /*H2O2 */
-    gms[8] *= RT/30.006100; /*NO */
-    gms[9] *= RT/46.005500; /*NO2 */
-    gms[10] *= RT/44.012800; /*N2O */
-    gms[11] *= RT/15.014670; /*NH */
-    gms[12] *= RT/14.006700; /*N */
-    gms[13] *= RT/29.021370; /*NNH */
-    gms[14] *= RT/28.013400; /*N2 */
+    gms[0] *= RT*imw[0]; /*H */
+    gms[1] *= RT*imw[1]; /*O */
+    gms[2] *= RT*imw[2]; /*OH */
+    gms[3] *= RT*imw[3]; /*H2 */
+    gms[4] *= RT*imw[4]; /*O2 */
+    gms[5] *= RT*imw[5]; /*HO2 */
+    gms[6] *= RT*imw[6]; /*H2O */
+    gms[7] *= RT*imw[7]; /*H2O2 */
+    gms[8] *= RT*imw[8]; /*NO */
+    gms[9] *= RT*imw[9]; /*NO2 */
+    gms[10] *= RT*imw[10]; /*N2O */
+    gms[11] *= RT*imw[11]; /*NH */
+    gms[12] *= RT*imw[12]; /*N */
+    gms[13] *= RT*imw[13]; /*NNH */
+    gms[14] *= RT*imw[14]; /*N2 */
 }
 
 
@@ -1316,21 +1311,21 @@ void CKAMS(double *T, int * iwrk, double * rwrk, double * ams)
     double tc[] = { log(tT), tT, tT*tT, tT*tT*tT, tT*tT*tT*tT }; /*temperature cache */
     double RT = 8.31451e+07*tT; /*R*T */
     helmholtz(ams, tc);
-    ams[0] *= RT/1.007970; /*H */
-    ams[1] *= RT/15.999400; /*O */
-    ams[2] *= RT/17.007370; /*OH */
-    ams[3] *= RT/2.015940; /*H2 */
-    ams[4] *= RT/31.998800; /*O2 */
-    ams[5] *= RT/33.006770; /*HO2 */
-    ams[6] *= RT/18.015340; /*H2O */
-    ams[7] *= RT/34.014740; /*H2O2 */
-    ams[8] *= RT/30.006100; /*NO */
-    ams[9] *= RT/46.005500; /*NO2 */
-    ams[10] *= RT/44.012800; /*N2O */
-    ams[11] *= RT/15.014670; /*NH */
-    ams[12] *= RT/14.006700; /*N */
-    ams[13] *= RT/29.021370; /*NNH */
-    ams[14] *= RT/28.013400; /*N2 */
+    ams[0] *= RT*imw[0]; /*H */
+    ams[1] *= RT*imw[1]; /*O */
+    ams[2] *= RT*imw[2]; /*OH */
+    ams[3] *= RT*imw[3]; /*H2 */
+    ams[4] *= RT*imw[4]; /*O2 */
+    ams[5] *= RT*imw[5]; /*HO2 */
+    ams[6] *= RT*imw[6]; /*H2O */
+    ams[7] *= RT*imw[7]; /*H2O2 */
+    ams[8] *= RT*imw[8]; /*NO */
+    ams[9] *= RT*imw[9]; /*NO2 */
+    ams[10] *= RT*imw[10]; /*N2O */
+    ams[11] *= RT*imw[11]; /*NH */
+    ams[12] *= RT*imw[12]; /*N */
+    ams[13] *= RT*imw[13]; /*NNH */
+    ams[14] *= RT*imw[14]; /*N2 */
 }
 
 
@@ -1341,21 +1336,21 @@ void CKSMS(double *T, int * iwrk, double * rwrk, double * sms)
     double tc[] = { log(tT), tT, tT*tT, tT*tT*tT, tT*tT*tT*tT }; /*temperature cache */
     speciesEntropy(sms, tc);
     /*multiply by R/molecularweight */
-    sms[0] *= 82482613.569848; /*H */
-    sms[1] *= 5196444.866683; /*O */
-    sms[2] *= 4888468.940230; /*OH */
-    sms[3] *= 41241306.784924; /*H2 */
-    sms[4] *= 2598222.433341; /*O2 */
-    sms[5] *= 2518877.187922; /*HO2 */
-    sms[6] *= 4614955.920899; /*H2O */
-    sms[7] *= 2444234.470115; /*H2O2 */
-    sms[8] *= 2770769.943445; /*NO */
-    sms[9] *= 1807175.229049; /*NO2 */
-    sms[10] *= 1888995.928457; /*N2O */
-    sms[11] *= 5537251.234959; /*NH */
-    sms[12] *= 5935730.757423; /*N */
-    sms[13] *= 2864785.501167; /*NNH */
-    sms[14] *= 2967865.378712; /*N2 */
+    sms[0] *= 8.248767324424338e+07; /*H */
+    sms[1] *= 5.196763628636074e+06; /*O */
+    sms[2] *= 4.888768810227566e+06; /*OH */
+    sms[3] *= 4.124383662212169e+07; /*H2 */
+    sms[4] *= 2.598381814318037e+06; /*O2 */
+    sms[5] *= 2.519031701678171e+06; /*HO2 */
+    sms[6] *= 4.615239012974499e+06; /*H2O */
+    sms[7] *= 2.444384405113783e+06; /*H2O2 */
+    sms[8] *= 2.770939908885194e+06; /*NO */
+    sms[9] *= 1.807286085359359e+06; /*NO2 */
+    sms[10] *= 1.889111803838883e+06; /*N2O */
+    sms[11] *= 5.537590902763763e+06; /*NH */
+    sms[12] *= 5.936094868884177e+06; /*N */
+    sms[13] *= 2.864961233739138e+06; /*NNH */
+    sms[14] *= 2.968047434442088e+06; /*N2 */
 }
 
 
@@ -1365,7 +1360,7 @@ void CKCPBL(double *T, double *x, int * iwrk, double * rwrk, double * cpbl)
     int id; /*loop counter */
     double result = 0; 
     double tT = *T; /*temporary temperature */
-    double tc[] = { log(tT), tT, tT*tT, tT*tT*tT, tT*tT*tT*tT }; /*temperature cache */
+    double tc[] = { 0, tT, tT*tT, tT*tT*tT, tT*tT*tT*tT }; /*temperature cache */
     double cpor[15]; /* temporary storage */
     cp_R(cpor, tc);
 
@@ -1383,25 +1378,25 @@ void CKCPBS(double *T, double *y, int * iwrk, double * rwrk, double * cpbs)
 {
     double result = 0; 
     double tT = *T; /*temporary temperature */
-    double tc[] = { log(tT), tT, tT*tT, tT*tT*tT, tT*tT*tT*tT }; /*temperature cache */
+    double tc[] = { 0, tT, tT*tT, tT*tT*tT, tT*tT*tT*tT }; /*temperature cache */
     double cpor[15]; /* temporary storage */
     cp_R(cpor, tc);
     /*multiply by y/molecularweight */
-    result += cpor[0]*y[0]/1.00797; /*H */
-    result += cpor[1]*y[1]/15.9994; /*O */
-    result += cpor[2]*y[2]/17.0074; /*OH */
-    result += cpor[3]*y[3]/2.01594; /*H2 */
-    result += cpor[4]*y[4]/31.9988; /*O2 */
-    result += cpor[5]*y[5]/33.0068; /*HO2 */
-    result += cpor[6]*y[6]/18.0153; /*H2O */
-    result += cpor[7]*y[7]/34.0147; /*H2O2 */
-    result += cpor[8]*y[8]/30.0061; /*NO */
-    result += cpor[9]*y[9]/46.0055; /*NO2 */
-    result += cpor[10]*y[10]/44.0128; /*N2O */
-    result += cpor[11]*y[11]/15.0147; /*NH */
-    result += cpor[12]*y[12]/14.0067; /*N */
-    result += cpor[13]*y[13]/29.0214; /*NNH */
-    result += cpor[14]*y[14]/28.0134; /*N2 */
+    result += cpor[0]*y[0]*imw[0]; /*H */
+    result += cpor[1]*y[1]*imw[1]; /*O */
+    result += cpor[2]*y[2]*imw[2]; /*OH */
+    result += cpor[3]*y[3]*imw[3]; /*H2 */
+    result += cpor[4]*y[4]*imw[4]; /*O2 */
+    result += cpor[5]*y[5]*imw[5]; /*HO2 */
+    result += cpor[6]*y[6]*imw[6]; /*H2O */
+    result += cpor[7]*y[7]*imw[7]; /*H2O2 */
+    result += cpor[8]*y[8]*imw[8]; /*NO */
+    result += cpor[9]*y[9]*imw[9]; /*NO2 */
+    result += cpor[10]*y[10]*imw[10]; /*N2O */
+    result += cpor[11]*y[11]*imw[11]; /*NH */
+    result += cpor[12]*y[12]*imw[12]; /*N */
+    result += cpor[13]*y[13]*imw[13]; /*NNH */
+    result += cpor[14]*y[14]*imw[14]; /*N2 */
 
     *cpbs = result * 8.31451e+07;
 }
@@ -1413,7 +1408,7 @@ void CKCVBL(double *T, double *x, int * iwrk, double * rwrk, double * cvbl)
     int id; /*loop counter */
     double result = 0; 
     double tT = *T; /*temporary temperature */
-    double tc[] = { log(tT), tT, tT*tT, tT*tT*tT, tT*tT*tT*tT }; /*temperature cache */
+    double tc[] = { 0, tT, tT*tT, tT*tT*tT, tT*tT*tT*tT }; /*temperature cache */
     double cvor[15]; /* temporary storage */
     cv_R(cvor, tc);
 
@@ -1431,25 +1426,25 @@ void CKCVBS(double *T, double *y, int * iwrk, double * rwrk, double * cvbs)
 {
     double result = 0; 
     double tT = *T; /*temporary temperature */
-    double tc[] = { log(tT), tT, tT*tT, tT*tT*tT, tT*tT*tT*tT }; /*temperature cache */
+    double tc[] = { 0, tT, tT*tT, tT*tT*tT, tT*tT*tT*tT }; /*temperature cache */
     double cvor[15]; /* temporary storage */
     cv_R(cvor, tc);
     /*multiply by y/molecularweight */
-    result += cvor[0]*y[0]/1.00797; /*H */
-    result += cvor[1]*y[1]/15.9994; /*O */
-    result += cvor[2]*y[2]/17.0074; /*OH */
-    result += cvor[3]*y[3]/2.01594; /*H2 */
-    result += cvor[4]*y[4]/31.9988; /*O2 */
-    result += cvor[5]*y[5]/33.0068; /*HO2 */
-    result += cvor[6]*y[6]/18.0153; /*H2O */
-    result += cvor[7]*y[7]/34.0147; /*H2O2 */
-    result += cvor[8]*y[8]/30.0061; /*NO */
-    result += cvor[9]*y[9]/46.0055; /*NO2 */
-    result += cvor[10]*y[10]/44.0128; /*N2O */
-    result += cvor[11]*y[11]/15.0147; /*NH */
-    result += cvor[12]*y[12]/14.0067; /*N */
-    result += cvor[13]*y[13]/29.0214; /*NNH */
-    result += cvor[14]*y[14]/28.0134; /*N2 */
+    result += cvor[0]*y[0]*imw[0]; /*H */
+    result += cvor[1]*y[1]*imw[1]; /*O */
+    result += cvor[2]*y[2]*imw[2]; /*OH */
+    result += cvor[3]*y[3]*imw[3]; /*H2 */
+    result += cvor[4]*y[4]*imw[4]; /*O2 */
+    result += cvor[5]*y[5]*imw[5]; /*HO2 */
+    result += cvor[6]*y[6]*imw[6]; /*H2O */
+    result += cvor[7]*y[7]*imw[7]; /*H2O2 */
+    result += cvor[8]*y[8]*imw[8]; /*NO */
+    result += cvor[9]*y[9]*imw[9]; /*NO2 */
+    result += cvor[10]*y[10]*imw[10]; /*N2O */
+    result += cvor[11]*y[11]*imw[11]; /*NH */
+    result += cvor[12]*y[12]*imw[12]; /*N */
+    result += cvor[13]*y[13]*imw[13]; /*NNH */
+    result += cvor[14]*y[14]*imw[14]; /*N2 */
 
     *cvbs = result * 8.31451e+07;
 }
@@ -1461,7 +1456,7 @@ void CKHBML(double *T, double *x, int * iwrk, double * rwrk, double * hbml)
     int id; /*loop counter */
     double result = 0; 
     double tT = *T; /*temporary temperature */
-    double tc[] = { log(tT), tT, tT*tT, tT*tT*tT, tT*tT*tT*tT }; /*temperature cache */
+    double tc[] = { 0, tT, tT*tT, tT*tT*tT, tT*tT*tT*tT }; /*temperature cache */
     double hml[15]; /* temporary storage */
     double RT = 8.31451e+07*tT; /*R*T */
     speciesEnthalpy(hml, tc);
@@ -1480,26 +1475,26 @@ void CKHBMS(double *T, double *y, int * iwrk, double * rwrk, double * hbms)
 {
     double result = 0;
     double tT = *T; /*temporary temperature */
-    double tc[] = { log(tT), tT, tT*tT, tT*tT*tT, tT*tT*tT*tT }; /*temperature cache */
+    double tc[] = { 0, tT, tT*tT, tT*tT*tT, tT*tT*tT*tT }; /*temperature cache */
     double hml[15]; /* temporary storage */
     double RT = 8.31451e+07*tT; /*R*T */
     speciesEnthalpy(hml, tc);
     /*perform dot product + scaling by wt */
-    result += y[0]*hml[0]/1.007970; /*H */
-    result += y[1]*hml[1]/15.999400; /*O */
-    result += y[2]*hml[2]/17.007370; /*OH */
-    result += y[3]*hml[3]/2.015940; /*H2 */
-    result += y[4]*hml[4]/31.998800; /*O2 */
-    result += y[5]*hml[5]/33.006770; /*HO2 */
-    result += y[6]*hml[6]/18.015340; /*H2O */
-    result += y[7]*hml[7]/34.014740; /*H2O2 */
-    result += y[8]*hml[8]/30.006100; /*NO */
-    result += y[9]*hml[9]/46.005500; /*NO2 */
-    result += y[10]*hml[10]/44.012800; /*N2O */
-    result += y[11]*hml[11]/15.014670; /*NH */
-    result += y[12]*hml[12]/14.006700; /*N */
-    result += y[13]*hml[13]/29.021370; /*NNH */
-    result += y[14]*hml[14]/28.013400; /*N2 */
+    result += y[0]*hml[0]*imw[0]; /*H */
+    result += y[1]*hml[1]*imw[1]; /*O */
+    result += y[2]*hml[2]*imw[2]; /*OH */
+    result += y[3]*hml[3]*imw[3]; /*H2 */
+    result += y[4]*hml[4]*imw[4]; /*O2 */
+    result += y[5]*hml[5]*imw[5]; /*HO2 */
+    result += y[6]*hml[6]*imw[6]; /*H2O */
+    result += y[7]*hml[7]*imw[7]; /*H2O2 */
+    result += y[8]*hml[8]*imw[8]; /*NO */
+    result += y[9]*hml[9]*imw[9]; /*NO2 */
+    result += y[10]*hml[10]*imw[10]; /*N2O */
+    result += y[11]*hml[11]*imw[11]; /*NH */
+    result += y[12]*hml[12]*imw[12]; /*N */
+    result += y[13]*hml[13]*imw[13]; /*NNH */
+    result += y[14]*hml[14]*imw[14]; /*N2 */
 
     *hbms = result * RT;
 }
@@ -1511,7 +1506,7 @@ void CKUBML(double *T, double *x, int * iwrk, double * rwrk, double * ubml)
     int id; /*loop counter */
     double result = 0; 
     double tT = *T; /*temporary temperature */
-    double tc[] = { log(tT), tT, tT*tT, tT*tT*tT, tT*tT*tT*tT }; /*temperature cache */
+    double tc[] = { 0, tT, tT*tT, tT*tT*tT, tT*tT*tT*tT }; /*temperature cache */
     double uml[15]; /* temporary energy array */
     double RT = 8.31451e+07*tT; /*R*T */
     speciesInternalEnergy(uml, tc);
@@ -1530,26 +1525,26 @@ void CKUBMS(double *T, double *y, int * iwrk, double * rwrk, double * ubms)
 {
     double result = 0;
     double tT = *T; /*temporary temperature */
-    double tc[] = { log(tT), tT, tT*tT, tT*tT*tT, tT*tT*tT*tT }; /*temperature cache */
+    double tc[] = { 0, tT, tT*tT, tT*tT*tT, tT*tT*tT*tT }; /*temperature cache */
     double ums[15]; /* temporary energy array */
     double RT = 8.31451e+07*tT; /*R*T */
     speciesInternalEnergy(ums, tc);
     /*perform dot product + scaling by wt */
-    result += y[0]*ums[0]/1.007970; /*H */
-    result += y[1]*ums[1]/15.999400; /*O */
-    result += y[2]*ums[2]/17.007370; /*OH */
-    result += y[3]*ums[3]/2.015940; /*H2 */
-    result += y[4]*ums[4]/31.998800; /*O2 */
-    result += y[5]*ums[5]/33.006770; /*HO2 */
-    result += y[6]*ums[6]/18.015340; /*H2O */
-    result += y[7]*ums[7]/34.014740; /*H2O2 */
-    result += y[8]*ums[8]/30.006100; /*NO */
-    result += y[9]*ums[9]/46.005500; /*NO2 */
-    result += y[10]*ums[10]/44.012800; /*N2O */
-    result += y[11]*ums[11]/15.014670; /*NH */
-    result += y[12]*ums[12]/14.006700; /*N */
-    result += y[13]*ums[13]/29.021370; /*NNH */
-    result += y[14]*ums[14]/28.013400; /*N2 */
+    result += y[0]*ums[0]*imw[0]; /*H */
+    result += y[1]*ums[1]*imw[1]; /*O */
+    result += y[2]*ums[2]*imw[2]; /*OH */
+    result += y[3]*ums[3]*imw[3]; /*H2 */
+    result += y[4]*ums[4]*imw[4]; /*O2 */
+    result += y[5]*ums[5]*imw[5]; /*HO2 */
+    result += y[6]*ums[6]*imw[6]; /*H2O */
+    result += y[7]*ums[7]*imw[7]; /*H2O2 */
+    result += y[8]*ums[8]*imw[8]; /*NO */
+    result += y[9]*ums[9]*imw[9]; /*NO2 */
+    result += y[10]*ums[10]*imw[10]; /*N2O */
+    result += y[11]*ums[11]*imw[11]; /*NH */
+    result += y[12]*ums[12]*imw[12]; /*N */
+    result += y[13]*ums[13]*imw[13]; /*NNH */
+    result += y[14]*ums[14]*imw[14]; /*N2 */
 
     *ubms = result * RT;
 }
@@ -1588,21 +1583,21 @@ void CKSBMS(double *P, double *T, double *y, int * iwrk, double * rwrk, double *
     double x[15]; /* need a ytx conversion */
     double YOW = 0; /*See Eq 4, 6 in CK Manual */
     /*Compute inverse of mean molecular wt first */
-    YOW += y[0]/1.007970; /*H */
-    YOW += y[1]/15.999400; /*O */
-    YOW += y[2]/17.007370; /*OH */
-    YOW += y[3]/2.015940; /*H2 */
-    YOW += y[4]/31.998800; /*O2 */
-    YOW += y[5]/33.006770; /*HO2 */
-    YOW += y[6]/18.015340; /*H2O */
-    YOW += y[7]/34.014740; /*H2O2 */
-    YOW += y[8]/30.006100; /*NO */
-    YOW += y[9]/46.005500; /*NO2 */
-    YOW += y[10]/44.012800; /*N2O */
-    YOW += y[11]/15.014670; /*NH */
-    YOW += y[12]/14.006700; /*N */
-    YOW += y[13]/29.021370; /*NNH */
-    YOW += y[14]/28.013400; /*N2 */
+    YOW += y[0]*imw[0]; /*H */
+    YOW += y[1]*imw[1]; /*O */
+    YOW += y[2]*imw[2]; /*OH */
+    YOW += y[3]*imw[3]; /*H2 */
+    YOW += y[4]*imw[4]; /*O2 */
+    YOW += y[5]*imw[5]; /*HO2 */
+    YOW += y[6]*imw[6]; /*H2O */
+    YOW += y[7]*imw[7]; /*H2O2 */
+    YOW += y[8]*imw[8]; /*NO */
+    YOW += y[9]*imw[9]; /*NO2 */
+    YOW += y[10]*imw[10]; /*N2O */
+    YOW += y[11]*imw[11]; /*NH */
+    YOW += y[12]*imw[12]; /*N */
+    YOW += y[13]*imw[13]; /*NNH */
+    YOW += y[14]*imw[14]; /*N2 */
     /*Now compute y to x conversion */
     x[0] = y[0]/(1.007970*YOW); 
     x[1] = y[1]/(15.999400*YOW); 
@@ -1677,21 +1672,21 @@ void CKGBMS(double *P, double *T, double *y, int * iwrk, double * rwrk, double *
     double x[15]; /* need a ytx conversion */
     double YOW = 0; /*To hold 1/molecularweight */
     /*Compute inverse of mean molecular wt first */
-    YOW += y[0]/1.007970; /*H */
-    YOW += y[1]/15.999400; /*O */
-    YOW += y[2]/17.007370; /*OH */
-    YOW += y[3]/2.015940; /*H2 */
-    YOW += y[4]/31.998800; /*O2 */
-    YOW += y[5]/33.006770; /*HO2 */
-    YOW += y[6]/18.015340; /*H2O */
-    YOW += y[7]/34.014740; /*H2O2 */
-    YOW += y[8]/30.006100; /*NO */
-    YOW += y[9]/46.005500; /*NO2 */
-    YOW += y[10]/44.012800; /*N2O */
-    YOW += y[11]/15.014670; /*NH */
-    YOW += y[12]/14.006700; /*N */
-    YOW += y[13]/29.021370; /*NNH */
-    YOW += y[14]/28.013400; /*N2 */
+    YOW += y[0]*imw[0]; /*H */
+    YOW += y[1]*imw[1]; /*O */
+    YOW += y[2]*imw[2]; /*OH */
+    YOW += y[3]*imw[3]; /*H2 */
+    YOW += y[4]*imw[4]; /*O2 */
+    YOW += y[5]*imw[5]; /*HO2 */
+    YOW += y[6]*imw[6]; /*H2O */
+    YOW += y[7]*imw[7]; /*H2O2 */
+    YOW += y[8]*imw[8]; /*NO */
+    YOW += y[9]*imw[9]; /*NO2 */
+    YOW += y[10]*imw[10]; /*N2O */
+    YOW += y[11]*imw[11]; /*NH */
+    YOW += y[12]*imw[12]; /*N */
+    YOW += y[13]*imw[13]; /*NNH */
+    YOW += y[14]*imw[14]; /*N2 */
     /*Now compute y to x conversion */
     x[0] = y[0]/(1.007970*YOW); 
     x[1] = y[1]/(15.999400*YOW); 
@@ -1766,21 +1761,21 @@ void CKABMS(double *P, double *T, double *y, int * iwrk, double * rwrk, double *
     double x[15]; /* need a ytx conversion */
     double YOW = 0; /*To hold 1/molecularweight */
     /*Compute inverse of mean molecular wt first */
-    YOW += y[0]/1.007970; /*H */
-    YOW += y[1]/15.999400; /*O */
-    YOW += y[2]/17.007370; /*OH */
-    YOW += y[3]/2.015940; /*H2 */
-    YOW += y[4]/31.998800; /*O2 */
-    YOW += y[5]/33.006770; /*HO2 */
-    YOW += y[6]/18.015340; /*H2O */
-    YOW += y[7]/34.014740; /*H2O2 */
-    YOW += y[8]/30.006100; /*NO */
-    YOW += y[9]/46.005500; /*NO2 */
-    YOW += y[10]/44.012800; /*N2O */
-    YOW += y[11]/15.014670; /*NH */
-    YOW += y[12]/14.006700; /*N */
-    YOW += y[13]/29.021370; /*NNH */
-    YOW += y[14]/28.013400; /*N2 */
+    YOW += y[0]*imw[0]; /*H */
+    YOW += y[1]*imw[1]; /*O */
+    YOW += y[2]*imw[2]; /*OH */
+    YOW += y[3]*imw[3]; /*H2 */
+    YOW += y[4]*imw[4]; /*O2 */
+    YOW += y[5]*imw[5]; /*HO2 */
+    YOW += y[6]*imw[6]; /*H2O */
+    YOW += y[7]*imw[7]; /*H2O2 */
+    YOW += y[8]*imw[8]; /*NO */
+    YOW += y[9]*imw[9]; /*NO2 */
+    YOW += y[10]*imw[10]; /*N2O */
+    YOW += y[11]*imw[11]; /*NH */
+    YOW += y[12]*imw[12]; /*N */
+    YOW += y[13]*imw[13]; /*NNH */
+    YOW += y[14]*imw[14]; /*N2 */
     /*Now compute y to x conversion */
     x[0] = y[0]/(1.007970*YOW); 
     x[1] = y[1]/(15.999400*YOW); 
@@ -1849,41 +1844,41 @@ void CKWYP(double * P, double * T, double * y, int * iwrk, double * rwrk, double
     double YOW = 0; 
     double PWORT; 
     /*Compute inverse of mean molecular wt first */
-    YOW += y[0]/1.007970; /*H */
-    YOW += y[1]/15.999400; /*O */
-    YOW += y[2]/17.007370; /*OH */
-    YOW += y[3]/2.015940; /*H2 */
-    YOW += y[4]/31.998800; /*O2 */
-    YOW += y[5]/33.006770; /*HO2 */
-    YOW += y[6]/18.015340; /*H2O */
-    YOW += y[7]/34.014740; /*H2O2 */
-    YOW += y[8]/30.006100; /*NO */
-    YOW += y[9]/46.005500; /*NO2 */
-    YOW += y[10]/44.012800; /*N2O */
-    YOW += y[11]/15.014670; /*NH */
-    YOW += y[12]/14.006700; /*N */
-    YOW += y[13]/29.021370; /*NNH */
-    YOW += y[14]/28.013400; /*N2 */
+    YOW += y[0]*imw[0]; /*H */
+    YOW += y[1]*imw[1]; /*O */
+    YOW += y[2]*imw[2]; /*OH */
+    YOW += y[3]*imw[3]; /*H2 */
+    YOW += y[4]*imw[4]; /*O2 */
+    YOW += y[5]*imw[5]; /*HO2 */
+    YOW += y[6]*imw[6]; /*H2O */
+    YOW += y[7]*imw[7]; /*H2O2 */
+    YOW += y[8]*imw[8]; /*NO */
+    YOW += y[9]*imw[9]; /*NO2 */
+    YOW += y[10]*imw[10]; /*N2O */
+    YOW += y[11]*imw[11]; /*NH */
+    YOW += y[12]*imw[12]; /*N */
+    YOW += y[13]*imw[13]; /*NNH */
+    YOW += y[14]*imw[14]; /*N2 */
     /*PW/RT (see Eq. 7) */
     PWORT = (*P)/(YOW * 8.31451e+07 * (*T)); 
     /*multiply by 1e6 so c goes to SI */
     PWORT *= 1e6; 
     /*Now compute conversion (and go to SI) */
-    c[0] = PWORT * y[0]/1.007970; 
-    c[1] = PWORT * y[1]/15.999400; 
-    c[2] = PWORT * y[2]/17.007370; 
-    c[3] = PWORT * y[3]/2.015940; 
-    c[4] = PWORT * y[4]/31.998800; 
-    c[5] = PWORT * y[5]/33.006770; 
-    c[6] = PWORT * y[6]/18.015340; 
-    c[7] = PWORT * y[7]/34.014740; 
-    c[8] = PWORT * y[8]/30.006100; 
-    c[9] = PWORT * y[9]/46.005500; 
-    c[10] = PWORT * y[10]/44.012800; 
-    c[11] = PWORT * y[11]/15.014670; 
-    c[12] = PWORT * y[12]/14.006700; 
-    c[13] = PWORT * y[13]/29.021370; 
-    c[14] = PWORT * y[14]/28.013400; 
+    c[0] = PWORT * y[0]*imw[0]; 
+    c[1] = PWORT * y[1]*imw[1]; 
+    c[2] = PWORT * y[2]*imw[2]; 
+    c[3] = PWORT * y[3]*imw[3]; 
+    c[4] = PWORT * y[4]*imw[4]; 
+    c[5] = PWORT * y[5]*imw[5]; 
+    c[6] = PWORT * y[6]*imw[6]; 
+    c[7] = PWORT * y[7]*imw[7]; 
+    c[8] = PWORT * y[8]*imw[8]; 
+    c[9] = PWORT * y[9]*imw[9]; 
+    c[10] = PWORT * y[10]*imw[10]; 
+    c[11] = PWORT * y[11]*imw[11]; 
+    c[12] = PWORT * y[12]*imw[12]; 
+    c[13] = PWORT * y[13]*imw[13]; 
+    c[14] = PWORT * y[14]*imw[14]; 
 
     /*convert to chemkin units */
     productionRate(wdot, c, *T);
@@ -1925,21 +1920,21 @@ void CKWYR(double * rho, double * T, double * y, int * iwrk, double * rwrk, doub
     int id; /*loop counter */
     double c[15]; /*temporary storage */
     /*See Eq 8 with an extra 1e6 so c goes to SI */
-    c[0] = 1e6 * (*rho) * y[0]/1.007970; 
-    c[1] = 1e6 * (*rho) * y[1]/15.999400; 
-    c[2] = 1e6 * (*rho) * y[2]/17.007370; 
-    c[3] = 1e6 * (*rho) * y[3]/2.015940; 
-    c[4] = 1e6 * (*rho) * y[4]/31.998800; 
-    c[5] = 1e6 * (*rho) * y[5]/33.006770; 
-    c[6] = 1e6 * (*rho) * y[6]/18.015340; 
-    c[7] = 1e6 * (*rho) * y[7]/34.014740; 
-    c[8] = 1e6 * (*rho) * y[8]/30.006100; 
-    c[9] = 1e6 * (*rho) * y[9]/46.005500; 
-    c[10] = 1e6 * (*rho) * y[10]/44.012800; 
-    c[11] = 1e6 * (*rho) * y[11]/15.014670; 
-    c[12] = 1e6 * (*rho) * y[12]/14.006700; 
-    c[13] = 1e6 * (*rho) * y[13]/29.021370; 
-    c[14] = 1e6 * (*rho) * y[14]/28.013400; 
+    c[0] = 1e6 * (*rho) * y[0]*imw[0]; 
+    c[1] = 1e6 * (*rho) * y[1]*imw[1]; 
+    c[2] = 1e6 * (*rho) * y[2]*imw[2]; 
+    c[3] = 1e6 * (*rho) * y[3]*imw[3]; 
+    c[4] = 1e6 * (*rho) * y[4]*imw[4]; 
+    c[5] = 1e6 * (*rho) * y[5]*imw[5]; 
+    c[6] = 1e6 * (*rho) * y[6]*imw[6]; 
+    c[7] = 1e6 * (*rho) * y[7]*imw[7]; 
+    c[8] = 1e6 * (*rho) * y[8]*imw[8]; 
+    c[9] = 1e6 * (*rho) * y[9]*imw[9]; 
+    c[10] = 1e6 * (*rho) * y[10]*imw[10]; 
+    c[11] = 1e6 * (*rho) * y[11]*imw[11]; 
+    c[12] = 1e6 * (*rho) * y[12]*imw[12]; 
+    c[13] = 1e6 * (*rho) * y[13]*imw[13]; 
+    c[14] = 1e6 * (*rho) * y[14]*imw[14]; 
 
     /*call productionRate */
     productionRate(wdot, c, *T);
@@ -2017,7 +2012,8 @@ void CKQC(double * T, double * C, int * iwrk, double * rwrk, double * qdot)
 }
 
 
-/*Returns the rate of progress for each reaction */
+/*Returns the progress rates of each reactions */
+/*Given P, T, and mole fractions */
 void CKKFKR(double * P, double * T, double * x, int * iwrk, double * rwrk, double * q_f, double * q_r)
 {
     int id; /*loop counter */
@@ -2032,6 +2028,7 @@ void CKKFKR(double * P, double * T, double * x, int * iwrk, double * rwrk, doubl
     /*convert to chemkin units */
     progressRateFR(q_f, q_r, c, *T);
 
+    /*convert to chemkin units */
     for (id = 0; id < 58; ++id) {
         q_f[id] *= 1.0e-6;
         q_r[id] *= 1.0e-6;
@@ -2048,41 +2045,41 @@ void CKQYP(double * P, double * T, double * y, int * iwrk, double * rwrk, double
     double YOW = 0; 
     double PWORT; 
     /*Compute inverse of mean molecular wt first */
-    YOW += y[0]/1.007970; /*H */
-    YOW += y[1]/15.999400; /*O */
-    YOW += y[2]/17.007370; /*OH */
-    YOW += y[3]/2.015940; /*H2 */
-    YOW += y[4]/31.998800; /*O2 */
-    YOW += y[5]/33.006770; /*HO2 */
-    YOW += y[6]/18.015340; /*H2O */
-    YOW += y[7]/34.014740; /*H2O2 */
-    YOW += y[8]/30.006100; /*NO */
-    YOW += y[9]/46.005500; /*NO2 */
-    YOW += y[10]/44.012800; /*N2O */
-    YOW += y[11]/15.014670; /*NH */
-    YOW += y[12]/14.006700; /*N */
-    YOW += y[13]/29.021370; /*NNH */
-    YOW += y[14]/28.013400; /*N2 */
+    YOW += y[0]*imw[0]; /*H */
+    YOW += y[1]*imw[1]; /*O */
+    YOW += y[2]*imw[2]; /*OH */
+    YOW += y[3]*imw[3]; /*H2 */
+    YOW += y[4]*imw[4]; /*O2 */
+    YOW += y[5]*imw[5]; /*HO2 */
+    YOW += y[6]*imw[6]; /*H2O */
+    YOW += y[7]*imw[7]; /*H2O2 */
+    YOW += y[8]*imw[8]; /*NO */
+    YOW += y[9]*imw[9]; /*NO2 */
+    YOW += y[10]*imw[10]; /*N2O */
+    YOW += y[11]*imw[11]; /*NH */
+    YOW += y[12]*imw[12]; /*N */
+    YOW += y[13]*imw[13]; /*NNH */
+    YOW += y[14]*imw[14]; /*N2 */
     /*PW/RT (see Eq. 7) */
     PWORT = (*P)/(YOW * 8.31451e+07 * (*T)); 
     /*multiply by 1e6 so c goes to SI */
     PWORT *= 1e6; 
     /*Now compute conversion (and go to SI) */
-    c[0] = PWORT * y[0]/1.007970; 
-    c[1] = PWORT * y[1]/15.999400; 
-    c[2] = PWORT * y[2]/17.007370; 
-    c[3] = PWORT * y[3]/2.015940; 
-    c[4] = PWORT * y[4]/31.998800; 
-    c[5] = PWORT * y[5]/33.006770; 
-    c[6] = PWORT * y[6]/18.015340; 
-    c[7] = PWORT * y[7]/34.014740; 
-    c[8] = PWORT * y[8]/30.006100; 
-    c[9] = PWORT * y[9]/46.005500; 
-    c[10] = PWORT * y[10]/44.012800; 
-    c[11] = PWORT * y[11]/15.014670; 
-    c[12] = PWORT * y[12]/14.006700; 
-    c[13] = PWORT * y[13]/29.021370; 
-    c[14] = PWORT * y[14]/28.013400; 
+    c[0] = PWORT * y[0]*imw[0]; 
+    c[1] = PWORT * y[1]*imw[1]; 
+    c[2] = PWORT * y[2]*imw[2]; 
+    c[3] = PWORT * y[3]*imw[3]; 
+    c[4] = PWORT * y[4]*imw[4]; 
+    c[5] = PWORT * y[5]*imw[5]; 
+    c[6] = PWORT * y[6]*imw[6]; 
+    c[7] = PWORT * y[7]*imw[7]; 
+    c[8] = PWORT * y[8]*imw[8]; 
+    c[9] = PWORT * y[9]*imw[9]; 
+    c[10] = PWORT * y[10]*imw[10]; 
+    c[11] = PWORT * y[11]*imw[11]; 
+    c[12] = PWORT * y[12]*imw[12]; 
+    c[13] = PWORT * y[13]*imw[13]; 
+    c[14] = PWORT * y[14]*imw[14]; 
 
     /*convert to chemkin units */
     progressRate(qdot, c, *T);
@@ -2124,21 +2121,21 @@ void CKQYR(double * rho, double * T, double * y, int * iwrk, double * rwrk, doub
     int id; /*loop counter */
     double c[15]; /*temporary storage */
     /*See Eq 8 with an extra 1e6 so c goes to SI */
-    c[0] = 1e6 * (*rho) * y[0]/1.007970; 
-    c[1] = 1e6 * (*rho) * y[1]/15.999400; 
-    c[2] = 1e6 * (*rho) * y[2]/17.007370; 
-    c[3] = 1e6 * (*rho) * y[3]/2.015940; 
-    c[4] = 1e6 * (*rho) * y[4]/31.998800; 
-    c[5] = 1e6 * (*rho) * y[5]/33.006770; 
-    c[6] = 1e6 * (*rho) * y[6]/18.015340; 
-    c[7] = 1e6 * (*rho) * y[7]/34.014740; 
-    c[8] = 1e6 * (*rho) * y[8]/30.006100; 
-    c[9] = 1e6 * (*rho) * y[9]/46.005500; 
-    c[10] = 1e6 * (*rho) * y[10]/44.012800; 
-    c[11] = 1e6 * (*rho) * y[11]/15.014670; 
-    c[12] = 1e6 * (*rho) * y[12]/14.006700; 
-    c[13] = 1e6 * (*rho) * y[13]/29.021370; 
-    c[14] = 1e6 * (*rho) * y[14]/28.013400; 
+    c[0] = 1e6 * (*rho) * y[0]*imw[0]; 
+    c[1] = 1e6 * (*rho) * y[1]*imw[1]; 
+    c[2] = 1e6 * (*rho) * y[2]*imw[2]; 
+    c[3] = 1e6 * (*rho) * y[3]*imw[3]; 
+    c[4] = 1e6 * (*rho) * y[4]*imw[4]; 
+    c[5] = 1e6 * (*rho) * y[5]*imw[5]; 
+    c[6] = 1e6 * (*rho) * y[6]*imw[6]; 
+    c[7] = 1e6 * (*rho) * y[7]*imw[7]; 
+    c[8] = 1e6 * (*rho) * y[8]*imw[8]; 
+    c[9] = 1e6 * (*rho) * y[9]*imw[9]; 
+    c[10] = 1e6 * (*rho) * y[10]*imw[10]; 
+    c[11] = 1e6 * (*rho) * y[11]*imw[11]; 
+    c[12] = 1e6 * (*rho) * y[12]*imw[12]; 
+    c[13] = 1e6 * (*rho) * y[13]*imw[13]; 
+    c[14] = 1e6 * (*rho) * y[14]*imw[14]; 
 
     /*call progressRate */
     progressRate(qdot, c, *T);
@@ -2199,352 +2196,352 @@ void CKNU(int * kdim, int * iwrk, double * rwrk, int * nuki)
     int id; /*loop counter */
     int kd = (*kdim); 
     /*Zero nuki */
-    for (id = 0; id < 15 * 58; ++ id) {
+    for (id = 0; id < 15 * kd; ++ id) {
          nuki[id] = 0; 
     }
 
     /*reaction 1: H + O2 <=> O + OH */
-    nuki[ 0 * kd + 0 ] = -1 ;
-    nuki[ 4 * kd + 0 ] = -1 ;
-    nuki[ 1 * kd + 0 ] = +1 ;
-    nuki[ 2 * kd + 0 ] = +1 ;
+    nuki[ 0 * kd + 0 ] += -1 ;
+    nuki[ 4 * kd + 0 ] += -1 ;
+    nuki[ 1 * kd + 0 ] += +1 ;
+    nuki[ 2 * kd + 0 ] += +1 ;
 
     /*reaction 2: H + H + M <=> H2 + M */
-    nuki[ 0 * kd + 1 ] = -1 ;
-    nuki[ 0 * kd + 1 ] = -1 ;
-    nuki[ 3 * kd + 1 ] = +1 ;
+    nuki[ 0 * kd + 1 ] += -1 ;
+    nuki[ 0 * kd + 1 ] += -1 ;
+    nuki[ 3 * kd + 1 ] += +1 ;
 
     /*reaction 3: H + H + N2 <=> H2 + N2 */
-    nuki[ 0 * kd + 2 ] = -1 ;
-    nuki[ 0 * kd + 2 ] = -1 ;
-    nuki[ 14 * kd + 2 ] = -1 ;
-    nuki[ 3 * kd + 2 ] = +1 ;
-    nuki[ 14 * kd + 2 ] = +1 ;
+    nuki[ 0 * kd + 2 ] += -1 ;
+    nuki[ 0 * kd + 2 ] += -1 ;
+    nuki[ 14 * kd + 2 ] += -1 ;
+    nuki[ 3 * kd + 2 ] += +1 ;
+    nuki[ 14 * kd + 2 ] += +1 ;
 
     /*reaction 4: H + H + H2 <=> H2 + H2 */
-    nuki[ 0 * kd + 3 ] = -1 ;
-    nuki[ 0 * kd + 3 ] = -1 ;
-    nuki[ 3 * kd + 3 ] = -1 ;
-    nuki[ 3 * kd + 3 ] = +1 ;
-    nuki[ 3 * kd + 3 ] = +1 ;
+    nuki[ 0 * kd + 3 ] += -1 ;
+    nuki[ 0 * kd + 3 ] += -1 ;
+    nuki[ 3 * kd + 3 ] += -1 ;
+    nuki[ 3 * kd + 3 ] += +1 ;
+    nuki[ 3 * kd + 3 ] += +1 ;
 
     /*reaction 5: H + H + H2O <=> H2 + H2O */
-    nuki[ 0 * kd + 4 ] = -1 ;
-    nuki[ 0 * kd + 4 ] = -1 ;
-    nuki[ 6 * kd + 4 ] = -1 ;
-    nuki[ 3 * kd + 4 ] = +1 ;
-    nuki[ 6 * kd + 4 ] = +1 ;
+    nuki[ 0 * kd + 4 ] += -1 ;
+    nuki[ 0 * kd + 4 ] += -1 ;
+    nuki[ 6 * kd + 4 ] += -1 ;
+    nuki[ 3 * kd + 4 ] += +1 ;
+    nuki[ 6 * kd + 4 ] += +1 ;
 
     /*reaction 6: H + O + M <=> OH + M */
-    nuki[ 0 * kd + 5 ] = -1 ;
-    nuki[ 1 * kd + 5 ] = -1 ;
-    nuki[ 2 * kd + 5 ] = +1 ;
+    nuki[ 0 * kd + 5 ] += -1 ;
+    nuki[ 1 * kd + 5 ] += -1 ;
+    nuki[ 2 * kd + 5 ] += +1 ;
 
     /*reaction 7: H + O2 (+M) <=> HO2 (+M) */
-    nuki[ 0 * kd + 6 ] = -1 ;
-    nuki[ 4 * kd + 6 ] = -1 ;
-    nuki[ 5 * kd + 6 ] = +1 ;
+    nuki[ 0 * kd + 6 ] += -1 ;
+    nuki[ 4 * kd + 6 ] += -1 ;
+    nuki[ 5 * kd + 6 ] += +1 ;
 
     /*reaction 8: H + O2 (+N2) <=> HO2 (+N2) */
-    nuki[ 0 * kd + 7 ] = -1 ;
-    nuki[ 4 * kd + 7 ] = -1 ;
-    nuki[ 5 * kd + 7 ] = +1 ;
+    nuki[ 0 * kd + 7 ] += -1 ;
+    nuki[ 4 * kd + 7 ] += -1 ;
+    nuki[ 5 * kd + 7 ] += +1 ;
 
     /*reaction 9: O + O + M <=> O2 + M */
-    nuki[ 1 * kd + 8 ] = -1 ;
-    nuki[ 1 * kd + 8 ] = -1 ;
-    nuki[ 4 * kd + 8 ] = +1 ;
+    nuki[ 1 * kd + 8 ] += -1 ;
+    nuki[ 1 * kd + 8 ] += -1 ;
+    nuki[ 4 * kd + 8 ] += +1 ;
 
     /*reaction 10: O + H2 <=> OH + H */
-    nuki[ 1 * kd + 9 ] = -1 ;
-    nuki[ 3 * kd + 9 ] = -1 ;
-    nuki[ 2 * kd + 9 ] = +1 ;
-    nuki[ 0 * kd + 9 ] = +1 ;
+    nuki[ 1 * kd + 9 ] += -1 ;
+    nuki[ 3 * kd + 9 ] += -1 ;
+    nuki[ 2 * kd + 9 ] += +1 ;
+    nuki[ 0 * kd + 9 ] += +1 ;
 
     /*reaction 11: O + H2 <=> OH + H */
-    nuki[ 1 * kd + 10 ] = -1 ;
-    nuki[ 3 * kd + 10 ] = -1 ;
-    nuki[ 2 * kd + 10 ] = +1 ;
-    nuki[ 0 * kd + 10 ] = +1 ;
+    nuki[ 1 * kd + 10 ] += -1 ;
+    nuki[ 3 * kd + 10 ] += -1 ;
+    nuki[ 2 * kd + 10 ] += +1 ;
+    nuki[ 0 * kd + 10 ] += +1 ;
 
     /*reaction 12: OH + OH <=> O + H2O */
-    nuki[ 2 * kd + 11 ] = -1 ;
-    nuki[ 2 * kd + 11 ] = -1 ;
-    nuki[ 1 * kd + 11 ] = +1 ;
-    nuki[ 6 * kd + 11 ] = +1 ;
+    nuki[ 2 * kd + 11 ] += -1 ;
+    nuki[ 2 * kd + 11 ] += -1 ;
+    nuki[ 1 * kd + 11 ] += +1 ;
+    nuki[ 6 * kd + 11 ] += +1 ;
 
     /*reaction 13: OH + H + M <=> H2O + M */
-    nuki[ 2 * kd + 12 ] = -1 ;
-    nuki[ 0 * kd + 12 ] = -1 ;
-    nuki[ 6 * kd + 12 ] = +1 ;
+    nuki[ 2 * kd + 12 ] += -1 ;
+    nuki[ 0 * kd + 12 ] += -1 ;
+    nuki[ 6 * kd + 12 ] += +1 ;
 
     /*reaction 14: OH + H2 <=> H + H2O */
-    nuki[ 2 * kd + 13 ] = -1 ;
-    nuki[ 3 * kd + 13 ] = -1 ;
-    nuki[ 0 * kd + 13 ] = +1 ;
-    nuki[ 6 * kd + 13 ] = +1 ;
+    nuki[ 2 * kd + 13 ] += -1 ;
+    nuki[ 3 * kd + 13 ] += -1 ;
+    nuki[ 0 * kd + 13 ] += +1 ;
+    nuki[ 6 * kd + 13 ] += +1 ;
 
     /*reaction 15: H2 + O2 <=> HO2 + H */
-    nuki[ 3 * kd + 14 ] = -1 ;
-    nuki[ 4 * kd + 14 ] = -1 ;
-    nuki[ 5 * kd + 14 ] = +1 ;
-    nuki[ 0 * kd + 14 ] = +1 ;
+    nuki[ 3 * kd + 14 ] += -1 ;
+    nuki[ 4 * kd + 14 ] += -1 ;
+    nuki[ 5 * kd + 14 ] += +1 ;
+    nuki[ 0 * kd + 14 ] += +1 ;
 
     /*reaction 16: HO2 + H <=> OH + OH */
-    nuki[ 5 * kd + 15 ] = -1 ;
-    nuki[ 0 * kd + 15 ] = -1 ;
-    nuki[ 2 * kd + 15 ] = +1 ;
-    nuki[ 2 * kd + 15 ] = +1 ;
+    nuki[ 5 * kd + 15 ] += -1 ;
+    nuki[ 0 * kd + 15 ] += -1 ;
+    nuki[ 2 * kd + 15 ] += +1 ;
+    nuki[ 2 * kd + 15 ] += +1 ;
 
     /*reaction 17: HO2 + H <=> H2O + O */
-    nuki[ 5 * kd + 16 ] = -1 ;
-    nuki[ 0 * kd + 16 ] = -1 ;
-    nuki[ 6 * kd + 16 ] = +1 ;
-    nuki[ 1 * kd + 16 ] = +1 ;
+    nuki[ 5 * kd + 16 ] += -1 ;
+    nuki[ 0 * kd + 16 ] += -1 ;
+    nuki[ 6 * kd + 16 ] += +1 ;
+    nuki[ 1 * kd + 16 ] += +1 ;
 
     /*reaction 18: HO2 + O <=> OH + O2 */
-    nuki[ 5 * kd + 17 ] = -1 ;
-    nuki[ 1 * kd + 17 ] = -1 ;
-    nuki[ 2 * kd + 17 ] = +1 ;
-    nuki[ 4 * kd + 17 ] = +1 ;
+    nuki[ 5 * kd + 17 ] += -1 ;
+    nuki[ 1 * kd + 17 ] += -1 ;
+    nuki[ 2 * kd + 17 ] += +1 ;
+    nuki[ 4 * kd + 17 ] += +1 ;
 
     /*reaction 19: HO2 + OH <=> H2O + O2 */
-    nuki[ 5 * kd + 18 ] = -1 ;
-    nuki[ 2 * kd + 18 ] = -1 ;
-    nuki[ 6 * kd + 18 ] = +1 ;
-    nuki[ 4 * kd + 18 ] = +1 ;
+    nuki[ 5 * kd + 18 ] += -1 ;
+    nuki[ 2 * kd + 18 ] += -1 ;
+    nuki[ 6 * kd + 18 ] += +1 ;
+    nuki[ 4 * kd + 18 ] += +1 ;
 
     /*reaction 20: HO2 + OH <=> H2O + O2 */
-    nuki[ 5 * kd + 19 ] = -1 ;
-    nuki[ 2 * kd + 19 ] = -1 ;
-    nuki[ 6 * kd + 19 ] = +1 ;
-    nuki[ 4 * kd + 19 ] = +1 ;
+    nuki[ 5 * kd + 19 ] += -1 ;
+    nuki[ 2 * kd + 19 ] += -1 ;
+    nuki[ 6 * kd + 19 ] += +1 ;
+    nuki[ 4 * kd + 19 ] += +1 ;
 
     /*reaction 21: HO2 + OH <=> H2O + O2 */
-    nuki[ 5 * kd + 20 ] = -1 ;
-    nuki[ 2 * kd + 20 ] = -1 ;
-    nuki[ 6 * kd + 20 ] = +1 ;
-    nuki[ 4 * kd + 20 ] = +1 ;
+    nuki[ 5 * kd + 20 ] += -1 ;
+    nuki[ 2 * kd + 20 ] += -1 ;
+    nuki[ 6 * kd + 20 ] += +1 ;
+    nuki[ 4 * kd + 20 ] += +1 ;
 
     /*reaction 22: HO2 + HO2 <=> H2O2 + O2 */
-    nuki[ 5 * kd + 21 ] = -1 ;
-    nuki[ 5 * kd + 21 ] = -1 ;
-    nuki[ 7 * kd + 21 ] = +1 ;
-    nuki[ 4 * kd + 21 ] = +1 ;
+    nuki[ 5 * kd + 21 ] += -1 ;
+    nuki[ 5 * kd + 21 ] += -1 ;
+    nuki[ 7 * kd + 21 ] += +1 ;
+    nuki[ 4 * kd + 21 ] += +1 ;
 
     /*reaction 23: HO2 + HO2 <=> H2O2 + O2 */
-    nuki[ 5 * kd + 22 ] = -1 ;
-    nuki[ 5 * kd + 22 ] = -1 ;
-    nuki[ 7 * kd + 22 ] = +1 ;
-    nuki[ 4 * kd + 22 ] = +1 ;
+    nuki[ 5 * kd + 22 ] += -1 ;
+    nuki[ 5 * kd + 22 ] += -1 ;
+    nuki[ 7 * kd + 22 ] += +1 ;
+    nuki[ 4 * kd + 22 ] += +1 ;
 
     /*reaction 24: H2O2 (+M) <=> OH + OH (+M) */
-    nuki[ 7 * kd + 23 ] = -1 ;
-    nuki[ 2 * kd + 23 ] = +1 ;
-    nuki[ 2 * kd + 23 ] = +1 ;
+    nuki[ 7 * kd + 23 ] += -1 ;
+    nuki[ 2 * kd + 23 ] += +1 ;
+    nuki[ 2 * kd + 23 ] += +1 ;
 
     /*reaction 25: H2O2 + H <=> H2O + OH */
-    nuki[ 7 * kd + 24 ] = -1 ;
-    nuki[ 0 * kd + 24 ] = -1 ;
-    nuki[ 6 * kd + 24 ] = +1 ;
-    nuki[ 2 * kd + 24 ] = +1 ;
+    nuki[ 7 * kd + 24 ] += -1 ;
+    nuki[ 0 * kd + 24 ] += -1 ;
+    nuki[ 6 * kd + 24 ] += +1 ;
+    nuki[ 2 * kd + 24 ] += +1 ;
 
     /*reaction 26: H2O2 + H <=> HO2 + H2 */
-    nuki[ 7 * kd + 25 ] = -1 ;
-    nuki[ 0 * kd + 25 ] = -1 ;
-    nuki[ 5 * kd + 25 ] = +1 ;
-    nuki[ 3 * kd + 25 ] = +1 ;
+    nuki[ 7 * kd + 25 ] += -1 ;
+    nuki[ 0 * kd + 25 ] += -1 ;
+    nuki[ 5 * kd + 25 ] += +1 ;
+    nuki[ 3 * kd + 25 ] += +1 ;
 
     /*reaction 27: H2O2 + O <=> HO2 + OH */
-    nuki[ 7 * kd + 26 ] = -1 ;
-    nuki[ 1 * kd + 26 ] = -1 ;
-    nuki[ 5 * kd + 26 ] = +1 ;
-    nuki[ 2 * kd + 26 ] = +1 ;
+    nuki[ 7 * kd + 26 ] += -1 ;
+    nuki[ 1 * kd + 26 ] += -1 ;
+    nuki[ 5 * kd + 26 ] += +1 ;
+    nuki[ 2 * kd + 26 ] += +1 ;
 
     /*reaction 28: H2O2 + OH <=> H2O + HO2 */
-    nuki[ 7 * kd + 27 ] = -1 ;
-    nuki[ 2 * kd + 27 ] = -1 ;
-    nuki[ 6 * kd + 27 ] = +1 ;
-    nuki[ 5 * kd + 27 ] = +1 ;
+    nuki[ 7 * kd + 27 ] += -1 ;
+    nuki[ 2 * kd + 27 ] += -1 ;
+    nuki[ 6 * kd + 27 ] += +1 ;
+    nuki[ 5 * kd + 27 ] += +1 ;
 
     /*reaction 29: H2O2 + OH <=> H2O + HO2 */
-    nuki[ 7 * kd + 28 ] = -1 ;
-    nuki[ 2 * kd + 28 ] = -1 ;
-    nuki[ 6 * kd + 28 ] = +1 ;
-    nuki[ 5 * kd + 28 ] = +1 ;
+    nuki[ 7 * kd + 28 ] += -1 ;
+    nuki[ 2 * kd + 28 ] += -1 ;
+    nuki[ 6 * kd + 28 ] += +1 ;
+    nuki[ 5 * kd + 28 ] += +1 ;
 
     /*reaction 30: NO + O (+M) <=> NO2 (+M) */
-    nuki[ 8 * kd + 29 ] = -1 ;
-    nuki[ 1 * kd + 29 ] = -1 ;
-    nuki[ 9 * kd + 29 ] = +1 ;
+    nuki[ 8 * kd + 29 ] += -1 ;
+    nuki[ 1 * kd + 29 ] += -1 ;
+    nuki[ 9 * kd + 29 ] += +1 ;
 
     /*reaction 31: NO + HO2 <=> NO2 + OH */
-    nuki[ 8 * kd + 30 ] = -1 ;
-    nuki[ 5 * kd + 30 ] = -1 ;
-    nuki[ 9 * kd + 30 ] = +1 ;
-    nuki[ 2 * kd + 30 ] = +1 ;
+    nuki[ 8 * kd + 30 ] += -1 ;
+    nuki[ 5 * kd + 30 ] += -1 ;
+    nuki[ 9 * kd + 30 ] += +1 ;
+    nuki[ 2 * kd + 30 ] += +1 ;
 
     /*reaction 32: NO2 + H <=> NO + OH */
-    nuki[ 9 * kd + 31 ] = -1 ;
-    nuki[ 0 * kd + 31 ] = -1 ;
-    nuki[ 8 * kd + 31 ] = +1 ;
-    nuki[ 2 * kd + 31 ] = +1 ;
+    nuki[ 9 * kd + 31 ] += -1 ;
+    nuki[ 0 * kd + 31 ] += -1 ;
+    nuki[ 8 * kd + 31 ] += +1 ;
+    nuki[ 2 * kd + 31 ] += +1 ;
 
     /*reaction 33: NO2 + O <=> NO + O2 */
-    nuki[ 9 * kd + 32 ] = -1 ;
-    nuki[ 1 * kd + 32 ] = -1 ;
-    nuki[ 8 * kd + 32 ] = +1 ;
-    nuki[ 4 * kd + 32 ] = +1 ;
+    nuki[ 9 * kd + 32 ] += -1 ;
+    nuki[ 1 * kd + 32 ] += -1 ;
+    nuki[ 8 * kd + 32 ] += +1 ;
+    nuki[ 4 * kd + 32 ] += +1 ;
 
     /*reaction 34: NO2 + NO2 <=> NO + NO + O2 */
-    nuki[ 9 * kd + 33 ] = -1 ;
-    nuki[ 9 * kd + 33 ] = -1 ;
-    nuki[ 8 * kd + 33 ] = +1 ;
-    nuki[ 8 * kd + 33 ] = +1 ;
-    nuki[ 4 * kd + 33 ] = +1 ;
+    nuki[ 9 * kd + 33 ] += -1 ;
+    nuki[ 9 * kd + 33 ] += -1 ;
+    nuki[ 8 * kd + 33 ] += +1 ;
+    nuki[ 8 * kd + 33 ] += +1 ;
+    nuki[ 4 * kd + 33 ] += +1 ;
 
     /*reaction 35: N2O (+M) <=> N2 + O (+M) */
-    nuki[ 10 * kd + 34 ] = -1 ;
-    nuki[ 14 * kd + 34 ] = +1 ;
-    nuki[ 1 * kd + 34 ] = +1 ;
+    nuki[ 10 * kd + 34 ] += -1 ;
+    nuki[ 14 * kd + 34 ] += +1 ;
+    nuki[ 1 * kd + 34 ] += +1 ;
 
     /*reaction 36: N2O + H <=> N2 + OH */
-    nuki[ 10 * kd + 35 ] = -1 ;
-    nuki[ 0 * kd + 35 ] = -1 ;
-    nuki[ 14 * kd + 35 ] = +1 ;
-    nuki[ 2 * kd + 35 ] = +1 ;
+    nuki[ 10 * kd + 35 ] += -1 ;
+    nuki[ 0 * kd + 35 ] += -1 ;
+    nuki[ 14 * kd + 35 ] += +1 ;
+    nuki[ 2 * kd + 35 ] += +1 ;
 
     /*reaction 37: N2O + H <=> N2 + OH */
-    nuki[ 10 * kd + 36 ] = -1 ;
-    nuki[ 0 * kd + 36 ] = -1 ;
-    nuki[ 14 * kd + 36 ] = +1 ;
-    nuki[ 2 * kd + 36 ] = +1 ;
+    nuki[ 10 * kd + 36 ] += -1 ;
+    nuki[ 0 * kd + 36 ] += -1 ;
+    nuki[ 14 * kd + 36 ] += +1 ;
+    nuki[ 2 * kd + 36 ] += +1 ;
 
     /*reaction 38: N2O + O <=> NO + NO */
-    nuki[ 10 * kd + 37 ] = -1 ;
-    nuki[ 1 * kd + 37 ] = -1 ;
-    nuki[ 8 * kd + 37 ] = +1 ;
-    nuki[ 8 * kd + 37 ] = +1 ;
+    nuki[ 10 * kd + 37 ] += -1 ;
+    nuki[ 1 * kd + 37 ] += -1 ;
+    nuki[ 8 * kd + 37 ] += +1 ;
+    nuki[ 8 * kd + 37 ] += +1 ;
 
     /*reaction 39: N2O + O <=> N2 + O2 */
-    nuki[ 10 * kd + 38 ] = -1 ;
-    nuki[ 1 * kd + 38 ] = -1 ;
-    nuki[ 14 * kd + 38 ] = +1 ;
-    nuki[ 4 * kd + 38 ] = +1 ;
+    nuki[ 10 * kd + 38 ] += -1 ;
+    nuki[ 1 * kd + 38 ] += -1 ;
+    nuki[ 14 * kd + 38 ] += +1 ;
+    nuki[ 4 * kd + 38 ] += +1 ;
 
     /*reaction 40: NH + H <=> N + H2 */
-    nuki[ 11 * kd + 39 ] = -1 ;
-    nuki[ 0 * kd + 39 ] = -1 ;
-    nuki[ 12 * kd + 39 ] = +1 ;
-    nuki[ 3 * kd + 39 ] = +1 ;
+    nuki[ 11 * kd + 39 ] += -1 ;
+    nuki[ 0 * kd + 39 ] += -1 ;
+    nuki[ 12 * kd + 39 ] += +1 ;
+    nuki[ 3 * kd + 39 ] += +1 ;
 
     /*reaction 41: NH + O <=> NO + H */
-    nuki[ 11 * kd + 40 ] = -1 ;
-    nuki[ 1 * kd + 40 ] = -1 ;
-    nuki[ 8 * kd + 40 ] = +1 ;
-    nuki[ 0 * kd + 40 ] = +1 ;
+    nuki[ 11 * kd + 40 ] += -1 ;
+    nuki[ 1 * kd + 40 ] += -1 ;
+    nuki[ 8 * kd + 40 ] += +1 ;
+    nuki[ 0 * kd + 40 ] += +1 ;
 
     /*reaction 42: NH + OH <=> N + H2O */
-    nuki[ 11 * kd + 41 ] = -1 ;
-    nuki[ 2 * kd + 41 ] = -1 ;
-    nuki[ 12 * kd + 41 ] = +1 ;
-    nuki[ 6 * kd + 41 ] = +1 ;
+    nuki[ 11 * kd + 41 ] += -1 ;
+    nuki[ 2 * kd + 41 ] += -1 ;
+    nuki[ 12 * kd + 41 ] += +1 ;
+    nuki[ 6 * kd + 41 ] += +1 ;
 
     /*reaction 43: NH + O2 <=> NO + OH */
-    nuki[ 11 * kd + 42 ] = -1 ;
-    nuki[ 4 * kd + 42 ] = -1 ;
-    nuki[ 8 * kd + 42 ] = +1 ;
-    nuki[ 2 * kd + 42 ] = +1 ;
+    nuki[ 11 * kd + 42 ] += -1 ;
+    nuki[ 4 * kd + 42 ] += -1 ;
+    nuki[ 8 * kd + 42 ] += +1 ;
+    nuki[ 2 * kd + 42 ] += +1 ;
 
     /*reaction 44: NH + NO <=> N2O + H */
-    nuki[ 11 * kd + 43 ] = -1 ;
-    nuki[ 8 * kd + 43 ] = -1 ;
-    nuki[ 10 * kd + 43 ] = +1 ;
-    nuki[ 0 * kd + 43 ] = +1 ;
+    nuki[ 11 * kd + 43 ] += -1 ;
+    nuki[ 8 * kd + 43 ] += -1 ;
+    nuki[ 10 * kd + 43 ] += +1 ;
+    nuki[ 0 * kd + 43 ] += +1 ;
 
     /*reaction 45: NH + NO <=> N2O + H */
-    nuki[ 11 * kd + 44 ] = -1 ;
-    nuki[ 8 * kd + 44 ] = -1 ;
-    nuki[ 10 * kd + 44 ] = +1 ;
-    nuki[ 0 * kd + 44 ] = +1 ;
+    nuki[ 11 * kd + 44 ] += -1 ;
+    nuki[ 8 * kd + 44 ] += -1 ;
+    nuki[ 10 * kd + 44 ] += +1 ;
+    nuki[ 0 * kd + 44 ] += +1 ;
 
     /*reaction 46: NH + NO <=> N2 + OH */
-    nuki[ 11 * kd + 45 ] = -1 ;
-    nuki[ 8 * kd + 45 ] = -1 ;
-    nuki[ 14 * kd + 45 ] = +1 ;
-    nuki[ 2 * kd + 45 ] = +1 ;
+    nuki[ 11 * kd + 45 ] += -1 ;
+    nuki[ 8 * kd + 45 ] += -1 ;
+    nuki[ 14 * kd + 45 ] += +1 ;
+    nuki[ 2 * kd + 45 ] += +1 ;
 
     /*reaction 47: NH + NO2 <=> N2O + OH */
-    nuki[ 11 * kd + 46 ] = -1 ;
-    nuki[ 9 * kd + 46 ] = -1 ;
-    nuki[ 10 * kd + 46 ] = +1 ;
-    nuki[ 2 * kd + 46 ] = +1 ;
+    nuki[ 11 * kd + 46 ] += -1 ;
+    nuki[ 9 * kd + 46 ] += -1 ;
+    nuki[ 10 * kd + 46 ] += +1 ;
+    nuki[ 2 * kd + 46 ] += +1 ;
 
     /*reaction 48: N + OH <=> NO + H */
-    nuki[ 12 * kd + 47 ] = -1 ;
-    nuki[ 2 * kd + 47 ] = -1 ;
-    nuki[ 8 * kd + 47 ] = +1 ;
-    nuki[ 0 * kd + 47 ] = +1 ;
+    nuki[ 12 * kd + 47 ] += -1 ;
+    nuki[ 2 * kd + 47 ] += -1 ;
+    nuki[ 8 * kd + 47 ] += +1 ;
+    nuki[ 0 * kd + 47 ] += +1 ;
 
     /*reaction 49: N + O2 <=> NO + O */
-    nuki[ 12 * kd + 48 ] = -1 ;
-    nuki[ 4 * kd + 48 ] = -1 ;
-    nuki[ 8 * kd + 48 ] = +1 ;
-    nuki[ 1 * kd + 48 ] = +1 ;
+    nuki[ 12 * kd + 48 ] += -1 ;
+    nuki[ 4 * kd + 48 ] += -1 ;
+    nuki[ 8 * kd + 48 ] += +1 ;
+    nuki[ 1 * kd + 48 ] += +1 ;
 
     /*reaction 50: N + NO <=> N2 + O */
-    nuki[ 12 * kd + 49 ] = -1 ;
-    nuki[ 8 * kd + 49 ] = -1 ;
-    nuki[ 14 * kd + 49 ] = +1 ;
-    nuki[ 1 * kd + 49 ] = +1 ;
+    nuki[ 12 * kd + 49 ] += -1 ;
+    nuki[ 8 * kd + 49 ] += -1 ;
+    nuki[ 14 * kd + 49 ] += +1 ;
+    nuki[ 1 * kd + 49 ] += +1 ;
 
     /*reaction 51: NNH <=> N2 + H */
-    nuki[ 13 * kd + 50 ] = -1 ;
-    nuki[ 14 * kd + 50 ] = +1 ;
-    nuki[ 0 * kd + 50 ] = +1 ;
+    nuki[ 13 * kd + 50 ] += -1 ;
+    nuki[ 14 * kd + 50 ] += +1 ;
+    nuki[ 0 * kd + 50 ] += +1 ;
 
     /*reaction 52: NNH + H <=> N2 + H2 */
-    nuki[ 13 * kd + 51 ] = -1 ;
-    nuki[ 0 * kd + 51 ] = -1 ;
-    nuki[ 14 * kd + 51 ] = +1 ;
-    nuki[ 3 * kd + 51 ] = +1 ;
+    nuki[ 13 * kd + 51 ] += -1 ;
+    nuki[ 0 * kd + 51 ] += -1 ;
+    nuki[ 14 * kd + 51 ] += +1 ;
+    nuki[ 3 * kd + 51 ] += +1 ;
 
     /*reaction 53: NNH + O <=> N2O + H */
-    nuki[ 13 * kd + 52 ] = -1 ;
-    nuki[ 1 * kd + 52 ] = -1 ;
-    nuki[ 10 * kd + 52 ] = +1 ;
-    nuki[ 0 * kd + 52 ] = +1 ;
+    nuki[ 13 * kd + 52 ] += -1 ;
+    nuki[ 1 * kd + 52 ] += -1 ;
+    nuki[ 10 * kd + 52 ] += +1 ;
+    nuki[ 0 * kd + 52 ] += +1 ;
 
     /*reaction 54: NNH + O <=> N2 + OH */
-    nuki[ 13 * kd + 53 ] = -1 ;
-    nuki[ 1 * kd + 53 ] = -1 ;
-    nuki[ 14 * kd + 53 ] = +1 ;
-    nuki[ 2 * kd + 53 ] = +1 ;
+    nuki[ 13 * kd + 53 ] += -1 ;
+    nuki[ 1 * kd + 53 ] += -1 ;
+    nuki[ 14 * kd + 53 ] += +1 ;
+    nuki[ 2 * kd + 53 ] += +1 ;
 
     /*reaction 55: NNH + O <=> NH + NO */
-    nuki[ 13 * kd + 54 ] = -1 ;
-    nuki[ 1 * kd + 54 ] = -1 ;
-    nuki[ 11 * kd + 54 ] = +1 ;
-    nuki[ 8 * kd + 54 ] = +1 ;
+    nuki[ 13 * kd + 54 ] += -1 ;
+    nuki[ 1 * kd + 54 ] += -1 ;
+    nuki[ 11 * kd + 54 ] += +1 ;
+    nuki[ 8 * kd + 54 ] += +1 ;
 
     /*reaction 56: NNH + OH <=> N2 + H2O */
-    nuki[ 13 * kd + 55 ] = -1 ;
-    nuki[ 2 * kd + 55 ] = -1 ;
-    nuki[ 14 * kd + 55 ] = +1 ;
-    nuki[ 6 * kd + 55 ] = +1 ;
+    nuki[ 13 * kd + 55 ] += -1 ;
+    nuki[ 2 * kd + 55 ] += -1 ;
+    nuki[ 14 * kd + 55 ] += +1 ;
+    nuki[ 6 * kd + 55 ] += +1 ;
 
     /*reaction 57: NNH + O2 <=> N2 + HO2 */
-    nuki[ 13 * kd + 56 ] = -1 ;
-    nuki[ 4 * kd + 56 ] = -1 ;
-    nuki[ 14 * kd + 56 ] = +1 ;
-    nuki[ 5 * kd + 56 ] = +1 ;
+    nuki[ 13 * kd + 56 ] += -1 ;
+    nuki[ 4 * kd + 56 ] += -1 ;
+    nuki[ 14 * kd + 56 ] += +1 ;
+    nuki[ 5 * kd + 56 ] += +1 ;
 
     /*reaction 58: NNH + O2 <=> N2 + H + O2 */
-    nuki[ 13 * kd + 57 ] = -1 ;
-    nuki[ 4 * kd + 57 ] = -1 ;
-    nuki[ 14 * kd + 57 ] = +1 ;
-    nuki[ 0 * kd + 57 ] = +1 ;
-    nuki[ 4 * kd + 57 ] = +1 ;
+    nuki[ 13 * kd + 57 ] += -1 ;
+    nuki[ 4 * kd + 57 ] += -1 ;
+    nuki[ 14 * kd + 57 ] += +1 ;
+    nuki[ 0 * kd + 57 ] += +1 ;
+    nuki[ 4 * kd + 57 ] += +1 ;
 }
 
 
@@ -2555,7 +2552,7 @@ void CKNCF(int * mdim, int * iwrk, double * rwrk, int * ncf)
     int id; /*loop counter */
     int kd = (*mdim); 
     /*Zero ncf */
-    for (id = 0; id < kd * 15; ++ id) {
+    for (id = 0; id < 3 * 15; ++ id) {
          ncf[id] = 0; 
     }
 
@@ -3863,19 +3860,19 @@ void CKEQXR(double * rho, double * T, double * x, int * iwrk, double * rwrk, dou
     eqcon[57] *= 1e-06; 
 }
 
-static double T_old = -1;
+static double T_save = -1;
 #ifdef _OPENMP
-#pragma omp threadprivate(T_old)
+#pragma omp threadprivate(T_save)
 #endif
 
-static double k_f_old[58];
+static double k_f_save[58];
 #ifdef _OPENMP
-#pragma omp threadprivate(k_f_old)
+#pragma omp threadprivate(k_f_save)
 #endif
 
-static double Kc_old[58];
+static double Kc_save[58];
 #ifdef _OPENMP
-#pragma omp threadprivate(Kc_old)
+#pragma omp threadprivate(Kc_save)
 #endif
 
 /*compute the production rate for each species */
@@ -3904,8 +3901,6 @@ void productionRate(double * wdot, double * sc, double T)
     double troe_c;                  /*TROE intermediate */
     double troe_n;                  /*TROE intermediate */
 
-    double X;                       /*SRI intermediate */
-    double F_sri;                   /*SRI intermediate */
     double tc[] = { log(T), T, T*T, T*T*T, T*T*T*T }; /*temperature cache */
 
     double invT = 1.0 / tc[1];
@@ -3927,135 +3922,135 @@ void productionRate(double * wdot, double * sc, double T)
         wdot[id] = 0.0;
     }
 
-    if (T != T_old)
+    if (T != T_save)
     {
-        T_old = T;
+        T_save = T;
 
-        k_f_old[0] = 1e-06 * 3.6e+15*exp(-0.41*tc[0]-8354.3*invT);
-        k_f_old[1] = 1e-12 * 7e+17*exp(-1*tc[0]);
-        k_f_old[2] = 1e-12 * 5.4e+18*exp(-1.3*tc[0]);
-        k_f_old[3] = 1e-12 * 1e+17*exp(-0.6*tc[0]);
-        k_f_old[4] = 1e-12 * 1e+19*exp(-1*tc[0]);
-        k_f_old[5] = 1e-12 * 6.2e+16*exp(-0.6*tc[0]);
-        k_f_old[6] = 1e-06 * 1.5e+12*exp(0.6*tc[0]);
-        k_f_old[7] = 1e-06 * 1.5e+12*exp(0.6*tc[0]);
-        k_f_old[8] = 1e-12 * 1.9e+13*exp(+899.849*invT);
-        k_f_old[9] = 1e-06 * 3.8e+12*exp(-4000*invT);
-        k_f_old[10] = 1e-06 * 8.8e+14*exp(-9650.23*invT);
-        k_f_old[11] = 1e-06 * 4300*exp(2.7*tc[0]+916.96*invT);
-        k_f_old[12] = 1e-12 * 4.5e+22*exp(-2*tc[0]);
-        k_f_old[13] = 1e-06 * 2.1e+08*exp(1.52*tc[0]-1735.78*invT);
-        k_f_old[14] = 1e-06 * 740000*exp(2.433*tc[0]-26926*invT);
-        k_f_old[15] = 1e-06 * 8.4e+13*exp(-201.309*invT);
-        k_f_old[16] = 1e-06 * 1.4e+12;
-        k_f_old[17] = 1e-06 * 1.6e+13*exp(+223.956*invT);
-        k_f_old[18] = 1e-06 * 3.6e+21*exp(-2.1*tc[0]-4529.44*invT);
-        k_f_old[19] = 1e-06 * 2e+15*exp(-0.6*tc[0]);
-        k_f_old[20] = 1e-06 * -2.2e+96*exp(-24*tc[0]-24660.3*invT);
-        k_f_old[21] = 1e-06 * 1.9e+11*exp(+708.606*invT);
-        k_f_old[22] = 1e-06 * 1e+14*exp(-5553.1*invT);
-        k_f_old[23] = 1 * 4e+11*exp(-18690*invT);
-        k_f_old[24] = 1e-06 * 1e+13*exp(-1801.71*invT);
-        k_f_old[25] = 1e-06 * 1.7e+12*exp(-1892.3*invT);
-        k_f_old[26] = 1e-06 * 9.6e+06*exp(2*tc[0]-1997.99*invT);
-        k_f_old[27] = 1e-06 * 1.9e+12*exp(-214.897*invT);
-        k_f_old[28] = 1e-06 * 1.6e+18*exp(-14801.2*invT);
-        k_f_old[29] = 1e-06 * 1.3e+15*exp(-0.75*tc[0]);
-        k_f_old[30] = 1e-06 * 2.1e+12*exp(+250.126*invT);
-        k_f_old[31] = 1e-06 * 1.3e+14*exp(-182.184*invT);
-        k_f_old[32] = 1e-06 * 1.1e+14*exp(-0.52*tc[0]);
-        k_f_old[33] = 1e-06 * 4.5e+12*exp(-13889.8*invT);
-        k_f_old[34] = 1 * 1.3e+12*exp(-31489.7*invT);
-        k_f_old[35] = 1e-06 * 3.3e+10*exp(-2379.97*invT);
-        k_f_old[36] = 1e-06 * 4.4e+14*exp(-9689.98*invT);
-        k_f_old[37] = 1e-06 * 9.2e+13*exp(-13930*invT);
-        k_f_old[38] = 1e-06 * 3.7e+12*exp(-8020.13*invT);
-        k_f_old[39] = 1e-06 * 3e+13;
-        k_f_old[40] = 1e-06 * 9.2e+13;
-        k_f_old[41] = 1e-06 * 5e+11*exp(0.5*tc[0]-1006.54*invT);
-        k_f_old[42] = 1e-06 * 1.3e+06*exp(1.5*tc[0]-50.3271*invT);
-        k_f_old[43] = 1e-06 * 2.9e+14*exp(-0.4*tc[0]);
-        k_f_old[44] = 1e-06 * -2.2e+13*exp(-0.23*tc[0]);
-        k_f_old[45] = 1e-06 * 2.2e+13*exp(-0.23*tc[0]);
-        k_f_old[46] = 1e-06 * 1e+13;
-        k_f_old[47] = 1e-06 * 3.8e+13;
-        k_f_old[48] = 1e-06 * 6.4e+09*exp(1*tc[0]-3160.54*invT);
-        k_f_old[49] = 1e-06 * 2.1e+13;
-        k_f_old[50] = 1 * 6.5e+07;
-        k_f_old[51] = 1e-06 * 1e+14;
-        k_f_old[52] = 1e-06 * 1e+14;
-        k_f_old[53] = 1e-06 * 8e+13;
-        k_f_old[54] = 1e-06 * 5e+13;
-        k_f_old[55] = 1e-06 * 5e+13;
-        k_f_old[56] = 1e-06 * 2e+14;
-        k_f_old[57] = 1e-06 * 5e+13;
+        k_f_save[0] = 1e-06 * 3.6e+15*exp(-0.41*tc[0]-8353.3966523583476373*invT);
+        k_f_save[1] = 1e-12 * 7e+17*exp(-1*tc[0]);
+        k_f_save[2] = 1e-12 * 5.4e+18*exp(-1.3*tc[0]);
+        k_f_save[3] = 1e-12 * 1e+17*exp(-0.6*tc[0]);
+        k_f_save[4] = 1e-12 * 1e+19*exp(-1*tc[0]);
+        k_f_save[5] = 1e-12 * 6.2e+16*exp(-0.6*tc[0]);
+        k_f_save[6] = 1e-06 * 1.5e+12*exp(0.6*tc[0]);
+        k_f_save[7] = 1e-06 * 1.5e+12*exp(0.6*tc[0]);
+        k_f_save[8] = 1e-12 * 1.9e+13*exp(+899.75139845883882117*invT);
+        k_f_save[9] = 1e-06 * 3.8e+12*exp(-3999.5660598159120127*invT);
+        k_f_save[10] = 1e-06 * 8.8e+14*exp(-9649.1795668055001443*invT);
+        k_f_save[11] = 1e-06 * 4300*exp(2.7*tc[0]+916.86076509619920216*invT);
+        k_f_save[12] = 1e-12 * 4.5e+22*exp(-2*tc[0]);
+        k_f_save[13] = 1e-06 * 2.1e+08*exp(1.52*tc[0]-1735.5942803604782512*invT);
+        k_f_save[14] = 1e-06 * 740000*exp(2.433*tc[0]-26923.098053884114051*invT);
+        k_f_save[15] = 1e-06 * 8.4e+13*exp(-201.28666632188787844*invT);
+        k_f_save[16] = 1e-06 * 1.4e+12;
+        k_f_save[17] = 1e-06 * 1.6e+13*exp(+223.93141628310027613*invT);
+        k_f_save[18] = 1e-06 * 3.6e+21*exp(-2.1*tc[0]-4528.9499922424774923*invT);
+        k_f_save[19] = 1e-06 * 2e+15*exp(-0.6*tc[0]);
+        k_f_save[20] = 1e-06 * -2.2e+96*exp(-24*tc[0]-24657.616624431262608*invT);
+        k_f_save[21] = 1e-06 * 1.9e+11*exp(+708.52906545304529118*invT);
+        k_f_save[22] = 1e-06 * 1e+14*exp(-5552.4926904892772654*invT);
+        k_f_save[23] = 1 * 4e+11*exp(-18687.957317989872536*invT);
+        k_f_save[24] = 1e-06 * 1e+13*exp(-1801.5156635808964438*invT);
+        k_f_save[25] = 1e-06 * 1.7e+12*exp(-1892.0946634257461483*invT);
+        k_f_save[26] = 1e-06 * 9.6e+06*exp(2*tc[0]-1997.7701632447369775*invT);
+        k_f_save[27] = 1e-06 * 1.9e+12*exp(-214.8735162986153*invT);
+        k_f_save[28] = 1e-06 * 1.6e+18*exp(-14799.602141316805501*invT);
+        k_f_save[29] = 1e-06 * 1.3e+15*exp(-0.75*tc[0]);
+        k_f_save[30] = 1e-06 * 2.1e+12*exp(+250.09868290494571852*invT);
+        k_f_save[31] = 1e-06 * 1.3e+14*exp(-182.16443302130852544*invT);
+        k_f_save[32] = 1e-06 * 1.1e+14*exp(-0.52*tc[0]);
+        k_f_save[33] = 1e-06 * 4.5e+12*exp(-13888.2767595444584*invT);
+        k_f_save[34] = 1 * 1.3e+12*exp(-31486.266779401310487*invT);
+        k_f_save[35] = 1e-06 * 3.3e+10*exp(-2379.7116125905195076*invT);
+        k_f_save[36] = 1e-06 * 4.4e+14*exp(-9688.9336834040732356*invT);
+        k_f_save[37] = 1e-06 * 9.2e+13*exp(-13928.534092808837158*invT);
+        k_f_save[38] = 1e-06 * 3.7e+12*exp(-8019.2607862640124949*invT);
+        k_f_save[39] = 1e-06 * 3e+13;
+        k_f_save[40] = 1e-06 * 9.2e+13;
+        k_f_save[41] = 1e-06 * 5e+11*exp(0.5*tc[0]-1006.4333316094392785*invT);
+        k_f_save[42] = 1e-06 * 1.3e+06*exp(1.5*tc[0]-50.32166658047196961*invT);
+        k_f_save[43] = 1e-06 * 2.9e+14*exp(-0.4*tc[0]);
+        k_f_save[44] = 1e-06 * -2.2e+13*exp(-0.23*tc[0]);
+        k_f_save[45] = 1e-06 * 2.2e+13*exp(-0.23*tc[0]);
+        k_f_save[46] = 1e-06 * 1e+13;
+        k_f_save[47] = 1e-06 * 3.8e+13;
+        k_f_save[48] = 1e-06 * 6.4e+09*exp(1*tc[0]-3160.200661253639737*invT);
+        k_f_save[49] = 1e-06 * 2.1e+13;
+        k_f_save[50] = 1 * 6.5e+07;
+        k_f_save[51] = 1e-06 * 1e+14;
+        k_f_save[52] = 1e-06 * 1e+14;
+        k_f_save[53] = 1e-06 * 8e+13;
+        k_f_save[54] = 1e-06 * 5e+13;
+        k_f_save[55] = 1e-06 * 5e+13;
+        k_f_save[56] = 1e-06 * 2e+14;
+        k_f_save[57] = 1e-06 * 5e+13;
 
-        Kc_old[0] = exp((g_RT[0] + g_RT[4]) - (g_RT[1] + g_RT[2]));
-        Kc_old[1] = 1.0 / (refC) * exp((g_RT[0] + g_RT[0]) - (g_RT[3]));
-        Kc_old[2] = 1.0 / (refC) * exp((g_RT[0] + g_RT[0] + g_RT[14]) - (g_RT[3] + g_RT[14]));
-        Kc_old[3] = 1.0 / (refC) * exp((g_RT[0] + g_RT[0] + g_RT[3]) - (g_RT[3] + g_RT[3]));
-        Kc_old[4] = 1.0 / (refC) * exp((g_RT[0] + g_RT[0] + g_RT[6]) - (g_RT[3] + g_RT[6]));
-        Kc_old[5] = 1.0 / (refC) * exp((g_RT[0] + g_RT[1]) - (g_RT[2]));
-        Kc_old[6] = 1.0 / (refC) * exp((g_RT[0] + g_RT[4]) - (g_RT[5]));
-        Kc_old[7] = 1.0 / (refC) * exp((g_RT[0] + g_RT[4]) - (g_RT[5]));
-        Kc_old[8] = 1.0 / (refC) * exp((g_RT[1] + g_RT[1]) - (g_RT[4]));
-        Kc_old[9] = exp((g_RT[1] + g_RT[3]) - (g_RT[2] + g_RT[0]));
-        Kc_old[10] = exp((g_RT[1] + g_RT[3]) - (g_RT[2] + g_RT[0]));
-        Kc_old[11] = exp((g_RT[2] + g_RT[2]) - (g_RT[1] + g_RT[6]));
-        Kc_old[12] = 1.0 / (refC) * exp((g_RT[2] + g_RT[0]) - (g_RT[6]));
-        Kc_old[13] = exp((g_RT[2] + g_RT[3]) - (g_RT[0] + g_RT[6]));
-        Kc_old[14] = exp((g_RT[3] + g_RT[4]) - (g_RT[5] + g_RT[0]));
-        Kc_old[15] = exp((g_RT[5] + g_RT[0]) - (g_RT[2] + g_RT[2]));
-        Kc_old[16] = exp((g_RT[5] + g_RT[0]) - (g_RT[6] + g_RT[1]));
-        Kc_old[17] = exp((g_RT[5] + g_RT[1]) - (g_RT[2] + g_RT[4]));
-        Kc_old[18] = exp((g_RT[5] + g_RT[2]) - (g_RT[6] + g_RT[4]));
-        Kc_old[19] = exp((g_RT[5] + g_RT[2]) - (g_RT[6] + g_RT[4]));
-        Kc_old[20] = exp((g_RT[5] + g_RT[2]) - (g_RT[6] + g_RT[4]));
-        Kc_old[21] = exp((g_RT[5] + g_RT[5]) - (g_RT[7] + g_RT[4]));
-        Kc_old[22] = exp((g_RT[5] + g_RT[5]) - (g_RT[7] + g_RT[4]));
-        Kc_old[23] = refC * exp((g_RT[7]) - (g_RT[2] + g_RT[2]));
-        Kc_old[24] = exp((g_RT[7] + g_RT[0]) - (g_RT[6] + g_RT[2]));
-        Kc_old[25] = exp((g_RT[7] + g_RT[0]) - (g_RT[5] + g_RT[3]));
-        Kc_old[26] = exp((g_RT[7] + g_RT[1]) - (g_RT[5] + g_RT[2]));
-        Kc_old[27] = exp((g_RT[7] + g_RT[2]) - (g_RT[6] + g_RT[5]));
-        Kc_old[28] = exp((g_RT[7] + g_RT[2]) - (g_RT[6] + g_RT[5]));
-        Kc_old[29] = 1.0 / (refC) * exp((g_RT[8] + g_RT[1]) - (g_RT[9]));
-        Kc_old[30] = exp((g_RT[8] + g_RT[5]) - (g_RT[9] + g_RT[2]));
-        Kc_old[31] = exp((g_RT[9] + g_RT[0]) - (g_RT[8] + g_RT[2]));
-        Kc_old[32] = exp((g_RT[9] + g_RT[1]) - (g_RT[8] + g_RT[4]));
-        Kc_old[33] = refC * exp((g_RT[9] + g_RT[9]) - (g_RT[8] + g_RT[8] + g_RT[4]));
-        Kc_old[34] = refC * exp((g_RT[10]) - (g_RT[14] + g_RT[1]));
-        Kc_old[35] = exp((g_RT[10] + g_RT[0]) - (g_RT[14] + g_RT[2]));
-        Kc_old[36] = exp((g_RT[10] + g_RT[0]) - (g_RT[14] + g_RT[2]));
-        Kc_old[37] = exp((g_RT[10] + g_RT[1]) - (g_RT[8] + g_RT[8]));
-        Kc_old[38] = exp((g_RT[10] + g_RT[1]) - (g_RT[14] + g_RT[4]));
-        Kc_old[39] = exp((g_RT[11] + g_RT[0]) - (g_RT[12] + g_RT[3]));
-        Kc_old[40] = exp((g_RT[11] + g_RT[1]) - (g_RT[8] + g_RT[0]));
-        Kc_old[41] = exp((g_RT[11] + g_RT[2]) - (g_RT[12] + g_RT[6]));
-        Kc_old[42] = exp((g_RT[11] + g_RT[4]) - (g_RT[8] + g_RT[2]));
-        Kc_old[43] = exp((g_RT[11] + g_RT[8]) - (g_RT[10] + g_RT[0]));
-        Kc_old[44] = exp((g_RT[11] + g_RT[8]) - (g_RT[10] + g_RT[0]));
-        Kc_old[45] = exp((g_RT[11] + g_RT[8]) - (g_RT[14] + g_RT[2]));
-        Kc_old[46] = exp((g_RT[11] + g_RT[9]) - (g_RT[10] + g_RT[2]));
-        Kc_old[47] = exp((g_RT[12] + g_RT[2]) - (g_RT[8] + g_RT[0]));
-        Kc_old[48] = exp((g_RT[12] + g_RT[4]) - (g_RT[8] + g_RT[1]));
-        Kc_old[49] = exp((g_RT[12] + g_RT[8]) - (g_RT[14] + g_RT[1]));
-        Kc_old[50] = refC * exp((g_RT[13]) - (g_RT[14] + g_RT[0]));
-        Kc_old[51] = exp((g_RT[13] + g_RT[0]) - (g_RT[14] + g_RT[3]));
-        Kc_old[52] = exp((g_RT[13] + g_RT[1]) - (g_RT[10] + g_RT[0]));
-        Kc_old[53] = exp((g_RT[13] + g_RT[1]) - (g_RT[14] + g_RT[2]));
-        Kc_old[54] = exp((g_RT[13] + g_RT[1]) - (g_RT[11] + g_RT[8]));
-        Kc_old[55] = exp((g_RT[13] + g_RT[2]) - (g_RT[14] + g_RT[6]));
-        Kc_old[56] = exp((g_RT[13] + g_RT[4]) - (g_RT[14] + g_RT[5]));
-        Kc_old[57] = refC * exp((g_RT[13] + g_RT[4]) - (g_RT[14] + g_RT[0] + g_RT[4]));
+        Kc_save[0] = exp((g_RT[0] + g_RT[4]) - (g_RT[1] + g_RT[2]));
+        Kc_save[1] = 1.0 / (refC) * exp((g_RT[0] + g_RT[0]) - (g_RT[3]));
+        Kc_save[2] = 1.0 / (refC) * exp((g_RT[0] + g_RT[0] + g_RT[14]) - (g_RT[3] + g_RT[14]));
+        Kc_save[3] = 1.0 / (refC) * exp((g_RT[0] + g_RT[0] + g_RT[3]) - (g_RT[3] + g_RT[3]));
+        Kc_save[4] = 1.0 / (refC) * exp((g_RT[0] + g_RT[0] + g_RT[6]) - (g_RT[3] + g_RT[6]));
+        Kc_save[5] = 1.0 / (refC) * exp((g_RT[0] + g_RT[1]) - (g_RT[2]));
+        Kc_save[6] = 1.0 / (refC) * exp((g_RT[0] + g_RT[4]) - (g_RT[5]));
+        Kc_save[7] = 1.0 / (refC) * exp((g_RT[0] + g_RT[4]) - (g_RT[5]));
+        Kc_save[8] = 1.0 / (refC) * exp((g_RT[1] + g_RT[1]) - (g_RT[4]));
+        Kc_save[9] = exp((g_RT[1] + g_RT[3]) - (g_RT[2] + g_RT[0]));
+        Kc_save[10] = exp((g_RT[1] + g_RT[3]) - (g_RT[2] + g_RT[0]));
+        Kc_save[11] = exp((g_RT[2] + g_RT[2]) - (g_RT[1] + g_RT[6]));
+        Kc_save[12] = 1.0 / (refC) * exp((g_RT[2] + g_RT[0]) - (g_RT[6]));
+        Kc_save[13] = exp((g_RT[2] + g_RT[3]) - (g_RT[0] + g_RT[6]));
+        Kc_save[14] = exp((g_RT[3] + g_RT[4]) - (g_RT[5] + g_RT[0]));
+        Kc_save[15] = exp((g_RT[5] + g_RT[0]) - (g_RT[2] + g_RT[2]));
+        Kc_save[16] = exp((g_RT[5] + g_RT[0]) - (g_RT[6] + g_RT[1]));
+        Kc_save[17] = exp((g_RT[5] + g_RT[1]) - (g_RT[2] + g_RT[4]));
+        Kc_save[18] = exp((g_RT[5] + g_RT[2]) - (g_RT[6] + g_RT[4]));
+        Kc_save[19] = exp((g_RT[5] + g_RT[2]) - (g_RT[6] + g_RT[4]));
+        Kc_save[20] = exp((g_RT[5] + g_RT[2]) - (g_RT[6] + g_RT[4]));
+        Kc_save[21] = exp((g_RT[5] + g_RT[5]) - (g_RT[7] + g_RT[4]));
+        Kc_save[22] = exp((g_RT[5] + g_RT[5]) - (g_RT[7] + g_RT[4]));
+        Kc_save[23] = refC * exp((g_RT[7]) - (g_RT[2] + g_RT[2]));
+        Kc_save[24] = exp((g_RT[7] + g_RT[0]) - (g_RT[6] + g_RT[2]));
+        Kc_save[25] = exp((g_RT[7] + g_RT[0]) - (g_RT[5] + g_RT[3]));
+        Kc_save[26] = exp((g_RT[7] + g_RT[1]) - (g_RT[5] + g_RT[2]));
+        Kc_save[27] = exp((g_RT[7] + g_RT[2]) - (g_RT[6] + g_RT[5]));
+        Kc_save[28] = exp((g_RT[7] + g_RT[2]) - (g_RT[6] + g_RT[5]));
+        Kc_save[29] = 1.0 / (refC) * exp((g_RT[8] + g_RT[1]) - (g_RT[9]));
+        Kc_save[30] = exp((g_RT[8] + g_RT[5]) - (g_RT[9] + g_RT[2]));
+        Kc_save[31] = exp((g_RT[9] + g_RT[0]) - (g_RT[8] + g_RT[2]));
+        Kc_save[32] = exp((g_RT[9] + g_RT[1]) - (g_RT[8] + g_RT[4]));
+        Kc_save[33] = refC * exp((g_RT[9] + g_RT[9]) - (g_RT[8] + g_RT[8] + g_RT[4]));
+        Kc_save[34] = refC * exp((g_RT[10]) - (g_RT[14] + g_RT[1]));
+        Kc_save[35] = exp((g_RT[10] + g_RT[0]) - (g_RT[14] + g_RT[2]));
+        Kc_save[36] = exp((g_RT[10] + g_RT[0]) - (g_RT[14] + g_RT[2]));
+        Kc_save[37] = exp((g_RT[10] + g_RT[1]) - (g_RT[8] + g_RT[8]));
+        Kc_save[38] = exp((g_RT[10] + g_RT[1]) - (g_RT[14] + g_RT[4]));
+        Kc_save[39] = exp((g_RT[11] + g_RT[0]) - (g_RT[12] + g_RT[3]));
+        Kc_save[40] = exp((g_RT[11] + g_RT[1]) - (g_RT[8] + g_RT[0]));
+        Kc_save[41] = exp((g_RT[11] + g_RT[2]) - (g_RT[12] + g_RT[6]));
+        Kc_save[42] = exp((g_RT[11] + g_RT[4]) - (g_RT[8] + g_RT[2]));
+        Kc_save[43] = exp((g_RT[11] + g_RT[8]) - (g_RT[10] + g_RT[0]));
+        Kc_save[44] = exp((g_RT[11] + g_RT[8]) - (g_RT[10] + g_RT[0]));
+        Kc_save[45] = exp((g_RT[11] + g_RT[8]) - (g_RT[14] + g_RT[2]));
+        Kc_save[46] = exp((g_RT[11] + g_RT[9]) - (g_RT[10] + g_RT[2]));
+        Kc_save[47] = exp((g_RT[12] + g_RT[2]) - (g_RT[8] + g_RT[0]));
+        Kc_save[48] = exp((g_RT[12] + g_RT[4]) - (g_RT[8] + g_RT[1]));
+        Kc_save[49] = exp((g_RT[12] + g_RT[8]) - (g_RT[14] + g_RT[1]));
+        Kc_save[50] = refC * exp((g_RT[13]) - (g_RT[14] + g_RT[0]));
+        Kc_save[51] = exp((g_RT[13] + g_RT[0]) - (g_RT[14] + g_RT[3]));
+        Kc_save[52] = exp((g_RT[13] + g_RT[1]) - (g_RT[10] + g_RT[0]));
+        Kc_save[53] = exp((g_RT[13] + g_RT[1]) - (g_RT[14] + g_RT[2]));
+        Kc_save[54] = exp((g_RT[13] + g_RT[1]) - (g_RT[11] + g_RT[8]));
+        Kc_save[55] = exp((g_RT[13] + g_RT[2]) - (g_RT[14] + g_RT[6]));
+        Kc_save[56] = exp((g_RT[13] + g_RT[4]) - (g_RT[14] + g_RT[5]));
+        Kc_save[57] = refC * exp((g_RT[13] + g_RT[4]) - (g_RT[14] + g_RT[0] + g_RT[4]));
     }
 
     /*reaction 1: H + O2 <=> O + OH */
     phi_f = sc[0]*sc[4];
-    k_f = k_f_old[0];
+    k_f = k_f_save[0];
     q_f = phi_f * k_f;
     phi_r = sc[1]*sc[2];
-    Kc = Kc_old[0];
+    Kc = Kc_save[0];
     k_r = k_f / Kc;
     q_r = phi_r * k_r;
     qdot = q_f - q_r;
@@ -4067,10 +4062,10 @@ void productionRate(double * wdot, double * sc, double T)
     /*reaction 2: H + H + M <=> H2 + M */
     phi_f = sc[0]*sc[0];
     alpha = mixture + -1*sc[14] + -1*sc[6] + -1*sc[3];
-    k_f = alpha * k_f_old[1];
+    k_f = alpha * k_f_save[1];
     q_f = phi_f * k_f;
     phi_r = sc[3];
-    Kc = Kc_old[1];
+    Kc = Kc_save[1];
     k_r = k_f / Kc;
     q_r = phi_r * k_r;
     qdot = q_f - q_r;
@@ -4080,10 +4075,10 @@ void productionRate(double * wdot, double * sc, double T)
 
     /*reaction 3: H + H + N2 <=> H2 + N2 */
     phi_f = sc[0]*sc[0]*sc[14];
-    k_f = k_f_old[2];
+    k_f = k_f_save[2];
     q_f = phi_f * k_f;
     phi_r = sc[3]*sc[14];
-    Kc = Kc_old[2];
+    Kc = Kc_save[2];
     k_r = k_f / Kc;
     q_r = phi_r * k_r;
     qdot = q_f - q_r;
@@ -4095,10 +4090,10 @@ void productionRate(double * wdot, double * sc, double T)
 
     /*reaction 4: H + H + H2 <=> H2 + H2 */
     phi_f = sc[0]*sc[0]*sc[3];
-    k_f = k_f_old[3];
+    k_f = k_f_save[3];
     q_f = phi_f * k_f;
     phi_r = sc[3]*sc[3];
-    Kc = Kc_old[3];
+    Kc = Kc_save[3];
     k_r = k_f / Kc;
     q_r = phi_r * k_r;
     qdot = q_f - q_r;
@@ -4110,10 +4105,10 @@ void productionRate(double * wdot, double * sc, double T)
 
     /*reaction 5: H + H + H2O <=> H2 + H2O */
     phi_f = sc[0]*sc[0]*sc[6];
-    k_f = k_f_old[4];
+    k_f = k_f_save[4];
     q_f = phi_f * k_f;
     phi_r = sc[3]*sc[6];
-    Kc = Kc_old[4];
+    Kc = Kc_save[4];
     k_r = k_f / Kc;
     q_r = phi_r * k_r;
     qdot = q_f - q_r;
@@ -4126,10 +4121,10 @@ void productionRate(double * wdot, double * sc, double T)
     /*reaction 6: H + O + M <=> OH + M */
     phi_f = sc[0]*sc[1];
     alpha = mixture + 4*sc[6];
-    k_f = alpha * k_f_old[5];
+    k_f = alpha * k_f_save[5];
     q_f = phi_f * k_f;
     phi_r = sc[2];
-    Kc = Kc_old[5];
+    Kc = Kc_save[5];
     k_r = k_f / Kc;
     q_r = phi_r * k_r;
     qdot = q_f - q_r;
@@ -4140,8 +4135,8 @@ void productionRate(double * wdot, double * sc, double T)
     /*reaction 7: H + O2 (+M) <=> HO2 (+M) */
     phi_f = sc[0]*sc[4];
     alpha = mixture + -1*sc[14] + 10*sc[6] + sc[3] + -0.22*sc[4];
-    k_f = k_f_old[6];
-    redP = 1e-12 * alpha / k_f * 3.5e+16*exp(-0.41*tc[0]+561.651*invT);
+    k_f = k_f_save[6];
+    redP = 1e-12 * alpha / k_f * 3.5e+16*exp(-0.41*tc[0]+561.58979903806721268*invT);
     F = redP / (1 + redP);
     logPred = log10(redP);
     logFcent = log10((0.5*exp(T/-1e-30))+ (0.5*exp(T/-1e+30)));
@@ -4153,7 +4148,7 @@ void productionRate(double * wdot, double * sc, double T)
     k_f *= F;
     q_f = phi_f * k_f;
     phi_r = sc[5];
-    Kc = Kc_old[6];
+    Kc = Kc_save[6];
     k_r = k_f / Kc;
     q_r = phi_r * k_r;
     qdot = q_f - q_r;
@@ -4164,8 +4159,8 @@ void productionRate(double * wdot, double * sc, double T)
     /*reaction 8: H + O2 (+N2) <=> HO2 (+N2) */
     phi_f = sc[0]*sc[4];
     alpha = sc[14];
-    k_f = k_f_old[7];
-    redP = 1e-12 * alpha / k_f * 6.37e+20*exp(-1.72*tc[0]-261.701*invT);
+    k_f = k_f_save[7];
+    redP = 1e-12 * alpha / k_f * 6.37e+20*exp(-1.72*tc[0]-261.6726662184541965*invT);
     F = redP / (1 + redP);
     logPred = log10(redP);
     logFcent = log10((0.2*exp(T/-1e-30))+ (0.8*exp(T/-1e+30)));
@@ -4177,7 +4172,7 @@ void productionRate(double * wdot, double * sc, double T)
     k_f *= F;
     q_f = phi_f * k_f;
     phi_r = sc[5];
-    Kc = Kc_old[7];
+    Kc = Kc_save[7];
     k_r = k_f / Kc;
     q_r = phi_r * k_r;
     qdot = q_f - q_r;
@@ -4188,10 +4183,10 @@ void productionRate(double * wdot, double * sc, double T)
     /*reaction 9: O + O + M <=> O2 + M */
     phi_f = sc[1]*sc[1];
     alpha = mixture + 0.5*sc[14] + 0.5*sc[4] + 9*sc[6];
-    k_f = alpha * k_f_old[8];
+    k_f = alpha * k_f_save[8];
     q_f = phi_f * k_f;
     phi_r = sc[4];
-    Kc = Kc_old[8];
+    Kc = Kc_save[8];
     k_r = k_f / Kc;
     q_r = phi_r * k_r;
     qdot = q_f - q_r;
@@ -4201,10 +4196,10 @@ void productionRate(double * wdot, double * sc, double T)
 
     /*reaction 10: O + H2 <=> OH + H */
     phi_f = sc[1]*sc[3];
-    k_f = k_f_old[9];
+    k_f = k_f_save[9];
     q_f = phi_f * k_f;
     phi_r = sc[2]*sc[0];
-    Kc = Kc_old[9];
+    Kc = Kc_save[9];
     k_r = k_f / Kc;
     q_r = phi_r * k_r;
     qdot = q_f - q_r;
@@ -4215,10 +4210,10 @@ void productionRate(double * wdot, double * sc, double T)
 
     /*reaction 11: O + H2 <=> OH + H */
     phi_f = sc[1]*sc[3];
-    k_f = k_f_old[10];
+    k_f = k_f_save[10];
     q_f = phi_f * k_f;
     phi_r = sc[2]*sc[0];
-    Kc = Kc_old[10];
+    Kc = Kc_save[10];
     k_r = k_f / Kc;
     q_r = phi_r * k_r;
     qdot = q_f - q_r;
@@ -4229,10 +4224,10 @@ void productionRate(double * wdot, double * sc, double T)
 
     /*reaction 12: OH + OH <=> O + H2O */
     phi_f = sc[2]*sc[2];
-    k_f = k_f_old[11];
+    k_f = k_f_save[11];
     q_f = phi_f * k_f;
     phi_r = sc[1]*sc[6];
-    Kc = Kc_old[11];
+    Kc = Kc_save[11];
     k_r = k_f / Kc;
     q_r = phi_r * k_r;
     qdot = q_f - q_r;
@@ -4244,10 +4239,10 @@ void productionRate(double * wdot, double * sc, double T)
     /*reaction 13: OH + H + M <=> H2O + M */
     phi_f = sc[2]*sc[0];
     alpha = mixture + -0.27*sc[3] + 11*sc[6];
-    k_f = alpha * k_f_old[12];
+    k_f = alpha * k_f_save[12];
     q_f = phi_f * k_f;
     phi_r = sc[6];
-    Kc = Kc_old[12];
+    Kc = Kc_save[12];
     k_r = k_f / Kc;
     q_r = phi_r * k_r;
     qdot = q_f - q_r;
@@ -4257,10 +4252,10 @@ void productionRate(double * wdot, double * sc, double T)
 
     /*reaction 14: OH + H2 <=> H + H2O */
     phi_f = sc[2]*sc[3];
-    k_f = k_f_old[13];
+    k_f = k_f_save[13];
     q_f = phi_f * k_f;
     phi_r = sc[0]*sc[6];
-    Kc = Kc_old[13];
+    Kc = Kc_save[13];
     k_r = k_f / Kc;
     q_r = phi_r * k_r;
     qdot = q_f - q_r;
@@ -4271,10 +4266,10 @@ void productionRate(double * wdot, double * sc, double T)
 
     /*reaction 15: H2 + O2 <=> HO2 + H */
     phi_f = sc[3]*sc[4];
-    k_f = k_f_old[14];
+    k_f = k_f_save[14];
     q_f = phi_f * k_f;
     phi_r = sc[5]*sc[0];
-    Kc = Kc_old[14];
+    Kc = Kc_save[14];
     k_r = k_f / Kc;
     q_r = phi_r * k_r;
     qdot = q_f - q_r;
@@ -4285,10 +4280,10 @@ void productionRate(double * wdot, double * sc, double T)
 
     /*reaction 16: HO2 + H <=> OH + OH */
     phi_f = sc[5]*sc[0];
-    k_f = k_f_old[15];
+    k_f = k_f_save[15];
     q_f = phi_f * k_f;
     phi_r = sc[2]*sc[2];
-    Kc = Kc_old[15];
+    Kc = Kc_save[15];
     k_r = k_f / Kc;
     q_r = phi_r * k_r;
     qdot = q_f - q_r;
@@ -4299,10 +4294,10 @@ void productionRate(double * wdot, double * sc, double T)
 
     /*reaction 17: HO2 + H <=> H2O + O */
     phi_f = sc[5]*sc[0];
-    k_f = k_f_old[16];
+    k_f = k_f_save[16];
     q_f = phi_f * k_f;
     phi_r = sc[6]*sc[1];
-    Kc = Kc_old[16];
+    Kc = Kc_save[16];
     k_r = k_f / Kc;
     q_r = phi_r * k_r;
     qdot = q_f - q_r;
@@ -4313,10 +4308,10 @@ void productionRate(double * wdot, double * sc, double T)
 
     /*reaction 18: HO2 + O <=> OH + O2 */
     phi_f = sc[5]*sc[1];
-    k_f = k_f_old[17];
+    k_f = k_f_save[17];
     q_f = phi_f * k_f;
     phi_r = sc[2]*sc[4];
-    Kc = Kc_old[17];
+    Kc = Kc_save[17];
     k_r = k_f / Kc;
     q_r = phi_r * k_r;
     qdot = q_f - q_r;
@@ -4327,10 +4322,10 @@ void productionRate(double * wdot, double * sc, double T)
 
     /*reaction 19: HO2 + OH <=> H2O + O2 */
     phi_f = sc[5]*sc[2];
-    k_f = k_f_old[18];
+    k_f = k_f_save[18];
     q_f = phi_f * k_f;
     phi_r = sc[6]*sc[4];
-    Kc = Kc_old[18];
+    Kc = Kc_save[18];
     k_r = k_f / Kc;
     q_r = phi_r * k_r;
     qdot = q_f - q_r;
@@ -4341,10 +4336,10 @@ void productionRate(double * wdot, double * sc, double T)
 
     /*reaction 20: HO2 + OH <=> H2O + O2 */
     phi_f = sc[5]*sc[2];
-    k_f = k_f_old[19];
+    k_f = k_f_save[19];
     q_f = phi_f * k_f;
     phi_r = sc[6]*sc[4];
-    Kc = Kc_old[19];
+    Kc = Kc_save[19];
     k_r = k_f / Kc;
     q_r = phi_r * k_r;
     qdot = q_f - q_r;
@@ -4355,10 +4350,10 @@ void productionRate(double * wdot, double * sc, double T)
 
     /*reaction 21: HO2 + OH <=> H2O + O2 */
     phi_f = sc[5]*sc[2];
-    k_f = k_f_old[20];
+    k_f = k_f_save[20];
     q_f = phi_f * k_f;
     phi_r = sc[6]*sc[4];
-    Kc = Kc_old[20];
+    Kc = Kc_save[20];
     k_r = k_f / Kc;
     q_r = phi_r * k_r;
     qdot = q_f - q_r;
@@ -4369,10 +4364,10 @@ void productionRate(double * wdot, double * sc, double T)
 
     /*reaction 22: HO2 + HO2 <=> H2O2 + O2 */
     phi_f = sc[5]*sc[5];
-    k_f = k_f_old[21];
+    k_f = k_f_save[21];
     q_f = phi_f * k_f;
     phi_r = sc[7]*sc[4];
-    Kc = Kc_old[21];
+    Kc = Kc_save[21];
     k_r = k_f / Kc;
     q_r = phi_r * k_r;
     qdot = q_f - q_r;
@@ -4383,10 +4378,10 @@ void productionRate(double * wdot, double * sc, double T)
 
     /*reaction 23: HO2 + HO2 <=> H2O2 + O2 */
     phi_f = sc[5]*sc[5];
-    k_f = k_f_old[22];
+    k_f = k_f_save[22];
     q_f = phi_f * k_f;
     phi_r = sc[7]*sc[4];
-    Kc = Kc_old[22];
+    Kc = Kc_save[22];
     k_r = k_f / Kc;
     q_r = phi_r * k_r;
     qdot = q_f - q_r;
@@ -4398,8 +4393,8 @@ void productionRate(double * wdot, double * sc, double T)
     /*reaction 24: H2O2 (+M) <=> OH + OH (+M) */
     phi_f = sc[7];
     alpha = mixture + 11*sc[6] + 1.5*sc[3];
-    k_f = k_f_old[23];
-    redP = 1e-6 * alpha / k_f * 2.291e+16*exp(-21959.3689*invT);
+    k_f = k_f_save[23];
+    redP = 1e-6 * alpha / k_f * 2.291e+16*exp(-21959.368862386359979*invT);
     F = redP / (1 + redP);
     logPred = log10(redP);
     logFcent = log10((0.5*exp(T/-1e-30))+ (0.5*exp(T/-1e+30))+ (exp(-1e+30/T)));
@@ -4411,7 +4406,7 @@ void productionRate(double * wdot, double * sc, double T)
     k_f *= F;
     q_f = phi_f * k_f;
     phi_r = sc[2]*sc[2];
-    Kc = Kc_old[23];
+    Kc = Kc_save[23];
     k_r = k_f / Kc;
     q_r = phi_r * k_r;
     qdot = q_f - q_r;
@@ -4421,10 +4416,10 @@ void productionRate(double * wdot, double * sc, double T)
 
     /*reaction 25: H2O2 + H <=> H2O + OH */
     phi_f = sc[7]*sc[0];
-    k_f = k_f_old[24];
+    k_f = k_f_save[24];
     q_f = phi_f * k_f;
     phi_r = sc[6]*sc[2];
-    Kc = Kc_old[24];
+    Kc = Kc_save[24];
     k_r = k_f / Kc;
     q_r = phi_r * k_r;
     qdot = q_f - q_r;
@@ -4435,10 +4430,10 @@ void productionRate(double * wdot, double * sc, double T)
 
     /*reaction 26: H2O2 + H <=> HO2 + H2 */
     phi_f = sc[7]*sc[0];
-    k_f = k_f_old[25];
+    k_f = k_f_save[25];
     q_f = phi_f * k_f;
     phi_r = sc[5]*sc[3];
-    Kc = Kc_old[25];
+    Kc = Kc_save[25];
     k_r = k_f / Kc;
     q_r = phi_r * k_r;
     qdot = q_f - q_r;
@@ -4449,10 +4444,10 @@ void productionRate(double * wdot, double * sc, double T)
 
     /*reaction 27: H2O2 + O <=> HO2 + OH */
     phi_f = sc[7]*sc[1];
-    k_f = k_f_old[26];
+    k_f = k_f_save[26];
     q_f = phi_f * k_f;
     phi_r = sc[5]*sc[2];
-    Kc = Kc_old[26];
+    Kc = Kc_save[26];
     k_r = k_f / Kc;
     q_r = phi_r * k_r;
     qdot = q_f - q_r;
@@ -4463,10 +4458,10 @@ void productionRate(double * wdot, double * sc, double T)
 
     /*reaction 28: H2O2 + OH <=> H2O + HO2 */
     phi_f = sc[7]*sc[2];
-    k_f = k_f_old[27];
+    k_f = k_f_save[27];
     q_f = phi_f * k_f;
     phi_r = sc[6]*sc[5];
-    Kc = Kc_old[27];
+    Kc = Kc_save[27];
     k_r = k_f / Kc;
     q_r = phi_r * k_r;
     qdot = q_f - q_r;
@@ -4477,10 +4472,10 @@ void productionRate(double * wdot, double * sc, double T)
 
     /*reaction 29: H2O2 + OH <=> H2O + HO2 */
     phi_f = sc[7]*sc[2];
-    k_f = k_f_old[28];
+    k_f = k_f_save[28];
     q_f = phi_f * k_f;
     phi_r = sc[6]*sc[5];
-    Kc = Kc_old[28];
+    Kc = Kc_save[28];
     k_r = k_f / Kc;
     q_r = phi_r * k_r;
     qdot = q_f - q_r;
@@ -4492,8 +4487,8 @@ void productionRate(double * wdot, double * sc, double T)
     /*reaction 30: NO + O (+M) <=> NO2 (+M) */
     phi_f = sc[8]*sc[1];
     alpha = mixture;
-    k_f = k_f_old[29];
-    redP = 1e-12 * alpha / k_f * 4.72e+24*exp(-2.87*tc[0]-780.07*invT);
+    k_f = k_f_save[29];
+    redP = 1e-12 * alpha / k_f * 4.72e+24*exp(-2.87*tc[0]-779.9858319973155858*invT);
     F = redP / (1 + redP);
     logPred = log10(redP);
     logFcent = log10((0.12*exp(T/-1000))+ (0.88*exp(T/-10000))+ (exp(-1e+30/T)));
@@ -4505,7 +4500,7 @@ void productionRate(double * wdot, double * sc, double T)
     k_f *= F;
     q_f = phi_f * k_f;
     phi_r = sc[9];
-    Kc = Kc_old[29];
+    Kc = Kc_save[29];
     k_r = k_f / Kc;
     q_r = phi_r * k_r;
     qdot = q_f - q_r;
@@ -4515,10 +4510,10 @@ void productionRate(double * wdot, double * sc, double T)
 
     /*reaction 31: NO + HO2 <=> NO2 + OH */
     phi_f = sc[8]*sc[5];
-    k_f = k_f_old[30];
+    k_f = k_f_save[30];
     q_f = phi_f * k_f;
     phi_r = sc[9]*sc[2];
-    Kc = Kc_old[30];
+    Kc = Kc_save[30];
     k_r = k_f / Kc;
     q_r = phi_r * k_r;
     qdot = q_f - q_r;
@@ -4529,10 +4524,10 @@ void productionRate(double * wdot, double * sc, double T)
 
     /*reaction 32: NO2 + H <=> NO + OH */
     phi_f = sc[9]*sc[0];
-    k_f = k_f_old[31];
+    k_f = k_f_save[31];
     q_f = phi_f * k_f;
     phi_r = sc[8]*sc[2];
-    Kc = Kc_old[31];
+    Kc = Kc_save[31];
     k_r = k_f / Kc;
     q_r = phi_r * k_r;
     qdot = q_f - q_r;
@@ -4543,10 +4538,10 @@ void productionRate(double * wdot, double * sc, double T)
 
     /*reaction 33: NO2 + O <=> NO + O2 */
     phi_f = sc[9]*sc[1];
-    k_f = k_f_old[32];
+    k_f = k_f_save[32];
     q_f = phi_f * k_f;
     phi_r = sc[8]*sc[4];
-    Kc = Kc_old[32];
+    Kc = Kc_save[32];
     k_r = k_f / Kc;
     q_r = phi_r * k_r;
     qdot = q_f - q_r;
@@ -4557,10 +4552,10 @@ void productionRate(double * wdot, double * sc, double T)
 
     /*reaction 34: NO2 + NO2 <=> NO + NO + O2 */
     phi_f = sc[9]*sc[9];
-    k_f = k_f_old[33];
+    k_f = k_f_save[33];
     q_f = phi_f * k_f;
     phi_r = sc[8]*sc[8]*sc[4];
-    Kc = Kc_old[33];
+    Kc = Kc_save[33];
     k_r = k_f / Kc;
     q_r = phi_r * k_r;
     qdot = q_f - q_r;
@@ -4573,13 +4568,13 @@ void productionRate(double * wdot, double * sc, double T)
     /*reaction 35: N2O (+M) <=> N2 + O (+M) */
     phi_f = sc[10];
     alpha = mixture + 0.7*sc[14] + 0.4*sc[4] + 11*sc[6];
-    k_f = k_f_old[34];
-    redP = 1e-6 * alpha / k_f * 4e+14*exp(-28485.2*invT);
+    k_f = k_f_save[34];
+    redP = 1e-6 * alpha / k_f * 4e+14*exp(-28482.063284547133662*invT);
     F = redP / (1 + redP);
     k_f *= F;
     q_f = phi_f * k_f;
     phi_r = sc[14]*sc[1];
-    Kc = Kc_old[34];
+    Kc = Kc_save[34];
     k_r = k_f / Kc;
     q_r = phi_r * k_r;
     qdot = q_f - q_r;
@@ -4589,10 +4584,10 @@ void productionRate(double * wdot, double * sc, double T)
 
     /*reaction 36: N2O + H <=> N2 + OH */
     phi_f = sc[10]*sc[0];
-    k_f = k_f_old[35];
+    k_f = k_f_save[35];
     q_f = phi_f * k_f;
     phi_r = sc[14]*sc[2];
-    Kc = Kc_old[35];
+    Kc = Kc_save[35];
     k_r = k_f / Kc;
     q_r = phi_r * k_r;
     qdot = q_f - q_r;
@@ -4603,10 +4598,10 @@ void productionRate(double * wdot, double * sc, double T)
 
     /*reaction 37: N2O + H <=> N2 + OH */
     phi_f = sc[10]*sc[0];
-    k_f = k_f_old[36];
+    k_f = k_f_save[36];
     q_f = phi_f * k_f;
     phi_r = sc[14]*sc[2];
-    Kc = Kc_old[36];
+    Kc = Kc_save[36];
     k_r = k_f / Kc;
     q_r = phi_r * k_r;
     qdot = q_f - q_r;
@@ -4617,10 +4612,10 @@ void productionRate(double * wdot, double * sc, double T)
 
     /*reaction 38: N2O + O <=> NO + NO */
     phi_f = sc[10]*sc[1];
-    k_f = k_f_old[37];
+    k_f = k_f_save[37];
     q_f = phi_f * k_f;
     phi_r = sc[8]*sc[8];
-    Kc = Kc_old[37];
+    Kc = Kc_save[37];
     k_r = k_f / Kc;
     q_r = phi_r * k_r;
     qdot = q_f - q_r;
@@ -4631,10 +4626,10 @@ void productionRate(double * wdot, double * sc, double T)
 
     /*reaction 39: N2O + O <=> N2 + O2 */
     phi_f = sc[10]*sc[1];
-    k_f = k_f_old[38];
+    k_f = k_f_save[38];
     q_f = phi_f * k_f;
     phi_r = sc[14]*sc[4];
-    Kc = Kc_old[38];
+    Kc = Kc_save[38];
     k_r = k_f / Kc;
     q_r = phi_r * k_r;
     qdot = q_f - q_r;
@@ -4645,10 +4640,10 @@ void productionRate(double * wdot, double * sc, double T)
 
     /*reaction 40: NH + H <=> N + H2 */
     phi_f = sc[11]*sc[0];
-    k_f = k_f_old[39];
+    k_f = k_f_save[39];
     q_f = phi_f * k_f;
     phi_r = sc[12]*sc[3];
-    Kc = Kc_old[39];
+    Kc = Kc_save[39];
     k_r = k_f / Kc;
     q_r = phi_r * k_r;
     qdot = q_f - q_r;
@@ -4659,10 +4654,10 @@ void productionRate(double * wdot, double * sc, double T)
 
     /*reaction 41: NH + O <=> NO + H */
     phi_f = sc[11]*sc[1];
-    k_f = k_f_old[40];
+    k_f = k_f_save[40];
     q_f = phi_f * k_f;
     phi_r = sc[8]*sc[0];
-    Kc = Kc_old[40];
+    Kc = Kc_save[40];
     k_r = k_f / Kc;
     q_r = phi_r * k_r;
     qdot = q_f - q_r;
@@ -4673,10 +4668,10 @@ void productionRate(double * wdot, double * sc, double T)
 
     /*reaction 42: NH + OH <=> N + H2O */
     phi_f = sc[11]*sc[2];
-    k_f = k_f_old[41];
+    k_f = k_f_save[41];
     q_f = phi_f * k_f;
     phi_r = sc[12]*sc[6];
-    Kc = Kc_old[41];
+    Kc = Kc_save[41];
     k_r = k_f / Kc;
     q_r = phi_r * k_r;
     qdot = q_f - q_r;
@@ -4687,10 +4682,10 @@ void productionRate(double * wdot, double * sc, double T)
 
     /*reaction 43: NH + O2 <=> NO + OH */
     phi_f = sc[11]*sc[4];
-    k_f = k_f_old[42];
+    k_f = k_f_save[42];
     q_f = phi_f * k_f;
     phi_r = sc[8]*sc[2];
-    Kc = Kc_old[42];
+    Kc = Kc_save[42];
     k_r = k_f / Kc;
     q_r = phi_r * k_r;
     qdot = q_f - q_r;
@@ -4701,10 +4696,10 @@ void productionRate(double * wdot, double * sc, double T)
 
     /*reaction 44: NH + NO <=> N2O + H */
     phi_f = sc[11]*sc[8];
-    k_f = k_f_old[43];
+    k_f = k_f_save[43];
     q_f = phi_f * k_f;
     phi_r = sc[10]*sc[0];
-    Kc = Kc_old[43];
+    Kc = Kc_save[43];
     k_r = k_f / Kc;
     q_r = phi_r * k_r;
     qdot = q_f - q_r;
@@ -4715,10 +4710,10 @@ void productionRate(double * wdot, double * sc, double T)
 
     /*reaction 45: NH + NO <=> N2O + H */
     phi_f = sc[11]*sc[8];
-    k_f = k_f_old[44];
+    k_f = k_f_save[44];
     q_f = phi_f * k_f;
     phi_r = sc[10]*sc[0];
-    Kc = Kc_old[44];
+    Kc = Kc_save[44];
     k_r = k_f / Kc;
     q_r = phi_r * k_r;
     qdot = q_f - q_r;
@@ -4729,10 +4724,10 @@ void productionRate(double * wdot, double * sc, double T)
 
     /*reaction 46: NH + NO <=> N2 + OH */
     phi_f = sc[11]*sc[8];
-    k_f = k_f_old[45];
+    k_f = k_f_save[45];
     q_f = phi_f * k_f;
     phi_r = sc[14]*sc[2];
-    Kc = Kc_old[45];
+    Kc = Kc_save[45];
     k_r = k_f / Kc;
     q_r = phi_r * k_r;
     qdot = q_f - q_r;
@@ -4743,10 +4738,10 @@ void productionRate(double * wdot, double * sc, double T)
 
     /*reaction 47: NH + NO2 <=> N2O + OH */
     phi_f = sc[11]*sc[9];
-    k_f = k_f_old[46];
+    k_f = k_f_save[46];
     q_f = phi_f * k_f;
     phi_r = sc[10]*sc[2];
-    Kc = Kc_old[46];
+    Kc = Kc_save[46];
     k_r = k_f / Kc;
     q_r = phi_r * k_r;
     qdot = q_f - q_r;
@@ -4757,10 +4752,10 @@ void productionRate(double * wdot, double * sc, double T)
 
     /*reaction 48: N + OH <=> NO + H */
     phi_f = sc[12]*sc[2];
-    k_f = k_f_old[47];
+    k_f = k_f_save[47];
     q_f = phi_f * k_f;
     phi_r = sc[8]*sc[0];
-    Kc = Kc_old[47];
+    Kc = Kc_save[47];
     k_r = k_f / Kc;
     q_r = phi_r * k_r;
     qdot = q_f - q_r;
@@ -4771,10 +4766,10 @@ void productionRate(double * wdot, double * sc, double T)
 
     /*reaction 49: N + O2 <=> NO + O */
     phi_f = sc[12]*sc[4];
-    k_f = k_f_old[48];
+    k_f = k_f_save[48];
     q_f = phi_f * k_f;
     phi_r = sc[8]*sc[1];
-    Kc = Kc_old[48];
+    Kc = Kc_save[48];
     k_r = k_f / Kc;
     q_r = phi_r * k_r;
     qdot = q_f - q_r;
@@ -4785,10 +4780,10 @@ void productionRate(double * wdot, double * sc, double T)
 
     /*reaction 50: N + NO <=> N2 + O */
     phi_f = sc[12]*sc[8];
-    k_f = k_f_old[49];
+    k_f = k_f_save[49];
     q_f = phi_f * k_f;
     phi_r = sc[14]*sc[1];
-    Kc = Kc_old[49];
+    Kc = Kc_save[49];
     k_r = k_f / Kc;
     q_r = phi_r * k_r;
     qdot = q_f - q_r;
@@ -4799,10 +4794,10 @@ void productionRate(double * wdot, double * sc, double T)
 
     /*reaction 51: NNH <=> N2 + H */
     phi_f = sc[13];
-    k_f = k_f_old[50];
+    k_f = k_f_save[50];
     q_f = phi_f * k_f;
     phi_r = sc[14]*sc[0];
-    Kc = Kc_old[50];
+    Kc = Kc_save[50];
     k_r = k_f / Kc;
     q_r = phi_r * k_r;
     qdot = q_f - q_r;
@@ -4812,10 +4807,10 @@ void productionRate(double * wdot, double * sc, double T)
 
     /*reaction 52: NNH + H <=> N2 + H2 */
     phi_f = sc[13]*sc[0];
-    k_f = k_f_old[51];
+    k_f = k_f_save[51];
     q_f = phi_f * k_f;
     phi_r = sc[14]*sc[3];
-    Kc = Kc_old[51];
+    Kc = Kc_save[51];
     k_r = k_f / Kc;
     q_r = phi_r * k_r;
     qdot = q_f - q_r;
@@ -4826,10 +4821,10 @@ void productionRate(double * wdot, double * sc, double T)
 
     /*reaction 53: NNH + O <=> N2O + H */
     phi_f = sc[13]*sc[1];
-    k_f = k_f_old[52];
+    k_f = k_f_save[52];
     q_f = phi_f * k_f;
     phi_r = sc[10]*sc[0];
-    Kc = Kc_old[52];
+    Kc = Kc_save[52];
     k_r = k_f / Kc;
     q_r = phi_r * k_r;
     qdot = q_f - q_r;
@@ -4840,10 +4835,10 @@ void productionRate(double * wdot, double * sc, double T)
 
     /*reaction 54: NNH + O <=> N2 + OH */
     phi_f = sc[13]*sc[1];
-    k_f = k_f_old[53];
+    k_f = k_f_save[53];
     q_f = phi_f * k_f;
     phi_r = sc[14]*sc[2];
-    Kc = Kc_old[53];
+    Kc = Kc_save[53];
     k_r = k_f / Kc;
     q_r = phi_r * k_r;
     qdot = q_f - q_r;
@@ -4854,10 +4849,10 @@ void productionRate(double * wdot, double * sc, double T)
 
     /*reaction 55: NNH + O <=> NH + NO */
     phi_f = sc[13]*sc[1];
-    k_f = k_f_old[54];
+    k_f = k_f_save[54];
     q_f = phi_f * k_f;
     phi_r = sc[11]*sc[8];
-    Kc = Kc_old[54];
+    Kc = Kc_save[54];
     k_r = k_f / Kc;
     q_r = phi_r * k_r;
     qdot = q_f - q_r;
@@ -4868,10 +4863,10 @@ void productionRate(double * wdot, double * sc, double T)
 
     /*reaction 56: NNH + OH <=> N2 + H2O */
     phi_f = sc[13]*sc[2];
-    k_f = k_f_old[55];
+    k_f = k_f_save[55];
     q_f = phi_f * k_f;
     phi_r = sc[14]*sc[6];
-    Kc = Kc_old[55];
+    Kc = Kc_save[55];
     k_r = k_f / Kc;
     q_r = phi_r * k_r;
     qdot = q_f - q_r;
@@ -4882,10 +4877,10 @@ void productionRate(double * wdot, double * sc, double T)
 
     /*reaction 57: NNH + O2 <=> N2 + HO2 */
     phi_f = sc[13]*sc[4];
-    k_f = k_f_old[56];
+    k_f = k_f_save[56];
     q_f = phi_f * k_f;
     phi_r = sc[14]*sc[5];
-    Kc = Kc_old[56];
+    Kc = Kc_save[56];
     k_r = k_f / Kc;
     q_r = phi_r * k_r;
     qdot = q_f - q_r;
@@ -4896,10 +4891,10 @@ void productionRate(double * wdot, double * sc, double T)
 
     /*reaction 58: NNH + O2 <=> N2 + H + O2 */
     phi_f = sc[13]*sc[4];
-    k_f = k_f_old[57];
+    k_f = k_f_save[57];
     q_f = phi_f * k_f;
     phi_r = sc[14]*sc[0]*sc[4];
-    Kc = Kc_old[57];
+    Kc = Kc_save[57];
     k_r = k_f / Kc;
     q_r = phi_r * k_r;
     qdot = q_f - q_r;
@@ -4911,6 +4906,7 @@ void productionRate(double * wdot, double * sc, double T)
 
     return;
 }
+
 
 /*compute the progress rate for each reaction */
 void progressRate(double * qdot, double * sc, double T)
@@ -4937,9 +4933,9 @@ void progressRate(double * qdot, double * sc, double T)
     double troe_c;                  /*TROE intermediate */
     double troe_n;                  /*TROE intermediate */
 
-    double X;                       /*SRI intermediate */
-    double F_sri;                   /*SRI intermediate */
     double tc[] = { log(T), T, T*T, T*T*T, T*T*T*T }; /*temperature cache */
+
+    double invT = 1.0 / tc[1];
 
     /*reference concentration: P_atm / (RT) in inverse mol/m^3 */
     double refC = 101325 / 8.31451 / T;
@@ -4953,12 +4949,135 @@ void progressRate(double * qdot, double * sc, double T)
     /*compute the Gibbs free energy */
     gibbs(g_RT, tc);
 
+    if (T != T_save)
+    {
+        T_save = T;
+
+        k_f_save[0] = 1e-06 * 3.6e+15*exp(-0.41*tc[0]-8353.3966523583476373*invT);
+        k_f_save[1] = 1e-12 * 7e+17*exp(-1*tc[0]);
+        k_f_save[2] = 1e-12 * 5.4e+18*exp(-1.3*tc[0]);
+        k_f_save[3] = 1e-12 * 1e+17*exp(-0.6*tc[0]);
+        k_f_save[4] = 1e-12 * 1e+19*exp(-1*tc[0]);
+        k_f_save[5] = 1e-12 * 6.2e+16*exp(-0.6*tc[0]);
+        k_f_save[6] = 1e-06 * 1.5e+12*exp(0.6*tc[0]);
+        k_f_save[7] = 1e-06 * 1.5e+12*exp(0.6*tc[0]);
+        k_f_save[8] = 1e-12 * 1.9e+13*exp(+899.75139845883882117*invT);
+        k_f_save[9] = 1e-06 * 3.8e+12*exp(-3999.5660598159120127*invT);
+        k_f_save[10] = 1e-06 * 8.8e+14*exp(-9649.1795668055001443*invT);
+        k_f_save[11] = 1e-06 * 4300*exp(2.7*tc[0]+916.86076509619920216*invT);
+        k_f_save[12] = 1e-12 * 4.5e+22*exp(-2*tc[0]);
+        k_f_save[13] = 1e-06 * 2.1e+08*exp(1.52*tc[0]-1735.5942803604782512*invT);
+        k_f_save[14] = 1e-06 * 740000*exp(2.433*tc[0]-26923.098053884114051*invT);
+        k_f_save[15] = 1e-06 * 8.4e+13*exp(-201.28666632188787844*invT);
+        k_f_save[16] = 1e-06 * 1.4e+12;
+        k_f_save[17] = 1e-06 * 1.6e+13*exp(+223.93141628310027613*invT);
+        k_f_save[18] = 1e-06 * 3.6e+21*exp(-2.1*tc[0]-4528.9499922424774923*invT);
+        k_f_save[19] = 1e-06 * 2e+15*exp(-0.6*tc[0]);
+        k_f_save[20] = 1e-06 * -2.2e+96*exp(-24*tc[0]-24657.616624431262608*invT);
+        k_f_save[21] = 1e-06 * 1.9e+11*exp(+708.52906545304529118*invT);
+        k_f_save[22] = 1e-06 * 1e+14*exp(-5552.4926904892772654*invT);
+        k_f_save[23] = 1 * 4e+11*exp(-18687.957317989872536*invT);
+        k_f_save[24] = 1e-06 * 1e+13*exp(-1801.5156635808964438*invT);
+        k_f_save[25] = 1e-06 * 1.7e+12*exp(-1892.0946634257461483*invT);
+        k_f_save[26] = 1e-06 * 9.6e+06*exp(2*tc[0]-1997.7701632447369775*invT);
+        k_f_save[27] = 1e-06 * 1.9e+12*exp(-214.8735162986153*invT);
+        k_f_save[28] = 1e-06 * 1.6e+18*exp(-14799.602141316805501*invT);
+        k_f_save[29] = 1e-06 * 1.3e+15*exp(-0.75*tc[0]);
+        k_f_save[30] = 1e-06 * 2.1e+12*exp(+250.09868290494571852*invT);
+        k_f_save[31] = 1e-06 * 1.3e+14*exp(-182.16443302130852544*invT);
+        k_f_save[32] = 1e-06 * 1.1e+14*exp(-0.52*tc[0]);
+        k_f_save[33] = 1e-06 * 4.5e+12*exp(-13888.2767595444584*invT);
+        k_f_save[34] = 1 * 1.3e+12*exp(-31486.266779401310487*invT);
+        k_f_save[35] = 1e-06 * 3.3e+10*exp(-2379.7116125905195076*invT);
+        k_f_save[36] = 1e-06 * 4.4e+14*exp(-9688.9336834040732356*invT);
+        k_f_save[37] = 1e-06 * 9.2e+13*exp(-13928.534092808837158*invT);
+        k_f_save[38] = 1e-06 * 3.7e+12*exp(-8019.2607862640124949*invT);
+        k_f_save[39] = 1e-06 * 3e+13;
+        k_f_save[40] = 1e-06 * 9.2e+13;
+        k_f_save[41] = 1e-06 * 5e+11*exp(0.5*tc[0]-1006.4333316094392785*invT);
+        k_f_save[42] = 1e-06 * 1.3e+06*exp(1.5*tc[0]-50.32166658047196961*invT);
+        k_f_save[43] = 1e-06 * 2.9e+14*exp(-0.4*tc[0]);
+        k_f_save[44] = 1e-06 * -2.2e+13*exp(-0.23*tc[0]);
+        k_f_save[45] = 1e-06 * 2.2e+13*exp(-0.23*tc[0]);
+        k_f_save[46] = 1e-06 * 1e+13;
+        k_f_save[47] = 1e-06 * 3.8e+13;
+        k_f_save[48] = 1e-06 * 6.4e+09*exp(1*tc[0]-3160.200661253639737*invT);
+        k_f_save[49] = 1e-06 * 2.1e+13;
+        k_f_save[50] = 1 * 6.5e+07;
+        k_f_save[51] = 1e-06 * 1e+14;
+        k_f_save[52] = 1e-06 * 1e+14;
+        k_f_save[53] = 1e-06 * 8e+13;
+        k_f_save[54] = 1e-06 * 5e+13;
+        k_f_save[55] = 1e-06 * 5e+13;
+        k_f_save[56] = 1e-06 * 2e+14;
+        k_f_save[57] = 1e-06 * 5e+13;
+
+        Kc_save[0] = exp((g_RT[0] + g_RT[4]) - (g_RT[1] + g_RT[2]));
+        Kc_save[1] = 1.0 / (refC) * exp((g_RT[0] + g_RT[0]) - (g_RT[3]));
+        Kc_save[2] = 1.0 / (refC) * exp((g_RT[0] + g_RT[0] + g_RT[14]) - (g_RT[3] + g_RT[14]));
+        Kc_save[3] = 1.0 / (refC) * exp((g_RT[0] + g_RT[0] + g_RT[3]) - (g_RT[3] + g_RT[3]));
+        Kc_save[4] = 1.0 / (refC) * exp((g_RT[0] + g_RT[0] + g_RT[6]) - (g_RT[3] + g_RT[6]));
+        Kc_save[5] = 1.0 / (refC) * exp((g_RT[0] + g_RT[1]) - (g_RT[2]));
+        Kc_save[6] = 1.0 / (refC) * exp((g_RT[0] + g_RT[4]) - (g_RT[5]));
+        Kc_save[7] = 1.0 / (refC) * exp((g_RT[0] + g_RT[4]) - (g_RT[5]));
+        Kc_save[8] = 1.0 / (refC) * exp((g_RT[1] + g_RT[1]) - (g_RT[4]));
+        Kc_save[9] = exp((g_RT[1] + g_RT[3]) - (g_RT[2] + g_RT[0]));
+        Kc_save[10] = exp((g_RT[1] + g_RT[3]) - (g_RT[2] + g_RT[0]));
+        Kc_save[11] = exp((g_RT[2] + g_RT[2]) - (g_RT[1] + g_RT[6]));
+        Kc_save[12] = 1.0 / (refC) * exp((g_RT[2] + g_RT[0]) - (g_RT[6]));
+        Kc_save[13] = exp((g_RT[2] + g_RT[3]) - (g_RT[0] + g_RT[6]));
+        Kc_save[14] = exp((g_RT[3] + g_RT[4]) - (g_RT[5] + g_RT[0]));
+        Kc_save[15] = exp((g_RT[5] + g_RT[0]) - (g_RT[2] + g_RT[2]));
+        Kc_save[16] = exp((g_RT[5] + g_RT[0]) - (g_RT[6] + g_RT[1]));
+        Kc_save[17] = exp((g_RT[5] + g_RT[1]) - (g_RT[2] + g_RT[4]));
+        Kc_save[18] = exp((g_RT[5] + g_RT[2]) - (g_RT[6] + g_RT[4]));
+        Kc_save[19] = exp((g_RT[5] + g_RT[2]) - (g_RT[6] + g_RT[4]));
+        Kc_save[20] = exp((g_RT[5] + g_RT[2]) - (g_RT[6] + g_RT[4]));
+        Kc_save[21] = exp((g_RT[5] + g_RT[5]) - (g_RT[7] + g_RT[4]));
+        Kc_save[22] = exp((g_RT[5] + g_RT[5]) - (g_RT[7] + g_RT[4]));
+        Kc_save[23] = refC * exp((g_RT[7]) - (g_RT[2] + g_RT[2]));
+        Kc_save[24] = exp((g_RT[7] + g_RT[0]) - (g_RT[6] + g_RT[2]));
+        Kc_save[25] = exp((g_RT[7] + g_RT[0]) - (g_RT[5] + g_RT[3]));
+        Kc_save[26] = exp((g_RT[7] + g_RT[1]) - (g_RT[5] + g_RT[2]));
+        Kc_save[27] = exp((g_RT[7] + g_RT[2]) - (g_RT[6] + g_RT[5]));
+        Kc_save[28] = exp((g_RT[7] + g_RT[2]) - (g_RT[6] + g_RT[5]));
+        Kc_save[29] = 1.0 / (refC) * exp((g_RT[8] + g_RT[1]) - (g_RT[9]));
+        Kc_save[30] = exp((g_RT[8] + g_RT[5]) - (g_RT[9] + g_RT[2]));
+        Kc_save[31] = exp((g_RT[9] + g_RT[0]) - (g_RT[8] + g_RT[2]));
+        Kc_save[32] = exp((g_RT[9] + g_RT[1]) - (g_RT[8] + g_RT[4]));
+        Kc_save[33] = refC * exp((g_RT[9] + g_RT[9]) - (g_RT[8] + g_RT[8] + g_RT[4]));
+        Kc_save[34] = refC * exp((g_RT[10]) - (g_RT[14] + g_RT[1]));
+        Kc_save[35] = exp((g_RT[10] + g_RT[0]) - (g_RT[14] + g_RT[2]));
+        Kc_save[36] = exp((g_RT[10] + g_RT[0]) - (g_RT[14] + g_RT[2]));
+        Kc_save[37] = exp((g_RT[10] + g_RT[1]) - (g_RT[8] + g_RT[8]));
+        Kc_save[38] = exp((g_RT[10] + g_RT[1]) - (g_RT[14] + g_RT[4]));
+        Kc_save[39] = exp((g_RT[11] + g_RT[0]) - (g_RT[12] + g_RT[3]));
+        Kc_save[40] = exp((g_RT[11] + g_RT[1]) - (g_RT[8] + g_RT[0]));
+        Kc_save[41] = exp((g_RT[11] + g_RT[2]) - (g_RT[12] + g_RT[6]));
+        Kc_save[42] = exp((g_RT[11] + g_RT[4]) - (g_RT[8] + g_RT[2]));
+        Kc_save[43] = exp((g_RT[11] + g_RT[8]) - (g_RT[10] + g_RT[0]));
+        Kc_save[44] = exp((g_RT[11] + g_RT[8]) - (g_RT[10] + g_RT[0]));
+        Kc_save[45] = exp((g_RT[11] + g_RT[8]) - (g_RT[14] + g_RT[2]));
+        Kc_save[46] = exp((g_RT[11] + g_RT[9]) - (g_RT[10] + g_RT[2]));
+        Kc_save[47] = exp((g_RT[12] + g_RT[2]) - (g_RT[8] + g_RT[0]));
+        Kc_save[48] = exp((g_RT[12] + g_RT[4]) - (g_RT[8] + g_RT[1]));
+        Kc_save[49] = exp((g_RT[12] + g_RT[8]) - (g_RT[14] + g_RT[1]));
+        Kc_save[50] = refC * exp((g_RT[13]) - (g_RT[14] + g_RT[0]));
+        Kc_save[51] = exp((g_RT[13] + g_RT[0]) - (g_RT[14] + g_RT[3]));
+        Kc_save[52] = exp((g_RT[13] + g_RT[1]) - (g_RT[10] + g_RT[0]));
+        Kc_save[53] = exp((g_RT[13] + g_RT[1]) - (g_RT[14] + g_RT[2]));
+        Kc_save[54] = exp((g_RT[13] + g_RT[1]) - (g_RT[11] + g_RT[8]));
+        Kc_save[55] = exp((g_RT[13] + g_RT[2]) - (g_RT[14] + g_RT[6]));
+        Kc_save[56] = exp((g_RT[13] + g_RT[4]) - (g_RT[14] + g_RT[5]));
+        Kc_save[57] = refC * exp((g_RT[13] + g_RT[4]) - (g_RT[14] + g_RT[0] + g_RT[4]));
+    }
+
     /*reaction 1: H + O2 <=> O + OH */
     phi_f = sc[0]*sc[4];
-    k_f = 1e-06 * 3.6e+15*exp(-0.41*tc[0]-8354.3/tc[1]);
+    k_f = k_f_save[0];
     q_f = phi_f * k_f;
     phi_r = sc[1]*sc[2];
-    Kc = exp((g_RT[0] + g_RT[4]) - (g_RT[1] + g_RT[2]));
+    Kc = Kc_save[0];
     k_r = k_f / Kc;
     q_r = phi_r * k_r;
     qdot[0] = q_f - q_r;
@@ -4966,40 +5085,40 @@ void progressRate(double * qdot, double * sc, double T)
     /*reaction 2: H + H + M <=> H2 + M */
     phi_f = sc[0]*sc[0];
     alpha = mixture + -1*sc[14] + -1*sc[6] + -1*sc[3];
-    k_f = 1e-12 * alpha * 7e+17*exp(-1*tc[0]);
+    k_f = alpha * k_f_save[1];
     q_f = phi_f * k_f;
     phi_r = sc[3];
-    Kc = 1.0 / (refC) * exp((g_RT[0] + g_RT[0]) - (g_RT[3]));
+    Kc = Kc_save[1];
     k_r = k_f / Kc;
     q_r = phi_r * k_r;
     qdot[1] = q_f - q_r;
 
     /*reaction 3: H + H + N2 <=> H2 + N2 */
     phi_f = sc[0]*sc[0]*sc[14];
-    k_f = 1e-12 * 5.4e+18*exp(-1.3*tc[0]);
+    k_f = k_f_save[2];
     q_f = phi_f * k_f;
     phi_r = sc[3]*sc[14];
-    Kc = 1.0 / (refC) * exp((g_RT[0] + g_RT[0] + g_RT[14]) - (g_RT[3] + g_RT[14]));
+    Kc = Kc_save[2];
     k_r = k_f / Kc;
     q_r = phi_r * k_r;
     qdot[2] = q_f - q_r;
 
     /*reaction 4: H + H + H2 <=> H2 + H2 */
     phi_f = sc[0]*sc[0]*sc[3];
-    k_f = 1e-12 * 1e+17*exp(-0.6*tc[0]);
+    k_f = k_f_save[3];
     q_f = phi_f * k_f;
     phi_r = sc[3]*sc[3];
-    Kc = 1.0 / (refC) * exp((g_RT[0] + g_RT[0] + g_RT[3]) - (g_RT[3] + g_RT[3]));
+    Kc = Kc_save[3];
     k_r = k_f / Kc;
     q_r = phi_r * k_r;
     qdot[3] = q_f - q_r;
 
     /*reaction 5: H + H + H2O <=> H2 + H2O */
     phi_f = sc[0]*sc[0]*sc[6];
-    k_f = 1e-12 * 1e+19*exp(-1*tc[0]);
+    k_f = k_f_save[4];
     q_f = phi_f * k_f;
     phi_r = sc[3]*sc[6];
-    Kc = 1.0 / (refC) * exp((g_RT[0] + g_RT[0] + g_RT[6]) - (g_RT[3] + g_RT[6]));
+    Kc = Kc_save[4];
     k_r = k_f / Kc;
     q_r = phi_r * k_r;
     qdot[4] = q_f - q_r;
@@ -5007,10 +5126,10 @@ void progressRate(double * qdot, double * sc, double T)
     /*reaction 6: H + O + M <=> OH + M */
     phi_f = sc[0]*sc[1];
     alpha = mixture + 4*sc[6];
-    k_f = 1e-12 * alpha * 6.2e+16*exp(-0.6*tc[0]);
+    k_f = alpha * k_f_save[5];
     q_f = phi_f * k_f;
     phi_r = sc[2];
-    Kc = 1.0 / (refC) * exp((g_RT[0] + g_RT[1]) - (g_RT[2]));
+    Kc = Kc_save[5];
     k_r = k_f / Kc;
     q_r = phi_r * k_r;
     qdot[5] = q_f - q_r;
@@ -5018,8 +5137,8 @@ void progressRate(double * qdot, double * sc, double T)
     /*reaction 7: H + O2 (+M) <=> HO2 (+M) */
     phi_f = sc[0]*sc[4];
     alpha = mixture + -1*sc[14] + 10*sc[6] + sc[3] + -0.22*sc[4];
-    k_f = 1e-06 * 1.5e+12*exp(0.6*tc[0]);
-    redP = 1e-12 * alpha / k_f * 3.5e+16*exp(-0.41*tc[0]+561.651/tc[1]);
+    k_f = k_f_save[6];
+    redP = 1e-12 * alpha / k_f * 3.5e+16*exp(-0.41*tc[0]+561.58979903806721268*invT);
     F = redP / (1 + redP);
     logPred = log10(redP);
     logFcent = log10((0.5*exp(T/-1e-30))+ (0.5*exp(T/-1e+30)));
@@ -5031,7 +5150,7 @@ void progressRate(double * qdot, double * sc, double T)
     k_f *= F;
     q_f = phi_f * k_f;
     phi_r = sc[5];
-    Kc = 1.0 / (refC) * exp((g_RT[0] + g_RT[4]) - (g_RT[5]));
+    Kc = Kc_save[6];
     k_r = k_f / Kc;
     q_r = phi_r * k_r;
     qdot[6] = q_f - q_r;
@@ -5039,8 +5158,8 @@ void progressRate(double * qdot, double * sc, double T)
     /*reaction 8: H + O2 (+N2) <=> HO2 (+N2) */
     phi_f = sc[0]*sc[4];
     alpha = sc[14];
-    k_f = 1e-06 * 1.5e+12*exp(0.6*tc[0]);
-    redP = 1e-12 * alpha / k_f * 6.37e+20*exp(-1.72*tc[0]-261.701/tc[1]);
+    k_f = k_f_save[7];
+    redP = 1e-12 * alpha / k_f * 6.37e+20*exp(-1.72*tc[0]-261.6726662184541965*invT);
     F = redP / (1 + redP);
     logPred = log10(redP);
     logFcent = log10((0.2*exp(T/-1e-30))+ (0.8*exp(T/-1e+30)));
@@ -5052,7 +5171,7 @@ void progressRate(double * qdot, double * sc, double T)
     k_f *= F;
     q_f = phi_f * k_f;
     phi_r = sc[5];
-    Kc = 1.0 / (refC) * exp((g_RT[0] + g_RT[4]) - (g_RT[5]));
+    Kc = Kc_save[7];
     k_r = k_f / Kc;
     q_r = phi_r * k_r;
     qdot[7] = q_f - q_r;
@@ -5060,40 +5179,40 @@ void progressRate(double * qdot, double * sc, double T)
     /*reaction 9: O + O + M <=> O2 + M */
     phi_f = sc[1]*sc[1];
     alpha = mixture + 0.5*sc[14] + 0.5*sc[4] + 9*sc[6];
-    k_f = 1e-12 * alpha * 1.9e+13*exp(+899.849/tc[1]);
+    k_f = alpha * k_f_save[8];
     q_f = phi_f * k_f;
     phi_r = sc[4];
-    Kc = 1.0 / (refC) * exp((g_RT[1] + g_RT[1]) - (g_RT[4]));
+    Kc = Kc_save[8];
     k_r = k_f / Kc;
     q_r = phi_r * k_r;
     qdot[8] = q_f - q_r;
 
     /*reaction 10: O + H2 <=> OH + H */
     phi_f = sc[1]*sc[3];
-    k_f = 1e-06 * 3.8e+12*exp(-4000/tc[1]);
+    k_f = k_f_save[9];
     q_f = phi_f * k_f;
     phi_r = sc[2]*sc[0];
-    Kc = exp((g_RT[1] + g_RT[3]) - (g_RT[2] + g_RT[0]));
+    Kc = Kc_save[9];
     k_r = k_f / Kc;
     q_r = phi_r * k_r;
     qdot[9] = q_f - q_r;
 
     /*reaction 11: O + H2 <=> OH + H */
     phi_f = sc[1]*sc[3];
-    k_f = 1e-06 * 8.8e+14*exp(-9650.23/tc[1]);
+    k_f = k_f_save[10];
     q_f = phi_f * k_f;
     phi_r = sc[2]*sc[0];
-    Kc = exp((g_RT[1] + g_RT[3]) - (g_RT[2] + g_RT[0]));
+    Kc = Kc_save[10];
     k_r = k_f / Kc;
     q_r = phi_r * k_r;
     qdot[10] = q_f - q_r;
 
     /*reaction 12: OH + OH <=> O + H2O */
     phi_f = sc[2]*sc[2];
-    k_f = 1e-06 * 4300*exp(2.7*tc[0]+916.96/tc[1]);
+    k_f = k_f_save[11];
     q_f = phi_f * k_f;
     phi_r = sc[1]*sc[6];
-    Kc = exp((g_RT[2] + g_RT[2]) - (g_RT[1] + g_RT[6]));
+    Kc = Kc_save[11];
     k_r = k_f / Kc;
     q_r = phi_r * k_r;
     qdot[11] = q_f - q_r;
@@ -5101,110 +5220,110 @@ void progressRate(double * qdot, double * sc, double T)
     /*reaction 13: OH + H + M <=> H2O + M */
     phi_f = sc[2]*sc[0];
     alpha = mixture + -0.27*sc[3] + 11*sc[6];
-    k_f = 1e-12 * alpha * 4.5e+22*exp(-2*tc[0]);
+    k_f = alpha * k_f_save[12];
     q_f = phi_f * k_f;
     phi_r = sc[6];
-    Kc = 1.0 / (refC) * exp((g_RT[2] + g_RT[0]) - (g_RT[6]));
+    Kc = Kc_save[12];
     k_r = k_f / Kc;
     q_r = phi_r * k_r;
     qdot[12] = q_f - q_r;
 
     /*reaction 14: OH + H2 <=> H + H2O */
     phi_f = sc[2]*sc[3];
-    k_f = 1e-06 * 2.1e+08*exp(1.52*tc[0]-1735.78/tc[1]);
+    k_f = k_f_save[13];
     q_f = phi_f * k_f;
     phi_r = sc[0]*sc[6];
-    Kc = exp((g_RT[2] + g_RT[3]) - (g_RT[0] + g_RT[6]));
+    Kc = Kc_save[13];
     k_r = k_f / Kc;
     q_r = phi_r * k_r;
     qdot[13] = q_f - q_r;
 
     /*reaction 15: H2 + O2 <=> HO2 + H */
     phi_f = sc[3]*sc[4];
-    k_f = 1e-06 * 740000*exp(2.433*tc[0]-26926/tc[1]);
+    k_f = k_f_save[14];
     q_f = phi_f * k_f;
     phi_r = sc[5]*sc[0];
-    Kc = exp((g_RT[3] + g_RT[4]) - (g_RT[5] + g_RT[0]));
+    Kc = Kc_save[14];
     k_r = k_f / Kc;
     q_r = phi_r * k_r;
     qdot[14] = q_f - q_r;
 
     /*reaction 16: HO2 + H <=> OH + OH */
     phi_f = sc[5]*sc[0];
-    k_f = 1e-06 * 8.4e+13*exp(-201.309/tc[1]);
+    k_f = k_f_save[15];
     q_f = phi_f * k_f;
     phi_r = sc[2]*sc[2];
-    Kc = exp((g_RT[5] + g_RT[0]) - (g_RT[2] + g_RT[2]));
+    Kc = Kc_save[15];
     k_r = k_f / Kc;
     q_r = phi_r * k_r;
     qdot[15] = q_f - q_r;
 
     /*reaction 17: HO2 + H <=> H2O + O */
     phi_f = sc[5]*sc[0];
-    k_f = 1e-06 * 1.4e+12;
+    k_f = k_f_save[16];
     q_f = phi_f * k_f;
     phi_r = sc[6]*sc[1];
-    Kc = exp((g_RT[5] + g_RT[0]) - (g_RT[6] + g_RT[1]));
+    Kc = Kc_save[16];
     k_r = k_f / Kc;
     q_r = phi_r * k_r;
     qdot[16] = q_f - q_r;
 
     /*reaction 18: HO2 + O <=> OH + O2 */
     phi_f = sc[5]*sc[1];
-    k_f = 1e-06 * 1.6e+13*exp(+223.956/tc[1]);
+    k_f = k_f_save[17];
     q_f = phi_f * k_f;
     phi_r = sc[2]*sc[4];
-    Kc = exp((g_RT[5] + g_RT[1]) - (g_RT[2] + g_RT[4]));
+    Kc = Kc_save[17];
     k_r = k_f / Kc;
     q_r = phi_r * k_r;
     qdot[17] = q_f - q_r;
 
     /*reaction 19: HO2 + OH <=> H2O + O2 */
     phi_f = sc[5]*sc[2];
-    k_f = 1e-06 * 3.6e+21*exp(-2.1*tc[0]-4529.44/tc[1]);
+    k_f = k_f_save[18];
     q_f = phi_f * k_f;
     phi_r = sc[6]*sc[4];
-    Kc = exp((g_RT[5] + g_RT[2]) - (g_RT[6] + g_RT[4]));
+    Kc = Kc_save[18];
     k_r = k_f / Kc;
     q_r = phi_r * k_r;
     qdot[18] = q_f - q_r;
 
     /*reaction 20: HO2 + OH <=> H2O + O2 */
     phi_f = sc[5]*sc[2];
-    k_f = 1e-06 * 2e+15*exp(-0.6*tc[0]);
+    k_f = k_f_save[19];
     q_f = phi_f * k_f;
     phi_r = sc[6]*sc[4];
-    Kc = exp((g_RT[5] + g_RT[2]) - (g_RT[6] + g_RT[4]));
+    Kc = Kc_save[19];
     k_r = k_f / Kc;
     q_r = phi_r * k_r;
     qdot[19] = q_f - q_r;
 
     /*reaction 21: HO2 + OH <=> H2O + O2 */
     phi_f = sc[5]*sc[2];
-    k_f = 1e-06 * -2.2e+96*exp(-24*tc[0]-24660.3/tc[1]);
+    k_f = k_f_save[20];
     q_f = phi_f * k_f;
     phi_r = sc[6]*sc[4];
-    Kc = exp((g_RT[5] + g_RT[2]) - (g_RT[6] + g_RT[4]));
+    Kc = Kc_save[20];
     k_r = k_f / Kc;
     q_r = phi_r * k_r;
     qdot[20] = q_f - q_r;
 
     /*reaction 22: HO2 + HO2 <=> H2O2 + O2 */
     phi_f = sc[5]*sc[5];
-    k_f = 1e-06 * 1.9e+11*exp(+708.606/tc[1]);
+    k_f = k_f_save[21];
     q_f = phi_f * k_f;
     phi_r = sc[7]*sc[4];
-    Kc = exp((g_RT[5] + g_RT[5]) - (g_RT[7] + g_RT[4]));
+    Kc = Kc_save[21];
     k_r = k_f / Kc;
     q_r = phi_r * k_r;
     qdot[21] = q_f - q_r;
 
     /*reaction 23: HO2 + HO2 <=> H2O2 + O2 */
     phi_f = sc[5]*sc[5];
-    k_f = 1e-06 * 1e+14*exp(-5553.1/tc[1]);
+    k_f = k_f_save[22];
     q_f = phi_f * k_f;
     phi_r = sc[7]*sc[4];
-    Kc = exp((g_RT[5] + g_RT[5]) - (g_RT[7] + g_RT[4]));
+    Kc = Kc_save[22];
     k_r = k_f / Kc;
     q_r = phi_r * k_r;
     qdot[22] = q_f - q_r;
@@ -5212,8 +5331,8 @@ void progressRate(double * qdot, double * sc, double T)
     /*reaction 24: H2O2 (+M) <=> OH + OH (+M) */
     phi_f = sc[7];
     alpha = mixture + 11*sc[6] + 1.5*sc[3];
-    k_f = 1 * 4e+11*exp(-18690/tc[1]);
-    redP = 1e-6 * alpha / k_f * 2.291e+16*exp(-21959.3689/tc[1]);
+    k_f = k_f_save[23];
+    redP = 1e-6 * alpha / k_f * 2.291e+16*exp(-21959.368862386359979*invT);
     F = redP / (1 + redP);
     logPred = log10(redP);
     logFcent = log10((0.5*exp(T/-1e-30))+ (0.5*exp(T/-1e+30))+ (exp(-1e+30/T)));
@@ -5225,57 +5344,57 @@ void progressRate(double * qdot, double * sc, double T)
     k_f *= F;
     q_f = phi_f * k_f;
     phi_r = sc[2]*sc[2];
-    Kc = refC * exp((g_RT[7]) - (g_RT[2] + g_RT[2]));
+    Kc = Kc_save[23];
     k_r = k_f / Kc;
     q_r = phi_r * k_r;
     qdot[23] = q_f - q_r;
 
     /*reaction 25: H2O2 + H <=> H2O + OH */
     phi_f = sc[7]*sc[0];
-    k_f = 1e-06 * 1e+13*exp(-1801.71/tc[1]);
+    k_f = k_f_save[24];
     q_f = phi_f * k_f;
     phi_r = sc[6]*sc[2];
-    Kc = exp((g_RT[7] + g_RT[0]) - (g_RT[6] + g_RT[2]));
+    Kc = Kc_save[24];
     k_r = k_f / Kc;
     q_r = phi_r * k_r;
     qdot[24] = q_f - q_r;
 
     /*reaction 26: H2O2 + H <=> HO2 + H2 */
     phi_f = sc[7]*sc[0];
-    k_f = 1e-06 * 1.7e+12*exp(-1892.3/tc[1]);
+    k_f = k_f_save[25];
     q_f = phi_f * k_f;
     phi_r = sc[5]*sc[3];
-    Kc = exp((g_RT[7] + g_RT[0]) - (g_RT[5] + g_RT[3]));
+    Kc = Kc_save[25];
     k_r = k_f / Kc;
     q_r = phi_r * k_r;
     qdot[25] = q_f - q_r;
 
     /*reaction 27: H2O2 + O <=> HO2 + OH */
     phi_f = sc[7]*sc[1];
-    k_f = 1e-06 * 9.6e+06*exp(2*tc[0]-1997.99/tc[1]);
+    k_f = k_f_save[26];
     q_f = phi_f * k_f;
     phi_r = sc[5]*sc[2];
-    Kc = exp((g_RT[7] + g_RT[1]) - (g_RT[5] + g_RT[2]));
+    Kc = Kc_save[26];
     k_r = k_f / Kc;
     q_r = phi_r * k_r;
     qdot[26] = q_f - q_r;
 
     /*reaction 28: H2O2 + OH <=> H2O + HO2 */
     phi_f = sc[7]*sc[2];
-    k_f = 1e-06 * 1.9e+12*exp(-214.897/tc[1]);
+    k_f = k_f_save[27];
     q_f = phi_f * k_f;
     phi_r = sc[6]*sc[5];
-    Kc = exp((g_RT[7] + g_RT[2]) - (g_RT[6] + g_RT[5]));
+    Kc = Kc_save[27];
     k_r = k_f / Kc;
     q_r = phi_r * k_r;
     qdot[27] = q_f - q_r;
 
     /*reaction 29: H2O2 + OH <=> H2O + HO2 */
     phi_f = sc[7]*sc[2];
-    k_f = 1e-06 * 1.6e+18*exp(-14801.2/tc[1]);
+    k_f = k_f_save[28];
     q_f = phi_f * k_f;
     phi_r = sc[6]*sc[5];
-    Kc = exp((g_RT[7] + g_RT[2]) - (g_RT[6] + g_RT[5]));
+    Kc = Kc_save[28];
     k_r = k_f / Kc;
     q_r = phi_r * k_r;
     qdot[28] = q_f - q_r;
@@ -5283,8 +5402,8 @@ void progressRate(double * qdot, double * sc, double T)
     /*reaction 30: NO + O (+M) <=> NO2 (+M) */
     phi_f = sc[8]*sc[1];
     alpha = mixture;
-    k_f = 1e-06 * 1.3e+15*exp(-0.75*tc[0]);
-    redP = 1e-12 * alpha / k_f * 4.72e+24*exp(-2.87*tc[0]-780.07/tc[1]);
+    k_f = k_f_save[29];
+    redP = 1e-12 * alpha / k_f * 4.72e+24*exp(-2.87*tc[0]-779.9858319973155858*invT);
     F = redP / (1 + redP);
     logPred = log10(redP);
     logFcent = log10((0.12*exp(T/-1000))+ (0.88*exp(T/-10000))+ (exp(-1e+30/T)));
@@ -5296,47 +5415,47 @@ void progressRate(double * qdot, double * sc, double T)
     k_f *= F;
     q_f = phi_f * k_f;
     phi_r = sc[9];
-    Kc = 1.0 / (refC) * exp((g_RT[8] + g_RT[1]) - (g_RT[9]));
+    Kc = Kc_save[29];
     k_r = k_f / Kc;
     q_r = phi_r * k_r;
     qdot[29] = q_f - q_r;
 
     /*reaction 31: NO + HO2 <=> NO2 + OH */
     phi_f = sc[8]*sc[5];
-    k_f = 1e-06 * 2.1e+12*exp(+250.126/tc[1]);
+    k_f = k_f_save[30];
     q_f = phi_f * k_f;
     phi_r = sc[9]*sc[2];
-    Kc = exp((g_RT[8] + g_RT[5]) - (g_RT[9] + g_RT[2]));
+    Kc = Kc_save[30];
     k_r = k_f / Kc;
     q_r = phi_r * k_r;
     qdot[30] = q_f - q_r;
 
     /*reaction 32: NO2 + H <=> NO + OH */
     phi_f = sc[9]*sc[0];
-    k_f = 1e-06 * 1.3e+14*exp(-182.184/tc[1]);
+    k_f = k_f_save[31];
     q_f = phi_f * k_f;
     phi_r = sc[8]*sc[2];
-    Kc = exp((g_RT[9] + g_RT[0]) - (g_RT[8] + g_RT[2]));
+    Kc = Kc_save[31];
     k_r = k_f / Kc;
     q_r = phi_r * k_r;
     qdot[31] = q_f - q_r;
 
     /*reaction 33: NO2 + O <=> NO + O2 */
     phi_f = sc[9]*sc[1];
-    k_f = 1e-06 * 1.1e+14*exp(-0.52*tc[0]);
+    k_f = k_f_save[32];
     q_f = phi_f * k_f;
     phi_r = sc[8]*sc[4];
-    Kc = exp((g_RT[9] + g_RT[1]) - (g_RT[8] + g_RT[4]));
+    Kc = Kc_save[32];
     k_r = k_f / Kc;
     q_r = phi_r * k_r;
     qdot[32] = q_f - q_r;
 
     /*reaction 34: NO2 + NO2 <=> NO + NO + O2 */
     phi_f = sc[9]*sc[9];
-    k_f = 1e-06 * 4.5e+12*exp(-13889.8/tc[1]);
+    k_f = k_f_save[33];
     q_f = phi_f * k_f;
     phi_r = sc[8]*sc[8]*sc[4];
-    Kc = refC * exp((g_RT[9] + g_RT[9]) - (g_RT[8] + g_RT[8] + g_RT[4]));
+    Kc = Kc_save[33];
     k_r = k_f / Kc;
     q_r = phi_r * k_r;
     qdot[33] = q_f - q_r;
@@ -5344,243 +5463,243 @@ void progressRate(double * qdot, double * sc, double T)
     /*reaction 35: N2O (+M) <=> N2 + O (+M) */
     phi_f = sc[10];
     alpha = mixture + 0.7*sc[14] + 0.4*sc[4] + 11*sc[6];
-    k_f = 1 * 1.3e+12*exp(-31489.7/tc[1]);
-    redP = 1e-6 * alpha / k_f * 4e+14*exp(-28485.2/tc[1]);
+    k_f = k_f_save[34];
+    redP = 1e-6 * alpha / k_f * 4e+14*exp(-28482.063284547133662*invT);
     F = redP / (1 + redP);
     k_f *= F;
     q_f = phi_f * k_f;
     phi_r = sc[14]*sc[1];
-    Kc = refC * exp((g_RT[10]) - (g_RT[14] + g_RT[1]));
+    Kc = Kc_save[34];
     k_r = k_f / Kc;
     q_r = phi_r * k_r;
     qdot[34] = q_f - q_r;
 
     /*reaction 36: N2O + H <=> N2 + OH */
     phi_f = sc[10]*sc[0];
-    k_f = 1e-06 * 3.3e+10*exp(-2379.97/tc[1]);
+    k_f = k_f_save[35];
     q_f = phi_f * k_f;
     phi_r = sc[14]*sc[2];
-    Kc = exp((g_RT[10] + g_RT[0]) - (g_RT[14] + g_RT[2]));
+    Kc = Kc_save[35];
     k_r = k_f / Kc;
     q_r = phi_r * k_r;
     qdot[35] = q_f - q_r;
 
     /*reaction 37: N2O + H <=> N2 + OH */
     phi_f = sc[10]*sc[0];
-    k_f = 1e-06 * 4.4e+14*exp(-9689.98/tc[1]);
+    k_f = k_f_save[36];
     q_f = phi_f * k_f;
     phi_r = sc[14]*sc[2];
-    Kc = exp((g_RT[10] + g_RT[0]) - (g_RT[14] + g_RT[2]));
+    Kc = Kc_save[36];
     k_r = k_f / Kc;
     q_r = phi_r * k_r;
     qdot[36] = q_f - q_r;
 
     /*reaction 38: N2O + O <=> NO + NO */
     phi_f = sc[10]*sc[1];
-    k_f = 1e-06 * 9.2e+13*exp(-13930/tc[1]);
+    k_f = k_f_save[37];
     q_f = phi_f * k_f;
     phi_r = sc[8]*sc[8];
-    Kc = exp((g_RT[10] + g_RT[1]) - (g_RT[8] + g_RT[8]));
+    Kc = Kc_save[37];
     k_r = k_f / Kc;
     q_r = phi_r * k_r;
     qdot[37] = q_f - q_r;
 
     /*reaction 39: N2O + O <=> N2 + O2 */
     phi_f = sc[10]*sc[1];
-    k_f = 1e-06 * 3.7e+12*exp(-8020.13/tc[1]);
+    k_f = k_f_save[38];
     q_f = phi_f * k_f;
     phi_r = sc[14]*sc[4];
-    Kc = exp((g_RT[10] + g_RT[1]) - (g_RT[14] + g_RT[4]));
+    Kc = Kc_save[38];
     k_r = k_f / Kc;
     q_r = phi_r * k_r;
     qdot[38] = q_f - q_r;
 
     /*reaction 40: NH + H <=> N + H2 */
     phi_f = sc[11]*sc[0];
-    k_f = 1e-06 * 3e+13;
+    k_f = k_f_save[39];
     q_f = phi_f * k_f;
     phi_r = sc[12]*sc[3];
-    Kc = exp((g_RT[11] + g_RT[0]) - (g_RT[12] + g_RT[3]));
+    Kc = Kc_save[39];
     k_r = k_f / Kc;
     q_r = phi_r * k_r;
     qdot[39] = q_f - q_r;
 
     /*reaction 41: NH + O <=> NO + H */
     phi_f = sc[11]*sc[1];
-    k_f = 1e-06 * 9.2e+13;
+    k_f = k_f_save[40];
     q_f = phi_f * k_f;
     phi_r = sc[8]*sc[0];
-    Kc = exp((g_RT[11] + g_RT[1]) - (g_RT[8] + g_RT[0]));
+    Kc = Kc_save[40];
     k_r = k_f / Kc;
     q_r = phi_r * k_r;
     qdot[40] = q_f - q_r;
 
     /*reaction 42: NH + OH <=> N + H2O */
     phi_f = sc[11]*sc[2];
-    k_f = 1e-06 * 5e+11*exp(0.5*tc[0]-1006.54/tc[1]);
+    k_f = k_f_save[41];
     q_f = phi_f * k_f;
     phi_r = sc[12]*sc[6];
-    Kc = exp((g_RT[11] + g_RT[2]) - (g_RT[12] + g_RT[6]));
+    Kc = Kc_save[41];
     k_r = k_f / Kc;
     q_r = phi_r * k_r;
     qdot[41] = q_f - q_r;
 
     /*reaction 43: NH + O2 <=> NO + OH */
     phi_f = sc[11]*sc[4];
-    k_f = 1e-06 * 1.3e+06*exp(1.5*tc[0]-50.3271/tc[1]);
+    k_f = k_f_save[42];
     q_f = phi_f * k_f;
     phi_r = sc[8]*sc[2];
-    Kc = exp((g_RT[11] + g_RT[4]) - (g_RT[8] + g_RT[2]));
+    Kc = Kc_save[42];
     k_r = k_f / Kc;
     q_r = phi_r * k_r;
     qdot[42] = q_f - q_r;
 
     /*reaction 44: NH + NO <=> N2O + H */
     phi_f = sc[11]*sc[8];
-    k_f = 1e-06 * 2.9e+14*exp(-0.4*tc[0]);
+    k_f = k_f_save[43];
     q_f = phi_f * k_f;
     phi_r = sc[10]*sc[0];
-    Kc = exp((g_RT[11] + g_RT[8]) - (g_RT[10] + g_RT[0]));
+    Kc = Kc_save[43];
     k_r = k_f / Kc;
     q_r = phi_r * k_r;
     qdot[43] = q_f - q_r;
 
     /*reaction 45: NH + NO <=> N2O + H */
     phi_f = sc[11]*sc[8];
-    k_f = 1e-06 * -2.2e+13*exp(-0.23*tc[0]);
+    k_f = k_f_save[44];
     q_f = phi_f * k_f;
     phi_r = sc[10]*sc[0];
-    Kc = exp((g_RT[11] + g_RT[8]) - (g_RT[10] + g_RT[0]));
+    Kc = Kc_save[44];
     k_r = k_f / Kc;
     q_r = phi_r * k_r;
     qdot[44] = q_f - q_r;
 
     /*reaction 46: NH + NO <=> N2 + OH */
     phi_f = sc[11]*sc[8];
-    k_f = 1e-06 * 2.2e+13*exp(-0.23*tc[0]);
+    k_f = k_f_save[45];
     q_f = phi_f * k_f;
     phi_r = sc[14]*sc[2];
-    Kc = exp((g_RT[11] + g_RT[8]) - (g_RT[14] + g_RT[2]));
+    Kc = Kc_save[45];
     k_r = k_f / Kc;
     q_r = phi_r * k_r;
     qdot[45] = q_f - q_r;
 
     /*reaction 47: NH + NO2 <=> N2O + OH */
     phi_f = sc[11]*sc[9];
-    k_f = 1e-06 * 1e+13;
+    k_f = k_f_save[46];
     q_f = phi_f * k_f;
     phi_r = sc[10]*sc[2];
-    Kc = exp((g_RT[11] + g_RT[9]) - (g_RT[10] + g_RT[2]));
+    Kc = Kc_save[46];
     k_r = k_f / Kc;
     q_r = phi_r * k_r;
     qdot[46] = q_f - q_r;
 
     /*reaction 48: N + OH <=> NO + H */
     phi_f = sc[12]*sc[2];
-    k_f = 1e-06 * 3.8e+13;
+    k_f = k_f_save[47];
     q_f = phi_f * k_f;
     phi_r = sc[8]*sc[0];
-    Kc = exp((g_RT[12] + g_RT[2]) - (g_RT[8] + g_RT[0]));
+    Kc = Kc_save[47];
     k_r = k_f / Kc;
     q_r = phi_r * k_r;
     qdot[47] = q_f - q_r;
 
     /*reaction 49: N + O2 <=> NO + O */
     phi_f = sc[12]*sc[4];
-    k_f = 1e-06 * 6.4e+09*exp(1*tc[0]-3160.54/tc[1]);
+    k_f = k_f_save[48];
     q_f = phi_f * k_f;
     phi_r = sc[8]*sc[1];
-    Kc = exp((g_RT[12] + g_RT[4]) - (g_RT[8] + g_RT[1]));
+    Kc = Kc_save[48];
     k_r = k_f / Kc;
     q_r = phi_r * k_r;
     qdot[48] = q_f - q_r;
 
     /*reaction 50: N + NO <=> N2 + O */
     phi_f = sc[12]*sc[8];
-    k_f = 1e-06 * 2.1e+13;
+    k_f = k_f_save[49];
     q_f = phi_f * k_f;
     phi_r = sc[14]*sc[1];
-    Kc = exp((g_RT[12] + g_RT[8]) - (g_RT[14] + g_RT[1]));
+    Kc = Kc_save[49];
     k_r = k_f / Kc;
     q_r = phi_r * k_r;
     qdot[49] = q_f - q_r;
 
     /*reaction 51: NNH <=> N2 + H */
     phi_f = sc[13];
-    k_f = 1 * 6.5e+07;
+    k_f = k_f_save[50];
     q_f = phi_f * k_f;
     phi_r = sc[14]*sc[0];
-    Kc = refC * exp((g_RT[13]) - (g_RT[14] + g_RT[0]));
+    Kc = Kc_save[50];
     k_r = k_f / Kc;
     q_r = phi_r * k_r;
     qdot[50] = q_f - q_r;
 
     /*reaction 52: NNH + H <=> N2 + H2 */
     phi_f = sc[13]*sc[0];
-    k_f = 1e-06 * 1e+14;
+    k_f = k_f_save[51];
     q_f = phi_f * k_f;
     phi_r = sc[14]*sc[3];
-    Kc = exp((g_RT[13] + g_RT[0]) - (g_RT[14] + g_RT[3]));
+    Kc = Kc_save[51];
     k_r = k_f / Kc;
     q_r = phi_r * k_r;
     qdot[51] = q_f - q_r;
 
     /*reaction 53: NNH + O <=> N2O + H */
     phi_f = sc[13]*sc[1];
-    k_f = 1e-06 * 1e+14;
+    k_f = k_f_save[52];
     q_f = phi_f * k_f;
     phi_r = sc[10]*sc[0];
-    Kc = exp((g_RT[13] + g_RT[1]) - (g_RT[10] + g_RT[0]));
+    Kc = Kc_save[52];
     k_r = k_f / Kc;
     q_r = phi_r * k_r;
     qdot[52] = q_f - q_r;
 
     /*reaction 54: NNH + O <=> N2 + OH */
     phi_f = sc[13]*sc[1];
-    k_f = 1e-06 * 8e+13;
+    k_f = k_f_save[53];
     q_f = phi_f * k_f;
     phi_r = sc[14]*sc[2];
-    Kc = exp((g_RT[13] + g_RT[1]) - (g_RT[14] + g_RT[2]));
+    Kc = Kc_save[53];
     k_r = k_f / Kc;
     q_r = phi_r * k_r;
     qdot[53] = q_f - q_r;
 
     /*reaction 55: NNH + O <=> NH + NO */
     phi_f = sc[13]*sc[1];
-    k_f = 1e-06 * 5e+13;
+    k_f = k_f_save[54];
     q_f = phi_f * k_f;
     phi_r = sc[11]*sc[8];
-    Kc = exp((g_RT[13] + g_RT[1]) - (g_RT[11] + g_RT[8]));
+    Kc = Kc_save[54];
     k_r = k_f / Kc;
     q_r = phi_r * k_r;
     qdot[54] = q_f - q_r;
 
     /*reaction 56: NNH + OH <=> N2 + H2O */
     phi_f = sc[13]*sc[2];
-    k_f = 1e-06 * 5e+13;
+    k_f = k_f_save[55];
     q_f = phi_f * k_f;
     phi_r = sc[14]*sc[6];
-    Kc = exp((g_RT[13] + g_RT[2]) - (g_RT[14] + g_RT[6]));
+    Kc = Kc_save[55];
     k_r = k_f / Kc;
     q_r = phi_r * k_r;
     qdot[55] = q_f - q_r;
 
     /*reaction 57: NNH + O2 <=> N2 + HO2 */
     phi_f = sc[13]*sc[4];
-    k_f = 1e-06 * 2e+14;
+    k_f = k_f_save[56];
     q_f = phi_f * k_f;
     phi_r = sc[14]*sc[5];
-    Kc = exp((g_RT[13] + g_RT[4]) - (g_RT[14] + g_RT[5]));
+    Kc = Kc_save[56];
     k_r = k_f / Kc;
     q_r = phi_r * k_r;
     qdot[56] = q_f - q_r;
 
     /*reaction 58: NNH + O2 <=> N2 + H + O2 */
     phi_f = sc[13]*sc[4];
-    k_f = 1e-06 * 5e+13;
+    k_f = k_f_save[57];
     q_f = phi_f * k_f;
     phi_r = sc[14]*sc[0]*sc[4];
-    Kc = refC * exp((g_RT[13] + g_RT[4]) - (g_RT[14] + g_RT[0] + g_RT[4]));
+    Kc = Kc_save[57];
     k_r = k_f / Kc;
     q_r = phi_r * k_r;
     qdot[57] = q_f - q_r;
@@ -5612,9 +5731,9 @@ void progressRateFR(double * q_f, double * q_r, double * sc, double T)
     double troe_c;                  /*TROE intermediate */
     double troe_n;                  /*TROE intermediate */
 
-    double X;                       /*SRI intermediate */
-    double F_sri;                   /*SRI intermediate */
     double tc[] = { log(T), T, T*T, T*T*T, T*T*T*T }; /*temperature cache */
+
+    double invT = 1.0 / tc[1];
 
     /*reference concentration: P_atm / (RT) in inverse mol/m^3 */
     double refC = 101325 / 8.31451 / T;
@@ -5628,67 +5747,190 @@ void progressRateFR(double * q_f, double * q_r, double * sc, double T)
     /*compute the Gibbs free energy */
     gibbs(g_RT, tc);
 
+    if (T != T_save)
+    {
+        T_save = T;
+
+        k_f_save[0] = 1e-06 * 3.6e+15*exp(-0.41*tc[0]-8353.3966523583476373*invT);
+        k_f_save[1] = 1e-12 * 7e+17*exp(-1*tc[0]);
+        k_f_save[2] = 1e-12 * 5.4e+18*exp(-1.3*tc[0]);
+        k_f_save[3] = 1e-12 * 1e+17*exp(-0.6*tc[0]);
+        k_f_save[4] = 1e-12 * 1e+19*exp(-1*tc[0]);
+        k_f_save[5] = 1e-12 * 6.2e+16*exp(-0.6*tc[0]);
+        k_f_save[6] = 1e-06 * 1.5e+12*exp(0.6*tc[0]);
+        k_f_save[7] = 1e-06 * 1.5e+12*exp(0.6*tc[0]);
+        k_f_save[8] = 1e-12 * 1.9e+13*exp(+899.75139845883882117*invT);
+        k_f_save[9] = 1e-06 * 3.8e+12*exp(-3999.5660598159120127*invT);
+        k_f_save[10] = 1e-06 * 8.8e+14*exp(-9649.1795668055001443*invT);
+        k_f_save[11] = 1e-06 * 4300*exp(2.7*tc[0]+916.86076509619920216*invT);
+        k_f_save[12] = 1e-12 * 4.5e+22*exp(-2*tc[0]);
+        k_f_save[13] = 1e-06 * 2.1e+08*exp(1.52*tc[0]-1735.5942803604782512*invT);
+        k_f_save[14] = 1e-06 * 740000*exp(2.433*tc[0]-26923.098053884114051*invT);
+        k_f_save[15] = 1e-06 * 8.4e+13*exp(-201.28666632188787844*invT);
+        k_f_save[16] = 1e-06 * 1.4e+12;
+        k_f_save[17] = 1e-06 * 1.6e+13*exp(+223.93141628310027613*invT);
+        k_f_save[18] = 1e-06 * 3.6e+21*exp(-2.1*tc[0]-4528.9499922424774923*invT);
+        k_f_save[19] = 1e-06 * 2e+15*exp(-0.6*tc[0]);
+        k_f_save[20] = 1e-06 * -2.2e+96*exp(-24*tc[0]-24657.616624431262608*invT);
+        k_f_save[21] = 1e-06 * 1.9e+11*exp(+708.52906545304529118*invT);
+        k_f_save[22] = 1e-06 * 1e+14*exp(-5552.4926904892772654*invT);
+        k_f_save[23] = 1 * 4e+11*exp(-18687.957317989872536*invT);
+        k_f_save[24] = 1e-06 * 1e+13*exp(-1801.5156635808964438*invT);
+        k_f_save[25] = 1e-06 * 1.7e+12*exp(-1892.0946634257461483*invT);
+        k_f_save[26] = 1e-06 * 9.6e+06*exp(2*tc[0]-1997.7701632447369775*invT);
+        k_f_save[27] = 1e-06 * 1.9e+12*exp(-214.8735162986153*invT);
+        k_f_save[28] = 1e-06 * 1.6e+18*exp(-14799.602141316805501*invT);
+        k_f_save[29] = 1e-06 * 1.3e+15*exp(-0.75*tc[0]);
+        k_f_save[30] = 1e-06 * 2.1e+12*exp(+250.09868290494571852*invT);
+        k_f_save[31] = 1e-06 * 1.3e+14*exp(-182.16443302130852544*invT);
+        k_f_save[32] = 1e-06 * 1.1e+14*exp(-0.52*tc[0]);
+        k_f_save[33] = 1e-06 * 4.5e+12*exp(-13888.2767595444584*invT);
+        k_f_save[34] = 1 * 1.3e+12*exp(-31486.266779401310487*invT);
+        k_f_save[35] = 1e-06 * 3.3e+10*exp(-2379.7116125905195076*invT);
+        k_f_save[36] = 1e-06 * 4.4e+14*exp(-9688.9336834040732356*invT);
+        k_f_save[37] = 1e-06 * 9.2e+13*exp(-13928.534092808837158*invT);
+        k_f_save[38] = 1e-06 * 3.7e+12*exp(-8019.2607862640124949*invT);
+        k_f_save[39] = 1e-06 * 3e+13;
+        k_f_save[40] = 1e-06 * 9.2e+13;
+        k_f_save[41] = 1e-06 * 5e+11*exp(0.5*tc[0]-1006.4333316094392785*invT);
+        k_f_save[42] = 1e-06 * 1.3e+06*exp(1.5*tc[0]-50.32166658047196961*invT);
+        k_f_save[43] = 1e-06 * 2.9e+14*exp(-0.4*tc[0]);
+        k_f_save[44] = 1e-06 * -2.2e+13*exp(-0.23*tc[0]);
+        k_f_save[45] = 1e-06 * 2.2e+13*exp(-0.23*tc[0]);
+        k_f_save[46] = 1e-06 * 1e+13;
+        k_f_save[47] = 1e-06 * 3.8e+13;
+        k_f_save[48] = 1e-06 * 6.4e+09*exp(1*tc[0]-3160.200661253639737*invT);
+        k_f_save[49] = 1e-06 * 2.1e+13;
+        k_f_save[50] = 1 * 6.5e+07;
+        k_f_save[51] = 1e-06 * 1e+14;
+        k_f_save[52] = 1e-06 * 1e+14;
+        k_f_save[53] = 1e-06 * 8e+13;
+        k_f_save[54] = 1e-06 * 5e+13;
+        k_f_save[55] = 1e-06 * 5e+13;
+        k_f_save[56] = 1e-06 * 2e+14;
+        k_f_save[57] = 1e-06 * 5e+13;
+
+        Kc_save[0] = exp((g_RT[0] + g_RT[4]) - (g_RT[1] + g_RT[2]));
+        Kc_save[1] = 1.0 / (refC) * exp((g_RT[0] + g_RT[0]) - (g_RT[3]));
+        Kc_save[2] = 1.0 / (refC) * exp((g_RT[0] + g_RT[0] + g_RT[14]) - (g_RT[3] + g_RT[14]));
+        Kc_save[3] = 1.0 / (refC) * exp((g_RT[0] + g_RT[0] + g_RT[3]) - (g_RT[3] + g_RT[3]));
+        Kc_save[4] = 1.0 / (refC) * exp((g_RT[0] + g_RT[0] + g_RT[6]) - (g_RT[3] + g_RT[6]));
+        Kc_save[5] = 1.0 / (refC) * exp((g_RT[0] + g_RT[1]) - (g_RT[2]));
+        Kc_save[6] = 1.0 / (refC) * exp((g_RT[0] + g_RT[4]) - (g_RT[5]));
+        Kc_save[7] = 1.0 / (refC) * exp((g_RT[0] + g_RT[4]) - (g_RT[5]));
+        Kc_save[8] = 1.0 / (refC) * exp((g_RT[1] + g_RT[1]) - (g_RT[4]));
+        Kc_save[9] = exp((g_RT[1] + g_RT[3]) - (g_RT[2] + g_RT[0]));
+        Kc_save[10] = exp((g_RT[1] + g_RT[3]) - (g_RT[2] + g_RT[0]));
+        Kc_save[11] = exp((g_RT[2] + g_RT[2]) - (g_RT[1] + g_RT[6]));
+        Kc_save[12] = 1.0 / (refC) * exp((g_RT[2] + g_RT[0]) - (g_RT[6]));
+        Kc_save[13] = exp((g_RT[2] + g_RT[3]) - (g_RT[0] + g_RT[6]));
+        Kc_save[14] = exp((g_RT[3] + g_RT[4]) - (g_RT[5] + g_RT[0]));
+        Kc_save[15] = exp((g_RT[5] + g_RT[0]) - (g_RT[2] + g_RT[2]));
+        Kc_save[16] = exp((g_RT[5] + g_RT[0]) - (g_RT[6] + g_RT[1]));
+        Kc_save[17] = exp((g_RT[5] + g_RT[1]) - (g_RT[2] + g_RT[4]));
+        Kc_save[18] = exp((g_RT[5] + g_RT[2]) - (g_RT[6] + g_RT[4]));
+        Kc_save[19] = exp((g_RT[5] + g_RT[2]) - (g_RT[6] + g_RT[4]));
+        Kc_save[20] = exp((g_RT[5] + g_RT[2]) - (g_RT[6] + g_RT[4]));
+        Kc_save[21] = exp((g_RT[5] + g_RT[5]) - (g_RT[7] + g_RT[4]));
+        Kc_save[22] = exp((g_RT[5] + g_RT[5]) - (g_RT[7] + g_RT[4]));
+        Kc_save[23] = refC * exp((g_RT[7]) - (g_RT[2] + g_RT[2]));
+        Kc_save[24] = exp((g_RT[7] + g_RT[0]) - (g_RT[6] + g_RT[2]));
+        Kc_save[25] = exp((g_RT[7] + g_RT[0]) - (g_RT[5] + g_RT[3]));
+        Kc_save[26] = exp((g_RT[7] + g_RT[1]) - (g_RT[5] + g_RT[2]));
+        Kc_save[27] = exp((g_RT[7] + g_RT[2]) - (g_RT[6] + g_RT[5]));
+        Kc_save[28] = exp((g_RT[7] + g_RT[2]) - (g_RT[6] + g_RT[5]));
+        Kc_save[29] = 1.0 / (refC) * exp((g_RT[8] + g_RT[1]) - (g_RT[9]));
+        Kc_save[30] = exp((g_RT[8] + g_RT[5]) - (g_RT[9] + g_RT[2]));
+        Kc_save[31] = exp((g_RT[9] + g_RT[0]) - (g_RT[8] + g_RT[2]));
+        Kc_save[32] = exp((g_RT[9] + g_RT[1]) - (g_RT[8] + g_RT[4]));
+        Kc_save[33] = refC * exp((g_RT[9] + g_RT[9]) - (g_RT[8] + g_RT[8] + g_RT[4]));
+        Kc_save[34] = refC * exp((g_RT[10]) - (g_RT[14] + g_RT[1]));
+        Kc_save[35] = exp((g_RT[10] + g_RT[0]) - (g_RT[14] + g_RT[2]));
+        Kc_save[36] = exp((g_RT[10] + g_RT[0]) - (g_RT[14] + g_RT[2]));
+        Kc_save[37] = exp((g_RT[10] + g_RT[1]) - (g_RT[8] + g_RT[8]));
+        Kc_save[38] = exp((g_RT[10] + g_RT[1]) - (g_RT[14] + g_RT[4]));
+        Kc_save[39] = exp((g_RT[11] + g_RT[0]) - (g_RT[12] + g_RT[3]));
+        Kc_save[40] = exp((g_RT[11] + g_RT[1]) - (g_RT[8] + g_RT[0]));
+        Kc_save[41] = exp((g_RT[11] + g_RT[2]) - (g_RT[12] + g_RT[6]));
+        Kc_save[42] = exp((g_RT[11] + g_RT[4]) - (g_RT[8] + g_RT[2]));
+        Kc_save[43] = exp((g_RT[11] + g_RT[8]) - (g_RT[10] + g_RT[0]));
+        Kc_save[44] = exp((g_RT[11] + g_RT[8]) - (g_RT[10] + g_RT[0]));
+        Kc_save[45] = exp((g_RT[11] + g_RT[8]) - (g_RT[14] + g_RT[2]));
+        Kc_save[46] = exp((g_RT[11] + g_RT[9]) - (g_RT[10] + g_RT[2]));
+        Kc_save[47] = exp((g_RT[12] + g_RT[2]) - (g_RT[8] + g_RT[0]));
+        Kc_save[48] = exp((g_RT[12] + g_RT[4]) - (g_RT[8] + g_RT[1]));
+        Kc_save[49] = exp((g_RT[12] + g_RT[8]) - (g_RT[14] + g_RT[1]));
+        Kc_save[50] = refC * exp((g_RT[13]) - (g_RT[14] + g_RT[0]));
+        Kc_save[51] = exp((g_RT[13] + g_RT[0]) - (g_RT[14] + g_RT[3]));
+        Kc_save[52] = exp((g_RT[13] + g_RT[1]) - (g_RT[10] + g_RT[0]));
+        Kc_save[53] = exp((g_RT[13] + g_RT[1]) - (g_RT[14] + g_RT[2]));
+        Kc_save[54] = exp((g_RT[13] + g_RT[1]) - (g_RT[11] + g_RT[8]));
+        Kc_save[55] = exp((g_RT[13] + g_RT[2]) - (g_RT[14] + g_RT[6]));
+        Kc_save[56] = exp((g_RT[13] + g_RT[4]) - (g_RT[14] + g_RT[5]));
+        Kc_save[57] = refC * exp((g_RT[13] + g_RT[4]) - (g_RT[14] + g_RT[0] + g_RT[4]));
+    }
+
     /*reaction 1: H + O2 <=> O + OH */
     phi_f = sc[0]*sc[4];
-    k_f = 1e-06 * 3.6e+15*exp(-0.41*tc[0]-8354.3/tc[1]);
+    k_f = k_f_save[0];
     q_f[0] = phi_f * k_f;
     phi_r = sc[1]*sc[2];
-    Kc = exp((g_RT[0] + g_RT[4]) - (g_RT[1] + g_RT[2]));
+    Kc = Kc_save[0];
     k_r = k_f / Kc;
     q_r[0] = phi_r * k_r;
 
     /*reaction 2: H + H + M <=> H2 + M */
     phi_f = sc[0]*sc[0];
     alpha = mixture + -1*sc[14] + -1*sc[6] + -1*sc[3];
-    k_f = 1e-12 * alpha * 7e+17*exp(-1*tc[0]);
+    k_f = alpha * k_f_save[1];
     q_f[1] = phi_f * k_f;
     phi_r = sc[3];
-    Kc = 1.0 / (refC) * exp((g_RT[0] + g_RT[0]) - (g_RT[3]));
+    Kc = Kc_save[1];
     k_r = k_f / Kc;
     q_r[1] = phi_r * k_r;
 
     /*reaction 3: H + H + N2 <=> H2 + N2 */
     phi_f = sc[0]*sc[0]*sc[14];
-    k_f = 1e-12 * 5.4e+18*exp(-1.3*tc[0]);
+    k_f = k_f_save[2];
     q_f[2] = phi_f * k_f;
     phi_r = sc[3]*sc[14];
-    Kc = 1.0 / (refC) * exp((g_RT[0] + g_RT[0] + g_RT[14]) - (g_RT[3] + g_RT[14]));
+    Kc = Kc_save[2];
     k_r = k_f / Kc;
     q_r[2] = phi_r * k_r;
 
     /*reaction 4: H + H + H2 <=> H2 + H2 */
     phi_f = sc[0]*sc[0]*sc[3];
-    k_f = 1e-12 * 1e+17*exp(-0.6*tc[0]);
+    k_f = k_f_save[3];
     q_f[3] = phi_f * k_f;
     phi_r = sc[3]*sc[3];
-    Kc = 1.0 / (refC) * exp((g_RT[0] + g_RT[0] + g_RT[3]) - (g_RT[3] + g_RT[3]));
+    Kc = Kc_save[3];
     k_r = k_f / Kc;
     q_r[3] = phi_r * k_r;
 
     /*reaction 5: H + H + H2O <=> H2 + H2O */
     phi_f = sc[0]*sc[0]*sc[6];
-    k_f = 1e-12 * 1e+19*exp(-1*tc[0]);
+    k_f = k_f_save[4];
     q_f[4] = phi_f * k_f;
     phi_r = sc[3]*sc[6];
-    Kc = 1.0 / (refC) * exp((g_RT[0] + g_RT[0] + g_RT[6]) - (g_RT[3] + g_RT[6]));
+    Kc = Kc_save[4];
     k_r = k_f / Kc;
     q_r[4] = phi_r * k_r;
 
     /*reaction 6: H + O + M <=> OH + M */
     phi_f = sc[0]*sc[1];
     alpha = mixture + 4*sc[6];
-    k_f = 1e-12 * alpha * 6.2e+16*exp(-0.6*tc[0]);
+    k_f = alpha * k_f_save[5];
     q_f[5] = phi_f * k_f;
     phi_r = sc[2];
-    Kc = 1.0 / (refC) * exp((g_RT[0] + g_RT[1]) - (g_RT[2]));
+    Kc = Kc_save[5];
     k_r = k_f / Kc;
     q_r[5] = phi_r * k_r;
 
     /*reaction 7: H + O2 (+M) <=> HO2 (+M) */
     phi_f = sc[0]*sc[4];
     alpha = mixture + -1*sc[14] + 10*sc[6] + sc[3] + -0.22*sc[4];
-    k_f = 1e-06 * 1.5e+12*exp(0.6*tc[0]);
-    redP = 1e-12 * alpha / k_f * 3.5e+16*exp(-0.41*tc[0]+561.651/tc[1]);
+    k_f = k_f_save[6];
+    redP = 1e-12 * alpha / k_f * 3.5e+16*exp(-0.41*tc[0]+561.58979903806721268*invT);
     F = redP / (1 + redP);
     logPred = log10(redP);
     logFcent = log10((0.5*exp(T/-1e-30))+ (0.5*exp(T/-1e+30)));
@@ -5700,15 +5942,15 @@ void progressRateFR(double * q_f, double * q_r, double * sc, double T)
     k_f *= F;
     q_f[6] = phi_f * k_f;
     phi_r = sc[5];
-    Kc = 1.0 / (refC) * exp((g_RT[0] + g_RT[4]) - (g_RT[5]));
+    Kc = Kc_save[6];
     k_r = k_f / Kc;
     q_r[6] = phi_r * k_r;
 
     /*reaction 8: H + O2 (+N2) <=> HO2 (+N2) */
     phi_f = sc[0]*sc[4];
     alpha = sc[14];
-    k_f = 1e-06 * 1.5e+12*exp(0.6*tc[0]);
-    redP = 1e-12 * alpha / k_f * 6.37e+20*exp(-1.72*tc[0]-261.701/tc[1]);
+    k_f = k_f_save[7];
+    redP = 1e-12 * alpha / k_f * 6.37e+20*exp(-1.72*tc[0]-261.6726662184541965*invT);
     F = redP / (1 + redP);
     logPred = log10(redP);
     logFcent = log10((0.2*exp(T/-1e-30))+ (0.8*exp(T/-1e+30)));
@@ -5720,152 +5962,152 @@ void progressRateFR(double * q_f, double * q_r, double * sc, double T)
     k_f *= F;
     q_f[7] = phi_f * k_f;
     phi_r = sc[5];
-    Kc = 1.0 / (refC) * exp((g_RT[0] + g_RT[4]) - (g_RT[5]));
+    Kc = Kc_save[7];
     k_r = k_f / Kc;
     q_r[7] = phi_r * k_r;
 
     /*reaction 9: O + O + M <=> O2 + M */
     phi_f = sc[1]*sc[1];
     alpha = mixture + 0.5*sc[14] + 0.5*sc[4] + 9*sc[6];
-    k_f = 1e-12 * alpha * 1.9e+13*exp(+899.849/tc[1]);
+    k_f = alpha * k_f_save[8];
     q_f[8] = phi_f * k_f;
     phi_r = sc[4];
-    Kc = 1.0 / (refC) * exp((g_RT[1] + g_RT[1]) - (g_RT[4]));
+    Kc = Kc_save[8];
     k_r = k_f / Kc;
     q_r[8] = phi_r * k_r;
 
     /*reaction 10: O + H2 <=> OH + H */
     phi_f = sc[1]*sc[3];
-    k_f = 1e-06 * 3.8e+12*exp(-4000/tc[1]);
+    k_f = k_f_save[9];
     q_f[9] = phi_f * k_f;
     phi_r = sc[2]*sc[0];
-    Kc = exp((g_RT[1] + g_RT[3]) - (g_RT[2] + g_RT[0]));
+    Kc = Kc_save[9];
     k_r = k_f / Kc;
     q_r[9] = phi_r * k_r;
 
     /*reaction 11: O + H2 <=> OH + H */
     phi_f = sc[1]*sc[3];
-    k_f = 1e-06 * 8.8e+14*exp(-9650.23/tc[1]);
+    k_f = k_f_save[10];
     q_f[10] = phi_f * k_f;
     phi_r = sc[2]*sc[0];
-    Kc = exp((g_RT[1] + g_RT[3]) - (g_RT[2] + g_RT[0]));
+    Kc = Kc_save[10];
     k_r = k_f / Kc;
     q_r[10] = phi_r * k_r;
 
     /*reaction 12: OH + OH <=> O + H2O */
     phi_f = sc[2]*sc[2];
-    k_f = 1e-06 * 4300*exp(2.7*tc[0]+916.96/tc[1]);
+    k_f = k_f_save[11];
     q_f[11] = phi_f * k_f;
     phi_r = sc[1]*sc[6];
-    Kc = exp((g_RT[2] + g_RT[2]) - (g_RT[1] + g_RT[6]));
+    Kc = Kc_save[11];
     k_r = k_f / Kc;
     q_r[11] = phi_r * k_r;
 
     /*reaction 13: OH + H + M <=> H2O + M */
     phi_f = sc[2]*sc[0];
     alpha = mixture + -0.27*sc[3] + 11*sc[6];
-    k_f = 1e-12 * alpha * 4.5e+22*exp(-2*tc[0]);
+    k_f = alpha * k_f_save[12];
     q_f[12] = phi_f * k_f;
     phi_r = sc[6];
-    Kc = 1.0 / (refC) * exp((g_RT[2] + g_RT[0]) - (g_RT[6]));
+    Kc = Kc_save[12];
     k_r = k_f / Kc;
     q_r[12] = phi_r * k_r;
 
     /*reaction 14: OH + H2 <=> H + H2O */
     phi_f = sc[2]*sc[3];
-    k_f = 1e-06 * 2.1e+08*exp(1.52*tc[0]-1735.78/tc[1]);
+    k_f = k_f_save[13];
     q_f[13] = phi_f * k_f;
     phi_r = sc[0]*sc[6];
-    Kc = exp((g_RT[2] + g_RT[3]) - (g_RT[0] + g_RT[6]));
+    Kc = Kc_save[13];
     k_r = k_f / Kc;
     q_r[13] = phi_r * k_r;
 
     /*reaction 15: H2 + O2 <=> HO2 + H */
     phi_f = sc[3]*sc[4];
-    k_f = 1e-06 * 740000*exp(2.433*tc[0]-26926/tc[1]);
+    k_f = k_f_save[14];
     q_f[14] = phi_f * k_f;
     phi_r = sc[5]*sc[0];
-    Kc = exp((g_RT[3] + g_RT[4]) - (g_RT[5] + g_RT[0]));
+    Kc = Kc_save[14];
     k_r = k_f / Kc;
     q_r[14] = phi_r * k_r;
 
     /*reaction 16: HO2 + H <=> OH + OH */
     phi_f = sc[5]*sc[0];
-    k_f = 1e-06 * 8.4e+13*exp(-201.309/tc[1]);
+    k_f = k_f_save[15];
     q_f[15] = phi_f * k_f;
     phi_r = sc[2]*sc[2];
-    Kc = exp((g_RT[5] + g_RT[0]) - (g_RT[2] + g_RT[2]));
+    Kc = Kc_save[15];
     k_r = k_f / Kc;
     q_r[15] = phi_r * k_r;
 
     /*reaction 17: HO2 + H <=> H2O + O */
     phi_f = sc[5]*sc[0];
-    k_f = 1e-06 * 1.4e+12;
+    k_f = k_f_save[16];
     q_f[16] = phi_f * k_f;
     phi_r = sc[6]*sc[1];
-    Kc = exp((g_RT[5] + g_RT[0]) - (g_RT[6] + g_RT[1]));
+    Kc = Kc_save[16];
     k_r = k_f / Kc;
     q_r[16] = phi_r * k_r;
 
     /*reaction 18: HO2 + O <=> OH + O2 */
     phi_f = sc[5]*sc[1];
-    k_f = 1e-06 * 1.6e+13*exp(+223.956/tc[1]);
+    k_f = k_f_save[17];
     q_f[17] = phi_f * k_f;
     phi_r = sc[2]*sc[4];
-    Kc = exp((g_RT[5] + g_RT[1]) - (g_RT[2] + g_RT[4]));
+    Kc = Kc_save[17];
     k_r = k_f / Kc;
     q_r[17] = phi_r * k_r;
 
     /*reaction 19: HO2 + OH <=> H2O + O2 */
     phi_f = sc[5]*sc[2];
-    k_f = 1e-06 * 3.6e+21*exp(-2.1*tc[0]-4529.44/tc[1]);
+    k_f = k_f_save[18];
     q_f[18] = phi_f * k_f;
     phi_r = sc[6]*sc[4];
-    Kc = exp((g_RT[5] + g_RT[2]) - (g_RT[6] + g_RT[4]));
+    Kc = Kc_save[18];
     k_r = k_f / Kc;
     q_r[18] = phi_r * k_r;
 
     /*reaction 20: HO2 + OH <=> H2O + O2 */
     phi_f = sc[5]*sc[2];
-    k_f = 1e-06 * 2e+15*exp(-0.6*tc[0]);
+    k_f = k_f_save[19];
     q_f[19] = phi_f * k_f;
     phi_r = sc[6]*sc[4];
-    Kc = exp((g_RT[5] + g_RT[2]) - (g_RT[6] + g_RT[4]));
+    Kc = Kc_save[19];
     k_r = k_f / Kc;
     q_r[19] = phi_r * k_r;
 
     /*reaction 21: HO2 + OH <=> H2O + O2 */
     phi_f = sc[5]*sc[2];
-    k_f = 1e-06 * -2.2e+96*exp(-24*tc[0]-24660.3/tc[1]);
+    k_f = k_f_save[20];
     q_f[20] = phi_f * k_f;
     phi_r = sc[6]*sc[4];
-    Kc = exp((g_RT[5] + g_RT[2]) - (g_RT[6] + g_RT[4]));
+    Kc = Kc_save[20];
     k_r = k_f / Kc;
     q_r[20] = phi_r * k_r;
 
     /*reaction 22: HO2 + HO2 <=> H2O2 + O2 */
     phi_f = sc[5]*sc[5];
-    k_f = 1e-06 * 1.9e+11*exp(+708.606/tc[1]);
+    k_f = k_f_save[21];
     q_f[21] = phi_f * k_f;
     phi_r = sc[7]*sc[4];
-    Kc = exp((g_RT[5] + g_RT[5]) - (g_RT[7] + g_RT[4]));
+    Kc = Kc_save[21];
     k_r = k_f / Kc;
     q_r[21] = phi_r * k_r;
 
     /*reaction 23: HO2 + HO2 <=> H2O2 + O2 */
     phi_f = sc[5]*sc[5];
-    k_f = 1e-06 * 1e+14*exp(-5553.1/tc[1]);
+    k_f = k_f_save[22];
     q_f[22] = phi_f * k_f;
     phi_r = sc[7]*sc[4];
-    Kc = exp((g_RT[5] + g_RT[5]) - (g_RT[7] + g_RT[4]));
+    Kc = Kc_save[22];
     k_r = k_f / Kc;
     q_r[22] = phi_r * k_r;
 
     /*reaction 24: H2O2 (+M) <=> OH + OH (+M) */
     phi_f = sc[7];
     alpha = mixture + 11*sc[6] + 1.5*sc[3];
-    k_f = 1 * 4e+11*exp(-18690/tc[1]);
-    redP = 1e-6 * alpha / k_f * 2.291e+16*exp(-21959.3689/tc[1]);
+    k_f = k_f_save[23];
+    redP = 1e-6 * alpha / k_f * 2.291e+16*exp(-21959.368862386359979*invT);
     F = redP / (1 + redP);
     logPred = log10(redP);
     logFcent = log10((0.5*exp(T/-1e-30))+ (0.5*exp(T/-1e+30))+ (exp(-1e+30/T)));
@@ -5877,60 +6119,60 @@ void progressRateFR(double * q_f, double * q_r, double * sc, double T)
     k_f *= F;
     q_f[23] = phi_f * k_f;
     phi_r = sc[2]*sc[2];
-    Kc = refC * exp((g_RT[7]) - (g_RT[2] + g_RT[2]));
+    Kc = Kc_save[23];
     k_r = k_f / Kc;
     q_r[23] = phi_r * k_r;
 
     /*reaction 25: H2O2 + H <=> H2O + OH */
     phi_f = sc[7]*sc[0];
-    k_f = 1e-06 * 1e+13*exp(-1801.71/tc[1]);
+    k_f = k_f_save[24];
     q_f[24] = phi_f * k_f;
     phi_r = sc[6]*sc[2];
-    Kc = exp((g_RT[7] + g_RT[0]) - (g_RT[6] + g_RT[2]));
+    Kc = Kc_save[24];
     k_r = k_f / Kc;
     q_r[24] = phi_r * k_r;
 
     /*reaction 26: H2O2 + H <=> HO2 + H2 */
     phi_f = sc[7]*sc[0];
-    k_f = 1e-06 * 1.7e+12*exp(-1892.3/tc[1]);
+    k_f = k_f_save[25];
     q_f[25] = phi_f * k_f;
     phi_r = sc[5]*sc[3];
-    Kc = exp((g_RT[7] + g_RT[0]) - (g_RT[5] + g_RT[3]));
+    Kc = Kc_save[25];
     k_r = k_f / Kc;
     q_r[25] = phi_r * k_r;
 
     /*reaction 27: H2O2 + O <=> HO2 + OH */
     phi_f = sc[7]*sc[1];
-    k_f = 1e-06 * 9.6e+06*exp(2*tc[0]-1997.99/tc[1]);
+    k_f = k_f_save[26];
     q_f[26] = phi_f * k_f;
     phi_r = sc[5]*sc[2];
-    Kc = exp((g_RT[7] + g_RT[1]) - (g_RT[5] + g_RT[2]));
+    Kc = Kc_save[26];
     k_r = k_f / Kc;
     q_r[26] = phi_r * k_r;
 
     /*reaction 28: H2O2 + OH <=> H2O + HO2 */
     phi_f = sc[7]*sc[2];
-    k_f = 1e-06 * 1.9e+12*exp(-214.897/tc[1]);
+    k_f = k_f_save[27];
     q_f[27] = phi_f * k_f;
     phi_r = sc[6]*sc[5];
-    Kc = exp((g_RT[7] + g_RT[2]) - (g_RT[6] + g_RT[5]));
+    Kc = Kc_save[27];
     k_r = k_f / Kc;
     q_r[27] = phi_r * k_r;
 
     /*reaction 29: H2O2 + OH <=> H2O + HO2 */
     phi_f = sc[7]*sc[2];
-    k_f = 1e-06 * 1.6e+18*exp(-14801.2/tc[1]);
+    k_f = k_f_save[28];
     q_f[28] = phi_f * k_f;
     phi_r = sc[6]*sc[5];
-    Kc = exp((g_RT[7] + g_RT[2]) - (g_RT[6] + g_RT[5]));
+    Kc = Kc_save[28];
     k_r = k_f / Kc;
     q_r[28] = phi_r * k_r;
 
     /*reaction 30: NO + O (+M) <=> NO2 (+M) */
     phi_f = sc[8]*sc[1];
     alpha = mixture;
-    k_f = 1e-06 * 1.3e+15*exp(-0.75*tc[0]);
-    redP = 1e-12 * alpha / k_f * 4.72e+24*exp(-2.87*tc[0]-780.07/tc[1]);
+    k_f = k_f_save[29];
+    redP = 1e-12 * alpha / k_f * 4.72e+24*exp(-2.87*tc[0]-779.9858319973155858*invT);
     F = redP / (1 + redP);
     logPred = log10(redP);
     logFcent = log10((0.12*exp(T/-1000))+ (0.88*exp(T/-10000))+ (exp(-1e+30/T)));
@@ -5942,263 +6184,263 @@ void progressRateFR(double * q_f, double * q_r, double * sc, double T)
     k_f *= F;
     q_f[29] = phi_f * k_f;
     phi_r = sc[9];
-    Kc = 1.0 / (refC) * exp((g_RT[8] + g_RT[1]) - (g_RT[9]));
+    Kc = Kc_save[29];
     k_r = k_f / Kc;
     q_r[29] = phi_r * k_r;
 
     /*reaction 31: NO + HO2 <=> NO2 + OH */
     phi_f = sc[8]*sc[5];
-    k_f = 1e-06 * 2.1e+12*exp(+250.126/tc[1]);
+    k_f = k_f_save[30];
     q_f[30] = phi_f * k_f;
     phi_r = sc[9]*sc[2];
-    Kc = exp((g_RT[8] + g_RT[5]) - (g_RT[9] + g_RT[2]));
+    Kc = Kc_save[30];
     k_r = k_f / Kc;
     q_r[30] = phi_r * k_r;
 
     /*reaction 32: NO2 + H <=> NO + OH */
     phi_f = sc[9]*sc[0];
-    k_f = 1e-06 * 1.3e+14*exp(-182.184/tc[1]);
+    k_f = k_f_save[31];
     q_f[31] = phi_f * k_f;
     phi_r = sc[8]*sc[2];
-    Kc = exp((g_RT[9] + g_RT[0]) - (g_RT[8] + g_RT[2]));
+    Kc = Kc_save[31];
     k_r = k_f / Kc;
     q_r[31] = phi_r * k_r;
 
     /*reaction 33: NO2 + O <=> NO + O2 */
     phi_f = sc[9]*sc[1];
-    k_f = 1e-06 * 1.1e+14*exp(-0.52*tc[0]);
+    k_f = k_f_save[32];
     q_f[32] = phi_f * k_f;
     phi_r = sc[8]*sc[4];
-    Kc = exp((g_RT[9] + g_RT[1]) - (g_RT[8] + g_RT[4]));
+    Kc = Kc_save[32];
     k_r = k_f / Kc;
     q_r[32] = phi_r * k_r;
 
     /*reaction 34: NO2 + NO2 <=> NO + NO + O2 */
     phi_f = sc[9]*sc[9];
-    k_f = 1e-06 * 4.5e+12*exp(-13889.8/tc[1]);
+    k_f = k_f_save[33];
     q_f[33] = phi_f * k_f;
     phi_r = sc[8]*sc[8]*sc[4];
-    Kc = refC * exp((g_RT[9] + g_RT[9]) - (g_RT[8] + g_RT[8] + g_RT[4]));
+    Kc = Kc_save[33];
     k_r = k_f / Kc;
     q_r[33] = phi_r * k_r;
 
     /*reaction 35: N2O (+M) <=> N2 + O (+M) */
     phi_f = sc[10];
     alpha = mixture + 0.7*sc[14] + 0.4*sc[4] + 11*sc[6];
-    k_f = 1 * 1.3e+12*exp(-31489.7/tc[1]);
-    redP = 1e-6 * alpha / k_f * 4e+14*exp(-28485.2/tc[1]);
+    k_f = k_f_save[34];
+    redP = 1e-6 * alpha / k_f * 4e+14*exp(-28482.063284547133662*invT);
     F = redP / (1 + redP);
     k_f *= F;
     q_f[34] = phi_f * k_f;
     phi_r = sc[14]*sc[1];
-    Kc = refC * exp((g_RT[10]) - (g_RT[14] + g_RT[1]));
+    Kc = Kc_save[34];
     k_r = k_f / Kc;
     q_r[34] = phi_r * k_r;
 
     /*reaction 36: N2O + H <=> N2 + OH */
     phi_f = sc[10]*sc[0];
-    k_f = 1e-06 * 3.3e+10*exp(-2379.97/tc[1]);
+    k_f = k_f_save[35];
     q_f[35] = phi_f * k_f;
     phi_r = sc[14]*sc[2];
-    Kc = exp((g_RT[10] + g_RT[0]) - (g_RT[14] + g_RT[2]));
+    Kc = Kc_save[35];
     k_r = k_f / Kc;
     q_r[35] = phi_r * k_r;
 
     /*reaction 37: N2O + H <=> N2 + OH */
     phi_f = sc[10]*sc[0];
-    k_f = 1e-06 * 4.4e+14*exp(-9689.98/tc[1]);
+    k_f = k_f_save[36];
     q_f[36] = phi_f * k_f;
     phi_r = sc[14]*sc[2];
-    Kc = exp((g_RT[10] + g_RT[0]) - (g_RT[14] + g_RT[2]));
+    Kc = Kc_save[36];
     k_r = k_f / Kc;
     q_r[36] = phi_r * k_r;
 
     /*reaction 38: N2O + O <=> NO + NO */
     phi_f = sc[10]*sc[1];
-    k_f = 1e-06 * 9.2e+13*exp(-13930/tc[1]);
+    k_f = k_f_save[37];
     q_f[37] = phi_f * k_f;
     phi_r = sc[8]*sc[8];
-    Kc = exp((g_RT[10] + g_RT[1]) - (g_RT[8] + g_RT[8]));
+    Kc = Kc_save[37];
     k_r = k_f / Kc;
     q_r[37] = phi_r * k_r;
 
     /*reaction 39: N2O + O <=> N2 + O2 */
     phi_f = sc[10]*sc[1];
-    k_f = 1e-06 * 3.7e+12*exp(-8020.13/tc[1]);
+    k_f = k_f_save[38];
     q_f[38] = phi_f * k_f;
     phi_r = sc[14]*sc[4];
-    Kc = exp((g_RT[10] + g_RT[1]) - (g_RT[14] + g_RT[4]));
+    Kc = Kc_save[38];
     k_r = k_f / Kc;
     q_r[38] = phi_r * k_r;
 
     /*reaction 40: NH + H <=> N + H2 */
     phi_f = sc[11]*sc[0];
-    k_f = 1e-06 * 3e+13;
+    k_f = k_f_save[39];
     q_f[39] = phi_f * k_f;
     phi_r = sc[12]*sc[3];
-    Kc = exp((g_RT[11] + g_RT[0]) - (g_RT[12] + g_RT[3]));
+    Kc = Kc_save[39];
     k_r = k_f / Kc;
     q_r[39] = phi_r * k_r;
 
     /*reaction 41: NH + O <=> NO + H */
     phi_f = sc[11]*sc[1];
-    k_f = 1e-06 * 9.2e+13;
+    k_f = k_f_save[40];
     q_f[40] = phi_f * k_f;
     phi_r = sc[8]*sc[0];
-    Kc = exp((g_RT[11] + g_RT[1]) - (g_RT[8] + g_RT[0]));
+    Kc = Kc_save[40];
     k_r = k_f / Kc;
     q_r[40] = phi_r * k_r;
 
     /*reaction 42: NH + OH <=> N + H2O */
     phi_f = sc[11]*sc[2];
-    k_f = 1e-06 * 5e+11*exp(0.5*tc[0]-1006.54/tc[1]);
+    k_f = k_f_save[41];
     q_f[41] = phi_f * k_f;
     phi_r = sc[12]*sc[6];
-    Kc = exp((g_RT[11] + g_RT[2]) - (g_RT[12] + g_RT[6]));
+    Kc = Kc_save[41];
     k_r = k_f / Kc;
     q_r[41] = phi_r * k_r;
 
     /*reaction 43: NH + O2 <=> NO + OH */
     phi_f = sc[11]*sc[4];
-    k_f = 1e-06 * 1.3e+06*exp(1.5*tc[0]-50.3271/tc[1]);
+    k_f = k_f_save[42];
     q_f[42] = phi_f * k_f;
     phi_r = sc[8]*sc[2];
-    Kc = exp((g_RT[11] + g_RT[4]) - (g_RT[8] + g_RT[2]));
+    Kc = Kc_save[42];
     k_r = k_f / Kc;
     q_r[42] = phi_r * k_r;
 
     /*reaction 44: NH + NO <=> N2O + H */
     phi_f = sc[11]*sc[8];
-    k_f = 1e-06 * 2.9e+14*exp(-0.4*tc[0]);
+    k_f = k_f_save[43];
     q_f[43] = phi_f * k_f;
     phi_r = sc[10]*sc[0];
-    Kc = exp((g_RT[11] + g_RT[8]) - (g_RT[10] + g_RT[0]));
+    Kc = Kc_save[43];
     k_r = k_f / Kc;
     q_r[43] = phi_r * k_r;
 
     /*reaction 45: NH + NO <=> N2O + H */
     phi_f = sc[11]*sc[8];
-    k_f = 1e-06 * -2.2e+13*exp(-0.23*tc[0]);
+    k_f = k_f_save[44];
     q_f[44] = phi_f * k_f;
     phi_r = sc[10]*sc[0];
-    Kc = exp((g_RT[11] + g_RT[8]) - (g_RT[10] + g_RT[0]));
+    Kc = Kc_save[44];
     k_r = k_f / Kc;
     q_r[44] = phi_r * k_r;
 
     /*reaction 46: NH + NO <=> N2 + OH */
     phi_f = sc[11]*sc[8];
-    k_f = 1e-06 * 2.2e+13*exp(-0.23*tc[0]);
+    k_f = k_f_save[45];
     q_f[45] = phi_f * k_f;
     phi_r = sc[14]*sc[2];
-    Kc = exp((g_RT[11] + g_RT[8]) - (g_RT[14] + g_RT[2]));
+    Kc = Kc_save[45];
     k_r = k_f / Kc;
     q_r[45] = phi_r * k_r;
 
     /*reaction 47: NH + NO2 <=> N2O + OH */
     phi_f = sc[11]*sc[9];
-    k_f = 1e-06 * 1e+13;
+    k_f = k_f_save[46];
     q_f[46] = phi_f * k_f;
     phi_r = sc[10]*sc[2];
-    Kc = exp((g_RT[11] + g_RT[9]) - (g_RT[10] + g_RT[2]));
+    Kc = Kc_save[46];
     k_r = k_f / Kc;
     q_r[46] = phi_r * k_r;
 
     /*reaction 48: N + OH <=> NO + H */
     phi_f = sc[12]*sc[2];
-    k_f = 1e-06 * 3.8e+13;
+    k_f = k_f_save[47];
     q_f[47] = phi_f * k_f;
     phi_r = sc[8]*sc[0];
-    Kc = exp((g_RT[12] + g_RT[2]) - (g_RT[8] + g_RT[0]));
+    Kc = Kc_save[47];
     k_r = k_f / Kc;
     q_r[47] = phi_r * k_r;
 
     /*reaction 49: N + O2 <=> NO + O */
     phi_f = sc[12]*sc[4];
-    k_f = 1e-06 * 6.4e+09*exp(1*tc[0]-3160.54/tc[1]);
+    k_f = k_f_save[48];
     q_f[48] = phi_f * k_f;
     phi_r = sc[8]*sc[1];
-    Kc = exp((g_RT[12] + g_RT[4]) - (g_RT[8] + g_RT[1]));
+    Kc = Kc_save[48];
     k_r = k_f / Kc;
     q_r[48] = phi_r * k_r;
 
     /*reaction 50: N + NO <=> N2 + O */
     phi_f = sc[12]*sc[8];
-    k_f = 1e-06 * 2.1e+13;
+    k_f = k_f_save[49];
     q_f[49] = phi_f * k_f;
     phi_r = sc[14]*sc[1];
-    Kc = exp((g_RT[12] + g_RT[8]) - (g_RT[14] + g_RT[1]));
+    Kc = Kc_save[49];
     k_r = k_f / Kc;
     q_r[49] = phi_r * k_r;
 
     /*reaction 51: NNH <=> N2 + H */
     phi_f = sc[13];
-    k_f = 1 * 6.5e+07;
+    k_f = k_f_save[50];
     q_f[50] = phi_f * k_f;
     phi_r = sc[14]*sc[0];
-    Kc = refC * exp((g_RT[13]) - (g_RT[14] + g_RT[0]));
+    Kc = Kc_save[50];
     k_r = k_f / Kc;
     q_r[50] = phi_r * k_r;
 
     /*reaction 52: NNH + H <=> N2 + H2 */
     phi_f = sc[13]*sc[0];
-    k_f = 1e-06 * 1e+14;
+    k_f = k_f_save[51];
     q_f[51] = phi_f * k_f;
     phi_r = sc[14]*sc[3];
-    Kc = exp((g_RT[13] + g_RT[0]) - (g_RT[14] + g_RT[3]));
+    Kc = Kc_save[51];
     k_r = k_f / Kc;
     q_r[51] = phi_r * k_r;
 
     /*reaction 53: NNH + O <=> N2O + H */
     phi_f = sc[13]*sc[1];
-    k_f = 1e-06 * 1e+14;
+    k_f = k_f_save[52];
     q_f[52] = phi_f * k_f;
     phi_r = sc[10]*sc[0];
-    Kc = exp((g_RT[13] + g_RT[1]) - (g_RT[10] + g_RT[0]));
+    Kc = Kc_save[52];
     k_r = k_f / Kc;
     q_r[52] = phi_r * k_r;
 
     /*reaction 54: NNH + O <=> N2 + OH */
     phi_f = sc[13]*sc[1];
-    k_f = 1e-06 * 8e+13;
+    k_f = k_f_save[53];
     q_f[53] = phi_f * k_f;
     phi_r = sc[14]*sc[2];
-    Kc = exp((g_RT[13] + g_RT[1]) - (g_RT[14] + g_RT[2]));
+    Kc = Kc_save[53];
     k_r = k_f / Kc;
     q_r[53] = phi_r * k_r;
 
     /*reaction 55: NNH + O <=> NH + NO */
     phi_f = sc[13]*sc[1];
-    k_f = 1e-06 * 5e+13;
+    k_f = k_f_save[54];
     q_f[54] = phi_f * k_f;
     phi_r = sc[11]*sc[8];
-    Kc = exp((g_RT[13] + g_RT[1]) - (g_RT[11] + g_RT[8]));
+    Kc = Kc_save[54];
     k_r = k_f / Kc;
     q_r[54] = phi_r * k_r;
 
     /*reaction 56: NNH + OH <=> N2 + H2O */
     phi_f = sc[13]*sc[2];
-    k_f = 1e-06 * 5e+13;
+    k_f = k_f_save[55];
     q_f[55] = phi_f * k_f;
     phi_r = sc[14]*sc[6];
-    Kc = exp((g_RT[13] + g_RT[2]) - (g_RT[14] + g_RT[6]));
+    Kc = Kc_save[55];
     k_r = k_f / Kc;
     q_r[55] = phi_r * k_r;
 
     /*reaction 57: NNH + O2 <=> N2 + HO2 */
     phi_f = sc[13]*sc[4];
-    k_f = 1e-06 * 2e+14;
+    k_f = k_f_save[56];
     q_f[56] = phi_f * k_f;
     phi_r = sc[14]*sc[5];
-    Kc = exp((g_RT[13] + g_RT[4]) - (g_RT[14] + g_RT[5]));
+    Kc = Kc_save[56];
     k_r = k_f / Kc;
     q_r[56] = phi_r * k_r;
 
     /*reaction 58: NNH + O2 <=> N2 + H + O2 */
     phi_f = sc[13]*sc[4];
-    k_f = 1e-06 * 5e+13;
+    k_f = k_f_save[57];
     q_f[57] = phi_f * k_f;
     phi_r = sc[14]*sc[0]*sc[4];
-    Kc = refC * exp((g_RT[13] + g_RT[4]) - (g_RT[14] + g_RT[0] + g_RT[4]));
+    Kc = Kc_save[57];
     k_r = k_f / Kc;
     q_r[57] = phi_r * k_r;
 
@@ -6402,277 +6644,276 @@ void gibbs(double * species, double * tc)
     if (T < 1000) {
         /*species 0: H */
         species[0] =
-            +2.54736600e+04 * invT
-            +2.94668285e+00
-            -2.50000000e+00 * tc[0]
-            -0.00000000e+00 * tc[1]
-            -0.00000000e+00 * tc[2]
-            -0.00000000e+00 * tc[3]
-            -0.00000000e+00 * tc[4];
+            +2.547366000000000e+04 * invT
+            +2.946682850000000e+00
+            -2.500000000000000e+00 * tc[0]
+            -0.000000000000000e+00 * tc[1]
+            -0.000000000000000e+00 * tc[2]
+            -0.000000000000000e+00 * tc[3]
+            -0.000000000000000e+00 * tc[4];
         /*species 1: O */
         species[1] =
-            +2.91222592e+04 * invT
-            +1.11633364e+00
-            -3.16826710e+00 * tc[0]
-            +1.63965942e-03 * tc[1]
-            -1.10717733e-06 * tc[2]
-            +5.10672187e-10 * tc[3]
-            -1.05632985e-13 * tc[4];
+            +2.912225920000000e+04 * invT
+            +1.116333640000000e+00
+            -3.168267100000000e+00 * tc[0]
+            +1.639659420000000e-03 * tc[1]
+            -1.107177326666667e-06 * tc[2]
+            +5.106721866666666e-10 * tc[3]
+            -1.056329855000000e-13 * tc[4];
         /*species 2: OH */
         species[2] =
-            +3.37165248e+03 * invT
-            +4.09579830e+00
-            -3.99198424e+00 * tc[0]
-            +1.20053327e-03 * tc[1]
-            -7.69440055e-07 * tc[2]
-            +3.23263588e-10 * tc[3]
-            -6.81597510e-14 * tc[4];
+            +3.371652480000000e+03 * invT
+            +4.095798299000000e+00
+            -3.991984240000000e+00 * tc[0]
+            +1.200533275000000e-03 * tc[1]
+            -7.694400550000000e-07 * tc[2]
+            +3.232635883333333e-10 * tc[3]
+            -6.815975100000000e-14 * tc[4];
         /*species 3: H2 */
         species[3] =
-            -9.17924130e+02 * invT
-            +1.66130072e+00
-            -2.34430290e+00 * tc[0]
-            -3.99021240e-03 * tc[1]
-            +3.24631950e-06 * tc[2]
-            -1.67974725e-09 * tc[3]
-            +3.68801445e-13 * tc[4];
+            -9.179241300000000e+02 * invT
+            +1.661300720000000e+00
+            -2.344302900000000e+00 * tc[0]
+            -3.990212400000000e-03 * tc[1]
+            +3.246319500000000e-06 * tc[2]
+            -1.679747250000000e-09 * tc[3]
+            +3.688014450000000e-13 * tc[4];
         /*species 4: O2 */
         species[4] =
-            -1.06394356e+03 * invT
-            +1.24780630e-01
-            -3.78245636e+00 * tc[0]
-            +1.49836707e-03 * tc[1]
-            -1.64121700e-06 * tc[2]
-            +8.06774590e-10 * tc[3]
-            -1.62186418e-13 * tc[4];
+            -1.063943560000000e+03 * invT
+            +1.247806300000001e-01
+            -3.782456360000000e+00 * tc[0]
+            +1.498367075000000e-03 * tc[1]
+            -1.641217000000000e-06 * tc[2]
+            +8.067745900000000e-10 * tc[3]
+            -1.621864180000000e-13 * tc[4];
         /*species 5: HO2 */
         species[5] =
-            +2.63190983e+02 * invT
-            +5.85910600e-01
-            -4.30178800e+00 * tc[0]
-            +2.37451005e-03 * tc[1]
-            -3.52632550e-06 * tc[2]
-            +2.02299675e-09 * tc[3]
-            -4.64603350e-13 * tc[4];
+            +2.631909830000000e+02 * invT
+            +5.859106000000001e-01
+            -4.301788000000000e+00 * tc[0]
+            +2.374510050000000e-03 * tc[1]
+            -3.526325500000000e-06 * tc[2]
+            +2.022996750000000e-09 * tc[3]
+            -4.646033500000000e-13 * tc[4];
         /*species 6: H2O */
         species[6] =
-            -3.02937260e+04 * invT
-            +5.04764421e+00
-            -4.19863520e+00 * tc[0]
-            +1.01820085e-03 * tc[1]
-            -1.08672360e-06 * tc[2]
-            +4.57327242e-10 * tc[3]
-            -8.85984000e-14 * tc[4];
+            -3.029372600000000e+04 * invT
+            +5.047644210000000e+00
+            -4.198635200000000e+00 * tc[0]
+            +1.018200850000000e-03 * tc[1]
+            -1.086723600000000e-06 * tc[2]
+            +4.573272416666666e-10 * tc[3]
+            -8.859840000000001e-14 * tc[4];
         /*species 7: H2O2 */
         species[7] =
-            -1.76843601e+04 * invT
-            +1.04141933e+00
-            -4.31515149e+00 * tc[0]
-            +4.23695311e-04 * tc[1]
-            -2.94007205e-06 * tc[2]
-            +1.88969120e-09 * tc[3]
-            -4.54475079e-13 * tc[4];
+            -1.768436010000000e+04 * invT
+            +1.041419330000000e+00
+            -4.315151490000000e+00 * tc[0]
+            +4.236953110000000e-04 * tc[1]
+            -2.940072050000000e-06 * tc[2]
+            +1.889691200000000e-09 * tc[3]
+            -4.544750790000000e-13 * tc[4];
         /*species 8: NO */
         species[8] =
-            +9.81823786e+03 * invT
-            +1.93798944e+00
-            -4.21859896e+00 * tc[0]
-            +2.31994062e-03 * tc[1]
-            -1.84071748e-06 * tc[2]
-            +7.78379589e-10 * tc[3]
-            -1.40277437e-13 * tc[4];
+            +9.818237859999999e+03 * invT
+            +1.937989440000000e+00
+            -4.218598960000000e+00 * tc[0]
+            +2.319940620000000e-03 * tc[1]
+            -1.840717483333334e-06 * tc[2]
+            +7.783795891666667e-10 * tc[3]
+            -1.402774370000000e-13 * tc[4];
         /*species 9: NO2 */
         species[9] =
-            +2.87409757e+03 * invT
-            -2.36796070e+00
-            -3.94403120e+00 * tc[0]
-            +7.92714500e-04 * tc[1]
-            -2.77630200e-06 * tc[2]
-            +1.70628550e-09 * tc[3]
-            -3.91752820e-13 * tc[4];
+            +2.874097570000000e+03 * invT
+            -2.367960700000000e+00
+            -3.944031200000000e+00 * tc[0]
+            +7.927145000000000e-04 * tc[1]
+            -2.776302000000000e-06 * tc[2]
+            +1.706285500000000e-09 * tc[3]
+            -3.917528200000000e-13 * tc[4];
         /*species 10: N2O */
         species[10] =
-            +8.76510000e+03 * invT
-            -6.96816400e+00
-            -2.54305800e+00 * tc[0]
-            -4.74609650e-03 * tc[1]
-            +1.63212917e-06 * tc[2]
-            -5.21987083e-10 * tc[3]
-            +9.50913000e-14 * tc[4];
+            +8.765100000000000e+03 * invT
+            -6.968164000000000e+00
+            -2.543058000000000e+00 * tc[0]
+            -4.746096500000000e-03 * tc[1]
+            +1.632129166666667e-06 * tc[2]
+            -5.219870833333333e-10 * tc[3]
+            +9.509129999999999e-14 * tc[4];
         /*species 11: NH */
         species[11] =
-            +4.18942940e+04 * invT
-            +1.64458070e+00
-            -3.49290840e+00 * tc[0]
-            -1.55895985e-04 * tc[1]
-            +2.48174733e-07 * tc[2]
-            -2.06803683e-10 * tc[3]
-            +5.17848350e-14 * tc[4];
+            +4.189429400000000e+04 * invT
+            +1.644580700000000e+00
+            -3.492908400000000e+00 * tc[0]
+            -1.558959850000000e-04 * tc[1]
+            +2.481747333333333e-07 * tc[2]
+            -2.068036833333333e-10 * tc[3]
+            +5.178483500000000e-14 * tc[4];
         /*species 12: N */
         species[12] =
-            +5.60989000e+04 * invT
-            -1.66449500e+00
-            -2.50307100e+00 * tc[0]
-            +1.09000900e-05 * tc[1]
-            -9.03421500e-09 * tc[2]
-            +4.70630000e-12 * tc[3]
-            -1.04995200e-15 * tc[4];
+            +5.609890000000000e+04 * invT
+            -1.664495000000000e+00
+            -2.503071000000000e+00 * tc[0]
+            +1.090009000000000e-05 * tc[1]
+            -9.034215000000001e-09 * tc[2]
+            +4.706300000000000e-12 * tc[3]
+            -1.049952000000000e-15 * tc[4];
         /*species 13: NNH */
         species[13] =
-            +2.83334700e+04 * invT
-            -2.89049300e+00
-            -3.50134400e+00 * tc[0]
-            -1.02679350e-03 * tc[1]
-            -1.19506833e-07 * tc[2]
-            -4.10112333e-11 * tc[3]
-            +4.83558500e-14 * tc[4];
+            +2.833347000000000e+04 * invT
+            -2.890493000000000e+00
+            -3.501344000000000e+00 * tc[0]
+            -1.026793500000000e-03 * tc[1]
+            -1.195068333333333e-07 * tc[2]
+            -4.101123333333334e-11 * tc[3]
+            +4.835585000000000e-14 * tc[4];
         /*species 14: N2 */
         species[14] =
-            -1.04697628e+03 * invT
-            +5.63534900e-01
-            -3.53100528e+00 * tc[0]
-            +6.18304940e-05 * tc[1]
-            +8.38332388e-08 * tc[2]
-            -2.02942177e-10 * tc[3]
-            +7.04406175e-14 * tc[4];
+            -1.046976280000000e+03 * invT
+            +5.635349000000001e-01
+            -3.531005280000000e+00 * tc[0]
+            +6.183049400000000e-05 * tc[1]
+            +8.383323883333334e-08 * tc[2]
+            -2.029421766666667e-10 * tc[3]
+            +7.044061750000001e-14 * tc[4];
     } else {
         /*species 0: H */
         species[0] =
-            +2.54736600e+04 * invT
-            +2.94668285e+00
-            -2.50000000e+00 * tc[0]
-            -0.00000000e+00 * tc[1]
-            -0.00000000e+00 * tc[2]
-            -0.00000000e+00 * tc[3]
-            -0.00000000e+00 * tc[4];
+            +2.547366000000000e+04 * invT
+            +2.946682850000000e+00
+            -2.500000000000000e+00 * tc[0]
+            -0.000000000000000e+00 * tc[1]
+            -0.000000000000000e+00 * tc[2]
+            -0.000000000000000e+00 * tc[3]
+            -0.000000000000000e+00 * tc[4];
         /*species 1: O */
         species[1] =
-            +2.92260120e+04 * invT
-            -2.37865760e+00
-            -2.54363697e+00 * tc[0]
-            +1.36581243e-05 * tc[1]
-            +6.98382533e-10 * tc[2]
-            -4.12901538e-13 * tc[3]
-            +2.39776847e-17 * tc[4];
+            +2.922601200000000e+04 * invT
+            -2.378657600000000e+00
+            -2.543636970000000e+00 * tc[0]
+            +1.365812430000000e-05 * tc[1]
+            +6.983825333333333e-10 * tc[2]
+            -4.129015375000000e-13 * tc[3]
+            +2.397768470000000e-17 * tc[4];
         /*species 2: OH */
         species[2] =
-            +3.70056220e+03 * invT
-            -3.00660061e+00
-            -2.83853033e+00 * tc[0]
-            -5.53706445e-04 * tc[1]
-            +4.90000348e-08 * tc[2]
-            -3.50582274e-12 * tc[3]
-            +1.21144945e-16 * tc[4];
+            +3.700562200000000e+03 * invT
+            -3.006600610000000e+00
+            -2.838530330000000e+00 * tc[0]
+            -5.537064450000000e-04 * tc[1]
+            +4.900003483333333e-08 * tc[2]
+            -3.505822741666666e-12 * tc[3]
+            +1.211449450000000e-16 * tc[4];
         /*species 3: H2 */
         species[3] =
-            -8.13055820e+02 * invT
-            +3.95714690e+00
-            -2.93283050e+00 * tc[0]
-            -4.13299010e-04 * tc[1]
-            +2.44000950e-08 * tc[2]
-            -1.28415425e-12 * tc[3]
-            +3.44398075e-17 * tc[4];
+            -8.130558200000000e+02 * invT
+            +3.957146900000000e+00
+            -2.932830500000000e+00 * tc[0]
+            -4.132990100000000e-04 * tc[1]
+            +2.440009500000000e-08 * tc[2]
+            -1.284154250000000e-12 * tc[3]
+            +3.443980750000000e-17 * tc[4];
         /*species 4: O2 */
         species[4] =
-            -1.21597725e+03 * invT
-            +2.45598990e-01
-            -3.66096083e+00 * tc[0]
-            -3.28182761e-04 * tc[1]
-            +2.35249142e-08 * tc[2]
-            -1.71498048e-12 * tc[3]
-            +6.49566240e-17 * tc[4];
+            -1.215977250000000e+03 * invT
+            +2.455989900000000e-01
+            -3.660960830000000e+00 * tc[0]
+            -3.281827615000000e-04 * tc[1]
+            +2.352491416666667e-08 * tc[2]
+            -1.714980483333333e-12 * tc[3]
+            +6.495662400000000e-17 * tc[4];
         /*species 5: HO2 */
         species[5] =
-            +3.02010736e+01 * invT
-            +1.21529210e+00
-            -4.17226590e+00 * tc[0]
-            -9.40604900e-04 * tc[1]
-            +5.77154950e-08 * tc[2]
-            -1.62237633e-12 * tc[3]
-            -8.80457650e-18 * tc[4];
+            +3.020107360000000e+01 * invT
+            +1.215292100000000e+00
+            -4.172265900000000e+00 * tc[0]
+            -9.406049000000000e-04 * tc[1]
+            +5.771549500000000e-08 * tc[2]
+            -1.622376333333333e-12 * tc[3]
+            -8.804576500000000e-18 * tc[4];
         /*species 6: H2O */
         species[6] =
-            -2.98858940e+04 * invT
-            -4.20551110e+00
-            -2.67703890e+00 * tc[0]
-            -1.48659080e-03 * tc[1]
-            +1.28961482e-07 * tc[2]
-            -7.86945950e-12 * tc[3]
-            +2.13449955e-16 * tc[4];
+            -2.988589400000000e+04 * invT
+            -4.205511100000001e+00
+            -2.677038900000000e+00 * tc[0]
+            -1.486590800000000e-03 * tc[1]
+            +1.289614816666667e-07 * tc[2]
+            -7.869459500000001e-12 * tc[3]
+            +2.134499550000000e-16 * tc[4];
         /*species 7: H2O2 */
         species[7] =
-            -1.79847939e+04 * invT
-            +3.91480339e+00
-            -4.57977305e+00 * tc[0]
-            -2.02663002e-03 * tc[1]
-            +2.16407883e-07 * tc[2]
-            -1.65176167e-11 * tc[3]
-            +5.69843960e-16 * tc[4];
+            -1.798479390000000e+04 * invT
+            +3.914803390000000e+00
+            -4.579773050000000e+00 * tc[0]
+            -2.026630015000000e-03 * tc[1]
+            +2.164078833333333e-07 * tc[2]
+            -1.651761666666667e-11 * tc[3]
+            +5.698439600000000e-16 * tc[4];
         /*species 8: NO */
         species[8] =
-            +9.89456954e+03 * invT
-            -3.10829235e+00
-            -3.26071234e+00 * tc[0]
-            -5.95505675e-04 * tc[1]
-            +7.15204410e-08 * tc[2]
-            -5.78734552e-12 * tc[3]
-            +2.01647840e-16 * tc[4];
+            +9.894569540000000e+03 * invT
+            -3.108292350000000e+00
+            -3.260712340000000e+00 * tc[0]
+            -5.955056750000000e-04 * tc[1]
+            +7.152044099999999e-08 * tc[2]
+            -5.787345524999999e-12 * tc[3]
+            +2.016478405000000e-16 * tc[4];
         /*species 9: NO2 */
         species[9] =
-            +2.29397777e+03 * invT
-            +5.00217095e+00
-            -4.88475400e+00 * tc[0]
-            -1.08619775e-03 * tc[1]
-            +1.38011515e-07 * tc[2]
-            -1.31229250e-11 * tc[3]
-            +5.25544750e-16 * tc[4];
+            +2.293977770000000e+03 * invT
+            +5.002170951000000e+00
+            -4.884754000000000e+00 * tc[0]
+            -1.086197750000000e-03 * tc[1]
+            +1.380115150000000e-07 * tc[2]
+            -1.312292500000000e-11 * tc[3]
+            +5.255447500000000e-16 * tc[4];
         /*species 10: N2O */
         species[10] =
-            +8.16581100e+03 * invT
-            +6.37622700e+00
-            -4.71897700e+00 * tc[0]
-            -1.43685700e-03 * tc[1]
-            +1.99582667e-07 * tc[2]
-            -1.87546000e-11 * tc[3]
-            +7.87668500e-16 * tc[4];
+            +8.165811000000000e+03 * invT
+            +6.376227000000000e+00
+            -4.718977000000000e+00 * tc[0]
+            -1.436857000000000e-03 * tc[1]
+            +1.995826666666667e-07 * tc[2]
+            -1.875460000000000e-11 * tc[3]
+            +7.876685000000001e-16 * tc[4];
         /*species 11: NH */
         species[11] =
-            +4.21345140e+04 * invT
-            -2.95708690e+00
-            -2.78369290e+00 * tc[0]
-            -6.64921450e-04 * tc[1]
-            +7.07967450e-08 * tc[2]
-            -6.52904200e-12 * tc[3]
-            +2.75222350e-16 * tc[4];
+            +4.213451400000000e+04 * invT
+            -2.957086900000000e+00
+            -2.783692900000000e+00 * tc[0]
+            -6.649214500000000e-04 * tc[1]
+            +7.079674500000000e-08 * tc[2]
+            -6.529041999999999e-12 * tc[3]
+            +2.752223500000000e-16 * tc[4];
         /*species 12: N */
         species[12] =
-            +5.61160400e+04 * invT
-            -1.99849000e+00
-            -2.45026800e+00 * tc[0]
-            -5.33073000e-05 * tc[1]
-            +1.24422283e-08 * tc[2]
-            -1.56637667e-12 * tc[3]
-            +5.12992000e-17 * tc[4];
+            +5.611604000000000e+04 * invT
+            -1.998490000000000e+00
+            -2.450268000000000e+00 * tc[0]
+            -5.330730000000000e-05 * tc[1]
+            +1.244222833333333e-08 * tc[2]
+            -1.566376666666667e-12 * tc[3]
+            +5.129920000000000e-17 * tc[4];
         /*species 13: NNH */
         species[13] =
-            +2.78802900e+04 * invT
-            +3.51105320e+00
-            -4.41534200e+00 * tc[0]
-            -8.07194000e-04 * tc[1]
-            +2.72149000e-08 * tc[2]
-            +7.13320500e-12 * tc[3]
-            -8.07395500e-16 * tc[4];
+            +2.788029000000000e+04 * invT
+            +3.511053200000000e+00
+            -4.415342000000000e+00 * tc[0]
+            -8.071940000000000e-04 * tc[1]
+            +2.721490000000000e-08 * tc[2]
+            +7.133205000000000e-12 * tc[3]
+            -8.073955000000000e-16 * tc[4];
         /*species 14: N2 */
         species[14] =
-            -9.23948688e+02 * invT
-            -2.91931125e+00
-            -2.95257637e+00 * tc[0]
-            -6.98450200e-04 * tc[1]
-            +8.21052672e-08 * tc[2]
-            -6.55008496e-12 * tc[3]
-            +2.30377602e-16 * tc[4];
+            -9.239486879999999e+02 * invT
+            -2.919311250000000e+00
+            -2.952576370000000e+00 * tc[0]
+            -6.984502000000001e-04 * tc[1]
+            +8.210526716666667e-08 * tc[2]
+            -6.550084958333333e-12 * tc[3]
+            +2.303776020000000e-16 * tc[4];
     }
-
     return;
 }
 
@@ -6683,13 +6924,13 @@ void helmholtz(double * species, double * tc)
 {
 
     /*temperature */
-    double T = tc[1];
+    double T = tc[1], invT = 1.0 / T;
 
     /*species with midpoint at T=1000 kelvin */
     if (T < 1000) {
         /*species 0: H */
         species[0] =
-            +2.54736600e+04 / tc[1]
+            +2.54736600e+04 * invT
             +1.94668285e+00
             -2.50000000e+00 * tc[0]
             -0.00000000e+00 * tc[1]
@@ -6698,7 +6939,7 @@ void helmholtz(double * species, double * tc)
             -0.00000000e+00 * tc[4];
         /*species 1: O */
         species[1] =
-            +2.91222592e+04 / tc[1]
+            +2.91222592e+04 * invT
             +1.16333640e-01
             -3.16826710e+00 * tc[0]
             +1.63965942e-03 * tc[1]
@@ -6707,7 +6948,7 @@ void helmholtz(double * species, double * tc)
             -1.05632985e-13 * tc[4];
         /*species 2: OH */
         species[2] =
-            +3.37165248e+03 / tc[1]
+            +3.37165248e+03 * invT
             +3.09579830e+00
             -3.99198424e+00 * tc[0]
             +1.20053327e-03 * tc[1]
@@ -6716,7 +6957,7 @@ void helmholtz(double * species, double * tc)
             -6.81597510e-14 * tc[4];
         /*species 3: H2 */
         species[3] =
-            -9.17924130e+02 / tc[1]
+            -9.17924130e+02 * invT
             +6.61300720e-01
             -2.34430290e+00 * tc[0]
             -3.99021240e-03 * tc[1]
@@ -6725,7 +6966,7 @@ void helmholtz(double * species, double * tc)
             +3.68801445e-13 * tc[4];
         /*species 4: O2 */
         species[4] =
-            -1.06394356e+03 / tc[1]
+            -1.06394356e+03 * invT
             -8.75219370e-01
             -3.78245636e+00 * tc[0]
             +1.49836707e-03 * tc[1]
@@ -6734,7 +6975,7 @@ void helmholtz(double * species, double * tc)
             -1.62186418e-13 * tc[4];
         /*species 5: HO2 */
         species[5] =
-            +2.63190983e+02 / tc[1]
+            +2.63190983e+02 * invT
             -4.14089400e-01
             -4.30178800e+00 * tc[0]
             +2.37451005e-03 * tc[1]
@@ -6743,7 +6984,7 @@ void helmholtz(double * species, double * tc)
             -4.64603350e-13 * tc[4];
         /*species 6: H2O */
         species[6] =
-            -3.02937260e+04 / tc[1]
+            -3.02937260e+04 * invT
             +4.04764421e+00
             -4.19863520e+00 * tc[0]
             +1.01820085e-03 * tc[1]
@@ -6752,7 +6993,7 @@ void helmholtz(double * species, double * tc)
             -8.85984000e-14 * tc[4];
         /*species 7: H2O2 */
         species[7] =
-            -1.76843601e+04 / tc[1]
+            -1.76843601e+04 * invT
             +4.14193300e-02
             -4.31515149e+00 * tc[0]
             +4.23695311e-04 * tc[1]
@@ -6761,7 +7002,7 @@ void helmholtz(double * species, double * tc)
             -4.54475079e-13 * tc[4];
         /*species 8: NO */
         species[8] =
-            +9.81823786e+03 / tc[1]
+            +9.81823786e+03 * invT
             +9.37989440e-01
             -4.21859896e+00 * tc[0]
             +2.31994062e-03 * tc[1]
@@ -6770,7 +7011,7 @@ void helmholtz(double * species, double * tc)
             -1.40277437e-13 * tc[4];
         /*species 9: NO2 */
         species[9] =
-            +2.87409757e+03 / tc[1]
+            +2.87409757e+03 * invT
             -3.36796070e+00
             -3.94403120e+00 * tc[0]
             +7.92714500e-04 * tc[1]
@@ -6779,7 +7020,7 @@ void helmholtz(double * species, double * tc)
             -3.91752820e-13 * tc[4];
         /*species 10: N2O */
         species[10] =
-            +8.76510000e+03 / tc[1]
+            +8.76510000e+03 * invT
             -7.96816400e+00
             -2.54305800e+00 * tc[0]
             -4.74609650e-03 * tc[1]
@@ -6788,7 +7029,7 @@ void helmholtz(double * species, double * tc)
             +9.50913000e-14 * tc[4];
         /*species 11: NH */
         species[11] =
-            +4.18942940e+04 / tc[1]
+            +4.18942940e+04 * invT
             +6.44580700e-01
             -3.49290840e+00 * tc[0]
             -1.55895985e-04 * tc[1]
@@ -6797,7 +7038,7 @@ void helmholtz(double * species, double * tc)
             +5.17848350e-14 * tc[4];
         /*species 12: N */
         species[12] =
-            +5.60989000e+04 / tc[1]
+            +5.60989000e+04 * invT
             -2.66449500e+00
             -2.50307100e+00 * tc[0]
             +1.09000900e-05 * tc[1]
@@ -6806,7 +7047,7 @@ void helmholtz(double * species, double * tc)
             -1.04995200e-15 * tc[4];
         /*species 13: NNH */
         species[13] =
-            +2.83334700e+04 / tc[1]
+            +2.83334700e+04 * invT
             -3.89049300e+00
             -3.50134400e+00 * tc[0]
             -1.02679350e-03 * tc[1]
@@ -6815,7 +7056,7 @@ void helmholtz(double * species, double * tc)
             +4.83558500e-14 * tc[4];
         /*species 14: N2 */
         species[14] =
-            -1.04697628e+03 / tc[1]
+            -1.04697628e+03 * invT
             -4.36465100e-01
             -3.53100528e+00 * tc[0]
             +6.18304940e-05 * tc[1]
@@ -6825,7 +7066,7 @@ void helmholtz(double * species, double * tc)
     } else {
         /*species 0: H */
         species[0] =
-            +2.54736600e+04 / tc[1]
+            +2.54736600e+04 * invT
             +1.94668285e+00
             -2.50000000e+00 * tc[0]
             -0.00000000e+00 * tc[1]
@@ -6834,7 +7075,7 @@ void helmholtz(double * species, double * tc)
             -0.00000000e+00 * tc[4];
         /*species 1: O */
         species[1] =
-            +2.92260120e+04 / tc[1]
+            +2.92260120e+04 * invT
             -3.37865760e+00
             -2.54363697e+00 * tc[0]
             +1.36581243e-05 * tc[1]
@@ -6843,7 +7084,7 @@ void helmholtz(double * species, double * tc)
             +2.39776847e-17 * tc[4];
         /*species 2: OH */
         species[2] =
-            +3.70056220e+03 / tc[1]
+            +3.70056220e+03 * invT
             -4.00660061e+00
             -2.83853033e+00 * tc[0]
             -5.53706445e-04 * tc[1]
@@ -6852,7 +7093,7 @@ void helmholtz(double * species, double * tc)
             +1.21144945e-16 * tc[4];
         /*species 3: H2 */
         species[3] =
-            -8.13055820e+02 / tc[1]
+            -8.13055820e+02 * invT
             +2.95714690e+00
             -2.93283050e+00 * tc[0]
             -4.13299010e-04 * tc[1]
@@ -6861,7 +7102,7 @@ void helmholtz(double * species, double * tc)
             +3.44398075e-17 * tc[4];
         /*species 4: O2 */
         species[4] =
-            -1.21597725e+03 / tc[1]
+            -1.21597725e+03 * invT
             -7.54401010e-01
             -3.66096083e+00 * tc[0]
             -3.28182761e-04 * tc[1]
@@ -6870,7 +7111,7 @@ void helmholtz(double * species, double * tc)
             +6.49566240e-17 * tc[4];
         /*species 5: HO2 */
         species[5] =
-            +3.02010736e+01 / tc[1]
+            +3.02010736e+01 * invT
             +2.15292100e-01
             -4.17226590e+00 * tc[0]
             -9.40604900e-04 * tc[1]
@@ -6879,7 +7120,7 @@ void helmholtz(double * species, double * tc)
             -8.80457650e-18 * tc[4];
         /*species 6: H2O */
         species[6] =
-            -2.98858940e+04 / tc[1]
+            -2.98858940e+04 * invT
             -5.20551110e+00
             -2.67703890e+00 * tc[0]
             -1.48659080e-03 * tc[1]
@@ -6888,7 +7129,7 @@ void helmholtz(double * species, double * tc)
             +2.13449955e-16 * tc[4];
         /*species 7: H2O2 */
         species[7] =
-            -1.79847939e+04 / tc[1]
+            -1.79847939e+04 * invT
             +2.91480339e+00
             -4.57977305e+00 * tc[0]
             -2.02663002e-03 * tc[1]
@@ -6897,7 +7138,7 @@ void helmholtz(double * species, double * tc)
             +5.69843960e-16 * tc[4];
         /*species 8: NO */
         species[8] =
-            +9.89456954e+03 / tc[1]
+            +9.89456954e+03 * invT
             -4.10829235e+00
             -3.26071234e+00 * tc[0]
             -5.95505675e-04 * tc[1]
@@ -6906,7 +7147,7 @@ void helmholtz(double * species, double * tc)
             +2.01647840e-16 * tc[4];
         /*species 9: NO2 */
         species[9] =
-            +2.29397777e+03 / tc[1]
+            +2.29397777e+03 * invT
             +4.00217095e+00
             -4.88475400e+00 * tc[0]
             -1.08619775e-03 * tc[1]
@@ -6915,7 +7156,7 @@ void helmholtz(double * species, double * tc)
             +5.25544750e-16 * tc[4];
         /*species 10: N2O */
         species[10] =
-            +8.16581100e+03 / tc[1]
+            +8.16581100e+03 * invT
             +5.37622700e+00
             -4.71897700e+00 * tc[0]
             -1.43685700e-03 * tc[1]
@@ -6924,7 +7165,7 @@ void helmholtz(double * species, double * tc)
             +7.87668500e-16 * tc[4];
         /*species 11: NH */
         species[11] =
-            +4.21345140e+04 / tc[1]
+            +4.21345140e+04 * invT
             -3.95708690e+00
             -2.78369290e+00 * tc[0]
             -6.64921450e-04 * tc[1]
@@ -6933,7 +7174,7 @@ void helmholtz(double * species, double * tc)
             +2.75222350e-16 * tc[4];
         /*species 12: N */
         species[12] =
-            +5.61160400e+04 / tc[1]
+            +5.61160400e+04 * invT
             -2.99849000e+00
             -2.45026800e+00 * tc[0]
             -5.33073000e-05 * tc[1]
@@ -6942,7 +7183,7 @@ void helmholtz(double * species, double * tc)
             +5.12992000e-17 * tc[4];
         /*species 13: NNH */
         species[13] =
-            +2.78802900e+04 / tc[1]
+            +2.78802900e+04 * invT
             +2.51105320e+00
             -4.41534200e+00 * tc[0]
             -8.07194000e-04 * tc[1]
@@ -6951,7 +7192,7 @@ void helmholtz(double * species, double * tc)
             -8.07395500e-16 * tc[4];
         /*species 14: N2 */
         species[14] =
-            -9.23948688e+02 / tc[1]
+            -9.23948688e+02 * invT
             -3.91931125e+00
             -2.95257637e+00 * tc[0]
             -6.98450200e-04 * tc[1]
@@ -7421,7 +7662,7 @@ void speciesInternalEnergy(double * species, double * tc)
 {
 
     /*temperature */
-    double T = tc[1];
+    double T = tc[1], invT = 1.0 / T;
 
     /*species with midpoint at T=1000 kelvin */
     if (T < 1000) {
@@ -7432,7 +7673,7 @@ void speciesInternalEnergy(double * species, double * tc)
             +0.00000000e+00 * tc[2]
             +0.00000000e+00 * tc[3]
             +0.00000000e+00 * tc[4]
-            +2.54736600e+04 / tc[1];
+            +2.54736600e+04 * invT;
         /*species 1: O */
         species[1] =
             +2.16826710e+00
@@ -7440,7 +7681,7 @@ void speciesInternalEnergy(double * species, double * tc)
             +2.21435465e-06 * tc[2]
             -1.53201656e-09 * tc[3]
             +4.22531942e-13 * tc[4]
-            +2.91222592e+04 / tc[1];
+            +2.91222592e+04 * invT;
         /*species 2: OH */
         species[2] =
             +2.99198424e+00
@@ -7448,7 +7689,7 @@ void speciesInternalEnergy(double * species, double * tc)
             +1.53888011e-06 * tc[2]
             -9.69790765e-10 * tc[3]
             +2.72639004e-13 * tc[4]
-            +3.37165248e+03 / tc[1];
+            +3.37165248e+03 * invT;
         /*species 3: H2 */
         species[3] =
             +1.34430290e+00
@@ -7456,7 +7697,7 @@ void speciesInternalEnergy(double * species, double * tc)
             -6.49263900e-06 * tc[2]
             +5.03924175e-09 * tc[3]
             -1.47520578e-12 * tc[4]
-            -9.17924130e+02 / tc[1];
+            -9.17924130e+02 * invT;
         /*species 4: O2 */
         species[4] =
             +2.78245636e+00
@@ -7464,7 +7705,7 @@ void speciesInternalEnergy(double * species, double * tc)
             +3.28243400e-06 * tc[2]
             -2.42032377e-09 * tc[3]
             +6.48745672e-13 * tc[4]
-            -1.06394356e+03 / tc[1];
+            -1.06394356e+03 * invT;
         /*species 5: HO2 */
         species[5] =
             +3.30178800e+00
@@ -7472,7 +7713,7 @@ void speciesInternalEnergy(double * species, double * tc)
             +7.05265100e-06 * tc[2]
             -6.06899025e-09 * tc[3]
             +1.85841340e-12 * tc[4]
-            +2.63190983e+02 / tc[1];
+            +2.63190983e+02 * invT;
         /*species 6: H2O */
         species[6] =
             +3.19863520e+00
@@ -7480,7 +7721,7 @@ void speciesInternalEnergy(double * species, double * tc)
             +2.17344720e-06 * tc[2]
             -1.37198172e-09 * tc[3]
             +3.54393600e-13 * tc[4]
-            -3.02937260e+04 / tc[1];
+            -3.02937260e+04 * invT;
         /*species 7: H2O2 */
         species[7] =
             +3.31515149e+00
@@ -7488,7 +7729,7 @@ void speciesInternalEnergy(double * species, double * tc)
             +5.88014410e-06 * tc[2]
             -5.66907360e-09 * tc[3]
             +1.81790032e-12 * tc[4]
-            -1.76843601e+04 / tc[1];
+            -1.76843601e+04 * invT;
         /*species 8: NO */
         species[8] =
             +3.21859896e+00
@@ -7496,7 +7737,7 @@ void speciesInternalEnergy(double * species, double * tc)
             +3.68143497e-06 * tc[2]
             -2.33513877e-09 * tc[3]
             +5.61109748e-13 * tc[4]
-            +9.81823786e+03 / tc[1];
+            +9.81823786e+03 * invT;
         /*species 9: NO2 */
         species[9] =
             +2.94403120e+00
@@ -7504,7 +7745,7 @@ void speciesInternalEnergy(double * species, double * tc)
             +5.55260400e-06 * tc[2]
             -5.11885650e-09 * tc[3]
             +1.56701128e-12 * tc[4]
-            +2.87409757e+03 / tc[1];
+            +2.87409757e+03 * invT;
         /*species 10: N2O */
         species[10] =
             +1.54305800e+00
@@ -7512,7 +7753,7 @@ void speciesInternalEnergy(double * species, double * tc)
             -3.26425833e-06 * tc[2]
             +1.56596125e-09 * tc[3]
             -3.80365200e-13 * tc[4]
-            +8.76510000e+03 / tc[1];
+            +8.76510000e+03 * invT;
         /*species 11: NH */
         species[11] =
             +2.49290840e+00
@@ -7520,7 +7761,7 @@ void speciesInternalEnergy(double * species, double * tc)
             -4.96349467e-07 * tc[2]
             +6.20411050e-10 * tc[3]
             -2.07139340e-13 * tc[4]
-            +4.18942940e+04 / tc[1];
+            +4.18942940e+04 * invT;
         /*species 12: N */
         species[12] =
             +1.50307100e+00
@@ -7528,7 +7769,7 @@ void speciesInternalEnergy(double * species, double * tc)
             +1.80684300e-08 * tc[2]
             -1.41189000e-11 * tc[3]
             +4.19980800e-15 * tc[4]
-            +5.60989000e+04 / tc[1];
+            +5.60989000e+04 * invT;
         /*species 13: NNH */
         species[13] =
             +2.50134400e+00
@@ -7536,7 +7777,7 @@ void speciesInternalEnergy(double * species, double * tc)
             +2.39013667e-07 * tc[2]
             +1.23033700e-10 * tc[3]
             -1.93423400e-13 * tc[4]
-            +2.83334700e+04 / tc[1];
+            +2.83334700e+04 * invT;
         /*species 14: N2 */
         species[14] =
             +2.53100528e+00
@@ -7544,7 +7785,7 @@ void speciesInternalEnergy(double * species, double * tc)
             -1.67666478e-07 * tc[2]
             +6.08826530e-10 * tc[3]
             -2.81762470e-13 * tc[4]
-            -1.04697628e+03 / tc[1];
+            -1.04697628e+03 * invT;
     } else {
         /*species 0: H */
         species[0] =
@@ -7553,7 +7794,7 @@ void speciesInternalEnergy(double * species, double * tc)
             +0.00000000e+00 * tc[2]
             +0.00000000e+00 * tc[3]
             +0.00000000e+00 * tc[4]
-            +2.54736600e+04 / tc[1];
+            +2.54736600e+04 * invT;
         /*species 1: O */
         species[1] =
             +1.54363697e+00
@@ -7561,7 +7802,7 @@ void speciesInternalEnergy(double * species, double * tc)
             -1.39676507e-09 * tc[2]
             +1.23870461e-12 * tc[3]
             -9.59107388e-17 * tc[4]
-            +2.92260120e+04 / tc[1];
+            +2.92260120e+04 * invT;
         /*species 2: OH */
         species[2] =
             +1.83853033e+00
@@ -7569,7 +7810,7 @@ void speciesInternalEnergy(double * species, double * tc)
             -9.80000697e-08 * tc[2]
             +1.05174682e-11 * tc[3]
             -4.84579780e-16 * tc[4]
-            +3.70056220e+03 / tc[1];
+            +3.70056220e+03 * invT;
         /*species 3: H2 */
         species[3] =
             +1.93283050e+00
@@ -7577,7 +7818,7 @@ void speciesInternalEnergy(double * species, double * tc)
             -4.88001900e-08 * tc[2]
             +3.85246275e-12 * tc[3]
             -1.37759230e-16 * tc[4]
-            -8.13055820e+02 / tc[1];
+            -8.13055820e+02 * invT;
         /*species 4: O2 */
         species[4] =
             +2.66096083e+00
@@ -7585,7 +7826,7 @@ void speciesInternalEnergy(double * species, double * tc)
             -4.70498283e-08 * tc[2]
             +5.14494145e-12 * tc[3]
             -2.59826496e-16 * tc[4]
-            -1.21597725e+03 / tc[1];
+            -1.21597725e+03 * invT;
         /*species 5: HO2 */
         species[5] =
             +3.17226590e+00
@@ -7593,7 +7834,7 @@ void speciesInternalEnergy(double * species, double * tc)
             -1.15430990e-07 * tc[2]
             +4.86712900e-12 * tc[3]
             +3.52183060e-17 * tc[4]
-            +3.02010736e+01 / tc[1];
+            +3.02010736e+01 * invT;
         /*species 6: H2O */
         species[6] =
             +1.67703890e+00
@@ -7601,7 +7842,7 @@ void speciesInternalEnergy(double * species, double * tc)
             -2.57922963e-07 * tc[2]
             +2.36083785e-11 * tc[3]
             -8.53799820e-16 * tc[4]
-            -2.98858940e+04 / tc[1];
+            -2.98858940e+04 * invT;
         /*species 7: H2O2 */
         species[7] =
             +3.57977305e+00
@@ -7609,7 +7850,7 @@ void speciesInternalEnergy(double * species, double * tc)
             -4.32815767e-07 * tc[2]
             +4.95528500e-11 * tc[3]
             -2.27937584e-15 * tc[4]
-            -1.79847939e+04 / tc[1];
+            -1.79847939e+04 * invT;
         /*species 8: NO */
         species[8] =
             +2.26071234e+00
@@ -7617,7 +7858,7 @@ void speciesInternalEnergy(double * species, double * tc)
             -1.43040882e-07 * tc[2]
             +1.73620366e-11 * tc[3]
             -8.06591362e-16 * tc[4]
-            +9.89456954e+03 / tc[1];
+            +9.89456954e+03 * invT;
         /*species 9: NO2 */
         species[9] =
             +3.88475400e+00
@@ -7625,7 +7866,7 @@ void speciesInternalEnergy(double * species, double * tc)
             -2.76023030e-07 * tc[2]
             +3.93687750e-11 * tc[3]
             -2.10217900e-15 * tc[4]
-            +2.29397777e+03 / tc[1];
+            +2.29397777e+03 * invT;
         /*species 10: N2O */
         species[10] =
             +3.71897700e+00
@@ -7633,7 +7874,7 @@ void speciesInternalEnergy(double * species, double * tc)
             -3.99165333e-07 * tc[2]
             +5.62638000e-11 * tc[3]
             -3.15067400e-15 * tc[4]
-            +8.16581100e+03 / tc[1];
+            +8.16581100e+03 * invT;
         /*species 11: NH */
         species[11] =
             +1.78369290e+00
@@ -7641,7 +7882,7 @@ void speciesInternalEnergy(double * species, double * tc)
             -1.41593490e-07 * tc[2]
             +1.95871260e-11 * tc[3]
             -1.10088940e-15 * tc[4]
-            +4.21345140e+04 / tc[1];
+            +4.21345140e+04 * invT;
         /*species 12: N */
         species[12] =
             +1.45026800e+00
@@ -7649,7 +7890,7 @@ void speciesInternalEnergy(double * species, double * tc)
             -2.48844567e-08 * tc[2]
             +4.69913000e-12 * tc[3]
             -2.05196800e-16 * tc[4]
-            +5.61160400e+04 / tc[1];
+            +5.61160400e+04 * invT;
         /*species 13: NNH */
         species[13] =
             +3.41534200e+00
@@ -7657,7 +7898,7 @@ void speciesInternalEnergy(double * species, double * tc)
             -5.44298000e-08 * tc[2]
             -2.13996150e-11 * tc[3]
             +3.22958200e-15 * tc[4]
-            +2.78802900e+04 / tc[1];
+            +2.78802900e+04 * invT;
         /*species 14: N2 */
         species[14] =
             +1.95257637e+00
@@ -7665,7 +7906,7 @@ void speciesInternalEnergy(double * species, double * tc)
             -1.64210534e-07 * tc[2]
             +1.96502549e-11 * tc[3]
             -9.21510408e-16 * tc[4]
-            -9.23948688e+02 / tc[1];
+            -9.23948688e+02 * invT;
     }
     return;
 }
@@ -7675,6 +7916,7 @@ void speciesInternalEnergy(double * species, double * tc)
 /*tc contains precomputed powers of T, tc[0] = log(T) */
 void speciesEnthalpy(double * species, double * tc)
 {
+
     /*temperature */
     double T = tc[1], invT = 1.0 / T;
 
@@ -7922,7 +8164,6 @@ void speciesEnthalpy(double * species, double * tc)
             -9.21510408e-16 * tc[4]
             -9.23948688e+02 * invT;
     }
-
     return;
 }
 
@@ -8205,264 +8446,1692 @@ void molecularWeight(double * wt)
     return;
 }
 
-
-/*get temperature given internal energy in mass units and mass fracs */
-int feeytt_(double * e, double * y, int * iwrk, double * rwrk, double * t)
-{
-    const int maxiter = 50;
-    const double tol  = 0.001;
-    double ein  = *e;
-    double tmin = 300; // max lower bound for thermo def
-    double tmax = 4000; // min upper bound for thermo def
-    double e1,emin,emax,cv,t1,dt;
-    int i; // loop counter
-    CKUBMS(&tmin, y, iwrk, rwrk, &emin);
-    CKUBMS(&tmax, y, iwrk, rwrk, &emax);
-    if (ein < emin) {
-        /*Linear Extrapolation below tmin */
-        CKCVBS(&tmin, y, iwrk, rwrk, &cv);
-        *t = tmin - (emin-ein)/cv;
-        return 1;
-    }
-    if (ein > emax) {
-        /*Linear Extrapolation above tmax */
-        CKCVBS(&tmax, y, iwrk, rwrk, &cv);
-        *t = tmax - (emax-ein)/cv;
-        return 1;
-    }
-    t1 = tmin + (tmax-tmin)/(emax-emin)*(ein-emin);
-    for (i = 0; i < maxiter; ++i) {
-        CKUBMS(&t1,y,iwrk,rwrk,&e1);
-        CKCVBS(&t1,y,iwrk,rwrk,&cv);
-        dt = (ein - e1) / cv;
-        if (dt > 100) { dt = 100; }
-        else if (dt < -100) { dt = -100; }
-        else if (fabs(dt) < tol) break;
-        t1 += dt;
-    }
-    *t = t1;
-    return 0;
-}
-
-
-/*convert phi[species] (specific mole nums) to y[species] (mass fracs) */
-void fephity_(double * phi, int * iwrk, double * rwrk, double * y)
-{
-    double XW  = 0; 
-    int id; /*loop counter */
-    /*Compute mean molecular wt first */
-    y[0] = phi[0]*1.007970;   XW += y[0]; /*H */
-    y[1] = phi[1]*15.999400;   XW += y[1]; /*O */
-    y[2] = phi[2]*17.007370;   XW += y[2]; /*OH */
-    y[3] = phi[3]*2.015940;   XW += y[3]; /*H2 */
-    y[4] = phi[4]*31.998800;   XW += y[4]; /*O2 */
-    y[5] = phi[5]*33.006770;   XW += y[5]; /*HO2 */
-    y[6] = phi[6]*18.015340;   XW += y[6]; /*H2O */
-    y[7] = phi[7]*34.014740;   XW += y[7]; /*H2O2 */
-    y[8] = phi[8]*30.006100;   XW += y[8]; /*NO */
-    y[9] = phi[9]*46.005500;   XW += y[9]; /*NO2 */
-    y[10] = phi[10]*44.012800;   XW += y[10]; /*N2O */
-    y[11] = phi[11]*15.014670;   XW += y[11]; /*NH */
-    y[12] = phi[12]*14.006700;   XW += y[12]; /*N */
-    y[13] = phi[13]*29.021370;   XW += y[13]; /*NNH */
-    y[14] = phi[14]*28.013400;   XW += y[14]; /*N2 */
-    for (id = 0; id < 15; ++id) {
-        y[id] = y[id]/XW;
-    }
-
-    return;
-}
-
-
-/*convert y[species] (mass fracs) to phi[species] (specific mole num) */
-void feytphi_(double * y, int * iwrk, double * rwrk, double * phi)
-{
-    phi[0] = y[0]/ 1.00797000e-03; /*H (wt in kg) */
-    phi[1] = y[1]/ 1.59994000e-02; /*O (wt in kg) */
-    phi[2] = y[2]/ 1.70073700e-02; /*OH (wt in kg) */
-    phi[3] = y[3]/ 2.01594000e-03; /*H2 (wt in kg) */
-    phi[4] = y[4]/ 3.19988000e-02; /*O2 (wt in kg) */
-    phi[5] = y[5]/ 3.30067700e-02; /*HO2 (wt in kg) */
-    phi[6] = y[6]/ 1.80153400e-02; /*H2O (wt in kg) */
-    phi[7] = y[7]/ 3.40147400e-02; /*H2O2 (wt in kg) */
-    phi[8] = y[8]/ 3.00061000e-02; /*NO (wt in kg) */
-    phi[9] = y[9]/ 4.60055000e-02; /*NO2 (wt in kg) */
-    phi[10] = y[10]/ 4.40128000e-02; /*N2O (wt in kg) */
-    phi[11] = y[11]/ 1.50146700e-02; /*NH (wt in kg) */
-    phi[12] = y[12]/ 1.40067000e-02; /*N (wt in kg) */
-    phi[13] = y[13]/ 2.90213700e-02; /*NNH (wt in kg) */
-    phi[14] = y[14]/ 2.80134000e-02; /*N2 (wt in kg) */
-
-    return;
-}
-
-
-/*reverse of ytcr, useful for rate computations */
-void fectyr_(double * c, double * rho, int * iwrk, double * rwrk, double * y)
-{
-    y[0] = c[0] * 1.007970 / (*rho); 
-    y[1] = c[1] * 15.999400 / (*rho); 
-    y[2] = c[2] * 17.007370 / (*rho); 
-    y[3] = c[3] * 2.015940 / (*rho); 
-    y[4] = c[4] * 31.998800 / (*rho); 
-    y[5] = c[5] * 33.006770 / (*rho); 
-    y[6] = c[6] * 18.015340 / (*rho); 
-    y[7] = c[7] * 34.014740 / (*rho); 
-    y[8] = c[8] * 30.006100 / (*rho); 
-    y[9] = c[9] * 46.005500 / (*rho); 
-    y[10] = c[10] * 44.012800 / (*rho); 
-    y[11] = c[11] * 15.014670 / (*rho); 
-    y[12] = c[12] * 14.006700 / (*rho); 
-    y[13] = c[13] * 29.021370 / (*rho); 
-    y[14] = c[14] * 28.013400 / (*rho); 
-
-    return;
-}
-
-
-/*ddebdf compatible right hand side of CV burner */
-/*rwrk[0] and rwrk[1] should contain rho and ene respectively */
-/*working variable phi contains specific mole numbers */
-void fecvrhs_(double * time, double * phi, double * phidot, double * rwrk, int * iwrk)
-{
-    double rho,ene; /*CV Parameters */
-    double y[15], wdot[15]; /*temporary storage */
-    int i; /*Loop counter */
-    double temperature,pressure; /*temporary var */
-    rho = rwrk[0];
-    ene = rwrk[1];
-    fephity_(phi, iwrk, rwrk, y);
-    feeytt_(&ene, y, iwrk, rwrk, &temperature);
-    CKPY(&rho, &temperature,  y, iwrk, rwrk, &pressure);
-    CKWYP(&pressure, &temperature,  y, iwrk, rwrk, wdot);
-    for (i=0; i<15; ++i) phidot[i] = wdot[i] / (rho/1000.0); 
-
-    return;
-}
-
-
-/*returns the dimensionality of the cv burner (number of species) */
-int fecvdim_()
-{
-    return 15;
-}
-
-
-/*ddebdf compatible right hand side of ZND solver */
-/*rwrk[0] : scaling factor for pressure */
-/*rwrk[1] : preshock density (g/cc)  */
-/*rwrk[2] : detonation velocity (cm/s)  */
-/*solution vector: [P; rho; y0 ... ylast]  */
-void fezndrhs_(double * time, double * z, double * zdot, double * rwrk, int * iwrk)
-{
-    double psc,rho1,udet; /*ZND Parameters */
-    double wt[15], hms[15], wdot[15]; /*temporary storage */
-    int i; /*Loop counter */
-    /*temporary variables */
-    double ru, T, uvel, wtm, p, rho, gam, son, xm, sum, drdy, eta, cp, cv ;
-    double *y; /*mass frac pointer */
-
-    ru = 8.31451e+07;
-
-    psc = rwrk[0];
-    rho1 = rwrk[1];
-    udet = rwrk[2];
-
-    p = z[0] * psc;
-    rho = z[1];
-
-    y = &z[3];
-
-    CKMMWY(y, 0, 0, &wtm);
-
-    T = p * wtm / rho / ru;
-
-    uvel = (rho1 * udet)/ rho;
-
-    CKCPBS(&T, y, 0, 0, &cp);
-    CKCVBS(&T, y, 0, 0, &cv);
-    gam = cp/cv;
-
-    son = sqrt(fabs(gam*ru*T/wtm));
-    xm = uvel/son;
-
-    CKHMS(&T, 0, 0, hms);
-    CKWT(0, 0, wt);
-    CKWYP(&p, &T, y, 0, 0, wdot);
-
-    sum = 0.0;
-    for (i=0; i<15; ++i) {
-        zdot[i+3] = wdot[i] * wt[i] / rho;
-        drdy = -rho * wtm / wt[i];
-        sum += -( drdy + rho * hms[i]/ (cp*T) ) * zdot[i+3];
-    }
-
-    eta = 1.0 - xm*xm;
-    zdot[0] = -(uvel*uvel/eta/psc)*sum;
-    zdot[1] = -sum/eta;
-    zdot[2] = uvel;
-
-    return;
-}
-
-
-/*returns the dimensionality of the ZND solver (3+number of species) */
-int feznddim_()
-{
-    return 18;
-}
-
-
-/*returns the name of the source mechanism file  */
-char* femechfile_()
-{
-    return "";
-}
-
-
-/*returns the species number */
-int fesymnum_(const char* s1)
-{
-    if (strcmp(s1, "H")==0) return 0; 
-    if (strcmp(s1, "O")==0) return 1; 
-    if (strcmp(s1, "OH")==0) return 2; 
-    if (strcmp(s1, "H2")==0) return 3; 
-    if (strcmp(s1, "O2")==0) return 4; 
-    if (strcmp(s1, "HO2")==0) return 5; 
-    if (strcmp(s1, "H2O")==0) return 6; 
-    if (strcmp(s1, "H2O2")==0) return 7; 
-    if (strcmp(s1, "NO")==0) return 8; 
-    if (strcmp(s1, "NO2")==0) return 9; 
-    if (strcmp(s1, "N2O")==0) return 10; 
-    if (strcmp(s1, "NH")==0) return 11; 
-    if (strcmp(s1, "N")==0) return 12; 
-    if (strcmp(s1, "NNH")==0) return 13; 
-    if (strcmp(s1, "N2")==0) return 14; 
-    /*species name not found */
-    return -1;
-}
-
-
-/*returns the species name */
-char* fesymname_(int sn)
-{
-    if (sn==0) return "H"; 
-    if (sn==1) return "O"; 
-    if (sn==2) return "OH"; 
-    if (sn==3) return "H2"; 
-    if (sn==4) return "O2"; 
-    if (sn==5) return "HO2"; 
-    if (sn==6) return "H2O"; 
-    if (sn==7) return "H2O2"; 
-    if (sn==8) return "NO"; 
-    if (sn==9) return "NO2"; 
-    if (sn==10) return "N2O"; 
-    if (sn==11) return "NH"; 
-    if (sn==12) return "N"; 
-    if (sn==13) return "NNH"; 
-    if (sn==14) return "N2"; 
-    /*species name not found */
-    return "NOTFOUND";
-}
-
 /* End of file  */
+#if defined(BL_FORT_USE_UPPERCASE)
+#define egtransetLENIMC EGTRANSETLENIMC
+#elif defined(BL_FORT_USE_LOWERCASE)
+#define egtransetLENIMC egtransetlenimc
+#elif defined(BL_FORT_USE_UNDERSCORE)
+#define egtransetLENIMC egtransetlenimc_
+#endif
+void egtransetLENIMC(int* LENIMC) {
+  *LENIMC =           62;}
+#if defined(BL_FORT_USE_UPPERCASE)
+#define egtransetLENRMC EGTRANSETLENRMC
+#elif defined(BL_FORT_USE_LOWERCASE)
+#define egtransetLENRMC egtransetlenrmc
+#elif defined(BL_FORT_USE_UNDERSCORE)
+#define egtransetLENRMC egtransetlenrmc_
+#endif
+void egtransetLENRMC(int* LENRMC) {
+  *LENRMC =         4800;}
+#if defined(BL_FORT_USE_UPPERCASE)
+#define egtransetNO EGTRANSETNO
+#elif defined(BL_FORT_USE_LOWERCASE)
+#define egtransetNO egtransetno
+#elif defined(BL_FORT_USE_UNDERSCORE)
+#define egtransetNO egtransetno_
+#endif
+void egtransetNO(int* NO) {
+  *NO =            4;}
+#if defined(BL_FORT_USE_UPPERCASE)
+#define egtransetKK EGTRANSETKK
+#elif defined(BL_FORT_USE_LOWERCASE)
+#define egtransetKK egtransetkk
+#elif defined(BL_FORT_USE_UNDERSCORE)
+#define egtransetKK egtransetkk_
+#endif
+void egtransetKK(int* KK) {
+  *KK =           15;}
+#if defined(BL_FORT_USE_UPPERCASE)
+#define egtransetNLITE EGTRANSETNLITE
+#elif defined(BL_FORT_USE_LOWERCASE)
+#define egtransetNLITE egtransetnlite
+#elif defined(BL_FORT_USE_UNDERSCORE)
+#define egtransetNLITE egtransetnlite_
+#endif
+void egtransetNLITE(int* NLITE) {
+  *NLITE =            2;}
+#if defined(BL_FORT_USE_UPPERCASE)
+#define egtransetPATM EGTRANSETPATM
+#elif defined(BL_FORT_USE_LOWERCASE)
+#define egtransetPATM egtransetpatm
+#elif defined(BL_FORT_USE_UNDERSCORE)
+#define egtransetPATM egtransetpatm_
+#endif
+void egtransetPATM(double* PATM) {
+  *PATM =   0.1013250000000000E+07;}
+#if defined(BL_FORT_USE_UPPERCASE)
+#define egtransetWT EGTRANSETWT
+#elif defined(BL_FORT_USE_LOWERCASE)
+#define egtransetWT egtransetwt
+#elif defined(BL_FORT_USE_UNDERSCORE)
+#define egtransetWT egtransetwt_
+#endif
+void egtransetWT(double* WT) {
+  WT[           0] =   0.1007969975471497E+01;
+  WT[           1] =   0.1599940013885498E+02;
+  WT[           2] =   0.1700737011432648E+02;
+  WT[           3] =   0.2015939950942993E+01;
+  WT[           4] =   0.3199880027770996E+02;
+  WT[           5] =   0.3300677025318146E+02;
+  WT[           6] =   0.1801534008979797E+02;
+  WT[           7] =   0.3401474022865295E+02;
+  WT[           8] =   0.3000609970092773E+02;
+  WT[           9] =   0.4600549983978271E+02;
+  WT[          10] =   0.4401279926300049E+02;
+  WT[          11] =   0.1501466953754425E+02;
+  WT[          12] =   0.1400669956207275E+02;
+  WT[          13] =   0.2902136909961700E+02;
+  WT[          14] =   0.2801339912414551E+02;
+};
+#if defined(BL_FORT_USE_UPPERCASE)
+#define egtransetEPS EGTRANSETEPS
+#elif defined(BL_FORT_USE_LOWERCASE)
+#define egtransetEPS egtranseteps
+#elif defined(BL_FORT_USE_UNDERSCORE)
+#define egtransetEPS egtranseteps_
+#endif
+void egtransetEPS(double* EPS) {
+  EPS[           0] =   0.1450000000000000E+03;
+  EPS[           1] =   0.8000000000000000E+02;
+  EPS[           2] =   0.8000000000000000E+02;
+  EPS[           3] =   0.3800000000000000E+02;
+  EPS[           4] =   0.1074000000000000E+03;
+  EPS[           5] =   0.1074000000000000E+03;
+  EPS[           6] =   0.5724000000000000E+03;
+  EPS[           7] =   0.1074000000000000E+03;
+  EPS[           8] =   0.9753000000000000E+02;
+  EPS[           9] =   0.2000000000000000E+03;
+  EPS[          10] =   0.2324000000000000E+03;
+  EPS[          11] =   0.8000000000000000E+02;
+  EPS[          12] =   0.7140000000000001E+02;
+  EPS[          13] =   0.7140000000000001E+02;
+  EPS[          14] =   0.9753000000000000E+02;
+};
+#if defined(BL_FORT_USE_UPPERCASE)
+#define egtransetSIG EGTRANSETSIG
+#elif defined(BL_FORT_USE_LOWERCASE)
+#define egtransetSIG egtransetsig
+#elif defined(BL_FORT_USE_UNDERSCORE)
+#define egtransetSIG egtransetsig_
+#endif
+void egtransetSIG(double* SIG) {
+  SIG[           0] =   0.2050000000000000E+01;
+  SIG[           1] =   0.2750000000000000E+01;
+  SIG[           2] =   0.2750000000000000E+01;
+  SIG[           3] =   0.2920000000000000E+01;
+  SIG[           4] =   0.3458000000000000E+01;
+  SIG[           5] =   0.3458000000000000E+01;
+  SIG[           6] =   0.2605000000000000E+01;
+  SIG[           7] =   0.3458000000000000E+01;
+  SIG[           8] =   0.3621000000000000E+01;
+  SIG[           9] =   0.3500000000000000E+01;
+  SIG[          10] =   0.3828000000000000E+01;
+  SIG[          11] =   0.2650000000000000E+01;
+  SIG[          12] =   0.3298000000000000E+01;
+  SIG[          13] =   0.3798000000000000E+01;
+  SIG[          14] =   0.3621000000000000E+01;
+};
+#if defined(BL_FORT_USE_UPPERCASE)
+#define egtransetDIP EGTRANSETDIP
+#elif defined(BL_FORT_USE_LOWERCASE)
+#define egtransetDIP egtransetdip
+#elif defined(BL_FORT_USE_UNDERSCORE)
+#define egtransetDIP egtransetdip_
+#endif
+void egtransetDIP(double* DIP) {
+  DIP[           0] =   0.0000000000000000E+00;
+  DIP[           1] =   0.0000000000000000E+00;
+  DIP[           2] =   0.0000000000000000E+00;
+  DIP[           3] =   0.0000000000000000E+00;
+  DIP[           4] =   0.0000000000000000E+00;
+  DIP[           5] =   0.0000000000000000E+00;
+  DIP[           6] =   0.1844000000000000E+01;
+  DIP[           7] =   0.0000000000000000E+00;
+  DIP[           8] =   0.0000000000000000E+00;
+  DIP[           9] =   0.0000000000000000E+00;
+  DIP[          10] =   0.0000000000000000E+00;
+  DIP[          11] =   0.0000000000000000E+00;
+  DIP[          12] =   0.0000000000000000E+00;
+  DIP[          13] =   0.0000000000000000E+00;
+  DIP[          14] =   0.0000000000000000E+00;
+};
+#if defined(BL_FORT_USE_UPPERCASE)
+#define egtransetPOL EGTRANSETPOL
+#elif defined(BL_FORT_USE_LOWERCASE)
+#define egtransetPOL egtransetpol
+#elif defined(BL_FORT_USE_UNDERSCORE)
+#define egtransetPOL egtransetpol_
+#endif
+void egtransetPOL(double* POL) {
+  POL[           0] =   0.0000000000000000E+00;
+  POL[           1] =   0.0000000000000000E+00;
+  POL[           2] =   0.0000000000000000E+00;
+  POL[           3] =   0.7900000000000000E+00;
+  POL[           4] =   0.1600000000000000E+01;
+  POL[           5] =   0.0000000000000000E+00;
+  POL[           6] =   0.0000000000000000E+00;
+  POL[           7] =   0.0000000000000000E+00;
+  POL[           8] =   0.1760000000000000E+01;
+  POL[           9] =   0.0000000000000000E+00;
+  POL[          10] =   0.0000000000000000E+00;
+  POL[          11] =   0.0000000000000000E+00;
+  POL[          12] =   0.0000000000000000E+00;
+  POL[          13] =   0.0000000000000000E+00;
+  POL[          14] =   0.1760000000000000E+01;
+};
+#if defined(BL_FORT_USE_UPPERCASE)
+#define egtransetZROT EGTRANSETZROT
+#elif defined(BL_FORT_USE_LOWERCASE)
+#define egtransetZROT egtransetzrot
+#elif defined(BL_FORT_USE_UNDERSCORE)
+#define egtransetZROT egtransetzrot_
+#endif
+void egtransetZROT(double* ZROT) {
+  ZROT[           0] =   0.0000000000000000E+00;
+  ZROT[           1] =   0.0000000000000000E+00;
+  ZROT[           2] =   0.0000000000000000E+00;
+  ZROT[           3] =   0.2800000000000000E+03;
+  ZROT[           4] =   0.3800000000000000E+01;
+  ZROT[           5] =   0.1000000000000000E+01;
+  ZROT[           6] =   0.4000000000000000E+01;
+  ZROT[           7] =   0.3800000000000000E+01;
+  ZROT[           8] =   0.4000000000000000E+01;
+  ZROT[           9] =   0.1000000000000000E+01;
+  ZROT[          10] =   0.1000000000000000E+01;
+  ZROT[          11] =   0.4000000000000000E+01;
+  ZROT[          12] =   0.0000000000000000E+00;
+  ZROT[          13] =   0.1000000000000000E+01;
+  ZROT[          14] =   0.4000000000000000E+01;
+};
+#if defined(BL_FORT_USE_UPPERCASE)
+#define egtransetNLIN EGTRANSETNLIN
+#elif defined(BL_FORT_USE_LOWERCASE)
+#define egtransetNLIN egtransetnlin
+#elif defined(BL_FORT_USE_UNDERSCORE)
+#define egtransetNLIN egtransetnlin_
+#endif
+void egtransetNLIN(int* NLIN) {
+  NLIN[           0] =            0;
+  NLIN[           1] =            0;
+  NLIN[           2] =            1;
+  NLIN[           3] =            1;
+  NLIN[           4] =            1;
+  NLIN[           5] =            2;
+  NLIN[           6] =            2;
+  NLIN[           7] =            2;
+  NLIN[           8] =            1;
+  NLIN[           9] =            2;
+  NLIN[          10] =            1;
+  NLIN[          11] =            1;
+  NLIN[          12] =            0;
+  NLIN[          13] =            2;
+  NLIN[          14] =            1;
+};
+#if defined(BL_FORT_USE_UPPERCASE)
+#define egtransetCOFLAM EGTRANSETCOFLAM
+#elif defined(BL_FORT_USE_LOWERCASE)
+#define egtransetCOFLAM egtransetcoflam
+#elif defined(BL_FORT_USE_UNDERSCORE)
+#define egtransetCOFLAM egtransetcoflam_
+#endif
+void egtransetCOFLAM(double* COFLAM) {
+  COFLAM[           0] =   0.2275028008756871E-01;
+  COFLAM[           1] =   0.3261057815873756E+01;
+  COFLAM[           2] =  -0.3401775687039983E+00;
+  COFLAM[           3] =   0.1473938515985838E-01;
+  COFLAM[           4] =   0.2241322383701714E+01;
+  COFLAM[           5] =   0.1680892722599026E+01;
+  COFLAM[           6] =  -0.1372174737383017E+00;
+  COFLAM[           7] =   0.6048682074622076E-02;
+  COFLAM[           8] =   0.1512304828773671E+02;
+  COFLAM[           9] =  -0.3689219490819916E+01;
+  COFLAM[          10] =   0.6016560270677763E+00;
+  COFLAM[          11] =  -0.2671941052088746E-01;
+  COFLAM[          12] =   0.1216294690770399E+02;
+  COFLAM[          13] =  -0.1793276805201434E+01;
+  COFLAM[          14] =   0.3145187605615077E+00;
+  COFLAM[          15] =  -0.1247107803117781E-01;
+  COFLAM[          16] =  -0.2574697546797322E+01;
+  COFLAM[          17] =   0.3192053452600490E+01;
+  COFLAM[          18] =  -0.3180048007278750E+00;
+  COFLAM[          19] =   0.1394841585373175E-01;
+  COFLAM[          20] =   0.2445641266014231E+01;
+  COFLAM[          21] =   0.7562095410461581E+00;
+  COFLAM[          22] =   0.6924571125398163E-01;
+  COFLAM[          23] =  -0.5505326490175595E-02;
+  COFLAM[          24] =   0.2078007475928601E+02;
+  COFLAM[          25] =  -0.7829322376892079E+01;
+  COFLAM[          26] =   0.1363321975831565E+01;
+  COFLAM[          27] =  -0.6791541865700287E-01;
+  COFLAM[          28] =   0.6967028474928928E+00;
+  COFLAM[          29] =   0.1408219306022218E+01;
+  COFLAM[          30] =   0.4097067816780268E-02;
+  COFLAM[          31] =  -0.3613998188093195E-02;
+  COFLAM[          32] =   0.6945977840354891E+01;
+  COFLAM[          33] =  -0.9638832761755233E+00;
+  COFLAM[          34] =   0.2821741717745234E+00;
+  COFLAM[          35] =  -0.1493044672153078E-01;
+  COFLAM[          36] =  -0.1662184858337771E+02;
+  COFLAM[          37] =   0.8484044413292917E+01;
+  COFLAM[          38] =  -0.9781359188964711E+00;
+  COFLAM[          39] =   0.4140341324555693E-01;
+  COFLAM[          40] =  -0.1212887626987692E+02;
+  COFLAM[          41] =   0.6295435044043567E+01;
+  COFLAM[          42] =  -0.6377803898331278E+00;
+  COFLAM[          43] =   0.2394195295432890E-01;
+  COFLAM[          44] =   0.1041449118465093E+02;
+  COFLAM[          45] =  -0.1636552719768927E+01;
+  COFLAM[          46] =   0.3162470266930527E+00;
+  COFLAM[          47] =  -0.1346365879961693E-01;
+  COFLAM[          48] =   0.2571501390604503E+01;
+  COFLAM[          49] =   0.1435550225797724E+01;
+  COFLAM[          50] =  -0.1043476296606175E+00;
+  COFLAM[          51] =   0.4580649134638923E-02;
+  COFLAM[          52] =   0.4921299057063938E+01;
+  COFLAM[          53] =  -0.4374718231394432E+00;
+  COFLAM[          54] =   0.2592263777073271E+00;
+  COFLAM[          55] =  -0.1567139518196203E-01;
+  COFLAM[          56] =   0.1069769027684588E+02;
+  COFLAM[          57] =  -0.2529619934445385E+01;
+  COFLAM[          58] =   0.4974738094590221E+00;
+  COFLAM[          59] =  -0.2466468043187436E-01;
+};
+#if defined(BL_FORT_USE_UPPERCASE)
+#define egtransetCOFETA EGTRANSETCOFETA
+#elif defined(BL_FORT_USE_LOWERCASE)
+#define egtransetCOFETA egtransetcofeta
+#elif defined(BL_FORT_USE_UNDERSCORE)
+#define egtransetCOFETA egtransetcofeta_
+#endif
+void egtransetCOFETA(double* COFETA) {
+  COFETA[           0] =  -0.1952716500914950E+02;
+  COFETA[           1] =   0.3261057815873812E+01;
+  COFETA[           2] =  -0.3401775687040061E+00;
+  COFETA[           3] =   0.1473938515985874E-01;
+  COFETA[           4] =  -0.1454398005828718E+02;
+  COFETA[           5] =   0.1680892722599193E+01;
+  COFETA[           6] =  -0.1372174737383249E+00;
+  COFETA[           7] =   0.6048682074623137E-02;
+  COFETA[           8] =  -0.1451343228027313E+02;
+  COFETA[           9] =   0.1680892722599180E+01;
+  COFETA[          10] =  -0.1372174737383228E+00;
+  COFETA[          11] =   0.6048682074623037E-02;
+  COFETA[          12] =  -0.1350232180202826E+02;
+  COFETA[          13] =   0.8541080576610959E+00;
+  COFETA[          14] =  -0.2829855499940444E-01;
+  COFETA[          15] =   0.1271302744097607E-02;
+  COFETA[          16] =  -0.1652175091679111E+02;
+  COFETA[          17] =   0.2394046741797939E+01;
+  COFETA[          18] =  -0.2301637580705922E+00;
+  COFETA[          19] =   0.1008479172141301E-01;
+  COFETA[          20] =  -0.1650624377237309E+02;
+  COFETA[          21] =   0.2394046741797971E+01;
+  COFETA[          22] =  -0.2301637580705965E+00;
+  COFETA[          23] =   0.1008479172141321E-01;
+  COFETA[          24] =  -0.1307160161390482E+02;
+  COFETA[          25] =  -0.2592861555748340E+00;
+  COFETA[          26] =   0.2565297612543304E+00;
+  COFETA[          27] =  -0.1609270043920451E-01;
+  COFETA[          28] =  -0.1649120313877725E+02;
+  COFETA[          29] =   0.2394046741798005E+01;
+  COFETA[          30] =  -0.2301637580706010E+00;
+  COFETA[          31] =   0.1008479172141341E-01;
+  COFETA[          32] =  -0.1595814436337888E+02;
+  COFETA[          33] =   0.2131939570967141E+01;
+  COFETA[          34] =  -0.1961911683803149E+00;
+  COFETA[          35] =   0.8617691675965194E-02;
+  COFETA[          36] =  -0.2156507583481173E+02;
+  COFETA[          37] =   0.4305227753578706E+01;
+  COFETA[          38] =  -0.4687113619224428E+00;
+  COFETA[          39] =   0.2002099270261577E-01;
+  COFETA[          40] =  -0.2301694015729145E+02;
+  COFETA[          41] =   0.4733575530530014E+01;
+  COFETA[          42] =  -0.5183508824318821E+00;
+  COFETA[          43] =   0.2193212281602507E-01;
+  COFETA[          44] =  -0.1450165928384816E+02;
+  COFETA[          45] =   0.1680892722599088E+01;
+  COFETA[          46] =  -0.1372174737383104E+00;
+  COFETA[          47] =   0.6048682074622478E-02;
+  COFETA[          48] =  -0.1434681652629993E+02;
+  COFETA[          49] =   0.1435550225797739E+01;
+  COFETA[          50] =  -0.1043476296606198E+00;
+  COFETA[          51] =   0.4580649134639032E-02;
+  COFETA[          52] =  -0.1426488496838577E+02;
+  COFETA[          53] =   0.1435550225797706E+01;
+  COFETA[          54] =  -0.1043476296606149E+00;
+  COFETA[          55] =   0.4580649134638796E-02;
+  COFETA[          56] =  -0.1599250323762854E+02;
+  COFETA[          57] =   0.2131939570967079E+01;
+  COFETA[          58] =  -0.1961911683803056E+00;
+  COFETA[          59] =   0.8617691675964734E-02;
+};
+#if defined(BL_FORT_USE_UPPERCASE)
+#define egtransetCOFD EGTRANSETCOFD
+#elif defined(BL_FORT_USE_LOWERCASE)
+#define egtransetCOFD egtransetcofd
+#elif defined(BL_FORT_USE_UNDERSCORE)
+#define egtransetCOFD egtransetcofd_
+#endif
+void egtransetCOFD(double* COFD) {
+  COFD[           0] =  -0.1453104126392958E+02;
+  COFD[           1] =   0.4090832270068148E+01;
+  COFD[           2] =  -0.3125064363694409E+00;
+  COFD[           3] =   0.1336815462999992E-01;
+  COFD[           4] =  -0.1446347541294260E+02;
+  COFD[           5] =   0.3893324734859439E+01;
+  COFD[           6] =  -0.2926671223589983E+00;
+  COFD[           7] =   0.1274254538066624E-01;
+  COFD[           8] =  -0.1447793881138075E+02;
+  COFD[           9] =   0.3898507010768475E+01;
+  COFD[          10] =  -0.2933558378767546E+00;
+  COFD[          11] =   0.1277297948985323E-01;
+  COFD[          12] =  -0.1127823399275531E+02;
+  COFD[          13] =   0.2707816433593029E+01;
+  COFD[          14] =  -0.1386141258544173E+00;
+  COFD[          15] =   0.6070036436918267E-02;
+  COFD[          16] =  -0.1642636080356586E+02;
+  COFD[          17] =   0.4526058244629064E+01;
+  COFD[          18] =  -0.3728782124089335E+00;
+  COFD[          19] =   0.1613117546672936E-01;
+  COFD[          20] =  -0.1643428330282377E+02;
+  COFD[          21] =   0.4529060545715668E+01;
+  COFD[          22] =  -0.3732727663838795E+00;
+  COFD[          23] =   0.1614842241690972E-01;
+  COFD[          24] =  -0.1734880949753627E+02;
+  COFD[          25] =   0.4593172772581599E+01;
+  COFD[          26] =  -0.3376039007204080E+00;
+  COFD[          27] =   0.1287220770047757E-01;
+  COFD[          28] =  -0.1644185676789823E+02;
+  COFD[          29] =   0.4531933357015490E+01;
+  COFD[          30] =  -0.3736503142227166E+00;
+  COFD[          31] =   0.1616492637429652E-01;
+  COFD[          32] =  -0.1655778410328815E+02;
+  COFD[          33] =   0.4581623131684943E+01;
+  COFD[          34] =  -0.3829686886254905E+00;
+  COFD[          35] =   0.1668786826439446E-01;
+  COFD[          36] =  -0.1765762436087865E+02;
+  COFD[          37] =   0.4866441430895612E+01;
+  COFD[          38] =  -0.4030149143618096E+00;
+  COFD[          39] =   0.1685813093438678E-01;
+  COFD[          40] =  -0.1786291016737098E+02;
+  COFD[          41] =   0.4848948909820512E+01;
+  COFD[          42] =  -0.3945292942419953E+00;
+  COFD[          43] =   0.1623802827748926E-01;
+  COFD[          44] =  -0.1434851661908174E+02;
+  COFD[          45] =   0.3864395688187810E+01;
+  COFD[          46] =  -0.2888220557172488E+00;
+  COFD[          47] =   0.1257261544647088E-01;
+  COFD[          48] =  -0.1473052091803629E+02;
+  COFD[          49] =   0.3938367747699902E+01;
+  COFD[          50] =  -0.3007580570513714E+00;
+  COFD[          51] =   0.1318674711212272E-01;
+  COFD[          52] =  -0.1555514842196157E+02;
+  COFD[          53] =   0.4198163984729581E+01;
+  COFD[          54] =  -0.3357679563943392E+00;
+  COFD[          55] =   0.1475425817654628E-01;
+  COFD[          56] =  -0.1653528873346560E+02;
+  COFD[          57] =   0.4572908957761951E+01;
+  COFD[          58] =  -0.3818057701602784E+00;
+  COFD[          59] =   0.1663628005999293E-01;
+  COFD[          60] =  -0.1446347541294260E+02;
+  COFD[          61] =   0.3893324734859439E+01;
+  COFD[          62] =  -0.2926671223589983E+00;
+  COFD[          63] =   0.1274254538066624E-01;
+  COFD[          64] =  -0.1303230661459400E+02;
+  COFD[          65] =   0.2821999540521930E+01;
+  COFD[          66] =  -0.1533715125660948E+00;
+  COFD[          67] =   0.6707714606075767E-02;
+  COFD[          68] =  -0.1304821435550623E+02;
+  COFD[          69] =   0.2822365020409423E+01;
+  COFD[          70] =  -0.1534211775973923E+00;
+  COFD[          71] =   0.6709953971249074E-02;
+  COFD[          72] =  -0.1059938809341299E+02;
+  COFD[          73] =   0.2155942578374456E+01;
+  COFD[          74] =  -0.6501315584613947E-01;
+  COFD[          75] =   0.2795438090048244E-02;
+  COFD[          76] =  -0.1443514465604553E+02;
+  COFD[          77] =   0.3212703400637984E+01;
+  COFD[          78] =  -0.2043100955529739E+00;
+  COFD[          79] =   0.8921339110627811E-02;
+  COFD[          80] =  -0.1445309446773090E+02;
+  COFD[          81] =   0.3218021790448843E+01;
+  COFD[          82] =  -0.2050253330481837E+00;
+  COFD[          83] =   0.8953286991448825E-02;
+  COFD[          84] =  -0.1876832382228059E+02;
+  COFD[          85] =   0.4857884811542586E+01;
+  COFD[          86] =  -0.4000862896404223E+00;
+  COFD[          87] =   0.1668799943730030E-01;
+  COFD[          88] =  -0.1447055666380567E+02;
+  COFD[          89] =   0.3223243595288925E+01;
+  COFD[          90] =  -0.2057275599882618E+00;
+  COFD[          91] =   0.8984653058524278E-02;
+  COFD[          92] =  -0.1421921207753527E+02;
+  COFD[          93] =   0.3119581660542013E+01;
+  COFD[          94] =  -0.1927352195932762E+00;
+  COFD[          95] =   0.8442234647456850E-02;
+  COFD[          96] =  -0.1666875714366874E+02;
+  COFD[          97] =   0.4017058659430817E+01;
+  COFD[          98] =  -0.3059783073756657E+00;
+  COFD[          99] =   0.1320711908953701E-01;
+  COFD[         100] =  -0.1720382549451406E+02;
+  COFD[         101] =   0.4167339155910690E+01;
+  COFD[         102] =  -0.3234483507589772E+00;
+  COFD[         103] =   0.1387892452356678E-01;
+  COFD[         104] =  -0.1298157331946940E+02;
+  COFD[         105] =   0.2822883202839590E+01;
+  COFD[         106] =  -0.1534915185459436E+00;
+  COFD[         107] =   0.6713123822819834E-02;
+  COFD[         108] =  -0.1288560752457988E+02;
+  COFD[         109] =   0.2706409284361047E+01;
+  COFD[         110] =  -0.1381656199059203E+00;
+  COFD[         111] =   0.6039972042896966E-02;
+  COFD[         112] =  -0.1336434031050532E+02;
+  COFD[         113] =   0.2773068323801607E+01;
+  COFD[         114] =  -0.1471915976486450E+00;
+  COFD[         115] =   0.6445718552318650E-02;
+  COFD[         116] =  -0.1417981137873820E+02;
+  COFD[         117] =   0.3108160137081816E+01;
+  COFD[         118] =  -0.1911804380629321E+00;
+  COFD[         119] =   0.8371995333872883E-02;
+  COFD[         120] =  -0.1447793881138075E+02;
+  COFD[         121] =   0.3898507010768475E+01;
+  COFD[         122] =  -0.2933558378767546E+00;
+  COFD[         123] =   0.1277297948985323E-01;
+  COFD[         124] =  -0.1304821435550623E+02;
+  COFD[         125] =   0.2822365020409423E+01;
+  COFD[         126] =  -0.1534211775973923E+00;
+  COFD[         127] =   0.6709953971249074E-02;
+  COFD[         128] =  -0.1306285439260799E+02;
+  COFD[         129] =   0.2821999540521922E+01;
+  COFD[         130] =  -0.1533715125660936E+00;
+  COFD[         131] =   0.6707714606075711E-02;
+  COFD[         132] =  -0.1060239225167790E+02;
+  COFD[         133] =   0.2155926512014339E+01;
+  COFD[         134] =  -0.6501121368580048E-01;
+  COFD[         135] =   0.2795359361150588E-02;
+  COFD[         136] =  -0.1443057934118857E+02;
+  COFD[         137] =   0.3202458275062821E+01;
+  COFD[         138] =  -0.2029322289873638E+00;
+  COFD[         139] =   0.8859791257831449E-02;
+  COFD[         140] =  -0.1444835589212445E+02;
+  COFD[         141] =   0.3207617516919998E+01;
+  COFD[         142] =  -0.2036261056164307E+00;
+  COFD[         143] =   0.8890786328902988E-02;
+  COFD[         144] =  -0.1878205175654568E+02;
+  COFD[         145] =   0.4857153319943412E+01;
+  COFD[         146] =  -0.4000141640745818E+00;
+  COFD[         147] =   0.1668590773597161E-01;
+  COFD[         148] =  -0.1446569243405954E+02;
+  COFD[         149] =   0.3212703400637984E+01;
+  COFD[         150] =  -0.2043100955529739E+00;
+  COFD[         151] =   0.8921339110627818E-02;
+  COFD[         152] =  -0.1421469420975667E+02;
+  COFD[         153] =   0.3109400981453699E+01;
+  COFD[         154] =  -0.1913493546425900E+00;
+  COFD[         155] =   0.8379626477869216E-02;
+  COFD[         156] =  -0.1665586079319310E+02;
+  COFD[         157] =   0.4002786058866318E+01;
+  COFD[         158] =  -0.3040981874501080E+00;
+  COFD[         159] =   0.1312476752287860E-01;
+  COFD[         160] =  -0.1719172783314806E+02;
+  COFD[         161] =   0.4153756740871656E+01;
+  COFD[         162] =  -0.3216968524975696E+00;
+  COFD[         163] =   0.1380380031784617E-01;
+  COFD[         164] =  -0.1299956565222219E+02;
+  COFD[         165] =   0.2824331144452877E+01;
+  COFD[         166] =  -0.1536882294633172E+00;
+  COFD[         167] =   0.6721992209348116E-02;
+  COFD[         168] =  -0.1290038354247348E+02;
+  COFD[         169] =   0.2706727627372812E+01;
+  COFD[         170] =  -0.1382090269907308E+00;
+  COFD[         171] =   0.6041930389082575E-02;
+  COFD[         172] =  -0.1336450146586354E+02;
+  COFD[         173] =   0.2764941911287849E+01;
+  COFD[         174] =  -0.1460911037285431E+00;
+  COFD[         175] =   0.6396245185837268E-02;
+  COFD[         176] =  -0.1417599919891023E+02;
+  COFD[         177] =   0.3098479314022822E+01;
+  COFD[         178] =  -0.1898625531460105E+00;
+  COFD[         179] =   0.8312456268065094E-02;
+  COFD[         180] =  -0.1127823399275531E+02;
+  COFD[         181] =   0.2707816433593029E+01;
+  COFD[         182] =  -0.1386141258544173E+00;
+  COFD[         183] =   0.6070036436918267E-02;
+  COFD[         184] =  -0.1059938809341299E+02;
+  COFD[         185] =   0.2155942578374456E+01;
+  COFD[         186] =  -0.6501315584613947E-01;
+  COFD[         187] =   0.2795438090048244E-02;
+  COFD[         188] =  -0.1060239225167790E+02;
+  COFD[         189] =   0.2155926512014339E+01;
+  COFD[         190] =  -0.6501121368580048E-01;
+  COFD[         191] =   0.2795359361150588E-02;
+  COFD[         192] =  -0.9780465322652098E+01;
+  COFD[         193] =   0.1955037452782714E+01;
+  COFD[         194] =  -0.4069384010078646E-01;
+  COFD[         195] =   0.1831517429116509E-02;
+  COFD[         196] =  -0.1191485716730014E+02;
+  COFD[         197] =   0.2573525435966725E+01;
+  COFD[         198] =  -0.1209966797925984E+00;
+  COFD[         199] =   0.5292806824954136E-02;
+  COFD[         200] =  -0.1191832199726468E+02;
+  COFD[         201] =   0.2574628563741546E+01;
+  COFD[         202] =  -0.1211478456187282E+00;
+  COFD[         203] =   0.5299681334394376E-02;
+  COFD[         204] =  -0.1755770485245349E+02;
+  COFD[         205] =   0.4765099994814697E+01;
+  COFD[         206] =  -0.3967432989876266E+00;
+  COFD[         207] =   0.1688051763142629E-01;
+  COFD[         208] =  -0.1192160240338415E+02;
+  COFD[         209] =   0.2575674668634583E+01;
+  COFD[         210] =  -0.1212911957444766E+00;
+  COFD[         211] =   0.5306200358730889E-02;
+  COFD[         212] =  -0.1187870349337985E+02;
+  COFD[         213] =   0.2544526033876783E+01;
+  COFD[         214] =  -0.1172898003477687E+00;
+  COFD[         215] =   0.5133388723630184E-02;
+  COFD[         216] =  -0.1396088659212954E+02;
+  COFD[         217] =   0.3362678569206413E+01;
+  COFD[         218] =  -0.2260211902233529E+00;
+  COFD[         219] =   0.9953713808622193E-02;
+  COFD[         220] =  -0.1467854583311947E+02;
+  COFD[         221] =   0.3596468340692584E+01;
+  COFD[         222] =  -0.2558538870403423E+00;
+  COFD[         223] =   0.1122178946707502E-01;
+  COFD[         224] =  -0.1056125561830246E+02;
+  COFD[         225] =   0.2156060195364817E+01;
+  COFD[         226] =  -0.6502865120836085E-01;
+  COFD[         227] =   0.2796118937582714E-02;
+  COFD[         228] =  -0.1098942473992561E+02;
+  COFD[         229] =   0.2261791237155641E+01;
+  COFD[         230] =  -0.8129994784319448E-01;
+  COFD[         231] =   0.3616450326455660E-02;
+  COFD[         232] =  -0.1116880542243876E+02;
+  COFD[         233] =   0.2261180518893006E+01;
+  COFD[         234] =  -0.8121943300255434E-01;
+  COFD[         235] =   0.3612953520751428E-02;
+  COFD[         236] =  -0.1186868669178899E+02;
+  COFD[         237] =   0.2541192297100982E+01;
+  COFD[         238] =  -0.1168329960776270E+00;
+  COFD[         239] =   0.5112616487592947E-02;
+  COFD[         240] =  -0.1642636080356586E+02;
+  COFD[         241] =   0.4526058244629064E+01;
+  COFD[         242] =  -0.3728782124089335E+00;
+  COFD[         243] =   0.1613117546672936E-01;
+  COFD[         244] =  -0.1443514465604553E+02;
+  COFD[         245] =   0.3212703400637984E+01;
+  COFD[         246] =  -0.2043100955529739E+00;
+  COFD[         247] =   0.8921339110627811E-02;
+  COFD[         248] =  -0.1443057934118857E+02;
+  COFD[         249] =   0.3202458275062821E+01;
+  COFD[         250] =  -0.2029322289873638E+00;
+  COFD[         251] =   0.8859791257831449E-02;
+  COFD[         252] =  -0.1191485716730014E+02;
+  COFD[         253] =   0.2573525435966725E+01;
+  COFD[         254] =  -0.1209966797925984E+00;
+  COFD[         255] =   0.5292806824954136E-02;
+  COFD[         256] =  -0.1549200610767626E+02;
+  COFD[         257] =   0.3439251591988564E+01;
+  COFD[         258] =  -0.2323545954069675E+00;
+  COFD[         259] =   0.1007912823695402E-01;
+  COFD[         260] =  -0.1550002724603720E+02;
+  COFD[         261] =   0.3439385567461067E+01;
+  COFD[         262] =  -0.2323724410704331E+00;
+  COFD[         263] =   0.1007991807289719E-01;
+  COFD[         264] =  -0.2035995576301296E+02;
+  COFD[         265] =   0.5195752187472611E+01;
+  COFD[         266] =  -0.4301703237047207E+00;
+  COFD[         267] =   0.1745457159373258E-01;
+  COFD[         268] =  -0.1550831727319405E+02;
+  COFD[         269] =   0.3439771059431501E+01;
+  COFD[         270] =  -0.2324237888991663E+00;
+  COFD[         271] =   0.1008219068775275E-01;
+  COFD[         272] =  -0.1525512227936506E+02;
+  COFD[         273] =   0.3342973466357380E+01;
+  COFD[         274] =  -0.2204616885047087E+00;
+  COFD[         275] =   0.9589723244771213E-02;
+  COFD[         276] =  -0.1751574793768704E+02;
+  COFD[         277] =   0.4133936172799989E+01;
+  COFD[         278] =  -0.3179073696597811E+00;
+  COFD[         279] =   0.1359390538028741E-01;
+  COFD[         280] =  -0.1800123749909511E+02;
+  COFD[         281] =   0.4268166153537729E+01;
+  COFD[         282] =  -0.3331465709119429E+00;
+  COFD[         283] =   0.1416531900068370E-01;
+  COFD[         284] =  -0.1442811073014737E+02;
+  COFD[         285] =   0.3232109859231266E+01;
+  COFD[         286] =  -0.2069193497139531E+00;
+  COFD[         287] =   0.9037874467945330E-02;
+  COFD[         288] =  -0.1422382512076542E+02;
+  COFD[         289] =   0.3088771824088037E+01;
+  COFD[         290] =  -0.1886569944625107E+00;
+  COFD[         291] =   0.8262345406342235E-02;
+  COFD[         292] =  -0.1441524433081045E+02;
+  COFD[         293] =   0.3015383266367500E+01;
+  COFD[         294] =  -0.1786596762821762E+00;
+  COFD[         295] =   0.7810473248205813E-02;
+  COFD[         296] =  -0.1524045238644407E+02;
+  COFD[         297] =   0.3344366702662799E+01;
+  COFD[         298] =  -0.2206501613083914E+00;
+  COFD[         299] =   0.9598185922907161E-02;
+  COFD[         300] =  -0.1643428330282377E+02;
+  COFD[         301] =   0.4529060545715668E+01;
+  COFD[         302] =  -0.3732727663838795E+00;
+  COFD[         303] =   0.1614842241690972E-01;
+  COFD[         304] =  -0.1445309446773090E+02;
+  COFD[         305] =   0.3218021790448843E+01;
+  COFD[         306] =  -0.2050253330481837E+00;
+  COFD[         307] =   0.8953286991448825E-02;
+  COFD[         308] =  -0.1444835589212445E+02;
+  COFD[         309] =   0.3207617516919998E+01;
+  COFD[         310] =  -0.2036261056164307E+00;
+  COFD[         311] =   0.8890786328902988E-02;
+  COFD[         312] =  -0.1191832199726468E+02;
+  COFD[         313] =   0.2574628563741546E+01;
+  COFD[         314] =  -0.1211478456187282E+00;
+  COFD[         315] =   0.5299681334394376E-02;
+  COFD[         316] =  -0.1550002724603720E+02;
+  COFD[         317] =   0.3439385567461067E+01;
+  COFD[         318] =  -0.2323724410704331E+00;
+  COFD[         319] =   0.1007991807289719E-01;
+  COFD[         320] =  -0.1550751325209437E+02;
+  COFD[         321] =   0.3439251591988575E+01;
+  COFD[         322] =  -0.2323545954069691E+00;
+  COFD[         323] =   0.1007912823695409E-01;
+  COFD[         324] =  -0.1969599282188356E+02;
+  COFD[         325] =   0.4976350873560208E+01;
+  COFD[         326] =  -0.4064271824554607E+00;
+  COFD[         327] =   0.1660711621307244E-01;
+  COFD[         328] =  -0.1551528528364382E+02;
+  COFD[         329] =   0.3439377629946809E+01;
+  COFD[         330] =  -0.2323713837861868E+00;
+  COFD[         331] =   0.1007987127828529E-01;
+  COFD[         332] =  -0.1526366040509268E+02;
+  COFD[         333] =   0.3343427896083488E+01;
+  COFD[         334] =  -0.2205232081495746E+00;
+  COFD[         335] =   0.9592487262706322E-02;
+  COFD[         336] =  -0.1751683577397043E+02;
+  COFD[         337] =   0.4130764670922778E+01;
+  COFD[         338] =  -0.3174968952024533E+00;
+  COFD[         339] =   0.1357624209632402E-01;
+  COFD[         340] =  -0.1800286708825678E+02;
+  COFD[         341] =   0.4265349872271823E+01;
+  COFD[         342] =  -0.3327930702686513E+00;
+  COFD[         343] =   0.1415058099824088E-01;
+  COFD[         344] =  -0.1444671785222707E+02;
+  COFD[         345] =   0.3237789274993721E+01;
+  COFD[         346] =  -0.2076830584081396E+00;
+  COFD[         347] =   0.9071985084775150E-02;
+  COFD[         348] =  -0.1423890668903722E+02;
+  COFD[         349] =   0.3093149275869819E+01;
+  COFD[         350] =  -0.1892529443234314E+00;
+  COFD[         351] =   0.8289269066164192E-02;
+  COFD[         352] =  -0.1442342778716563E+02;
+  COFD[         353] =   0.3015752514175661E+01;
+  COFD[         354] =  -0.1787103636683844E+00;
+  COFD[         355] =   0.7812778229298878E-02;
+  COFD[         356] =  -0.1525024957896720E+02;
+  COFD[         357] =   0.3345452630291720E+01;
+  COFD[         358] =  -0.2207969417284804E+00;
+  COFD[         359] =   0.9604772071746296E-02;
+  COFD[         360] =  -0.1734880949753627E+02;
+  COFD[         361] =   0.4593172772581599E+01;
+  COFD[         362] =  -0.3376039007204080E+00;
+  COFD[         363] =   0.1287220770047757E-01;
+  COFD[         364] =  -0.1876832382228059E+02;
+  COFD[         365] =   0.4857884811542586E+01;
+  COFD[         366] =  -0.4000862896404223E+00;
+  COFD[         367] =   0.1668799943730030E-01;
+  COFD[         368] =  -0.1878205175654568E+02;
+  COFD[         369] =   0.4857153319943412E+01;
+  COFD[         370] =  -0.4000141640745818E+00;
+  COFD[         371] =   0.1668590773597161E-01;
+  COFD[         372] =  -0.1755770485245349E+02;
+  COFD[         373] =   0.4765099994814697E+01;
+  COFD[         374] =  -0.3967432989876266E+00;
+  COFD[         375] =   0.1688051763142629E-01;
+  COFD[         376] =  -0.2035995576301296E+02;
+  COFD[         377] =   0.5195752187472611E+01;
+  COFD[         378] =  -0.4301703237047207E+00;
+  COFD[         379] =   0.1745457159373258E-01;
+  COFD[         380] =  -0.1969599282188356E+02;
+  COFD[         381] =   0.4976350873560208E+01;
+  COFD[         382] =  -0.4064271824554607E+00;
+  COFD[         383] =   0.1660711621307244E-01;
+  COFD[         384] =  -0.1387567274892456E+02;
+  COFD[         385] =   0.1812858971426756E+01;
+  COFD[         386] =   0.1097216544334093E+00;
+  COFD[         387] =  -0.9394611941949941E-02;
+  COFD[         388] =  -0.1969031169212750E+02;
+  COFD[         389] =   0.4971091362886221E+01;
+  COFD[         390] =  -0.4056069022661880E+00;
+  COFD[         391] =   0.1656594510101084E-01;
+  COFD[         392] =  -0.2025023470652300E+02;
+  COFD[         393] =   0.5164679115096308E+01;
+  COFD[         394] =  -0.4289835854551929E+00;
+  COFD[         395] =   0.1751207656231255E-01;
+  COFD[         396] =  -0.2010037767510506E+02;
+  COFD[         397] =   0.4898106549869066E+01;
+  COFD[         398] =  -0.3743028741194254E+00;
+  COFD[         399] =   0.1438132798773566E-01;
+  COFD[         400] =  -0.2011880612108384E+02;
+  COFD[         401] =   0.4811463838735835E+01;
+  COFD[         402] =  -0.3574368957363810E+00;
+  COFD[         403] =   0.1344766487934238E-01;
+  COFD[         404] =  -0.1871632696644692E+02;
+  COFD[         405] =   0.4858563271173600E+01;
+  COFD[         406] =  -0.4001100488600431E+00;
+  COFD[         407] =   0.1668621701604891E-01;
+  COFD[         408] =  -0.1866117368121606E+02;
+  COFD[         409] =   0.4778493812881500E+01;
+  COFD[         410] =  -0.3921938583237028E+00;
+  COFD[         411] =   0.1644103604696690E-01;
+  COFD[         412] =  -0.1896062192545326E+02;
+  COFD[         413] =   0.4755814945087671E+01;
+  COFD[         414] =  -0.3879510962583117E+00;
+  COFD[         415] =   0.1620356073022963E-01;
+  COFD[         416] =  -0.2025517466685841E+02;
+  COFD[         417] =   0.5173702332068737E+01;
+  COFD[         418] =  -0.4304299361036623E+00;
+  COFD[         419] =   0.1758606643266914E-01;
+  COFD[         420] =  -0.1644185676789823E+02;
+  COFD[         421] =   0.4531933357015490E+01;
+  COFD[         422] =  -0.3736503142227166E+00;
+  COFD[         423] =   0.1616492637429652E-01;
+  COFD[         424] =  -0.1447055666380567E+02;
+  COFD[         425] =   0.3223243595288925E+01;
+  COFD[         426] =  -0.2057275599882618E+00;
+  COFD[         427] =   0.8984653058524278E-02;
+  COFD[         428] =  -0.1446569243405954E+02;
+  COFD[         429] =   0.3212703400637984E+01;
+  COFD[         430] =  -0.2043100955529739E+00;
+  COFD[         431] =   0.8921339110627818E-02;
+  COFD[         432] =  -0.1192160240338415E+02;
+  COFD[         433] =   0.2575674668634583E+01;
+  COFD[         434] =  -0.1212911957444766E+00;
+  COFD[         435] =   0.5306200358730889E-02;
+  COFD[         436] =  -0.1550831727319405E+02;
+  COFD[         437] =   0.3439771059431501E+01;
+  COFD[         438] =  -0.2324237888991663E+00;
+  COFD[         439] =   0.1008219068775275E-01;
+  COFD[         440] =  -0.1551528528364382E+02;
+  COFD[         441] =   0.3439377629946809E+01;
+  COFD[         442] =  -0.2323713837861868E+00;
+  COFD[         443] =   0.1007987127828529E-01;
+  COFD[         444] =  -0.1969031169212750E+02;
+  COFD[         445] =   0.4971091362886221E+01;
+  COFD[         446] =  -0.4056069022661880E+00;
+  COFD[         447] =   0.1656594510101084E-01;
+  COFD[         448] =  -0.1552255388569028E+02;
+  COFD[         449] =   0.3439251591988566E+01;
+  COFD[         450] =  -0.2323545954069677E+00;
+  COFD[         451] =   0.1007912823695403E-01;
+  COFD[         452] =  -0.1527248932147248E+02;
+  COFD[         453] =   0.3344142969538372E+01;
+  COFD[         454] =  -0.2206199135639200E+00;
+  COFD[         455] =   0.9596828436646991E-02;
+  COFD[         456] =  -0.1751830948101999E+02;
+  COFD[         457] =   0.4127897839132661E+01;
+  COFD[         458] =  -0.3171257099248815E+00;
+  COFD[         459] =   0.1356026356523252E-01;
+  COFD[         460] =  -0.1800478358618446E+02;
+  COFD[         461] =   0.4262790016299151E+01;
+  COFD[         462] =  -0.3324715275574177E+00;
+  COFD[         463] =   0.1413716549763151E-01;
+  COFD[         464] =  -0.1446477198029847E+02;
+  COFD[         465] =   0.3243341387819648E+01;
+  COFD[         466] =  -0.2084296261317005E+00;
+  COFD[         467] =   0.9105329427825336E-02;
+  COFD[         468] =  -0.1425351882632697E+02;
+  COFD[         469] =   0.3097428667095943E+01;
+  COFD[         470] =  -0.1898355238768725E+00;
+  COFD[         471] =   0.8315588096767848E-02;
+  COFD[         472] =  -0.1443174973667854E+02;
+  COFD[         473] =   0.3016320413575568E+01;
+  COFD[         474] =  -0.1787880785865032E+00;
+  COFD[         475] =   0.7816303442184303E-02;
+  COFD[         476] =  -0.1526028005455884E+02;
+  COFD[         477] =   0.3346771853142201E+01;
+  COFD[         478] =  -0.2209752142445045E+00;
+  COFD[         479] =   0.9612769758541551E-02;
+  COFD[         480] =  -0.1655778410328815E+02;
+  COFD[         481] =   0.4581623131684943E+01;
+  COFD[         482] =  -0.3829686886254905E+00;
+  COFD[         483] =   0.1668786826439446E-01;
+  COFD[         484] =  -0.1421921207753527E+02;
+  COFD[         485] =   0.3119581660542013E+01;
+  COFD[         486] =  -0.1927352195932762E+00;
+  COFD[         487] =   0.8442234647456850E-02;
+  COFD[         488] =  -0.1421469420975667E+02;
+  COFD[         489] =   0.3109400981453699E+01;
+  COFD[         490] =  -0.1913493546425900E+00;
+  COFD[         491] =   0.8379626477869216E-02;
+  COFD[         492] =  -0.1187870349337985E+02;
+  COFD[         493] =   0.2544526033876783E+01;
+  COFD[         494] =  -0.1172898003477687E+00;
+  COFD[         495] =   0.5133388723630184E-02;
+  COFD[         496] =  -0.1525512227936506E+02;
+  COFD[         497] =   0.3342973466357380E+01;
+  COFD[         498] =  -0.2204616885047087E+00;
+  COFD[         499] =   0.9589723244771213E-02;
+  COFD[         500] =  -0.1526366040509268E+02;
+  COFD[         501] =   0.3343427896083488E+01;
+  COFD[         502] =  -0.2205232081495746E+00;
+  COFD[         503] =   0.9592487262706322E-02;
+  COFD[         504] =  -0.2025023470652300E+02;
+  COFD[         505] =   0.5164679115096308E+01;
+  COFD[         506] =  -0.4289835854551929E+00;
+  COFD[         507] =   0.1751207656231255E-01;
+  COFD[         508] =  -0.1527248932147248E+02;
+  COFD[         509] =   0.3344142969538372E+01;
+  COFD[         510] =  -0.2206199135639200E+00;
+  COFD[         511] =   0.9596828436646991E-02;
+  COFD[         512] =  -0.1497768289771445E+02;
+  COFD[         513] =   0.3227480066943741E+01;
+  COFD[         514] =  -0.2056129721234479E+00;
+  COFD[         515] =   0.8952934338714936E-02;
+  COFD[         516] =  -0.1727794685544993E+02;
+  COFD[         517] =   0.4041230524213696E+01;
+  COFD[         518] =  -0.3067591011045543E+00;
+  COFD[         519] =   0.1314646875574740E-01;
+  COFD[         520] =  -0.1780793471702511E+02;
+  COFD[         521] =   0.4199950217760466E+01;
+  COFD[         522] =  -0.3259890442365050E+00;
+  COFD[         523] =   0.1392425431224151E-01;
+  COFD[         524] =  -0.1421309755343899E+02;
+  COFD[         525] =   0.3139101796054804E+01;
+  COFD[         526] =  -0.1953917148330065E+00;
+  COFD[         527] =   0.8562227807514249E-02;
+  COFD[         528] =  -0.1395546834860353E+02;
+  COFD[         529] =   0.2971056305378044E+01;
+  COFD[         530] =  -0.1731879094770783E+00;
+  COFD[         531] =   0.7584632150714469E-02;
+  COFD[         532] =  -0.1415896169467945E+02;
+  COFD[         533] =   0.2906352555651907E+01;
+  COFD[         534] =  -0.1643826505243385E+00;
+  COFD[         535] =   0.7187021854047564E-02;
+  COFD[         536] =  -0.1496176862944729E+02;
+  COFD[         537] =   0.3228126895460024E+01;
+  COFD[         538] =  -0.2057002163408370E+00;
+  COFD[         539] =   0.8956841574723430E-02;
+  COFD[         540] =  -0.1765762436087865E+02;
+  COFD[         541] =   0.4866441430895612E+01;
+  COFD[         542] =  -0.4030149143618096E+00;
+  COFD[         543] =   0.1685813093438678E-01;
+  COFD[         544] =  -0.1666875714366874E+02;
+  COFD[         545] =   0.4017058659430817E+01;
+  COFD[         546] =  -0.3059783073756657E+00;
+  COFD[         547] =   0.1320711908953701E-01;
+  COFD[         548] =  -0.1665586079319310E+02;
+  COFD[         549] =   0.4002786058866318E+01;
+  COFD[         550] =  -0.3040981874501080E+00;
+  COFD[         551] =   0.1312476752287860E-01;
+  COFD[         552] =  -0.1396088659212954E+02;
+  COFD[         553] =   0.3362678569206413E+01;
+  COFD[         554] =  -0.2260211902233529E+00;
+  COFD[         555] =   0.9953713808622193E-02;
+  COFD[         556] =  -0.1751574793768704E+02;
+  COFD[         557] =   0.4133936172799989E+01;
+  COFD[         558] =  -0.3179073696597811E+00;
+  COFD[         559] =   0.1359390538028741E-01;
+  COFD[         560] =  -0.1751683577397043E+02;
+  COFD[         561] =   0.4130764670922778E+01;
+  COFD[         562] =  -0.3174968952024533E+00;
+  COFD[         563] =   0.1357624209632402E-01;
+  COFD[         564] =  -0.2010037767510506E+02;
+  COFD[         565] =   0.4898106549869066E+01;
+  COFD[         566] =  -0.3743028741194254E+00;
+  COFD[         567] =   0.1438132798773566E-01;
+  COFD[         568] =  -0.1751830948101999E+02;
+  COFD[         569] =   0.4127897839132661E+01;
+  COFD[         570] =  -0.3171257099248815E+00;
+  COFD[         571] =   0.1356026356523252E-01;
+  COFD[         572] =  -0.1727794685544993E+02;
+  COFD[         573] =   0.4041230524213696E+01;
+  COFD[         574] =  -0.3067591011045543E+00;
+  COFD[         575] =   0.1314646875574740E-01;
+  COFD[         576] =  -0.1948513279043824E+02;
+  COFD[         577] =   0.4762989340707079E+01;
+  COFD[         578] =  -0.3907037809895256E+00;
+  COFD[         579] =   0.1639711559555987E-01;
+  COFD[         580] =  -0.1994609678650828E+02;
+  COFD[         581] =   0.4879517700734503E+01;
+  COFD[         582] =  -0.4026370932876875E+00;
+  COFD[         583] =   0.1678808270297160E-01;
+  COFD[         584] =  -0.1668569159498162E+02;
+  COFD[         585] =   0.4046494293563119E+01;
+  COFD[         586] =  -0.3098570121881317E+00;
+  COFD[         587] =   0.1337707028099142E-01;
+  COFD[         588] =  -0.1636978212746447E+02;
+  COFD[         589] =   0.3866683320271529E+01;
+  COFD[         590] =  -0.2875792696211273E+00;
+  COFD[         591] =   0.1245724760985546E-01;
+  COFD[         592] =  -0.1635720575391811E+02;
+  COFD[         593] =   0.3700108154273381E+01;
+  COFD[         594] =  -0.2653005108968848E+00;
+  COFD[         595] =   0.1146722423828080E-01;
+  COFD[         596] =  -0.1727623628623193E+02;
+  COFD[         597] =   0.4048916194516065E+01;
+  COFD[         598] =  -0.3077539539381744E+00;
+  COFD[         599] =   0.1318928678668319E-01;
+  COFD[         600] =  -0.1786291016737098E+02;
+  COFD[         601] =   0.4848948909820512E+01;
+  COFD[         602] =  -0.3945292942419953E+00;
+  COFD[         603] =   0.1623802827748926E-01;
+  COFD[         604] =  -0.1720382549451406E+02;
+  COFD[         605] =   0.4167339155910690E+01;
+  COFD[         606] =  -0.3234483507589772E+00;
+  COFD[         607] =   0.1387892452356678E-01;
+  COFD[         608] =  -0.1719172783314806E+02;
+  COFD[         609] =   0.4153756740871656E+01;
+  COFD[         610] =  -0.3216968524975696E+00;
+  COFD[         611] =   0.1380380031784617E-01;
+  COFD[         612] =  -0.1467854583311947E+02;
+  COFD[         613] =   0.3596468340692584E+01;
+  COFD[         614] =  -0.2558538870403423E+00;
+  COFD[         615] =   0.1122178946707502E-01;
+  COFD[         616] =  -0.1800123749909511E+02;
+  COFD[         617] =   0.4268166153537729E+01;
+  COFD[         618] =  -0.3331465709119429E+00;
+  COFD[         619] =   0.1416531900068370E-01;
+  COFD[         620] =  -0.1800286708825678E+02;
+  COFD[         621] =   0.4265349872271823E+01;
+  COFD[         622] =  -0.3327930702686513E+00;
+  COFD[         623] =   0.1415058099824088E-01;
+  COFD[         624] =  -0.2011880612108384E+02;
+  COFD[         625] =   0.4811463838735835E+01;
+  COFD[         626] =  -0.3574368957363810E+00;
+  COFD[         627] =   0.1344766487934238E-01;
+  COFD[         628] =  -0.1800478358618446E+02;
+  COFD[         629] =   0.4262790016299151E+01;
+  COFD[         630] =  -0.3324715275574177E+00;
+  COFD[         631] =   0.1413716549763151E-01;
+  COFD[         632] =  -0.1780793471702511E+02;
+  COFD[         633] =   0.4199950217760466E+01;
+  COFD[         634] =  -0.3259890442365050E+00;
+  COFD[         635] =   0.1392425431224151E-01;
+  COFD[         636] =  -0.1994609678650828E+02;
+  COFD[         637] =   0.4879517700734503E+01;
+  COFD[         638] =  -0.4026370932876875E+00;
+  COFD[         639] =   0.1678808270297160E-01;
+  COFD[         640] =  -0.2042982002220235E+02;
+  COFD[         641] =   0.5005361629731139E+01;
+  COFD[         642] =  -0.4157082406938964E+00;
+  COFD[         643] =   0.1722721086482850E-01;
+  COFD[         644] =  -0.1722254346565480E+02;
+  COFD[         645] =   0.4196189217828696E+01;
+  COFD[         646] =  -0.3271714819192909E+00;
+  COFD[         647] =   0.1403874343755477E-01;
+  COFD[         648] =  -0.1701594967403162E+02;
+  COFD[         649] =   0.4069211126205633E+01;
+  COFD[         650] =  -0.3126069256643104E+00;
+  COFD[         651] =   0.1348840574684995E-01;
+  COFD[         652] =  -0.1697793472542246E+02;
+  COFD[         653] =   0.3898476651990144E+01;
+  COFD[         654] =  -0.2900815498039417E+00;
+  COFD[         655] =   0.1250041749182838E-01;
+  COFD[         656] =  -0.1780986732405179E+02;
+  COFD[         657] =   0.4208912464383648E+01;
+  COFD[         658] =  -0.3271471801976215E+00;
+  COFD[         659] =   0.1397401213591626E-01;
+  COFD[         660] =  -0.1434851661908174E+02;
+  COFD[         661] =   0.3864395688187810E+01;
+  COFD[         662] =  -0.2888220557172488E+00;
+  COFD[         663] =   0.1257261544647088E-01;
+  COFD[         664] =  -0.1298157331946940E+02;
+  COFD[         665] =   0.2822883202839590E+01;
+  COFD[         666] =  -0.1534915185459436E+00;
+  COFD[         667] =   0.6713123822819834E-02;
+  COFD[         668] =  -0.1299956565222219E+02;
+  COFD[         669] =   0.2824331144452877E+01;
+  COFD[         670] =  -0.1536882294633172E+00;
+  COFD[         671] =   0.6721992209348116E-02;
+  COFD[         672] =  -0.1056125561830246E+02;
+  COFD[         673] =   0.2156060195364817E+01;
+  COFD[         674] =  -0.6502865120836085E-01;
+  COFD[         675] =   0.2796118937582714E-02;
+  COFD[         676] =  -0.1442811073014737E+02;
+  COFD[         677] =   0.3232109859231266E+01;
+  COFD[         678] =  -0.2069193497139531E+00;
+  COFD[         679] =   0.9037874467945330E-02;
+  COFD[         680] =  -0.1444671785222707E+02;
+  COFD[         681] =   0.3237789274993721E+01;
+  COFD[         682] =  -0.2076830584081396E+00;
+  COFD[         683] =   0.9071985084775150E-02;
+  COFD[         684] =  -0.1871632696644692E+02;
+  COFD[         685] =   0.4858563271173600E+01;
+  COFD[         686] =  -0.4001100488600431E+00;
+  COFD[         687] =   0.1668621701604891E-01;
+  COFD[         688] =  -0.1446477198029847E+02;
+  COFD[         689] =   0.3243341387819648E+01;
+  COFD[         690] =  -0.2084296261317005E+00;
+  COFD[         691] =   0.9105329427825336E-02;
+  COFD[         692] =  -0.1421309755343899E+02;
+  COFD[         693] =   0.3139101796054804E+01;
+  COFD[         694] =  -0.1953917148330065E+00;
+  COFD[         695] =   0.8562227807514249E-02;
+  COFD[         696] =  -0.1668569159498162E+02;
+  COFD[         697] =   0.4046494293563119E+01;
+  COFD[         698] =  -0.3098570121881317E+00;
+  COFD[         699] =   0.1337707028099142E-01;
+  COFD[         700] =  -0.1722254346565480E+02;
+  COFD[         701] =   0.4196189217828696E+01;
+  COFD[         702] =  -0.3271714819192909E+00;
+  COFD[         703] =   0.1403874343755477E-01;
+  COFD[         704] =  -0.1292646230231139E+02;
+  COFD[         705] =   0.2821999540521940E+01;
+  COFD[         706] =  -0.1533715125660963E+00;
+  COFD[         707] =   0.6707714606075836E-02;
+  COFD[         708] =  -0.1284085524690963E+02;
+  COFD[         709] =   0.2707949300899787E+01;
+  COFD[         710] =  -0.1383738279427983E+00;
+  COFD[         711] =   0.6049324358308415E-02;
+  COFD[         712] =  -0.1335047052208153E+02;
+  COFD[         713] =   0.2788888190516315E+01;
+  COFD[         714] =  -0.1493333595043647E+00;
+  COFD[         715] =   0.6541990186326518E-02;
+  COFD[         716] =  -0.1417184929578018E+02;
+  COFD[         717] =   0.3126696914084966E+01;
+  COFD[         718] =  -0.1937032186843793E+00;
+  COFD[         719] =   0.8485951819761462E-02;
+  COFD[         720] =  -0.1473052091803629E+02;
+  COFD[         721] =   0.3938367747699902E+01;
+  COFD[         722] =  -0.3007580570513714E+00;
+  COFD[         723] =   0.1318674711212272E-01;
+  COFD[         724] =  -0.1288560752457988E+02;
+  COFD[         725] =   0.2706409284361047E+01;
+  COFD[         726] =  -0.1381656199059203E+00;
+  COFD[         727] =   0.6039972042896966E-02;
+  COFD[         728] =  -0.1290038354247348E+02;
+  COFD[         729] =   0.2706727627372812E+01;
+  COFD[         730] =  -0.1382090269907308E+00;
+  COFD[         731] =   0.6041930389082575E-02;
+  COFD[         732] =  -0.1098942473992561E+02;
+  COFD[         733] =   0.2261791237155641E+01;
+  COFD[         734] =  -0.8129994784319448E-01;
+  COFD[         735] =   0.3616450326455660E-02;
+  COFD[         736] =  -0.1422382512076542E+02;
+  COFD[         737] =   0.3088771824088037E+01;
+  COFD[         738] =  -0.1886569944625107E+00;
+  COFD[         739] =   0.8262345406342235E-02;
+  COFD[         740] =  -0.1423890668903722E+02;
+  COFD[         741] =   0.3093149275869819E+01;
+  COFD[         742] =  -0.1892529443234314E+00;
+  COFD[         743] =   0.8289269066164192E-02;
+  COFD[         744] =  -0.1866117368121606E+02;
+  COFD[         745] =   0.4778493812881500E+01;
+  COFD[         746] =  -0.3921938583237028E+00;
+  COFD[         747] =   0.1644103604696690E-01;
+  COFD[         748] =  -0.1425351882632697E+02;
+  COFD[         749] =   0.3097428667095943E+01;
+  COFD[         750] =  -0.1898355238768725E+00;
+  COFD[         751] =   0.8315588096767848E-02;
+  COFD[         752] =  -0.1395546834860353E+02;
+  COFD[         753] =   0.2971056305378044E+01;
+  COFD[         754] =  -0.1731879094770783E+00;
+  COFD[         755] =   0.7584632150714469E-02;
+  COFD[         756] =  -0.1636978212746447E+02;
+  COFD[         757] =   0.3866683320271529E+01;
+  COFD[         758] =  -0.2875792696211273E+00;
+  COFD[         759] =   0.1245724760985546E-01;
+  COFD[         760] =  -0.1701594967403162E+02;
+  COFD[         761] =   0.4069211126205633E+01;
+  COFD[         762] =  -0.3126069256643104E+00;
+  COFD[         763] =   0.1348840574684995E-01;
+  COFD[         764] =  -0.1284085524690963E+02;
+  COFD[         765] =   0.2707949300899787E+01;
+  COFD[         766] =  -0.1383738279427983E+00;
+  COFD[         767] =   0.6049324358308415E-02;
+  COFD[         768] =  -0.1267750532012987E+02;
+  COFD[         769] =   0.2569994454759337E+01;
+  COFD[         770] =  -0.1199417264901710E+00;
+  COFD[         771] =   0.5227731201117593E-02;
+  COFD[         772] =  -0.1306696965803475E+02;
+  COFD[         773] =   0.2610536352821046E+01;
+  COFD[         774] =  -0.1255043916260873E+00;
+  COFD[         775] =   0.5480787778210062E-02;
+  COFD[         776] =  -0.1392335517962079E+02;
+  COFD[         777] =   0.2962245288209091E+01;
+  COFD[         778] =  -0.1719893475330243E+00;
+  COFD[         779] =   0.7530527438410521E-02;
+  COFD[         780] =  -0.1555514842196157E+02;
+  COFD[         781] =   0.4198163984729581E+01;
+  COFD[         782] =  -0.3357679563943392E+00;
+  COFD[         783] =   0.1475425817654628E-01;
+  COFD[         784] =  -0.1336434031050532E+02;
+  COFD[         785] =   0.2773068323801607E+01;
+  COFD[         786] =  -0.1471915976486450E+00;
+  COFD[         787] =   0.6445718552318650E-02;
+  COFD[         788] =  -0.1336450146586354E+02;
+  COFD[         789] =   0.2764941911287849E+01;
+  COFD[         790] =  -0.1460911037285431E+00;
+  COFD[         791] =   0.6396245185837268E-02;
+  COFD[         792] =  -0.1116880542243876E+02;
+  COFD[         793] =   0.2261180518893006E+01;
+  COFD[         794] =  -0.8121943300255434E-01;
+  COFD[         795] =   0.3612953520751428E-02;
+  COFD[         796] =  -0.1441524433081045E+02;
+  COFD[         797] =   0.3015383266367500E+01;
+  COFD[         798] =  -0.1786596762821762E+00;
+  COFD[         799] =   0.7810473248205813E-02;
+  COFD[         800] =  -0.1442342778716563E+02;
+  COFD[         801] =   0.3015752514175661E+01;
+  COFD[         802] =  -0.1787103636683844E+00;
+  COFD[         803] =   0.7812778229298878E-02;
+  COFD[         804] =  -0.1896062192545326E+02;
+  COFD[         805] =   0.4755814945087671E+01;
+  COFD[         806] =  -0.3879510962583117E+00;
+  COFD[         807] =   0.1620356073022963E-01;
+  COFD[         808] =  -0.1443174973667854E+02;
+  COFD[         809] =   0.3016320413575568E+01;
+  COFD[         810] =  -0.1787880785865032E+00;
+  COFD[         811] =   0.7816303442184303E-02;
+  COFD[         812] =  -0.1415896169467945E+02;
+  COFD[         813] =   0.2906352555651907E+01;
+  COFD[         814] =  -0.1643826505243385E+00;
+  COFD[         815] =   0.7187021854047564E-02;
+  COFD[         816] =  -0.1635720575391811E+02;
+  COFD[         817] =   0.3700108154273381E+01;
+  COFD[         818] =  -0.2653005108968848E+00;
+  COFD[         819] =   0.1146722423828080E-01;
+  COFD[         820] =  -0.1697793472542246E+02;
+  COFD[         821] =   0.3898476651990144E+01;
+  COFD[         822] =  -0.2900815498039417E+00;
+  COFD[         823] =   0.1250041749182838E-01;
+  COFD[         824] =  -0.1335047052208153E+02;
+  COFD[         825] =   0.2788888190516315E+01;
+  COFD[         826] =  -0.1493333595043647E+00;
+  COFD[         827] =   0.6541990186326518E-02;
+  COFD[         828] =  -0.1306696965803475E+02;
+  COFD[         829] =   0.2610536352821046E+01;
+  COFD[         830] =  -0.1255043916260873E+00;
+  COFD[         831] =   0.5480787778210062E-02;
+  COFD[         832] =  -0.1332407043105473E+02;
+  COFD[         833] =   0.2569994454759347E+01;
+  COFD[         834] =  -0.1199417264901723E+00;
+  COFD[         835] =   0.5227731201117647E-02;
+  COFD[         836] =  -0.1414287301380644E+02;
+  COFD[         837] =   0.2906808913725623E+01;
+  COFD[         838] =  -0.1644441595237770E+00;
+  COFD[         839] =   0.7189777153290596E-02;
+  COFD[         840] =  -0.1653528873346560E+02;
+  COFD[         841] =   0.4572908957761951E+01;
+  COFD[         842] =  -0.3818057701602784E+00;
+  COFD[         843] =   0.1663628005999293E-01;
+  COFD[         844] =  -0.1417981137873820E+02;
+  COFD[         845] =   0.3108160137081816E+01;
+  COFD[         846] =  -0.1911804380629321E+00;
+  COFD[         847] =   0.8371995333872883E-02;
+  COFD[         848] =  -0.1417599919891023E+02;
+  COFD[         849] =   0.3098479314022822E+01;
+  COFD[         850] =  -0.1898625531460105E+00;
+  COFD[         851] =   0.8312456268065094E-02;
+  COFD[         852] =  -0.1186868669178899E+02;
+  COFD[         853] =   0.2541192297100982E+01;
+  COFD[         854] =  -0.1168329960776270E+00;
+  COFD[         855] =   0.5112616487592947E-02;
+  COFD[         856] =  -0.1524045238644407E+02;
+  COFD[         857] =   0.3344366702662799E+01;
+  COFD[         858] =  -0.2206501613083914E+00;
+  COFD[         859] =   0.9598185922907161E-02;
+  COFD[         860] =  -0.1525024957896720E+02;
+  COFD[         861] =   0.3345452630291720E+01;
+  COFD[         862] =  -0.2207969417284804E+00;
+  COFD[         863] =   0.9604772071746296E-02;
+  COFD[         864] =  -0.2025517466685841E+02;
+  COFD[         865] =   0.5173702332068737E+01;
+  COFD[         866] =  -0.4304299361036623E+00;
+  COFD[         867] =   0.1758606643266914E-01;
+  COFD[         868] =  -0.1526028005455884E+02;
+  COFD[         869] =   0.3346771853142201E+01;
+  COFD[         870] =  -0.2209752142445045E+00;
+  COFD[         871] =   0.9612769758541551E-02;
+  COFD[         872] =  -0.1496176862944729E+02;
+  COFD[         873] =   0.3228126895460024E+01;
+  COFD[         874] =  -0.2057002163408370E+00;
+  COFD[         875] =   0.8956841574723430E-02;
+  COFD[         876] =  -0.1727623628623193E+02;
+  COFD[         877] =   0.4048916194516065E+01;
+  COFD[         878] =  -0.3077539539381744E+00;
+  COFD[         879] =   0.1318928678668319E-01;
+  COFD[         880] =  -0.1780986732405179E+02;
+  COFD[         881] =   0.4208912464383648E+01;
+  COFD[         882] =  -0.3271471801976215E+00;
+  COFD[         883] =   0.1397401213591626E-01;
+  COFD[         884] =  -0.1417184929578018E+02;
+  COFD[         885] =   0.3126696914084966E+01;
+  COFD[         886] =  -0.1937032186843793E+00;
+  COFD[         887] =   0.8485951819761462E-02;
+  COFD[         888] =  -0.1392335517962079E+02;
+  COFD[         889] =   0.2962245288209091E+01;
+  COFD[         890] =  -0.1719893475330243E+00;
+  COFD[         891] =   0.7530527438410521E-02;
+  COFD[         892] =  -0.1414287301380644E+02;
+  COFD[         893] =   0.2906808913725623E+01;
+  COFD[         894] =  -0.1644441595237770E+00;
+  COFD[         895] =   0.7189777153290596E-02;
+  COFD[         896] =  -0.1494332402346468E+02;
+  COFD[         897] =   0.3227480066943751E+01;
+  COFD[         898] =  -0.2056129721234494E+00;
+  COFD[         899] =   0.8952934338715007E-02;
+};
+
+
+
+
+#if 0
+
+
+
+
+\\
+\\
+\\  This is the mechanism file
+\\
+\\
+!
+! ************************************************************************
+! ************************************************************************
+! ******************* Master mechanism C/H/O/N       ********************
+! ************************************************************************
+! ************************************************************************
+!
+! SKR/GLA04:  Ø. Skreiberg, P. Kilpinen and P. Glarborg; “Ammonia Chemistry 
+!             under Fuel-Rich Conditions in a Flow Reactor”, Combust. Flame
+!             136, 501-508 (2004)
+!
+! RAS/GLA08 : C.L. Rasmussen, J. Hansen, P. Marshall, and P. Glarborg; 
+!             “Experimental Measurements and Kinetic Modeling of CO/H2/O2/NOx 
+!             Conversion at High Pressure”, Int. J. Chem. Kin. 40, 454-480 (2008)
+!
+ ELEMENTS
+ O  H  N 
+ END  
+!
+ SPECIES    
+H  O  OH  H2  O2  HO2  H2O  H2O2            
+!
+NO NO2 N2O  
+!
+NH N NNH N2
+ END
+!
+ THERMO ALL
+   300.00   1000.00   5000.00  
+H                 L 6/94H   1    0    0    0G   200.00   6000.00  1000.        1
+ 0.25000000E+01 0.00000000E+00 0.00000000E+00 0.00000000E+00 0.00000000E+00    2
+ 0.25473660E+05-0.44668285E+00 0.25000000E+01 0.00000000E+00 0.00000000E+00    3
+ 0.00000000E+00 0.00000000E+00 0.25473660E+05-0.44668285E+00 0.26219035E+05    4
+HO2               L 5/89H   1O   2    0    0G   200.00   6000.00  1000.        1
+ 4.17226590E+00 1.88120980E-03-3.46292970E-07 1.94685160E-11 1.76091530E-16    2
+ 3.02010736E+01 2.95697380E+00 4.30178800E+00-4.74902010E-03 2.11579530E-05    3
+-2.42759610E-08 9.29206700E-12 2.63190983E+02 3.71587740E+00                   4
+H2  REF ELEMENT   RUS 78H   2    0    0    0G   200.00   6000.00  1000.        1
+ 0.29328305E+01 0.82659802E-03-0.14640057E-06 0.15409851E-10-0.68879615E-15    2
+-0.81305582E+03-0.10243164E+01 0.23443029E+01 0.79804248E-02-0.19477917E-04    3
+ 0.20156967E-07-0.73760289E-11-0.91792413E+03 0.68300218E+00 0.00000000E+00    4
+H2O               L 5/89H   2O   1    0    0G   200.00   6000.00  1000.        1
+ 0.26770389E+01 0.29731816E-02-0.77376889E-06 0.94433514E-10-0.42689991E-14    2
+-0.29885894E+05 0.68825500E+01 0.41986352E+01-0.20364017E-02 0.65203416E-05    3
+-0.54879269E-08 0.17719680E-11-0.30293726E+05-0.84900901E+00-0.29084817E+05    4
+H2O2              T 8/03H   2O   2    0    0G   200.00   6000.00  1000.        1
+ 4.57977305E+00 4.05326003E-03-1.29844730E-06 1.98211400E-10-1.13968792E-14    2
+-1.79847939E+04 6.64969660E-01 4.31515149E+00-8.47390622E-04 1.76404323E-05    3
+-2.26762944E-08 9.08950158E-12-1.76843601E+04 3.27373216E+00                   4
+N                 120186N   1               G  0300.00   5000.00  1000.00      1
+ 0.02450268E+02 0.01066146E-02-0.07465337E-06 0.01879652E-09-0.01025984E-13    2
+ 0.05611604E+06 0.04448758E+02 0.02503071E+02-0.02180018E-03 0.05420529E-06    3
+-0.05647560E-09 0.02099904E-12 0.05609890E+06 0.04167566E+02                   4
+NH                      N   1H   1    0    0G   200.00   6000.00  1000.0       1
+ 0.27836929E+01 0.13298429E-02-0.42478047E-06 0.78348504E-10-0.55044470E-14    2
+ 0.42134514E+05 0.57407798E+01 0.34929084E+01 0.31179197E-03-0.14890484E-05    3
+ 0.24816442E-08-0.10356967E-11 0.41894294E+05 0.18483277E+01 0.42940822E+05    4
+NNH               120186N   2H   1          G  0250.000  4000.00  1000.00      1
+ 0.04415342E+02 0.01614388E-01-0.01632894E-05-0.08559846E-09 0.01614791E-12    2
+ 0.02788029E+06 0.09042888E+01 0.03501344E+02 0.02053587E-01 0.07170410E-05    3
+ 0.04921348E-08-0.09671170E-11 0.02833347E+06 0.06391837E+02                   4
+NO                RUS 89N   1O   1    0    0G   200.00   6000.00  1000.        1
+ 3.26071234E+00 1.19101135E-03-4.29122646E-07 6.94481463E-11-4.03295681E-15    2
+ 9.89456954E+03 6.36900469E+00 4.21859896E+00-4.63988124E-03 1.10443049E-05    3
+-9.34055507E-09 2.80554874E-12 9.81823786E+03 2.28060952E+00                   4
+NO2               L 7/88N   1O   2    0    0G   200.00   6000.00  1000.        1
+ 4.88475400E+00 2.17239550E-03-8.28069090E-07 1.57475100E-10-1.05108950E-14    2
+ 2.29397777E+03-1.17416951E-01 3.94403120E+00-1.58542900E-03 1.66578120E-05    3
+-2.04754260E-08 7.83505640E-12 2.87409757E+03 6.31199190E+00                   4
+N2        BUR0302 G 8/02N  2.   0.   0.   0.G   200.00   6000.00  1000.        1
+ 2.95257637E+00 1.39690040E-03-4.92631603E-07 7.86010195E-11-4.60755204E-15    2
+-9.23948688E+02 5.87188762E+00 3.53100528E+00-1.23660988E-04-5.02999433E-07    3
+ 2.43530612E-09-1.40881235E-12-1.04697628E+03 2.96747038E+00 0.00000000E+00    4
+N2O               121286N   2O   1          G  0300.00   5000.00  1000.00      1
+ 0.04718977E+02 0.02873714E-01-0.01197496E-04 0.02250552E-08-0.01575337E-12    2
+ 0.08165811E+05-0.01657250E+02 0.02543058E+02 0.09492193E-01-0.09792775E-04    3
+ 0.06263845E-07-0.01901826E-10 0.08765100E+05 0.09511222E+02                   4
+O                 L 1/90O   1    0    0    0G   200.00   6000.00  1000.        1
+ 2.54363697E+00-2.73162486E-05-4.19029520E-09 4.95481845E-12-4.79553694E-16    2
+ 2.92260120E+04 4.92229457E+00 3.16826710E+00-3.27931884E-03 6.64306396E-06    3
+-6.12806624E-09 2.11265971E-12 2.91222592E+04 2.05193346E+00 2.99687009E+04    4
+O2 REF ELEMENT    RUS 89O   2    0    0    0G   200.00   6000.00  1000.        1
+ 3.66096083E+00 6.56365523E-04-1.41149485E-07 2.05797658E-11-1.29913248E-15    2
+-1.21597725E+03 3.41536184E+00 3.78245636E+00-2.99673415E-03 9.84730200E-06    3
+-9.68129508E-09 3.24372836E-12-1.06394356E+03 3.65767573E+00 0.00000000E+00    4
+OH HYDROXYL RADI  IU3/03O   1H   1    0    0G   200.00   6000.00  1000.        1
+ 2.83853033E+00 1.10741289E-03-2.94000209E-07 4.20698729E-11-2.42289890E-15    2
+ 3.70056220E+03 5.84513094E+00 3.99198424E+00-2.40106655E-03 4.61664033E-06    3
+-3.87916306E-09 1.36319502E-12 3.37165248E+03-1.03814059E-01                   4
+!
+ END
+!
+ REACTIONS
+!
+! *****************************************************************************
+!    H2/O2 subset                                                             *
+! *****************************************************************************
+!
+   H+O2=O+OH                            3.6E15  -0.410   16600 ! RAS/GLA08  HES98
+   H+H+M=H2+M                           7.0E17  -1.000       0 ! RAS/GLA08  COH/WES83
+     N2/0/ H2O/0/ H2/0/                                        !
+   H+H+N2=H2+N2                         5.4E18  -1.300       0 ! RAS/GLA08  COH/WES83
+   H+H+H2=H2+H2                         1.0E17  -0.600       0 ! RAS/GLA08  COH/WES83
+   H+H+H2O=H2+H2O                       1.0E19  -1.000       0 ! RAS/GLA08  COH/WES83
+   H+O+M=OH+M                           6.2E16  -0.600       0 ! RAS/GLA08  MIL/BOW89
+     H2O/5/                                                    ! 
+   H+O2(+M)=HO2(+M)                     1.5E12   0.600       0 ! RAS/GLA08  MUE/DRY98
+     LOW  / 3.5E16 -0.41 -1116 /                               !
+     TROE / 0.5 1.0E-30 1.0E30 /                               !
+     N2/0/ H2O/11/ H2/2/ O2/0.78/                        !
+   H+O2(+N2)=HO2(+N2)                   1.5E12   0.600       0 ! RAS/GLA08  LI/DRY04
+     LOW  / 6.37E20 -1.720 520 /                               !
+     TROE / 0.8 1.0E-30 1.0E30 /                               !
+   O+O+M=O2+M                           1.9E13   0.000   -1788 ! RAS/GLA08  NBS86
+     N2/1.5/ O2/1.5/ H2O/10/                                   !
+   O+H2=OH+H                            3.8E12   0.000    7948 ! RAS/GLA08  CEC05
+     DUPLICATE                                                 !
+   O+H2=OH+H                            8.8E14   0.000   19175 ! RAS/GLA08  CEC05
+     DUPLICATE                                                 !
+   OH+OH=O+H2O                          4.3E03   2.700   -1822 ! RAS/GLA08  SRI/MIC06
+   OH+H+M=H2O+M                         4.5E22  -2.000       0 ! RAS/GLA08  CON/WES04
+     H2/0.73/ H2O/12/ !HE/0.38/                       !   
+   OH+H2=H+H2O                          2.1E08   1.520    3449 ! RAS/GLA08  MIC92
+   H2+O2=HO2+H                          7.4E05   2.433   53502 ! RAS/GLA08  MIC/WAG00 
+   HO2+H=OH+OH                          8.4E13   0.000     400 ! RAS/GLA08  RAS/GLA08 
+   HO2+H=H2O+O                          1.4E12   0.000       0 ! RAS/GLA08  CEC05
+   HO2+O=OH+O2                          1.6E13   0.000    -445 ! RAS/GLA08  CEC05
+   HO2+OH=H2O+O2                        3.6E21  -2.100    9000 ! RAS/GLA08  RAS/GLA08 
+     DUPLICATE                                                 !
+   HO2+OH=H2O+O2                        2.0E15  -0.600       0 ! 
+     DUPLICATE                                                 !
+   HO2+OH=H2O+O2                       -2.2E96 -24.000   49000 !
+     DUPLICATE                                                 !
+   HO2+HO2=H2O2+O2                      1.9E11   0.000   -1408 ! RAS/GLA08  KAP/TROE02
+     DUPLICATE                                                 !
+   HO2+HO2=H2O2+O2                      1.0E14   0.000   11034 !
+     DUPLICATE                                                 !
+   H2O2(+M)=OH+OH(+M)                   4.0E11   0.000   37137 ! RAS/GLA08  KAP/TRO02
+     LOW  /2.291E16 0.0 43638/                                 !
+     TROE /0.5 1E-30 1E30 1E30/                                !  (Fc=0.5)
+     H2O/12/ H2/2.5/                                   !
+   H2O2+H=H2O+OH                        1.0E13   0.000    3580 ! RAS/GLA08  CEC05
+   H2O2+H=HO2+H2                        1.7E12   0.000    3760 ! RAS/GLA08  CEC05
+   H2O2+O=HO2+OH                        9.6E06   2.000    3970 ! RAS/GLA08  NBS86
+   H2O2+OH=H2O+HO2                      1.9E12   0.000     427 ! RAS/GLA08  HIP/TRO95
+     DUPLICATE                                                 !
+   H2O2+OH=H2O+HO2                      1.6E18   0.000   29410 ! RAS/GLA08  HIP/TRO95
+     DUPLICATE                                                 !
+!
+! ************************************************************************
+!    N subset (oxid.)                                                    *
+! ************************************************************************
+!
+   NO+O(+M)=NO2(+M)                     1.3E15  -0.750       0 ! RAS/GLA08 ALL/DRY97,NBS91
+     LOW  /4.72E24 -2.87 1550/                                 ! RAS/GLA08 ALL/DRY97 (Fc=0.95-1E-04*T)
+     TROE /0.880 1E03 1E04 1E30/                               ! RAS/GLA08  (  1bar) ¤
+   NO+HO2=NO2+OH                        2.1E12   0.000    -497 ! RAS/GLA08 CEC05
+!
+   NO2+H=NO+OH                          1.3E14   0.000     362 ! RAS/GLA08 KO/FON91
+   NO2+O=NO+O2                          1.1E14  -0.520       0 ! RAS/GLA08 BEM/CLY74
+   NO2+NO2=NO+NO+O2                     4.5E12   0.000   27599 ! RAS/GLA08 PAR/LIN98
+!
+   N2O(+M)=N2+O(+M)                     1.3E12   0.000   62570 ! SKR/GLA04 JOH/GLA92,ROH/HAN96
+     LOW/4.0E14 0 56600/
+     N2/1.7/ O2/1.4/ H2O/12/   !
+   N2O+H=N2+OH                          3.3E10   0.000    4729 ! SKR/GLA04 MAR/FON87
+     DUP
+   N2O+H=N2+OH                          4.4E14   0.000   19254 !
+     DUP
+   N2O+O=NO+NO                          9.2E13   0.000   27679 ! SKR/GLA04 MEA/AND00
+   N2O+O=N2+O2                          3.7E12   0.000   15936 ! SKR/GLA04 MEA/AND00
+!
+   NH+H=N+H2                            3.0E13   0.000       0 ! SKR/GLA04 DAV/HAN90,rv
+   NH+O=NO+H                            9.2E13   0.000       0 ! SKR/GLA04 CEC94
+   NH+OH=N+H2O                          5.0E11   0.500    2000 ! SKR/GLA04 JAM est
+   NH+O2=NO+OH                          1.3E06   1.500     100 ! SKR/GLA04 MIL/MEL92
+   NH+NO=N2O+H                          2.9E14  -0.400       0 ! SKR/GLA04 MIL/MEL92
+     DUP
+   NH+NO=N2O+H                         -2.2E13  -0.230       0 !
+     DUP
+   NH+NO=N2+OH                          2.2E13  -0.230       0 ! SKR/GLA04 MIL/MEL92
+   NH+NO2=N2O+OH                        1.0E13   0.000       0 ! SKR/GLA04 HAR/PHI86
+   N+OH=NO+H                            3.8E13   0.000       0 ! SKR/GLA04 FLO/HAN77,HOW/SMI80
+   N+O2=NO+O                            6.4E09   1.000    6280 ! SKR/GLA04 BAU/DRY73
+   N+NO=N2+O                            2.1E13   0.000       0 !           CEC05
+!   
+   NNH=N2+H                             6.5E07   0.000       0 ! SKR/GLA04 MIL/GLA99
+   NNH+H=N2+H2                          1.0E14   0.000       0 ! SKR/GLA04 JAM est
+   NNH+O=N2O+H                          1.0E14   0.000       0 ! SKR/GLA04 JAM est
+   NNH+O=N2+OH                          8.0E13   0.000       0 ! SKR/GLA04 JAM est
+   NNH+O=NH+NO                          5.0E13   0.000       0 ! SKR/GLA04 MIL/MEL92
+   NNH+OH=N2+H2O                        5.0E13   0.000       0 ! SKR/GLA04 JAM est
+   NNH+O2=N2+HO2                        2.0E14   0.000       0 ! SKR/GLA04 MIL/GLA99
+   NNH+O2=N2+H+O2                       5.0E13   0.000       0 ! SKR/GLA04 MIL/GLA99
+!
+ END
+
+
+\\
+\\
+\\  This is the therm file
+\\
+\\
+ THERMO 
+   300.00   1000.00   5000.00  
+H                 L 6/94H   1    0    0    0G   200.00   6000.00  1000.        1
+ 0.25000000E+01 0.00000000E+00 0.00000000E+00 0.00000000E+00 0.00000000E+00    2
+ 0.25473660E+05-0.44668285E+00 0.25000000E+01 0.00000000E+00 0.00000000E+00    3
+ 0.00000000E+00 0.00000000E+00 0.25473660E+05-0.44668285E+00 0.26219035E+05    4
+HO2               L 5/89H   1O   2    0    0G   200.00   6000.00  1000.        1
+ 4.17226590E+00 1.88120980E-03-3.46292970E-07 1.94685160E-11 1.76091530E-16    2
+ 3.02010736E+01 2.95697380E+00 4.30178800E+00-4.74902010E-03 2.11579530E-05    3
+-2.42759610E-08 9.29206700E-12 2.63190983E+02 3.71587740E+00                   4
+H2  REF ELEMENT   RUS 78H   2    0    0    0G   200.00   6000.00  1000.        1
+ 0.29328305E+01 0.82659802E-03-0.14640057E-06 0.15409851E-10-0.68879615E-15    2
+-0.81305582E+03-0.10243164E+01 0.23443029E+01 0.79804248E-02-0.19477917E-04    3
+ 0.20156967E-07-0.73760289E-11-0.91792413E+03 0.68300218E+00 0.00000000E+00    4
+H2O               L 5/89H   2O   1    0    0G   200.00   6000.00  1000.        1
+ 0.26770389E+01 0.29731816E-02-0.77376889E-06 0.94433514E-10-0.42689991E-14    2
+-0.29885894E+05 0.68825500E+01 0.41986352E+01-0.20364017E-02 0.65203416E-05    3
+-0.54879269E-08 0.17719680E-11-0.30293726E+05-0.84900901E+00-0.29084817E+05    4
+H2O2              T 8/03H   2O   2    0    0G   200.00   6000.00  1000.        1
+ 4.57977305E+00 4.05326003E-03-1.29844730E-06 1.98211400E-10-1.13968792E-14    2
+-1.79847939E+04 6.64969660E-01 4.31515149E+00-8.47390622E-04 1.76404323E-05    3
+-2.26762944E-08 9.08950158E-12-1.76843601E+04 3.27373216E+00                   4
+N                 120186N   1               G  0300.00   5000.00  1000.00      1
+ 0.02450268E+02 0.01066146E-02-0.07465337E-06 0.01879652E-09-0.01025984E-13    2
+ 0.05611604E+06 0.04448758E+02 0.02503071E+02-0.02180018E-03 0.05420529E-06    3
+-0.05647560E-09 0.02099904E-12 0.05609890E+06 0.04167566E+02                   4
+NH                      N   1H   1    0    0G   200.00   6000.00  1000.0       1
+ 0.27836929E+01 0.13298429E-02-0.42478047E-06 0.78348504E-10-0.55044470E-14    2
+ 0.42134514E+05 0.57407798E+01 0.34929084E+01 0.31179197E-03-0.14890484E-05    3
+ 0.24816442E-08-0.10356967E-11 0.41894294E+05 0.18483277E+01 0.42940822E+05    4
+NNH               120186N   2H   1          G  0250.000  4000.00  1000.00      1
+ 0.04415342E+02 0.01614388E-01-0.01632894E-05-0.08559846E-09 0.01614791E-12    2
+ 0.02788029E+06 0.09042888E+01 0.03501344E+02 0.02053587E-01 0.07170410E-05    3
+ 0.04921348E-08-0.09671170E-11 0.02833347E+06 0.06391837E+02                   4
+NO                RUS 89N   1O   1    0    0G   200.00   6000.00  1000.        1
+ 3.26071234E+00 1.19101135E-03-4.29122646E-07 6.94481463E-11-4.03295681E-15    2
+ 9.89456954E+03 6.36900469E+00 4.21859896E+00-4.63988124E-03 1.10443049E-05    3
+-9.34055507E-09 2.80554874E-12 9.81823786E+03 2.28060952E+00                   4
+NO2               L 7/88N   1O   2    0    0G   200.00   6000.00  1000.        1
+ 4.88475400E+00 2.17239550E-03-8.28069090E-07 1.57475100E-10-1.05108950E-14    2
+ 2.29397777E+03-1.17416951E-01 3.94403120E+00-1.58542900E-03 1.66578120E-05    3
+-2.04754260E-08 7.83505640E-12 2.87409757E+03 6.31199190E+00                   4
+N2        BUR0302 G 8/02N  2.   0.   0.   0.G   200.00   6000.00  1000.        1
+ 2.95257637E+00 1.39690040E-03-4.92631603E-07 7.86010195E-11-4.60755204E-15    2
+-9.23948688E+02 5.87188762E+00 3.53100528E+00-1.23660988E-04-5.02999433E-07    3
+ 2.43530612E-09-1.40881235E-12-1.04697628E+03 2.96747038E+00 0.00000000E+00    4
+N2O               121286N   2O   1          G  0300.00   5000.00  1000.00      1
+ 0.04718977E+02 0.02873714E-01-0.01197496E-04 0.02250552E-08-0.01575337E-12    2
+ 0.08165811E+05-0.01657250E+02 0.02543058E+02 0.09492193E-01-0.09792775E-04    3
+ 0.06263845E-07-0.01901826E-10 0.08765100E+05 0.09511222E+02                   4
+O                 L 1/90O   1    0    0    0G   200.00   6000.00  1000.        1
+ 2.54363697E+00-2.73162486E-05-4.19029520E-09 4.95481845E-12-4.79553694E-16    2
+ 2.92260120E+04 4.92229457E+00 3.16826710E+00-3.27931884E-03 6.64306396E-06    3
+-6.12806624E-09 2.11265971E-12 2.91222592E+04 2.05193346E+00 2.99687009E+04    4
+O2 REF ELEMENT    RUS 89O   2    0    0    0G   200.00   6000.00  1000.        1
+ 3.66096083E+00 6.56365523E-04-1.41149485E-07 2.05797658E-11-1.29913248E-15    2
+-1.21597725E+03 3.41536184E+00 3.78245636E+00-2.99673415E-03 9.84730200E-06    3
+-9.68129508E-09 3.24372836E-12-1.06394356E+03 3.65767573E+00 0.00000000E+00    4
+OH HYDROXYL RADI  IU3/03O   1H   1    0    0G   200.00   6000.00  1000.        1
+ 2.83853033E+00 1.10741289E-03-2.94000209E-07 4.20698729E-11-2.42289890E-15    2
+ 3.70056220E+03 5.84513094E+00 3.99198424E+00-2.40106655E-03 4.61664033E-06    3
+-3.87916306E-09 1.36319502E-12 3.37165248E+03-1.03814059E-01                   4
+!
+ END
+
+\\
+\\
+\\  This is the tran file
+\\
+\\
+!
+!  Transport Properties obtained from GRI-Mech 3.0
+!
+!  Additions (at top) for "Glarborg" mechanism.
+!  Some of these represent changes to the GRI data.
+!  Entered by Joe Grcar as recommended by Chris Pope.
+!
+C2H5CHO            2   424.600     4.820     0.000     0.000     1.000 ! NMM
+C2H5CO             2   424.600     4.820     2.700     0.000     1.000 ! NMM, CJP
+CH2CN              2   422.220     5.329     3.500     0.000     1.000 ! CJP
+CH2HCO             2   436.000     3.970     0.000     0.000     2.000 ! CH2CHO
+CH3CN              2   422.220     5.329     3.500     0.000     1.000 ! CJP
+CH3HCO             2   436.000     3.970     0.000     0.000     2.000 ! CH3CHO
+HONO               2   350.000     3.950     1.639     0.000     1.000 ! CJP
+NO3                2   400.000     4.200     0.200     0.000     1.000 ! CJP
+OCHCHO             2   440.200     4.010     0.000     0.000     2.000 ! NMM CHOCHO
+NCN                1   422.220     5.329     2.000     0.000     1.000 ! CJP
+NO                 1   139.320     3.339     0.200     1.760     4.000 ! CJP
+HNO                2   170.000     3.430     1.620     0.000     1.000 ! CJP
+NO2                2   333.590     3.852     0.400     0.000     1.000 ! CJP
+!
+AR                 0   136.500     3.330     0.000     0.000     0.000
+C                  0    71.400     3.298     0.000     0.000     0.000 ! *
+C2                 1    97.530     3.621     0.000     1.760     4.000
+C2O                1   232.400     3.828     0.000     0.000     1.000 ! *
+CN2                1   232.400     3.828     0.000     0.000     1.000 ! OIS
+C2H                1   209.000     4.100     0.000     0.000     2.500
+C2H2               1   209.000     4.100     0.000     0.000     2.500
+C2H2OH             2   224.700     4.162     0.000     0.000     1.000 ! *
+C2H3               2   209.000     4.100     0.000     0.000     1.000 ! *
+C2H4               2   280.800     3.971     0.000     0.000     1.500
+C2H5               2   252.300     4.302     0.000     0.000     1.500
+C2H6               2   252.300     4.302     0.000     0.000     1.500
+C2N                1   232.400     3.828     0.000     0.000     1.000 ! OIS
+C2N2               1   349.000     4.361     0.000     0.000     1.000 ! OIS
+C3H2               2   209.000     4.100     0.000     0.000     1.000 ! *
+C3H4               1   252.000     4.760     0.000     0.000     1.000
+C3H6               2   266.800     4.982     0.000     0.000     1.000
+C3H7               2   266.800     4.982     0.000     0.000     1.000
+C4H6               2   357.000     5.180     0.000     0.000     1.000
+I*C3H7             2   266.800     4.982     0.000     0.000     1.000
+N*C3H7             2   266.800     4.982     0.000     0.000     1.000
+C3H8               2   266.800     4.982     0.000     0.000     1.000
+C4H                1   357.000     5.180     0.000     0.000     1.000
+C4H2               1   357.000     5.180     0.000     0.000     1.000
+C4H2OH             2   224.700     4.162     0.000     0.000     1.000 ! *
+C4H8               2   357.000     5.176     0.000     0.000     1.000
+C4H9               2   357.000     5.176     0.000     0.000     1.000
+I*C4H9             2   357.000     5.176     0.000     0.000     1.000
+C5H2               1   357.000     5.180     0.000     0.000     1.000
+C5H3               1   357.000     5.180     0.000     0.000     1.000
+C6H2               1   357.000     5.180     0.000     0.000     1.000
+C6H5               2   412.300     5.349     0.000     0.000     1.000 ! JAM
+C6H5O              2   450.000     5.500     0.000     0.000     1.000 ! JAM
+C5H5OH             2   450.000     5.500     0.000     0.000     1.000 ! JAM
+C6H6               2   412.300     5.349     0.000     0.000     1.000 ! SVE
+C6H7               2   412.300     5.349     0.000     0.000     1.000 ! JAM
+CH                 1    80.000     2.750     0.000     0.000     0.000
+CH2                1   144.000     3.800     0.000     0.000     0.000
+CH2(S)             1   144.000     3.800     0.000     0.000     0.000
+CH2*               1   144.000     3.800     0.000     0.000     0.000
+CH2CHCCH           2   357.000     5.180     0.000     0.000     1.000 ! JAM
+CH2CHCCH2          2   357.000     5.180     0.000     0.000     1.000 ! JAM
+CH2CHCH2           2   260.000     4.850     0.000     0.000     1.000 ! JAM
+CH2CHCHCH          2   357.000     5.180     0.000     0.000     1.000 ! JAM
+CH2CHCHCH2         2   357.000     5.180     0.000     0.000     1.000 ! JAM
+CH2CO              2   436.000     3.970     0.000     0.000     2.000
+CH2O               2   498.000     3.590     0.000     0.000     2.000
+CH2OH              2   417.000     3.690     1.700     0.000     2.000
+CH3                1   144.000     3.800     0.000     0.000     0.000
+CH3CC              2   252.000     4.760     0.000     0.000     1.000 ! JAM
+CH3CCCH2           2   357.000     5.180     0.000     0.000     1.000 ! JAM
+CH3CCCH3           2   357.000     5.180     0.000     0.000     1.000 ! JAM
+CH3CCH2            2   260.000     4.850     0.000     0.000     1.000 ! JAM
+CH3CHCH            2   260.000     4.850     0.000     0.000     1.000 ! JAM
+CH3CH2CCH          2   357.000     5.180     0.000     0.000     1.000 ! JAM
+CH3CHO             2   436.000     3.970     0.000     0.000     2.000
+CH2CHO             2   436.000     3.970     0.000     0.000     2.000
+CH3CO              2   436.000     3.970     0.000     0.000     2.000
+CH3O               2   417.000     3.690     1.700     0.000     2.000
+CH3OH              2   481.800     3.626     0.000     0.000     1.000 ! SVE
+CH4                2   141.400     3.746     0.000     2.600    13.000
+CH4O               2   417.000     3.690     1.700     0.000     2.000
+CN                 1    75.000     3.856     0.000     0.000     1.000 ! OIS
+CNC                1   232.400     3.828     0.000     0.000     1.000 ! OIS
+CNN                1   232.400     3.828     0.000     0.000     1.000 ! OIS
+CO                 1    98.100     3.650     0.000     1.950     1.800
+CO2                1   244.000     3.763     0.000     2.650     2.100
+H                  0   145.000     2.050     0.000     0.000     0.000
+H2C4O              2   357.000     5.180     0.000     0.000     1.000 ! JAM
+H2                 1    38.000     2.920     0.000     0.790   280.000
+H2CCCCH            2   357.000     5.180     0.000     0.000     1.000 ! JAM
+H2CCCCH2           2   357.000     5.180     0.000     0.000     1.000 ! JAM
+H2CCCH             2   252.000     4.760     0.000     0.000     1.000 ! JAM
+H2CN               1   569.000     3.630     0.000     0.000     1.000 ! os/jm
+H2NO               2   116.700     3.492     0.000     0.000     1.000 ! JAM
+H2O                2   572.400     2.605     1.844     0.000     4.000
+H2O2               2   107.400     3.458     0.000     0.000     3.800
+HC2N2              1   349.000     4.361     0.000     0.000     1.000 ! OIS
+HCCHCCH            2   357.000     5.180     0.000     0.000     1.000 ! JAM
+HCCO               2   150.000     2.500     0.000     0.000     1.000 ! *
+HCNN               2   150.000     2.500     0.000     0.000     1.000 ! *
+HCCOH              2   436.000     3.970     0.000     0.000     2.000
+HCN                1   569.000     3.630     0.000     0.000     1.000 ! OIS
+HCO                2   498.000     3.590     0.000     0.000     0.000
+HE                 0    10.200     2.576     0.000     0.000     0.000 ! *
+HCNO               2   232.400     3.828     0.000     0.000     1.000 ! JAM
+HOCN               2   232.400     3.828     0.000     0.000     1.000 ! JAM
+HNCO               2   232.400     3.828     0.000     0.000     1.000 ! OIS
+HNNO               2   232.400     3.828     0.000     0.000     1.000 ! *
+HNO                2   116.700     3.492     0.000     0.000     1.000 ! *
+HNOH               2   116.700     3.492     0.000     0.000     1.000 ! JAM
+HO2                2   107.400     3.458     0.000     0.000     1.000 ! *
+N                  0    71.400     3.298     0.000     0.000     0.000 ! *
+N2                 1    97.530     3.621     0.000     1.760     4.000
+N2H2               2    71.400     3.798     0.000     0.000     1.000 ! *
+N2H3               2   200.000     3.900     0.000     0.000     1.000 ! *
+N2H4               2   205.000     4.230     0.000     4.260     1.500
+N2O                1   232.400     3.828     0.000     0.000     1.000 ! *
+NCO                1   232.400     3.828     0.000     0.000     1.000 ! OIS
+NH                 1    80.000     2.650     0.000     0.000     4.000
+NH2                2    80.000     2.650     0.000     2.260     4.000
+NH3                2   481.000     2.920     1.470     0.000    10.000
+NNH                2    71.400     3.798     0.000     0.000     1.000 ! *
+NO                 1    97.530     3.621     0.000     1.760     4.000
+NCNO               2   232.400     3.828     0.000     0.000     1.000 ! OIS
+NO2                2   200.000     3.500     0.000     0.000     1.000 ! *
+O                  0    80.000     2.750     0.000     0.000     0.000
+O2                 1   107.400     3.458     0.000     1.600     3.800
+OH                 1    80.000     2.750     0.000     0.000     0.000
+
+#endif
