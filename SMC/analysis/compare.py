@@ -15,24 +15,27 @@ def setenv():
     import socket
     host = socket.gethostname()
 
+    print host
+
     if host == 'gigan':
         env.scratch    = '/scratch/memmett/Combustion/SMC/bin/FlameBall/'
         env.ffdcompare = '/scratch/memmett/AmrPostprocessing/F_Src/ffdcompare.Linux.gfortran.exe'
-    elif host == 'hopper':
-        env.scratch    = '/scratch/scratchdirs/memmett/Combustion/SMC/bin/FlameBall/'
+    elif host[:6] == 'hopper':
+        env.scratch    = '/scratch/scratchdirs/memmett/'
         env.ffdcompare = '/global/homes/m/memmett/projects/AmrPostprocessing/F_Src/ffdcompare.Linux.gfortran.exe'
 
 
 def find_plotfile(rundir, time):
   """Return plotfile with time *time* in run directory *rundir*."""
 
-  plts = glob.glob(os.path.join(env.scratch, rundir, 'plt*'))
+  plts = glob.glob(os.path.join(env.scratch, env.rwd, rundir, 'plt*'))
+  # print rundir, len(plts)
   for plt in plts:
     with open(plt + '/Header', 'r') as f:
       header = f.read().split('\n')
     ncomp = int(header[1])
     plttime = float(header[ncomp+3])
-    if abs(plttime - time) < 1e-10:
+    if abs(plttime - time) < 1e-18:
       return plt
 
   return None
@@ -53,7 +56,7 @@ def compare(p1, p2, variable, norm=0):
 
 def runtime(run):
 
-  with open(os.path.join(env.scratch, run, 'stdout'), 'r') as f:
+  with open(os.path.join(env.scratch, env.rwd, run, 'stdout'), 'r') as f:
     stdout = f.read()
 
   m = re.search(r"Total Run Time =\s*(\S*)", stdout)

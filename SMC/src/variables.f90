@@ -141,7 +141,7 @@ contains
     double precision, intent(in ) :: u(lo(1)-ngu:hi(1)+ngu,lo(2)-ngu:hi(2)+ngu,lo(3)-ngu:hi(3)+ngu,ncons)
     double precision, intent(out) :: q(lo(1)-ngq:hi(1)+ngq,lo(2)-ngq:hi(2)+ngq,lo(3)-ngq:hi(3)+ngq,nprim)
     
-    integer :: i, j, k, n, iwrk
+    integer :: i, j, k, n, iwrk, ierr
     double precision :: rho, rhoinv, rwrk, X(nspecies), Y(nspecies), h(nspecies), ei, Tt, Pt
     integer :: llo(3), lhi(3)
 
@@ -152,7 +152,7 @@ contains
     end do
 
     !$omp parallel do private(i, j, k, n, iwrk, rho, rhoinv, rwrk) &
-    !$omp private(X, Y, h, ei, Tt, Pt)
+    !$omp private(X, Y, h, ei, Tt, Pt, ierr)
     do k = llo(3),lhi(3)
        do j = llo(2),lhi(2)
           do i = llo(1),lhi(1)
@@ -187,7 +187,7 @@ contains
              q(i,j,k,qe) = ei
 
              Tt = q(i,j,k,qtemp)
-             call feeytt(ei, Y, iwrk, rwrk, Tt)
+             call get_t_given_ey(ei, Y, iwrk, rwrk, Tt, ierr)
              q(i,j,k,qtemp) = Tt
 
              call CKPY(rho, Tt, Y, iwrk, rwrk, Pt)

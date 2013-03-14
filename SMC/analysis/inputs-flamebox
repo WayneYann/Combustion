@@ -1,0 +1,51 @@
+&PROBIN
+
+ verbose = 2
+
+ advance_method = {advance_method}
+ stencil_type = "narrow"   ! narrow or S3D
+
+ stop_time = {stop_time}
+ max_step  = 900000
+ restart   = 40
+
+ sdc_iters            = {sdc_iters}
+ sdc_nnodes           = {sdc_nnodes}
+ sdc_nnodes_chemistry = {sdc_nnodes_chemistry}
+ sdc_tol_residual     = 1.d-3
+ sdc_multirate_type   = "local"
+
+ plot_int = 2
+ chk_int  = -10
+
+ fixed_dt = {fixed_dt}
+
+ n_cellx = {nx}
+ n_celly = {nx}
+ n_cellz = {nx}
+ max_grid_size = {max_grid_size}
+
+ prob_lo_x = -0.8d0
+ prob_lo_y = -0.8d0
+ prob_lo_z = -0.8d0
+ prob_hi_x =  0.8d0
+ prob_hi_y =  0.8d0
+ prob_hi_z =  0.8d0
+
+ xlo_boundary_type = "inlet"
+ xhi_boundary_type = "outlet"
+
+ ylo_boundary_type = "periodic"
+ yhi_boundary_type = "periodic"
+
+ zlo_boundary_type = "periodic"
+ zhi_boundary_type = "periodic"
+
+ outlet_Pinfty = 1.01325d6 
+ outlet_sigma  = 0.25d0
+ outlet_eta    = 50.d0
+ inlet_eta     = 30.d0
+
+ pertmag =  0.04d0
+ xfire   =  0.0d0
+/

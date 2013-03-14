@@ -318,7 +318,7 @@ void CKEQYP(double * P, double * T, double * y, int * iwrk, double *rwrk, double
 void CKEQXP(double * P, double * T, double * x, int * iwrk, double *rwrk, double * eqcon);
 void CKEQYR(double * rho, double * T, double * y, int * iwrk, double *rwrk, double * eqcon);
 void CKEQXR(double * rho, double * T, double * x, int * iwrk, double *rwrk, double * eqcon);
-int  feeytt_(double * e, double * y, int * iwrk, double *rwrk, double * t);
+void get_t_given_ey_(double * e, double * y, int * iwrk, double *rwrk, double * t, int * ierr);
 void fephity_(double * phi, int * iwrk, double *rwrk, double * y);
 void feytphi_(double * y, int * iwrk, double *rwrk, double * phi);
 void fectyr_(double * c, double * rho, int * iwrk, double *rwrk, double * y);
@@ -33845,7 +33845,7 @@ void molecularWeight(double * wt)
 
 
 /*get temperature given internal energy in mass units and mass fracs */
-int feeytt_(double * e, double * y, int * iwrk, double * rwrk, double * t)
+void get_t_given_ey_(double * e, double * y, int * iwrk, double * rwrk, double * t, int * ierr)
 {
 #ifdef CONVERGENCE
     const int maxiter = 5000;
@@ -33856,7 +33856,7 @@ int feeytt_(double * e, double * y, int * iwrk, double * rwrk, double * t)
 #endif
     double ein  = *e;
     double tmin = 250; // max lower bound for thermo def
-    double tmax = 3000; // min upper bound for thermo def
+    double tmax = 3500; // min upper bound for thermo def
     double e1,emin,emax,cv,t1,dt;
     int i; // loop counter
     CKUBMS(&tmin, y, iwrk, rwrk, &emin);
@@ -33865,13 +33865,15 @@ int feeytt_(double * e, double * y, int * iwrk, double * rwrk, double * t)
         /*Linear Extrapolation below tmin */
         CKCVBS(&tmin, y, iwrk, rwrk, &cv);
         *t = tmin - (emin-ein)/cv;
-        return 1;
+	*ierr = 1;
+        return;
     }
     if (ein > emax) {
         /*Linear Extrapolation above tmax */
         CKCVBS(&tmax, y, iwrk, rwrk, &cv);
         *t = tmax - (emax-ein)/cv;
-        return 1;
+	*ierr = 1;
+        return;
     }
     t1 = *t;
     if (t1 < tmin || t1 > tmax) {
@@ -33884,10 +33886,12 @@ int feeytt_(double * e, double * y, int * iwrk, double * rwrk, double * t)
         if (dt > 100.) { dt = 100.; }
         else if (dt < -100.) { dt = -100.; }
         else if (fabs(dt) < tol) break;
+        else if (t1+dt == t1) break;
         t1 += dt;
     }
     *t = t1;
-    return 0;
+    *ierr = 0;
+    return;
 }
 
 
@@ -34089,10 +34093,11 @@ void fecvrhs_(double * time, double * phi, double * phidot, double * rwrk, int *
     double y[53], wdot[53]; /*temporary storage */
     int i; /*Loop counter */
     double temperature,pressure; /*temporary var */
+    int ierr;
     rho = rwrk[0];
     ene = rwrk[1];
     fephity_(phi, iwrk, rwrk, y);
-    feeytt_(&ene, y, iwrk, rwrk, &temperature);
+    get_t_given_ey_(&ene, y, iwrk, rwrk, &temperature, &ierr);
     CKPY(&rho, &temperature,  y, iwrk, rwrk, &pressure);
     CKWYP(&pressure, &temperature,  y, iwrk, rwrk, wdot);
     for (i=0; i<53; ++i) phidot[i] = wdot[i] / (rho/1000.0); 

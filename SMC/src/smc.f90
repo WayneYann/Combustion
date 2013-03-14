@@ -129,12 +129,12 @@ subroutine smc()
   !
 
   if (advance_method == 2) then
-     call sdc_build_single_rate(sdc, SDC_GAUSS_LOBATTO, sdc_nnodes, ctx, &
+     call sdc_build_single_rate(sdc, sdc_qtype, sdc_nnodes, ctx, &
           c_funloc(srf1eval), c_funloc(srf1post))
   end if
 
   if (advance_method == 3) then
-     call sdc_build_multi_rate(sdc, SDC_GAUSS_LOBATTO, [ sdc_nnodes, sdc_nnodes_chemistry ], ctx, &
+     call sdc_build_multi_rate(sdc, sdc_qtype, [ sdc_nnodes, sdc_nnodes_chemistry ], ctx, &
           c_funloc(mrf1eval), c_funloc(mrf2eval), c_funloc(srf1post))
   end if
 
