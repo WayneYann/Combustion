@@ -232,7 +232,6 @@
 #endif
 
 /*function declarations */
-extern "C" {
 void molecularWeight(double * wt);
 void gibbs(double * species, double * tc);
 void helmholtz(double * species, double * tc);
@@ -319,7 +318,6 @@ void CKEQYP(double * P, double * T, double * y, int * iwrk, double *rwrk, double
 void CKEQXP(double * P, double * T, double * x, int * iwrk, double *rwrk, double * eqcon);
 void CKEQYR(double * rho, double * T, double * y, int * iwrk, double *rwrk, double * eqcon);
 void CKEQXR(double * rho, double * T, double * x, int * iwrk, double *rwrk, double * eqcon);
-}
 
 /*
 ** Inverse of molecular weights.
@@ -5202,8 +5200,8 @@ void molecularWeight(double * wt)
 #elif defined(BL_FORT_USE_UNDERSCORE)
 #define egtransetLENIMC egtransetlenimc_
 #endif
-extern "C" { void egtransetLENIMC(int* LENIMC) {
-  *LENIMC =           38;}}
+void egtransetLENIMC(int* LENIMC) {
+  *LENIMC =           38;}
 #if defined(BL_FORT_USE_UPPERCASE)
 #define egtransetLENRMC EGTRANSETLENRMC
 #elif defined(BL_FORT_USE_LOWERCASE)
@@ -5211,8 +5209,8 @@ extern "C" { void egtransetLENIMC(int* LENIMC) {
 #elif defined(BL_FORT_USE_UNDERSCORE)
 #define egtransetLENRMC egtransetlenrmc_
 #endif
-extern "C" { void egtransetLENRMC(int* LENRMC) {
-  *LENRMC =         1854;}}
+void egtransetLENRMC(int* LENRMC) {
+  *LENRMC =         1854;}
 #if defined(BL_FORT_USE_UPPERCASE)
 #define egtransetNO EGTRANSETNO
 #elif defined(BL_FORT_USE_LOWERCASE)
@@ -5220,8 +5218,8 @@ extern "C" { void egtransetLENRMC(int* LENRMC) {
 #elif defined(BL_FORT_USE_UNDERSCORE)
 #define egtransetNO egtransetno_
 #endif
-extern "C" { void egtransetNO(int* NO) {
-  *NO =            4;}}
+void egtransetNO(int* NO) {
+  *NO =            4;}
 #if defined(BL_FORT_USE_UPPERCASE)
 #define egtransetKK EGTRANSETKK
 #elif defined(BL_FORT_USE_LOWERCASE)
@@ -5229,8 +5227,8 @@ extern "C" { void egtransetNO(int* NO) {
 #elif defined(BL_FORT_USE_UNDERSCORE)
 #define egtransetKK egtransetkk_
 #endif
-extern "C" { void egtransetKK(int* KK) {
-  *KK =            9;}}
+void egtransetKK(int* KK) {
+  *KK =            9;}
 #if defined(BL_FORT_USE_UPPERCASE)
 #define egtransetNLITE EGTRANSETNLITE
 #elif defined(BL_FORT_USE_LOWERCASE)
@@ -5238,8 +5236,8 @@ extern "C" { void egtransetKK(int* KK) {
 #elif defined(BL_FORT_USE_UNDERSCORE)
 #define egtransetNLITE egtransetnlite_
 #endif
-extern "C" { void egtransetNLITE(int* NLITE) {
-  *NLITE =            2;}}
+void egtransetNLITE(int* NLITE) {
+  *NLITE =            2;}
 #if defined(BL_FORT_USE_UPPERCASE)
 #define egtransetPATM EGTRANSETPATM
 #elif defined(BL_FORT_USE_LOWERCASE)
@@ -5247,8 +5245,8 @@ extern "C" { void egtransetNLITE(int* NLITE) {
 #elif defined(BL_FORT_USE_UNDERSCORE)
 #define egtransetPATM egtransetpatm_
 #endif
-extern "C" { void egtransetPATM(double* PATM) {
-  *PATM =   0.1013250000000000E+07;}}
+void egtransetPATM(double* PATM) {
+  *PATM =   0.1013250000000000E+07;}
 #if defined(BL_FORT_USE_UPPERCASE)
 #define egtransetWT EGTRANSETWT
 #elif defined(BL_FORT_USE_LOWERCASE)
@@ -5256,7 +5254,7 @@ extern "C" { void egtransetPATM(double* PATM) {
 #elif defined(BL_FORT_USE_UNDERSCORE)
 #define egtransetWT egtransetwt_
 #endif
-extern "C" { void egtransetWT(double* WT) {
+void egtransetWT(double* WT) {
   WT[           0] =   0.2015939950942993E+01;
   WT[           1] =   0.1007969975471497E+01;
   WT[           2] =   0.1599940013885498E+02;
@@ -5266,7 +5264,7 @@ extern "C" { void egtransetWT(double* WT) {
   WT[           6] =   0.3300677025318146E+02;
   WT[           7] =   0.3401474022865295E+02;
   WT[           8] =   0.2801339912414551E+02;
-};  }
+};
 #if defined(BL_FORT_USE_UPPERCASE)
 #define egtransetEPS EGTRANSETEPS
 #elif defined(BL_FORT_USE_LOWERCASE)
@@ -5274,7 +5272,7 @@ extern "C" { void egtransetWT(double* WT) {
 #elif defined(BL_FORT_USE_UNDERSCORE)
 #define egtransetEPS egtranseteps_
 #endif
-extern "C" { void egtransetEPS(double* EPS) {
+void egtransetEPS(double* EPS) {
   EPS[           0] =   0.3800000000000000E+02;
   EPS[           1] =   0.1450000000000000E+03;
   EPS[           2] =   0.8000000000000000E+02;
@@ -5284,7 +5282,7 @@ extern "C" { void egtransetEPS(double* EPS) {
   EPS[           6] =   0.1074000000000000E+03;
   EPS[           7] =   0.1074000000000000E+03;
   EPS[           8] =   0.9753000000000000E+02;
-};  }
+};
 #if defined(BL_FORT_USE_UPPERCASE)
 #define egtransetSIG EGTRANSETSIG
 #elif defined(BL_FORT_USE_LOWERCASE)
@@ -5292,7 +5290,7 @@ extern "C" { void egtransetEPS(double* EPS) {
 #elif defined(BL_FORT_USE_UNDERSCORE)
 #define egtransetSIG egtransetsig_
 #endif
-extern "C" { void egtransetSIG(double* SIG) {
+void egtransetSIG(double* SIG) {
   SIG[           0] =   0.2920000000000000E+01;
   SIG[           1] =   0.2050000000000000E+01;
   SIG[           2] =   0.2750000000000000E+01;
@@ -5302,7 +5300,7 @@ extern "C" { void egtransetSIG(double* SIG) {
   SIG[           6] =   0.3458000000000000E+01;
   SIG[           7] =   0.3458000000000000E+01;
   SIG[           8] =   0.3621000000000000E+01;
-};  }
+};
 #if defined(BL_FORT_USE_UPPERCASE)
 #define egtransetDIP EGTRANSETDIP
 #elif defined(BL_FORT_USE_LOWERCASE)
@@ -5310,7 +5308,7 @@ extern "C" { void egtransetSIG(double* SIG) {
 #elif defined(BL_FORT_USE_UNDERSCORE)
 #define egtransetDIP egtransetdip_
 #endif
-extern "C" { void egtransetDIP(double* DIP) {
+void egtransetDIP(double* DIP) {
   DIP[           0] =   0.0000000000000000E+00;
   DIP[           1] =   0.0000000000000000E+00;
   DIP[           2] =   0.0000000000000000E+00;
@@ -5320,7 +5318,7 @@ extern "C" { void egtransetDIP(double* DIP) {
   DIP[           6] =   0.0000000000000000E+00;
   DIP[           7] =   0.0000000000000000E+00;
   DIP[           8] =   0.0000000000000000E+00;
-};  }
+};
 #if defined(BL_FORT_USE_UPPERCASE)
 #define egtransetPOL EGTRANSETPOL
 #elif defined(BL_FORT_USE_LOWERCASE)
@@ -5328,7 +5326,7 @@ extern "C" { void egtransetDIP(double* DIP) {
 #elif defined(BL_FORT_USE_UNDERSCORE)
 #define egtransetPOL egtransetpol_
 #endif
-extern "C" { void egtransetPOL(double* POL) {
+void egtransetPOL(double* POL) {
   POL[           0] =   0.7900000000000000E+00;
   POL[           1] =   0.0000000000000000E+00;
   POL[           2] =   0.0000000000000000E+00;
@@ -5338,7 +5336,7 @@ extern "C" { void egtransetPOL(double* POL) {
   POL[           6] =   0.0000000000000000E+00;
   POL[           7] =   0.0000000000000000E+00;
   POL[           8] =   0.1760000000000000E+01;
-};  }
+};
 #if defined(BL_FORT_USE_UPPERCASE)
 #define egtransetZROT EGTRANSETZROT
 #elif defined(BL_FORT_USE_LOWERCASE)
@@ -5346,7 +5344,7 @@ extern "C" { void egtransetPOL(double* POL) {
 #elif defined(BL_FORT_USE_UNDERSCORE)
 #define egtransetZROT egtransetzrot_
 #endif
-extern "C" { void egtransetZROT(double* ZROT) {
+void egtransetZROT(double* ZROT) {
   ZROT[           0] =   0.2800000000000000E+03;
   ZROT[           1] =   0.0000000000000000E+00;
   ZROT[           2] =   0.0000000000000000E+00;
@@ -5356,7 +5354,7 @@ extern "C" { void egtransetZROT(double* ZROT) {
   ZROT[           6] =   0.1000000000000000E+01;
   ZROT[           7] =   0.3800000000000000E+01;
   ZROT[           8] =   0.4000000000000000E+01;
-};  }
+};
 #if defined(BL_FORT_USE_UPPERCASE)
 #define egtransetNLIN EGTRANSETNLIN
 #elif defined(BL_FORT_USE_LOWERCASE)
@@ -5364,7 +5362,7 @@ extern "C" { void egtransetZROT(double* ZROT) {
 #elif defined(BL_FORT_USE_UNDERSCORE)
 #define egtransetNLIN egtransetnlin_
 #endif
-extern "C" { void egtransetNLIN(int* NLIN) {
+void egtransetNLIN(int* NLIN) {
   NLIN[           0] =            1;
   NLIN[           1] =            0;
   NLIN[           2] =            0;
@@ -5374,7 +5372,7 @@ extern "C" { void egtransetNLIN(int* NLIN) {
   NLIN[           6] =            2;
   NLIN[           7] =            2;
   NLIN[           8] =            1;
-};  }
+};
 #if defined(BL_FORT_USE_UPPERCASE)
 #define egtransetCOFLAM EGTRANSETCOFLAM
 #elif defined(BL_FORT_USE_LOWERCASE)
@@ -5382,7 +5380,7 @@ extern "C" { void egtransetNLIN(int* NLIN) {
 #elif defined(BL_FORT_USE_UNDERSCORE)
 #define egtransetCOFLAM egtransetcoflam_
 #endif
-extern "C" { void egtransetCOFLAM(double* COFLAM) {
+void egtransetCOFLAM(double* COFLAM) {
   COFLAM[           0] =   0.1158096158594203E+02;
   COFLAM[           1] =  -0.1520398050330763E+01;
   COFLAM[           2] =   0.2722793392212857E+00;
@@ -5419,7 +5417,7 @@ extern "C" { void egtransetCOFLAM(double* COFLAM) {
   COFLAM[          33] =  -0.2911509179774523E+01;
   COFLAM[          34] =   0.5546559973428081E+00;
   COFLAM[          35] =  -0.2750092774174382E-01;
-};  }
+};
 #if defined(BL_FORT_USE_UPPERCASE)
 #define egtransetCOFETA EGTRANSETCOFETA
 #elif defined(BL_FORT_USE_LOWERCASE)
@@ -5427,7 +5425,7 @@ extern "C" { void egtransetCOFLAM(double* COFLAM) {
 #elif defined(BL_FORT_USE_UNDERSCORE)
 #define egtransetCOFETA egtransetcofeta_
 #endif
-extern "C" { void egtransetCOFETA(double* COFETA) {
+void egtransetCOFETA(double* COFETA) {
   COFETA[           0] =  -0.1376710086380533E+02;
   COFETA[           1] =   0.9708665581008417E+00;
   COFETA[           2] =  -0.4534923959308444E-01;
@@ -5464,7 +5462,7 @@ extern "C" { void egtransetCOFETA(double* COFETA) {
   COFETA[          33] =   0.2251740453876138E+01;
   COFETA[          34] =  -0.2138340893699383E+00;
   COFETA[          35] =   0.9477823154448534E-02;
-};  }
+};
 #if defined(BL_FORT_USE_UPPERCASE)
 #define egtransetCOFD EGTRANSETCOFD
 #elif defined(BL_FORT_USE_LOWERCASE)
@@ -5472,7 +5470,7 @@ extern "C" { void egtransetCOFETA(double* COFETA) {
 #elif defined(BL_FORT_USE_UNDERSCORE)
 #define egtransetCOFD egtransetcofd_
 #endif
-extern "C" { void egtransetCOFD(double* COFD) {
+void egtransetCOFD(double* COFD) {
   COFD[           0] =  -0.1023073719095340E+02;
   COFD[           1] =   0.2153598714195162E+01;
   COFD[           2] =  -0.6969019063693850E-01;
@@ -5797,7 +5795,7 @@ extern "C" { void egtransetCOFD(double* COFD) {
   COFD[         321] =   0.3348053449783496E+01;
   COFD[         322] =  -0.2233657260417595E+00;
   COFD[         323] =   0.9817787279109837E-02;
-};  }
+};
 
 
 

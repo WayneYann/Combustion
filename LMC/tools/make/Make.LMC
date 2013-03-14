@@ -86,34 +86,34 @@ ifeq ($(USE_NEWMECH), TRUE)
 endif
 
 ifeq ($(CHEMISTRY_MODEL), GLARSKEL)
-  CEXE_sources += glarSkel.cpp
+  cEXE_sources += glarSkel.c
   vpath %.f   $(VPATH_LOCATIONS) $(COMBUSTION_DIR)/Chemistry/data/glar/PMFs
-  vpath %.cpp $(VPATH_LOCATIONS) $(COMBUSTION_DIR)/Chemistry/data/glar
+  vpath %.c $(VPATH_LOCATIONS) $(COMBUSTION_DIR)/Chemistry/data/glar
 endif
 ifeq ($(CHEMISTRY_MODEL), DRM19)
-  CEXE_sources += drm19.cpp
+  cEXE_sources += drm19.c
   vpath %.f   $(VPATH_LOCATIONS) $(COMBUSTION_DIR)/Chemistry/data/gri/PMFs
-  vpath %.cpp $(VPATH_LOCATIONS) $(COMBUSTION_DIR)/Chemistry/data/gri
+  vpath %.c $(VPATH_LOCATIONS) $(COMBUSTION_DIR)/Chemistry/data/gri
 endif
 ifeq ($(CHEMISTRY_MODEL), CHEMH)
-  CEXE_sources += chem-H.cpp
+  cEXE_sources += chem-H.c
   vpath %.f   $(VPATH_LOCATIONS) $(COMBUSTION_DIR)/Chemistry/data/chem-H/PMFs
-  vpath %.cpp $(VPATH_LOCATIONS) $(COMBUSTION_DIR)/Chemistry/data/chem-H
+  vpath %.c $(VPATH_LOCATIONS) $(COMBUSTION_DIR)/Chemistry/data/chem-H
 endif
 ifeq ($(CHEMISTRY_MODEL), GRI30)
-  CEXE_sources += grimech30.cpp
+  cEXE_sources += grimech30.c
   vpath %.f   $(VPATH_LOCATIONS) $(COMBUSTION_DIR)/Chemistry/data/gri/PMFs
-  vpath %.cpp $(VPATH_LOCATIONS) $(COMBUSTION_DIR)/Chemistry/data/gri
+  vpath %.c $(VPATH_LOCATIONS) $(COMBUSTION_DIR)/Chemistry/data/gri
 endif
 ifeq ($(CHEMISTRY_MODEL), LIDRYER)
-  CEXE_sources += LiDryer.cpp
+  cEXE_sources += LiDryer.c
   vpath %.f   $(VPATH_LOCATIONS) $(COMBUSTION_DIR)/Chemistry/data/LiDryer/PMFs
-  vpath %.cpp $(VPATH_LOCATIONS) $(COMBUSTION_DIR)/Chemistry/data/LiDryer
+  vpath %.c $(VPATH_LOCATIONS) $(COMBUSTION_DIR)/Chemistry/data/LiDryer
 endif
 ifeq ($(CHEMISTRY_MODEL), LUDME)
-  CEXE_sources += LuDME.cpp
+  cEXE_sources += LuDME.c
   vpath %.f   $(VPATH_LOCATIONS) $(COMBUSTION_DIR)/Chemistry/data/Lu/PMFs
-  vpath %.cpp $(VPATH_LOCATIONS) $(COMBUSTION_DIR)/Chemistry/data/Lu
+  vpath %.c $(VPATH_LOCATIONS) $(COMBUSTION_DIR)/Chemistry/data/Lu
 endif
 
 # Enable time-dependent turbulence forcing term
@@ -182,4 +182,3 @@ vpath %.f   $(VPATH_LOCATIONS)
 vpath %.f90 $(VPATH_LOCATIONS)
 
 include $(BOXLIB_DIR)/Tools/C_mk/Make.rules
-
