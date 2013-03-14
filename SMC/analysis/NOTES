@@ -1,0 +1,198 @@
+
+FlameInABox
+===========
+
+Used a fixed dt of 1.d-9, ran for 10 steps using SDC GL3, dumped
+checkpoint.  Subsequent runs were started from this checkpoint.
+
+Combustion: ae1799c
+
+For a 32**3 run on Hopper, it takes about an hour to do 250 time-steps
+using GL3.
+
+From the results below, it looks like we can get away with a 5x bigger
+time step using GL3.9 (ie, 3 slow with 9 "local" fast), and a 7x
+bigger time step with GL3.13 or GL3+27 (ie, 3 slow with 27 "global"
+fast).
+
+Therefore, 70 steps of GL3 at 6e-9 can be done with 14 steps of GL3.9
+or 10 steps of GL3.13.
+
+
+nx: 32**3, dt: 5.e-9
+--------------------
+
+gl3, looks good:
+
+ Advancing time step          14 time =    2.4999999999999999E-008
+ 
+ Setting fixed dt =   5.0000000000000001E-009
+ 
+ SDC: iter:           1 residual:   3.6432985523928388E-002
+ SDC: iter:           2 residual:   1.8413580711645373E-003   19.785931967532491     
+ SDC: iter:           3 residual:   6.5060286802552848E-005   28.302335597639662     
+ SDC: iter:           4 residual:   6.4737635648222670E-005   1.0049839811278161     
+ SDC: iter:           5 residual:   6.4737250006824284E-005   1.0000059570247168     
+ End of step          14 time =    2.9999999999999997E-008
+
+
+nx: 32**3, dt: 6.e-9
+--------------------
+
+gl3, looks good:
+
+ Advancing time step          14 time =    2.8000000000000003E-008
+ 
+ Setting fixed dt =   6.0000000000000000E-009
+ 
+ SDC: iter:           1 residual:   5.8708221517919289E-002
+ SDC: iter:           2 residual:   3.1875149063750031E-003   18.418179441452441     
+ SDC: iter:           3 residual:   7.8667626192976633E-005   40.518763062149972     
+ SDC: iter:           4 residual:   7.7689005141450790E-005   1.0125966480037174     
+ SDC: iter:           5 residual:   7.7688509277734248E-005   1.0000063827163264     
+ End of step          14 time =    3.4000000000000000E-008
+
+
+nx: 32**3, dt: 7.e-9
+--------------------
+
+gl3, questionable:
+
+ Advancing time step          13 time =    2.4000000000000000E-008
+  
+ Setting fixed dt =   6.9999999999999998E-009
+ 
+ SDC: iter:           1 residual:   6.9637163608844671E-002
+ SDC: iter:           2 residual:   5.0490573243431392E-003   13.792111900394035     
+ SDC: iter:           3 residual:   9.6080271737332710E-005   52.550406374228544     
+ SDC: iter:           4 residual:   9.2033701578984677E-005   1.0439683516898992     
+ SDC: iter:           5 residual:   9.3595405466997313E-005  0.98331431035294459     
+ SDC: iter:           6 residual:   9.6579199352195801E-005  0.96910521204138922     
+ SDC: iter:           7 residual:   9.9941879756951463E-005  0.96635364060658691     
+ SDC: iter:           8 residual:   1.0718701050168501E-004  0.93240663480749231     
+ End of step          13 time =    3.1000000000000000E-008
+
+
+nx: 32**3, dt: 1.25e-8
+----------------------
+
+gl3.9, looks good:
+
+ Advancing time step          13 time =    3.5000000000000002E-008
+ 
+ Setting fixed dt =   1.2499999999999999E-008
+ 
+ SDC: iter:           1 residual:  0.32568709225343556     
+ SDC: iter:           2 residual:   2.9263251573417817E-002   11.129559250663844     
+ SDC: iter:           3 residual:   1.6593041865124516E-004   176.35857132936982     
+ SDC: iter:           4 residual:   1.6196595171360639E-004   1.0244771626116140     
+ SDC: iter:           5 residual:   1.6193425141127971E-004   1.0001957603289633
+
+
+nx: 32**3, dt: 1.8e-8
+---------------------
+
+gl3.9, looks good:
+
+ Advancing time step          13 time =    4.6000000000000002E-008
+ 
+ Setting fixed dt =   1.7999999999999999E-008
+ 
+ SDC: iter:           1 residual:  0.89708928509225572     
+ SDC: iter:           2 residual:   8.7693924709259172E-002   10.229776898074405     
+ SDC: iter:           3 residual:   3.0815861944744294E-004   284.57397968131653     
+ SDC: iter:           4 residual:   2.3412434169420954E-004   1.3162177722209243     
+ SDC: iter:           5 residual:   2.3328545537693905E-004   1.0035959649345263     
+ SDC: iter:           6 residual:   2.3328548743771997E-004  0.99999986256847229     
+ End of step          13 time =    6.4000000000000004E-008
+
+
+nx: 32**3, dt: 2.4e-8
+---------------------
+
+gl3.9, looks good:
+
+ Advancing time step          13 time =    5.8000000000000003E-008
+ 
+ Setting fixed dt =   2.4000000000000000E-008
+ 
+ SDC: iter:           1 residual:   2.0314121650446801     
+ SDC: iter:           2 residual:  0.20815349046934159        9.7592029826849416     
+ SDC: iter:           3 residual:   8.7203372393328574E-004   238.69889977473647     
+ SDC: iter:           4 residual:   3.2210327223841087E-004   2.7073109747479789     
+ SDC: iter:           5 residual:   3.1117275841190475E-004   1.0351268339885884     
+ SDC: iter:           6 residual:   3.1117268639323741E-004   1.0000002314427663     
+ End of step          13 time =    8.2000000000000006E-008
+
+
+nx: 32**3, dt: 3.0e-8
+---------------------
+
+gl3.9, looks pretty good, needs an extra iteration?
+
+ Advancing time step          13 time =    6.9999999999999992E-008
+ 
+ 
+ Setting fixed dt =   2.9999999999999997E-008
+ 
+ SDC: iter:           1 residual:   3.8613031362421566     
+ SDC: iter:           2 residual:  0.40603419935335894        9.5097978012482258     
+ SDC: iter:           3 residual:   2.4730174489768384E-003   164.18573978171787     
+ SDC: iter:           4 residual:   4.6388209615963368E-004   5.3311336424715341     
+ SDC: iter:           5 residual:   3.8914610754310625E-004   1.1920512300338217     
+ SDC: iter:           6 residual:   3.8914218322639053E-004   1.0000100845317852     
+ SDC: iter:           7 residual:   3.8914486289649700E-004  0.99999311395225288
+
+
+nx: 32**3, dt: 3.6e-8
+---------------------
+
+gl3.9, questionable
+
+ Advancing time step          11 time =    1.0000000000000002E-008
+ 
+ 
+ Setting fixed dt =   3.5999999999999998E-008
+ 
+ SDC: iter:           1 residual:   1.2395958978125541     
+ SDC: iter:           2 residual:  0.69373730738446926        1.7868375891244521     
+ SDC: iter:           3 residual:   1.7908748845028913E-003   387.37340804074984     
+ SDC: iter:           4 residual:   7.8136515025950971E-004   2.2919820315867678     
+ SDC: iter:           5 residual:   4.6617736929976966E-004   1.6761112866400480     
+ SDC: iter:           6 residual:   4.6618386277879671E-004  0.99998607099141457     
+ SDC: iter:           7 residual:   4.7430298622664192E-004  0.98288198960660655     
+ SDC: iter:           8 residual:   4.8877768039680002E-004  0.97038593464741019 
+
+
+gl3.13, looks good:
+
+ Advancing time step          13 time =    8.1999999999999993E-008
+ 
+ Setting fixed dt =   3.5999999999999998E-008
+ 
+ SDC: iter:           1 residual:   6.5521744287643235     
+ SDC: iter:           2 residual:  0.69911202627085123        9.3721380587806795     
+ SDC: iter:           3 residual:   6.1346612944092240E-003   113.96098215038890     
+ SDC: iter:           4 residual:   7.7707503145297543E-004   7.8945546390013721     
+ SDC: iter:           5 residual:   4.6719769589355565E-004   1.6632681160097607     
+ SDC: iter:           6 residual:   4.6715390489723060E-004   1.0000937399770524     
+ SDC: iter:           7 residual:   4.6715311433191030E-004   1.0000016923045059     
+ End of step          13 time =    1.1800000000000000E-007
+
+gl3+27, looks good...
+
+
+nx: 32**3, dt: 4.2d-8
+---------------------
+
+gl3.13, looks good...
+
+
+nx: 32**3, dt: 5.4d-8
+---------------------
+
+gl3.13, not looking good.
+
+
+
+

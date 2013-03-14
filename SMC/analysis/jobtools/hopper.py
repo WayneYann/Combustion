@@ -12,7 +12,8 @@ class HopperPBS(base.Container):
     def submit(self, job, rwd=None, exe=None, inputs=None, queue=None,
                width=None, depth=None, pernode=None,
                walltime=None, stdout=None, stderr=None,
-               pbs_opts=None, aprun_opts=None, verbose=False, dry_run=None, **kwargs):
+               pbs_opts=None, aprun_opts=None, verbose=False, dry_run=None, 
+               cmds=None, **kwargs):
 
         #
         # import defaults from fabric env
@@ -44,9 +45,6 @@ class HopperPBS(base.Container):
 
         if stderr is None:
             stderr = getattr(env, 'stderr', 'stderr')
-
-        if dry_run is None:
-            dry_run = getattr(env, 'dry_run', False)
 
         verbose = verbose or getattr(env, 'verbose', False)
 
@@ -86,6 +84,8 @@ class HopperPBS(base.Container):
 
         pbs.append("")
         pbs.append("cd {rwd}")
+        if cmds:
+            pbs.extend(cmds)
         if depth:
             pbs.append("export OMP_NUM_THREADS=" + str(depth))
         pbs.append("aprun {opts} -B {exe} {inputs}") # change this
