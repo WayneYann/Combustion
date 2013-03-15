@@ -1,5 +1,7 @@
 # A set of useful macros for putting together a SMC application.
 
+STDC99 := t
+
 # include the main Makefile stuff
 include $(BOXLIB_HOME)/Tools/F_mk/GMakedefs.mak
 
@@ -68,16 +70,16 @@ Fmlocs += $(CHEMISTRY_DIR)/F_Src
 
 ifeq ($(CHEMISTRY_MODEL),LIDRYER)
   csources += LiDryer.c
-  vpath %.c  $(VPATH_LOCATIONS) $(CHEMISTRY_DIR)/data/LiDryer
-  vpath %.f  $(VPATH_LOCATIONS) $(CHEMISTRY_DIR)/data/LiDryer/PMFs
+  vpath %.c   $(VPATH_LOCATIONS) $(CHEMISTRY_DIR)/data/LiDryer
+  vpath %.f   $(VPATH_LOCATIONS) $(CHEMISTRY_DIR)/data/LiDryer/PMFs
 else ifeq ($(CHEMISTRY_MODEL),DRM19)
   csources += drm19.c
-  vpath %.c  $(VPATH_LOCATIONS) $(CHEMISTRY_DIR)/data/gri
-  vpath %.f  $(VPATH_LOCATIONS) $(CHEMISTRY_DIR)/data/gri/PMFs
+  vpath %.c   $(VPATH_LOCATIONS) $(CHEMISTRY_DIR)/data/gri
+  vpath %.f   $(VPATH_LOCATIONS) $(CHEMISTRY_DIR)/data/gri/PMFs
 else ifeq ($(CHEMISTRY_MODEL),GRI30)
   csources += grimech30.c
-  vpath %.c  $(VPATH_LOCATIONS) $(CHEMISTRY_DIR)/data/gri
-  vpath %.f  $(VPATH_LOCATIONS) $(CHEMISTRY_DIR)/data/gri/PMFs
+  vpath %.c   $(VPATH_LOCATIONS) $(CHEMISTRY_DIR)/data/gri
+  vpath %.f   $(VPATH_LOCATIONS) $(CHEMISTRY_DIR)/data/gri/PMFs
 endif
 
 ifdef CONVERGENCE
