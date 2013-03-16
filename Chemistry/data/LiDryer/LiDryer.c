@@ -3167,6 +3167,7 @@ void vproductionRate(int npt, double * restrict wdot, double * restrict c, doubl
     qdot = q_f - q_r;
     wdot[0*npt+i] -= 1.0 * qdot;
     wdot[3*npt+i] += 1.0 * qdot;
+    wdot[4*npt+i] -= 1 * qdot;
     wdot[5*npt+i] += 1.0 * qdot;
 
     /*reaction 3: H2 + OH <=> H2O + H */
