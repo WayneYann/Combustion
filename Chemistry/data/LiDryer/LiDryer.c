@@ -3416,8 +3416,6 @@ void vproductionRate(int npt, double * restrict wdot, double * restrict c, doubl
     wdot[5*npt+i] -= 1.0 * qdot;
     wdot[6*npt+i] += 1.0 * qdot;
     wdot[7*npt+i] -= 1.0 * qdot;
-
-    return;
   }
 }
 
