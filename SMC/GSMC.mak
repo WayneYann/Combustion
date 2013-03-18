@@ -1,7 +1,5 @@
 # A set of useful macros for putting together a SMC application.
 
-STDC99 := t
-
 # include the main Makefile stuff
 include $(BOXLIB_HOME)/Tools/F_mk/GMakedefs.mak
 
