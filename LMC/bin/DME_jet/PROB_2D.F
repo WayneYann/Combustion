@@ -169,8 +169,8 @@ c ::: -----------------------------------------------------------
             airZone  = getZone(domnlo(1), domnlo(2))
 
             sigma = 2.5d0*xfrontw*splitx
-            eta = 0.5 * (    tanh((x + splitx)/sigma) 
-     &                 - tanh((x - splitx)/sigma))
+            eta = 0.5d0 * ( tanh((x + splitx)/sigma) 
+     &                    - tanh((x - splitx)/sigma))
                   
             do n=1,Nspec
               Yl(n-1) = Y_bc(n-1,airZone)*(1.d0-eta)
@@ -323,17 +323,17 @@ c ::: -----------------------------------------------------------
          sigma = 2.5d0*xfrontw*splitx
 
          do j = lo(2), hi(2)
-            y = (float(j)+.5)*delta(2)+domnlo(2)
+            y = (DBLE(j)+.5d0)*delta(2)+domnlo(2)
             do i = lo(1), hi(1)
-               x = (float(i)+.5)*delta(1)+domnlo(1)
+               x = (DBLE(i)+.5d0)*delta(1)+domnlo(1)
 
 
 
 
 c              if (blobr.lt.0) then
 
-                  eta = 0.5 * (    tanh((x + splitx)/sigma) 
-     &                 - tanh((x - splitx)/sigma))
+                  eta = 0.5d0 * (tanh((x + splitx)/sigma) 
+     &                         - tanh((x - splitx)/sigma))
                   
                   do n=1,Nspec
                    scal(i,j,FirstSpec-1+n) = Y_bc(n-1,airZone)*(1.d0-eta)
@@ -481,12 +481,12 @@ c
          if ((idir.EQ.1) .AND. (lo(2) .LE. domlo(2))
      &           .AND. (do_T .OR. do_RH .OR. do_Y) ) then
                
-            y = float(j)*dx(2)+domnlo(2)
+            y = DBLE(j)*dx(2)+domnlo(2)
             j = lo(2)
             do i = lo(1), hi(1)
                
-               xl = float(i)*dx(1)+domnlo(1) 
-               xr = (float(i)+1.d0)*dx(1)+domnlo(1) 
+               xl = DBLE(i)*dx(1)+domnlo(1) 
+               xr = (DBLE(i)+1.d0)*dx(1)+domnlo(1) 
                xh = 0.5d0*(xl+xr)
                   
                   
@@ -789,9 +789,9 @@ c ::: -----------------------------------------------------------
 
       if (bc(1,1).eq.EXT_DIR.and.lo(1).lt.domlo(1)) then
          do i = lo(1), domlo(1)-1
-            x = (float(i)+.5)*delta(1)+domnlo(1)
+            x = (DBLE(i)+.5d0)*delta(1)+domnlo(1)
             do j = lo(2), hi(2)
-               y = (float(j)+.5)*delta(2)+domnlo(2)
+               y = (DBLE(j)+.5d0)*delta(2)+domnlo(2)
                call bcfunction(BL_XLO,x,y,time,u,v,rho,Yl,T,h,delta,.false.)
                den(i,j) = rho
             enddo
@@ -800,9 +800,9 @@ c ::: -----------------------------------------------------------
       
       if (bc(1,2).eq.EXT_DIR.and.hi(1).gt.domhi(1)) then
          do i = domhi(1)+1, hi(1)
-            x = (float(i)+.5)*delta(1)+domnlo(1)
+            x = (DBLE(i)+.5d0)*delta(1)+domnlo(1)
             do j = lo(2), hi(2)
-               y = (float(j)+.5)*delta(2)+domnlo(2)
+               y = (DBLE(j)+.5d0)*delta(2)+domnlo(2)
                call bcfunction(BL_XHI,x,y,time,u,v,rho,Yl,T,h,delta,.false.)
                den(i,j) = rho
             enddo
@@ -811,9 +811,9 @@ c ::: -----------------------------------------------------------
 
       if (bc(2,1).eq.EXT_DIR.and.lo(2).lt.domlo(2)) then
          do j = lo(2), domlo(2)-1
-            y = (float(j)+.5)*delta(2)+domnlo(2)
+            y = (DBLE(j)+.5d0)*delta(2)+domnlo(2)
             do i = lo(1), hi(1)
-               x = (float(i)+.5)*delta(1)+domnlo(1)
+               x = (DBLE(i)+.5d0)*delta(1)+domnlo(1)
                call bcfunction(BL_YLO,x,y,time,u,v,rho,Yl,T,h,delta,.false.)
                den(i,j) = rho
             enddo
@@ -822,9 +822,9 @@ c ::: -----------------------------------------------------------
       
       if (bc(2,2).eq.EXT_DIR.and.hi(2).gt.domhi(2)) then
          do j = domhi(2)+1, hi(2)
-            y = (float(j)+.5)*delta(2)+domnlo(2)
+            y = (DBLE(j)+.5d0)*delta(2)+domnlo(2)
             do i = lo(1), hi(1)
-               x = (float(i)+.5)*delta(1)+domnlo(1)
+               x = (DBLE(i)+.5d0)*delta(1)+domnlo(1)
                call bcfunction(BL_YHI,x,y,time,u,v,rho,Yl,T,h,delta,.false.)
                den(i,j) = rho
             enddo
@@ -940,9 +940,9 @@ c ::: -----------------------------------------------------------
 
       if (bc(1,1).eq.EXT_DIR.and.lo(1).lt.domlo(1)) then
          do i = lo(1), domlo(1)-1
-            x = (float(i)+.5)*delta(1)+domnlo(1)
+            x = (DBLE(i)+.5d0)*delta(1)+domnlo(1)
             do j = lo(2), hi(2)
-               y = (float(j)+.5)*delta(2)+domnlo(2)
+               y = (DBLE(j)+.5d0)*delta(2)+domnlo(2)
                call bcfunction(BL_XLO,x,y,time,u,v,rho,Yl,T,h,delta,.false.)
                temp(i,j) = T
             enddo
@@ -951,9 +951,9 @@ c ::: -----------------------------------------------------------
       
       if (bc(1,2).eq.EXT_DIR.and.hi(1).gt.domhi(1)) then
          do i = domhi(1)+1, hi(1)
-            x = (float(i)+.5)*delta(1)+domnlo(1)
+            x = (DBLE(i)+.5d0)*delta(1)+domnlo(1)
             do j = lo(2), hi(2)
-               y = (float(j)+.5)*delta(2)+domnlo(2)
+               y = (DBLE(j)+.5d0)*delta(2)+domnlo(2)
                call bcfunction(BL_XHI,x,y,time,u,v,rho,Yl,T,h,delta,.false.)
                temp(i,j) = T
             enddo
@@ -962,9 +962,9 @@ c ::: -----------------------------------------------------------
 
       if (bc(2,1).eq.EXT_DIR.and.lo(2).lt.domlo(2)) then
          do j = lo(2), domlo(2)-1
-            y = (float(j)+.5)*delta(2)+domnlo(2)
+            y = (DBLE(j)+.5d0)*delta(2)+domnlo(2)
             do i = lo(1), hi(1)
-               x = (float(i)+.5)*delta(1)+domnlo(1)
+               x = (DBLE(i)+.5d0)*delta(1)+domnlo(1)
                call bcfunction(BL_YLO,x,y,time,u,v,rho,Yl,T,h,delta,.false.)
                temp(i,j) = T
             enddo
@@ -973,9 +973,9 @@ c ::: -----------------------------------------------------------
       
       if (bc(2,2).eq.EXT_DIR.and.hi(2).gt.domhi(2)) then
          do j = domhi(2)+1, hi(2)
-            y = (float(j)+.5)*delta(2)+domnlo(2)
+            y = (DBLE(j)+.5d0)*delta(2)+domnlo(2)
             do i = lo(1), hi(1)
-               x = (float(i)+.5)*delta(1)+domnlo(1)
+               x = (DBLE(i)+.5d0)*delta(1)+domnlo(1)
                call bcfunction(BL_YHI,x,y,time,u,v,rho,Yl,T,h,delta,.false.)
                temp(i,j) = T
             enddo
@@ -1036,9 +1036,9 @@ c ::: -----------------------------------------------------------
 
       if (bc(1,1).eq.EXT_DIR.and.lo(1).lt.domlo(1)) then
          do i = lo(1), domlo(1)-1
-            x = (float(i)+.5)*delta(1)+domnlo(1)
+            x = (DBLE(i)+.5d0)*delta(1)+domnlo(1)
             do j = lo(2), hi(2)
-               y = (float(j)+.5)*delta(2)+domnlo(2)
+               y = (DBLE(j)+.5d0)*delta(2)+domnlo(2)
                call bcfunction(BL_XLO,x,y,time,u,v,rho,Yl,T,h,delta,.false.)
                rhoh(i,j) = rho*h
             enddo
@@ -1047,9 +1047,9 @@ c ::: -----------------------------------------------------------
       
       if (bc(1,2).eq.EXT_DIR.and.hi(1).gt.domhi(1)) then
          do i = domhi(1)+1, hi(1)
-            x = (float(i)+.5)*delta(1)+domnlo(1)
+            x = (DBLE(i)+.5d0)*delta(1)+domnlo(1)
             do j = lo(2), hi(2)
-               y = (float(j)+.5)*delta(2)+domnlo(2)
+               y = (DBLE(j)+.5d0)*delta(2)+domnlo(2)
                call bcfunction(BL_XHI,x,y,time,u,v,rho,Yl,T,h,delta,.false.)
                rhoh(i,j) = rho*h
             enddo
@@ -1058,9 +1058,9 @@ c ::: -----------------------------------------------------------
 
       if (bc(2,1).eq.EXT_DIR.and.lo(2).lt.domlo(2)) then
          do j = lo(2), domlo(2)-1
-            y = (float(j)+.5)*delta(2)+domnlo(2)
+            y = (DBLE(j)+.5d0)*delta(2)+domnlo(2)
             do i = lo(1), hi(1)
-               x = (float(i)+.5)*delta(1)+domnlo(1)
+               x = (DBLE(i)+.5d0)*delta(1)+domnlo(1)
                call bcfunction(BL_YLO,x,y,time,u,v,rho,Yl,T,h,delta,.false.)
                rhoh(i,j) = rho*h
             enddo
@@ -1069,9 +1069,9 @@ c ::: -----------------------------------------------------------
       
       if (bc(2,2).eq.EXT_DIR.and.hi(2).gt.domhi(2)) then
          do j = domhi(2)+1, hi(2)
-            y = (float(j)+.5)*delta(2)+domnlo(2)
+            y = (DBLE(j)+.5d0)*delta(2)+domnlo(2)
             do i = lo(1), hi(1)
-               x = (float(i)+.5)*delta(1)+domnlo(1)
+               x = (DBLE(i)+.5d0)*delta(1)+domnlo(1)
                call bcfunction(BL_YHI,x,y,time,u,v,rho,Yl,T,h,delta,.false.)
                rhoh(i,j) = rho*h
             enddo
@@ -1218,9 +1218,9 @@ c     that the bc values may often be set up ahead of time.
 
       if (bc(1,1).eq.EXT_DIR.and.lo(1).lt.domlo(1)) then
          do i = lo(1), domlo(1)-1
-            x = (float(i)+.5)*delta(1)+domnlo(1)
+            x = (DBLE(i)+.5d0)*delta(1)+domnlo(1)
             do j = lo(2), hi(2)
-               y = (float(j)+.5)*delta(2)+domnlo(2)
+               y = (DBLE(j)+.5d0)*delta(2)+domnlo(2)
                call bcfunction(BL_XLO, x, y, time, u, v, rho, Yl, T, h, delta,.true.)
                xvel(i,j) = u
             enddo
@@ -1229,9 +1229,9 @@ c     that the bc values may often be set up ahead of time.
       
       if (bc(1,2).eq.EXT_DIR.and.hi(1).gt.domhi(1)) then
          do i = domhi(1)+1, hi(1)
-            x = (float(i)+.5)*delta(1)+domnlo(1)
+            x = (DBLE(i)+.5d0)*delta(1)+domnlo(1)
             do j = lo(2), hi(2)
-               y = (float(j)+.5)*delta(2)+domnlo(2)
+               y = (DBLE(j)+.5d0)*delta(2)+domnlo(2)
                call bcfunction(BL_XHI, x, y, time, u, v, rho, Yl, T, h, delta,.true.)
                xvel(i,j) = u
             enddo
@@ -1240,9 +1240,9 @@ c     that the bc values may often be set up ahead of time.
 
       if (bc(2,1).eq.EXT_DIR.and.lo(2).lt.domlo(2)) then
          do j = lo(2), domlo(2)-1
-            y = (float(j)+.5)*delta(2)+domnlo(2)
+            y = (DBLE(j)+.5d0)*delta(2)+domnlo(2)
             do i = lo(1), hi(1)
-               x = (float(i)+.5)*delta(1)+domnlo(1)
+               x = (DBLE(i)+.5d0)*delta(1)+domnlo(1)
                call bcfunction(BL_YLO, x, y, time, u, v, rho, Yl, T, h, delta,.true.)
                xvel(i,j) = u
 #if defined(BL_DO_FLCT)
@@ -1257,9 +1257,9 @@ c     that the bc values may often be set up ahead of time.
       
       if (bc(2,2).eq.EXT_DIR.and.hi(2).gt.domhi(2)) then
          do j = domhi(2)+1, hi(2)
-            y = (float(j)+.5)*delta(2)+domnlo(2)
+            y = (DBLE(j)+.5d0)*delta(2)+domnlo(2)
             do i = lo(1), hi(1)
-               x = (float(i)+.5)*delta(1)+domnlo(1)
+               x = (DBLE(i)+.5d0)*delta(1)+domnlo(1)
                call bcfunction(BL_YHI, x, y, time, u, v, rho, Yl, T, h, delta,.true.)
                xvel(i,j) = u
             enddo
@@ -1361,9 +1361,9 @@ c     that the bc values may often be set up ahead of time.
 
       if (bc(1,1).eq.EXT_DIR.and.lo(1).lt.domlo(1)) then
          do i = lo(1), domlo(1)-1
-            x = (float(i)+.5)*delta(1)+domnlo(1)
+            x = (DBLE(i)+.5d0)*delta(1)+domnlo(1)
             do j = lo(2), hi(2)
-               y = (float(j)+.5)*delta(2)+domnlo(2)
+               y = (DBLE(j)+.5d0)*delta(2)+domnlo(2)
                call bcfunction(BL_XLO, x, y, time, u, v, rho, Yl, T, h, delta,.true.)
                yvel(i,j) = v
             enddo
@@ -1372,9 +1372,9 @@ c     that the bc values may often be set up ahead of time.
       
       if (bc(1,2).eq.EXT_DIR.and.hi(1).gt.domhi(1)) then
          do i = domhi(1)+1, hi(1)
-            x = (float(i)+.5)*delta(1)+domnlo(1)
+            x = (DBLE(i)+.5d0)*delta(1)+domnlo(1)
             do j = lo(2), hi(2)
-               y = (float(j)+.5)*delta(2)+domnlo(2)
+               y = (DBLE(j)+.5d0)*delta(2)+domnlo(2)
                call bcfunction(BL_XHI, x, y, time, u, v, rho, Yl, T, h, delta,.true.)
                yvel(i,j) = v
             enddo
@@ -1383,9 +1383,9 @@ c     that the bc values may often be set up ahead of time.
 
       if (bc(2,1).eq.EXT_DIR.and.lo(2).lt.domlo(2)) then
          do j = lo(2), domlo(2)-1
-            y = (float(j)+.5)*delta(2)+domnlo(2)
+            y = (DBLE(j)+.5d0)*delta(2)+domnlo(2)
             do i = lo(1), hi(1)
-               x = (float(i)+.5)*delta(1)+domnlo(1)
+               x = (DBLE(i)+.5d0)*delta(1)+domnlo(1)
                call bcfunction(BL_YLO, x, y, time, u, v, rho, Yl, T, h, delta,.true.)
                yvel(i,j) = v
 #if defined(BL_DO_FLCT)
@@ -1400,9 +1400,9 @@ c     that the bc values may often be set up ahead of time.
       
       if (bc(2,2).eq.EXT_DIR.and.hi(2).gt.domhi(2)) then
          do j = domhi(2)+1, hi(2)
-            y = (float(j)+.5)*delta(2)+domnlo(2)
+            y = (DBLE(j)+.5d0)*delta(2)+domnlo(2)
             do i = lo(1), hi(1)
-               x = (float(i)+.5)*delta(1)+domnlo(1)
+               x = (DBLE(i)+.5d0)*delta(1)+domnlo(1)
                call bcfunction(BL_YHI, x, y, time, u, v, rho, Yl, T, h, delta,.true.)
                yvel(i,j) = v
             enddo
@@ -1477,9 +1477,9 @@ c     that the bc values may often be set up ahead of time.
 
       if (bc(1,1).eq.EXT_DIR.and.lo(1).lt.domlo(1)) then
          do i = lo(1), domlo(1)-1
-            x = (float(i)+.5)*delta(1)+domnlo(1)
+            x = (DBLE(i)+.5d0)*delta(1)+domnlo(1)
             do j = lo(2), hi(2)
-               y = (float(j)+.5)*delta(2)+domnlo(2)
+               y = (DBLE(j)+.5d0)*delta(2)+domnlo(2)
                call bcfunction(BL_XLO, x, y, time, u, v, rho, Yl, T, h, delta,.false.)
                rhoY(i,j) = rho*Yl(id)
             enddo
@@ -1488,9 +1488,9 @@ c     that the bc values may often be set up ahead of time.
       
       if (bc(1,2).eq.EXT_DIR.and.hi(1).gt.domhi(1)) then
          do i = domhi(1)+1, hi(1)
-            x = (float(i)+.5)*delta(1)+domnlo(1)
+            x = (DBLE(i)+.5d0)*delta(1)+domnlo(1)
             do j = lo(2), hi(2)
-               y = (float(j)+.5)*delta(2)+domnlo(2)
+               y = (DBLE(j)+.5d0)*delta(2)+domnlo(2)
                call bcfunction(BL_XHI, x, y, time, u, v, rho, Yl, T, h, delta,.false.)
                rhoY(i,j) = rho*Yl(id)
             enddo
@@ -1499,9 +1499,9 @@ c     that the bc values may often be set up ahead of time.
 
       if (bc(2,1).eq.EXT_DIR.and.lo(2).lt.domlo(2)) then
          do j = lo(2), domlo(2)-1
-            y = (float(j)+.5)*delta(2)+domnlo(2)
+            y = (DBLE(j)+.5d0)*delta(2)+domnlo(2)
             do i = lo(1), hi(1)
-               x = (float(i)+.5)*delta(1)+domnlo(1)
+               x = (DBLE(i)+.5d0)*delta(1)+domnlo(1)
                call bcfunction(BL_YLO, x, y, time, u, v, rho, Yl, T, h, delta,.false.)
                rhoY(i,j) = rho*Yl(id)
             enddo
@@ -1510,9 +1510,9 @@ c     that the bc values may often be set up ahead of time.
       
       if (bc(2,2).eq.EXT_DIR.and.hi(2).gt.domhi(2)) then
          do j = domhi(2)+1, hi(2)
-            y = (float(j)+.5)*delta(2)+domnlo(2)
+            y = (DBLE(j)+.5d0)*delta(2)+domnlo(2)
             do i = lo(1), hi(1)
-               x = (float(i)+.5)*delta(1)+domnlo(1)
+               x = (DBLE(i)+.5d0)*delta(1)+domnlo(1)
                call bcfunction(BL_YHI, x, y, time, u, v, rho, Yl, T, h, delta,.false.)
                rhoY(i,j) = rho*Yl(id)
             enddo

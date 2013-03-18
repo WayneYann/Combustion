@@ -300,9 +300,9 @@ c     Initialize control variables
       pseudo_gravity = 0
       nchemdiag = 1
 
-      write(6,*)"reading fortin"
+      if (isioproc .eq. 1) write(6,*)"reading fortin"
       read(untin,fortin)
-      write(6,*)"done reading fortin"
+      if (isioproc .eq. 1) write(6,*)"done reading fortin"
       
 c     Initialize control variables that depend on fortin variables
       V_in_old = V_in
@@ -315,11 +315,11 @@ c     Initialize control variables that depend on fortin variables
       read(untin,flctin)
       convVel = one
 #endif
- 
-      write(6,*)"reading control"
+
+      if (isioproc .eq. 1) write(6,*)"reading control"
       read(untin,control)
       close(unit=untin)
-      write(6,*)"done reading control"
+      if (isioproc .eq. 1) write(6,*)"done reading control"
 
 #if defined(BL_DO_FLCT)
       if (forceInflow .eqv. .FALSE.) then
@@ -329,7 +329,9 @@ c     Initialize control variables that depend on fortin variables
          if (flct_file.ne.'') then
 #define FF_UNIT 20
             ierr = 0
-            write(6,*) '...initializing turbulence, reading header info'
+            if (isioproc .eq. 1) then
+               write(6,*) '...initializing turbulence, reading header info'
+            end if
             open(FF_UNIT, file=trim(flct_file)//'/HDR',form='formatted',status='old',iostat=ierr)
             if (ierr .ne. 0) then
                call bl_abort('Problem opening file: ' // trim(flct_file) // '/HDR')
@@ -340,17 +342,17 @@ c     Initialize control variables that depend on fortin variables
       endif
 #endif
 c     Set up boundary functions
-      write(6,*)" setup bc"
+      if (isioproc .eq. 1) write(6,*)" setup bc"
       call setupbc()
-      write(6,*)" done setup bc"
+      if (isioproc .eq. 1) write(6,*)" done setup bc"
       
       area = 1.d0
       do i=1,SDIM-1
          area = area*(domnhi(i)-domnlo(i))
       enddo
       scale_control = Y_bc(fuelID-1,BL_FUELPIPE) * rho_bc(BL_FUELPIPE) * area
-      write(6,*)" control setup", area, Y_bc(fuelID-1,BL_FUELPIPE), rho_bc(BL_FUELPIPE)
-      write(6,*)" fuelpipe",BL_FUELPIPE
+      if (isioproc .eq. 1) write(6,*) " control setup", area, Y_bc(fuelID-1,BL_FUELPIPE), rho_bc(BL_FUELPIPE)
+      if (isioproc .eq. 1) write(6,*) " fuelpipe",BL_FUELPIPE
 
       if (h_control .gt. zero) then
          cfix = scale_control * h_control
