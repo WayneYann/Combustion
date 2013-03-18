@@ -95,7 +95,7 @@ contains
 
     lgco = .false.
     if (present(ghostcells_only)) then
-       lgco = .true.
+       lgco = ghostcells_only
     end if
 
     do n=1,nfabs(Q)
