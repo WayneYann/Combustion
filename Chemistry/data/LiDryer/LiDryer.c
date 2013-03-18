@@ -235,109 +235,109 @@
 #endif
 
 /*function declarations */
-void molecularWeight(double * wt);
-void gibbs(double * species, double * tc);
-void helmholtz(double * species, double * tc);
-void speciesInternalEnergy(double * species, double * tc);
-void speciesEnthalpy(double * species, double * tc);
-void speciesEntropy(double * species, double * tc);
-void cp_R(double * species, double * tc);
-void cv_R(double * species, double * tc);
-void equilibriumConstants(double * kc, double * g_RT, double T);
-void productionRate(double * wdot, double * sc, double T);
-void progressRate(double * qdot, double * speciesConc, double T);
-void progressRateFR(double * q_f, double * q_r, double * speciesConc, double T);
-void CKINDX(int * iwrk, double *rwrk, int * mm, int * kk, int * ii, int * nfit );
-void CKXNUM(char * line, int * nexp, int * lout, int * nval, double * rval, int * kerr, int lenline);
-void CKSNUM(char * line, int * nexp, int * lout, char * kray, int * nn, int * knum, int * nval, double * rval, int * kerr, int lenline, int lenkray);
+void molecularWeight(double * restrict  wt);
+void gibbs(double * restrict  species, double * restrict  tc);
+void helmholtz(double * restrict  species, double * restrict  tc);
+void speciesInternalEnergy(double * restrict  species, double * restrict  tc);
+void speciesEnthalpy(double * restrict  species, double * restrict  tc);
+void speciesEntropy(double * restrict  species, double * restrict  tc);
+void cp_R(double * restrict  species, double * restrict  tc);
+void cv_R(double * restrict  species, double * restrict  tc);
+void equilibriumConstants(double * restrict  kc, double * restrict  g_RT, double T);
+void productionRate(double * restrict  wdot, double * restrict  sc, double T);
+void progressRate(double * restrict  qdot, double * restrict  speciesConc, double T);
+void progressRateFR(double * restrict  q_f, double * restrict  q_r, double * restrict  speciesConc, double T);
+void CKINDX(int * iwrk, double * restrict rwrk, int * mm, int * kk, int * ii, int * nfit );
+void CKXNUM(char * line, int * nexp, int * lout, int * nval, double * restrict  rval, int * kerr, int lenline);
+void CKSNUM(char * line, int * nexp, int * lout, char * kray, int * nn, int * knum, int * nval, double * restrict  rval, int * kerr, int lenline, int lenkray);
 void CKSYME(int * kname, int * lenkname);
 void CKSYMS(int * kname, int * lenkname);
-void CKRP(int * ickwrk, double * rckwrk, double * ru, double * ruc, double * pa);
-void CKPX(double * rho, double * T, double * x, int * iwrk, double *rwrk, double * P);
-void CKPY(double * rho, double * T, double * y, int * iwrk, double *rwrk, double * P);
-void CKPC(double * rho, double * T, double * c, int * iwrk, double *rwrk, double * P);
-void CKRHOX(double * P, double * T, double * x, int * iwrk, double *rwrk, double * rho);
-void CKRHOY(double * P, double * T, double * y, int * iwrk, double *rwrk, double * rho);
-void CKRHOC(double * P, double * T, double * c, int * iwrk, double *rwrk, double * rho);
-void CKWT(int * iwrk, double *rwrk, double * wt);
-void CKMMWY(double * y, int * iwrk, double * rwrk, double * wtm);
-void CKMMWX(double * x, int * iwrk, double * rwrk, double * wtm);
-void CKMMWC(double * c, int * iwrk, double * rwrk, double * wtm);
-void CKYTX(double * y, int * iwrk, double * rwrk, double * x);
-void CKYTCP(double * P, double * T, double * y, int * iwrk, double * rwrk, double * c);
-void CKYTCR(double * rho, double * T, double * y, int * iwrk, double * rwrk, double * c);
-void CKXTY(double * x, int * iwrk, double * rwrk, double * y);
-void CKXTCP(double * P, double * T, double * x, int * iwrk, double * rwrk, double * c);
-void CKXTCR(double * rho, double * T, double * x, int * iwrk, double * rwrk, double * c);
-void CKCTX(double * c, int * iwrk, double * rwrk, double * x);
-void CKCTY(double * c, int * iwrk, double * rwrk, double * y);
-void CKCPOR(double * T, int * iwrk, double * rwrk, double * cpor);
-void CKHORT(double * T, int * iwrk, double * rwrk, double * hort);
-void CKSOR(double * T, int * iwrk, double * rwrk, double * sor);
-void CKCVML(double * T, int * iwrk, double * rwrk, double * cvml);
-void CKCPML(double * T, int * iwrk, double * rwrk, double * cvml);
-void CKUML(double * T, int * iwrk, double * rwrk, double * uml);
-void CKHML(double * T, int * iwrk, double * rwrk, double * uml);
-void CKGML(double * T, int * iwrk, double * rwrk, double * gml);
-void CKAML(double * T, int * iwrk, double * rwrk, double * aml);
-void CKSML(double * T, int * iwrk, double * rwrk, double * sml);
-void CKCVMS(double * T, int * iwrk, double * rwrk, double * cvms);
-void CKCPMS(double * T, int * iwrk, double * rwrk, double * cvms);
-void CKUMS(double * T, int * iwrk, double * rwrk, double * ums);
-void CKHMS(double * T, int * iwrk, double * rwrk, double * ums);
-void CKGMS(double * T, int * iwrk, double * rwrk, double * gms);
-void CKAMS(double * T, int * iwrk, double * rwrk, double * ams);
-void CKSMS(double * T, int * iwrk, double * rwrk, double * sms);
-void CKCPBL(double * T, double * x, int * iwrk, double * rwrk, double * cpbl);
-void CKCPBS(double * T, double * y, int * iwrk, double * rwrk, double * cpbs);
-void CKCVBL(double * T, double * x, int * iwrk, double * rwrk, double * cpbl);
-void CKCVBS(double * T, double * y, int * iwrk, double * rwrk, double * cpbs);
-void CKHBML(double * T, double * x, int * iwrk, double * rwrk, double * hbml);
-void CKHBMS(double * T, double * y, int * iwrk, double * rwrk, double * hbms);
-void CKUBML(double * T, double * x, int * iwrk, double * rwrk, double * ubml);
-void CKUBMS(double * T, double * y, int * iwrk, double * rwrk, double * ubms);
-void CKSBML(double * P, double * T, double * x, int * iwrk, double * rwrk, double * sbml);
-void CKSBMS(double * P, double * T, double * y, int * iwrk, double * rwrk, double * sbms);
-void CKGBML(double * P, double * T, double * x, int * iwrk, double * rwrk, double * gbml);
-void CKGBMS(double * P, double * T, double * y, int * iwrk, double * rwrk, double * gbms);
-void CKABML(double * P, double * T, double * x, int * iwrk, double * rwrk, double * abml);
-void CKABMS(double * P, double * T, double * y, int * iwrk, double * rwrk, double * abms);
-void CKWC(double * T, double * C, int * iwrk, double *rwrk, double * wdot);
-void CKWYP(double * P, double * T, double * y, int * iwrk, double *rwrk, double * wdot);
-void CKWXP(double * P, double * T, double * x, int * iwrk, double *rwrk, double * wdot);
-void CKWYR(double * rho, double * T, double * y, int * iwrk, double *rwrk, double * wdot);
-void CKWXR(double * rho, double * T, double * x, int * iwrk, double *rwrk, double * wdot);
-void CKQC(double * T, double * C, int * iwrk, double *rwrk, double * qdot);
-void CKKFKR(double * P, double * T, double * x, int * iwrk, double *rwrk, double * q_f, double * q_r);
-void CKQYP(double * P, double * T, double * y, int * iwrk, double *rwrk, double * qdot);
-void CKQXP(double * P, double * T, double * x, int * iwrk, double *rwrk, double * qdot);
-void CKQYR(double * rho, double * T, double * y, int * iwrk, double *rwrk, double * qdot);
-void CKQXR(double * rho, double * T, double * x, int * iwrk, double *rwrk, double * qdot);
-void CKNU(int * kdim, int * iwrk, double *rwrk, int * nuki);
-void CKNCF(int * mdim, int * iwrk, double *rwrk, int * ncf);
-void CKABE(int * iwrk, double *rwrk, double * a, double * b, double * e );
-void CKEQC(double * T, double * C , int * iwrk, double *rwrk, double * eqcon );
-void CKEQYP(double * P, double * T, double * y, int * iwrk, double *rwrk, double * eqcon);
-void CKEQXP(double * P, double * T, double * x, int * iwrk, double *rwrk, double * eqcon);
-void CKEQYR(double * rho, double * T, double * y, int * iwrk, double *rwrk, double * eqcon);
-void CKEQXR(double * rho, double * T, double * x, int * iwrk, double *rwrk, double * eqcon);
-void get_T_given_ey_(double * e, double * y, int * iwrk, double *rwrk, double * t, int *ierr);
-void fephity_(double * phi, int * iwrk, double *rwrk, double * y);
-void feytphi_(double * y, int * iwrk, double *rwrk, double * phi);
-void fectyr_(double * c, double * rho, int * iwrk, double *rwrk, double * y);
-void fecvrhs_(double * time, double * phi, double * phidot, double * rckwrk, int * ickwrk);
+void CKRP(int * ickwrk, double * restrict  rckwrk, double * restrict  ru, double * restrict  ruc, double * restrict  pa);
+void CKPX(double * restrict  rho, double * restrict  T, double * restrict  x, int * iwrk, double * restrict rwrk, double * restrict  P);
+void CKPY(double * restrict  rho, double * restrict  T, double * restrict  y, int * iwrk, double * restrict rwrk, double * restrict  P);
+void CKPC(double * restrict  rho, double * restrict  T, double * restrict  c, int * iwrk, double * restrict rwrk, double * restrict  P);
+void CKRHOX(double * restrict  P, double * restrict  T, double * restrict  x, int * iwrk, double * restrict rwrk, double * restrict  rho);
+void CKRHOY(double * restrict  P, double * restrict  T, double * restrict  y, int * iwrk, double * restrict rwrk, double * restrict  rho);
+void CKRHOC(double * restrict  P, double * restrict  T, double * restrict  c, int * iwrk, double * restrict rwrk, double * restrict  rho);
+void CKWT(int * iwrk, double * restrict rwrk, double * restrict  wt);
+void CKMMWY(double * restrict  y, int * iwrk, double * restrict  rwrk, double * restrict  wtm);
+void CKMMWX(double * restrict  x, int * iwrk, double * restrict  rwrk, double * restrict  wtm);
+void CKMMWC(double * restrict  c, int * iwrk, double * restrict  rwrk, double * restrict  wtm);
+void CKYTX(double * restrict  y, int * iwrk, double * restrict  rwrk, double * restrict  x);
+void CKYTCP(double * restrict  P, double * restrict  T, double * restrict  y, int * iwrk, double * restrict  rwrk, double * restrict  c);
+void CKYTCR(double * restrict  rho, double * restrict  T, double * restrict  y, int * iwrk, double * restrict  rwrk, double * restrict  c);
+void CKXTY(double * restrict  x, int * iwrk, double * restrict  rwrk, double * restrict  y);
+void CKXTCP(double * restrict  P, double * restrict  T, double * restrict  x, int * iwrk, double * restrict  rwrk, double * restrict  c);
+void CKXTCR(double * restrict  rho, double * restrict  T, double * restrict  x, int * iwrk, double * restrict  rwrk, double * restrict  c);
+void CKCTX(double * restrict  c, int * iwrk, double * restrict  rwrk, double * restrict  x);
+void CKCTY(double * restrict  c, int * iwrk, double * restrict  rwrk, double * restrict  y);
+void CKCPOR(double * restrict  T, int * iwrk, double * restrict  rwrk, double * restrict  cpor);
+void CKHORT(double * restrict  T, int * iwrk, double * restrict  rwrk, double * restrict  hort);
+void CKSOR(double * restrict  T, int * iwrk, double * restrict  rwrk, double * restrict  sor);
+void CKCVML(double * restrict  T, int * iwrk, double * restrict  rwrk, double * restrict  cvml);
+void CKCPML(double * restrict  T, int * iwrk, double * restrict  rwrk, double * restrict  cvml);
+void CKUML(double * restrict  T, int * iwrk, double * restrict  rwrk, double * restrict  uml);
+void CKHML(double * restrict  T, int * iwrk, double * restrict  rwrk, double * restrict  uml);
+void CKGML(double * restrict  T, int * iwrk, double * restrict  rwrk, double * restrict  gml);
+void CKAML(double * restrict  T, int * iwrk, double * restrict  rwrk, double * restrict  aml);
+void CKSML(double * restrict  T, int * iwrk, double * restrict  rwrk, double * restrict  sml);
+void CKCVMS(double * restrict  T, int * iwrk, double * restrict  rwrk, double * restrict  cvms);
+void CKCPMS(double * restrict  T, int * iwrk, double * restrict  rwrk, double * restrict  cvms);
+void CKUMS(double * restrict  T, int * iwrk, double * restrict  rwrk, double * restrict  ums);
+void CKHMS(double * restrict  T, int * iwrk, double * restrict  rwrk, double * restrict  ums);
+void CKGMS(double * restrict  T, int * iwrk, double * restrict  rwrk, double * restrict  gms);
+void CKAMS(double * restrict  T, int * iwrk, double * restrict  rwrk, double * restrict  ams);
+void CKSMS(double * restrict  T, int * iwrk, double * restrict  rwrk, double * restrict  sms);
+void CKCPBL(double * restrict  T, double * restrict  x, int * iwrk, double * restrict  rwrk, double * restrict  cpbl);
+void CKCPBS(double * restrict  T, double * restrict  y, int * iwrk, double * restrict  rwrk, double * restrict  cpbs);
+void CKCVBL(double * restrict  T, double * restrict  x, int * iwrk, double * restrict  rwrk, double * restrict  cpbl);
+void CKCVBS(double * restrict  T, double * restrict  y, int * iwrk, double * restrict  rwrk, double * restrict  cpbs);
+void CKHBML(double * restrict  T, double * restrict  x, int * iwrk, double * restrict  rwrk, double * restrict  hbml);
+void CKHBMS(double * restrict  T, double * restrict  y, int * iwrk, double * restrict  rwrk, double * restrict  hbms);
+void CKUBML(double * restrict  T, double * restrict  x, int * iwrk, double * restrict  rwrk, double * restrict  ubml);
+void CKUBMS(double * restrict  T, double * restrict  y, int * iwrk, double * restrict  rwrk, double * restrict  ubms);
+void CKSBML(double * restrict  P, double * restrict  T, double * restrict  x, int * iwrk, double * restrict  rwrk, double * restrict  sbml);
+void CKSBMS(double * restrict  P, double * restrict  T, double * restrict  y, int * iwrk, double * restrict  rwrk, double * restrict  sbms);
+void CKGBML(double * restrict  P, double * restrict  T, double * restrict  x, int * iwrk, double * restrict  rwrk, double * restrict  gbml);
+void CKGBMS(double * restrict  P, double * restrict  T, double * restrict  y, int * iwrk, double * restrict  rwrk, double * restrict  gbms);
+void CKABML(double * restrict  P, double * restrict  T, double * restrict  x, int * iwrk, double * restrict  rwrk, double * restrict  abml);
+void CKABMS(double * restrict  P, double * restrict  T, double * restrict  y, int * iwrk, double * restrict  rwrk, double * restrict  abms);
+void CKWC(double * restrict  T, double * restrict  C, int * iwrk, double * restrict rwrk, double * restrict  wdot);
+void CKWYP(double * restrict  P, double * restrict  T, double * restrict  y, int * iwrk, double * restrict rwrk, double * restrict  wdot);
+void CKWXP(double * restrict  P, double * restrict  T, double * restrict  x, int * iwrk, double * restrict rwrk, double * restrict  wdot);
+void CKWYR(double * restrict  rho, double * restrict  T, double * restrict  y, int * iwrk, double * restrict rwrk, double * restrict  wdot);
+void CKWXR(double * restrict  rho, double * restrict  T, double * restrict  x, int * iwrk, double * restrict rwrk, double * restrict  wdot);
+void CKQC(double * restrict  T, double * restrict  C, int * iwrk, double * restrict rwrk, double * restrict  qdot);
+void CKKFKR(double * restrict  P, double * restrict  T, double * restrict  x, int * iwrk, double * restrict rwrk, double * restrict  q_f, double * restrict  q_r);
+void CKQYP(double * restrict  P, double * restrict  T, double * restrict  y, int * iwrk, double * restrict rwrk, double * restrict  qdot);
+void CKQXP(double * restrict  P, double * restrict  T, double * restrict  x, int * iwrk, double * restrict rwrk, double * restrict  qdot);
+void CKQYR(double * restrict  rho, double * restrict  T, double * restrict  y, int * iwrk, double * restrict rwrk, double * restrict  qdot);
+void CKQXR(double * restrict  rho, double * restrict  T, double * restrict  x, int * iwrk, double * restrict rwrk, double * restrict  qdot);
+void CKNU(int * kdim, int * iwrk, double * restrict rwrk, int * nuki);
+void CKNCF(int * mdim, int * iwrk, double * restrict rwrk, int * ncf);
+void CKABE(int * iwrk, double * restrict rwrk, double * restrict  a, double * restrict  b, double * restrict  e );
+void CKEQC(double * restrict  T, double * restrict  C , int * iwrk, double * restrict rwrk, double * restrict  eqcon );
+void CKEQYP(double * restrict  P, double * restrict  T, double * restrict  y, int * iwrk, double * restrict rwrk, double * restrict  eqcon);
+void CKEQXP(double * restrict  P, double * restrict  T, double * restrict  x, int * iwrk, double * restrict rwrk, double * restrict  eqcon);
+void CKEQYR(double * restrict  rho, double * restrict  T, double * restrict  y, int * iwrk, double * restrict rwrk, double * restrict  eqcon);
+void CKEQXR(double * restrict  rho, double * restrict  T, double * restrict  x, int * iwrk, double * restrict rwrk, double * restrict  eqcon);
+void get_T_given_ey_(double * restrict  e, double * restrict  y, int * iwrk, double * restrict rwrk, double * restrict  t, int *ierr);
+void fephity_(double * restrict  phi, int * iwrk, double * restrict rwrk, double * restrict  y);
+void feytphi_(double * restrict  y, int * iwrk, double * restrict rwrk, double * restrict  phi);
+void fectyr_(double * restrict  c, double * restrict  rho, int * iwrk, double * restrict rwrk, double * restrict  y);
+void fecvrhs_(double * restrict  time, double * restrict  phi, double * restrict  phidot, double * restrict  rckwrk, int * ickwrk);
 int fecvdim_();
-void fezndrhs_(double * time, double * z, double * zdot, double * rckwrk, int * ickwrk);
+void fezndrhs_(double * restrict  time, double * restrict  z, double * restrict  zdot, double * restrict  rckwrk, int * ickwrk);
 int feznddim_();
 char* femechfile_();
 char* fesymname_(int sn);
 int fesymnum_(const char* s1);
 
 /* vector version */
-void vproductionRate(int npt, double * restrict wdot, double * restrict c, double * restrict T);
-void VCKWYR(int * restrict np, double * restrict rho, double * restrict T, 
-	    double * restrict y, int * restrict iwrk, double * restrict rwrk, 
-	    double * restrict wdot);
+void vproductionRate(int npt, double * restrict  restrict wdot, double * restrict  restrict c, double * restrict  restrict T);
+void VCKWYR(int * restrict np, double * restrict  restrict rho, double * restrict  restrict T, 
+	    double * restrict  restrict y, int * restrict iwrk, double * restrict  restrict rwrk, 
+	    double * restrict  restrict wdot);
 
 
 /*
@@ -355,7 +355,7 @@ static const double imw[9] = { 1.0 / 2.01594,   /*H2 */
                                1.0 / 28.0134 }; /*N2 */
 
 /*A few mechanism parameters */
-void CKINDX(int * iwrk, double * rwrk, int * mm, int * kk, int * ii, int * nfit)
+void CKINDX(int * iwrk, double * restrict  rwrk, int * mm, int * kk, int * ii, int * nfit)
 {
     *mm = 3;
     *kk = 9;
@@ -365,7 +365,7 @@ void CKINDX(int * iwrk, double * rwrk, int * mm, int * kk, int * ii, int * nfit)
 
 
 /*Dummy ckinit */
-void fginit_(int * leniwk, int * lenrwk, int * lencwk, int * linc, int * lout, int * ickwrk, double * rckwrk, char * cckwrk )
+void fginit_(int * leniwk, int * lenrwk, int * lencwk, int * linc, int * lout, int * ickwrk, double * restrict  rckwrk, char * cckwrk )
 {
     if ((*lout) != 0) {
         printf(" ***       Congratulations       *** \n");
@@ -376,7 +376,7 @@ void fginit_(int * leniwk, int * lenrwk, int * lencwk, int * linc, int * lout, i
 
 
 /* ckxnum... for parsing strings  */
-void CKXNUM(char * line, int * nexp, int * lout, int * nval, double * rval, int * kerr, int lenline )
+void CKXNUM(char * line, int * nexp, int * lout, int * nval, double * restrict  rval, int * kerr, int lenline )
 {
     int n,i; /*Loop Counters */
     char *p; /*String Tokens */
@@ -408,7 +408,7 @@ void CKXNUM(char * line, int * nexp, int * lout, int * nval, double * rval, int 
 
 
 /* cksnum... for parsing strings  */
-void CKSNUM(char * line, int * nexp, int * lout, char * kray, int * nn, int * knum, int * nval, double * rval, int * kerr, int lenline, int lenkray)
+void CKSNUM(char * line, int * nexp, int * lout, char * kray, int * nn, int * knum, int * nval, double * restrict  rval, int * kerr, int lenline, int lenkray)
 {
     /*Not done yet ... */
 }
@@ -500,7 +500,7 @@ void CKSYMS(int * kname, int * plenkname )
 
 
 /* Returns R, Rc, Patm */
-void CKRP(int * ickwrk, double * rckwrk, double * ru, double * ruc, double * pa)
+void CKRP(int * ickwrk, double * restrict  rckwrk, double * restrict  ru, double * restrict  ruc, double * restrict  pa)
 {
      *ru  = 8.31451e+07; 
      *ruc = 1.98721558317399615845; 
@@ -509,7 +509,7 @@ void CKRP(int * ickwrk, double * rckwrk, double * ru, double * ruc, double * pa)
 
 
 /*Compute P = rhoRT/W(x) */
-void CKPX(double * rho, double * T, double * x, int * iwrk, double * rwrk, double * P)
+void CKPX(double * restrict  rho, double * restrict  T, double * restrict  x, int * iwrk, double * restrict  rwrk, double * restrict  P)
 {
     double XW = 0;/* To hold mean molecular wt */
     XW += x[0]*2.015940; /*H2 */
@@ -528,7 +528,7 @@ void CKPX(double * rho, double * T, double * x, int * iwrk, double * rwrk, doubl
 
 
 /*Compute P = rhoRT/W(y) */
-void CKPY(double * rho, double * T, double * y, int * iwrk, double * rwrk, double * P)
+void CKPY(double * restrict  rho, double * restrict  T, double * restrict  y, int * iwrk, double * restrict  rwrk, double * restrict  P)
 {
     double YOW = 0;/* for computing mean MW */
     YOW += y[0]*imw[0];
@@ -547,7 +547,7 @@ void CKPY(double * rho, double * T, double * y, int * iwrk, double * rwrk, doubl
 
 
 /*Compute P = rhoRT/W(c) */
-void CKPC(double * rho, double * T, double * c, int * iwrk, double * rwrk, double * P)
+void CKPC(double * restrict  rho, double * restrict  T, double * restrict  c, int * iwrk, double * restrict  rwrk, double * restrict  P)
 {
     int id; /*loop counter */
     /*See Eq 5 in CK Manual */
@@ -573,7 +573,7 @@ void CKPC(double * rho, double * T, double * c, int * iwrk, double * rwrk, doubl
 
 
 /*Compute rho = PW(x)/RT */
-void CKRHOX(double * P, double * T, double * x, int * iwrk, double * rwrk, double * rho)
+void CKRHOX(double * restrict  P, double * restrict  T, double * restrict  x, int * iwrk, double * restrict  rwrk, double * restrict  rho)
 {
     double XW = 0;/* To hold mean molecular wt */
     XW += x[0]*2.015940; /*H2 */
@@ -592,7 +592,7 @@ void CKRHOX(double * P, double * T, double * x, int * iwrk, double * rwrk, doubl
 
 
 /*Compute rho = P*W(y)/RT */
-void CKRHOY(double * P, double * T, double * y, int * iwrk, double * rwrk, double * rho)
+void CKRHOY(double * restrict  P, double * restrict  T, double * restrict  y, int * iwrk, double * restrict  rwrk, double * restrict  rho)
 {
     double YOW = 0;/* for computing mean MW */
     YOW += y[0]*imw[0];
@@ -611,7 +611,7 @@ void CKRHOY(double * P, double * T, double * y, int * iwrk, double * rwrk, doubl
 
 
 /*Compute rho = P*W(c)/(R*T) */
-void CKRHOC(double * P, double * T, double * c, int * iwrk, double * rwrk, double * rho)
+void CKRHOC(double * restrict  P, double * restrict  T, double * restrict  c, int * iwrk, double * restrict  rwrk, double * restrict  rho)
 {
     int id; /*loop counter */
     /*See Eq 5 in CK Manual */
@@ -637,7 +637,7 @@ void CKRHOC(double * P, double * T, double * c, int * iwrk, double * rwrk, doubl
 
 
 /*get molecular weight for all species */
-void CKWT(int * iwrk, double * rwrk, double * wt)
+void CKWT(int * iwrk, double * restrict  rwrk, double * restrict  wt)
 {
     molecularWeight(wt);
 }
@@ -645,7 +645,7 @@ void CKWT(int * iwrk, double * rwrk, double * wt)
 
 /*given y[species]: mass fractions */
 /*returns mean molecular weight (gm/mole) */
-void CKMMWY(double *y, int * iwrk, double * rwrk, double * wtm)
+void CKMMWY(double * restrict y, int * iwrk, double * restrict  rwrk, double * restrict  wtm)
 {
     double YOW = 0;/* see Eq 3 in CK Manual */
     YOW += y[0]*imw[0];
@@ -665,7 +665,7 @@ void CKMMWY(double *y, int * iwrk, double * rwrk, double * wtm)
 
 /*given x[species]: mole fractions */
 /*returns mean molecular weight (gm/mole) */
-void CKMMWX(double *x, int * iwrk, double * rwrk, double * wtm)
+void CKMMWX(double * restrict x, int * iwrk, double * restrict  rwrk, double * restrict  wtm)
 {
     double XW = 0;/* see Eq 4 in CK Manual */
     XW += x[0]*2.015940; /*H2 */
@@ -685,7 +685,7 @@ void CKMMWX(double *x, int * iwrk, double * rwrk, double * wtm)
 
 /*given c[species]: molar concentration */
 /*returns mean molecular weight (gm/mole) */
-void CKMMWC(double *c, int * iwrk, double * rwrk, double * wtm)
+void CKMMWC(double * restrict c, int * iwrk, double * restrict  rwrk, double * restrict  wtm)
 {
     int id; /*loop counter */
     /*See Eq 5 in CK Manual */
@@ -712,7 +712,7 @@ void CKMMWC(double *c, int * iwrk, double * rwrk, double * wtm)
 
 
 /*convert y[species] (mass fracs) to x[species] (mole fracs) */
-void CKYTX(double * y, int * iwrk, double * rwrk, double * x)
+void CKYTX(double * restrict  y, int * iwrk, double * restrict  rwrk, double * restrict  x)
 {
     double YOW = 0; /*See Eq 4, 6 in CK Manual */
     /*Compute inverse of mean molecular wt first */
@@ -741,7 +741,7 @@ void CKYTX(double * y, int * iwrk, double * rwrk, double * x)
 
 
 /*convert y[species] (mass fracs) to c[species] (molar conc) */
-void CKYTCP(double * P, double * T, double * y, int * iwrk, double * rwrk, double * c)
+void CKYTCP(double * restrict  P, double * restrict  T, double * restrict  y, int * iwrk, double * restrict  rwrk, double * restrict  c)
 {
     double YOW = 0; 
     double PWORT; 
@@ -773,7 +773,7 @@ void CKYTCP(double * P, double * T, double * y, int * iwrk, double * rwrk, doubl
 
 
 /*convert y[species] (mass fracs) to c[species] (molar conc) */
-void CKYTCR(double * rho, double * T, double * y, int * iwrk, double * rwrk, double * c)
+void CKYTCR(double * restrict  rho, double * restrict  T, double * restrict  y, int * iwrk, double * restrict  rwrk, double * restrict  c)
 {
     /*See Eq 8 (Temperature not used) */
     c[0] = (*rho) * y[0]*imw[0];
@@ -791,7 +791,7 @@ void CKYTCR(double * rho, double * T, double * y, int * iwrk, double * rwrk, dou
 
 
 /*convert x[species] (mole fracs) to y[species] (mass fracs) */
-void CKXTY(double * x, int * iwrk, double * rwrk, double * y)
+void CKXTY(double * restrict  x, int * iwrk, double * restrict  rwrk, double * restrict  y)
 {
     double XW = 0; /*See Eq 4, 9 in CK Manual */
     /*Compute mean molecular wt first */
@@ -820,7 +820,7 @@ void CKXTY(double * x, int * iwrk, double * rwrk, double * y)
 
 
 /*convert x[species] (mole fracs) to c[species] (molar conc) */
-void CKXTCP(double * P, double * T, double * x, int * iwrk, double * rwrk, double * c)
+void CKXTCP(double * restrict  P, double * restrict  T, double * restrict  x, int * iwrk, double * restrict  rwrk, double * restrict  c)
 {
     int id; /*loop counter */
     double PORT = (*P)/(8.31451e+07 * (*T)); /*P/RT */
@@ -835,7 +835,7 @@ void CKXTCP(double * P, double * T, double * x, int * iwrk, double * rwrk, doubl
 
 
 /*convert x[species] (mole fracs) to c[species] (molar conc) */
-void CKXTCR(double * rho, double * T, double * x, int * iwrk, double * rwrk, double * c)
+void CKXTCR(double * restrict  rho, double * restrict  T, double * restrict  x, int * iwrk, double * restrict  rwrk, double * restrict  c)
 {
     int id; /*loop counter */
     double XW = 0; /*See Eq 4, 11 in CK Manual */
@@ -862,7 +862,7 @@ void CKXTCR(double * rho, double * T, double * x, int * iwrk, double * rwrk, dou
 
 
 /*convert c[species] (molar conc) to x[species] (mole fracs) */
-void CKCTX(double * c, int * iwrk, double * rwrk, double * x)
+void CKCTX(double * restrict  c, int * iwrk, double * restrict  rwrk, double * restrict  x)
 {
     int id; /*loop counter */
     double sumC = 0; 
@@ -882,7 +882,7 @@ void CKCTX(double * c, int * iwrk, double * rwrk, double * x)
 
 
 /*convert c[species] (molar conc) to y[species] (mass fracs) */
-void CKCTY(double * c, int * iwrk, double * rwrk, double * y)
+void CKCTY(double * restrict  c, int * iwrk, double * restrict  rwrk, double * restrict  y)
 {
     double CW = 0; /*See Eq 12 in CK Manual */
     /*compute denominator in eq 12 first */
@@ -912,7 +912,7 @@ void CKCTY(double * c, int * iwrk, double * rwrk, double * y)
 
 /*get Cp/R as a function of T  */
 /*for all species (Eq 19) */
-void CKCPOR(double *T, int * iwrk, double * rwrk, double * cpor)
+void CKCPOR(double * restrict T, int * iwrk, double * restrict  rwrk, double * restrict  cpor)
 {
     double tT = *T; /*temporary temperature */
     double tc[] = { 0, tT, tT*tT, tT*tT*tT, tT*tT*tT*tT }; /*temperature cache */
@@ -922,7 +922,7 @@ void CKCPOR(double *T, int * iwrk, double * rwrk, double * cpor)
 
 /*get H/RT as a function of T  */
 /*for all species (Eq 20) */
-void CKHORT(double *T, int * iwrk, double * rwrk, double * hort)
+void CKHORT(double * restrict T, int * iwrk, double * restrict  rwrk, double * restrict  hort)
 {
     double tT = *T; /*temporary temperature */
     double tc[] = { 0, tT, tT*tT, tT*tT*tT, tT*tT*tT*tT }; /*temperature cache */
@@ -932,7 +932,7 @@ void CKHORT(double *T, int * iwrk, double * rwrk, double * hort)
 
 /*get S/R as a function of T  */
 /*for all species (Eq 21) */
-void CKSOR(double *T, int * iwrk, double * rwrk, double * sor)
+void CKSOR(double * restrict T, int * iwrk, double * restrict  rwrk, double * restrict  sor)
 {
     double tT = *T; /*temporary temperature */
     double tc[] = { log(tT), tT, tT*tT, tT*tT*tT, tT*tT*tT*tT }; /*temperature cache */
@@ -942,7 +942,7 @@ void CKSOR(double *T, int * iwrk, double * rwrk, double * sor)
 
 /*get specific heat at constant volume as a function  */
 /*of T for all species (molar units) */
-void CKCVML(double *T, int * iwrk, double * rwrk, double * cvml)
+void CKCVML(double * restrict T, int * iwrk, double * restrict  rwrk, double * restrict  cvml)
 {
     int id; /*loop counter */
     double tT = *T; /*temporary temperature */
@@ -958,7 +958,7 @@ void CKCVML(double *T, int * iwrk, double * rwrk, double * cvml)
 
 /*get specific heat at constant pressure as a  */
 /*function of T for all species (molar units) */
-void CKCPML(double *T, int * iwrk, double * rwrk, double * cpml)
+void CKCPML(double * restrict T, int * iwrk, double * restrict  rwrk, double * restrict  cpml)
 {
     int id; /*loop counter */
     double tT = *T; /*temporary temperature */
@@ -974,7 +974,7 @@ void CKCPML(double *T, int * iwrk, double * rwrk, double * cpml)
 
 /*get internal energy as a function  */
 /*of T for all species (molar units) */
-void CKUML(double *T, int * iwrk, double * rwrk, double * uml)
+void CKUML(double * restrict T, int * iwrk, double * restrict  rwrk, double * restrict  uml)
 {
     int id; /*loop counter */
     double tT = *T; /*temporary temperature */
@@ -991,7 +991,7 @@ void CKUML(double *T, int * iwrk, double * rwrk, double * uml)
 
 /*get enthalpy as a function  */
 /*of T for all species (molar units) */
-void CKHML(double *T, int * iwrk, double * rwrk, double * hml)
+void CKHML(double * restrict T, int * iwrk, double * restrict  rwrk, double * restrict  hml)
 {
     int id; /*loop counter */
     double tT = *T; /*temporary temperature */
@@ -1008,7 +1008,7 @@ void CKHML(double *T, int * iwrk, double * rwrk, double * hml)
 
 /*get standard-state Gibbs energy as a function  */
 /*of T for all species (molar units) */
-void CKGML(double *T, int * iwrk, double * rwrk, double * gml)
+void CKGML(double * restrict T, int * iwrk, double * restrict  rwrk, double * restrict  gml)
 {
     int id; /*loop counter */
     double tT = *T; /*temporary temperature */
@@ -1025,7 +1025,7 @@ void CKGML(double *T, int * iwrk, double * rwrk, double * gml)
 
 /*get standard-state Helmholtz free energy as a  */
 /*function of T for all species (molar units) */
-void CKAML(double *T, int * iwrk, double * rwrk, double * aml)
+void CKAML(double * restrict T, int * iwrk, double * restrict  rwrk, double * restrict  aml)
 {
     int id; /*loop counter */
     double tT = *T; /*temporary temperature */
@@ -1041,7 +1041,7 @@ void CKAML(double *T, int * iwrk, double * rwrk, double * aml)
 
 
 /*Returns the standard-state entropies in molar units */
-void CKSML(double *T, int * iwrk, double * rwrk, double * sml)
+void CKSML(double * restrict T, int * iwrk, double * restrict  rwrk, double * restrict  sml)
 {
     int id; /*loop counter */
     double tT = *T; /*temporary temperature */
@@ -1057,7 +1057,7 @@ void CKSML(double *T, int * iwrk, double * rwrk, double * sml)
 
 /*Returns the specific heats at constant volume */
 /*in mass units (Eq. 29) */
-void CKCVMS(double *T, int * iwrk, double * rwrk, double * cvms)
+void CKCVMS(double * restrict T, int * iwrk, double * restrict  rwrk, double * restrict  cvms)
 {
     double tT = *T; /*temporary temperature */
     double tc[] = { log(tT), tT, tT*tT, tT*tT*tT, tT*tT*tT*tT }; /*temperature cache */
@@ -1077,7 +1077,7 @@ void CKCVMS(double *T, int * iwrk, double * rwrk, double * cvms)
 
 /*Returns the specific heats at constant pressure */
 /*in mass units (Eq. 26) */
-void CKCPMS(double *T, int * iwrk, double * rwrk, double * cpms)
+void CKCPMS(double * restrict T, int * iwrk, double * restrict  rwrk, double * restrict  cpms)
 {
     double tT = *T; /*temporary temperature */
     double tc[] = { 0, tT, tT*tT, tT*tT*tT, tT*tT*tT*tT }; /*temperature cache */
@@ -1096,7 +1096,7 @@ void CKCPMS(double *T, int * iwrk, double * rwrk, double * cpms)
 
 
 /*Returns internal energy in mass units (Eq 30.) */
-void CKUMS(double *T, int * iwrk, double * rwrk, double * ums)
+void CKUMS(double * restrict T, int * iwrk, double * restrict  rwrk, double * restrict  ums)
 {
     double tT = *T; /*temporary temperature */
     double tc[] = { log(tT), tT, tT*tT, tT*tT*tT, tT*tT*tT*tT }; /*temperature cache */
@@ -1115,7 +1115,7 @@ void CKUMS(double *T, int * iwrk, double * rwrk, double * ums)
 
 
 /*Returns enthalpy in mass units (Eq 27.) */
-void CKHMS(double *T, int * iwrk, double * rwrk, double * hms)
+void CKHMS(double * restrict T, int * iwrk, double * restrict  rwrk, double * restrict  hms)
 {
     double tT = *T; /*temporary temperature */
     double tc[] = { 0, tT, tT*tT, tT*tT*tT, tT*tT*tT*tT }; /*temperature cache */
@@ -1135,7 +1135,7 @@ void CKHMS(double *T, int * iwrk, double * rwrk, double * hms)
 
 
 /*Returns gibbs in mass units (Eq 31.) */
-void CKGMS(double *T, int * iwrk, double * rwrk, double * gms)
+void CKGMS(double * restrict T, int * iwrk, double * restrict  rwrk, double * restrict  gms)
 {
     double tT = *T; /*temporary temperature */
     double tc[] = { log(tT), tT, tT*tT, tT*tT*tT, tT*tT*tT*tT }; /*temperature cache */
@@ -1154,7 +1154,7 @@ void CKGMS(double *T, int * iwrk, double * rwrk, double * gms)
 
 
 /*Returns helmholtz in mass units (Eq 32.) */
-void CKAMS(double *T, int * iwrk, double * rwrk, double * ams)
+void CKAMS(double * restrict T, int * iwrk, double * restrict  rwrk, double * restrict  ams)
 {
     double tT = *T; /*temporary temperature */
     double tc[] = { log(tT), tT, tT*tT, tT*tT*tT, tT*tT*tT*tT }; /*temperature cache */
@@ -1173,7 +1173,7 @@ void CKAMS(double *T, int * iwrk, double * rwrk, double * ams)
 
 
 /*Returns the entropies in mass units (Eq 28.) */
-void CKSMS(double *T, int * iwrk, double * rwrk, double * sms)
+void CKSMS(double * restrict T, int * iwrk, double * restrict  rwrk, double * restrict  sms)
 {
     double tT = *T; /*temporary temperature */
     double tc[] = { log(tT), tT, tT*tT, tT*tT*tT, tT*tT*tT*tT }; /*temperature cache */
@@ -1192,7 +1192,7 @@ void CKSMS(double *T, int * iwrk, double * rwrk, double * sms)
 
 
 /*Returns the mean specific heat at CP (Eq. 33) */
-void CKCPBL(double *T, double *x, int * iwrk, double * rwrk, double * cpbl)
+void CKCPBL(double * restrict T, double * restrict x, int * iwrk, double * restrict  rwrk, double * restrict  cpbl)
 {
     int id; /*loop counter */
     double result = 0; 
@@ -1211,7 +1211,7 @@ void CKCPBL(double *T, double *x, int * iwrk, double * rwrk, double * cpbl)
 
 
 /*Returns the mean specific heat at CP (Eq. 34) */
-void CKCPBS(double *T, double *y, int * iwrk, double * rwrk, double * cpbs)
+void CKCPBS(double * restrict T, double * restrict y, int * iwrk, double * restrict  rwrk, double * restrict  cpbs)
 {
     double result = 0; 
     double tT = *T; /*temporary temperature */
@@ -1234,7 +1234,7 @@ void CKCPBS(double *T, double *y, int * iwrk, double * rwrk, double * cpbs)
 
 
 /*Returns the mean specific heat at CV (Eq. 35) */
-void CKCVBL(double *T, double *x, int * iwrk, double * rwrk, double * cvbl)
+void CKCVBL(double * restrict T, double * restrict x, int * iwrk, double * restrict  rwrk, double * restrict  cvbl)
 {
     int id; /*loop counter */
     double result = 0; 
@@ -1253,7 +1253,7 @@ void CKCVBL(double *T, double *x, int * iwrk, double * rwrk, double * cvbl)
 
 
 /*Returns the mean specific heat at CV (Eq. 36) */
-void CKCVBS(double *T, double *y, int * iwrk, double * rwrk, double * cvbs)
+void CKCVBS(double * restrict T, double * restrict y, int * iwrk, double * restrict  rwrk, double * restrict  cvbs)
 {
     double result = 0; 
     double tT = *T; /*temporary temperature */
@@ -1276,7 +1276,7 @@ void CKCVBS(double *T, double *y, int * iwrk, double * rwrk, double * cvbs)
 
 
 /*Returns the mean enthalpy of the mixture in molar units */
-void CKHBML(double *T, double *x, int * iwrk, double * rwrk, double * hbml)
+void CKHBML(double * restrict T, double * restrict x, int * iwrk, double * restrict  rwrk, double * restrict  hbml)
 {
     int id; /*loop counter */
     double result = 0; 
@@ -1296,7 +1296,7 @@ void CKHBML(double *T, double *x, int * iwrk, double * rwrk, double * hbml)
 
 
 /*Returns mean enthalpy of mixture in mass units */
-void CKHBMS(double *T, double *y, int * iwrk, double * rwrk, double * hbms)
+void CKHBMS(double * restrict T, double * restrict y, int * iwrk, double * restrict  rwrk, double * restrict  hbms)
 {
     double result = 0;
     double tT = *T; /*temporary temperature */
@@ -1320,7 +1320,7 @@ void CKHBMS(double *T, double *y, int * iwrk, double * rwrk, double * hbms)
 
 
 /*get mean internal energy in molar units */
-void CKUBML(double *T, double *x, int * iwrk, double * rwrk, double * ubml)
+void CKUBML(double * restrict T, double * restrict x, int * iwrk, double * restrict  rwrk, double * restrict  ubml)
 {
     int id; /*loop counter */
     double result = 0; 
@@ -1340,7 +1340,7 @@ void CKUBML(double *T, double *x, int * iwrk, double * rwrk, double * ubml)
 
 
 /*get mean internal energy in mass units */
-void CKUBMS(double *T, double *y, int * iwrk, double * rwrk, double * ubms)
+void CKUBMS(double * restrict T, double * restrict y, int * iwrk, double * restrict  rwrk, double * restrict  ubms)
 {
     double result = 0;
     double tT = *T; /*temporary temperature */
@@ -1364,7 +1364,7 @@ void CKUBMS(double *T, double *y, int * iwrk, double * rwrk, double * ubms)
 
 
 /*get mixture entropy in molar units */
-void CKSBML(double *P, double *T, double *x, int * iwrk, double * rwrk, double * sbml)
+void CKSBML(double * restrict P, double * restrict T, double * restrict x, int * iwrk, double * restrict  rwrk, double * restrict  sbml)
 {
     int id; /*loop counter */
     double result = 0; 
@@ -1385,7 +1385,7 @@ void CKSBML(double *P, double *T, double *x, int * iwrk, double * rwrk, double *
 
 
 /*get mixture entropy in mass units */
-void CKSBMS(double *P, double *T, double *y, int * iwrk, double * rwrk, double * sbms)
+void CKSBMS(double * restrict P, double * restrict T, double * restrict y, int * iwrk, double * restrict  rwrk, double * restrict  sbms)
 {
     double result = 0; 
     /*Log of normalized pressure in cgs units dynes/cm^2 by Patm */
@@ -1432,7 +1432,7 @@ void CKSBMS(double *P, double *T, double *y, int * iwrk, double * rwrk, double *
 
 
 /*Returns mean gibbs free energy in molar units */
-void CKGBML(double *P, double *T, double *x, int * iwrk, double * rwrk, double * gbml)
+void CKGBML(double * restrict P, double * restrict T, double * restrict x, int * iwrk, double * restrict  rwrk, double * restrict  gbml)
 {
     int id; /*loop counter */
     double result = 0; 
@@ -1455,7 +1455,7 @@ void CKGBML(double *P, double *T, double *x, int * iwrk, double * rwrk, double *
 
 
 /*Returns mixture gibbs free energy in mass units */
-void CKGBMS(double *P, double *T, double *y, int * iwrk, double * rwrk, double * gbms)
+void CKGBMS(double * restrict P, double * restrict T, double * restrict y, int * iwrk, double * restrict  rwrk, double * restrict  gbms)
 {
     double result = 0; 
     /*Log of normalized pressure in cgs units dynes/cm^2 by Patm */
@@ -1503,7 +1503,7 @@ void CKGBMS(double *P, double *T, double *y, int * iwrk, double * rwrk, double *
 
 
 /*Returns mean helmholtz free energy in molar units */
-void CKABML(double *P, double *T, double *x, int * iwrk, double * rwrk, double * abml)
+void CKABML(double * restrict P, double * restrict T, double * restrict x, int * iwrk, double * restrict  rwrk, double * restrict  abml)
 {
     int id; /*loop counter */
     double result = 0; 
@@ -1526,7 +1526,7 @@ void CKABML(double *P, double *T, double *x, int * iwrk, double * rwrk, double *
 
 
 /*Returns mixture helmholtz free energy in mass units */
-void CKABMS(double *P, double *T, double *y, int * iwrk, double * rwrk, double * abms)
+void CKABMS(double * restrict P, double * restrict T, double * restrict y, int * iwrk, double * restrict  rwrk, double * restrict  abms)
 {
     double result = 0; 
     /*Log of normalized pressure in cgs units dynes/cm^2 by Patm */
@@ -1574,7 +1574,7 @@ void CKABMS(double *P, double *T, double *y, int * iwrk, double * rwrk, double *
 
 
 /*compute the production rate for each species */
-void CKWC(double * T, double * C, int * iwrk, double * rwrk, double * wdot)
+void CKWC(double * restrict  T, double * restrict  C, int * iwrk, double * restrict  rwrk, double * restrict  wdot)
 {
     int id; /*loop counter */
 
@@ -1596,7 +1596,7 @@ void CKWC(double * T, double * C, int * iwrk, double * rwrk, double * wdot)
 
 /*Returns the molar production rate of species */
 /*Given P, T, and mass fractions */
-void CKWYP(double * P, double * T, double * y, int * iwrk, double * rwrk, double * wdot)
+void CKWYP(double * restrict  P, double * restrict  T, double * restrict  y, int * iwrk, double * restrict  rwrk, double * restrict  wdot)
 {
     int id; /*loop counter */
     double c[9]; /*temporary storage */
@@ -1639,7 +1639,7 @@ void CKWYP(double * P, double * T, double * y, int * iwrk, double * rwrk, double
 
 /*Returns the molar production rate of species */
 /*Given P, T, and mole fractions */
-void CKWXP(double * P, double * T, double * x, int * iwrk, double * rwrk, double * wdot)
+void CKWXP(double * restrict  P, double * restrict  T, double * restrict  x, int * iwrk, double * restrict  rwrk, double * restrict  wdot)
 {
     int id; /*loop counter */
     double c[9]; /*temporary storage */
@@ -1662,7 +1662,7 @@ void CKWXP(double * P, double * T, double * x, int * iwrk, double * rwrk, double
 
 /*Returns the molar production rate of species */
 /*Given rho, T, and mass fractions */
-void CKWYR(double * rho, double * T, double * y, int * iwrk, double * rwrk, double * wdot)
+void CKWYR(double * restrict  rho, double * restrict  T, double * restrict  y, int * iwrk, double * restrict  rwrk, double * restrict  wdot)
 {
     int id; /*loop counter */
     double c[9]; /*temporary storage */
@@ -1689,33 +1689,31 @@ void CKWYR(double * rho, double * T, double * y, int * iwrk, double * rwrk, doub
 
 /*Returns the molar production rate of species */
 /*Given rho, T, and mass fractions */
-void VCKWYR(int * restrict np, double * restrict rho, double * restrict T, 
-	    double * restrict y, int * restrict iwrk, double * restrict rwrk, 
+void VCKWYR(int * restrict np, double * restrict rho, double * restrict T,
+	    double * restrict y, int * restrict iwrk, double * restrict rwrk,
 	    double * restrict wdot)
 {
-  double c[9*(*np)]; /*temporary storage */
-  /*See Eq 8 with an extra 1e6 so c goes to SI */
-  double * restrict pc = c;
-  double * restrict py = y;
-  for (int n=0; n<9; n++) {
-    for (int i=0; i<(*np); i++) {
-      *pc++ = 1.0e6 * rho[i] * (*py++) * imw[n];
+    double c[9*(*np)]; /*temporary storage */
+    /*See Eq 8 with an extra 1e6 so c goes to SI */
+    for (int n=0; n<9; n++) {
+        for (int i=0; i<(*np); i++) {
+            c[n*(*np)+i] = 1.0e6 * rho[i] * y[n*(*np)+i] * imw[n];
+        }
     }
-  }
 
-  /*call productionRate */
-  vproductionRate(*np, wdot, c, T);
-  
-  /*convert to chemkin units */
-  for (int i=0; i<9*(*np); i++) {
-    wdot[i] *= 1.0e-6;
-  }
+    /*call productionRate */
+    vproductionRate(*np, wdot, c, T);
+
+    /*convert to chemkin units */
+    for (int i=0; i<9*(*np); i++) {
+        wdot[i] *= 1.0e-6;
+    }
 }
 
 
 /*Returns the molar production rate of species */
 /*Given rho, T, and mole fractions */
-void CKWXR(double * rho, double * T, double * x, int * iwrk, double * rwrk, double * wdot)
+void CKWXR(double * restrict  rho, double * restrict  T, double * restrict  x, int * iwrk, double * restrict  rwrk, double * restrict  wdot)
 {
     int id; /*loop counter */
     double c[9]; /*temporary storage */
@@ -1750,7 +1748,7 @@ void CKWXR(double * rho, double * T, double * x, int * iwrk, double * rwrk, doub
 
 
 /*Returns the rate of progress for each reaction */
-void CKQC(double * T, double * C, int * iwrk, double * rwrk, double * qdot)
+void CKQC(double * restrict  T, double * restrict  C, int * iwrk, double * restrict  rwrk, double * restrict  qdot)
 {
     int id; /*loop counter */
 
@@ -1775,7 +1773,7 @@ void CKQC(double * T, double * C, int * iwrk, double * rwrk, double * qdot)
 
 /*Returns the progress rates of each reactions */
 /*Given P, T, and mole fractions */
-void CKKFKR(double * P, double * T, double * x, int * iwrk, double * rwrk, double * q_f, double * q_r)
+void CKKFKR(double * restrict  P, double * restrict  T, double * restrict  x, int * iwrk, double * restrict  rwrk, double * restrict  q_f, double * restrict  q_r)
 {
     int id; /*loop counter */
     double c[9]; /*temporary storage */
@@ -1799,7 +1797,7 @@ void CKKFKR(double * P, double * T, double * x, int * iwrk, double * rwrk, doubl
 
 /*Returns the progress rates of each reactions */
 /*Given P, T, and mass fractions */
-void CKQYP(double * P, double * T, double * y, int * iwrk, double * rwrk, double * qdot)
+void CKQYP(double * restrict  P, double * restrict  T, double * restrict  y, int * iwrk, double * restrict  rwrk, double * restrict  qdot)
 {
     int id; /*loop counter */
     double c[9]; /*temporary storage */
@@ -1842,7 +1840,7 @@ void CKQYP(double * P, double * T, double * y, int * iwrk, double * rwrk, double
 
 /*Returns the progress rates of each reactions */
 /*Given P, T, and mole fractions */
-void CKQXP(double * P, double * T, double * x, int * iwrk, double * rwrk, double * qdot)
+void CKQXP(double * restrict  P, double * restrict  T, double * restrict  x, int * iwrk, double * restrict  rwrk, double * restrict  qdot)
 {
     int id; /*loop counter */
     double c[9]; /*temporary storage */
@@ -1865,7 +1863,7 @@ void CKQXP(double * P, double * T, double * x, int * iwrk, double * rwrk, double
 
 /*Returns the progress rates of each reactions */
 /*Given rho, T, and mass fractions */
-void CKQYR(double * rho, double * T, double * y, int * iwrk, double * rwrk, double * qdot)
+void CKQYR(double * restrict  rho, double * restrict  T, double * restrict  y, int * iwrk, double * restrict  rwrk, double * restrict  qdot)
 {
     int id; /*loop counter */
     double c[9]; /*temporary storage */
@@ -1892,7 +1890,7 @@ void CKQYR(double * rho, double * T, double * y, int * iwrk, double * rwrk, doub
 
 /*Returns the progress rates of each reactions */
 /*Given rho, T, and mole fractions */
-void CKQXR(double * rho, double * T, double * x, int * iwrk, double * rwrk, double * qdot)
+void CKQXR(double * restrict  rho, double * restrict  T, double * restrict  x, int * iwrk, double * restrict  rwrk, double * restrict  qdot)
 {
     int id; /*loop counter */
     double c[9]; /*temporary storage */
@@ -1928,7 +1926,7 @@ void CKQXR(double * rho, double * T, double * x, int * iwrk, double * rwrk, doub
 
 /*Returns the stoichiometric coefficients */
 /*of the reaction mechanism. (Eq 50) */
-void CKNU(int * kdim, int * iwrk, double * rwrk, int * nuki)
+void CKNU(int * kdim, int * iwrk, double * restrict  rwrk, int * nuki)
 {
     int id; /*loop counter */
     int kd = (*kdim); 
@@ -2061,7 +2059,7 @@ void CKNU(int * kdim, int * iwrk, double * rwrk, int * nuki)
 
 /*Returns the elemental composition  */
 /*of the speciesi (mdim is num of elements) */
-void CKNCF(int * mdim, int * iwrk, double * rwrk, int * ncf)
+void CKNCF(int * mdim, int * iwrk, double * restrict  rwrk, int * ncf)
 {
     int id; /*loop counter */
     int kd = (*mdim); 
@@ -2106,7 +2104,7 @@ void CKNCF(int * mdim, int * iwrk, double * rwrk, int * ncf)
 
 /*Returns the arrehenius coefficients  */
 /*for all reactions */
-void CKABE(int * iwrk, double * rwrk, double * a, double * b, double * e)
+void CKABE(int * iwrk, double * restrict  rwrk, double * restrict  a, double * restrict  b, double * restrict  e)
 {
 
     /*reaction 1: H + O2 <=> O + OH */
@@ -2219,7 +2217,7 @@ void CKABE(int * iwrk, double * rwrk, double * a, double * b, double * e)
 
 
 /*Returns the equil constants for each reaction */
-void CKEQC(double * T, double * C, int * iwrk, double * rwrk, double * eqcon)
+void CKEQC(double * restrict  T, double * restrict  C, int * iwrk, double * restrict  rwrk, double * restrict  eqcon)
 {
     double tT = *T; /*temporary temperature */
     double tc[] = { log(tT), tT, tT*tT, tT*tT*tT, tT*tT*tT*tT }; /*temperature cache */
@@ -2298,7 +2296,7 @@ void CKEQC(double * T, double * C, int * iwrk, double * rwrk, double * eqcon)
 
 /*Returns the equil constants for each reaction */
 /*Given P, T, and mass fractions */
-void CKEQYP(double * P, double * T, double * y, int * iwrk, double * rwrk, double * eqcon)
+void CKEQYP(double * restrict  P, double * restrict  T, double * restrict  y, int * iwrk, double * restrict  rwrk, double * restrict  eqcon)
 {
     double tT = *T; /*temporary temperature */
     double tc[] = { log(tT), tT, tT*tT, tT*tT*tT, tT*tT*tT*tT }; /*temperature cache */
@@ -2377,7 +2375,7 @@ void CKEQYP(double * P, double * T, double * y, int * iwrk, double * rwrk, doubl
 
 /*Returns the equil constants for each reaction */
 /*Given P, T, and mole fractions */
-void CKEQXP(double * P, double * T, double * x, int * iwrk, double * rwrk, double * eqcon)
+void CKEQXP(double * restrict  P, double * restrict  T, double * restrict  x, int * iwrk, double * restrict  rwrk, double * restrict  eqcon)
 {
     double tT = *T; /*temporary temperature */
     double tc[] = { log(tT), tT, tT*tT, tT*tT*tT, tT*tT*tT*tT }; /*temperature cache */
@@ -2456,7 +2454,7 @@ void CKEQXP(double * P, double * T, double * x, int * iwrk, double * rwrk, doubl
 
 /*Returns the equil constants for each reaction */
 /*Given rho, T, and mass fractions */
-void CKEQYR(double * rho, double * T, double * y, int * iwrk, double * rwrk, double * eqcon)
+void CKEQYR(double * restrict  rho, double * restrict  T, double * restrict  y, int * iwrk, double * restrict  rwrk, double * restrict  eqcon)
 {
     double tT = *T; /*temporary temperature */
     double tc[] = { log(tT), tT, tT*tT, tT*tT*tT, tT*tT*tT*tT }; /*temperature cache */
@@ -2535,7 +2533,7 @@ void CKEQYR(double * rho, double * T, double * y, int * iwrk, double * rwrk, dou
 
 /*Returns the equil constants for each reaction */
 /*Given rho, T, and mole fractions */
-void CKEQXR(double * rho, double * T, double * x, int * iwrk, double * rwrk, double * eqcon)
+void CKEQXR(double * restrict  rho, double * restrict  T, double * restrict  x, int * iwrk, double * restrict  rwrk, double * restrict  eqcon)
 {
     double tT = *T; /*temporary temperature */
     double tc[] = { log(tT), tT, tT*tT, tT*tT*tT, tT*tT*tT*tT }; /*temperature cache */
@@ -2627,7 +2625,7 @@ static double Kc_save[21];
 #endif
 
 /*compute the production rate for each species */
-void productionRate(double * wdot, double * sc, double T)
+void productionRate(double * restrict  wdot, double * restrict  sc, double T)
 {
     double qdot;
 
@@ -3043,440 +3041,439 @@ void productionRate(double * wdot, double * sc, double T)
 /*compute the production rate for each species */
 void vproductionRate(int npt, double * restrict wdot, double * restrict sc, double * restrict T)
 {
-  double k_f_s[21][npt], Kc_s[21][npt], mixture[npt], g_RT[9*npt];
-  double tc[5*npt], invT[npt];
- 
-#ifdef __INTEL_COMPILER
-  #pragma nounroll
-#endif
-  for (int i=0; i<npt; i++) {
-    tc[0*npt+i] = log(T[i]);
-    tc[1*npt+i] = T[i];  
-    tc[2*npt+i] = T[i]*T[i];
-    tc[3*npt+i] = T[i]*T[i]*T[i];
-    tc[4*npt+i] = T[i]*T[i]*T[i]*T[i];
-    invT[i] = 1.0 / T[i];
-  }
+    double k_f_s[21][npt], Kc_s[21][npt], mixture[npt], g_RT[9*npt];
+    double tc[5*npt], invT[npt];
 
 #ifdef __INTEL_COMPILER
-  #pragma nounroll
+    #pragma nounroll
 #endif
-  for (int i=0; i<npt; i++) {
-    k_f_s[0][i] = 1.e-06 * 3.547e+15*exp(-0.406*tc[i]-8352.8934356925419706*invT[i]);
-    k_f_s[1][i] = 1.e-06 * 50800.*exp(2.67*tc[i]-3165.2328279116868543*invT[i]);
-    k_f_s[2][i] = 1.e-06 * 2.16e+08*exp(1.51*tc[i]-1726.0331637101885462*invT[i]);
-    k_f_s[3][i] = 1.e-06 * 2.97e+06*exp(2.02*tc[i]-6743.1033217832446098*invT[i]);
-    k_f_s[4][i] = 1.e-06 * 4.577e+19*exp(-1.4*tc[i]-52525.75557669664704*invT[i]);
-    k_f_s[5][i] = 1.e-12 * 6.165e+15*exp(-0.5*tc[i]);
-    k_f_s[6][i] = 1.e-12 * 4.714e+18*exp(-1.*tc[i]);
-    k_f_s[7][i] = 1.e-12 * 3.8e+22*exp(-2.*tc[i]);
-    k_f_s[8][i] = 1.e-06 * 1.475e+12*exp(0.6*tc[i]);
-    k_f_s[9][i] = 1.e-06 * 1.66e+13*exp(-414.14731595728432012*invT[i]);
-    k_f_s[10][i] = 1.e-06 * 7.079e+13*exp(-148.44891641239232172*invT[i]);
-    k_f_s[11][i] = 1.e-06 * 3.25e+13;
-    k_f_s[12][i] = 1.e-06 * 2.89e+13*exp(+250.09868290494571852*invT[i]);
-    k_f_s[13][i] = 1.e-06 * 4.2e+14*exp(-6029.5420896721516328*invT[i]);
-    k_f_s[14][i] = 1.e-06 * 1.3e+11*exp(+819.89091359562974048*invT[i]);
-    k_f_s[15][i] = 1. * 2.951e+14*exp(-24370.783124922574643*invT[i]);
-    k_f_s[16][i] = 1.e-06 * 2.41e+13*exp(-1997.7701632447369775*invT[i]);
-    k_f_s[17][i] = 1.e-06 * 4.82e+13*exp(-4000.5724931475210724*invT[i]);
-    k_f_s[18][i] = 1.e-06 * 9.55e+06*exp(2.*tc[i]-1997.7701632447369775*invT[i]);
-    k_f_s[19][i] = 1.e-06 * 1.e+12;
-    k_f_s[20][i] = 1.e-06 * 5.8e+14*exp(-4809.2416750957054319*invT[i]);
-  }
-
-  /*compute the Gibbs free energy */
-  for (int i=0; i<npt; i++) {
-    double tg[5], g[9]; 
-    tg[0] = tc[0*npt+i];
-    tg[1] = tc[1*npt+i];
-    tg[2] = tc[2*npt+i];
-    tg[3] = tc[3*npt+i];
-    tg[4] = tc[4*npt+i];
-
-    gibbs(g, tg);
-
-    g_RT[0*npt+i] = g[0];
-    g_RT[1*npt+i] = g[1];
-    g_RT[2*npt+i] = g[2];
-    g_RT[3*npt+i] = g[3];
-    g_RT[4*npt+i] = g[4];
-    g_RT[5*npt+i] = g[5];
-    g_RT[6*npt+i] = g[6];
-    g_RT[7*npt+i] = g[7];
-    g_RT[8*npt+i] = g[8];
-  }
-
-#ifdef __INTEL_COMPILER
-  #pragma nounroll
-#endif
-  for (int i=0; i<npt; i++) {
-    /*reference concentration: P_atm / (RT) in inverse mol/m^3 */
-    double refC = 101325. / 8.31451 / T[i];
-
-    Kc_s[0][i] = exp((g_RT[3*npt+i] + g_RT[1*npt+i]) - (g_RT[4*npt+i] + g_RT[5*npt+i]));
-    Kc_s[1][i] = exp((g_RT[4*npt+i] + g_RT[i]) - (g_RT[3*npt+i] + g_RT[5*npt+i]));
-    Kc_s[2][i] = exp((g_RT[i] + g_RT[5*npt+i]) - (g_RT[2*npt+i] + g_RT[3*npt+i]));
-    Kc_s[3][i] = exp((g_RT[4*npt+i] + g_RT[2*npt+i]) - (g_RT[5*npt+i] + g_RT[5*npt+i]));
-    Kc_s[4][i] = refC * exp((g_RT[i]) - (g_RT[3*npt+i] + g_RT[3*npt+i]));
-    Kc_s[5][i] = 1.0 / (refC) * exp((g_RT[4*npt+i] + g_RT[4*npt+i]) - (g_RT[1*npt+i]));
-    Kc_s[6][i] = 1.0 / (refC) * exp((g_RT[4*npt+i] + g_RT[3*npt+i]) - (g_RT[5*npt+i]));
-    Kc_s[7][i] = 1.0 / (refC) * exp((g_RT[3*npt+i] + g_RT[5*npt+i]) - (g_RT[2*npt+i]));
-    Kc_s[8][i] = 1.0 / (refC) * exp((g_RT[3*npt+i] + g_RT[1*npt+i]) - (g_RT[6*npt+i]));
-    Kc_s[9][i] = exp((g_RT[6*npt+i] + g_RT[3*npt+i]) - (g_RT[i] + g_RT[1*npt+i]));
-    Kc_s[10][i] = exp((g_RT[6*npt+i] + g_RT[3*npt+i]) - (g_RT[5*npt+i] + g_RT[5*npt+i]));
-    Kc_s[11][i] = exp((g_RT[6*npt+i] + g_RT[4*npt+i]) - (g_RT[1*npt+i] + g_RT[5*npt+i]));
-    Kc_s[12][i] = exp((g_RT[6*npt+i] + g_RT[5*npt+i]) - (g_RT[2*npt+i] + g_RT[1*npt+i]));
-    Kc_s[13][i] = exp((g_RT[6*npt+i] + g_RT[6*npt+i]) - (g_RT[7*npt+i] + g_RT[1*npt+i]));
-    Kc_s[14][i] = exp((g_RT[6*npt+i] + g_RT[6*npt+i]) - (g_RT[7*npt+i] + g_RT[1*npt+i]));
-    Kc_s[15][i] = refC * exp((g_RT[7*npt+i]) - (g_RT[5*npt+i] + g_RT[5*npt+i]));
-    Kc_s[16][i] = exp((g_RT[7*npt+i] + g_RT[3*npt+i]) - (g_RT[2*npt+i] + g_RT[5*npt+i]));
-    Kc_s[17][i] = exp((g_RT[7*npt+i] + g_RT[3*npt+i]) - (g_RT[6*npt+i] + g_RT[i]));
-    Kc_s[18][i] = exp((g_RT[7*npt+i] + g_RT[4*npt+i]) - (g_RT[5*npt+i] + g_RT[6*npt+i]));
-    Kc_s[19][i] = exp((g_RT[7*npt+i] + g_RT[5*npt+i]) - (g_RT[6*npt+i] + g_RT[2*npt+i]));
-    Kc_s[20][i] = exp((g_RT[7*npt+i] + g_RT[5*npt+i]) - (g_RT[6*npt+i] + g_RT[2*npt+i]));
-  }
-
-  for (int i=0; i<npt; i++) {
-    mixture[i] = 0.0;
-  }
-
-  double* restrict psc = sc;
-  double* restrict pwdot = wdot;
-  for (int n=0; n<9; n++) {
     for (int i=0; i<npt; i++) {
-      mixture[i] += *psc++;
-      *pwdot++ = 0.0;
+        tc[0*npt+i] = log(T[i]);
+        tc[1*npt+i] = T[i];
+        tc[2*npt+i] = T[i]*T[i];
+        tc[3*npt+i] = T[i]*T[i]*T[i];
+        tc[4*npt+i] = T[i]*T[i]*T[i]*T[i];
+        invT[i] = 1.0 / T[i];
     }
-  }
 
 #ifdef __INTEL_COMPILER
-  #pragma nounroll
+    #pragma nounroll
 #endif
-  for (int i=0; i<npt; i++) {
-    double qdot, q_f, q_r, phi_f, phi_r, k_f, k_r, Kc;
-    double alpha, redP, F, logPred, logFcent;
-    double troe_c, troe_n, troe, F_troe;
+    for (int i=0; i<npt; i++) {
+        k_f_s[0][i] = 1e-06 * 3.547e+15*exp(-0.406*tc[i]-8352.8934356925419706*invT[i]);
+        k_f_s[1][i] = 1e-06 * 50800*exp(2.67*tc[i]-3165.2328279116868543*invT[i]);
+        k_f_s[2][i] = 1e-06 * 2.16e+08*exp(1.51*tc[i]-1726.0331637101885462*invT[i]);
+        k_f_s[3][i] = 1e-06 * 2.97e+06*exp(2.02*tc[i]-6743.1033217832446098*invT[i]);
+        k_f_s[4][i] = 1e-06 * 4.577e+19*exp(-1.4*tc[i]-52525.75557669664704*invT[i]);
+        k_f_s[5][i] = 1e-12 * 6.165e+15*exp(-0.5*tc[i]);
+        k_f_s[6][i] = 1e-12 * 4.714e+18*exp(-1*tc[i]);
+        k_f_s[7][i] = 1e-12 * 3.8e+22*exp(-2*tc[i]);
+        k_f_s[8][i] = 1e-06 * 1.475e+12*exp(0.6*tc[i]);
+        k_f_s[9][i] = 1e-06 * 1.66e+13*exp(-414.14731595728432012*invT[i]);
+        k_f_s[10][i] = 1e-06 * 7.079e+13*exp(-148.44891641239232172*invT[i]);
+        k_f_s[11][i] = 1e-06 * 3.25e+13;
+        k_f_s[12][i] = 1e-06 * 2.89e+13*exp(+250.09868290494571852*invT[i]);
+        k_f_s[13][i] = 1e-06 * 4.2e+14*exp(-6029.5420896721516328*invT[i]);
+        k_f_s[14][i] = 1e-06 * 1.3e+11*exp(+819.89091359562974048*invT[i]);
+        k_f_s[15][i] = 1 * 2.951e+14*exp(-24370.783124922574643*invT[i]);
+        k_f_s[16][i] = 1e-06 * 2.41e+13*exp(-1997.7701632447369775*invT[i]);
+        k_f_s[17][i] = 1e-06 * 4.82e+13*exp(-4000.5724931475210724*invT[i]);
+        k_f_s[18][i] = 1e-06 * 9.55e+06*exp(2*tc[i]-1997.7701632447369775*invT[i]);
+        k_f_s[19][i] = 1e-06 * 1e+12;
+        k_f_s[20][i] = 1e-06 * 5.8e+14*exp(-4809.2416750957054319*invT[i]);
+    }
 
-    /*reaction 1: H + O2 <=> O + OH */
-    phi_f = sc[3*npt+i]*sc[1*npt+i];
-    k_f = k_f_s[0][i];
-    q_f = phi_f * k_f;
-    phi_r = sc[4*npt+i]*sc[5*npt+i];
-    Kc = Kc_s[0][i];
-    k_r = k_f / Kc;
-    q_r = phi_r * k_r;
-    qdot = q_f - q_r;
-    wdot[3*npt+i] -= 1 * qdot;
-    wdot[1*npt+i] -= 1 * qdot;
-    wdot[4*npt+i] += 1 * qdot;
-    wdot[5*npt+i] += 1 * qdot;
+    /*compute the Gibbs free energy */
+    for (int i=0; i<npt; i++) {
+        double tg[5], g[9];
+        tg[0] = tc[0*npt+i];
+        tg[1] = tc[1*npt+i];
+        tg[2] = tc[2*npt+i];
+        tg[3] = tc[3*npt+i];
+        tg[4] = tc[4*npt+i];
 
-    /*reaction 2: O + H2 <=> H + OH */
-    phi_f = sc[4*npt+i]*sc[0*npt+i];
-    k_f = k_f_s[1][i];
-    q_f = phi_f * k_f;
-    phi_r = sc[3*npt+i]*sc[5*npt+i];
-    Kc = Kc_s[1][i];
-    k_r = k_f / Kc;
-    q_r = phi_r * k_r;
-    qdot = q_f - q_r;
-    wdot[4*npt+i] -= 1 * qdot;
-    wdot[0*npt+i] -= 1 * qdot;
-    wdot[3*npt+i] += 1 * qdot;
-    wdot[5*npt+i] += 1 * qdot;
+        gibbs(g, tg);
 
-    /*reaction 3: H2 + OH <=> H2O + H */
-    phi_f = sc[0*npt+i]*sc[5*npt+i];
-    k_f = k_f_s[2][i];
-    q_f = phi_f * k_f;
-    phi_r = sc[2*npt+i]*sc[3*npt+i];
-    Kc = Kc_s[2][i];
-    k_r = k_f / Kc;
-    q_r = phi_r * k_r;
-    qdot = q_f - q_r;
-    wdot[0*npt+i] -= 1 * qdot;
-    wdot[5*npt+i] -= 1 * qdot;
-    wdot[2*npt+i] += 1 * qdot;
-    wdot[3*npt+i] += 1 * qdot;
+        g_RT[0*npt+i] = g[0];
+        g_RT[1*npt+i] = g[1];
+        g_RT[2*npt+i] = g[2];
+        g_RT[3*npt+i] = g[3];
+        g_RT[4*npt+i] = g[4];
+        g_RT[5*npt+i] = g[5];
+        g_RT[6*npt+i] = g[6];
+        g_RT[7*npt+i] = g[7];
+        g_RT[8*npt+i] = g[8];
+    }
 
-    /*reaction 4: O + H2O <=> OH + OH */
-    phi_f = sc[4*npt+i]*sc[2*npt+i];
-    k_f = k_f_s[3][i];
-    q_f = phi_f * k_f;
-    phi_r = sc[5*npt+i]*sc[5*npt+i];
-    Kc = Kc_s[3][i];
-    k_r = k_f / Kc;
-    q_r = phi_r * k_r;
-    qdot = q_f - q_r;
-    wdot[4*npt+i] -= 1 * qdot;
-    wdot[2*npt+i] -= 1 * qdot;
-    wdot[5*npt+i] += 1 * qdot;
-    wdot[5*npt+i] += 1 * qdot;
+#ifdef __INTEL_COMPILER
+    #pragma nounroll
+#endif
+    for (int i=0; i<npt; i++) {
+        /*reference concentration: P_atm / (RT) in inverse mol/m^3 */
+        double refC = 101325. / 8.31451 / T[i];
 
-    /*reaction 5: H2 + M <=> H + H + M */
-    phi_f = sc[0*npt+i];
-    alpha = mixture[i] + 1.5*sc[0*npt+i] + 11*sc[2*npt+i];
-    k_f = alpha * k_f_s[4][i];
-    q_f = phi_f * k_f;
-    phi_r = sc[3*npt+i]*sc[3*npt+i];
-    Kc = Kc_s[4][i];
-    k_r = k_f / Kc;
-    q_r = phi_r * k_r;
-    qdot = q_f - q_r;
-    wdot[0*npt+i] -= 1 * qdot;
-    wdot[3*npt+i] += 1 * qdot;
-    wdot[3*npt+i] += 1 * qdot;
+        Kc_s[0][i] = exp((g_RT[3*npt+i] + g_RT[1*npt+i]) - (g_RT[4*npt+i] + g_RT[5*npt+i]));
+        Kc_s[1][i] = exp((g_RT[4*npt+i] + g_RT[0*npt+i]) - (g_RT[3*npt+i] + g_RT[5*npt+i]));
+        Kc_s[2][i] = exp((g_RT[0*npt+i] + g_RT[5*npt+i]) - (g_RT[2*npt+i] + g_RT[3*npt+i]));
+        Kc_s[3][i] = exp((g_RT[4*npt+i] + g_RT[2*npt+i]) - (g_RT[5*npt+i] + g_RT[5*npt+i]));
+        Kc_s[4][i] = refC * exp((g_RT[0*npt+i]) - (g_RT[3*npt+i] + g_RT[3*npt+i]));
+        Kc_s[5][i] = 1.0 / (refC) * exp((g_RT[4*npt+i] + g_RT[4*npt+i]) - (g_RT[1*npt+i]));
+        Kc_s[6][i] = 1.0 / (refC) * exp((g_RT[4*npt+i] + g_RT[3*npt+i]) - (g_RT[5*npt+i]));
+        Kc_s[7][i] = 1.0 / (refC) * exp((g_RT[3*npt+i] + g_RT[5*npt+i]) - (g_RT[2*npt+i]));
+        Kc_s[8][i] = 1.0 / (refC) * exp((g_RT[3*npt+i] + g_RT[1*npt+i]) - (g_RT[6*npt+i]));
+        Kc_s[9][i] = exp((g_RT[6*npt+i] + g_RT[3*npt+i]) - (g_RT[0*npt+i] + g_RT[1*npt+i]));
+        Kc_s[10][i] = exp((g_RT[6*npt+i] + g_RT[3*npt+i]) - (g_RT[5*npt+i] + g_RT[5*npt+i]));
+        Kc_s[11][i] = exp((g_RT[6*npt+i] + g_RT[4*npt+i]) - (g_RT[1*npt+i] + g_RT[5*npt+i]));
+        Kc_s[12][i] = exp((g_RT[6*npt+i] + g_RT[5*npt+i]) - (g_RT[2*npt+i] + g_RT[1*npt+i]));
+        Kc_s[13][i] = exp((g_RT[6*npt+i] + g_RT[6*npt+i]) - (g_RT[7*npt+i] + g_RT[1*npt+i]));
+        Kc_s[14][i] = exp((g_RT[6*npt+i] + g_RT[6*npt+i]) - (g_RT[7*npt+i] + g_RT[1*npt+i]));
+        Kc_s[15][i] = refC * exp((g_RT[7*npt+i]) - (g_RT[5*npt+i] + g_RT[5*npt+i]));
+        Kc_s[16][i] = exp((g_RT[7*npt+i] + g_RT[3*npt+i]) - (g_RT[2*npt+i] + g_RT[5*npt+i]));
+        Kc_s[17][i] = exp((g_RT[7*npt+i] + g_RT[3*npt+i]) - (g_RT[6*npt+i] + g_RT[0*npt+i]));
+        Kc_s[18][i] = exp((g_RT[7*npt+i] + g_RT[4*npt+i]) - (g_RT[5*npt+i] + g_RT[6*npt+i]));
+        Kc_s[19][i] = exp((g_RT[7*npt+i] + g_RT[5*npt+i]) - (g_RT[6*npt+i] + g_RT[2*npt+i]));
+        Kc_s[20][i] = exp((g_RT[7*npt+i] + g_RT[5*npt+i]) - (g_RT[6*npt+i] + g_RT[2*npt+i]));
+    }
 
-    /*reaction 6: O + O + M <=> O2 + M */
-    phi_f = sc[4*npt+i]*sc[4*npt+i];
-    alpha = mixture[i] + 1.5*sc[0*npt+i] + 11*sc[2*npt+i];
-    k_f = alpha * k_f_s[5][i];
-    q_f = phi_f * k_f;
-    phi_r = sc[1*npt+i];
-    Kc = Kc_s[5][i];
-    k_r = k_f / Kc;
-    q_r = phi_r * k_r;
-    qdot = q_f - q_r;
-    wdot[4*npt+i] -= 1 * qdot;
-    wdot[4*npt+i] -= 1 * qdot;
-    wdot[1*npt+i] += 1 * qdot;
+    for (int i=0; i<npt; i++) {
+        mixture[i] = 0.0;
+    }
 
-    /*reaction 7: O + H + M <=> OH + M */
-    phi_f = sc[4*npt+i]*sc[3*npt+i];
-    alpha = mixture[i] + 1.5*sc[0*npt+i] + 11*sc[2*npt+i];
-    k_f = alpha * k_f_s[6][i];
-    q_f = phi_f * k_f;
-    phi_r = sc[5*npt+i];
-    Kc = Kc_s[6][i];
-    k_r = k_f / Kc;
-    q_r = phi_r * k_r;
-    qdot = q_f - q_r;
-    wdot[4*npt+i] -= 1 * qdot;
-    wdot[3*npt+i] -= 1 * qdot;
-    wdot[5*npt+i] += 1 * qdot;
+    for (int n=0; n<9; n++) {
+        for (int i=0; i<npt; i++) {
+            mixture[i] += sc[n*npt+i];
+            wdot[n*npt+i] = 0.0;
+        }
+    }
 
-    /*reaction 8: H + OH + M <=> H2O + M */
-    phi_f = sc[3*npt+i]*sc[5*npt+i];
-    alpha = mixture[i] + 1.5*sc[0*npt+i] + 11*sc[2*npt+i];
-    k_f = alpha * k_f_s[7][i];
-    q_f = phi_f * k_f;
-    phi_r = sc[2*npt+i];
-    Kc = Kc_s[7][i];
-    k_r = k_f / Kc;
-    q_r = phi_r * k_r;
-    qdot = q_f - q_r;
-    wdot[3*npt+i] -= 1 * qdot;
-    wdot[5*npt+i] -= 1 * qdot;
-    wdot[2*npt+i] += 1 * qdot;
+#ifdef __INTEL_COMPILER
+    #pragma nounroll
+#endif
+    for (int i=0; i<npt; i++) {
+        double qdot, q_f, q_r, phi_f, phi_r, k_f, k_r, Kc;
+        double alpha, redP, F, logPred, logFcent;
+        double troe_c, troe_n, troe, F_troe;
+        double X, F_src;
 
-    /*reaction 9: H + O2 (+M) <=> HO2 (+M) */
-    phi_f = sc[3*npt+i]*sc[1*npt+i];
-    alpha = mixture[i] + sc[0*npt+i] + 10*sc[2*npt+i] + -0.22*sc[1*npt+i];
-    k_f = k_f_s[8][i];
-    redP = 1e-12 * alpha / k_f * 6.366e+20*exp(-1.72*tc[0*npt+i]-264.08810621431689469*invT[i]);
-    F = redP / (1 + redP);
-    logPred = log10(redP);
-    logFcent = log10((0.2*exp(T[i]/-1e-30))+ (0.8*exp(T[i]/-1e+30)));
-    troe_c = -.4 - .67 * logFcent;
-    troe_n = .75 - 1.27 * logFcent;
-    troe = (troe_c + logPred) / (troe_n - .14*(troe_c + logPred));
-    F_troe = pow(10, logFcent / (1.0 + troe*troe));
-    F *= F_troe;
-    k_f *= F;
-    q_f = phi_f * k_f;
-    phi_r = sc[6*npt+i];
-    Kc = Kc_s[8][i];
-    k_r = k_f / Kc;
-    q_r = phi_r * k_r;
-    qdot = q_f - q_r;
-    wdot[3*npt+i] -= 1 * qdot;
-    wdot[1*npt+i] -= 1 * qdot;
-    wdot[6*npt+i] += 1 * qdot;
+        /*reaction 1: H + O2 <=> O + OH */
+        phi_f = sc[3*npt+i]*sc[1*npt+i];
+        k_f = k_f_s[0][i];
+        q_f = phi_f * k_f;
+        phi_r = sc[4*npt+i]*sc[5*npt+i];
+        Kc = Kc_s[0][i];
+        k_r = k_f / Kc;
+        q_r = phi_r * k_r;
+        qdot = q_f - q_r;
+        wdot[3*npt+i] -= 1 * qdot;
+        wdot[1*npt+i] -= 1 * qdot;
+        wdot[4*npt+i] += 1 * qdot;
+        wdot[5*npt+i] += 1 * qdot;
 
-    /*reaction 10: HO2 + H <=> H2 + O2 */
-    phi_f = sc[6*npt+i]*sc[3*npt+i];
-    k_f = k_f_s[9][i];
-    q_f = phi_f * k_f;
-    phi_r = sc[0*npt+i]*sc[1*npt+i];
-    Kc = Kc_s[9][i];
-    k_r = k_f / Kc;
-    q_r = phi_r * k_r;
-    qdot = q_f - q_r;
-    wdot[6*npt+i] -= 1 * qdot;
-    wdot[3*npt+i] -= 1 * qdot;
-    wdot[0*npt+i] += 1 * qdot;
-    wdot[1*npt+i] += 1 * qdot;
+        /*reaction 2: O + H2 <=> H + OH */
+        phi_f = sc[4*npt+i]*sc[0*npt+i];
+        k_f = k_f_s[1][i];
+        q_f = phi_f * k_f;
+        phi_r = sc[3*npt+i]*sc[5*npt+i];
+        Kc = Kc_s[1][i];
+        k_r = k_f / Kc;
+        q_r = phi_r * k_r;
+        qdot = q_f - q_r;
+        wdot[4*npt+i] -= 1 * qdot;
+        wdot[0*npt+i] -= 1 * qdot;
+        wdot[3*npt+i] += 1 * qdot;
+        wdot[5*npt+i] += 1 * qdot;
 
-    /*reaction 11: HO2 + H <=> OH + OH */
-    phi_f = sc[6*npt+i]*sc[3*npt+i];
-    k_f = k_f_s[10][i];
-    q_f = phi_f * k_f;
-    phi_r = sc[5*npt+i]*sc[5*npt+i];
-    Kc = Kc_s[10][i];
-    k_r = k_f / Kc;
-    q_r = phi_r * k_r;
-    qdot = q_f - q_r;
-    wdot[6*npt+i] -= 1 * qdot;
-    wdot[3*npt+i] -= 1 * qdot;
-    wdot[5*npt+i] += 1 * qdot;
-    wdot[5*npt+i] += 1 * qdot;
+        /*reaction 3: H2 + OH <=> H2O + H */
+        phi_f = sc[0*npt+i]*sc[5*npt+i];
+        k_f = k_f_s[2][i];
+        q_f = phi_f * k_f;
+        phi_r = sc[2*npt+i]*sc[3*npt+i];
+        Kc = Kc_s[2][i];
+        k_r = k_f / Kc;
+        q_r = phi_r * k_r;
+        qdot = q_f - q_r;
+        wdot[0*npt+i] -= 1 * qdot;
+        wdot[5*npt+i] -= 1 * qdot;
+        wdot[2*npt+i] += 1 * qdot;
+        wdot[3*npt+i] += 1 * qdot;
 
-    /*reaction 12: HO2 + O <=> O2 + OH */
-    phi_f = sc[6*npt+i]*sc[4*npt+i];
-    k_f = k_f_s[11][i];
-    q_f = phi_f * k_f;
-    phi_r = sc[1*npt+i]*sc[5*npt+i];
-    Kc = Kc_s[11][i];
-    k_r = k_f / Kc;
-    q_r = phi_r * k_r;
-    qdot = q_f - q_r;
-    wdot[6*npt+i] -= 1 * qdot;
-    wdot[4*npt+i] -= 1 * qdot;
-    wdot[1*npt+i] += 1 * qdot;
-    wdot[5*npt+i] += 1 * qdot;
+        /*reaction 4: O + H2O <=> OH + OH */
+        phi_f = sc[4*npt+i]*sc[2*npt+i];
+        k_f = k_f_s[3][i];
+        q_f = phi_f * k_f;
+        phi_r = sc[5*npt+i]*sc[5*npt+i];
+        Kc = Kc_s[3][i];
+        k_r = k_f / Kc;
+        q_r = phi_r * k_r;
+        qdot = q_f - q_r;
+        wdot[4*npt+i] -= 1 * qdot;
+        wdot[2*npt+i] -= 1 * qdot;
+        wdot[5*npt+i] += 1 * qdot;
+        wdot[5*npt+i] += 1 * qdot;
 
-    /*reaction 13: HO2 + OH <=> H2O + O2 */
-    phi_f = sc[6*npt+i]*sc[5*npt+i];
-    k_f = k_f_s[12][i];
-    q_f = phi_f * k_f;
-    phi_r = sc[2*npt+i]*sc[1*npt+i];
-    Kc = Kc_s[12][i];
-    k_r = k_f / Kc;
-    q_r = phi_r * k_r;
-    qdot = q_f - q_r;
-    wdot[6*npt+i] -= 1 * qdot;
-    wdot[5*npt+i] -= 1 * qdot;
-    wdot[2*npt+i] += 1 * qdot;
-    wdot[1*npt+i] += 1 * qdot;
+        /*reaction 5: H2 + M <=> H + H + M */
+        phi_f = sc[0*npt+i];
+        alpha = mixture[i] + 1.5*sc[0*npt+i] + 11*sc[2*npt+i];
+        k_f = alpha * k_f_s[4][i];
+        q_f = phi_f * k_f;
+        phi_r = sc[3*npt+i]*sc[3*npt+i];
+        Kc = Kc_s[4][i];
+        k_r = k_f / Kc;
+        q_r = phi_r * k_r;
+        qdot = q_f - q_r;
+        wdot[0*npt+i] -= 1 * qdot;
+        wdot[3*npt+i] += 1 * qdot;
+        wdot[3*npt+i] += 1 * qdot;
 
-    /*reaction 14: HO2 + HO2 <=> H2O2 + O2 */
-    phi_f = sc[6*npt+i]*sc[6*npt+i];
-    k_f = k_f_s[13][i];
-    q_f = phi_f * k_f;
-    phi_r = sc[7*npt+i]*sc[1*npt+i];
-    Kc = Kc_s[13][i];
-    k_r = k_f / Kc;
-    q_r = phi_r * k_r;
-    qdot = q_f - q_r;
-    wdot[6*npt+i] -= 1 * qdot;
-    wdot[6*npt+i] -= 1 * qdot;
-    wdot[7*npt+i] += 1 * qdot;
-    wdot[1*npt+i] += 1 * qdot;
+        /*reaction 6: O + O + M <=> O2 + M */
+        phi_f = sc[4*npt+i]*sc[4*npt+i];
+        alpha = mixture[i] + 1.5*sc[0*npt+i] + 11*sc[2*npt+i];
+        k_f = alpha * k_f_s[5][i];
+        q_f = phi_f * k_f;
+        phi_r = sc[1*npt+i];
+        Kc = Kc_s[5][i];
+        k_r = k_f / Kc;
+        q_r = phi_r * k_r;
+        qdot = q_f - q_r;
+        wdot[4*npt+i] -= 1 * qdot;
+        wdot[4*npt+i] -= 1 * qdot;
+        wdot[1*npt+i] += 1 * qdot;
 
-    /*reaction 15: HO2 + HO2 <=> H2O2 + O2 */
-    phi_f = sc[6*npt+i]*sc[6*npt+i];
-    k_f = k_f_s[14][i];
-    q_f = phi_f * k_f;
-    phi_r = sc[7*npt+i]*sc[1*npt+i];
-    Kc = Kc_s[14][i];
-    k_r = k_f / Kc;
-    q_r = phi_r * k_r;
-    qdot = q_f - q_r;
-    wdot[6*npt+i] -= 1 * qdot;
-    wdot[6*npt+i] -= 1 * qdot;
-    wdot[7*npt+i] += 1 * qdot;
-    wdot[1*npt+i] += 1 * qdot;
+        /*reaction 7: O + H + M <=> OH + M */
+        phi_f = sc[4*npt+i]*sc[3*npt+i];
+        alpha = mixture[i] + 1.5*sc[0*npt+i] + 11*sc[2*npt+i];
+        k_f = alpha * k_f_s[6][i];
+        q_f = phi_f * k_f;
+        phi_r = sc[5*npt+i];
+        Kc = Kc_s[6][i];
+        k_r = k_f / Kc;
+        q_r = phi_r * k_r;
+        qdot = q_f - q_r;
+        wdot[4*npt+i] -= 1 * qdot;
+        wdot[3*npt+i] -= 1 * qdot;
+        wdot[5*npt+i] += 1 * qdot;
 
-    /*reaction 16: H2O2 (+M) <=> OH + OH (+M) */
-    phi_f = sc[7*npt+i];
-    alpha = mixture[i] + 1.5*sc[0*npt+i] + 11*sc[2*npt+i];
-    k_f = k_f_s[15][i];
-    redP = 1e-6 * alpha / k_f * 1.202e+17*exp(-22896.358294114746968*invT[i]);
-    F = redP / (1 + redP);
-    logPred = log10(redP);
-    logFcent = log10((0.5*exp(T[i]/-1e-30))+ (0.5*exp(T[i]/-1e+30)));
-    troe_c = -.4 - .67 * logFcent;
-    troe_n = .75 - 1.27 * logFcent;
-    troe = (troe_c + logPred) / (troe_n - .14*(troe_c + logPred));
-    F_troe = pow(10, logFcent / (1.0 + troe*troe));
-    F *= F_troe;
-    k_f *= F;
-    q_f = phi_f * k_f;
-    phi_r = sc[5*npt+i]*sc[5*npt+i];
-    Kc = Kc_s[15][i];
-    k_r = k_f / Kc;
-    q_r = phi_r * k_r;
-    qdot = q_f - q_r;
-    wdot[7*npt+i] -= 1 * qdot;
-    wdot[5*npt+i] += 1 * qdot;
-    wdot[5*npt+i] += 1 * qdot;
+        /*reaction 8: H + OH + M <=> H2O + M */
+        phi_f = sc[3*npt+i]*sc[5*npt+i];
+        alpha = mixture[i] + 1.5*sc[0*npt+i] + 11*sc[2*npt+i];
+        k_f = alpha * k_f_s[7][i];
+        q_f = phi_f * k_f;
+        phi_r = sc[2*npt+i];
+        Kc = Kc_s[7][i];
+        k_r = k_f / Kc;
+        q_r = phi_r * k_r;
+        qdot = q_f - q_r;
+        wdot[3*npt+i] -= 1 * qdot;
+        wdot[5*npt+i] -= 1 * qdot;
+        wdot[2*npt+i] += 1 * qdot;
 
-    /*reaction 17: H2O2 + H <=> H2O + OH */
-    phi_f = sc[7*npt+i]*sc[3*npt+i];
-    k_f = k_f_s[16][i];
-    q_f = phi_f * k_f;
-    phi_r = sc[2*npt+i]*sc[5*npt+i];
-    Kc = Kc_s[16][i];
-    k_r = k_f / Kc;
-    q_r = phi_r * k_r;
-    qdot = q_f - q_r;
-    wdot[7*npt+i] -= 1 * qdot;
-    wdot[3*npt+i] -= 1 * qdot;
-    wdot[2*npt+i] += 1 * qdot;
-    wdot[5*npt+i] += 1 * qdot;
+        /*reaction 9: H + O2 (+M) <=> HO2 (+M) */
+        phi_f = sc[3*npt+i]*sc[1*npt+i];
+        alpha = mixture[i] + sc[0*npt+i] + 10*sc[2*npt+i] + -0.22*sc[1*npt+i];
+        k_f = k_f_s[8][i];
+        redP = 1e-12 * alpha / k_f * 6.366e+20*exp(-1.72*tc[i]-264.08810621431689469*invT[i]);
+        F = redP / (1 + redP);
+        logPred = log10(redP);
+        logFcent = log10((0.2*exp(T[i]/-1e-30))+ (0.8*exp(T[i]/-1e+30)));
+        troe_c = -.4 - .67 * logFcent;
+        troe_n = .75 - 1.27 * logFcent;
+        troe = (troe_c + logPred) / (troe_n - .14*(troe_c + logPred));
+        F_troe = pow(10., logFcent / (1.0 + troe*troe));
+        F *= F_troe;
+        k_f *= F;
+        q_f = phi_f * k_f;
+        phi_r = sc[6*npt+i];
+        Kc = Kc_s[8][i];
+        k_r = k_f / Kc;
+        q_r = phi_r * k_r;
+        qdot = q_f - q_r;
+        wdot[3*npt+i] -= 1 * qdot;
+        wdot[1*npt+i] -= 1 * qdot;
+        wdot[6*npt+i] += 1 * qdot;
 
-    /*reaction 18: H2O2 + H <=> HO2 + H2 */
-    phi_f = sc[7*npt+i]*sc[3*npt+i];
-    k_f = k_f_s[17][i];
-    q_f = phi_f * k_f;
-    phi_r = sc[6*npt+i]*sc[0*npt+i];
-    Kc = Kc_s[17][i];
-    k_r = k_f / Kc;
-    q_r = phi_r * k_r;
-    qdot = q_f - q_r;
-    wdot[7*npt+i] -= 1 * qdot;
-    wdot[3*npt+i] -= 1 * qdot;
-    wdot[6*npt+i] += 1 * qdot;
-    wdot[0*npt+i] += 1 * qdot;
+        /*reaction 10: HO2 + H <=> H2 + O2 */
+        phi_f = sc[6*npt+i]*sc[3*npt+i];
+        k_f = k_f_s[9][i];
+        q_f = phi_f * k_f;
+        phi_r = sc[0*npt+i]*sc[1*npt+i];
+        Kc = Kc_s[9][i];
+        k_r = k_f / Kc;
+        q_r = phi_r * k_r;
+        qdot = q_f - q_r;
+        wdot[6*npt+i] -= 1 * qdot;
+        wdot[3*npt+i] -= 1 * qdot;
+        wdot[0*npt+i] += 1 * qdot;
+        wdot[1*npt+i] += 1 * qdot;
 
-    /*reaction 19: H2O2 + O <=> OH + HO2 */
-    phi_f = sc[7*npt+i]*sc[4*npt+i];
-    k_f = k_f_s[18][i];
-    q_f = phi_f * k_f;
-    phi_r = sc[5*npt+i]*sc[6*npt+i];
-    Kc = Kc_s[18][i];
-    k_r = k_f / Kc;
-    q_r = phi_r * k_r;
-    qdot = q_f - q_r;
-    wdot[7*npt+i] -= 1 * qdot;
-    wdot[4*npt+i] -= 1 * qdot;
-    wdot[5*npt+i] += 1 * qdot;
-    wdot[6*npt+i] += 1 * qdot;
+        /*reaction 11: HO2 + H <=> OH + OH */
+        phi_f = sc[6*npt+i]*sc[3*npt+i];
+        k_f = k_f_s[10][i];
+        q_f = phi_f * k_f;
+        phi_r = sc[5*npt+i]*sc[5*npt+i];
+        Kc = Kc_s[10][i];
+        k_r = k_f / Kc;
+        q_r = phi_r * k_r;
+        qdot = q_f - q_r;
+        wdot[6*npt+i] -= 1 * qdot;
+        wdot[3*npt+i] -= 1 * qdot;
+        wdot[5*npt+i] += 1 * qdot;
+        wdot[5*npt+i] += 1 * qdot;
 
-    /*reaction 20: H2O2 + OH <=> HO2 + H2O */
-    phi_f = sc[7*npt+i]*sc[5*npt+i];
-    k_f = k_f_s[19][i];
-    q_f = phi_f * k_f;
-    phi_r = sc[6*npt+i]*sc[2*npt+i];
-    Kc = Kc_s[19][i];
-    k_r = k_f / Kc;
-    q_r = phi_r * k_r;
-    qdot = q_f - q_r;
-    wdot[7*npt+i] -= 1 * qdot;
-    wdot[5*npt+i] -= 1 * qdot;
-    wdot[6*npt+i] += 1 * qdot;
-    wdot[2*npt+i] += 1 * qdot;
+        /*reaction 12: HO2 + O <=> O2 + OH */
+        phi_f = sc[6*npt+i]*sc[4*npt+i];
+        k_f = k_f_s[11][i];
+        q_f = phi_f * k_f;
+        phi_r = sc[1*npt+i]*sc[5*npt+i];
+        Kc = Kc_s[11][i];
+        k_r = k_f / Kc;
+        q_r = phi_r * k_r;
+        qdot = q_f - q_r;
+        wdot[6*npt+i] -= 1 * qdot;
+        wdot[4*npt+i] -= 1 * qdot;
+        wdot[1*npt+i] += 1 * qdot;
+        wdot[5*npt+i] += 1 * qdot;
 
-    /*reaction 21: H2O2 + OH <=> HO2 + H2O */
-    phi_f = sc[7*npt+i]*sc[5*npt+i];
-    k_f = k_f_s[20][i];
-    q_f = phi_f * k_f;
-    phi_r = sc[6*npt+i]*sc[2*npt+i];
-    Kc = Kc_s[20][i];
-    k_r = k_f / Kc;
-    q_r = phi_r * k_r;
-    qdot = q_f - q_r;
-    wdot[7*npt+i] -= 1 * qdot;
-    wdot[5*npt+i] -= 1 * qdot;
-    wdot[6*npt+i] += 1 * qdot;
-    wdot[2*npt+i] += 1 * qdot;
-  }
+        /*reaction 13: HO2 + OH <=> H2O + O2 */
+        phi_f = sc[6*npt+i]*sc[5*npt+i];
+        k_f = k_f_s[12][i];
+        q_f = phi_f * k_f;
+        phi_r = sc[2*npt+i]*sc[1*npt+i];
+        Kc = Kc_s[12][i];
+        k_r = k_f / Kc;
+        q_r = phi_r * k_r;
+        qdot = q_f - q_r;
+        wdot[6*npt+i] -= 1 * qdot;
+        wdot[5*npt+i] -= 1 * qdot;
+        wdot[2*npt+i] += 1 * qdot;
+        wdot[1*npt+i] += 1 * qdot;
+
+        /*reaction 14: HO2 + HO2 <=> H2O2 + O2 */
+        phi_f = sc[6*npt+i]*sc[6*npt+i];
+        k_f = k_f_s[13][i];
+        q_f = phi_f * k_f;
+        phi_r = sc[7*npt+i]*sc[1*npt+i];
+        Kc = Kc_s[13][i];
+        k_r = k_f / Kc;
+        q_r = phi_r * k_r;
+        qdot = q_f - q_r;
+        wdot[6*npt+i] -= 1 * qdot;
+        wdot[6*npt+i] -= 1 * qdot;
+        wdot[7*npt+i] += 1 * qdot;
+        wdot[1*npt+i] += 1 * qdot;
+
+        /*reaction 15: HO2 + HO2 <=> H2O2 + O2 */
+        phi_f = sc[6*npt+i]*sc[6*npt+i];
+        k_f = k_f_s[14][i];
+        q_f = phi_f * k_f;
+        phi_r = sc[7*npt+i]*sc[1*npt+i];
+        Kc = Kc_s[14][i];
+        k_r = k_f / Kc;
+        q_r = phi_r * k_r;
+        qdot = q_f - q_r;
+        wdot[6*npt+i] -= 1 * qdot;
+        wdot[6*npt+i] -= 1 * qdot;
+        wdot[7*npt+i] += 1 * qdot;
+        wdot[1*npt+i] += 1 * qdot;
+
+        /*reaction 16: H2O2 (+M) <=> OH + OH (+M) */
+        phi_f = sc[7*npt+i];
+        alpha = mixture[i] + 1.5*sc[0*npt+i] + 11*sc[2*npt+i];
+        k_f = k_f_s[15][i];
+        redP = 1e-6 * alpha / k_f * 1.202e+17*exp(-22896.358294114746968*invT[i]);
+        F = redP / (1 + redP);
+        logPred = log10(redP);
+        logFcent = log10((0.5*exp(T[i]/-1e-30))+ (0.5*exp(T[i]/-1e+30)));
+        troe_c = -.4 - .67 * logFcent;
+        troe_n = .75 - 1.27 * logFcent;
+        troe = (troe_c + logPred) / (troe_n - .14*(troe_c + logPred));
+        F_troe = pow(10., logFcent / (1.0 + troe*troe));
+        F *= F_troe;
+        k_f *= F;
+        q_f = phi_f * k_f;
+        phi_r = sc[5*npt+i]*sc[5*npt+i];
+        Kc = Kc_s[15][i];
+        k_r = k_f / Kc;
+        q_r = phi_r * k_r;
+        qdot = q_f - q_r;
+        wdot[7*npt+i] -= 1 * qdot;
+        wdot[5*npt+i] += 1 * qdot;
+        wdot[5*npt+i] += 1 * qdot;
+
+        /*reaction 17: H2O2 + H <=> H2O + OH */
+        phi_f = sc[7*npt+i]*sc[3*npt+i];
+        k_f = k_f_s[16][i];
+        q_f = phi_f * k_f;
+        phi_r = sc[2*npt+i]*sc[5*npt+i];
+        Kc = Kc_s[16][i];
+        k_r = k_f / Kc;
+        q_r = phi_r * k_r;
+        qdot = q_f - q_r;
+        wdot[7*npt+i] -= 1 * qdot;
+        wdot[3*npt+i] -= 1 * qdot;
+        wdot[2*npt+i] += 1 * qdot;
+        wdot[5*npt+i] += 1 * qdot;
+
+        /*reaction 18: H2O2 + H <=> HO2 + H2 */
+        phi_f = sc[7*npt+i]*sc[3*npt+i];
+        k_f = k_f_s[17][i];
+        q_f = phi_f * k_f;
+        phi_r = sc[6*npt+i]*sc[0*npt+i];
+        Kc = Kc_s[17][i];
+        k_r = k_f / Kc;
+        q_r = phi_r * k_r;
+        qdot = q_f - q_r;
+        wdot[7*npt+i] -= 1 * qdot;
+        wdot[3*npt+i] -= 1 * qdot;
+        wdot[6*npt+i] += 1 * qdot;
+        wdot[0*npt+i] += 1 * qdot;
+
+        /*reaction 19: H2O2 + O <=> OH + HO2 */
+        phi_f = sc[7*npt+i]*sc[4*npt+i];
+        k_f = k_f_s[18][i];
+        q_f = phi_f * k_f;
+        phi_r = sc[5*npt+i]*sc[6*npt+i];
+        Kc = Kc_s[18][i];
+        k_r = k_f / Kc;
+        q_r = phi_r * k_r;
+        qdot = q_f - q_r;
+        wdot[7*npt+i] -= 1 * qdot;
+        wdot[4*npt+i] -= 1 * qdot;
+        wdot[5*npt+i] += 1 * qdot;
+        wdot[6*npt+i] += 1 * qdot;
+
+        /*reaction 20: H2O2 + OH <=> HO2 + H2O */
+        phi_f = sc[7*npt+i]*sc[5*npt+i];
+        k_f = k_f_s[19][i];
+        q_f = phi_f * k_f;
+        phi_r = sc[6*npt+i]*sc[2*npt+i];
+        Kc = Kc_s[19][i];
+        k_r = k_f / Kc;
+        q_r = phi_r * k_r;
+        qdot = q_f - q_r;
+        wdot[7*npt+i] -= 1 * qdot;
+        wdot[5*npt+i] -= 1 * qdot;
+        wdot[6*npt+i] += 1 * qdot;
+        wdot[2*npt+i] += 1 * qdot;
+
+        /*reaction 21: H2O2 + OH <=> HO2 + H2O */
+        phi_f = sc[7*npt+i]*sc[5*npt+i];
+        k_f = k_f_s[20][i];
+        q_f = phi_f * k_f;
+        phi_r = sc[6*npt+i]*sc[2*npt+i];
+        Kc = Kc_s[20][i];
+        k_r = k_f / Kc;
+        q_r = phi_r * k_r;
+        qdot = q_f - q_r;
+        wdot[7*npt+i] -= 1 * qdot;
+        wdot[5*npt+i] -= 1 * qdot;
+        wdot[6*npt+i] += 1 * qdot;
+        wdot[2*npt+i] += 1 * qdot;
+    }
 }
 
 
 /*compute the progress rate for each reaction */
-void progressRate(double * qdot, double * sc, double T)
+void progressRate(double * restrict  qdot, double * restrict  sc, double T)
 {
 
     int id; /*loop counter */
@@ -3806,7 +3803,7 @@ void progressRate(double * qdot, double * sc, double T)
 
 
 /*compute the progress rate for each reaction */
-void progressRateFR(double * q_f, double * q_r, double * sc, double T)
+void progressRateFR(double * restrict  q_f, double * restrict  q_r, double * restrict  sc, double T)
 {
 
     int id; /*loop counter */
@@ -4113,7 +4110,7 @@ void progressRateFR(double * q_f, double * q_r, double * sc, double T)
 
 
 /*compute the equilibrium constants for each reaction */
-void equilibriumConstants(double *kc, double * g_RT, double T)
+void equilibriumConstants(double * restrict kc, double * restrict  g_RT, double T)
 {
     /*reference concentration: P_atm / (RT) in inverse mol/m^3 */
     double refC = 101325 / 8.31451 / T;
@@ -4187,7 +4184,7 @@ void equilibriumConstants(double *kc, double * g_RT, double T)
 
 /*compute the g/(RT) at the given temperature */
 /*tc contains precomputed powers of T, tc[0] = log(T) */
-void gibbs(double * species, double * tc)
+void gibbs(double * restrict  species, double * restrict  tc)
 {
 
     /*temperature */
@@ -4365,7 +4362,7 @@ void gibbs(double * species, double * tc)
 
 /*compute the a/(RT) at the given temperature */
 /*tc contains precomputed powers of T, tc[0] = log(T) */
-void helmholtz(double * species, double * tc)
+void helmholtz(double * restrict  species, double * restrict  tc)
 {
 
     /*temperature */
@@ -4543,7 +4540,7 @@ void helmholtz(double * species, double * tc)
 
 /*compute Cv/R at the given temperature */
 /*tc contains precomputed powers of T, tc[0] = log(T) */
-void cv_R(double * species, double * tc)
+void cv_R(double * restrict  species, double * restrict  tc)
 {
 
     /*temperature */
@@ -4685,7 +4682,7 @@ void cv_R(double * species, double * tc)
 
 /*compute Cp/R at the given temperature */
 /*tc contains precomputed powers of T, tc[0] = log(T) */
-void cp_R(double * species, double * tc)
+void cp_R(double * restrict  species, double * restrict  tc)
 {
 
     /*temperature */
@@ -4827,7 +4824,7 @@ void cp_R(double * species, double * tc)
 
 /*compute the e/(RT) at the given temperature */
 /*tc contains precomputed powers of T, tc[0] = log(T) */
-void speciesInternalEnergy(double * species, double * tc)
+void speciesInternalEnergy(double * restrict  species, double * restrict  tc)
 {
 
     /*temperature */
@@ -4987,7 +4984,7 @@ void speciesInternalEnergy(double * species, double * tc)
 
 /*compute the h/(RT) at the given temperature (Eq 20) */
 /*tc contains precomputed powers of T, tc[0] = log(T) */
-void speciesEnthalpy(double * species, double * tc)
+void speciesEnthalpy(double * restrict  species, double * restrict  tc)
 {
 
     /*temperature */
@@ -5147,7 +5144,7 @@ void speciesEnthalpy(double * species, double * tc)
 
 /*compute the S/R at the given temperature (Eq 21) */
 /*tc contains precomputed powers of T, tc[0] = log(T) */
-void speciesEntropy(double * species, double * tc)
+void speciesEntropy(double * restrict  species, double * restrict  tc)
 {
 
     /*temperature */
@@ -5306,7 +5303,7 @@ void speciesEntropy(double * species, double * tc)
 
 
 /*save molecular weights into array */
-void molecularWeight(double * wt)
+void molecularWeight(double * restrict  wt)
 {
     wt[0] = 2.015940; /*H2 */
     wt[1] = 31.998800; /*O2 */
@@ -5323,7 +5320,7 @@ void molecularWeight(double * wt)
 
 
 /*get temperature given internal energy in mass units and mass fracs */
-void get_t_given_ey_(double * e, double * y, int * iwrk, double * rwrk, double * t, int * ierr)
+void get_t_given_ey_(double * restrict  e, double * restrict  y, int * iwrk, double * restrict  rwrk, double * restrict  t, int * ierr)
 {
 #ifdef CONVERGENCE
     const int maxiter = 5000;
@@ -5374,7 +5371,7 @@ void get_t_given_ey_(double * e, double * y, int * iwrk, double * rwrk, double *
 
 
 /*convert phi[species] (specific mole nums) to y[species] (mass fracs) */
-void fephity_(double * phi, int * iwrk, double * rwrk, double * y)
+void fephity_(double * restrict  phi, int * iwrk, double * restrict  rwrk, double * restrict  y)
 {
     double XW  = 0; 
     int id; /*loop counter */
@@ -5397,7 +5394,7 @@ void fephity_(double * phi, int * iwrk, double * rwrk, double * y)
 
 
 /*convert y[species] (mass fracs) to phi[species] (specific mole num) */
-void feytphi_(double * y, int * iwrk, double * rwrk, double * phi)
+void feytphi_(double * restrict  y, int * iwrk, double * restrict  rwrk, double * restrict  phi)
 {
     phi[0] = y[0]/ 2.01594000e-03; /*H2 (wt in kg) */
     phi[1] = y[1]/ 3.19988000e-02; /*O2 (wt in kg) */
@@ -5414,7 +5411,7 @@ void feytphi_(double * y, int * iwrk, double * rwrk, double * phi)
 
 
 /*reverse of ytcr, useful for rate computations */
-void fectyr_(double * c, double * rho, int * iwrk, double * rwrk, double * y)
+void fectyr_(double * restrict  c, double * restrict  rho, int * iwrk, double * restrict  rwrk, double * restrict  y)
 {
     y[0] = c[0] * 2.015940 / (*rho); 
     y[1] = c[1] * 31.998800 / (*rho); 
@@ -5433,7 +5430,7 @@ void fectyr_(double * c, double * rho, int * iwrk, double * rwrk, double * y)
 /*ddebdf compatible right hand side of CV burner */
 /*rwrk[0] and rwrk[1] should contain rho and ene respectively */
 /*working variable phi contains specific mole numbers */
-void fecvrhs_(double * time, double * phi, double * phidot, double * rwrk, int * iwrk)
+void fecvrhs_(double * restrict  time, double * restrict  phi, double * restrict  phidot, double * restrict  rwrk, int * iwrk)
 {
     double rho,ene; /*CV Parameters */
     double y[9], wdot[9]; /*temporary storage */
@@ -5464,14 +5461,14 @@ int fecvdim_()
 /*rwrk[1] : preshock density (g/cc)  */
 /*rwrk[2] : detonation velocity (cm/s)  */
 /*solution vector: [P; rho; y0 ... ylast]  */
-void fezndrhs_(double * time, double * z, double * zdot, double * rwrk, int * iwrk)
+void fezndrhs_(double * restrict  time, double * restrict  z, double * restrict  zdot, double * restrict  rwrk, int * iwrk)
 {
     double psc,rho1,udet; /*ZND Parameters */
     double wt[9], hms[9], wdot[9]; /*temporary storage */
     int i; /*Loop counter */
     /*temporary variables */
     double ru, T, uvel, wtm, p, rho, gam, son, xm, sum, drdy, eta, cp, cv ;
-    double *y; /*mass frac pointer */
+    double * y; /*mass frac pointer */
 
     ru = 8.31451e+07;
 
