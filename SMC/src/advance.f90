@@ -561,7 +561,7 @@ contains
     ! Calculate primitive variables based on U
     !
     call build(bpt_ctoprim, "ctoprim")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
-    rYt_only = .not. inc_ad
+    rYt_only = .not. (inc_ad .or. update_courno)
     call ctoprim(U, Q, ng_ctoprim, rYT_only=rYt_only)
     call destroy(bpt_ctoprim)            !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
 
