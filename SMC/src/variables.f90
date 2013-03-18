@@ -91,14 +91,15 @@ contains
   !
   ! Convert conserved variables U to primitive variables Q
   !
-  subroutine ctoprim(U, Q, ng, ghostcells_only)
+  subroutine ctoprim(U, Q, ng, ghostcells_only, ryt_only)
     use smc_bc_module, only : get_data_lo_hi
     type(multifab), intent(in   ) :: U
     type(multifab), intent(inout) :: Q
     integer, optional, intent(in) :: ng
     logical, optional, intent(in) :: ghostcells_only
+    logical, optional, intent(in) :: ryt_only
 
-    logical :: lgco
+    logical :: lgco, lryto
     integer :: ngu, ngq, ngto
     integer :: n, lo(U%dim), hi(U%dim), dlo(U%dim), dhi(U%dim)
     double precision, pointer, dimension(:,:,:,:) :: up, qp
@@ -117,6 +118,11 @@ contains
        lgco = .true.
     end if
 
+    lryto = .false.
+    if (present(ryt_only)) then
+       lryto = .true.
+    end if
+
     do n=1,nfabs(Q)
        up => dataptr(U,n)
        qp => dataptr(Q,n)
@@ -129,14 +135,15 @@ contains
        if (U%dim .eq. 2) then
           call bl_error("2D not supported in variables::ctoprim")
        else
-          call ctoprim_3d(lo,hi,up,qp,ngu,ngq,ngto,dlo,dhi,lgco)
+          call ctoprim_3d(lo,hi,up,qp,ngu,ngq,ngto,dlo,dhi,lgco, lryto)
        end if
     end do
 
   end subroutine ctoprim
 
-  subroutine ctoprim_3d(lo, hi, u, q, ngu, ngq, ngto, dlo, dhi, gco)
+  subroutine ctoprim_3d(lo, hi, u, q, ngu, ngq, ngto, dlo, dhi, gco, ryto)
     logical, intent(in) :: gco  ! ghost cells only?
+    logical, intent(in) :: ryto ! compute rho, Y and T only?
     integer, intent(in) :: lo(3), hi(3), ngu, ngq, ngto, dlo(3), dhi(3)
     double precision, intent(in ) :: u(lo(1)-ngu:hi(1)+ngu,lo(2)-ngu:hi(2)+ngu,lo(3)-ngu:hi(3)+ngu,ncons)
     double precision, intent(out) :: q(lo(1)-ngq:hi(1)+ngq,lo(2)-ngq:hi(2)+ngq,lo(3)-ngq:hi(3)+ngq,nprim)
@@ -177,18 +184,20 @@ contains
                 q(i,j,k,qy1+n-1) = Y(n)
              end do
 
-             call ckytx(Y, iwrk, rwrk, X)
-
-             do n=1,nspecies
-                q(i,j,k,qx1+n-1) = X(n)
-             end do
-
              ei = rhoinv*u(i,j,k,iene) - 0.5d0*(q(i,j,k,qu)**2+q(i,j,k,qv)**2+q(i,j,k,qw)**2)
              q(i,j,k,qe) = ei
 
              Tt = q(i,j,k,qtemp)
              call get_t_given_ey(ei, Y, iwrk, rwrk, Tt, ierr)
              q(i,j,k,qtemp) = Tt
+
+             if (ryto) cycle
+
+             call ckytx(Y, iwrk, rwrk, X)
+
+             do n=1,nspecies
+                q(i,j,k,qx1+n-1) = X(n)
+             end do
 
              call CKPY(rho, Tt, Y, iwrk, rwrk, Pt)
              q(i,j,k,qpres) = Pt

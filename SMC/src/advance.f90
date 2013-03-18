@@ -510,7 +510,7 @@ contains
 
     type(mf_fb_data) :: U_fb_data
 
-    logical :: inc_ad, inc_r
+    logical :: inc_ad, inc_r, rYt_only
 
     integer :: qlo(4), qhi(4), uplo(4), uphi(4), ulo(4), uhi(4), flo(4), fhi(4)
     double precision, pointer, dimension(:,:,:,:) :: up, qp, mup, xip, lamp, Ddp, upp, fp
@@ -561,7 +561,8 @@ contains
     ! Calculate primitive variables based on U
     !
     call build(bpt_ctoprim, "ctoprim")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
-    call ctoprim(U, Q, ng_ctoprim)
+    rYt_only = .not. inc_ad
+    call ctoprim(U, Q, ng_ctoprim, rYT_only=rYt_only)
     call destroy(bpt_ctoprim)            !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
 
     if (inc_ad .and. overlap_comm_comp) then
