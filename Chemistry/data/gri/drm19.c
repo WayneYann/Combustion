@@ -6425,7 +6425,7 @@ void vproductionRate(int npt, double * restrict wdot, double * restrict sc, doub
     double tc[5*npt], invT[npt];
 
 #ifdef __INTEL_COMPILER
-    #pragma nounroll
+     #pragma simd
 #endif
     for (int i=0; i<npt; i++) {
         tc[0*npt+i] = log(T[i]);
@@ -6437,7 +6437,7 @@ void vproductionRate(int npt, double * restrict wdot, double * restrict sc, doub
     }
 
 #ifdef __INTEL_COMPILER
-    #pragma nounroll
+    #pragma simd
 #endif
     for (int i=0; i<npt; i++) {
         k_f_s[0][i] = 1e-12 * 5e+17*exp(-1*tc[i]);
@@ -6561,7 +6561,7 @@ void vproductionRate(int npt, double * restrict wdot, double * restrict sc, doub
     }
 
 #ifdef __INTEL_COMPILER
-    #pragma nounroll
+    #pragma simd
 #endif
     for (int i=0; i<npt; i++) {
         /*reference concentration: P_atm / (RT) in inverse mol/m^3 */
@@ -6665,7 +6665,7 @@ void vproductionRate(int npt, double * restrict wdot, double * restrict sc, doub
     }
 
 #ifdef __INTEL_COMPILER
-    #pragma nounroll
+    #pragma simd
 #endif
     for (int i=0; i<npt; i++) {
         double qdot, q_f, q_r, phi_f, phi_r, k_f, k_r, Kc;
