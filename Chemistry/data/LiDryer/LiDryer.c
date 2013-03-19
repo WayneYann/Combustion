@@ -334,10 +334,10 @@ char* fesymname_(int sn);
 int fesymnum_(const char* s1);
 
 /* vector version */
-void vproductionRate(int npt, double * restrict  restrict wdot, double * restrict  restrict c, double * restrict  restrict T);
-void VCKWYR(int * restrict np, double * restrict  restrict rho, double * restrict  restrict T, 
-	    double * restrict  restrict y, int * restrict iwrk, double * restrict  restrict rwrk, 
-	    double * restrict  restrict wdot);
+void vproductionRate(int npt, double * restrict wdot, double * restrict c, double * restrict T);
+void VCKWYR(int * restrict np, double * restrict rho, double * restrict T, 
+	    double * restrict y, int * restrict iwrk, double * restrict rwrk, 
+	    double * restrict wdot);
 
 
 /*
