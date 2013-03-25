@@ -60,7 +60,7 @@
      $                  init_shrink, flame_offset,
      $                  fancy_predictor, dpdt_factor, 
      $                  Patm, coef_avg_harm, initial_S_type, 
-     $                  recompute_S,
+     $                  recompute_S, probtype,
      $                  misdc_iterMAX,
      $                  do_initial_projection, num_divu_iters, 
      $                  num_init_iters,fixed_dt,
@@ -110,10 +110,17 @@ c     Set defaults, change with namelist
       divu_dt_factor    = 0.4d0
       rho_divu_ceiling  = 0.01
       unlim = 0
+      probtype = 1
 
       open(9,file='probin',form='formatted',status='old')
       read(9,fortin)
       close(unit=9)
+
+      if (probtype.ne.1 .and. probtype.ne.2) then
+         print *,'Unknown probtype:',probtype,'  Must be 1 or 2' 
+         stop
+      endif
+
       write(*,fortin)
 
 c     number of cells at finest level
@@ -326,6 +333,8 @@ c     return zero pressure
          endif
          do init_iter=1,num_init_iters
 
+            doing_init_iters = 1
+
             print *,' '
             print *,'INITIAL PRESSURE ITERATION ',init_iter
 
@@ -351,6 +360,8 @@ c     update pressure and I_R
 
          enddo
 
+         doing_init_iters = 0
+
          call write_plt(vel_old,scal_old,press_old,divu_old,I_R,
      &                  dx,0,time,lo,hi,bc)
 
@@ -365,6 +376,11 @@ c     update pressure and I_R
      $        e15.9,' with dt = ',e15.9)
 
       endif
+
+      call write_plt(vel_new,scal_new,press_new,divu_new,I_R,
+     $     dx,nsteps_taken,time,lo,hi,bc)
+      call write_check(nsteps_taken,vel_new,scal_new,press_new,
+     $     I_R,divu_new,dSdt,dx,time,dt,lo,hi)
 
 C-- Now advance 
       do nsteps_taken = at_nstep, nsteps

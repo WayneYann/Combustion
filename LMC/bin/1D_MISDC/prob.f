@@ -63,7 +63,7 @@ c----------------------------------------------------------------------
 
       double precision  x, rho, Y(Nspec), T, h
       double precision xPMFlo, xPMFhi
-      double precision valsPMF(Nspec+3), RWRK, sum
+      double precision valsPMF(Nspec+3), RWRK, sum, sigma, cent
       integer i, n, l, nPMF, IWRK
 
       do l=0,nlevs-1
@@ -71,9 +71,24 @@ c----------------------------------------------------------------------
          do i=lo(l),hi(l)
             x = (dble(i)+0.5d0)*dx(l)
 
-            xPMFlo = x - flame_offset - 0.5*dx(l)
-            xPMFhi = x - flame_offset + 0.5*dx(l)
-            call pmf(xPMFlo,xPMFhi,valsPMF,nPMF)
+            if (probtype.eq.1) then
+               xPMFlo = x - flame_offset - 0.5*dx(l)
+               xPMFhi = x - flame_offset + 0.5*dx(l)
+               call pmf(xPMFlo,xPMFhi,valsPMF,nPMF)
+            else if (probtype.eq.2) then
+               sigma = 0.0451d0
+               cent = 0.d0
+               valsPMF(1) = 5.d2 + 1.d3*dexp(-(x-cent)**2/(2.d0*sigma**2))
+               valsPMF(2) = 0.d0
+               do n=1,Nspec
+                  valsPMF(3+n) = 0.d0
+                  if (n.eq.iCH3OCH3) valsPMF(3+n) = .0374d0
+                  if (n.eq.iCO2)     valsPMF(3+n) = .0522d0
+                  if (n.eq.iO2)      valsPMF(3+n) = .1128d0
+                  if (n.eq.iN2)      valsPMF(3+n) = .7192d0
+                  if (n.eq.iH2O)     valsPMF(3+n) = .0784d0
+               enddo
+            endif
 
             call CKXTY(valsPMF(4),IWRK,RWRK,Y)
             T = valsPMF(1)
@@ -100,6 +115,7 @@ c----------------------------------------------------------------------
             else
                hmix_TYP = MAX(hmix_TYP,ABS(h))
             endif
+
          enddo
 
       enddo
@@ -134,20 +150,34 @@ c----------------------------------------------------------------------
       integer n, is, HorL
       double precision u, rho, Y(Nspec), T, hmix
 
-      if (bc(1) .eq. 1) then
+      if (probtype.eq.1) then
+         if (bc(1) .eq. 1) then
 c     lo:  Dirichlet values for rho, Y, T, h
-         HorL = on_lo
-         call bcfunction(HorL, u, rho, Y, T, hmix)
+            HorL = on_lo
+            call bcfunction(HorL, u, rho, Y, T, hmix)
 
-         scal(lo-2:lo-1,Density) = rho
-         scal(lo-2:lo-1,Temp) = T
+            scal(lo-2:lo-1,Density) = rho
+            scal(lo-2:lo-1,Temp) = T
+            do n=1,Nspec
+               is = FirstSpec + n - 1 
+               scal(lo-2:lo-1,is) = Y(n) * rho
+            enddo
+            scal(lo-2:lo-1,RhoH) = hmix * rho
+         end if
+      else if (probtype.eq.2) then
+c     lo:  Neumann for all 
+         scal(lo-2:lo-1,Density) = scal(lo,Density)
+         scal(lo-2:lo-1,Temp) = scal(lo,Temp)
          do n=1,Nspec
             is = FirstSpec + n - 1 
-            scal(lo-2:lo-1,is) = Y(n) * rho
+            scal(lo-2:lo-1,is) = scal(lo,is)
          enddo
-         scal(lo-2:lo-1,RhoH) = hmix * rho
-      end if
-      
+         scal(lo-2:lo-1,RhoH) = scal(lo,RhoH)
+      else
+         print *,'Unknown probtype',probtype
+         stop
+      endif
+
       if (bc(2) .eq. 2) then
 c     hi:  Neumann for all 
          scal(hi+1:hi+2,Density) = scal(hi,Density)
