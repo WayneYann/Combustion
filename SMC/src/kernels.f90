@@ -2813,7 +2813,7 @@ contains
 
              gradptmp = dxinv(1) * first_deriv_4(q(i-2:i+2,j,k,qpres))
 
-             sumryv = 0.d0
+             sumryvtmp = 0.d0
              do n = 1, nspecies
                 if (n.eq.iias) cycle
                 qxn = qx1+n-1
@@ -2894,7 +2894,7 @@ contains
 
              gradptmp = dxinv(1) * first_deriv_6(q(i-3:i+3,j,k,qpres))
 
-             sumryv = 0.d0
+             sumryvtmp = 0.d0
              do n = 1, nspecies
                 if (n.eq.iias) cycle
                 qxn = qx1+n-1
@@ -2985,7 +2985,7 @@ contains
 
              gradptmp = dxinv(1) * first_deriv_6(q(i-3:i+3,j,k,qpres))
 
-             sumryv = 0.d0
+             sumryvtmp = 0.d0
              do n = 1, nspecies
                 if (n.eq.iias) cycle
                 qxn = qx1+n-1
@@ -3067,7 +3067,7 @@ contains
 
              gradptmp = dxinv(1) * first_deriv_4(q(i-2:i+2,j,k,qpres))
 
-             sumryv = 0.d0
+             sumryvtmp = 0.d0
              do n = 1, nspecies
                 if (n.eq.iias) cycle
                 qxn = qx1+n-1
@@ -3353,7 +3353,7 @@ contains
 
              gradptmp = dxinv(2) * first_deriv_4(q(i,j-2:j+2,k,qpres))
 
-             sumryv = 0.d0
+             sumryvtmp = 0.d0
              do n = 1, nspecies
                 if (n.eq.iias) cycle
                 qxn = qx1+n-1
@@ -3436,7 +3436,7 @@ contains
 
              gradptmp = dxinv(2) * first_deriv_6(q(i,j-3:j+3,k,qpres))
 
-             sumryv = 0.d0
+             sumryvtmp = 0.d0
              do n = 1, nspecies
                 if (n.eq.iias) cycle
                 qxn = qx1+n-1
@@ -3526,7 +3526,7 @@ contains
 
              gradptmp = dxinv(2) * first_deriv_6(q(i,j-3:j+3,k,qpres))
 
-             sumryv = 0.d0
+             sumryvtmp = 0.d0
              do n = 1, nspecies
                 if (n.eq.iias) cycle
                 qxn = qx1+n-1
@@ -3610,7 +3610,7 @@ contains
 
              gradptmp = dxinv(2) * first_deriv_4(q(i,j-2:j+2,k,qpres))
 
-             sumryv = 0.d0
+             sumryvtmp = 0.d0
              do n = 1, nspecies
                 if (n.eq.iias) cycle
                 qxn = qx1+n-1
@@ -3906,7 +3906,7 @@ contains
 
              gradptmp = dxinv(3) * first_deriv_4(q(i,j,k-2:k+2,qpres))
 
-             sumryv = 0.d0
+             sumryvtmp = 0.d0
              do n = 1, nspecies
                 if (n.eq.iias) cycle
                 qxn = qx1+n-1
@@ -3991,7 +3991,7 @@ contains
 
              gradptmp = dxinv(3) * first_deriv_6(q(i,j,k-3:k+3,qpres))
 
-             sumryv = 0.d0
+             sumryvtmp = 0.d0
              do n = 1, nspecies
                 if (n.eq.iias) cycle
                 qxn = qx1+n-1
@@ -4081,7 +4081,7 @@ contains
 
              gradptmp = dxinv(3) * first_deriv_6(q(i,j,k-3:k+3,qpres))
 
-             sumryv = 0.d0
+             sumryvtmp = 0.d0
              do n = 1, nspecies
                 if (n.eq.iias) cycle
                 qxn = qx1+n-1
@@ -4167,7 +4167,7 @@ contains
 
              gradptmp = dxinv(3) * first_deriv_4(q(i,j,k-2:k+2,qpres))
 
-             sumryv = 0.d0
+             sumryvtmp = 0.d0
              do n = 1, nspecies
                 if (n.eq.iias) cycle
                 qxn = qx1+n-1

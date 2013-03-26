@@ -351,17 +351,29 @@ contains
     double precision, intent(out) :: odot(-ngo+lo(1):hi(1)+ngo,-ngo+lo(2):hi(2)+ngo,-ngo+lo(3):hi(3)+ngo,nspecies)
     double precision, intent(in ) ::    Q(-ngq+lo(1):hi(1)+ngq,-ngq+lo(2):hi(2)+ngq,-ngq+lo(3):hi(3)+ngq,nprim)
 
-    integer :: i,j,k,iwrk
-    double precision :: rwrk, wdot(nspecies), Xt(nspecies)
+    integer :: i,j,k,n,np,iwrk
+    double precision :: Yt(lo(1):hi(1),nspecies), wdot(lo(1):hi(1),nspecies), rwrk
 
-    !$omp parallel do private(i,j,k,iwrk,rwrk,wdot,Xt)
+    np = hi(1) - lo(1) + 1
+
+    !$omp parallel do private(i,j,k,n,iwrk,rwrk,wdot,Yt)
     do k=lo(3),hi(3)
        do j=lo(2),hi(2)
-          do i=lo(1),hi(1)
-             Xt(:) = q(i,j,k,qx1:qx1+nspecies-1)
-             call ckwxr(q(i,j,k,qrho), q(i,j,k,qtemp), Xt, iwrk, rwrk, wdot)
-             odot(i,j,k,:) = wdot * molecular_weight
-          enddo
+
+          do n=1, nspecies
+             do i=lo(1),hi(1)
+                Yt(i,n) = q(i,j,k,qy1+n-1)
+             end do
+          end do
+          
+          call vckwyr(np, q(lo(1),j,k,qrho), q(lo(1),j,k,qtemp), Yt, iwrk, rwrk, wdot)
+
+          do n=1, nspecies
+             do i=lo(1),hi(1)
+                odot(i,j,k,n) = wdot(i,n) * molecular_weight(n)
+             end do
+          end do
+
        enddo
     enddo
     !$omp end parallel do
