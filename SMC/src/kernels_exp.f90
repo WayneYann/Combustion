@@ -4606,7 +4606,7 @@ contains
                 ( D4(1)*(q(i+1,j,k,qpres)-q(i-1,j,k,qpres)) &
                 + D4(2)*(q(i+2,j,k,qpres)-q(i-2,j,k,qpres)) )
 
-             sumryv = 0.d0
+             sumryvtmp = 0.d0
              do n = 1, nspecies
                 if (n.eq.iias) cycle
                 qxn = qx1+n-1
@@ -4883,7 +4883,7 @@ contains
                 + D6(2)*(q(i+2,j,k,qpres)-q(i-2,j,k,qpres)) &
                 + D6(3)*(q(i+3,j,k,qpres)-q(i-3,j,k,qpres)) )
 
-             sumryv = 0.d0
+             sumryvtmp = 0.d0
              do n = 1, nspecies
                 if (n.eq.iias) cycle
                 qxn = qx1+n-1
@@ -5174,7 +5174,7 @@ contains
                 + D6(2)*(q(i+2,j,k,qpres)-q(i-2,j,k,qpres)) &
                 + D6(3)*(q(i+3,j,k,qpres)-q(i-3,j,k,qpres)) )
 
-             sumryv = 0.d0
+             sumryvtmp = 0.d0
              do n = 1, nspecies
                 if (n.eq.iias) cycle
                 qxn = qx1+n-1
@@ -5367,7 +5367,7 @@ contains
                 ( D4(1)*(q(i+1,j,k,qpres)-q(i-1,j,k,qpres)) &
                 + D4(2)*(q(i+2,j,k,qpres)-q(i-2,j,k,qpres)) )
 
-             sumryv = 0.d0
+             sumryvtmp = 0.d0
              do n = 1, nspecies
                 if (n.eq.iias) cycle
                 qxn = qx1+n-1
@@ -5832,7 +5832,7 @@ contains
                 ( D4(1)*(q(i,j+1,k,qpres)-q(i,j-1,k,qpres)) &
                 + D4(2)*(q(i,j+2,k,qpres)-q(i,j-2,k,qpres)) )
 
-             sumryv = 0.d0
+             sumryvtmp = 0.d0
              do n = 1, nspecies
                 if (n.eq.iias) cycle
                 qxn = qx1+n-1
@@ -6111,7 +6111,7 @@ contains
                 + D6(2)*(q(i,j+2,k,qpres)-q(i,j-2,k,qpres)) &
                 + D6(3)*(q(i,j+3,k,qpres)-q(i,j-3,k,qpres)) )
 
-             sumryv = 0.d0
+             sumryvtmp = 0.d0
              do n = 1, nspecies
                 if (n.eq.iias) cycle
                 qxn = qx1+n-1
@@ -6401,7 +6401,7 @@ contains
                 + D6(2)*(q(i,j+2,k,qpres)-q(i,j-2,k,qpres)) &
                 + D6(3)*(q(i,j+3,k,qpres)-q(i,j-3,k,qpres)) )
 
-             sumryv = 0.d0
+             sumryvtmp = 0.d0
              do n = 1, nspecies
                 if (n.eq.iias) cycle
                 qxn = qx1+n-1
@@ -6596,7 +6596,7 @@ contains
                 ( D4(1)*(q(i,j+1,k,qpres)-q(i,j-1,k,qpres)) &
                 + D4(2)*(q(i,j+2,k,qpres)-q(i,j-2,k,qpres)) )
 
-             sumryv = 0.d0
+             sumryvtmp = 0.d0
              do n = 1, nspecies
                 if (n.eq.iias) cycle
                 qxn = qx1+n-1
@@ -7071,7 +7071,7 @@ contains
                 ( D4(1)*(q(i,j,k+1,qpres)-q(i,j,k-1,qpres)) &
                 + D4(2)*(q(i,j,k+2,qpres)-q(i,j,k-2,qpres)) )
 
-             sumryv = 0.d0
+             sumryvtmp = 0.d0
              do n = 1, nspecies
                 if (n.eq.iias) cycle
                 qxn = qx1+n-1
@@ -7352,7 +7352,7 @@ contains
                 + D6(2)*(q(i,j,k+2,qpres)-q(i,j,k-2,qpres)) &
                 + D6(3)*(q(i,j,k+3,qpres)-q(i,j,k-3,qpres)) )
 
-             sumryv = 0.d0
+             sumryvtmp = 0.d0
              do n = 1, nspecies
                 if (n.eq.iias) cycle
                 qxn = qx1+n-1
@@ -7642,7 +7642,7 @@ contains
                 + D6(2)*(q(i,j,k+2,qpres)-q(i,j,k-2,qpres)) &
                 + D6(3)*(q(i,j,k+3,qpres)-q(i,j,k-3,qpres)) )
 
-             sumryv = 0.d0
+             sumryvtmp = 0.d0
              do n = 1, nspecies
                 if (n.eq.iias) cycle
                 qxn = qx1+n-1
@@ -7839,7 +7839,7 @@ contains
                 ( D4(1)*(q(i,j,k+1,qpres)-q(i,j,k-1,qpres)) &
                 + D4(2)*(q(i,j,k+2,qpres)-q(i,j,k-2,qpres)) )
 
-             sumryv = 0.d0
+             sumryvtmp = 0.d0
              do n = 1, nspecies
                 if (n.eq.iias) cycle
                 qxn = qx1+n-1
