@@ -1,5 +1,5 @@
  &fortin
-  probtype = 'diffusion_two-stream'
+  probtype = 'dme_diffusion'
 
   V_in = 51.2
 
