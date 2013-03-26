@@ -42,7 +42,6 @@ VERBOSE         = FALSE
 CHEMISTRY_MODEL = LIDRYER
 fEXE_sources += LiDryer_040_01ATM.f
 
-EBASE = amr
 Blocs   := .
 
 CEXE_sources +=

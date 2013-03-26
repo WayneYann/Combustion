@@ -15,7 +15,6 @@ FCOMP          = Intel
 USE_MPI        = TRUE
 USE_MPI        = FALSE
 BUILD_IN_PLACE = TRUE
-EBASE          = amr
 PMFDIR         = ../PMFfiles
 USE_FLCTS      = FALSE
 #

@@ -34,7 +34,6 @@ USE_TDEPFORCING = TRUE
 CHEMISTRY_MODEL = CHEMH
 fEXE_sources += H-flame_0370.f
 
-EBASE = amr
 Blocs   := .
 
 CEXE_sources +=

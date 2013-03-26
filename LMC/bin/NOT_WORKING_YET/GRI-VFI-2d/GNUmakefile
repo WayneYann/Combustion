@@ -16,7 +16,6 @@ COMP              = Intel
 FCOMP             = Intel
 RUNDIR            = run
 BUILD_IN_PLACE    = TRUE
-EBASE             = amr
 USE_HGPROJ_SERIAL = FALSE
 HGDEBUG           = FALSE
 USE_FLCTS         = TRUE

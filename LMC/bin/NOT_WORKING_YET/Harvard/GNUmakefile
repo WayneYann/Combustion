@@ -7,7 +7,6 @@ COMP           = Intel
 FCOMP          = Intel
 USE_RAD        = FALSE
 BUILD_IN_PLACE = TRUE
-EBASE          = amr
 USE_HGPROJ_SERIAL = FALSE
 USE_MPI           = FALSE
 USE_MPI           = TRUE

@@ -15,7 +15,6 @@ DIM    	          = 2
 FCOMP             = gfortran
 COMP              = g++
 BUILD_IN_PLACE    = TRUE
-EBASE             = main
 HGDEBUG           = TRUE
 HGDEBUG           = FALSE
 USE_FLCTS         = TRUE

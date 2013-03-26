@@ -49,7 +49,6 @@ fEXE_sources += LuDME_0700.f
 #CHEMISTRY_MODEL = GRI30
 #fEXE_sources += gri30_070.f
 
-EBASE = amr
 Blocs   := .
 
 CEXE_sources +=

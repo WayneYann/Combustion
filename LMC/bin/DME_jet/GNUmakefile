@@ -40,7 +40,6 @@ USE_TDEPFORCING = FALSE
 CHEMISTRY_MODEL = LUDME
 fEXE_sources += LuDME_0700.f
 
-EBASE = amr
 Blocs   := .
 
 CEXE_sources +=

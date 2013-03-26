@@ -40,7 +40,6 @@ USE_TDEPFORCING = FALSE
 CHEMISTRY_MODEL = LIDRYERMOD
 fEXE_sources += LiDryer_040_01ATM.f
 
-EBASE = amr
 Blocs   := .
 
 CEXE_sources +=

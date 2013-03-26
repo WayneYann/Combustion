@@ -10,7 +10,6 @@ PROFILE           = FALSE
 DIM    	          = 2
 COMP              = g++
 BUILD_IN_PLACE    = TRUE
-EBASE             = shep
 PRVERSION         = v5
 USE_HGPROJ_SERIAL = FALSE
 USE_MPI           = TRUE

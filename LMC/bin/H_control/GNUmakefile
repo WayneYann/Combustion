@@ -39,7 +39,6 @@ fEXE_sources += drm19Soln_seed_0.125.f
 #CHEMISTRY_MODEL = CHEMH
 #fEXE_sources += chemHSoln_seed_0.00.f
 
-EBASE = amr
 Blocs   := .
 
 CEXE_sources +=
