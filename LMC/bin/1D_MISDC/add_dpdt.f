@@ -28,7 +28,7 @@
          endif
          ugradp = uadv * (p_hi - p_lo) / dx 
          dpdt = (pthermo(i) - Pcgs) / dt
-         dpdt = dpdt - ugradp        
+ !        dpdt = dpdt - ugradp
 
          divu(i) = divu(i) + dpdt*dpdt_factor/pthermo(i)
       end do
@@ -75,8 +75,7 @@
 
          ugradp = uadv * (p_hi - p_lo) / dx 
          dpdt = (pthermo(i) - Pcgs) / dt
-         dpdt = dpdt - ugradp
-
+!         dpdt = dpdt - ugradp
          divu(i) = divu(i) + dpdt*dpdt_factor/pthermo(i)
       end do
       

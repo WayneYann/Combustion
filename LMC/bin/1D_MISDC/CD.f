@@ -62,7 +62,7 @@ c           compute flux diffusion coefficients
 
             do n=1,Nspec
                beta(i,FirstSpec+n-1)
-     &              = scal(i,Density) * Wavg * invmwt(n) * Dt(n)
+     &              = rho * Wavg * invmwt(n) * Dt(n)
             end do
 
             alpha = 1.0D0
@@ -80,7 +80,6 @@ c           compute shear viscosity
             CALL EGSE3(Tt, Y, EGRWRK, mu(i))            
             mu(i) = fourThirds*mu(i)
          enddo
-
       else
          do i=lo-1,hi+1
 c     Kanuary, Combustion Phenomena (Wiley, New York) 1982:  mu [g/(cm.s)] = 10 mu[kg/(m.s)]
@@ -139,6 +138,9 @@ c     Other useful things
             if (specNames(n).eq.'O2')  iO2=n
             if (specNames(n).eq.'N2')  iN2=n
             if (specNames(n).eq.'CH4') iCH4=n
+            if (specNames(n).eq.'CH3OCH3') iCH3OCH3=n
+            if (specNames(n).eq.'CO2') iCO2=n
+            if (specNames(n).eq.'H2O') iH2O=n
          enddo
          traninit = 1
       endif
@@ -464,7 +466,7 @@ C-----------------------------------------------------------------------
       subroutine vodeF_T_RhoY(NEQ, TIME, Z, ZP, RPAR, IPAR)
       implicit none
       include 'spec.h'
-      double precision TIME, Z(0:Nspec+1), ZP(0:Nspec), RPAR(*)
+      double precision TIME, Z(0:Nspec), ZP(0:Nspec), RPAR(*)
       integer NEQ, IPAR(*)
       
       double precision RHO, CPB, SUM, Y(Nspec)
@@ -561,7 +563,6 @@ C     calculate molar concentrations from mass fractions; result in RPAR(NC)
             ZP(K) = ZP(K)/RHO
          enddo         
       endif  
-
       END
 
       subroutine vodeJ(NEQ, T, Y, ML, MU, PD, NRPD, RPAR, IPAR)
@@ -593,7 +594,7 @@ C     calculate molar concentrations from mass fractions; result in RPAR(NC)
       parameter (ITOL=1, IOPT=1, ITASK=1)
       double precision RTOL, ATOL(Nspec+1), ATOLEPS, TT1, TT2
 C      parameter (RTOL=1.0E-8, ATOLEPS=1.0E-8)
-      parameter (RTOL=1.0E-13, ATOLEPS=1.0E-13)
+      parameter (RTOL=1.0D-13, ATOLEPS=1.0D-13)
       external vodeF_T_RhoY, vodeJ, open_vode_failure_file
       integer n, MF, ISTATE
 
@@ -703,7 +704,10 @@ c     Always form Jacobian to start
 
          TT1save = TT1
          TT2 = TT1 + dtloc
-         
+
+c     HACK
+         FIRST = .TRUE.
+
          CALL DVODE
      &        (vodeF_T_RhoY, NEQ, Z(0), TT1, TT2, ITOL, RTOL, ATOL,
      &        ITASK, ISTATE, IOPT, DVRWRK, dvr, DVIWRK,

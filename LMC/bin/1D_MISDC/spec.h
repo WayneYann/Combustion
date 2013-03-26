@@ -8,10 +8,10 @@ c     nscal: room for rho, rhoH, Temp, RhoRT + species (rho.Y)
       parameter (maxscal = maxspec + 4)
 
       integer Nelt, Nspec, Nreac, Nfit, iH2, iO2, iCH4,
-     &     iN2, Density, Temp, RhoH, 
+     &      iCH3OCH3, iCO2, iH2O, iN2, Density, Temp, RhoH,
      &     RhoRT, FirstSpec, LastSpec, nscal
       common / speci / Nelt, Nspec, Nreac, Nfit, iH2, iO2, iCH4,
-     &     iN2, Density, Temp, RhoH, 
+     &      iCH3OCH3, iCO2, iH2O, iN2, Density, Temp, RhoH,
      &     RhoRT, FirstSpec, LastSpec, nscal
       save /speci/
 
@@ -57,14 +57,14 @@ c     DVODE driver stuff
 
 c     LMC alg stuff
       integer misdc_iterMAX,on_lo,on_hi,max_order,
-     &     divu_ceiling_flag, is_first_initial_iter,
+     &     divu_ceiling_flag, is_first_initial_iter, doing_init_iters,
      &     unlim, lim_rxns, coef_avg_harm, fancy_predictor,
-     &     initial_S_type, recompute_S
+     &     initial_S_type, recompute_S, probtype
       parameter (on_lo = 0, on_hi = 1, max_order = 3)
       common / lmci / misdc_iterMAX, divu_ceiling_flag,
-     &     is_first_initial_iter, unlim, lim_rxns,
+     &     is_first_initial_iter, doing_init_iters, unlim, lim_rxns,
      &     coef_avg_harm, fancy_predictor, 
-     &     initial_S_type, recompute_S
+     &     initial_S_type, recompute_S, probtype
       save /lmci/
 
       logical use_strang

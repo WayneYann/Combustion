@@ -351,8 +351,10 @@ c     Set up boundary functions
          area = area*(domnhi(i)-domnlo(i))
       enddo
       scale_control = Y_bc(fuelID-1,BL_FUELPIPE) * rho_bc(BL_FUELPIPE) * area
-      if (isioproc .eq. 1) write(6,*) " control setup", area, Y_bc(fuelID-1,BL_FUELPIPE), rho_bc(BL_FUELPIPE)
-      if (isioproc .eq. 1) write(6,*) " fuelpipe",BL_FUELPIPE
+      if (isioproc.eq.1) then
+         write(6,*)" control setup", area, Y_bc(fuelID-1,BL_FUELPIPE), rho_bc(BL_FUELPIPE)
+         write(6,*)" fuelpipe",BL_FUELPIPE
+      endif
 
       if (h_control .gt. zero) then
          cfix = scale_control * h_control

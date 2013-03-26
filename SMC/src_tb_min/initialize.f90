@@ -120,7 +120,7 @@ contains
     use derivative_stencil_module, only : stencil_ng
 
     type(layout),intent(inout) :: la
-    real(dp_t), intent(inout) :: dt,courno
+    real(dp_t), intent(out) :: dt,courno
     real(dp_t), pointer :: dx(:)
     type(multifab), intent(inout) :: U
 

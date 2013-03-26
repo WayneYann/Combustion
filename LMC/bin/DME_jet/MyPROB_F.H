@@ -17,7 +17,7 @@
 #include "infl_frc.H"
 #endif
 
-#define BL_PROB_JET_DIFFUSION 'diffusion_two-stream'
+#define BL_PROB_JET_DIFFUSION 'dme_diffusion'
 #define BL_PROB_PREMIXED_FIXED_INFLOW 'premixed_fixed-inflow'
 #define BL_PROB_PREMIXED_CONTROLLED_INFLOW 'premixed_controlled-inflow'
 #define BL_PROB_PREMIXED_FREE 'premixed_free'
