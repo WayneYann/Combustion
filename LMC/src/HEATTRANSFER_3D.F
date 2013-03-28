@@ -587,7 +587,7 @@ c===================================================================
       REAL_T state(DIMV(state),nc)
 
       integer i, j, k, n
-      REAL_T sum, yedge, sumRhoY
+      REAL_T sum, sumRhoY, yedge(nc)
          
 !$omp parallel private(i,j,k,n,sum,yedge,sumRhoY)
 
@@ -599,12 +599,12 @@ c===================================================================
                   sum     = zero
                   sumRhoY = zero
                   do n=1,nc
-                     sum     = sum + flux(i,j,k,n)
-                     sumRhoY = sumRhoY + half*(state(i-1,j,k,n)+state(i,j,k,n))
+                     sum      = sum + flux(i,j,k,n)
+                     yedge(n) = half*(state(i-1,j,k,n)+state(i,j,k,n))
+                     sumRhoY  = sumRhoY + yedge(n)
                   end do               
                   do n=1,nc
-                     yedge = half*(state(i-1,j,k,n)+state(i,j,k,n))
-                     flux(i,j,k,n) = flux(i,j,k,n) - sum*yedge/sumRhoY
+                     flux(i,j,k,n) = flux(i,j,k,n) - sum*yedge(n)/sumRhoY
                   end do
                end do
             end do
@@ -618,12 +618,12 @@ c===================================================================
                   sum     = zero
                   sumRhoY = zero
                   do n=1,nc
-                     sum     = sum + flux(i,j,k,n)
-                     sumRhoY = sumRhoY + half*(state(i,j-1,k,n)+state(i,j,k,n))
+                     sum      = sum + flux(i,j,k,n)
+                     yedge(n) = half*(state(i,j-1,k,n)+state(i,j,k,n))
+                     sumRhoY  = sumRhoY + yedge(n)
                   end do
                   do n=1,nc
-                     yedge = half*(state(i,j-1,k,n)+state(i,j,k,n))
-                     flux(i,j,k,n) = flux(i,j,k,n) - sum*yedge/sumRhoY
+                     flux(i,j,k,n) = flux(i,j,k,n) - sum*yedge(n)/sumRhoY
                   end do
                end do
             end do
@@ -637,12 +637,12 @@ c===================================================================
                   sum     = zero
                   sumRhoY = zero
                   do n=1,nc
-                     sum     = sum + flux(i,j,k,n)
-                     sumRhoY = sumRhoY + half*(state(i,j,k-1,n)+state(i,j,k,n))
+                     sum      = sum + flux(i,j,k,n)
+                     yedge(n) = half*(state(i,j,k-1,n)+state(i,j,k,n))
+                     sumRhoY  = sumRhoY + yedge(n)
                   end do
                   do n=1,nc
-                     yedge = half*(state(i,j,k-1,n)+state(i,j,k,n))
-                     flux(i,j,k,n) = flux(i,j,k,n) - sum*yedge/sumRhoY
+                     flux(i,j,k,n) = flux(i,j,k,n) - sum*yedge(n)/sumRhoY
                   end do
                end do
             end do
