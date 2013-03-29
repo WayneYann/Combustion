@@ -93,10 +93,9 @@ c     copies a vector, x, to a vector, y.
 c     jack dongarra, linpack, 3/11/78.
 c
       double precision dx(*),dy(*)
-      integer i,incx,incy,ix,iy,m,mp1,n
+      integer i,incx,incy,ix,iy,n
 
-      if (n.le.0) return
-      if (incx.eq.1.and.incy.eq.1) then
+      if ((incx.eq.1).and.(incy.eq.1)) then
          do i = 1,n
             dy(i) = dx(i)
          enddo
@@ -119,15 +118,14 @@ c
 c     forms the dot product of two vectors.
 c     jack dongarra, linpack, 3/11/78.
 c
-      double precision dx(*),dy(*),dtemp
-      integer i,incx,incy,ix,iy,m,mp1,n
-c
+      double precision dx(*),dy(*)
+      integer i,incx,incy,ix,iy,n
+
       vddot = 0.0d0
-      dtemp = 0.0d0
-      if (n.le.0) return
-      if (incx.eq.1.and.incy.eq.1) then
+
+      if ((incx.eq.1).and.(incy.eq.1)) then
          do i = 1,n
-            dtemp = dtemp + dx(i)*dy(i)
+            vddot = vddot + dx(i)*dy(i)
          enddo
       else
          ix = 1
@@ -135,13 +133,11 @@ c
          if (incx.lt.0) ix = (-n+1)*incx + 1
          if (incy.lt.0) iy = (-n+1)*incy + 1
          do i = 1,n
-            dtemp = dtemp + dx(ix)*dy(iy)
+            vddot = vddot + dx(ix)*dy(iy)
             ix = ix + incx
             iy = iy + incy
          enddo
       endif
-
-      vddot = dtemp
 
       end
 
@@ -149,25 +145,21 @@ c
 c
 c     scales a vector by a constant.
 c     jack dongarra, linpack, 3/11/78.
-c     modified 3/93 to return if incx .le. 0.
 c
       double precision da,dx(*)
       integer i,incx,m,mp1,n,nincx
-
-      if ( n.le.0 .or. incx.le.0 ) return
 
       if (incx.eq.1) then
          do i = 1,n
             dx(i) = da*dx(i)
          enddo
       else
+         if ( incx.le.0 ) return
          nincx = n*incx
          do i = 1,nincx,incx
             dx(i) = da*dx(i)
          enddo
       endif
-
-      return
 
       end
 
@@ -177,11 +169,9 @@ c     constant times a vector plus a vector.
 c     jack dongarra, linpack, 3/11/78.
 c
       double precision dx(*),dy(*),da
-      integer i,incx,incy,ix,iy,m,mp1,n
+      integer i,incx,incy,ix,iy,n
 
-      if (n.le.0) return
-      if (da .eq. 0.0d0) return
-      if (incx.eq.1.and.incy.eq.1) then
+      if ((incx.eq.1).and.(incy.eq.1)) then
          do i = 1,n
             dy(i) = dy(i) + da*dx(i)
          enddo
@@ -255,7 +245,7 @@ c     cleve moler, university of new mexico, argonne national lab.
 c
 c     subroutines and functions
 c
-c     blas vdaxpy,vddot
+c     blas daxpy, ddot
 c
 c     internal variables
 c
@@ -276,7 +266,7 @@ c
                b(l) = b(k)
                b(k) = t
    10       continue
-            call vdaxpy(n-k,t,a(k+1,k),1,b(k+1),1)
+            call ldaxpy(n-k,t,a(k+1,k),b(k+1))
          enddo
    30    continue
 c
@@ -286,7 +276,7 @@ c
             k = n + 1 - kb
             b(k) = b(k)/a(k,k)
             t = -b(k)
-            call vdaxpy(k-1,t,a(1,k),1,b(1),1)
+            call ldaxpy(k-1,t,a(1,k),b(1))
          enddo
       go to 100
    50 continue
@@ -314,6 +304,17 @@ c
          enddo
    90    continue
   100 continue
+
+      contains
+
+      subroutine ldaxpy (n,da,dx,dy)
+      double precision dx(*),dy(*),da
+      integer i,n
+      do i = 1,n
+         dy(i) = dy(i) + da*dx(i)
+      enddo
+      end subroutine ldaxpy
+
       end
 
       subroutine dgbsl (abd,lda,n,ml,mu,ipvt,b,job)
@@ -378,7 +379,7 @@ c     cleve moler, university of new mexico, argonne national lab.
 c
 c     subroutines and functions
 c
-c     blas vdaxpy,vddot
+c     blas daxpy, ddot
 c     fortran min0
 c
 c     internal variables
@@ -403,7 +404,7 @@ c
                   b(l) = b(k)
                   b(k) = t
    10          continue
-               call vdaxpy(lm,t,abd(m+1,k),1,b(k+1),1)
+               call ldaxpy(lm,t,abd(m+1,k),b(k+1))
             enddo
    30    continue
 c
@@ -416,7 +417,7 @@ c
             la = m - lm
             lb = k - lm
             t = -b(k)
-            call vdaxpy(lm,t,abd(la,k),1,b(lb),1)
+            call ldaxpy(lm,t,abd(la,k),b(lb))
          enddo
       goto 100
    50 continue
@@ -449,6 +450,17 @@ c
             enddo
    90    continue
   100 continue
+
+      contains
+
+      subroutine ldaxpy (n,da,dx,dy)
+      double precision dx(*),dy(*),da
+      integer i,n
+      do i = 1,n
+         dy(i) = dy(i) + da*dx(i)
+      enddo
+      end subroutine ldaxpy
+
       end
 
       subroutine dgbfa (abd,lda,n,ml,mu,ipvt,info)
@@ -532,7 +544,7 @@ c     cleve moler, university of new mexico, argonne national lab.
 c
 c     subroutines and functions
 c
-c     blas vdaxpy,dscal,idamax
+c     blas daxpy,dscal,idamax
 c     fortran max0,min0
 c
 c     internal variables
@@ -612,7 +624,7 @@ c
                   abd(l,j) = abd(mm,j)
                   abd(mm,j) = t
    70          continue
-               call vdaxpy(lm,t,abd(m+1,k),1,abd(mm+1,j),1)
+               call ldaxpy(lm,t,abd(m+1,k),abd(mm+1,j))
             enddo
    90       continue
          goto 110
@@ -623,6 +635,17 @@ c
   130 continue
       ipvt(n) = n
       if (abd(m,n) .eq. 0.0d0) info = n
+
+      contains
+
+      subroutine ldaxpy (n,da,dx,dy)
+      double precision dx(*),dy(*),da
+      integer i,n
+      do i = 1,n
+         dy(i) = dy(i) + da*dx(i)
+      enddo
+      end subroutine ldaxpy
+      
       end
 
       integer function idamax (n,dx,incx)
@@ -708,7 +731,7 @@ c     cleve moler, university of new mexico, argonne national lab.
 c
 c     subroutines and functions
 c
-c     blas vdaxpy,dscal,idamax
+c     blas daxpy,dscal,idamax
 c
 c     internal variables
 c
@@ -754,7 +777,7 @@ c
                   a(l,j) = a(k,j)
                   a(k,j) = t
    20          continue
-               call vdaxpy(n-k,t,a(k+1,k),1,a(k+1,j),1)
+               call ldaxpy(n-k,t,a(k+1,k),a(k+1,j))
             enddo
          goto 50
    40    continue
@@ -764,38 +787,18 @@ c
    70 continue
       ipvt(n) = n
       if (a(n,n) .eq. 0.0d0) info = n
-      end
 
-!       REAL(KIND=8) FUNCTION D1MACH(I)
-!       INTEGER,INTENT(IN):: I
-! !
-! !  DOUBLE-PRECISION MACHINE CONSTANTS
-! !  D1MACH( 1) = B**(EMIN-1), THE SMALLEST POSITIVE MAGNITUDE.
-! !  D1MACH( 2) = B**EMAX*(1 - B**(-T)), THE LARGEST MAGNITUDE.
-! !  D1MACH( 3) = B**(-T), THE SMALLEST RELATIVE SPACING.
-! !  D1MACH( 4) = B**(1-T), THE LARGEST RELATIVE SPACING.
-! !  D1MACH( 5) = LOG10(B)
-! !
-!       REAL(KIND=8),DIMENSION(5),SAVE::X
-!       LOGICAL,SAVE:: ran = .false.
-!!$omp critical
-!       IF(.NOT. ran)THEN
-!         X(1) = TINY(X(1))
-!         X(2) = HUGE(X(2))
-!         X(3) = EPSILON(X(3))/RADIX(X(3))
-!         X(4) = EPSILON(X(4))
-!         X(5) = LOG10(REAL(RADIX(X(5)),KIND=8))
-!         ran = .true.
-!       END IF 
-!!$omp end critical
-!
-!       IF (I < 1 .OR. I > 5) THEN
-!          WRITE(*,*) 'D1MACH(I): I =',I,' is out of bounds.'
-!          STOP
-!       END IF
-!       D1MACH = X(I)
-!       RETURN
-!       END FUNCTION D1MACH
+      contains
+
+      subroutine ldaxpy (n,da,dx,dy)
+      double precision dx(*),dy(*),da
+      integer i,n
+      do i = 1,n
+         dy(i) = dy(i) + da*dx(i)
+      enddo
+      end subroutine ldaxpy
+
+      end
 
       SUBROUTINE DACOPY (NROW, NCOL, A, NROWA, B, NROWB)
       DOUBLE PRECISION A, B
