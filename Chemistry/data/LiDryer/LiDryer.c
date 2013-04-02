@@ -80,6 +80,7 @@
 #define CKEQYR CKEQYR
 #define CKEQXR CKEQXR
 #define VCKWYR VCKWYR
+#define GET_T_GIVEN_EY GET_T_GIVEN_EY
 #elif defined(BL_FORT_USE_LOWERCASE)
 #define CKINDX ckindx
 #define CKINIT ckinit
@@ -156,6 +157,7 @@
 #define CKEQYR ckeqyr
 #define CKEQXR ckeqxr
 #define VCKWYR vckwyr
+#define GET_T_GIVEN_EY get_t_given_ey
 #elif defined(BL_FORT_USE_UNDERSCORE)
 #define CKINDX ckindx_
 #define CKINIT ckinit_
@@ -232,6 +234,7 @@
 #define CKEQYR ckeqyr_
 #define CKEQXR ckeqxr_
 #define VCKWYR vckwyr_
+#define GET_T_GIVEN_EY get_t_given_ey_
 #endif
 
 /*function declarations */
@@ -3132,7 +3135,6 @@ void vproductionRate(int npt, double * restrict wdot, double * restrict sc, doub
         double qdot, q_f, q_r, phi_f, phi_r, k_f, k_r, Kc;
         double alpha, redP, F, logPred, logFcent;
         double troe_c, troe_n, troe, F_troe;
-        double X, F_src;
 
         /*reaction 1: H + O2 <=> O + OH */
         phi_f = sc[3*npt+i]*sc[1*npt+i];
@@ -5299,7 +5301,7 @@ void molecularWeight(double * restrict  wt)
 
 
 /*get temperature given internal energy in mass units and mass fracs */
-void get_t_given_ey_(double * restrict  e, double * restrict  y, int * iwrk, double * restrict  rwrk, double * restrict  t, int * ierr)
+void GET_T_GIVEN_EY(double * restrict  e, double * restrict  y, int * iwrk, double * restrict  rwrk, double * restrict  t, int * ierr)
 {
 #ifdef CONVERGENCE
     const int maxiter = 5000;
