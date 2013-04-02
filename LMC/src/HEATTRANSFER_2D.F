@@ -49,7 +49,7 @@ c ... outputs
 c ... local
 
       integer i,j
-      REAL_T  betaxcen, betaycen, dxsqr, dysqr
+      REAL_T  dxsqr, dysqr
       REAL_T  betadotleft, betadotright
       REAL_T  betadottop,  betadotbot
 
@@ -59,21 +59,12 @@ c -------------------- begin here ----------------------------
       dysqr = dx(2)**2
       do j=lo(2),hi(2)
         do i=lo(1),hi(1)
-#if 0
-          betaxcen = half*(betax(i,j)+betax(i+1,j))
-          betaycen = half*(betay(i,j)+betay(i,j+1))
-          rdghdgy(i,j) = betaxcen*(h(i+1,j)-h(i-1,j))*
-     &                            (species(i+1,j)-species(i-1,j))/dxsqr +
-     &                   betaycen*(h(i,j+1)-h(i,j-1))*
-     &                             (species(i,j+1)-species(i,j-1))/dysqr
-#else
           betadotleft  = betax(i,j)*(h(i,j)-h(i-1,j))*(species(i,j)-species(i-1,j))
           betadotright = betax(i+1,j)*(h(i+1,j)-h(i,j))*(species(i+1,j)-species(i,j))
           betadotbot   = betay(i,j)*(h(i,j)-h(i,j-1))*(species(i,j)-species(i,j-1))
           betadottop   = betay(i,j+1)*(h(i,j+1)-h(i,j))*(species(i,j+1)-species(i,j))
           rdghdgy(i,j) =  half*((betadotleft + betadotright)/dxsqr +
      &                          (betadottop  + betadotbot)/dysqr)
-#endif
         enddo
       enddo
       end
@@ -1239,8 +1230,8 @@ c
       REAL_T wrk(DIMV(wrk),SDIM)
       REAL_T delta(SDIM)
 
-      integer i,j,k,n,ii,jj
-      REAL_T mag,gTx,gTy,dxi(SDIM)
+      integer i,j
+      REAL_T mag,gTx,gTy
 
 c     Fill normal on nodes (assumes 1 grow cell properly filled)
 

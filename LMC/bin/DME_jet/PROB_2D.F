@@ -9,9 +9,9 @@
 #include "probdata.H"
 #include <htdata.H>
       
-      REAL_T Patm, FORT_P1ATMMKS, pmf_vals(maxspec+3), a
-      REAL_T Xt(maxspec), Yt(maxspec), loc
-      integer zone, n, getZone, fuelZone, airZone, region
+      REAL_T Patm, FORT_P1ATMMKS
+      REAL_T Xt(maxspec), Yt(maxspec)
+      integer zone, n, getZone, fuelZone, airZone
       integer b(SDIM)
       integer num_zones_defined
       integer iO2,iCH3OCH3
@@ -153,8 +153,8 @@ c ::: -----------------------------------------------------------
 #include "bc.H"
 #include "probdata.H"
 
-      integer n, getZone, zone, airZone,fuelZone
-      REAL_T eta, xmid, etamax,sigma
+      integer n, getZone, airZone,fuelZone
+      REAL_T eta, sigma
       data dimloc / 1,  1 /
 
       if (.not. bcinit) then
@@ -303,17 +303,14 @@ c ::: -----------------------------------------------------------
       REAL_T     vel(DIMV(state),SDIM)
       REAL_T    scal(DIMV(state),nscal)
       REAL_T   press(DIMV(press))
-      integer tmpi, nPMF
 
 #include "cdwrk.H"
 #include <htdata.H>
 #include "bc.H"
 #include "probdata.H"
 
-      integer i, j, n, airZone, fuelZone, getZone, zone
-      REAL_T x, y, r, Yl(maxspec), Xl(maxspec), Patm, sigma
-      REAL_T pmf_vals(maxspec+3), y1, y2, dx
-      REAL_T pert,Lx,FORT_P1ATMMKS,eta,u,v,rho,T,h
+      integer i, j, n, airZone, fuelZone, getZone
+      REAL_T x, y, r, Patm, sigma, FORT_P1ATMMKS,eta
            
       if ((trim(probtype).eq.BL_PROB_JET_DIFFUSION)) then
 
@@ -460,9 +457,8 @@ c ::: -----------------------------------------------------------
 #include "cdwrk.H"
 #include <htdata.H>
       integer i, j, n, Tid, RHid, YSid, YEid, ys, ye
-      integer getZone
       logical do_T, do_RH, do_Y
-      REAL_T xl, xr, xh, yb, yt, yh, y
+      REAL_T xl, xr, xh, y
 
       if ( (trim(probtype).eq.BL_PROB_JET_DIFFUSION) ) then
          Tid  = Temp      - id + SDIM
@@ -1170,7 +1166,7 @@ c ::: -----------------------------------------------------------
 
       integer i, j
       integer ilo, ihi, jlo, jhi
-      REAL_T  y, x, hx, xhi(SDIM)
+      REAL_T  y, x, hx
       REAL_T  u, v, rho, Yl(0:maxspec-1), T, h
 
       integer lo(SDIM), hi(SDIM)
@@ -1305,7 +1301,7 @@ c ::: -----------------------------------------------------------
 
 #if defined(BL_DO_FLCT)
 #include "INFL_FORCE_F.H"
-      REAL_T turbSclY, t_flct, dt_flct
+      REAL_T t_flct, dt_flct
       integer DIMDEC(vflct)
       integer loFlctArray(SDIM), hiFlctArray(SDIM)
       REAL_T vflct(:,:)
@@ -1314,7 +1310,7 @@ c ::: -----------------------------------------------------------
 
       integer i, j
       integer ilo, ihi, jlo, jhi
-      REAL_T  y, x, hx, xhi(SDIM)
+      REAL_T  y, x, hx
       REAL_T  u, v, rho, Yl(0:maxspec-1), T, h
 
       integer lo(SDIM), hi(SDIM)
@@ -1448,7 +1444,7 @@ c ::: -----------------------------------------------------------
       
       integer i, j
       integer ilo, ihi, jlo, jhi
-      REAL_T  y, x, hx, xhi(SDIM)
+      REAL_T  y, x, hx
       REAL_T  u, v, rho, Yl(0:maxspec-1), T, h
 
       integer lo(SDIM), hi(SDIM)
@@ -1742,10 +1738,7 @@ c
       integer i, j, n
       integer ilo, jlo
       integer ihi, jhi
-      integer a2, a3, a4, a5
-      REAL_T  x, y
       REAL_T  hx, hy
-      REAL_T  sga, cga
       integer isioproc
       integer nXvel, nYvel, nRho, nTrac
 

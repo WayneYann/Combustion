@@ -267,7 +267,7 @@ c
 c
 c     ::::: local variables
 c
-      integer i, j, k, n, Rho, xVel, yVel, zVel, RhoTrac, Pres, Temp, RhoH,
+      integer i, j, n, Rho, xVel, yVel, RhoTrac, Pres, Temp, RhoH,
      $        RhoRT, RhoYlo, RhoYhi, nStatsExpect, nGhostExpect, nSpecies,
      $        num, sp, nNSstats
       integer loStats(SDIM), hiStats(SDIM)

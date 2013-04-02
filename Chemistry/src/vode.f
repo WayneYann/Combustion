@@ -147,7 +147,7 @@ c     scales a vector by a constant.
 c     jack dongarra, linpack, 3/11/78.
 c
       double precision da,dx(*)
-      integer i,incx,m,mp1,n,nincx
+      integer i,incx,n,nincx
 
       if (incx.eq.1) then
          do i = 1,n
@@ -3991,7 +3991,7 @@ C-----------------------------------------------------------------------
       GO TO 720
  690  ETAMAX = ETAMX3
       IF (NST .LE. 10) ETAMAX = ETAMX2
- 700  R = ONE/TQ(2)
+      R = ONE/TQ(2)
       CALL DSCAL (N, R, ACOR, 1)
  720  JSTART = 1
       END

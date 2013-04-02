@@ -90,8 +90,7 @@ c
       implicit none
 #include "cdwrk.H"
 #include "conp.H"
-      integer n, RTOT, lout, i, egrlen, egilen, idummy(1)
-      integer FORT_GETCKSPECNAME
+      integer n, RTOT, lout, egrlen, egilen, idummy(1)
       double precision rdummy(1)
       character*(maxspnml) name
       !
@@ -511,10 +510,10 @@ C-----------------------------------------------------------------------
 
       subroutine FORT_FINDLHS(reactions, Nreacs, id)
       implicit none
-#include "cdwrk.H"
       integer reactions(*), Nreacs, id
-      integer j, n, Ndim, Nids, KI(maxsp), NU(maxsp)
 #ifdef MIKE
+#include "cdwrk.H"
+      integer j, n, Ndim, Nids, KI(maxsp), NU(maxsp)
       Ndim = maxsp
       if ((id.le.0).or.(id.gt.Nspec)) then
          write(6,*) 'FORT_FINDLHS:  species id out of range: ',id
@@ -537,10 +536,10 @@ C-----------------------------------------------------------------------
 
       subroutine FORT_FINDRHS(reactions, Nreacs, id)
       implicit none
-#include "cdwrk.H"
       integer reactions(*), Nreacs, id
-      integer j, n, Ndim, Nids, KI(maxsp), NU(maxsp)
 #ifdef MIKE
+#include "cdwrk.H"
+      integer j, n, Ndim, Nids, KI(maxsp), NU(maxsp)
       Ndim = maxsp
       if ((id.le.0).or.(id.gt.Nspec)) then
          write(6,*) 'FORT_FINDRHS:  species id out of range: ',id
@@ -564,9 +563,7 @@ C-----------------------------------------------------------------------
       subroutine FORT_SETNU(nu,lenNU)
       implicit none
 #include "cdwrk.H"
-      integer lenNU
-      integer nu(maxreac,maxspec)
-      integer i
+      integer lenNU, nu(maxreac,maxspec)
 
       if (lenNU .lt. maxreac*maxspec) then
          write(6,*) 'FORT_CKNU:  nu work array too small: '
@@ -578,7 +575,7 @@ C-----------------------------------------------------------------------
       subroutine FORT_CKINU(Nids,KI,lenKI,NU,lenNU,rxnID,nuAll)
       implicit none
 #include "cdwrk.H"
-      integer lenKI,lenNU,NDIM1
+      integer lenKI,lenNU
       integer rxnID, Nids, KI(lenKI), NU(lenNU), nuAll(maxreac,maxspec)
       integer Ndim, k
       Ndim = MIN(lenKI,lenNU)
@@ -602,7 +599,7 @@ C-----------------------------------------------------------------------
       integer function FORT_CKELTXINSPY(eltID, spID)
       implicit none
 #include "cdwrk.H"
-      integer eltID, spID, i, j
+      integer eltID, spID
       integer NCF(maxelts,maxspec)
       CALL CKNCF(maxelts, IWRK(ckbi), RWRK(ckbr), NCF)
       FORT_CKELTXINSPY = NCF(eltID+1,spID+1)
@@ -650,7 +647,7 @@ c     1 N/(m.m) = 0.1 dyne/(cm.cm)
       integer i
       integer coded(*)
       integer names(0:maxelts*2)
-      integer ctr, nlen
+      integer nlen
       nlen = 2
       call CKSYME(names,nlen)
       coded(1) = names(2*(i-1)  )
@@ -673,6 +670,7 @@ c     1 N/(m.m) = 0.1 dyne/(cm.cm)
       do j = 1, maxspnml
          coded(j) = names(maxspnml*(i-1)+j)
       end do
+      str_len = 0
       do j = 1, maxspnml
          if (coded(j).eq.ICHAR(' ')) then
             str_len = j
@@ -684,14 +682,13 @@ c     1 N/(m.m) = 0.1 dyne/(cm.cm)
 
       integer function FORT_CKSYMR(fortReacIdx, coded)
       implicit none
+      integer fortReacIdx, coded(*)
+#ifdef MIKE
 #include "cdwrk.H"
-      integer fortReacIdx
-      integer coded(*)
       character*(72) line 
       integer j, str_len, istr, iend, lout
       logical error
       data error /.false./
-#ifdef MIKE
       lout = 6
       call CKSYMR(fortReacIdx,lout,IWRK(ckbi),RWRK(ckbr),
      &     CWRK(ckbc),str_len,line,error)
@@ -749,7 +746,6 @@ c
       implicit none
 #include "cdwrk.H"
       REAL_T mwt(*)
-      integer n
 c     Result in kg/kmole
       call CKWT(IWRK(ckbi),RWRK(ckbr),mwt)
       end
@@ -1047,9 +1043,9 @@ C     Needed to compute T from h
       REAL_T TMIN,TMAX,e
 
       parameter (TMIN=200, TMAX=5000)
-      REAL_T  T0,h,cp,cv,de,temp,RoverWbar,Wbar,RU,RUC,P1ATM
+      REAL_T  T0,cv,de,temp
       REAL_T dT, etarg
-      logical out_of_bounds, converged, soln_bad, stalled
+      logical out_of_bounds, converged, soln_bad
       REAL_T e300,cv300,e6500,cv6500
       integer ihitlo,ihithi
 
@@ -1153,11 +1149,11 @@ c     Error condition....dump state and bail out
       REAL_T TMIN,TMAX,errMAX
       integer NiterMAX,Niter,n,NiterDAMP, Discont_NiterMAX
       parameter (TMIN=250, TMAX=5000, Discont_NiterMAX=100)
-      REAL_T  T0,cp,cv,dH,temp,RoverWbar,Wbar,RU,RUC,P1ATM
+      REAL_T  T0,cp,dH,temp
       REAL_T res(0:NiterMAX-1),dT, Htarg
-      logical out_of_bounds, converged, soln_bad, stalled, discont
+      logical out_of_bounds, converged, soln_bad, stalled
       REAL_T HMIN,cpMIN,HMAX,cpMAX
-      integer ihitlo,ihithi,j
+      integer ihitlo,ihithi
       REAL_T old_T, old_H, Tsec, Hsec
 
       out_of_bounds(temp) = (temp.lt.TMIN-one) .or. (temp.gt.TMAX)

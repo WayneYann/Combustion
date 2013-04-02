@@ -82,7 +82,7 @@
 
       REAL_T Xt(maxspec),FwdKt(maxreac),RevKt(maxreac)
       integer i,j,n
-      REAL_T P1atm,RU,RUC,Pdyne,sum,Yt(maxspec)
+      REAL_T P1atm,RU,RUC,Pdyne
 
       CALL CKRP(IWRK(ckbi), RWRK(ckbr), RU, RUC, P1atm)
       Pdyne = Patm * P1atm
@@ -146,7 +146,7 @@ c            call bl_abort("FORT_FRrateXTP not implemented")
       integer i,j,n
       integer ndummy
       REAL_T tdummy,P1atm,RU,RUC
-      REAL_T RHO_CGS, CPB_CGS, scal, HMIX_CGS, H_CGS(maxspec)
+      REAL_T RHO_CGS, CPB_CGS, scal
 
       ndummy = Nspec
       tdummy = 0.
@@ -231,7 +231,11 @@ c     NOTE: scal converts result from assumed cgs to MKS (1 erg/s.cm^3 = .1 J/s.
       REAL_T Zt(maxspec+1),Zdott(maxspec+1)
       integer i,j,n
       integer ndummy
-      REAL_T tdummy,P1atm,RU,RUC, HMIX_CGS, RHO_CGS, RHOINV_MKS
+      REAL_T tdummy,P1atm,RU,RUC
+
+#ifdef LMC_SDC
+      REAL_T HMIX_CGS, RHO_CGS, RHOINV_MKS
+#endif
 
       ndummy = Nspec
       tdummy = 0.
@@ -544,7 +548,7 @@ c ----------------------------------------------------------------
 #include "cdwrk.H"
 
       integer lo(SDIM), hi(SDIM)
-      integer namlen, maxlen
+      integer namlen
       integer namenc(namlen)
       integer DIMDEC(Celt)
       integer DIMDEC(C)
@@ -552,7 +556,7 @@ c ----------------------------------------------------------------
       REAL_T C(DIMV(C),*)
       integer thenames(maxelts*2)
       logical match
-      integer i, j, k, theidx, n, lout
+      integer i, j, theidx, n
       integer NCF(Nelt,Nspec)
 c     Find index of desired element
       CALL CKSYME(thenames,2)
@@ -624,8 +628,12 @@ c     Get the matrix of elements versus species
       REAL_T dtloc, weight, TT1save
       REAL_T Ct(maxspec),Qt(maxreac), scale
 
-      REAL_T dY(maxspec), Ytemp(maxspec),Yres(maxspec),sum,zp(maxspec+1)
-      logical newJ_triggered, bad_soln
+      REAL_T Ytemp(maxspec),Yres(maxspec),sum,zp(maxspec+1)
+      logical newJ_triggered
+
+#if defined(TRIGGER_NEW_J) && defined(DO_JBB_HACK)
+      logical bad_soln
+#endif
 
 c     Set IOPT=1 parameter settings for VODE
       RWRK(dvbr+4) = 0
@@ -2195,7 +2203,7 @@ c
       
       character*(maxspnml) name      
       integer n, i, j, iH2O, iCO2, iCH4, iCO
-      REAL_T lnT, aP, c0, c1, c2, c3, c4
+      REAL_T aP, c0, c1, c2, c3, c4
       REAL_T T1, T2, T3, T4, Tb4, lnT1, lnT2, lnT3, lnT4, sigma
 
       data sigma / 5.669D-08 /
