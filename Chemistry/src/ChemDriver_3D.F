@@ -71,7 +71,6 @@
       REAL_T Patm, scale
 
       REAL_T Xt(maxspec),FwdKt(maxreac),RevKt(maxreac)
-      REAL_T sum, Yt(maxspec)
       integer i,j,k,n
       REAL_T P1atm,RU,RUC,Pdyne
 
@@ -132,8 +131,11 @@
       REAL_T Zt(maxspec+1),Zdott(maxspec+1)
       integer i,j,k,n
       integer ndummy
-      REAL_T tdummy,P1atm,RU,RUC
-      REAL_T RHO_CGS, CPB_CGS, scal, HMIX_CGS, H_CGS(maxspec)
+      REAL_T tdummy,P1atm,RU,RUC, RHO_CGS, CPB_CGS, scal
+
+#ifdef LMC_SDC
+      REAL_T HMIX_CGS, H_CGS(maxspec)
+#endif
 
       ndummy = Nspec
       tdummy = 0.
@@ -221,8 +223,11 @@ c     NOTE: scal converts result from assumed cgs to MKS (1 erg/s.cm^3 = .1 J/s.
 
       REAL_T Zt(maxspec+1),Zdott(maxspec+1)
       integer i,j,k,n
-      integer ndummy
-      REAL_T tdummy,P1atm,RU,RUC, HMIX_CGS, RHO_CGS, RHOINV_MKS
+      integer ndummy,tdummy,P1atm,RU,RUC
+
+#ifdef LMC_SDC
+      REAL_T HMIX_CGS, RHO_CGS, RHOINV_MKS
+#endif
 
       ndummy = Nspec
       tdummy = 0.
@@ -536,7 +541,7 @@ c     NOTE: scal converts result from assumed cgs to MKS (1 erg/s.cm^3 = .1 J/s.
       implicit none
 #include "cdwrk.H"
       integer lo(SDIM), hi(SDIM)
-      integer namlen, maxlen
+      integer namlen
       integer namenc(namlen)
       integer DIMDEC(Celt)
       integer DIMDEC(C)
@@ -544,7 +549,7 @@ c     NOTE: scal converts result from assumed cgs to MKS (1 erg/s.cm^3 = .1 J/s.
       REAL_T C(DIMV(C),*)
       integer thenames(maxelts*2)
       logical match
-      integer i, j, k, theidx, n, lout
+      integer i, j, k, theidx, n
       integer NCF(Nelt,Nspec)
 c     Find index of desired element
       CALL CKSYME(thenames,2)
@@ -608,17 +613,22 @@ c     Get the matrix of elements versus species
       REAL_T spec_scalT, NEWJ_TOL
       parameter (spec_scalT=twothousand, NEWJ_TOL=one100th)
       external CONPF_FILE, CONPJ_FILE, open_vode_failure_file
-      REAL_T TT1, TT2, RU, RUC, P1atm, sum, atoln
+      REAL_T TT1, TT2, RU, RUC, P1atm
       integer i, j, k, m, MF, ISTATE, LOUTCK, lout, nfails
 
-      integer nsubchem, nsub, node, nthrds
-      REAL_T dtloc, weight, TT1save, scale, tspecies(0:maxspec), nwdot(0:maxspec)
+#ifdef DO_JBB_HACK
+      REAL_T atoln
+      logical bad_soln
+#endif
+
+      integer nsubchem, nsub, node
+      REAL_T dtloc, weight, TT1save, tspecies(0:maxspec), nwdot(0:maxspec)
       REAL_T Ct(maxspec),Qt(maxreac),Ytemp(maxspec),Yres(maxspec)
 
       character*(maxspnml) name
       parameter (LOUTCK=6)
 
-      logical newJ_triggered, bad_soln
+      logical newJ_triggered
 
       ITOL    = vode_itol
       RTOL    = vode_rtol

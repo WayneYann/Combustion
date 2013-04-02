@@ -1689,8 +1689,8 @@ c
       REAL_T wrk(DIMV(wrk),SDIM)
       REAL_T delta(SDIM)
 
-      integer i,j,k,n,ii,jj,kk
-      REAL_T mag,gTx,gTy,gTz,dxi(SDIM)
+      integer i,j,k
+      REAL_T mag
 
 c     Fill normal on nodes (assumes 1 grow cell properly filled)
 

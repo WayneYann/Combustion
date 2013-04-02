@@ -113,6 +113,8 @@ c
       enddo
 #endif
 
+      num = 0
+
 
 c
 c     =========================
@@ -300,6 +302,7 @@ c
       nNSstats = 35
       nSpecies = nStateComp - 9
       nStatsExpect = nNSstats + 17 + 5 * nSpecies
+      num = 0
 
 #ifndef NDEBUG
       if (nStats .NE. nStatsExpect) then

@@ -8,9 +8,9 @@
 #include "probdata.H"
 #include <htdata.H>
 
-      REAL_T Patm, FORT_P1ATMMKS, pmf_vals(maxspec+3), a
+      REAL_T Patm, pmf_vals(maxspec+3)
       REAL_T Xt(maxspec), Yt(maxspec), loc
-      integer zone, n, getZone, fuelZone, airZone
+      integer zone, n, getZone
       integer b(SDIM)
       integer num_zones_defined
       data  b / 1, 1, 1 /
@@ -138,7 +138,6 @@ c ::: -----------------------------------------------------------
 #include "probdata.H"
 
       integer n, getZone, zone
-      REAL_T eta, xmid, etamax
 
       if (.not. bcinit) then
          call bl_abort('Need to initialize boundary condition function')
@@ -188,7 +187,7 @@ c ::: -----------------------------------------------------------
      &     vel,scal,DIMS(state),press,DIMS(press),
      &     delta,xlo,xhi)
       implicit none
-      integer  level, nscal, nvel
+      integer  level, nscal
       integer  lo(SDIM), hi(SDIM)
       integer  DIMDEC(state)
       integer  DIMDEC(press)
@@ -270,7 +269,7 @@ c ::: -----------------------------------------------------------
      &	 	                 vel,scal,DIMS(state),press,DIMS(press),
      &                         delta,xlo,xhi)
       implicit none
-      integer    level, nscal, nvel
+      integer    level,nscal
       integer    lo(SDIM), hi(SDIM)
       integer    DIMDEC(state)
       integer    DIMDEC(press)
@@ -288,10 +287,10 @@ c ::: -----------------------------------------------------------
 #include "INFL_FORCE_F.H"
 #endif
 
-      integer i, j, k, n, airZone, fuelZone, getZone, zone, nPMF
-      REAL_T x, y, z, r, Yl(maxspec), Xl(maxspec), Patm
-      REAL_T pmf_vals(maxspec+3), y1, y2, dx
-      REAL_T pert,Lx,Ly,FORT_P1ATMMKS,eta,u,v,w,rho,T,h
+      integer i, j, k, n, etZone, nPMF
+      REAL_T x, y, z, Yl(maxspec), Xl(maxspec), Patm
+      REAL_T pmf_vals(maxspec+3), y1, y2
+      REAL_T pert,Lx,Ly,FORT_P1ATMMKS
            
       if ( (trim(probtype).eq.BL_PROB_PREMIXED_FIXED_INFLOW) 
      &     .or. (trim(probtype).eq.BL_PROB_PREMIXED_CONTROLLED_INFLOW)
@@ -543,8 +542,6 @@ c ::: -----------------------------------------------------------
       integer   tag(DIMV(tag))
       REAL_T    rho(DIMV(rho), nvar)
 
-      integer   i, j
-
 #include "probdata.H"
 
       call bl_abort('DENERROR: should no be here')
@@ -568,8 +565,6 @@ c ::: -----------------------------------------------------------
       REAL_T    ftrac(DIMV(ftrac), nvar)
 
       integer   i, j, k
-      REAL_T    x, y, z, r
-      logical   in_refine_zone
 
 #include "probdata.H"
 
@@ -672,7 +667,6 @@ c ::: -----------------------------------------------------------
       integer   tag(DIMV(tag))
       REAL_T    temperature(DIMV(temp),nvar)
 
-      REAL_T    x, y, z, ax, ay, az, aerr
       integer   i, j, k, ng
 
 #include "probdata.H"
@@ -1278,7 +1272,6 @@ c
       integer ilo, ihi, jlo, jhi, klo, khi
       REAL_T  z, y, x
       REAL_T  u, v, w, rho, Yl(0:maxspec-1), T, h
-      REAL_T  cs,sg,r,scaler,scalet
 
 #if defined(BL_DO_FLCT)
       integer DIMDEC(uflct)
@@ -1658,7 +1651,7 @@ c ::: -----------------------------------------------------------
       integer ilo, ihi, jlo, jhi, klo, khi
       REAL_T  z, y, x
       REAL_T  u, v, w, rho, Yl(0:maxspec-1), T, h
-      REAL_T  cs,sg,r,scaler,scalet
+
 #if defined(BL_DO_FLCT)
       integer DIMDEC(uflct)
       integer loFlctArray(SDIM), hiFlctArray(SDIM)
@@ -1886,7 +1879,6 @@ c ::: -----------------------------------------------------------
       integer ilo, ihi, jlo, jhi, klo, khi
       REAL_T  z, y, x
       REAL_T  u, v, w, rho, Yl(0:maxspec-1), T, h
-      REAL_T  cs,sg,r,scaler,scalet
 
 #if defined(BL_DO_FLCT)
       integer DIMDEC(vflct)
@@ -3683,7 +3675,7 @@ c     divu(i,j,k) = min(two,one+time/.05)
       REAL_T  dx(SDIM), Patm, time
 
       integer i, j, k
-      REAL_T xx, yy, zz, r, dr, dz, blend
+      REAL_T xx, yy, zz
       
 c     Blend goes from 1 to 0 in r at wire_r, over a width of wire_w  
 c     blend(r) = one - half*(one+TANH((r-wire_r)/(fourth*wire_w)))
@@ -3860,7 +3852,6 @@ c
       integer i, j, k, n
       integer ilo, jlo, klo
       integer ihi, jhi, khi
-      integer a2, a3, a4, a5
       REAL_T  x, y, z
       REAL_T  hx, hy, hz
       REAL_T  sga, cga

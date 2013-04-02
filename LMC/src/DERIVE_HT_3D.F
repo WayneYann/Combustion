@@ -335,19 +335,13 @@ c
       REAL_T     dat(DIMV(dat),ncomp)
       integer    level, grid_no
 
-#include "probdata.H"
-
 #ifdef DO_LMC_FORCE
+#include "probdata.H"
 #include "forcedata.H"
-#endif
 
-c
-c     ::::: local variables
-c
       integer i, j, k, n
       integer ilo, jlo, klo
       integer ihi, jhi, khi
-      integer a2, a3, a4, a5
       REAL_T  x, y, z
       REAL_T  hx, hy, hz
       REAL_T  sga, cga
@@ -374,7 +368,6 @@ c
       jhi = hi(2)
       khi = hi(3)
 
-#ifdef DO_LMC_FORCE
 c     Homogeneous Isotropic Turbulence
       twicePi=two*Pi
       
@@ -516,15 +509,9 @@ c
       REAL_T     dat(DIMV(dat),ncomp)
       integer    level, grid_no
 
-#include "probdata.H"
-
 #ifdef DO_LMC_FORCE
+#include "probdata.H"
 #include "forcedata.H"
-#endif
-
-c
-c     ::::: local variables
-c
       integer i, j, k, n
       integer ilo, jlo, klo
       integer ihi, jhi, khi
@@ -554,7 +541,6 @@ c
       jhi = hi(2)
       khi = hi(3)
 
-#ifdef DO_LMC_FORCE
 c     Homogeneous Isotropic Turbulence
       twicePi=two*Pi
       
@@ -675,15 +661,9 @@ c
       REAL_T     dat(DIMV(dat),ncomp)
       integer    level, grid_no
 
-#include "probdata.H"
-
 #ifdef DO_LMC_FORCE
+#include "probdata.H"
 #include "forcedata.H"
-#endif
-
-c
-c     ::::: local variables
-c
       integer i, j, k, n
       integer ilo, jlo, klo
       integer ihi, jhi, khi
@@ -713,7 +693,6 @@ c
       jhi = hi(2)
       khi = hi(3)
 
-#ifdef DO_LMC_FORCE
 c     Homogeneous Isotropic Turbulence
       twicePi=two*Pi
       
@@ -834,15 +813,9 @@ c
       REAL_T     dat(DIMV(dat),ncomp)
       integer    level, grid_no
 
-#include "probdata.H"
-
 #ifdef DO_LMC_FORCE
+#include "probdata.H"
 #include "forcedata.H"
-#endif
-
-c
-c     ::::: local variables
-c
       integer i, j, k, n
       integer ilo, jlo, klo
       integer ihi, jhi, khi
@@ -872,7 +845,6 @@ c
       jhi = hi(2)
       khi = hi(3)
 
-#ifdef DO_LMC_FORCE
 c     Homogeneous Isotropic Turbulence
       twicePi=two*Pi
       

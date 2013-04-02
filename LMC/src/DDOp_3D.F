@@ -88,7 +88,7 @@ c     Also, the actual code is in DDOp_F.F called by the _ND.F variants
       REAL_T  alphaYH(DIMV(alphaYH),*)
 
       integer i, j, k, n, m, idx
-      REAL_T Te, Ye, Hie, dX, dY, dT, mwtInv(maxspec)
+      REAL_T Te, Ye, Hie, dX, dY, mwtInv(maxspec)
       REAL_T RU, RUC, P1atm, dxInv
       REAL_T rhoTDe, rhoY_Dij, rDmixe, PTCe
 
