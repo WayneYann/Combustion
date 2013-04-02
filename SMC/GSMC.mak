@@ -33,6 +33,10 @@ ifeq ($(strip $(SDCLIB_HOME)),)
   endif
 endif
 
+ifeq ($(strip $(SMC_SRC)),src_tb_min)
+  USE_EGZ := t
+endif
+
 #-----------------------------------------------------------------------------
 # Fmpack is the list of all the GPackage.mak files that we need to
 # include into the build system to define the list of source files.

@@ -1,9 +1,10 @@
 module transport_properties
 
   use chemistry_module
-  use eglib_module
   use multifab_module
   use variables_module
+
+  use egz_module
 
   implicit none
 
@@ -90,75 +91,76 @@ contains
     double precision,intent(out)::  lam(lo(1)-ng:hi(1)+ng,lo(2)-ng:hi(2)+ng,lo(3)-ng:hi(3)+ng)
     double precision,intent(out)::Ddiag(lo(1)-ng:hi(1)+ng,lo(2)-ng:hi(2)+ng,lo(3)-ng:hi(3)+ng,nspecies)
 
-    integer :: i, j, k, n, iwrk
-    integer :: np, ii, jj, kk, iisize, jisize, kisize 
+    integer :: i, j, k, n, np, qxn, iwrk, ii, jj, kk, iisize, jisize, kisize
     integer :: iindex(whi(1)-wlo(1)-hi(1)+lo(1))
     integer :: jindex(whi(2)-wlo(2)-hi(2)+lo(2))
     integer :: kindex(whi(3)-wlo(3)-hi(3)+lo(3))
-    double precision :: rwrk
-    double precision, allocatable :: Tt(:), Xt(:,:), Yt(:,:), Cpt(:,:), D(:,:)
-    double precision, allocatable :: ME(:), MK(:), L1(:), L2(:)
-    
+    double precision :: rwrk, Cp(nspecies)
+    double precision, allocatable :: L1Z(:), L2Z(:), DZ(:,:), XZ(:,:), CPZ(:,:), &
+         TZ(:), EZ(:), KZ(:)
+
     if (.not. gco) then
 
        np = whi(1) - wlo(1) + 1
-       call eglib_init(nspecies, np, ITLS, IFLAG)
+
+       call egzini(np, ITLS, IFLAG)
        
-       !$omp parallel private(i,j,k,n,iwrk,rwrk,ii) &
-       !$omp private(Tt,Xt,Yt,Cpt,D,ME,MK,L1,L2)
+       !$omp parallel private(i,j,k,n,qxn,iwrk) &
+       !$omp private(rwrk,Cp,L1Z,L2Z,DZ,XZ,CPZ)
        
-       allocate(Tt(np))
-       allocate(ME(np))
-       allocate(MK(np))
-       allocate(L1(np))
-       allocate(L2(np))
-       
-       allocate(Xt(nspecies,np))
-       allocate(Yt(nspecies,np))
-       allocate(Cpt(nspecies,np))
-       allocate(D(nspecies,np))
-       
+       allocate(L1Z(wlo(1):whi(1)))
+       allocate(L2Z(wlo(1):whi(1)))
+
+       allocate(DZ(wlo(1):whi(1),nspecies))
+       allocate(XZ(wlo(1):whi(1),nspecies))
+       allocate(CPZ(wlo(1):whi(1),nspecies))
+
        !$omp do
        do k=wlo(3),whi(3)
           do j=wlo(2),whi(2)
-             
-             do i=wlo(1), whi(1)
-                ii = i-wlo(1)+1
-                Tt(  ii) = q(i,j,k,qtemp)
-                CALL CKCPMS(Tt(ii), iwrk, rwrk, Cpt(:,ii))
-                Yt(:,ii) = q(i,j,k,qy1:qy1+nspecies-1)
-                Xt(:,ii) = q(i,j,k,qx1:qx1+nspecies-1)
+
+             do n=1,nspecies
+                qxn = qx1+n-1
+                do i=wlo(1),whi(1)
+                   XZ(i,n) = q(i,j,k,qxn)
+                end do
              end do
-          
-             CALL EGMPAR(np, Tt, Xt, Yt, Cpt, egwork, egiwork)
-          
-             CALL EGME3(np, Tt, Yt, egwork, ME) 
-             mu(wlo(1):whi(1),j,k) = ME
+
+             if (iflag > 3) then
+                do i=wlo(1),whi(1)
+                   call ckcpms(q(i,j,k,qtemp), iwrk, rwrk, Cp)
+                   CPZ(i,:) = Cp
+                end do
+             else
+                CPZ = 0.d0
+             end if
+
+             call egzpar(q(wlo(1):whi(1),j,k,qtemp), XZ, CPZ)
+
+             call egze3(q(wlo(1):whi(1),j,k,qtemp), mu(wlo(1):whi(1),j,k))
 
              if (use_bulk_viscosity) then
-                CALL EGMK3(np, Tt, Yt, egwork, MK) 
-                xi(wlo(1):whi(1),j,k) = MK
+                CALL egzk3(q(wlo(1):whi(1),j,k,qtemp), xi(wlo(1):whi(1),j,k))
              else
                 xi(wlo(1):whi(1),j,k) = 0.d0
              end if
-             
-             CALL EGMVR1(np, Tt, Yt, egwork, D)
+
+             call egzl1( 1.d0, XZ, L1Z)
+             call egzl1(-1.d0, XZ, L2Z)
+             lam(wlo(1):whi(1),j,k) = 0.5d0*(L1Z+L2Z)
+
+             call EGZVR1(q(wlo(1):whi(1),j,k,qtemp), DZ)
              do n=1,nspecies
-                do i=wlo(1), whi(1)
-                   ii = i-wlo(1)+1
-                   Ddiag(i,j,k,n) = D(n,ii)
+                do i=wlo(1),whi(1)
+                   Ddiag(i,j,k,n) = DZ(i,n)
                 end do
              end do
-             
-             CALL EGML1(np,  1.d0, Tt, Xt, egwork, L1)
-             CALL EGML1(np, -1.d0, Tt, Xt, egwork, L2)
-             lam(wlo(1):whi(1),j,k) = 0.5d0*(L1+L2)
-             
+
           end do
        end do
        !$omp end do
        
-       deallocate(Tt, Xt, Yt, Cpt, D, ME, MK, L1, L2)
+       deallocate(L1Z, L2Z, DZ, XZ, CPZ)
        !$omp end parallel
 
     else ! ghost cells only 
@@ -181,65 +183,66 @@ contains
           end do
 
           np = whi(1) - wlo(1) + 1
-          call eglib_init(nspecies, np, ITLS, IFLAG)
+          call egzini(np, ITLS, IFLAG)
+
+          !$omp parallel private(i,j,k,kk,n,qxn,iwrk) &
+          !$omp private(rwrk,Cp,L1Z,L2Z,DZ,XZ,CPZ)
     
-          !$omp parallel private(i,j,k,kk,n,iwrk,rwrk,ii) &
-          !$omp private(Tt,Xt,Yt,Cpt,D,ME,MK,L1,L2)
+          allocate(L1Z(wlo(1):whi(1)))
+          allocate(L2Z(wlo(1):whi(1)))
+
+          allocate(DZ(wlo(1):whi(1),nspecies))
+          allocate(XZ(wlo(1):whi(1),nspecies))
+          allocate(CPZ(wlo(1):whi(1),nspecies))
        
-          allocate(Tt(np))
-          allocate(ME(np))
-          allocate(MK(np))
-          allocate(L1(np))
-          allocate(L2(np))
-          
-          allocate(Xt(nspecies,np))
-          allocate(Yt(nspecies,np))
-          allocate(Cpt(nspecies,np))
-          allocate(D(nspecies,np))
-    
           !$omp do collapse(2)
           do kk=1,kisize
              do j=wlo(2),whi(2)
 
                 k = kindex(kk)
 
-                do i=wlo(1), whi(1)
-                   ii = i-wlo(1)+1
-                   Tt(  ii) = q(i,j,k,qtemp)
-                   CALL CKCPMS(Tt(ii), iwrk, rwrk, Cpt(:,ii))
-                   Yt(:,ii) = q(i,j,k,qy1:qy1+nspecies-1)
-                   Xt(:,ii) = q(i,j,k,qx1:qx1+nspecies-1)
+                do n=1,nspecies
+                   qxn = qx1+n-1
+                   do i=wlo(1),whi(1)
+                      XZ(i,n) = q(i,j,k,qxn)
+                   end do
                 end do
+
+                if (iflag > 3) then
+                   do i=wlo(1),whi(1)
+                      call ckcpms(q(i,j,k,qtemp), iwrk, rwrk, Cp)
+                      CPZ(i,:) = Cp
+                   end do
+                else
+                   CPZ = 0.d0
+                end if
                 
-                CALL EGMPAR(np, Tt, Xt, Yt, Cpt, egwork, egiwork)
-                
-                CALL EGME3(np, Tt, Yt, egwork, ME) 
-                mu(wlo(1):whi(1),j,k) = ME
-                
+                call egzpar(q(wlo(1):whi(1),j,k,qtemp), XZ, CPZ)
+
+                call egze3(q(wlo(1):whi(1),j,k,qtemp), mu(wlo(1):whi(1),j,k))
+
                 if (use_bulk_viscosity) then
-                   CALL EGMK3(np, Tt, Yt, egwork, MK) 
-                   xi(wlo(1):whi(1),j,k) = MK
+                   CALL egzk3(q(wlo(1):whi(1),j,k,qtemp), xi(wlo(1):whi(1),j,k))
                 else
                    xi(wlo(1):whi(1),j,k) = 0.d0
                 end if
 
-                CALL EGMVR1(np, Tt, Yt, egwork, D)
+                call egzl1( 1.d0, XZ, L1Z)
+                call egzl1(-1.d0, XZ, L2Z)
+                lam(wlo(1):whi(1),j,k) = 0.5d0*(L1Z+L2Z)
+
+                call EGZVR1(q(wlo(1):whi(1),j,k,qtemp), DZ)
                 do n=1,nspecies
-                   do i=wlo(1), whi(1)
-                      ii = i-wlo(1)+1
-                      Ddiag(i,j,k,n) = D(n,ii)
+                   do i=wlo(1),whi(1)
+                      Ddiag(i,j,k,n) = DZ(i,n)
                    end do
                 end do
-                
-                CALL EGML1(np,  1.d0, Tt, Xt, egwork, L1)
-                CALL EGML1(np, -1.d0, Tt, Xt, egwork, L2)
-                lam(wlo(1):whi(1),j,k) = 0.5d0*(L1+L2)
-                
+
              end do
           end do
           !$omp end do
-          
-          deallocate(Tt, Xt, Yt, Cpt, D, ME, MK, L1, L2)
+
+          deallocate(L1Z, L2Z, DZ, XZ, CPZ)
           !$omp end parallel
        end if
 
@@ -261,21 +264,17 @@ contains
           end do
 
           np = whi(1) - wlo(1) + 1
-          call eglib_init(nspecies, np, ITLS, IFLAG)
-    
-          !$omp parallel private(i,j,k,jj,n,iwrk,rwrk,ii) &
-          !$omp private(Tt,Xt,Yt,Cpt,D,ME,MK,L1,L2)
-       
-          allocate(Tt(np))
-          allocate(ME(np))
-          allocate(MK(np))
-          allocate(L1(np))
-          allocate(L2(np))
-          
-          allocate(Xt(nspecies,np))
-          allocate(Yt(nspecies,np))
-          allocate(Cpt(nspecies,np))
-          allocate(D(nspecies,np))
+          call egzini(np, ITLS, IFLAG)
+
+          !$omp parallel private(i,j,k,jj,n,qxn,iwrk) &
+          !$omp private(rwrk,Cp,L1Z,L2Z,DZ,XZ,CPZ)
+
+          allocate(L1Z(wlo(1):whi(1)))
+          allocate(L2Z(wlo(1):whi(1)))
+
+          allocate(DZ(wlo(1):whi(1),nspecies))
+          allocate(XZ(wlo(1):whi(1),nspecies))
+          allocate(CPZ(wlo(1):whi(1),nspecies))
     
           !$omp do
           do k=lo(3),hi(3)
@@ -283,43 +282,48 @@ contains
 
                 j = jindex(jj)
 
-                do i=wlo(1), whi(1)
-                   ii = i-wlo(1)+1
-                   Tt(  ii) = q(i,j,k,qtemp)
-                   CALL CKCPMS(Tt(ii), iwrk, rwrk, Cpt(:,ii))
-                   Yt(:,ii) = q(i,j,k,qy1:qy1+nspecies-1)
-                   Xt(:,ii) = q(i,j,k,qx1:qx1+nspecies-1)
-                end do
-                
-                CALL EGMPAR(np, Tt, Xt, Yt, Cpt, egwork, egiwork)
-                
-                CALL EGME3(np, Tt, Yt, egwork, ME) 
-                mu(wlo(1):whi(1),j,k) = ME
-                
-                if (use_bulk_viscosity) then
-                   CALL EGMK3(np, Tt, Yt, egwork, MK) 
-                   xi(wlo(1):whi(1),j,k) = MK
-                else
-                   xi(wlo(1):whi(1),j,k) = 0.d0
-                end if
-                
-                CALL EGMVR1(np, Tt, Yt, egwork, D)
                 do n=1,nspecies
-                   do i=wlo(1), whi(1)
-                      ii = i-wlo(1)+1
-                      Ddiag(i,j,k,n) = D(n,ii)
+                   qxn = qx1+n-1
+                   do i=wlo(1),whi(1)
+                      XZ(i,n) = q(i,j,k,qxn)
                    end do
                 end do
                 
-                CALL EGML1(np,  1.d0, Tt, Xt, egwork, L1)
-                CALL EGML1(np, -1.d0, Tt, Xt, egwork, L2)
-                lam(wlo(1):whi(1),j,k) = 0.5d0*(L1+L2)
+                if (iflag > 3) then
+                   do i=wlo(1),whi(1)
+                      call ckcpms(q(i,j,k,qtemp), iwrk, rwrk, Cp)
+                      CPZ(i,:) = Cp
+                   end do
+                else
+                   CPZ = 0.d0
+                end if
+                
+                call egzpar(q(wlo(1):whi(1),j,k,qtemp), XZ, CPZ)
+
+                call egze3(q(wlo(1):whi(1),j,k,qtemp), mu(wlo(1):whi(1),j,k))
+
+                if (use_bulk_viscosity) then
+                   CALL egzk3(q(wlo(1):whi(1),j,k,qtemp), xi(wlo(1):whi(1),j,k))
+                else
+                   xi(wlo(1):whi(1),j,k) = 0.d0
+                end if
+
+                call egzl1( 1.d0, XZ, L1Z)
+                call egzl1(-1.d0, XZ, L2Z)
+                lam(wlo(1):whi(1),j,k) = 0.5d0*(L1Z+L2Z)
+
+                call EGZVR1(q(wlo(1):whi(1),j,k,qtemp), DZ)
+                do n=1,nspecies
+                   do i=wlo(1),whi(1)
+                      Ddiag(i,j,k,n) = DZ(i,n)
+                   end do
+                end do
                 
              end do
           end do
           !$omp end do
-          
-          deallocate(Tt, Xt, Yt, Cpt, D, ME, MK, L1, L2)
+
+          deallocate(L1Z, L2Z, DZ, XZ, CPZ)
           !$omp end parallel
        end if
        
@@ -341,67 +345,76 @@ contains
           end do
           
           np = iisize
-          call eglib_init(nspecies, np, ITLS, IFLAG)
+          call egzini(np, ITLS, IFLAG)
+
+          !$omp parallel private(i,j,k,ii,n,qxn,iwrk) &
+          !$omp private(rwrk,Cp,L1Z,L2Z,DZ,XZ,CPZ,TZ,EZ,KZ)
     
-          !$omp parallel private(i,j,k,n,iwrk,rwrk,ii) &
-          !$omp private(Tt,Xt,Yt,Cpt,D,ME,MK,L1,L2)
-       
-          allocate(Tt(np))
-          allocate(ME(np))
-          allocate(MK(np))
-          allocate(L1(np))
-          allocate(L2(np))
-          
-          allocate(Xt(nspecies,np))
-          allocate(Yt(nspecies,np))
-          allocate(Cpt(nspecies,np))
-          allocate(D(nspecies,np))
-    
+          allocate(TZ(np))
+          allocate(EZ(np))
+          allocate(KZ(np))
+          allocate(L1Z(np))
+          allocate(L2Z(np))
+          allocate(DZ(np,nspecies))
+          allocate(XZ(np,nspecies))
+          allocate(CPZ(np,nspecies))
+        
           !$omp do
           do k=lo(3),hi(3)
              do j=lo(2),hi(2)
 
-                do ii=1,iisize
-                   i = iindex(ii)
-                   Tt(  ii) = q(i,j,k,qtemp)
-                   CALL CKCPMS(Tt(ii), iwrk, rwrk, Cpt(:,ii))
-                   Yt(:,ii) = q(i,j,k,qy1:qy1+nspecies-1)
-                   Xt(:,ii) = q(i,j,k,qx1:qx1+nspecies-1)
-                end do
-                
-                CALL EGMPAR(np, Tt, Xt, Yt, Cpt, egwork, egiwork)
-                
-                CALL EGME3(np, Tt, Yt, egwork, ME) 
-
-                if (use_bulk_viscosity) then
-                   CALL EGMK3(np, Tt, Yt, egwork, MK) 
-                else
-                   MK = 0.d0
-                end if
-                
-                CALL EGML1(np,  1.d0, Tt, Xt, egwork, L1)
-                CALL EGML1(np, -1.d0, Tt, Xt, egwork, L2)
-
-                do ii=1,iisize
-                   i = iindex(ii)
-                   mu(i,j,k) = ME(ii)
-                   xi(i,j,k) = MK(ii)
-                   lam(i,j,k) = 0.5d0*(L1(ii)+L2(ii))
-                end do
-
-                CALL EGMVR1(np, Tt, Yt, egwork, D)
                 do n=1,nspecies
-                   do ii=1,iisize
+                   qxn = qx1+n-1
+                   do ii=1,np
                       i = iindex(ii)
-                      Ddiag(i,j,k,n) = D(n,ii)
+                      XZ(ii,n) = q(i,j,k,qxn)
                    end do
                 end do
-                                
+
+                if (iflag > 3) then
+                   do ii=1,np
+                      i = iindex(ii)
+                      TZ(ii) = q(i,j,k,qtemp)
+                      call ckcpms(TZ(ii), iwrk, rwrk, Cp)
+                      CPZ(ii,:) = Cp
+                   end do
+                else
+                   CPZ = 0.d0
+                end if
+
+                call egzpar(TZ, XZ, CPZ)
+
+                call egze3(TZ, EZ)
+                               
+                if (use_bulk_viscosity) then
+                   CALL egzk3(TZ, KZ)
+                else
+                   KZ = 0.d0
+                end if
+
+                call egzl1( 1.d0, XZ, L1Z)
+                call egzl1(-1.d0, XZ, L2Z)
+
+                do ii=1,np
+                   i = iindex(ii)
+                   mu(i,j,k) = EZ(ii)
+                   xi(i,j,k) = KZ(ii)
+                   lam(i,j,k) = 0.5d0*(L1Z(ii)+L2Z(ii))
+                end do
+
+                call EGZVR1(TZ, DZ)
+                do n=1,nspecies
+                   do ii=1,np
+                      i = iindex(ii)
+                      Ddiag(i,j,k,n) = DZ(ii,n)
+                   end do
+                end do
+ 
              end do
           end do
           !$omp end do
-          
-          deallocate(Tt, Xt, Yt, Cpt, D, ME, MK, L1, L2)
+
+          deallocate(TZ, EZ, KZ, L1Z, L2Z, DZ, XZ, CPZ)
           !$omp end parallel
        end if
 
