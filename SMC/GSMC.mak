@@ -33,7 +33,7 @@ ifeq ($(strip $(SDCLIB_HOME)),)
   endif
 endif
 
-ifeq ($(strip $(SMC_SRC)),src_tb_min)
+ifneq ($(strip $(SMC_SRC)),src_min)
   USE_EGZ := t
 endif
 

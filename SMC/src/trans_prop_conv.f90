@@ -3,9 +3,10 @@
 module transport_properties
 
   use chemistry_module
-  use eglib_module
   use multifab_module
   use variables_module
+
+  use egz_module
 
   implicit none
 
@@ -88,9 +89,7 @@ contains
   end subroutine get_transport_properties
 
   subroutine get_trans_prop_3d(lo,hi,ng,q,mu,xi,lam,Ddiag,wlo,whi,gco)
-
     use probin_module, only : use_bulk_viscosity
-
     logical, intent(in) :: gco  ! ghost cells only
     integer, intent(in) :: lo(3), hi(3), ng, wlo(3), whi(3)
     double precision,intent(in )::    q(lo(1)-ng:hi(1)+ng,lo(2)-ng:hi(2)+ng,lo(3)-ng:hi(3)+ng,nprim)
@@ -99,76 +98,77 @@ contains
     double precision,intent(out)::  lam(lo(1)-ng:hi(1)+ng,lo(2)-ng:hi(2)+ng,lo(3)-ng:hi(3)+ng)
     double precision,intent(out)::Ddiag(lo(1)-ng:hi(1)+ng,lo(2)-ng:hi(2)+ng,lo(3)-ng:hi(3)+ng,nspecies)
 
-    integer :: i, j, k, n, iwrk
-    integer :: np, ii, jj, kk, iisize, jisize, kisize 
-    integer :: iindex(whi(1)-wlo(1)-hi(1)+lo(1))
-    integer :: jindex(whi(2)-wlo(2)-hi(2)+lo(2))
-    integer :: kindex(whi(3)-wlo(3)-hi(3)+lo(3))
-    double precision :: rwrk
-    double precision, allocatable :: Tt(:), Xt(:,:), Yt(:,:), Cpt(:,:), D(:,:)
-    double precision, allocatable :: ME1(:), ME2(:), L1(:), L2(:)
+    integer :: i, j, k, n, np, qxn, iwrk
+    double precision :: rwrk, Cp(nspecies)
+    double precision, allocatable :: L1Z(:), L2Z(:), DZ(:,:), XZ(:,:), CPZ(:,:), &
+         E1Z(:), E2Z(:)
 
     ! eglib parameters
-    integer, parameter :: ITLS=0, IFLAG=2
+    integer, parameter :: ITLS_local=0, IFLAG_local=2
 
     if (.not. gco) then
 
        np = whi(1) - wlo(1) + 1
-       call eglib_init(nspecies, np, ITLS, IFLAG)
+
+       call egzini(np, ITLS_local, IFLAG_local)
        
-       !$omp parallel private(i,j,k,n,iwrk,rwrk,ii) &
-       !$omp private(Tt,Xt,Yt,Cpt,D,ME1,ME2,L1,L2)
-       
-       allocate(Tt(np))
-       allocate(ME1(np))
-       allocate(ME2(np))
-       allocate(L1(np))
-       allocate(L2(np))
-       
-       allocate(Xt(nspecies,np))
-       allocate(Yt(nspecies,np))
-       allocate(Cpt(nspecies,np))
-       allocate(D(nspecies,np))
+       !$omp parallel private(i,j,k,n,qxn,iwrk) &
+       !$omp private(rwrk,Cp,L1Z,L2Z,DZ,XZ,CPZ,E1Z,E2Z)
+
+       allocate(L1Z(wlo(1):whi(1)))
+       allocate(L2Z(wlo(1):whi(1)))
+
+       allocate(DZ(wlo(1):whi(1),nspecies))
+       allocate(XZ(wlo(1):whi(1),nspecies))
+       allocate(CPZ(wlo(1):whi(1),nspecies))
+
+       allocate(E1Z(wlo(1):whi(1)))
+       allocate(E2Z(wlo(1):whi(1)))
        
        !$omp do
        do k=wlo(3),whi(3)
           do j=wlo(2),whi(2)
-             
-             do i=wlo(1), whi(1)
-                ii = i-wlo(1)+1
-                Tt(  ii) = q(i,j,k,qtemp)
-                CALL CKCPMS(Tt(ii), iwrk, rwrk, Cpt(:,ii))
-                Yt(:,ii) = q(i,j,k,qy1:qy1+nspecies-1)
-                Xt(:,ii) = q(i,j,k,qx1:qx1+nspecies-1)
-             end do
-          
-             CALL EGMPAR(np, Tt, Xt, Yt, Cpt, egwork, egiwork)
-          
-!             CALL EGME3(np, Tt, Yt, egwork, ME) 
-             CALL EGME1(np,  1.d0, Tt, Xt, egwork, ME1) 
-             CALL EGME1(np, -1.d0, Tt, Xt, egwork, ME2) 
-             mu(wlo(1):whi(1),j,k) = 0.5d0*(ME1+ME2)
-          
-!             CALL EGMK3(np, Tt, Yt, egwork, MK) 
-             xi(wlo(1):whi(1),j,k) = 0.d0
-             
-             CALL EGMVR1(np, Tt, Yt, egwork, D)
+
              do n=1,nspecies
-                do i=wlo(1), whi(1)
-                   ii = i-wlo(1)+1
-                   Ddiag(i,j,k,n) = D(n,ii)
+                qxn = qx1+n-1
+                do i=wlo(1),whi(1)
+                   XZ(i,n) = q(i,j,k,qxn)
                 end do
              end do
-             
-             CALL EGML1(np,  1.d0, Tt, Xt, egwork, L1)
-             CALL EGML1(np, -1.d0, Tt, Xt, egwork, L2)
-             lam(wlo(1):whi(1),j,k) = 0.5d0*(L1+L2)
-             
+
+             if (iflag > 3) then
+                do i=wlo(1),whi(1)
+                   call ckcpms(q(i,j,k,qtemp), iwrk, rwrk, Cp)
+                   CPZ(i,:) = Cp
+                end do
+             else
+                CPZ = 0.d0
+             end if
+
+             call egzpar(q(wlo(1):whi(1),j,k,qtemp), XZ, CPZ)
+
+             call egze1( 1.d0, XZ, E1Z)
+             call egze1(-1.d0, XZ, E1Z)
+             mu(wlo(1):whi(1),j,k) = 0.5d0*(E1Z+E2Z)
+
+             xi(wlo(1):whi(1),j,k) = 0.d0
+
+             call egzl1( 1.d0, XZ, L1Z)
+             call egzl1(-1.d0, XZ, L2Z)
+             lam(wlo(1):whi(1),j,k) = 0.5d0*(L1Z+L2Z)
+
+             call EGZVR1(q(wlo(1):whi(1),j,k,qtemp), DZ)
+             do n=1,nspecies
+                do i=wlo(1),whi(1)
+                   Ddiag(i,j,k,n) = DZ(i,n)
+                end do
+             end do
+
           end do
        end do
        !$omp end do
        
-       deallocate(Tt, Xt, Yt, Cpt, D, ME1, ME2, L1, L2)
+       deallocate(L1Z, L2Z, DZ, XZ, CPZ, E1Z, E2Z)
        !$omp end parallel
 
     else ! ghost cells only 
