@@ -616,10 +616,8 @@ c     Get the matrix of elements versus species
       REAL_T TT1, TT2, RU, RUC, P1atm
       integer i, j, k, m, MF, ISTATE, LOUTCK, lout, nfails
 
-#ifdef DO_JBB_HACK
-      REAL_T atoln
+      REAL_T atoln, scale, sum
       logical bad_soln
-#endif
 
       integer nsubchem, nsub, node
       REAL_T dtloc, weight, TT1save, tspecies(0:maxspec), nwdot(0:maxspec)
