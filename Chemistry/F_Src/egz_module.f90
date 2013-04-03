@@ -47,7 +47,7 @@ module egz_module
   !$omp threadprivate(xtr,ytr,aux,cxi,cint,sumtr,wwtr,dlt,beta,eta,etalg)
   !$omp threadprivate(rn,an,zn,dmi,G,bin,A)
 
-  public :: EGZINI, EGZPAR, EGZE3, EGZK3, EGZL1, EGZVR1, egz_close
+  public :: EGZINI, EGZPAR, EGZE1, EGZE3, EGZK1, EGZK3, EGZL1, EGZVR1, egz_close
 
 contains
 
@@ -431,6 +431,55 @@ contains
 
 
   ! shear viscosity
+  subroutine EGZE1(alpha, X, mu)
+    double precision, intent(in) :: alpha
+    double precision, intent(in) :: X(np,ns)
+    double precision, intent(out) :: mu(np)
+
+    integer :: i, n
+    double precision :: alpha1
+
+    mu = 0.d0
+    if (alpha .eq. 0.d0) then
+       do n=1,ns
+          do i=1,np
+             mu(i) = mu(i) + X(i,n)*etalg(i,n)
+          end do
+       end do
+       do i=1,np
+          mu(i) = exp(mu(i))
+       end do
+    else if (alpha .eq. 1.d0) then
+       do n=1,ns
+          do i=1,np
+             mu(i) = mu(i) + X(i,n)*eta(i,n)
+          end do
+       end do
+    else if (alpha .eq. -1.d0) then
+       do n=1,ns
+          do i=1,np
+             mu(i) = mu(i) + X(i,n)/eta(i,n)
+          end do
+       end do
+       do i=1,np
+          mu(i) = 1.d0/mu(i)
+       end do
+    else
+       do n=1,ns
+          do i=1,np
+             mu(i) = mu(i) + X(i,n)*exp(alpha*etalg(i,n))
+          end do
+       end do
+       alpha1 = 1.d0/alpha
+       do i=1,np
+          mu(i) = mu(i)**alpha1
+       end do       
+    end if
+
+  end subroutine EGZE1
+
+
+  ! shear viscosity
   subroutine EGZE3(T, mu)
     double precision, intent(in) :: T (np)
     double precision, intent(out) :: mu(np)
@@ -568,6 +617,82 @@ contains
     end do
   end subroutine EGZAXS
 
+
+  ! volume viscosity
+  subroutine EGZK1(alpha, X, VV)
+    double precision, intent(in) :: alpha
+    double precision, intent(in) :: X(np,ns)
+    double precision, intent(out) :: VV(np)
+
+    integer :: i, n
+    double precision :: sxp(np), ccc, vvv, alpha1
+
+    sxp = 0.d0
+    do n=1,ns
+       do i=1,np
+          if (cxi(i,n) .ne. 0.d0) then
+             sxp(i) = sxp(i) + X(i,n)
+          end if
+       end do
+    end do
+    do i=1,np
+       sxp(i) = 1.d0/sxp(i)
+       VV(i) = 0.d0
+    end do
+
+    if (alpha .eq. 0.d0) then
+       do n=1,ns
+          do i=1,np
+             if (cxi(i,n) .ne. 0.d0) then
+                ccc = cint(i,n) / ( 1.5d0 + cint(i,n) )
+                vvv = etalg(i,n) + log ( 0.25d0*ccc*ccc/cxi(i,n) )
+                VV(i) = VV(i) + sxp(i) * X(i,n) * vvv
+             end if
+          end do
+       end do
+       do i=1,np
+          VV(i) = exp(VV(i))
+       end do
+    else if (alpha .eq. 1.d0) then
+       do n=1,ns
+          do i=1,np
+             if (cxi(i,n) .ne. 0.d0) then
+                ccc = cint(i,n) / ( 1.5d0 + cint(i,n) )
+                vvv = eta(i,n) * 0.25d0*ccc*ccc/cxi(i,n) 
+                VV(i) = VV(i) + sxp(i) * X(i,n) * vvv
+             end if
+          end do
+       end do
+    else if (alpha .eq. -1.d0) then
+       do n=1,ns
+          do i=1,np
+             if (cxi(i,n) .ne. 0.d0) then
+                ccc = cint(i,n) / ( 1.5d0 + cint(i,n) )
+                vvv = cxi(i,n) / (eta(i,n) * 0.25d0*ccc*ccc)
+                VV(i) = VV(i) + sxp(i) * X(i,n) * vvv
+             end if
+          end do
+       end do
+       do i=1,np
+          VV(i) = 1.d0/VV(i)
+       end do       
+    else
+       do n=1,ns
+          do i=1,np
+             if (cxi(i,n) .ne. 0.d0) then
+                ccc = cint(i,n) / ( 1.5d0 + cint(i,n) )
+                vvv = etalg(i,n) + log ( 0.25d0*ccc*ccc/cxi(i,n) )
+                VV(i) = VV(i) + sxp(i) * X(i,n) * exp(alpha*vvv)
+             end if
+          end do
+       end do
+       alpha1 = 1.d0/alpha
+       do i=1,np
+          VV(i) = VV(i)**alpha1
+       end do       
+    end if
+
+  end subroutine EGZK1
 
   ! volume viscosity
   subroutine EGZK3(T, VV)
