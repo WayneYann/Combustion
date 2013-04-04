@@ -146,7 +146,7 @@ c            call bl_abort("FORT_FRrateXTP not implemented")
       integer i,j,n
       integer ndummy
       REAL_T tdummy,P1atm,RU,RUC
-      REAL_T RHO_CGS, CPB_CGS, scal
+      REAL_T RHO_CGS, CPB_CGS, H_CGS, HMIX_CGS, scal
 
       ndummy = Nspec
       tdummy = 0.
