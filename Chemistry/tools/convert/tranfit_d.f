@@ -619,9 +619,9 @@ C
       double precision val
       call writeMangledFnName('egtranset'//trim(name),uno)
       write(uno,'(A)')
-     &     'extern "C" { void egtranset'//trim(name)//'(double* '//
+     &     'void egtranset'//trim(name)//'(double* '//
      &     trim(name)//') {'
-      write(uno,'(A,E24.16,A)') '  *'//trim(name)//' = ',val,';}}'
+      write(uno,'(A,E24.16,A)') '  *'//trim(name)//' = ',val,';}'
       end
 
       subroutine writeIntFn(name,val,uno)
@@ -631,9 +631,9 @@ C
       integer val
       call writeMangledFnName('egtranset'//trim(name),uno)
       write(uno,'(A)')
-     &     'extern "C" { void egtranset'//trim(name)//'(int* '//
+     &     'void egtranset'//trim(name)//'(int* '//
      &     trim(name)//') {'
-      write(uno,'(A,I12,A)') '  *'//trim(name)//' = ',val,';}}'
+      write(uno,'(A,I12,A)') '  *'//trim(name)//' = ',val,';}'
       end
 
       subroutine writeCharacterFn(name,val,uno)
@@ -642,9 +642,9 @@ C
       integer uno
       call writeMangledFnName('egtranset'//trim(name),uno)
       write(uno,'(A)')
-     &     'extern "C" { void egtranset'//trim(name)//'(char* '//
+     &     'void egtranset'//trim(name)//'(char* '//
      &     trim(name)//') {'
-      write(uno,'(A,A,A)') '  '//trim(name)//' = "',trim(val),'";}}'
+      write(uno,'(A,A,A)') '  '//trim(name)//' = "',trim(val),'";}'
       end
 
       subroutine writeDoubleArrayFn(name,vec,dim1,uno)
@@ -654,13 +654,13 @@ C
       double precision vec(dim1)
       call writeMangledFnName('egtranset'//trim(name),uno)
       write(uno,'(A)')
-     &     'extern "C" { void egtranset'//trim(name)//'(double* '//
+     &     'void egtranset'//trim(name)//'(double* '//
      &     trim(name)//') {'
       do K=1,dim1
          write(uno,'(A,I12,A,E24.16,A)') '  '//trim(name)//'[',
      &        K-1,'] = ',vec(K),';'
       enddo
-      write(uno,'(A)') '};  }'
+      write(uno,'(A)') '};'
       end
 
       subroutine write2DDoubleArrayFn(name,vec,dim1,dim2,uno)
@@ -670,7 +670,7 @@ C
       double precision vec(dim1,dim2)
       call writeMangledFnName('egtranset'//trim(name),uno)
       write(uno,'(A)')
-     &     'extern "C" { void egtranset'//trim(name)//'(double* '//
+     &     'void egtranset'//trim(name)//'(double* '//
      &     trim(name)//') {'
       do K=1,dim2
          do N=1,dim1
@@ -679,7 +679,7 @@ C
      &           I-1,'] = ',vec(N,K),';'
          enddo
       enddo
-      write(uno,'(A)') '};  }'
+      write(uno,'(A)') '};'
       end
 
       subroutine write3DDoubleArrayFn(name,vec,dim1,dim2,dim3,uno)
@@ -689,7 +689,7 @@ C
       double precision vec(dim1,dim2,dim3)
       call writeMangledFnName('egtranset'//trim(name),uno)
       write(uno,'(A)')
-     &     'extern "C" { void egtranset'//trim(name)//'(double* '//
+     &     'void egtranset'//trim(name)//'(double* '//
      &     trim(name)//') {'
       do L=1,dim3
          do K=1,dim2
@@ -700,7 +700,7 @@ C
             enddo
          enddo
       enddo
-      write(uno,'(A)') '};  }'
+      write(uno,'(A)') '};'
       end
 
       subroutine writeIntArrayFn(name,vec,dim1,uno)
@@ -710,13 +710,13 @@ C
       integer vec(dim1)
       call writeMangledFnName('egtranset'//trim(name),uno)
       write(uno,'(A)')
-     &     'extern "C" { void egtranset'//trim(name)//'(int* '//
+     &     'void egtranset'//trim(name)//'(int* '//
      &     trim(name)//') {'
       do K=1,dim1
          write(uno,'(A,I12,A,I12,A)') '  '//trim(name)//'[',
      &        K-1,'] = ',vec(K),';'
       enddo
-      write(uno,'(A)') '};  }'
+      write(uno,'(A)') '};'
       end
 
 

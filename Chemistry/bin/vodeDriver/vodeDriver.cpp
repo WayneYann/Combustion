@@ -8,7 +8,7 @@
 
 static Real Patm_DEF    = 1;
 static Real dt_DEF      = 1.e-5;
-static bool verbose_DEF = true;
+static bool verbose_DEF = false;
 
 static
 void 
@@ -23,7 +23,6 @@ print_usage (int,
    std::cerr << "\t            verbose = <0,1>                                   [DEFAULT = " << verbose_DEF << "]\n";
    exit(1);
 }
-
 
 int
 main (int   argc,
@@ -67,8 +66,25 @@ main (int   argc,
     Real dt = dt_DEF; pp.query("dt",dt);
 
     funcCnt.setVal(0);
+    nstate.copy(ostate,box,sCompT,box,sCompT,1);
+
+#ifdef LMC_SDC
+    const int sCompR = 3;
+    ostate.mult(1.e3,sCompR,1);
+    const int sCompRH = 2; // Replace cgs velocity with MKS rho.Hmix
+    cd.getHmixGivenTY(ostate,ostate,ostate,box,sCompT,sCompY,sCompRH);
+    ostate.mult(ostate,sCompR,sCompRH,1);
+    for (int i=0; i<nSpec; ++i) {
+      ostate.mult(ostate,sCompR,sCompY+i,1);
+    }
+    FArrayBox c_0(box,nSpec+1); c_0.setVal(0);
+    FArrayBox I_R(box,nSpec+1);
+    cd.solveTransient_sdc(nstate,nstate,nstate,ostate,ostate,ostate,
+                          c_0,I_R,funcCnt,box,sCompY,sCompRH,sCompT,dt,Patm,0,true);
+#else
     cd.solveTransient(nstate,nstate,ostate,ostate,funcCnt,
                       box,sCompY,sCompT,dt,Patm);
+#endif
 
     std::cout << " ... total function evals: " << funcCnt.norm(1) << '\n';
     std::cout << " ... max evals at a point: " << funcCnt.norm(0) << '\n';
@@ -83,3 +99,4 @@ main (int   argc,
     
     BoxLib::Finalize();
 }
+

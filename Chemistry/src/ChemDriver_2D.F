@@ -82,7 +82,7 @@
 
       REAL_T Xt(maxspec),FwdKt(maxreac),RevKt(maxreac)
       integer i,j,n
-      REAL_T P1atm,RU,RUC,Pdyne
+      REAL_T P1atm,RU,RUC,Pdyne,sum,Yt(maxspec)
 
       CALL CKRP(IWRK(ckbi), RWRK(ckbr), RU, RUC, P1atm)
       Pdyne = Patm * P1atm
@@ -146,7 +146,7 @@ c            call bl_abort("FORT_FRrateXTP not implemented")
       integer i,j,n
       integer ndummy
       REAL_T tdummy,P1atm,RU,RUC
-      REAL_T RHO_CGS, CPB_CGS, H_CGS, HMIX_CGS, scal
+      REAL_T RHO_CGS, CPB_CGS, scal, HMIX_CGS, H_CGS(maxspec)
 
       ndummy = Nspec
       tdummy = 0.
@@ -231,11 +231,7 @@ c     NOTE: scal converts result from assumed cgs to MKS (1 erg/s.cm^3 = .1 J/s.
       REAL_T Zt(maxspec+1),Zdott(maxspec+1)
       integer i,j,n
       integer ndummy
-      REAL_T tdummy,P1atm,RU,RUC
-
-#ifdef LMC_SDC
-      REAL_T HMIX_CGS, RHO_CGS, RHOINV_MKS
-#endif
+      REAL_T tdummy,P1atm,RU,RUC, HMIX_CGS, RHO_CGS, RHOINV_MKS
 
       ndummy = Nspec
       tdummy = 0.
@@ -548,7 +544,7 @@ c ----------------------------------------------------------------
 #include "cdwrk.H"
 
       integer lo(SDIM), hi(SDIM)
-      integer namlen
+      integer namlen, maxlen
       integer namenc(namlen)
       integer DIMDEC(Celt)
       integer DIMDEC(C)
@@ -556,7 +552,7 @@ c ----------------------------------------------------------------
       REAL_T C(DIMV(C),*)
       integer thenames(maxelts*2)
       logical match
-      integer i, j, theidx, n
+      integer i, j, k, theidx, n, lout
       integer NCF(Nelt,Nspec)
 c     Find index of desired element
       CALL CKSYME(thenames,2)
@@ -628,12 +624,8 @@ c     Get the matrix of elements versus species
       REAL_T dtloc, weight, TT1save
       REAL_T Ct(maxspec),Qt(maxreac), scale
 
-      REAL_T Ytemp(maxspec),Yres(maxspec),sum,zp(maxspec+1)
-      logical newJ_triggered
-
-#if defined(TRIGGER_NEW_J) && defined(DO_JBB_HACK)
-      logical bad_soln
-#endif
+      REAL_T dY(maxspec), Ytemp(maxspec),Yres(maxspec),sum,zp(maxspec+1)
+      logical newJ_triggered, bad_soln
 
 c     Set IOPT=1 parameter settings for VODE
       RWRK(dvbr+4) = 0
@@ -949,12 +941,10 @@ C     Needed to compute T from h
 
       REAL_T rhooldInv
 
-
 c     Set IOPT=1 parameter settings for VODE
       RWRK(dvbr+4) = 0
       RWRK(dvbr+5) = 0
-c      RWRK(dvbr+6) = ten2minus19
-      RWRK(dvbr+6) = 1.d-25
+      RWRK(dvbr+6) = ten2minus19
       IWRK(dvbi+4) = 0
       IWRK(dvbi+5) = max_vode_subcycles
       IWRK(dvbi+6) = 0
@@ -969,11 +959,16 @@ c     Set molecular weights and pressure in area accessible by conpF
 c
       CALL CKRP(IWRK(ckbi), RWRK(ckbr), RU, RUC, P1atm)
       RWRK(NP) = Patm * P1atm
-      
+
       TT2 = dt
       if (do_stiff .eq. 1) then
+#ifdef DO_AJAC
+c     backward difference solver with analytic jacobian
+         MF = 21
+#else
 c     backward difference solver with finite difference jacobian
          MF = 22
+#endif
       else
 c     Adams integrator
          MF = 10
@@ -988,6 +983,9 @@ c     Set up ATOL
       else
          ATOL(1) = ATOLEPS
       end if
+
+c     Force recalc of J on each grid block (to ensure that it is done at the start)
+      FIRST = .TRUE.
 
       do j=lo(2),hi(2)
          do i=lo(1),hi(1)
@@ -1029,7 +1027,7 @@ c               rhoYtemp(m) = MAX(rhoYold(i,j,m),rho*ATOL(m)/ATOLEPS)
             c_0(1:Nspec+1) = const_src(i,j,1:Nspec+1)
 
 c     Reset FIRST to .TRUE. to force new Jacobian on each cell
-            FIRST = .TRUE.
+c            FIRST = .TRUE.
             FuncCount(i,j) = 0
 
             do node = 1,nsub
@@ -1041,22 +1039,6 @@ c     Reset FIRST to .TRUE. to force new Jacobian on each cell
 
                TT1save = TT1
                TT2 = TT1 + dtloc
-#if 0               
-               do n=1,Nspec+1
-                  write(6,'(a5,i2,a5,d30.22)') 'ATOL(',n,') = ',ATOL(n)
-               enddo
-               print *
-               do n=1,Nspec+1
-                  write(6,'(a5,i2,a5,d30.22)') 'c_0(',n,') = ',c_0(n)
-               enddo
-               print *
-               do n=1,Nspec+1
-                  write(6,'(a5,i2,a5,d30.22)') 'Z(',n,') = ',Z(n)
-               enddo
-#endif
-
-c     Suggest strongly that VODE do it in one step
-c               RWRK(dvbr+4) = TT2 - TT1
 
 #if !defined(BL_USE_DOUBLE) || defined(BL_T3E)
                CALL SVODE
@@ -1066,6 +1048,25 @@ c               RWRK(dvbr+4) = TT2 - TT1
      &              (conpFY_sdc, NEQ, Z, TT1, TT2, ITOL, RTOL, ATOL,
      &              ITASK, ISTATE, IOPT, RWRK(dvbr), dvr, IWRK(dvbi),
      &              dvi, CONPJ_FILE, MF, RWRK, IWRK)
+
+               if (verbose_vode .eq. 1) then
+                  write(6,*) '......dvode done:'
+                  write(6,*) ' last successful step size = ',RWRK(dvbr+10)
+                  write(6,*) '          next step to try = ',RWRK(dvbr+11)
+                  write(6,*) '   integrated time reached = ',RWRK(dvbr+12)
+                  write(6,*) '      number of time steps = ',IWRK(dvbi+10)
+                  write(6,*) '              number of fs = ',IWRK(dvbi+11)
+                  write(6,*) '              number of Js = ',IWRK(dvbi+12)
+                  write(6,*) '    method order last used = ',IWRK(dvbi+13)
+                  write(6,*) '   method order to be used = ',IWRK(dvbi+14)
+                  write(6,*) '            number of LUDs = ',IWRK(dvbi+18)
+                  write(6,*) ' number of Newton iterations ',IWRK(dvbi+19)
+                  write(6,*) ' number of Newton failures = ',IWRK(dvbi+20)
+                  if (ISTATE.eq.-4 .or. ISTATE.eq.-5) then
+                     call get_spec_name(name,IWRK(dvbi+15))
+                     write(6,*) '   spec with largest error = ', name
+                  end if
+               end if
 
                if (ISTATE .LE. -1) then
                   call conpFY_sdc(NEQ, TT1, Z, ZP, RWRK, IWRK)
@@ -2203,7 +2204,7 @@ c
       
       character*(maxspnml) name      
       integer n, i, j, iH2O, iCO2, iCH4, iCO
-      REAL_T aP, c0, c1, c2, c3, c4
+      REAL_T lnT, aP, c0, c1, c2, c3, c4
       REAL_T T1, T2, T3, T4, Tb4, lnT1, lnT2, lnT3, lnT4, sigma
 
       data sigma / 5.669D-08 /

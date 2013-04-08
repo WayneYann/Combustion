@@ -71,7 +71,7 @@ class Mill(Stationery, Indenter):
 
 
     def _begin(self):
-        self._rep = self.header()
+        #self._rep = self.header()
         return
 
 

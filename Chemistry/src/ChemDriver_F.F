@@ -90,7 +90,8 @@ c
       implicit none
 #include "cdwrk.H"
 #include "conp.H"
-      integer n, RTOT, lout, egrlen, egilen, idummy(1)
+      integer n, RTOT, lout, i, egrlen, egilen, idummy(1)
+      integer FORT_GETCKSPECNAME
       double precision rdummy(1)
       character*(maxspnml) name
       !
@@ -115,7 +116,7 @@ c
 #endif
       dvr   = 22 + 9*NEQ + 2*NEQ**2
       dvi   = 30 + NEQ
-      dvdr  = Nspec + NEQ + 2
+      dvdr  = Nspec + NEQ*2 + 2
       dvdbr = dvbr+dvr
       dvder = dvdbr+dvdr-1
       !      
@@ -124,7 +125,8 @@ c
       NP    = dvdbr
       NRHO  = NP  + 1
       NWT   = NRHO  + 1
-      NZ    = NWT + Nspec
+      NWTI  = NWT + Nspec
+      NZ    = NWTI + Nspec
       RTOT  = NZ  + NEQ - 1
 
 !$omp parallel
@@ -149,6 +151,9 @@ c
       ! Set molecular weights where conpF can access'm.
       !
       CALL CKWT(IWRK(ckbi), RWRK(ckbr), RWRK(NWT))
+      do n = 0,Nspec-1
+         RWRK(NWTI+n) = 1.d0 / RWRK(NWT+n)
+      enddo
 !$omp end parallel
 
       if (RTOT .GT. dvder) then
@@ -510,10 +515,10 @@ C-----------------------------------------------------------------------
 
       subroutine FORT_FINDLHS(reactions, Nreacs, id)
       implicit none
-      integer reactions(*), Nreacs, id
-#ifdef MIKE
 #include "cdwrk.H"
+      integer reactions(*), Nreacs, id
       integer j, n, Ndim, Nids, KI(maxsp), NU(maxsp)
+#ifdef MIKE
       Ndim = maxsp
       if ((id.le.0).or.(id.gt.Nspec)) then
          write(6,*) 'FORT_FINDLHS:  species id out of range: ',id
@@ -536,10 +541,10 @@ C-----------------------------------------------------------------------
 
       subroutine FORT_FINDRHS(reactions, Nreacs, id)
       implicit none
-      integer reactions(*), Nreacs, id
-#ifdef MIKE
 #include "cdwrk.H"
+      integer reactions(*), Nreacs, id
       integer j, n, Ndim, Nids, KI(maxsp), NU(maxsp)
+#ifdef MIKE
       Ndim = maxsp
       if ((id.le.0).or.(id.gt.Nspec)) then
          write(6,*) 'FORT_FINDRHS:  species id out of range: ',id
@@ -563,7 +568,9 @@ C-----------------------------------------------------------------------
       subroutine FORT_SETNU(nu,lenNU)
       implicit none
 #include "cdwrk.H"
-      integer lenNU, nu(maxreac,maxspec)
+      integer lenNU
+      integer nu(maxreac,maxspec)
+      integer i
 
       if (lenNU .lt. maxreac*maxspec) then
          write(6,*) 'FORT_CKNU:  nu work array too small: '
@@ -575,7 +582,7 @@ C-----------------------------------------------------------------------
       subroutine FORT_CKINU(Nids,KI,lenKI,NU,lenNU,rxnID,nuAll)
       implicit none
 #include "cdwrk.H"
-      integer lenKI,lenNU
+      integer lenKI,lenNU,NDIM1
       integer rxnID, Nids, KI(lenKI), NU(lenNU), nuAll(maxreac,maxspec)
       integer Ndim, k
       Ndim = MIN(lenKI,lenNU)
@@ -599,7 +606,7 @@ C-----------------------------------------------------------------------
       integer function FORT_CKELTXINSPY(eltID, spID)
       implicit none
 #include "cdwrk.H"
-      integer eltID, spID
+      integer eltID, spID, i, j
       integer NCF(maxelts,maxspec)
       CALL CKNCF(maxelts, IWRK(ckbi), RWRK(ckbr), NCF)
       FORT_CKELTXINSPY = NCF(eltID+1,spID+1)
@@ -647,7 +654,7 @@ c     1 N/(m.m) = 0.1 dyne/(cm.cm)
       integer i
       integer coded(*)
       integer names(0:maxelts*2)
-      integer nlen
+      integer ctr, nlen
       nlen = 2
       call CKSYME(names,nlen)
       coded(1) = names(2*(i-1)  )
@@ -670,7 +677,6 @@ c     1 N/(m.m) = 0.1 dyne/(cm.cm)
       do j = 1, maxspnml
          coded(j) = names(maxspnml*(i-1)+j)
       end do
-      str_len = 0
       do j = 1, maxspnml
          if (coded(j).eq.ICHAR(' ')) then
             str_len = j
@@ -682,13 +688,14 @@ c     1 N/(m.m) = 0.1 dyne/(cm.cm)
 
       integer function FORT_CKSYMR(fortReacIdx, coded)
       implicit none
-      integer fortReacIdx, coded(*)
-#ifdef MIKE
 #include "cdwrk.H"
+      integer fortReacIdx
+      integer coded(*)
       character*(72) line 
       integer j, str_len, istr, iend, lout
       logical error
       data error /.false./
+#ifdef MIKE
       lout = 6
       call CKSYMR(fortReacIdx,lout,IWRK(ckbi),RWRK(ckbr),
      &     CWRK(ckbc),str_len,line,error)
@@ -746,6 +753,7 @@ c
       implicit none
 #include "cdwrk.H"
       REAL_T mwt(*)
+      integer n
 c     Result in kg/kmole
       call CKWT(IWRK(ckbi),RWRK(ckbr),mwt)
       end
@@ -837,7 +845,6 @@ C
 
 #ifdef LMC_SDC
 #ifndef DO_TEMPERATURE
-
 #ifdef DO_NOENERGY
       subroutine conpFY_sdc(N, TIME, Z, ZP, RPAR, IPAR)
 C
@@ -850,8 +857,8 @@ C     Variables in Z are:  Z(1:K) = rhoY(K) [MKS]
       REAL_T TIME, Z(NEQ), ZP(NEQ), RPAR(*)
       integer N, IPAR(*)
       
-      REAL_T RHO_MKS, H, WDOT_CGS(maxspec), THFAC, HMIX_MKS, RINV_MKS
-      REAL_T rhoYDOT_MKS, Y(maxspec), CONC_CGS(maxspec), HMIX_CGS, T
+      REAL_T RHO_MKS, WDOT_CGS(maxspec), THFAC, HMIX_MKS, RINV_MKS
+      REAL_T Y(maxspec), CONC_CGS(maxspec), HMIX_CGS, T
       integer K,m
 
 C     Needed to compute T from h
@@ -863,13 +870,6 @@ C     Needed to compute T from h
 
       REAL_T RHO_CGS, RINV_CGS, rhohmixDOT_MKS
 
-      REAL_T mwt(maxspec), invmwt(maxspec)
-
-      call CKWT(IWRK(ckbi),RWRK(ckbr),mwt)
-      do K=1,Nspec
-         invmwt(K) = one / mwt(K)
-      end do
-
       RHO_MKS = 0.d0
       do K=1,Nspec
          RHO_MKS = RHO_MKS + Z(K)
@@ -877,23 +877,17 @@ C     Needed to compute T from h
       RINV_MKS = 1.d0 / RHO_MKS
       
       do K=1,Nspec
-c         CONC_CGS(K) = MAX(0.d0, Z(K)*invmwt(K)*1.d-3)
-         CONC_CGS(K) = Z(K)*invmwt(K)*1.d-3
+         CONC_CGS(K) = Z(K)*RPAR(NWTI+K-1)*1.d-3
          Y(K) = Z(K) * RINV_MKS
       enddo
 
-c      HMIX_MKS = (rhoh_INIT + c_0(Nspec+1)*TIME
-c     &     + c_1(Nspec+1)*TIME*TIME*0.5d0) * RINV_MKS
-
       HMIX_MKS = (rhoH_INIT + c_0(Nspec+1)*TIME) * RINV_MKS
-
       call FORT_TfromHYpt(T_cell,HMIX_MKS,Y,HtoTerrMAX,HtoTiterMAX,res,Niter)
       call CKWC(T_cell,CONC_CGS,IWRK,RWRK,WDOT_CGS)
 
       THFAC = 1.d3/thickFacCH
       do k= 1, Nspec
-         rhoYDOT_MKS = c_0(k)
-         ZP(k) = WDOT_CGS(k)*mwt(k)*THFAC + rhoYDOT_MKS
+         ZP(k) = WDOT_CGS(k) * RPAR(NWT+k-1) * THFAC + c_0(k)
       end do
       END
 #else
@@ -910,7 +904,7 @@ C                          Z(K+1) = RhoH    [MKS]
       integer N, IPAR(*)
       
       REAL_T RHO_MKS, H, WDOT_CGS(maxspec), THFAC, HMIX_MKS, RINV_MKS
-      REAL_T rhoYDOT_MKS, Y(maxspec), CONC_CGS(maxspec), HMIX_CGS, T
+      REAL_T Y(maxspec), CONC_CGS(maxspec), HMIX_CGS, T
       integer K,m
 
 C     Needed to compute T from h
@@ -920,14 +914,8 @@ C     Needed to compute T from h
       parameter (HtoTiterMAX = 20)
       REAL_T res(0:HtoTiterMAX-1)
 
-      REAL_T RHO_CGS, RINV_CGS, rhohmixDOT_MKS
+      REAL_T RHO_CGS, RINV_CGS
 
-      REAL_T mwt(maxspec), invmwt(maxspec)
-
-      call CKWT(IWRK(ckbi),RWRK(ckbr),mwt)
-      do n=1,Nspec
-         invmwt(n) = one / mwt(n)
-      end do
 C
 C     Variables in Z are:  Z(1:K) = rhoY(K)
 C                          Z(K+1) = RhoH
@@ -938,31 +926,84 @@ C                          Z(K+1) = RhoH
       RINV_MKS = 1.d0 / RHO_MKS
       
       do K=1,Nspec
-c         CONC_CGS(K) = MAX(0.d0, Z(K)*invmwt(K)*1.d-3)
-         CONC_CGS(K) = Z(K)*invmwt(K)*1.d-3
+         CONC_CGS(K) = Z(K)*RPAR(NWTI+K-1)*1.d-3
          Y(K) = Z(K) * RINV_MKS
       enddo
-
-c      HMIX_MKS = (rhoh_INIT + c_0(Nspec+1)*TIME
-c     &     + c_1(Nspec+1)*TIME*TIME*0.5d0) * RINV_MKS
 
       HMIX_MKS = (rhoh_INIT + c_0(Nspec+1)*TIME) * RINV_MKS
       call FORT_TfromHYpt(T_cell,HMIX_MKS,Y,HtoTerrMAX,HtoTiterMAX,res,Niter)
       call CKWC(T_cell,CONC_CGS,IWRK,RWRK,WDOT_CGS)
 
-c      rhohmixDOT_MKS = c_0(Nspec+1) + c_1(Nspec+1)*TIME
-      rhohmixDOT_MKS = c_0(Nspec+1)
-      ZP(Nspec+1) = rhohmixDOT_MKS
-
+      ZP(Nspec+1) = c_0(Nspec+1)
       THFAC = 1.d3/thickFacCH
       do k= 1, Nspec
-c         rhoYDOT_MKS = c_0(k) + c_1(k)*TIME
-         rhoYDOT_MKS = c_0(k)
-         ZP(k) = WDOT_CGS(k)*mwt(k)*THFAC + rhoYDOT_MKS
+         ZP(k) = WDOT_CGS(k) * RPAR(NWT+k-1) * THFAC + c_0(k)
       end do
       END
 #endif
 #else
+
+      subroutine conpJY(NY, TIME, Y, ML, MU, PD, NROWPD, RPAR, IPAR)
+      implicit none
+      integer NY, ML, MU, NROWPD, IPAR(*)
+      REAL_T TIME, Y(NY), RPAR(*), PD(NROWPD,NY)
+#include "cdwrk.H"
+#include "conp.H"
+#include "vode.H"
+#include "htdata.H"
+
+      REAL_T FAC, DVNORM, SAVF(maxspec+1), FTEM(maxspec+1), R, YJ
+      REAL_T EWT(maxspec+1),C(maxspec), T, RHO_MKS, Jval, rat, FS
+      integer I, J, M, id
+
+      T = Y(Nspec+1)
+      C(1:Nspec) = Y(1:Nspec) * RPAR(NWTI:NWTI+Nspec-1) * 1.d3; 
+      call DWDOT(PD, C, T)
+      do J=1,Nspec
+         do I=1,Nspec
+            PD(I,J) = PD(I,J)*RPAR(NWTI+J-1)*RPAR(NWT+I-1)
+         enddo
+      enddo
+      do I=1,Nspec
+         J = Nspec + 1
+         PD(I,J) = PD(I,J)*RPAR(NWT+I-1)*1.d-3
+      enddo
+
+c     Use numerical Jacobian for remaining elements
+c     (this really needs to be fixed...
+      CALL conpFY_sdc(NY, TIME, Y, SAVF, RPAR, IPAR)
+      do J = 1,NY
+         EWT(J) = RPAR(dvbr+LEWT+j-2)
+      enddo
+      do J = 1,NY
+        YJ = Y(J)
+        R = 1.d0 / EWT(J)
+        Y(J) = Y(J) + R
+        FAC = 1.d0 / R
+        call conpFY_sdc(N, TIME, Y, FTEM, RPAR, IPAR)
+#if 1
+        do I = NY,NY
+           PD(I,J) = (FTEM(I) - SAVF(I))*FAC
+        enddo
+#else
+        do I = 1,NY
+           Jval = (FTEM(I) - SAVF(I))*FAC
+           id = 0
+           if (Jval.ne.0) then
+              FS = ABS(Jval - PD(i,j))/ABS(Jval)
+              if (FS .gt. 1.d-5 .and. ABS(PD(i,j)) .gt. 1.e-10) id = 1
+           else
+              FS = -1
+           endif
+           if (id.eq.1) print *,I,J,Jval,PD(I,J),FS,id
+        enddo
+#endif
+        Y(J) = YJ
+      enddo
+      NFE = NFE + NY
+c      stop
+      END
+
       subroutine conpFY_sdc(N, TIME, Z, ZP, RPAR, IPAR)
 C
 C     Variables in Z are:  Z(1:K) = rhoY(K) [MKS]
@@ -975,8 +1016,7 @@ C                          Z(K+1) = Temp    [K]
       
       REAL_T RHO_MKS, H, WDOT_CGS(maxspec), RINV_MKS
       REAL_T Y(maxspec), CONC_CGS(maxspec)
-      REAL_T CPB_CGS, ENTHALPY_CGS(maxspec)
-      REAL_T mwt(maxspec), invmwt(maxspec), SUM
+      REAL_T CPB_CGS, ENTHALPY_CGS(maxspec), SUM, THFAC, RHO_CGS
       integer K,m
 
 C     Needed to compute T from h
@@ -988,11 +1028,6 @@ C     Needed to compute T from h
       REAL_T HMIX_MKS
 
 
-      call CKWT(IWRK(ckbi),RWRK(ckbr),mwt)
-      do n=1,Nspec
-         invmwt(n) = one / mwt(n)
-      end do
-
       RHO_MKS = 0.d0
       do K=1,Nspec
          RHO_MKS = RHO_MKS + Z(K)
@@ -1000,7 +1035,7 @@ C     Needed to compute T from h
       RINV_MKS = 1.d0 / RHO_MKS
       
       do K=1,Nspec
-         CONC_CGS(K) = Z(K)*invmwt(K)*1.d-3
+         CONC_CGS(K) = Z(K)*RPAR(NWTI+K-1)*1.d-3
          Y(K) = Z(K) * RINV_MKS
       enddo
 
@@ -1008,17 +1043,18 @@ C     Needed to compute T from h
       call CKHMS(Z(Nspec+1),IPAR(ckbi), RPAR(ckbr), ENTHALPY_CGS)
 
       ZP(Nspec+1) = c_0(Nspec+1)
+      THFAC = 1.d3/thickFacCH
       do k= 1, Nspec
-         ZP(k) = WDOT_CGS(k) * 1.d3 * mwt(k) / thickFacCH  +  c_0(k)
+         ZP(k) = WDOT_CGS(k) * RPAR(NWT+k-1) * THFAC + c_0(k)
          ZP(Nspec+1) = ZP(Nspec+1) -  ZP(k) * ENTHALPY_CGS(k) * 1.d-4
       end do
 
       call CKCPBS(Z(Nspec+1),Y,IPAR(ckbi),RPAR(ckbr),CPB_CGS)
-      ZP(Nspec+1) = ZP(Nspec+1) / (RHO_MKS * CPB_CGS * 1.d-4)
+      CALL CKRHOY(RPAR(NP),Z(Nspec+1),Z(1),IPAR(ckbi),RPAR(ckbr),RHO_CGS)
+      ZP(Nspec+1) = ZP(Nspec+1) / (RHO_CGS * CPB_CGS * 1.d-1)
       END
 #endif
-#endif
-
+#else
       subroutine conpJY(N, TN, Y, SAVF, NFE, FTEM, ML,
      &                  MU, PD, NRPD, RPAR, IPAR)
       implicit none
@@ -1034,6 +1070,7 @@ C     Needed to compute T from h
 #include "conp.H"
       call bl_abort("conpJY: SHOULD NOT BE HERE!")
       END
+#endif
 
       integer function TfromeYpt(T,ein,Y,errMax,NiterMAX,res)
       implicit none
@@ -1043,9 +1080,9 @@ C     Needed to compute T from h
       REAL_T TMIN,TMAX,e
 
       parameter (TMIN=200, TMAX=5000)
-      REAL_T  T0,cv,de,temp
+      REAL_T  T0,h,cp,cv,de,temp,RoverWbar,Wbar,RU,RUC,P1ATM
       REAL_T dT, etarg
-      logical out_of_bounds, converged, soln_bad
+      logical out_of_bounds, converged, soln_bad, stalled
       REAL_T e300,cv300,e6500,cv6500
       integer ihitlo,ihithi
 
@@ -1149,11 +1186,11 @@ c     Error condition....dump state and bail out
       REAL_T TMIN,TMAX,errMAX
       integer NiterMAX,Niter,n,NiterDAMP, Discont_NiterMAX
       parameter (TMIN=250, TMAX=5000, Discont_NiterMAX=100)
-      REAL_T  T0,cp,dH,temp
+      REAL_T  T0,cp,cv,dH,temp,RoverWbar,Wbar,RU,RUC,P1ATM
       REAL_T res(0:NiterMAX-1),dT, Htarg
-      logical out_of_bounds, converged, soln_bad, stalled
+      logical out_of_bounds, converged, soln_bad, stalled, discont
       REAL_T HMIN,cpMIN,HMAX,cpMAX
-      integer ihitlo,ihithi
+      integer ihitlo,ihithi,j
       REAL_T old_T, old_H, Tsec, Hsec
 
       out_of_bounds(temp) = (temp.lt.TMIN-one) .or. (temp.gt.TMAX)

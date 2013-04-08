@@ -1,7 +1,7 @@
       PROGRAM CKDRIV
       implicit none
       CHARACTER*72 CHEMKIN_input, THERMO_input, TRANLIB_input, log_file,
-     &     CHEMKIN_linking_file, TRANLIB_cpp_file, file_list
+     &     CHEMKIN_linking_file, TRANLIB_c_file, file_list
 C
       integer LIN, LINCK, LOUT, LTHRM, LINMC, LTRAN, LNAME
       PARAMETER (LIN = 34, LINCK = 35, LOUT = 36, LTHRM = 37,
@@ -40,7 +40,7 @@ C
       DOUBLE PRECISION R(LRMCWK)
 C
       namelist / files / CHEMKIN_input, THERMO_input, TRANLIB_input, log_file,
-     &     CHEMKIN_linking_file, TRANLIB_cpp_file
+     &     CHEMKIN_linking_file, TRANLIB_c_file
 
       call getarg(1,file_list)
       OPEN (LNAME, STATUS = 'OLD', FORM = 'FORMATTED', FILE = trim(file_list))
@@ -56,7 +56,7 @@ C
       OPEN (LINCK, STATUS = 'UNKNOWN', FORM = 'FORMATTED',
      +   FILE = trim(CHEMKIN_linking_file))
       OPEN (LINMC, STATUS = 'UNKNOWN', FORM = 'FORMATTED',
-     +   FILE = trim(TRANLIB_cpp_file))
+     +   FILE = trim(TRANLIB_c_file))
       OPEN (LOUT, STATUS = 'UNKNOWN', FORM = 'FORMATTED',
      +   FILE = trim(log_file))
 C
