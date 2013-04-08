@@ -1,8 +1,0 @@
- &files
-   CHEMKIN_input = "drm19.mec"
-   THERMO_input = "drm19.therm"
-   TRANLIB_input = "drm19.trans"
-   CHEMKIN_linking_file = "drm19.asc"
-   TRANLIB_cpp_file = "drm19-tran.cpp"
-   log_file = "drm19.log"
- /

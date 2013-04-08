@@ -1,8 +1,0 @@
- &files
-   CHEMKIN_input = "chem-H.inp"
-   THERMO_input = "thermo12.dat"
-   TRANLIB_input = "transport12.dat"
-   CHEMKIN_linking_file = "chem-H.asc"
-   TRANLIB_cpp_file = "chem-H-tran.cpp"
-   log_file = "chem-H.log"
- /

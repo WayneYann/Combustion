@@ -1,8 +1,0 @@
- &files
-   CHEMKIN_input = "chem.inp"
-   THERMO_input = "therm.dat"
-   TRANLIB_input = "tran.dat"
-   CHEMKIN_linking_file = "chem.asc"
-   TRANLIB_cpp_file = "LuDME-tran.cpp"
-   log_file = "LuDME.log"
- /

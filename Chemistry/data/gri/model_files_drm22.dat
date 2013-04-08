@@ -1,8 +1,0 @@
- &files
-   CHEMKIN_input = "drm22.mec"
-   THERMO_input = "drm22.therm"
-   TRANLIB_input = "drm22.trans"
-   CHEMKIN_linking_file = "drm22.asc"
-   TRANLIB_cpp_file = "drm22-tran.cpp"
-   log_file = "drm22.log"
- /

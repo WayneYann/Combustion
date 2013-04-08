@@ -1,8 +1,0 @@
- &files
-   CHEMKIN_input = "grimech30-noArN.mec"
-   THERMO_input = "grimech30.therm"
-   TRANLIB_input = "grimech30.trans"
-   CHEMKIN_linking_file = "grimech30-noArN.asc"
-   TRANLIB_cpp_file = "grimech30-noArN-tran.cpp"
-   log_file = "grimech30-noArN.log"
- /

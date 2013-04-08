@@ -1,5 +1,7 @@
-To use Fuego to generate c++
+To use Fuego to generate c code for the mechanisms
 
-1) Unpack Fuego.tgz in Combustion/Chemistry/tools/fuego/
-2) Source the appropriate setup.sh having set DV_DIR to Combustion/Chemistry/tools/fuego/Fuego/Pythia
+1) Source the appropriate setup.sh having set CCSE_DIR to point to the folder containing the 
+     BoxLib and Combustion git repos (check variables set in that script to ensure your 
+     install is consistent with the assumptions there)
+2) Build the "convert.exe" executable under CCSE_DIR/Combustion/Chemistry/Tools/convert
 3) Run the make script in the appropriate mechanism directory (i.e. cd chem-H; sh make-chem-H.sh)

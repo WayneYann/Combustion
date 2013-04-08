@@ -1,9 +1,9 @@
 CHEMTOOLSDIR=../../tools
 
-CHEMINP=grimech30.dat
+CHEMINP=inert_30.ck2
 THERMINP=thermo30.dat
 TRANINP=transport30.dat
-FINALFILE=grimech30.c
+FINALFILE=inert30.c
 
 CONVERT=${CHEMTOOLSDIR}/convert/convert.exe
 FMC=${CHEMTOOLSDIR}/fuego/Pythia/products/bin/fmc.py
