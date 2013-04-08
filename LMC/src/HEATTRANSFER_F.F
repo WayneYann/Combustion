@@ -31,7 +31,8 @@ c
       
       subroutine FORT_GETTYPICALVALS(typ_vals,nVals)
 #include "cdwrk.H"
-#include <htdata.H>
+#include "conp.H"
+#include "htdata.H"
       integer nVals,n,nVals1
       REAL_T typ_vals(nVals)
       nVals1 = nVals-BL_SPACEDIM
@@ -55,7 +56,8 @@ c     Note: typical values are defaulted to zero, and may be left that way
 
       subroutine FORT_SETTYPICALVALS(typ_vals,nVals)
 #include "cdwrk.H"
-#include <htdata.H>
+#include "conp.H"
+#include "htdata.H"
       integer nVals,n,nVals1
       REAL_T typ_vals(nVals)
       nVals1 = nVals-BL_SPACEDIM
@@ -138,7 +140,7 @@ c     -- rbp
 
       implicit none
 #include "cdwrk.H"
-#include <htdata.H>
+#include "conp.H"
 #include "visc.H"
       data use_constant_mu     /.true./
       data use_constant_lambda /.true./

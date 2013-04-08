@@ -873,6 +873,7 @@ c ::: -----------------------------------------------------------
       REAL_T   press(DIMV(press))
 
 #include "cdwrk.H"
+#include "conp.H"
 #include "htdata.H"
 #include "bc.H"
 #include "probdata.H"
@@ -889,7 +890,7 @@ c ::: -----------------------------------------------------------
       REAL_T pmf_vals(maxspec+3), sum, Y_pmf(maxspec), rblob, theta
       REAL_T Y_air(maxspec), X_air(maxspec), ypert, Lx
       REAL_T  r,rfront,Xl(maxspec),Yl(maxspec)
-      integer iN2, iAr, iO2
+      integer iAr, iO2
       integer lo_chem(SDIM),hi_chem(SDIM)
       data lo_chem /1,1/
       data hi_chem /1,1/
@@ -902,12 +903,13 @@ c ::: -----------------------------------------------------------
          call bl_abort('No IC''s for system without T, RhoH')
       endif
 
-      iN2 = -1
       iAr = -1
       iO2 = -1
+      if (iN2.lt.1 .or. iN2.gt.Nspec) then
+         call bl_pd_abort()
+      endif
       do n = 1,Nspec
          call get_spec_name(name,n)
-         if (name .eq. 'N2' ) iN2 = n
          if (name .eq. 'AR' ) iAr = n
          if (name .eq. 'O2' ) iO2 = n
       end do

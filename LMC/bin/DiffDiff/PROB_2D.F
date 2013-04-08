@@ -818,6 +818,7 @@ c ::: -----------------------------------------------------------
       REAL_T   press(DIMV(press))
 
 #include "cdwrk.H"
+#include "conp.H"
 #include "htdata.H"
 #include "bc.H"
 #include "probdata.H"

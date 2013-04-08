@@ -1150,13 +1150,14 @@ c ::: -----------------------------------------------------------
       REAL_T    scal(DIMV(state),nscal)
       REAL_T   press(DIMV(press))
 
-#include "htdata.H"
 #include "cdwrk.H"
+#include "conp.H"
+#include "htdata.H"
 #include "bc.H"
 #include "probdata.H"
 #include "INFL_FORCE_F.H"
 
-      integer i, j, k, n, iN2, iO2
+      integer i, j, k, n, iO2
       REAL_T x, y, z, zt, u, v, w, rho, Yl(maxspec), Xl(maxspec), T, h, Patm
       REAL_T turbSclX, turbSclY, turbSclZ, convVelSAVE
       REAL_T eta, eta0, pmf_vals(maxspec+3), bg_vals(maxspec+3), r, y1, y2, theta
@@ -1205,9 +1206,11 @@ c
       convVel = 15.d0
 #endif 
            
+      if (iN2.lt.1 .or. iN2.gt.Nspec) then
+         call bl_pd_abort()
+      endif
       do n = 1,Nspec
          call get_spec_name(name, n)
-         if (name .eq. 'N2' ) iN2 = n
          if (name .eq. 'O2' ) iO2 = n
       end do
 

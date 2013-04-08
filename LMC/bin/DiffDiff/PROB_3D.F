@@ -1142,6 +1142,7 @@ c ::: -----------------------------------------------------------
 
 #include "cdwrk.H"
 #include "bc.H"
+#include "conp.H"
 #include "htdata.H"
 #include "probdata.H"
 #if defined(BL_DO_FLCT)

@@ -363,18 +363,23 @@ c ::: -----------------------------------------------------------
       integer tmpi, nPMF
 
 #include "cdwrk.H"
-#include <htdata.H>
+#include "conp.H"
+#include "htdata.H"
 #include "bc.H"
 #include "probdata.H"
 
       integer i, j, k, n, airZone, fuelZone, getZone, zone
-      integer iO2,iN2,iH2,iCH4
+      integer iO2,iH2,iCH4
       character*(maxspnml) name
       REAL_T x, y, z, r, Yl(maxspec), Xl(maxspec), Patm
       REAL_T Xlin(maxspec),alpha,beta,gamma,delt,factor
       REAL_T pmf_vals(maxspec+3), z1, z2, dx, Ly
       REAL_T pert,Lx,FORT_P1ATMMKS,eta,u,v,w,rho,T,h
            
+      if (iN2.lt.1 .or. iN2.gt.Nspec) then
+         call bl_pd_abort()
+      endif
+
       if ( (trim(probtype).eq.BL_PROB_PREMIXED_FREE) 
      &     .or. (trim(probtype).eq.BL_PROB_PREMIXED_CONTROLLED_INFLOW)
      &     .or. (trim(probtype).eq.BL_PROB_PREMIXED_FIXED_INFLOW) ) then
@@ -385,7 +390,6 @@ c ::: -----------------------------------------------------------
               do n=1,Nspec
 
                   call get_spec_name(name,n)
-                  if (name .eq. 'N2' ) iN2 = n
                   if (name .eq. 'O2' ) iO2 = n
                   if (name .eq. 'H2' ) iH2 = n
                   if (name .eq. 'CH4' ) iCH4 = n

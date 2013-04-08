@@ -341,7 +341,8 @@ c ::: -----------------------------------------------------------
       integer tmpi, nPMF
 
 #include "cdwrk.H"
-#include <htdata.H>
+#include "conp.H"
+#include "htdata.H"
 #include "bc.H"
 #include "probdata.H"
 
@@ -351,10 +352,13 @@ c ::: -----------------------------------------------------------
       REAL_T pert,Lx,FORT_P1ATMMKS,eta,u,v,rho,T,h
       REAL_T sigma
 
-      integer iO2,iN2,iCO2,iH2O,iCH3OCH3
+      integer iO2,iCO2,iH2O,iCH3OCH3
       character*(maxspnml) name
 
       write(6,*)" made it to initdata"
+      if (iN2.lt.1 .or. iN2.gt.Nspec) then
+         call bl_pd_abort()
+      endif
 
            
       if ( (trim(probtype).eq.BL_PROB_PREMIXED_FIXED_INFLOW) 
@@ -405,10 +409,10 @@ c ::: -----------------------------------------------------------
       else if ((trim(probtype).eq.BL_PROB_IGNITION)) then
 
                 write(6,*)" found probtype"
+
                do n=1,Nspec
 
                   call get_spec_name(name,n)
-                  if (name .eq. 'N2' ) iN2 = n
                   if (name .eq. 'O2' ) iO2 = n
                   if (name .eq. 'CO2' ) iCO2 = n
                   if (name .eq. 'H2O' ) iH2O = n

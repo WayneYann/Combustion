@@ -370,7 +370,8 @@ c ::: -----------------------------------------------------------
       integer tmpi, nPMF
 
 #include "cdwrk.H"
-#include <htdata.H>
+#include "conp.H"
+#include "htdata.H"
 #include "bc.H"
 #include "probdata.H"
 
@@ -379,6 +380,9 @@ c ::: -----------------------------------------------------------
       REAL_T pmf_vals(maxspec+3), y1, y2, dx
       REAL_T pert,Lx,FORT_P1ATMMKS,eta,u,v,rho,T,h
            
+      if (iN2.lt.1 .or. iN2.gt.Nspec) then
+         call bl_pd_abort()
+      endif
       if ( (trim(probtype).eq.BL_PROB_PREMIXED_FIXED_INFLOW) 
      &     .or. (trim(probtype).eq.BL_PROB_PREMIXED_CONTROLLED_INFLOW) ) then
 

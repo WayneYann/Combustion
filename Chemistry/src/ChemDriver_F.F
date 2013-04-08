@@ -775,8 +775,6 @@ c     Result in kg/kmole
       implicit none
 #include "cdwrk.H"
 #include "conp.H"
-#include "htdata.H"
-#include "visc.H"
 
       REAL_T TIME, Z(NEQ), ZP(NEQ), RPAR(*)
       integer N, IPAR(*)
@@ -852,8 +850,6 @@ C     Variables in Z are:  Z(1:K) = rhoY(K) [MKS]
       implicit none
 #include "cdwrk.H"
 #include "conp.H"
-#include "htdata.H"
-#include "visc.H"
       REAL_T TIME, Z(NEQ), ZP(NEQ), RPAR(*)
       integer N, IPAR(*)
       
@@ -898,8 +894,6 @@ C                          Z(K+1) = RhoH    [MKS]
       implicit none
 #include "cdwrk.H"
 #include "conp.H"
-#include "htdata.H"
-#include "visc.H"
       REAL_T TIME, Z(NEQ), ZP(NEQ), RPAR(*)
       integer N, IPAR(*)
       
@@ -950,7 +944,6 @@ C                          Z(K+1) = RhoH
 #include "cdwrk.H"
 #include "conp.H"
 #include "vode.H"
-#include "htdata.H"
 
       REAL_T FAC, DVNORM, SAVF(maxspec+1), FTEM(maxspec+1), R, YJ
       REAL_T EWT(maxspec+1),C(maxspec), T, RHO_MKS, Jval, rat, FS
