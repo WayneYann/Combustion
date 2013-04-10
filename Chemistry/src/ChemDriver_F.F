@@ -1043,7 +1043,7 @@ C     Needed to compute T from h
       end do
 
       call CKCPBS(Z(Nspec+1),Y,IPAR(ckbi),RPAR(ckbr),CPB_CGS)
-      CALL CKRHOY(RPAR(NP),Z(Nspec+1),Z(1),IPAR(ckbi),RPAR(ckbr),RHO_CGS)
+      CALL CKRHOY(RPAR(NP),Z(Nspec+1),Y,IPAR(ckbi),RPAR(ckbr),RHO_CGS)
       ZP(Nspec+1) = ZP(Nspec+1) / (RHO_CGS * CPB_CGS * 1.d-1)
       END
 #endif
