@@ -109,11 +109,7 @@ c
       !
       ! Ditto for DVODE workspace.
       !
-#ifdef DO_NOENERGY
-      NEQ   = Nspec
-#else
       NEQ   = Nspec + 1
-#endif
       dvr   = 22 + 9*NEQ + 2*NEQ**2
       dvi   = 30 + NEQ
       dvdr  = Nspec + NEQ*2 + 2
@@ -841,101 +837,7 @@ C
 
       END
 
-#ifdef LMC_SDC
-#ifndef DO_TEMPERATURE
-#ifdef DO_NOENERGY
-      subroutine conpFY_sdc(N, TIME, Z, ZP, RPAR, IPAR)
-C
-C     Variables in Z are:  Z(1:K) = rhoY(K) [MKS]
-      implicit none
-#include "cdwrk.H"
-#include "conp.H"
-      REAL_T TIME, Z(NEQ), ZP(NEQ), RPAR(*)
-      integer N, IPAR(*)
-      
-      REAL_T RHO_MKS, WDOT_CGS(maxspec), THFAC, HMIX_MKS, RINV_MKS
-      REAL_T Y(maxspec), CONC_CGS(maxspec), HMIX_CGS, T
-      integer K,m
-
-C     Needed to compute T from h
-      REAL_T HtoTerrMAX
-      integer HtoTiterMAX, Niter
-      parameter (HtoTerrMAX = BL_REAL_E(7.8,-12))
-      parameter (HtoTiterMAX = 20)
-      REAL_T res(0:HtoTiterMAX-1)
-
-      REAL_T RHO_CGS, RINV_CGS, rhohmixDOT_MKS
-
-      RHO_MKS = 0.d0
-      do K=1,Nspec
-         RHO_MKS = RHO_MKS + Z(K)
-      enddo
-      RINV_MKS = 1.d0 / RHO_MKS
-      
-      do K=1,Nspec
-         CONC_CGS(K) = Z(K)*RPAR(NWTI+K-1)*1.d-3
-         Y(K) = Z(K) * RINV_MKS
-      enddo
-
-      HMIX_MKS = (rhoH_INIT + c_0(Nspec+1)*TIME) * RINV_MKS
-      call FORT_TfromHYpt(T_cell,HMIX_MKS,Y,HtoTerrMAX,HtoTiterMAX,res,Niter)
-      call CKWC(T_cell,CONC_CGS,IWRK,RWRK,WDOT_CGS)
-
-      THFAC = 1.d3/thickFacCH
-      do k= 1, Nspec
-         ZP(k) = WDOT_CGS(k) * RPAR(NWT+k-1) * THFAC + c_0(k)
-      end do
-      END
-#else
-      subroutine conpFY_sdc(N, TIME, Z, ZP, RPAR, IPAR)
-C
-C     Variables in Z are:  Z(1:K) = rhoY(K) [MKS]
-C                          Z(K+1) = RhoH    [MKS]
-      implicit none
-#include "cdwrk.H"
-#include "conp.H"
-      REAL_T TIME, Z(NEQ), ZP(NEQ), RPAR(*)
-      integer N, IPAR(*)
-      
-      REAL_T RHO_MKS, H, WDOT_CGS(maxspec), THFAC, HMIX_MKS, RINV_MKS
-      REAL_T Y(maxspec), CONC_CGS(maxspec), HMIX_CGS, T
-      integer K,m
-
-C     Needed to compute T from h
-      REAL_T HtoTerrMAX
-      integer HtoTiterMAX, Niter
-      parameter (HtoTerrMAX = BL_REAL_E(7.8,-12))
-      parameter (HtoTiterMAX = 20)
-      REAL_T res(0:HtoTiterMAX-1)
-
-      REAL_T RHO_CGS, RINV_CGS
-
-C
-C     Variables in Z are:  Z(1:K) = rhoY(K)
-C                          Z(K+1) = RhoH
-      RHO_MKS = 0.d0
-      do K=1,Nspec
-         RHO_MKS = RHO_MKS + Z(K)
-      enddo
-      RINV_MKS = 1.d0 / RHO_MKS
-      
-      do K=1,Nspec
-         CONC_CGS(K) = Z(K)*RPAR(NWTI+K-1)*1.d-3
-         Y(K) = Z(K) * RINV_MKS
-      enddo
-
-      HMIX_MKS = (rhoh_INIT + c_0(Nspec+1)*TIME) * RINV_MKS
-      call FORT_TfromHYpt(T_cell,HMIX_MKS,Y,HtoTerrMAX,HtoTiterMAX,res,Niter)
-      call CKWC(T_cell,CONC_CGS,IWRK,RWRK,WDOT_CGS)
-
-      ZP(Nspec+1) = c_0(Nspec+1)
-      THFAC = 1.d3/thickFacCH
-      do k= 1, Nspec
-         ZP(k) = WDOT_CGS(k) * RPAR(NWT+k-1) * THFAC + c_0(k)
-      end do
-      END
-#endif
-#else
+#if defined (LMC_SDC) && defined (DO_TEMPERATURE)
 
       subroutine conpJY(NY, TIME, Y, ML, MU, PD, NROWPD, RPAR, IPAR)
       implicit none
@@ -997,6 +899,76 @@ c     (this really needs to be fixed...
 c      stop
       END
 
+#else
+
+      subroutine conpJY(N, TN, Y, SAVF, NFE, FTEM, ML,
+     &                  MU, PD, NRPD, RPAR, IPAR)
+      implicit none
+      REAL_T SAVF
+      REAL_T PD, RPAR(*), TN, Y
+      dimension SAVF(*)
+      integer N, NRPD, ML, MU, IPAR(*)
+      dimension Y(N), PD(NRPD,N)
+      REAL_T FTEM
+      dimension FTEM(*)
+      integer NFE
+#include "cdwrk.H"
+#include "conp.H"
+      call bl_abort("conpJY: SHOULD NOT BE HERE!")
+      END
+
+#endif
+
+#ifdef LMC_SDC
+#ifndef DO_TEMPERATURE
+      subroutine conpFY_sdc(N, TIME, Z, ZP, RPAR, IPAR)
+C
+C     Variables in Z are:  Z(1:K) = rhoY(K) [MKS]
+C                          Z(K+1) = RhoH    [MKS]
+      implicit none
+#include "cdwrk.H"
+#include "conp.H"
+      REAL_T TIME, Z(NEQ), ZP(NEQ), RPAR(*)
+      integer N, IPAR(*)
+      
+      REAL_T RHO_MKS, H, WDOT_CGS(maxspec), THFAC, HMIX_MKS, RINV_MKS
+      REAL_T Y(maxspec), CONC_CGS(maxspec), HMIX_CGS, T
+      integer K,m
+
+C     Needed to compute T from h
+      REAL_T HtoTerrMAX
+      integer HtoTiterMAX, Niter
+      parameter (HtoTerrMAX = BL_REAL_E(7.8,-12))
+      parameter (HtoTiterMAX = 20)
+      REAL_T res(0:HtoTiterMAX-1)
+
+      REAL_T RHO_CGS, RINV_CGS
+
+C
+C     Variables in Z are:  Z(1:K) = rhoY(K)
+C                          Z(K+1) = RhoH
+      RHO_MKS = 0.d0
+      do K=1,Nspec
+         RHO_MKS = RHO_MKS + Z(K)
+      enddo
+      RINV_MKS = 1.d0 / RHO_MKS
+      
+      do K=1,Nspec
+         CONC_CGS(K) = Z(K)*RPAR(NWTI+K-1)*1.d-3
+         Y(K) = Z(K) * RINV_MKS
+      enddo
+
+      HMIX_MKS = (rhoh_INIT + c_0(Nspec+1)*TIME) * RINV_MKS
+      call FORT_TfromHYpt(T_cell,HMIX_MKS,Y,HtoTerrMAX,HtoTiterMAX,res,Niter)
+      call CKWC(T_cell,CONC_CGS,IWRK,RWRK,WDOT_CGS)
+
+      ZP(Nspec+1) = c_0(Nspec+1)
+      THFAC = 1.d3/thickFacCH
+      do k= 1, Nspec
+         ZP(k) = WDOT_CGS(k) * RPAR(NWT+k-1) * THFAC + c_0(k)
+      end do
+      END
+#else
       subroutine conpFY_sdc(N, TIME, Z, ZP, RPAR, IPAR)
 C
 C     Variables in Z are:  Z(1:K) = rhoY(K) [MKS]
@@ -1047,22 +1019,6 @@ C     Needed to compute T from h
       ZP(Nspec+1) = ZP(Nspec+1) / (RHO_CGS * CPB_CGS * 1.d-1)
       END
 #endif
-#else
-      subroutine conpJY(N, TN, Y, SAVF, NFE, FTEM, ML,
-     &                  MU, PD, NRPD, RPAR, IPAR)
-      implicit none
-      REAL_T SAVF
-      REAL_T PD, RPAR(*), TN, Y
-      dimension SAVF(*)
-      integer N, NRPD, ML, MU, IPAR(*)
-      dimension Y(N), PD(NRPD,N)
-      REAL_T FTEM
-      dimension FTEM(*)
-      integer NFE
-#include "cdwrk.H"
-#include "conp.H"
-      call bl_abort("conpJY: SHOULD NOT BE HERE!")
-      END
 #endif
 
       integer function TfromeYpt(T,ein,Y,errMax,NiterMAX,res)
@@ -1243,7 +1199,9 @@ c     Error condition....dump state and bail out
             if(abs(T-1000.d0).le.1.d-3.and. dH.le.1.d-5)then
               converged = .true.
             else  
+#if 0
               write(6,*)" missing my test",T,dH
+#endif
               Niter = -2
               goto 100
             endif
@@ -1303,6 +1261,7 @@ c     Error condition....dump state and bail out
 c
  100  continue
 
+#if 0
       write(6,997) 'T from (H,Y): failed'
       write(6,997) 'iterations tried = ',Niter
       write(6,998) 'initial T = ',T0
@@ -1318,6 +1277,7 @@ c
       do n = 0,NiterMAX-1
          write(6,998) '  ',res(n)
       end do
+#endif
 
  997  format(a,3(i4,a))
  998  format(a,d21.12)

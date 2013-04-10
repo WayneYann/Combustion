@@ -155,9 +155,7 @@
                call CKCPBS(T(i,j,k), Zt(1), IWRK(ckbi), RWRK(ckbr), CPB_CGS)
                call CKHMS(T(i,j,k),IWRK(ckbi), RWRK(ckbr), H_CGS)
 #else
-#ifndef DO_NOENERGY
                Zt(Nspec+1) = HMIX_CGS * 1.d-4
-#endif
 #endif
                call CKRHOY(RWRK(NP),T(i,j,k), Zt(1), IWRK(ckbi), RWRK(ckbr), RHO_CGS)
                do n=1,Nspec
@@ -242,9 +240,7 @@ c     NOTE: scal converts result from assumed cgs to MKS (1 erg/s.cm^3 = .1 J/s.
 #ifdef DO_TEMPERATURE
                Zt(Nspec+1) = T(i,j,k)
 #else
-#ifndef DO_NOENERGY
                Zt(Nspec+1) = HMIX_CGS * 1.d-4
-#endif
 #endif
                
                call CKRHOY(RWRK(NP),T(i,j,k), Zt(1), IWRK(ckbi), RWRK(ckbr), RHO_CGS)
@@ -321,9 +317,7 @@ c     NOTE: scal converts result from assumed cgs to MKS (1 erg/s.cm^3 = .1 J/s.
 #ifdef DO_TEMPERATURE
                Zt(Nspec+1) = T(i,j,k)
 #else
-#ifndef DO_NOENERGY
                Zt(Nspec+1) = RhoH(i,j,k)
-#endif
 #endif
                do n=1,Nspec
                   Zt(n) = RhoY(i,j,k,n)
@@ -1181,7 +1175,6 @@ c                  rhoYnew(i,j,k,m) = rhoYold(i,j,k,m) + Z(m) - rhoYtemp(m)*rhoo
       end do
       end
 #else
-#ifndef DO_NOENERGY
       subroutine FORT_CONPSOLV_SDC(lo, hi,
      &     rhoYnew,   DIMS(rhoYnew), 
      &     rhoHnew,   DIMS(rhoHnew),
@@ -1440,11 +1433,6 @@ c                  RWRK(dvbr+4) = TT2 - TT1
          end do
       end do
       end
-#else
-c     No-energy version
-c     FIXME: Need to pull over from 2D code
-#endif
-
 c     terminate the DO_TEMPERATURE ifdef
 #endif
 
