@@ -6,15 +6,16 @@ EXEname := lmc.exe
 #
 #pmf_source := ../../../Chemistry/data/gri/PMFs/gri30_070.f
 pmf_source := ../../../Chemistry/data/chem-H/PMFs/chemHSoln_seed_0.00.f
-
+#pmf_source := ../../../Chemistry/data/Lu/PMFs/LuDME_0700.f
 #
 # Choose reaction mechanism
 # Use GRI30 for pmf_source := gri30_070.f
 # Use CHEMH for pmf_source := chemHSoln_seed_0.00.f
-# Use CHEMH for pmf_source := H-flame_0370_MCDD.f
+# Use LUDME for pmf_source := LuDME_0700.f
 #
 #REACTION_MECHANISM=GRI30
 REACTION_MECHANISM=CHEMH
+#REACTION_MECHANISM=LUDME
 
 ifeq (${USE_INTEL},TRUE)
   CCOMP := icpc -Wno-deprecated -g -Wunused-variable -DBL_ICC_VERSION=10.1 -DBL_MAJOR_VERSION=10 -DBL_MINOR_VERSION=1 -DBL_FORT_USE_UNDERSCORE
@@ -23,20 +24,24 @@ ifeq (${USE_INTEL},TRUE)
 else
   fCOMP := gfortran -g -fbounds-check -O1 -Wall -ffixed-line-length-none
   CCOMP := g++ -g -O0 -fno-exceptions -Wall -Wno-sign-compare -DBL_FORT_USE_UNDERSCORE
+  cCOMP := gcc -g -O0 -std=c99 -fno-exceptions -Wall -Wno-sign-compare -DBL_FORT_USE_UNDERSCORE
   XTRALIBS :=  -lm -lgfortran
 endif
 
 ifeq ($(REACTION_MECHANISM),GRI30)
-  mech_source += ../../../Chemistry/data/gri/Trash/FROM_LMC/gri30.cpp
+  mech_source += ../../../Chemistry/data/gri/Trash/FROM_LMC/gri30.c
 endif
 ifeq ($(REACTION_MECHANISM),CHEMH)
-  mech_source += ../../../Chemistry/data/chem-H/chem-H.cpp
+  mech_source += ../../../Chemistry/data/chem-H/chem-H.c
+endif
+ifeq ($(REACTION_MECHANISM),LUDME)
+  mech_source += ../../../Chemistry/data/Lu/LuDME.c
 endif
 
 chem_sources := CD.f ../../../Chemistry/src/vode.f ../../../Chemistry/src/EGini.f ../../../Chemistry/src/EGSlib.f
 
 pmf_object := $(pmf_source:%.f=%.o)
-mech_object := $(mech_source:%.cpp=%.o)
+mech_object := $(mech_source:%.c=%.o)
 chem_objects := $(chem_sources:%.f=%.o)
 
 f_sources += lmc.f ${chem_sources} prob.f fill_ghost.f \
@@ -50,13 +55,13 @@ f_sources += lmc.f ${chem_sources} prob.f fill_ghost.f \
              read_check.f write_check.f write_plt.f cn_solve.f ${pmf_source}
 
 f_includes += spec.h
-C_sources += main.cpp ${mech_source}
+C_sources += main.cpp
 
 C_objects := $(C_sources:%.cpp=%.o)
 f_objects := $(f_sources:%.f=%.o)
 
-${EXEname}: ${f_objects} ${C_objects} ${f_includes}
-	${CCOMP} -o ${EXEname} ${f_objects} ${C_objects} ${XTRALIBS}
+${EXEname}: ${f_objects} ${mech_object} ${C_objects} ${f_includes}
+	${CCOMP} -o ${EXEname} ${f_objects} ${mech_object} ${C_objects} ${XTRALIBS}
 
 test.exe: CDc.o driver.o prob.o ${pmf_object} ${mech_object} ${chem_objects}
 	${CCOMP} CDc.o driver.o prob.o ${pmf_object} ${mech_object} ${chem_objects} -o test.exe ${XTRALIBS}
@@ -67,11 +72,15 @@ clean:
 %.o: %.cpp
 	${CCOMP} -c $^ -o $*.o
 
+%.o: %.c
+	${cCOMP} -c $^ -o $*.o
+
 %.o: %.f
 	${fCOMP} -c $^ -o $*.o
 
 
-MySrcDirs += . .. ../PMFfiles
+MySrcDirs += .
 vpath %.cpp $(MySrcDirs)
+vpath %.c   $(MySrcDirs)
 vpath %.h   $(MySrcDirs)
 vpath %.f   $(MySrcDirs)
