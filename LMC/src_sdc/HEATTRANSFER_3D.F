@@ -83,6 +83,31 @@
       enddo
       end
 
+      subroutine FORT_FLOORSPEC(lo, hi,
+     &                          spec,  DIMS(spec))
+      implicit none
+#include "cdwrk.H"
+#include "visc.H"
+#include "htdata.H"
+      integer lo(SDIM),hi(SDIM)
+      integer DIMDEC(spec)
+      REAL_T  spec(DIMV(spec),1:Nspec)
+      
+      integer i, j, k, n
+
+      do k=lo(3),hi(3)
+         do j=lo(2),hi(2)
+            do i=lo(1),hi(1)
+
+               do n=1,Nspec
+                  spec(i,j,k,n) = max(0.d0,spec(i,j,k,n))
+               end do
+
+            enddo
+         enddo
+      enddo
+      end
+
       subroutine FORT_ENTH_DIFF_TERMS(lo, hi, dlo, dhi, dx, T, DIMS(T), RhoY, DIMS(RhoY),
      &                                rhoDx, DIMS(rhoDx), Fx, DIMS(Fx), Ax, DIMS(Ax), 
      &                                rhoDy, DIMS(rhoDy), Fy, DIMS(Fy), Ay, DIMS(Ay), 
