@@ -1,4 +1,4 @@
-FILE = typVals.pp
+#FILE = typVals.pp
 ns.reset_typical_vals_int = 5
 ht.vode_itol = 2
 #ht.vode_rtol = 1.e-6
@@ -192,3 +192,5 @@ fab.format = NATIVE
 #ns.do_init_proj=0
 #max_step=0
 #ns.num_divu_iters=0
+
+#ShowMF_Sets = sdc
