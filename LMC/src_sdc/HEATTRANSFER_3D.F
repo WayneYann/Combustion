@@ -1358,6 +1358,48 @@ c     yzi
       endif
 
       end
+      
+      subroutine  FORT_INCRWEXTFLXDIV(lo, hi,
+     &                                xflux,  DIMS(xflux),
+     &                                yflux,  DIMS(yflux),
+     &                                zflux,  DIMS(zflux),
+     &                                stateo, DIMS(stateo),
+     &                                staten, DIMS(staten),
+     &                                vol,    DIMS(vol),
+     &                                nc, dt)
+      implicit none
+      integer lo(SDIM), hi(SDIM), nc
+      integer DIMDEC(xflux)
+      integer DIMDEC(yflux)
+      integer DIMDEC(zflux)
+      integer DIMDEC(stateo)
+      integer DIMDEC(staten)
+      integer DIMDEC(vol)
+      REAL_T xflux(DIMV(xflux),nc)
+      REAL_T yflux(DIMV(yflux),nc)
+      REAL_T zflux(DIMV(zflux),nc)
+      REAL_T stateo(DIMV(stateo))
+      REAL_T staten(DIMV(staten))
+      REAL_T vol(DIMV(vol))
+      REAL_T dt
+
+      integer i, j, k, n
+      REAL_T dF
+      
+      do k=lo(3),hi(3)
+         do j=lo(2),hi(2)
+            do i=lo(1),hi(1)
+               dF = zero
+               do n=1,nc
+                  dF = dF + ( xflux(i+1,j,k,n) - xflux(i,j,k,n) )
+     &                 +    ( yflux(i,j+1,k,n) - yflux(i,j,k,n) ) 
+     &                 +    ( zflux(i,j,k+1,n) - zflux(i,j,k,n) ) 
+               end do
+               staten(i,j,k) = stateo(i,j,k) + dF*dt/vol(i,j,k)
+            end do
+         end do
+      end do
+      end
 
 
       subroutine  FORT_FLUXDIV(lo, hi,
