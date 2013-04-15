@@ -21,6 +21,7 @@
 #    define FORT_INCRWEXTFLXDIV            incrwextflxdiv
 #    define FORT_FLUXDIV                   flxdiv
 #    define FORT_CALCDIVU                  calcdivu
+#    define FORT_FLOORSPEC                 floorspec
 #    define FORT_ENTH_DIFF_TERMS           enthdiff
 #    define FORT_SET_COMMON                setcommon
 #    define FORT_COMPUTE_UGRADP            computeugradp
@@ -53,6 +54,7 @@
 #    define FORT_FLUXDIV                   FLXDIV
 #    define FORT_ENTH_DIFF_TERMS           ENTHDIFF
 #    define FORT_CALCDIVU                  CALCDIVU
+#    define FORT_FLOORSPEC                 FLOORSPEC
 #    define FORT_SET_COMMON                SETCOMMON
 #    define FORT_COMPUTE_UGRADP            COMPUTEUGRADP
 #    define FORT_HTDDRELAX                 HTDDRELAX
@@ -82,6 +84,7 @@
 #    define FORT_INCRWEXTFLXDIV            incrwextflxdiv
 #    define FORT_FLUXDIV                   flxdiv
 #    define FORT_CALCDIVU                  calcdivu
+#    define FORT_FLOORSPEC                 floorspec
 #    define FORT_ENTH_DIFF_TERMS           enthdiff
 #    define FORT_SET_COMMON                setcommon
 #    define FORT_COMPUTE_UGRADP            computeugradp
@@ -112,6 +115,7 @@
 #    define FORT_FLUXDIV                   flxdiv_
 #    define FORT_INCRWEXTFLXDIV            incrwextflxdiv_
 #    define FORT_CALCDIVU                  calcdivu_
+#    define FORT_FLOORSPEC                 floorspec_
 #    define FORT_ENTH_DIFF_TERMS           enthdiff_
 #    define FORT_SET_COMMON                setcommon_
 #    define FORT_COMPUTE_UGRADP            computeugradp_
@@ -281,6 +285,9 @@ extern "C" {
                        const Real* vtT,    ARLIM_P(vtTlo),   ARLIM_P(vtThi),
                        const Real* rhoY,   ARLIM_P(rYlo),    ARLIM_P(rYhi),
                        const Real* T,      ARLIM_P(Tlo),     ARLIM_P(Thi));
+    
+    void FORT_FLOORSPEC(const int* lo,  const int* hi,
+			const Real* spec,   ARLIM_P(speclo),    ARLIM_P(spechi));
     
     void FORT_SET_COMMON (const Real* time, const int* iteration);
 

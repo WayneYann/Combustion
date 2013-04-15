@@ -301,7 +301,7 @@ HeatTransfer::Initialize ()
     HeatTransfer::first_spec                = -1;
     HeatTransfer::last_spec                 = -2;
     HeatTransfer::nspecies                  = 0;
-    HeatTransfer::floor_species             = 0;
+    HeatTransfer::floor_species             = 1;
     HeatTransfer::do_set_rho_to_species_sum = 1;
     HeatTransfer::rgas                      = -1.0;
     HeatTransfer::prandtl                   = .7;
@@ -5496,6 +5496,16 @@ HeatTransfer::advance (Real time,
     MultiFab& S_new = get_new_data(State_Type);
     MultiFab& S_old = get_old_data(State_Type);
 
+    if (floor_species == 1) {
+      for (MFIter mfi(S_old); mfi.isValid(); ++mfi)
+      {
+	const Box& box = mfi.validbox();            
+	const FArrayBox& species = S_old[mfi];
+	FORT_FLOORSPEC(box.loVect(), box.hiVect(),
+		       species.dataPtr(first_spec), ARLIM(species.loVect()),  ARLIM(species.hiVect()));
+      }
+    }
+
     //
     // Compute traced states for normal comp of velocity at half time level.
     //
@@ -5654,6 +5664,17 @@ HeatTransfer::advance (Real time,
 
     showMF("sdc",Forcing,"sdc_F_for_R",level,parent->levelSteps(level));
     advance_chemistry(S_old,S_new,dt,Forcing,0);
+
+    if (floor_species == 1) {
+      for (MFIter mfi(S_new); mfi.isValid(); ++mfi)
+      {
+        const Box& box = mfi.validbox();            
+        const FArrayBox& species = S_new[mfi];
+	FORT_FLOORSPEC(box.loVect(), box.hiVect(),
+		       species.dataPtr(first_spec), ARLIM(species.loVect()),  ARLIM(species.hiVect()));
+      }
+    }
+
     showMF("sdc",get_new_data(RhoYdot_Type),"sdc_R",level,parent->levelSteps(level));
     showMF("sdc",S_new,"sdc_Snew_after_Rpred",level,parent->levelSteps(level));
 
@@ -5822,6 +5843,16 @@ HeatTransfer::advance (Real time,
             std::cout << "R (SDC corrector " << sdc_iter << ")\n";
 
         advance_chemistry(S_old,S_new,dt,Forcing,0);
+
+	if (floor_species == 1) {
+	  for (MFIter mfi(S_new); mfi.isValid(); ++mfi)
+	  {
+	    const Box& box = mfi.validbox();            
+	    const FArrayBox& species = S_new[mfi];
+	    FORT_FLOORSPEC(box.loVect(), box.hiVect(),
+			   species.dataPtr(first_spec), ARLIM(species.loVect()),  ARLIM(species.hiVect()));
+	  }
+	}
 
         if (verbose && ParallelDescriptor::IOProcessor())
             std::cout << "DONE WITH R (SDC corrector " << sdc_iter << ")\n";
