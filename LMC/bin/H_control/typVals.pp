@@ -1,0 +1,22 @@
+ht.typValY_H2       = 1.e-2
+ht.typValY_H        = 1.e-5
+ht.typValY_O        = 1.e-4
+ht.typValY_O2       = 1.e-1
+ht.typValY_OH       = 1.e-5
+ht.typValY_H2O      = 1.e-1
+ht.typValY_HO2      = 1.e-4
+ht.typValY_CH2      = 1.e-7
+ht.typValY_CH2(S)   = 1.e-10
+ht.typValY_CH3      = 1.e-5
+ht.typValY_CH4      = 1.e-2
+ht.typValY_CO       = 1.e-3
+ht.typValY_CO2      = 1.e-2
+ht.typValY_HCO      = 1.e-6
+ht.typValY_CH2O     = 1.e-4
+ht.typValY_CH3O     = 1.e-6
+ht.typValY_C2H4     = 1.e-5
+ht.typValY_C2H5     = 1.e-7
+ht.typValY_C2H6     = 1.e-5
+ht.typValY_N2       = 1.0
+ht.typValY_AR       = 1.e-30
+
