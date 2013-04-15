@@ -988,6 +988,7 @@ c     Force recalc of J on each grid block (to ensure that it is done at the sta
          do i=lo(1),hi(1)
 
             strang_fix = 0
+            negative_Y_test = 0
 
             TT1 = zero
             if (do_diag.eq.1) then
@@ -1050,11 +1051,16 @@ c            FIRST = .TRUE.
                   end if
                end if
 
-               if (ISTATE .LE. -1) then
+               if (ISTATE .LE. -1 .or. negative_Y_test .eq. 1) then
 
-                  print*,"CALLING STRANG VODE",i,j
-                  call flush()
                   strang_fix = 1
+
+                  if (ISTATE .LE. -1) then
+                     print*,"STRANG VODE; ISTATE .LE. -1",i,j
+                  else
+                     print*,"STRANG VODE; negative_Y_test .eq. 1",i,j
+                  end if
+                  call flush()
 
 c     redo
                   do m=1,Nspec
@@ -1316,6 +1322,7 @@ c     Set up ATOL
          do i=lo(1),hi(1)
 
             strang_fix = 0
+            negative_Y_test = 0
 
             TT1 = zero
             if (do_diag.eq.1) then
@@ -1364,11 +1371,16 @@ c               RWRK(dvbr+4) = TT2 - TT1
      &              ITASK, ISTATE, IOPT, RWRK(dvbr), dvr, IWRK(dvbi),
      &              dvi, CONPJ_FILE, MF, RWRK, IWRK)
 
-               if (ISTATE .LE. -1) then
+               if (ISTATE .LE. -1 .or. negative_Y_test .eq. 1) then
 
-                  print*,"CALLING STRANG VODE",i,j
-                  call flush()
                   strang_fix = 1
+
+                  if (ISTATE .LE. -1) then
+                     print*,"STRANG VODE; ISTATE .LE. -1",i,j
+                  else
+                     print*,"STRANG VODE; negative_Y_test .eq. 1",i,j
+                  end if
+                  call flush()
 
 c     redo
                   do m=1,Nspec

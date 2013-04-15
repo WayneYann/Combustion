@@ -956,6 +956,9 @@ C                          Z(K+1) = RhoH
       do K=1,Nspec
          CONC_CGS(K) = Z(K)*RPAR(NWTI+K-1)*1.d-3
          Y(K) = Z(K) * RINV_MKS
+         if (Y(K) .lt. -1.d-3) then
+            negative_Y_test = 1
+         end if
       enddo
 
       HMIX_MKS = (rhoh_INIT + c_0(Nspec+1)*TIME) * RINV_MKS
@@ -1002,6 +1005,9 @@ C     Needed to compute T from h
       do K=1,Nspec
          CONC_CGS(K) = Z(K)*RPAR(NWTI+K-1)*1.d-3
          Y(K) = Z(K) * RINV_MKS
+         if (Y(K) .lt. -1.d-3) then
+            negative_Y_test = 1
+         end if
       enddo
 
       call CKWC(Z(Nspec+1),CONC_CGS,IWRK,RWRK,WDOT_CGS)
