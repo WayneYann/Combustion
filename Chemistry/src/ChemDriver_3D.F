@@ -1589,16 +1589,32 @@ c     terminate the LMC_SDC ifdef
       do k=lo(3),hi(3)
          do j=lo(2),hi(2)
             do i=lo(1),hi(1)
+
+#ifdef LMC_SDC
+               RHO = 0.d0
+               do n=1,Nspec
+                  RHO = RHO + Y(i,j,k,n)
+               end do
+
+               do n=1,Nspec
+                  Yt(n) = Y(i,j,k,n) / RHO
+               end do
+#else
                do n=1,Nspec
                   Yt(n) = Y(i,j,k,n)
                end do
+#endif
                Tt = MAX(T(i,j,k),TMIN_TRANS)
                CALL CKMMWY(Yt,IWRK(ckbi),RWRK(ckbr),Wavg)
                CALL CKCPMS(Tt,IWRK(ckbi),RWRK(ckbr),CPMS)
                CALL CKYTX(Yt,IWRK(ckbi),RWRK(ckbr),X)
                CALL EGSPAR(Tt,X,Yt,CPMS,EGRWRK(1),EGIWRK(1))
                CALL EGSV1(Ptmp,Tt,Yt,Wavg,EGRWRK(1),Dt)
+#ifdef LMC_SDC
+               RHO = RHO*1.d-3
+#else
                CALL CKRHOY(Ptmp,Tt,Yt,IWRK(ckbi),RWRK(ckbr),RHO)
+#endif
                do n=1,Nspec
                   RD(i,j,k,n) = RHO * Wavg * invmwt(n) * Dt(n) * SCAL
                end do

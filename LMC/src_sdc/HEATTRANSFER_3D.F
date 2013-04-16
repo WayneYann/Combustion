@@ -162,6 +162,13 @@
       REAL_T, allocatable :: rhoInv(:,:,:)
       REAL_T gradY
 
+      fix_xlo = .false.
+      fix_xhi = .false.
+      fix_ylo = .false.
+      fix_yhi = .false.
+      fix_zlo = .false.
+      fix_zhi = .false.
+
 c     Compute species enthalpies on box grown by one
       do d=1,SDIM
          lob(d) = lo(d)-1
@@ -312,7 +319,7 @@ c     Compute enthalpy flux as hi*(Fi+(lambda/cp).Grad(Yi))
       do k=lo(3),hi(3)+1
       do j=lo(2),hi(2)
       do i=lo(1),hi(1)
-         gradY = (RhoY(i,j,k,n)*rhoInv(i,j,k) - RhoY(i,j,k-1,n)*rhoInv(i,j-1,k))*dzInv
+         gradY = (RhoY(i,j,k,n)*rhoInv(i,j,k) - RhoY(i,j,k-1,n)*rhoInv(i,j,k-1))*dzInv
          Fz(i,j,k,Nspec+2) = Fz(i,j,k,Nspec+2)
      &        + (Fz(i,j,k,n) + rhoDz(i,j,k,Nspec+1)*gradY*Az(i,j,k))*(H(i,j,k,n)+H(i,j,k-1,n))*0.5d0
       enddo

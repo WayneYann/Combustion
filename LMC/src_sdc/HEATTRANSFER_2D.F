@@ -149,6 +149,11 @@
       REAL_T, allocatable :: rhoInv(:,:)
       REAL_T gradY
 
+      fix_xlo = .false.
+      fix_xhi = .false.
+      fix_ylo = .false.
+      fix_yhi = .false.
+
 c     Compute species enthalpies on box grown by one
       do d=1,SDIM
          lob(d) = lo(d)-1
