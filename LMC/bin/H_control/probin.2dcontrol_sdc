@@ -1,7 +1,6 @@
  &fortin
   probtype = 'premixed_fixed_inlet'
 
-  V_in = -1
   V_in = 0.0
 
   standoff = -0.024
@@ -33,10 +32,8 @@
   nCompInflow = 2
  /
   &control
-  tau_control = 3.e-4
   tau_control = 6.e-4
   sest = .15
-  h_control = .004
   h_control = .0035
   changeMax_control = .2
  /
