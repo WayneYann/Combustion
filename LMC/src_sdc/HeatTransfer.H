@@ -106,7 +106,7 @@ public:
     //
     // Worker functions used by level advance function.
     //
-    virtual void create_mac_rhs (MultiFab& rhs, Real time, Real dt, int nGrow = 0);
+    virtual void create_mac_rhs (MultiFab& rhs, int nGrow, Real time, Real dt);
 
     virtual void getViscTerms (MultiFab& visc_terms,
                                int       src_comp, 

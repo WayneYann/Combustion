@@ -5533,7 +5533,7 @@ HeatTransfer::advance (Real time,
     if (do_mac_proj) 
     {
         int havedivu = 1;
-        create_mac_rhs(Forcing,time,dt,nGrowAdvForcing);
+        create_mac_rhs(Forcing,nGrowAdvForcing,time,dt);
         increment_vel_register = true;
         mac_project(time,dt,S_old,&Forcing,havedivu,increment_vel_register);
     }
@@ -5543,15 +5543,15 @@ HeatTransfer::advance (Real time,
     // all the synchronization stuff messes up divu near C-F interfaces
     // calc_divu(time, dt, get_old_data(Divu_Type));
     int havedivu = 1;
-    create_mac_rhs(Forcing,time,dt,nGrowAdvForcing);
+    create_mac_rhs(Forcing,nGrowAdvForcing,time,dt);
 
     delta_dpdt.setVal(0.0,nGrowAdvForcing);
     calc_dpdt(time,dt,delta_dpdt,u_mac);
     MultiFab::Add(dpdt,delta_dpdt,0,0,1,nGrowAdvForcing);
     MultiFab::Add(Forcing,dpdt,0,0,1,nGrowAdvForcing);
 
-    increment_vel_register = sdc_iterMAX==0;
-    mac_project(time,dt,S_old,&Forcing,havedivu,increment_vel_register);
+    increment_vel_register = (sdc_iterMAX==0);
+    mac_project(time,dt,S_old,&Forcing,havedivu,nGrowAdvForcing,increment_vel_register);
 #endif
 
 #if 0
@@ -5701,7 +5701,7 @@ HeatTransfer::advance (Real time,
         setThermoPress(cur_time);
         calc_divu(time+dt, dt, get_new_data(Divu_Type));
         int havedivu = 1;
-        create_mac_rhs(Forcing,time+0.5*dt,dt,nGrowAdvForcing); // Use MF laying around
+        create_mac_rhs(Forcing,nGrowAdvForcing,time+0.5*dt,dt); // Use MF laying around
 
         delta_dpdt.setVal(0.0,nGrowAdvForcing);
 	calc_dpdt(time+dt,dt,delta_dpdt,u_mac);
@@ -5709,7 +5709,7 @@ HeatTransfer::advance (Real time,
         MultiFab::Add(Forcing,dpdt,0,0,1,nGrowAdvForcing);
 
         increment_vel_register = updateFluxReg;
-        mac_project(time,dt,S_old,&Forcing,havedivu,increment_vel_register);
+        mac_project(time,dt,S_old,&Forcing,havedivu,nGrowAdvForcing,increment_vel_register);
 #endif
 
 
@@ -5964,7 +5964,7 @@ HeatTransfer::advance (Real time,
     }
     showMF("sdc",get_new_data(State_Type),"sdc_Snew_postProj",level,parent->levelSteps(level));
 
-    advance_cleanup(dt,iteration,ncycle);
+    advance_cleanup(iteration,ncycle);
     //
     // Update estimate for allowable time step.
     //
@@ -5979,25 +5979,8 @@ HeatTransfer::advance (Real time,
 }
 
 void
-HeatTransfer::create_mac_rhs (MultiFab& rhs, Real time, Real dt, int nGrow)
+HeatTransfer::create_mac_rhs (MultiFab& rhs, int nGrow, Real time, Real dt)
 {
-#if 0
-    NavierStokes::create_mac_rhs(rhs,time,dt,nGrow);
-    showMF("mac",rhs,"mac_rhs0_",level);
-
-    if (dt > 0.0) 
-    {
-        // BL_ASSERT(nGrow==0);  // FIXME: This does not seem to do grow cells correctly
-        MultiFab  dpdt(grids,1,nGrow);
-        dpdt.setVal(0.0,nGrow);
-	calc_dpdt(time,dt,dpdt,u_mac);
-        dpdt.FillBoundary();
-        geom.FillPeriodicBoundary(dpdt,0,1);
-        MultiFab::Add(rhs,dpdt,0,0,1,nGrow);
-    }
-
-    showMF("mac",rhs,"mac_rhs1_",level);
-#else
     BL_ASSERT(rhs.nGrow()>=nGrow);
     BL_ASSERT(rhs.boxArray()==grids);
 
@@ -6008,7 +5991,6 @@ HeatTransfer::create_mac_rhs (MultiFab& rhs, Real time, Real dt, int nGrow)
          ++Divu_fpi) {
       rhs[Divu_fpi].copy(Divu_fpi(),0,sCompDivU,nCompDivU);
     }
-#endif
 }
 
 DistributionMapping
@@ -6362,7 +6344,7 @@ HeatTransfer::compute_scalar_advection_fluxes_and_divergence (MultiFab& Force,
   // (stored internal to Godunov)
   //
   MultiFab DivU(grids,1,nGrowAdvForcing);
-  create_mac_rhs(DivU,prev_time,dt,nGrowAdvForcing);
+  create_mac_rhs(DivU,nGrowAdvForcing,prev_time,dt);
 
   MultiFab Gp, VelViscTerms;
   const int use_forces_in_trans = godunov->useForcesInTrans();

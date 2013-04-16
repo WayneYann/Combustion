@@ -5637,11 +5637,11 @@ HeatTransfer::advance (Real time,
     //
     if (do_mac_proj) 
     {
-        int havedivu = 1;
-        MultiFab* mac_rhs = create_mac_rhs(time,dt);
-        showMF("mac",*mac_rhs,"mac_rhs",level);
-        mac_project(time,dt,S_old,mac_rhs,havedivu,umac_n_grow);
-        delete mac_rhs;
+        const int havedivu = 1;
+        MultiFab mac_rhs(grids,1,0);
+        create_mac_rhs(mac_rhs,0,time,dt);
+        showMF("mac",mac_rhs,"mac_rhs",level);
+        mac_project(time,dt,S_old,&mac_rhs,havedivu,umac_n_grow,true);
     }
 
     if (do_mom_diff == 0)
@@ -6068,33 +6068,26 @@ HeatTransfer::advance (Real time,
     return dt_test;
 }
 
-MultiFab*
-HeatTransfer::create_mac_rhs (Real time, Real dt)
+void
+HeatTransfer::create_mac_rhs (MultiFab& mac_rhs, int nGrow, Real time, Real dt)
 {
-   MultiFab*    dsdt = getDsdt(0,time);
-   MultiFab* mac_rhs = getDivCond(0,time);
-   for (MFIter dsdtmfi(*dsdt); dsdtmfi.isValid(); ++dsdtmfi)
-   {
-       (*dsdt)[dsdtmfi].mult(.5*dt);
-       (*mac_rhs)[dsdtmfi].plus((*dsdt)[dsdtmfi]);
-   }
+    NavierStokes::create_mac_rhs(mac_rhs,nGrow,time,dt);
 
-   showMF("mac",*dsdt,"dsdt",level);
-   showMF("mac",*mac_rhs,"mac_rhs0_",level);
-   delete dsdt;
+    showMF("mac",mac_rhs,"mac_rhs0_",level);
 
-   if (dt > 0.0) 
-   {
-       MultiFab  dpdt(grids,1,0);
-       calc_dpdt(time,dt,dpdt,u_mac);
+    if (dt > 0.0) 
+    {
+        MultiFab  dpdt(grids,1,0);
+        calc_dpdt(time,dt,dpdt,u_mac);
 
-       for (MFIter mfi(dpdt); mfi.isValid(); ++mfi)
-           (*mac_rhs)[mfi].plus(dpdt[mfi], grids[mfi.index()], 0,0,1);
-   }
+        for (MFIter mfi(dpdt); mfi.isValid(); ++mfi)
+            mac_rhs[mfi].plus(dpdt[mfi], grids[mfi.index()], 0,0,1);
 
-   showMF("mac",*mac_rhs,"mac_rhs1_",level);
+        if (nGrow > 0)
+            mac_rhs.FillBoundary();
+    }
 
-   return mac_rhs;
+    showMF("mac",mac_rhs,"mac_rhs1_",level);
 }
 
 void
@@ -6646,7 +6639,9 @@ HeatTransfer::compute_edge_states (Real              dt,
     //
     const int nGrowF = 1;
 
-    MultiFab* divu_fp = create_mac_rhs_grown(nGrowF,prev_time,dt);
+    MultiFab divu_fp(grids,1,nGrowF);
+
+    create_mac_rhs(divu_fp,nGrowF,prev_time,dt);
 
     MultiFab Gp;
 
@@ -6699,7 +6694,7 @@ HeatTransfer::compute_edge_states (Real              dt,
     //
     // FillPatch'd state data.
     //
-    for (FillPatchIterator S_fpi(*this,*divu_fp,HYP_GROW,prev_time,State_Type,0,nState);
+    for (FillPatchIterator S_fpi(*this,divu_fp,HYP_GROW,prev_time,State_Type,0,nState);
          S_fpi.isValid();
          ++S_fpi)
     {
@@ -6808,7 +6803,7 @@ HeatTransfer::compute_edge_states (Real              dt,
                 {
                     godunov->Sum_tf_divu_visc(spec, tforces, comp, 1,
                                               visc_terms[first_spec][i], comp,
-                                              (*divu_fp)[i], Rho, use_conserv_diff);
+                                              divu_fp[i], Rho, use_conserv_diff);
                     
                     int iconserv_dummy = 0;
                     godunov->edge_states(grids[i], dx, dt, velpred,
@@ -6817,7 +6812,7 @@ HeatTransfer::compute_edge_states (Real              dt,
 #if (BL_SPACEDIM==3)
                                          u_mac[2][i], edge[2],
 #endif
-                                         U,spec,tforces,(*divu_fp)[i],
+                                         U,spec,tforces,divu_fp[i],
                                          comp,state_ind,bc.dataPtr(),
                                          iconserv_dummy,PRE_MAC);
                 }
@@ -6835,7 +6830,7 @@ HeatTransfer::compute_edge_states (Real              dt,
 #if (BL_SPACEDIM==3)
                                          u_mac[2][i], edge[2],
 #endif
-                                         U,spec,tforces,(*divu_fp)[i],
+                                         U,spec,tforces,divu_fp[i],
                                          comp,state_ind,bc.dataPtr(), 
                                          use_conserv_diff,FPU);
                 }
@@ -6901,7 +6896,7 @@ HeatTransfer::compute_edge_states (Real              dt,
             {
                 godunov->Sum_tf_divu_visc(state, tforces,  comp, 1,
                                           vt, vtComp,
-                                          (*divu_fp)[i], Rho, use_conserv_diff);
+                                          divu_fp[i], Rho, use_conserv_diff);
 
                 int iconserv_dummy = 0;
                 godunov->edge_states(grids[i], dx, dt, velpred,
@@ -6910,7 +6905,7 @@ HeatTransfer::compute_edge_states (Real              dt,
 #if (BL_SPACEDIM==3)
                                      u_mac[2][i], edge[2],
 #endif
-                                     U, state, tforces, (*divu_fp)[i],
+                                     U, state, tforces, divu_fp[i],
                                      comp, state_ind, bc.dataPtr(),
                                      iconserv_dummy, PRE_MAC);
 
@@ -6929,7 +6924,7 @@ HeatTransfer::compute_edge_states (Real              dt,
 #if (BL_SPACEDIM==3)
                                      u_mac[2][i], edge[2],
 #endif
-                                     U, state, tforces, (*divu_fp)[i],
+                                     U, state, tforces, divu_fp[i],
                                      comp, state_ind, bc.dataPtr(), 
                                      use_conserv_diff, FPU);
             }
@@ -6985,7 +6980,7 @@ HeatTransfer::compute_edge_states (Real              dt,
 				       Rho);
                 godunov->Sum_tf_divu_visc(state, tforces, comp, 1,
                                           visc_terms[state_ind][i], 0,
-                                          (*divu_fp)[i], Rho,
+                                          divu_fp[i], Rho,
                                           use_conserv_diff);
                 Array<int> bc = getBCArray(State_Type,i,state_ind,1);
                 int iconserv_dummy = 0;
@@ -6995,7 +6990,7 @@ HeatTransfer::compute_edge_states (Real              dt,
 #if (BL_SPACEDIM==3)
                                      u_mac[2][i], edge[2],
 #endif
-                                     U,state,tforces,(*divu_fp)[i],
+                                     U,state,tforces,divu_fp[i],
                                      comp,state_ind,bc.dataPtr(),
                                      iconserv_dummy,PRE_MAC);
 
@@ -7006,8 +7001,6 @@ HeatTransfer::compute_edge_states (Real              dt,
             }
         }
     }
-
-    delete divu_fp;
 }
 
 void
