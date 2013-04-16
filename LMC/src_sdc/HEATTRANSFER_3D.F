@@ -185,6 +185,7 @@ c     Fx(Nspec+3) = extensive heat conduction
 c     Comute lambda.Grad(T)
       dxInv = 1.d0 / dx(1)
       dyInv = 1.d0 / dx(2)
+      dzInv = 1.d0 / dx(3)
 
       do k=lo(3),hi(3)
          do j=lo(2),hi(2)
@@ -735,8 +736,8 @@ c -------------------- begin here ----------------------------
       REAL_T  T(DIMV(T))
       REAL_T  Y(DIMV(Y),*)
       REAL_T  rhoD(DIMV(rhoD),ncompd)
- 
-      integer i, j, k, n, nspecies
+      
+      integer i, j, k, n, nc, ncs
       REAL_T P1ATM_MKS, Patm
       REAL_T Yt(maxspec)
       REAL_T cpmix, Tfac, Yfac
@@ -744,10 +745,23 @@ c -------------------- begin here ----------------------------
       data lo_chem /1,1,1/
       data hi_chem /1,1,1/
 
-      nspecies = ncompd - 2
-
-c     ncompd-1 is Temp stuff
-c     ncompd   is velocity stuff 
+c     Nspec+1 is Temp stuff, if requested
+c     Nspec+2 is Velocity stuff, if requested
+      nc = Nspec
+      ncs = nc
+      if (do_temp.eq.1) then
+         nc = nc + 1
+         ncs = nc
+         if (do_VelVisc.eq.1) then
+            nc = nc + 1
+         endif
+      endif
+      if (ncompd.lt.nc) then
+         call bl_pd_abort("not enough components in rhoD")
+      endif
+      if (do_temp.eq.0 .and. do_VelVisc.eq.1) then
+         call bl_pd_abort("if do_VelVisc, rhoD requires do_temp")
+      endif
 
 c     Warning, FORT_VELVISC is called separately from this routine, so if there's
 c     any hacking to be done on viscosity, be sure to catch it there as well.
@@ -760,9 +774,7 @@ c     any hacking to be done on viscosity, be sure to catch it there as well.
             call FORT_MIXAVG_RHODIFF_TEMP(lo, hi, rhoD, DIMS(rhoD),
      &           T, DIMS(T), Y, DIMS(Y), Patm, do_temp, do_VelVisc)
             if (thickFacTR.ne.1.d0) then
-!$omp parallel private(i,j,k,n)
-               do n=1,ncompd-1
-!$omp do
+               do n=1,ncs
                   do k=lo(3), hi(3)
                      do j=lo(2), hi(2)
                         do i=lo(1), hi(1)
@@ -770,9 +782,7 @@ c     any hacking to be done on viscosity, be sure to catch it there as well.
                         end do
                      end do
                   end do
-!$omp end do nowait
                end do
-!$omp end parallel
             endif
          else
             call FORT_VELVISC(lo,hi,DIMS(T),T,DIMS(Y),Y,
@@ -780,16 +790,11 @@ c     any hacking to be done on viscosity, be sure to catch it there as well.
             do k=lo(3), hi(3)
                do j=lo(2), hi(2)
                   do i=lo(1), hi(1)
-                     rhoD(i,j,k,ncompd-1) = rhoD(i,j,k,1)
-                     rhoD(i,j,k,ncompd  ) = rhoD(i,j,k,1)
-                     rhoD(i,j,k,1)        = rhoD(i,j,k,1) * Yfac
-                  end do
-               end do
-            end do
-            do n=2,nspecies
-               do k=lo(3), hi(3)
-                  do j=lo(2), hi(2)
-                     do i=lo(1), hi(1)
+                     do n=Nspec+1,nc
+                        rhoD(i,j,k,n) = rhoD(i,j,k,1)
+                     end do
+                     rhoD(i,j,k,1) = rhoD(i,j,k,1) * Yfac
+                     do n=2,Nspec
                         rhoD(i,j,k,n) = rhoD(i,j,k,1)
                      end do
                   end do
@@ -804,17 +809,17 @@ c     any hacking to be done on viscosity, be sure to catch it there as well.
                            Yt(n) = Y(i,j,k,n)
                         end do
                         CALL FORT_CPMIXfromTY(lo_chem, hi_chem, 
-     &                       CPMIX,    ARLIM(lo_chem), ARLIM(hi_chem),
+     &                       cpmix,  ARLIM(lo_chem), ARLIM(hi_chem),
      &                       T(i,j,k), ARLIM(lo_chem), ARLIM(hi_chem),
-     &                       Yt,       ARLIM(lo_chem), ARLIM(hi_chem))
-                        rhoD(i,j,k,ncompd-1) = rhoD(i,j,k,ncompd-1)*cpmix*Tfac
+     &                       Yt,     ARLIM(lo_chem), ARLIM(hi_chem))
+                        rhoD(i,j,k,Nspec+1) = rhoD(i,j,k,Nspec+1)*cpmix*Tfac
                      end do
                   end do
                end do
-            endif
+            end if
          end if
       else
-         do n=1,nspecies
+         do n=1,Nspec
             do k=lo(3), hi(3)
                do j=lo(2), hi(2)
                   do i=lo(1), hi(1)

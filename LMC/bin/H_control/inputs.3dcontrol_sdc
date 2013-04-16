@@ -50,18 +50,17 @@ mg.cg_solver=1
 #cg.cg_solver=1
 
 geometry.prob_lo    = 0.0 0.0 0.0
-geometry.prob_hi    = 0.00075 0.012 0.00075
-amr.n_cell          = 8 128 8
+geometry.prob_hi    = 0.00075 0.00075 0.012
+amr.n_cell          = 8 8 128
 amr.blocking_factor = 8
 max_step            = 100
-amr.check_file      = chk_0128_
-amr.plot_file       = plt_0128_
+amr.check_file      = chk_3d_
+amr.plot_file       = plt_3d_
 amr.check_int       = 1000
-amr.plot_int        = 10
+amr.plot_int        = 2
 ns.cfl              = 0.25
-ns.fixed_dt         = 3.e-5
 
-amr.max_grid_size   = 32
+amr.max_grid_size   = 256
 
 amr.v=1
 amr.max_level =  0            # maximum level number allowed
@@ -73,7 +72,7 @@ amr.grid_eff        = 0.7     # what constitutes an efficient grid
 amr.grid_log        = grdlog  # name of grid logging file
 #amr.derive_plot_vars=ALL
 
-amr.probin_file = probin.2dcontrol_sdc
+amr.probin_file = probin.3dcontrol_sdc
 
 # ------------------  INPUTS TO PHYSICS CLASS -------------------
 ns.dt_cutoff       = 5.e-10   # level 0 timestep below which we halt
@@ -127,9 +126,9 @@ ns.dpdt_option = 0
 #ns.constant_rhoD_val = 0.0714286
 # ----------------  PROBLEM DEPENDENT INPUTS
 
-ns.lo_bc          = 0 1 0
-ns.hi_bc          = 0 2 0
-geometry.is_periodic = 1 0 1
+ns.lo_bc          = 0 0 1
+ns.hi_bc          = 0 0 2
+geometry.is_periodic = 1 1 0
 
 # >>>>>>>>>>>>>  BC FLAGS <<<<<<<<<<<<<<<<
 # 0 = Interior           3 = Symmetry

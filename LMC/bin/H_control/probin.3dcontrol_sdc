@@ -1,5 +1,5 @@
  &fortin
-  probtype = 'premixed_fixed_inlet'
+  probtype = 'premixed_free'
 
   V_in = 0.0
 
@@ -29,7 +29,7 @@
   flct_file = "Turb_n0575_strong.bin"
   flct_file = ""
   forceInflow = .FALSE.
-  nCompInflow = 2
+  nCompInflow = 3
  /
   &control
   tau_control = 6.e-4
