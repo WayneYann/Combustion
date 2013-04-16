@@ -1,4 +1,4 @@
-CEXE_sources += Diffusion.cpp Godunov.cpp HeatTransfer.cpp NavierStokes.cpp
-CEXE_headers += Diffusion.H Godunov.H HeatTransfer.H NavierStokes.H
+CEXE_sources += Diffusion.cpp HeatTransfer.cpp NavierStokes.cpp
+CEXE_headers += Diffusion.H HeatTransfer.H NavierStokes.H
 FEXE_headers += HEATTRANSFER_F.h
 FEXE_sources += HEATTRANSFER_$(DIM)D.F HEATTRANSFER_F.F
