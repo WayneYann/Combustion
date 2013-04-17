@@ -6655,7 +6655,7 @@ HeatTransfer::mac_sync ()
             {
                 int rho_flag = (do_mom_diff == 0) ? 1 : 3;
                 getViscosity(beta, cur_time);
-                diffusion->diffuse_Vsync(Vsync,dt,be_cn_theta,Rh,rho_flag,beta);
+                diffusion->diffuse_Vsync(Vsync,dt,be_cn_theta,Rh,rho_flag,beta,0);
             }
 	    
 	    if (!unity_Le 
@@ -6862,7 +6862,7 @@ HeatTransfer::mac_sync ()
 		    // on exit, Ssync = rho^{n+1} * (delta h)^sync
 		    // on exit, flux = coeff * grad phi
 		    diffusion->diffuse_Ssync(Ssync,sigma,dt,be_cn_theta,Rh,
-					     rho_flag,flux,0,beta,0,alpha);
+					     rho_flag,flux,0,beta,0,alpha,0);
 		    if (do_viscsyncflux && level > 0)
 		    {
 		      for (MFIter mfi(*Ssync); mfi.isValid(); ++mfi)
@@ -7255,7 +7255,7 @@ HeatTransfer::differential_spec_diffuse_sync (Real dt)
 	// on exit, fluxSC = rhoD grad (delta Ytilde)^sync
 	diffusion->diffuse_Ssync(Ssync,ssync_ind,dt,be_cn_theta,
 				 RhoHalftime,rho_flag[sigma],fluxSC,0,
-                                 betanp1,sigma,alpha);
+                                 betanp1,sigma,alpha,0);
 	//
 	// Pull fluxes into flux array
 	// this is the rhoD grad (delta Ytilde)^sync terms in DayBell:2000 Eq (18)
