@@ -7987,7 +7987,7 @@ HeatTransfer::mac_sync ()
 		    // on exit, Ssync = rho^{n+1} * (delta h)^sync
 		    // on exit, flux = coeff * grad phi
 		    diffusion->diffuse_Ssync(Ssync,sigma,dt,be_cn_theta,Rh,
-					     rho_flag,flux,0,beta,alpha);
+					     rho_flag,flux,0,beta,alpha,0);
 		    if (do_viscsyncflux && level > 0)
 		    {
 			for (MFIter mfi(*Ssync); mfi.isValid(); ++mfi)
@@ -8382,7 +8382,7 @@ HeatTransfer::differential_spec_diffuse_sync (Real dt)
 	// on exit, fluxSC = rhoD grad (delta Ytilde)^sync
 	diffusion->diffuse_Ssync(Ssync,ssync_ind,dt,be_cn_theta,
 				 RhoHalftime,rho_flag[sigma],fluxSC,
-                                 sigma,betanp1,alpha);
+                                 sigma,betanp1,alpha,0);
 	//
 	// Pull fluxes into flux array
 	// this is the rhoD grad (delta Ytilde)^sync terms in DayBell:2000 Eq (18)
