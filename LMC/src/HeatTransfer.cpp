@@ -3313,7 +3313,7 @@ HeatTransfer::getViscTerms (MultiFab& visc_terms,
             showMF("velVT",*(vel_visc[dir]),BoxLib::Concatenate("velVT_viscn_",dir,1),level);
         }
 
-        diffusion->getTensorViscTerms(visc_terms,time,0,vel_visc);
+        diffusion->getTensorViscTerms(visc_terms,time,vel_visc,0);
         showMF("velVT",visc_terms,"velVT_visc_terms_1",level);
 
         icomp = load_comp = BL_SPACEDIM;
@@ -3386,7 +3386,7 @@ HeatTransfer::getViscTerms (MultiFab& visc_terms,
                     getDiffusivity(beta, time, icomp, 0, 1);
 
                     diffusion->getViscTerms(visc_terms,icomp-load_comp,
-                                            icomp,time,rho_flag,0,beta);
+                                            icomp,time,rho_flag,beta,0);
                     
                     diffusion->removeFluxBoxesLevel(beta);
                 }
@@ -4899,7 +4899,7 @@ HeatTransfer::getTempViscTerms (MultiFab& visc_terms,
     // + div lambda grad T + Q
     //
     getDiffusivity(beta, time, Temp, 0, 1);
-    diffusion->getViscTerms(visc_terms,src_comp,Temp,time,rho_flag,0,beta);
+    diffusion->getViscTerms(visc_terms,src_comp,Temp,time,rho_flag,beta,0);
     diffusion->removeFluxBoxesLevel(beta);
     add_heat_sources(visc_terms,Temp-src_comp,time,nGrow,1.0);
     MultiFab delta_visc_terms(grids,1,nGrow);
@@ -4966,7 +4966,7 @@ HeatTransfer::getRhoHViscTerms (MultiFab& visc_terms,
     const int rhoh_rho_flag = 2;
     getDiffusivity(beta, time, RhoH, 0, 1);
 
-    diffusion->getViscTerms(visc_terms,src_comp,RhoH,time,rhoh_rho_flag,0,beta);
+    diffusion->getViscTerms(visc_terms,src_comp,RhoH,time,rhoh_rho_flag,beta,0);
     diffusion->removeFluxBoxesLevel(beta);
     add_heat_sources(visc_terms,RhoH-src_comp,time,nGrow,1.0);
 }
