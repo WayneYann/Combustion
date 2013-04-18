@@ -2814,7 +2814,8 @@ HeatTransfer::adjust_spec_diffusion_update (MultiFab&              Phi_new,
         ABecLaplacian* visc_op;
 	visc_op = diffusion->getViscOp(state_ind,a,b,time,visc_bndry,
                                        rho_half,rho_flag[comp],&rhsscale,
-                                       dataComp+comp,betanp1,alpha,bndry_already_filled);
+                                       betanp1,dataComp+comp,alpha,0,
+                                       bndry_already_filled);
 	visc_op->maxOrder(diffusion->maxOrder());
 
 	rho_and_species.setBndry(bogus_value,comp+1,1); // Ensure computable corners
@@ -7166,8 +7167,8 @@ HeatTransfer::scalar_advection (Real dt,
             ABecLaplacian* visc_op;
 
             visc_op = diffusion->getViscOp(sigma,a,b,prev_time,visc_bndry,
-                                           RhoHalftime,rho_flag,&rhsscale,dataComp,
-                                           rhoh_visc,alpha);
+                                           RhoHalftime,rho_flag,&rhsscale,
+                                           rhoh_visc,dataComp,alpha,0);
 
             visc_op->maxOrder(diffusion->maxOrder());
             MultiFab::Copy(Soln,S_old,sigma,0,1,0);
@@ -7244,8 +7245,8 @@ HeatTransfer::scalar_advection (Real dt,
             ABecLaplacian* visc_op;
 
             visc_op = diffusion->getViscOp(sigma,a,b,cur_time,visc_bndry,
-                                           RhoHalftime,rho_flag,&rhsscale,dataComp,
-                                           rhoh_visc,alpha);
+                                           RhoHalftime,rho_flag,&rhsscale,
+                                           rhoh_visc,dataComp,alpha,0);
 
             visc_op->maxOrder(diffusion->maxOrder());
             MultiFab::Copy(Soln,S_new,sigma,0,1,0);
@@ -7825,8 +7826,8 @@ HeatTransfer::mac_sync ()
 
                     visc_op = diffusion->getViscOp(sigma,a,b,cur_time,
                                                    visc_bndry,Rh,
-                                                   rho_flag,&rhsscale,dataComp,
-                                                   rhoh_visc,alpha);
+                                                   rho_flag,&rhsscale,
+                                                   rhoh_visc,dataComp,alpha,0);
 
                     visc_op->maxOrder(diffusion->maxOrder());
 
