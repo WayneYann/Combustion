@@ -2452,8 +2452,8 @@ HeatTransfer::scalar_diffusion_update (Real dt,
 	    const int dataComp = 0; // Component of dR, alpha, betas to use.
 
             diffusion->diffuse_scalar(dt,sigma,be_cn_theta,RhoHalftime,rho_flag,fluxSCn,
-                                      fluxSCnp1,dataComp,delta_rhs,alpha,betan,
-                                      betanp1,solve_mode);
+                                      fluxSCnp1,0,delta_rhs,dataComp,alpha,dataComp,
+                                      betan,betanp1,dataComp,solve_mode);
 	    //
 	    // If corrector, increment the viscous flux registers.
             // Assume corrector called only ONCE!.
@@ -2590,8 +2590,8 @@ HeatTransfer::differential_spec_diffusion_update (Real dt,
 	diffuse_cleanup(delta_rhsSC, betanSC, betanp1SC, alphaSC);
 
 	diffusion->diffuse_scalar(dt,state_ind,be_cn_theta,RhoHalftime,rho_flag[sigma],
-                                  fluxSCn,fluxSCnp1,sigma,&delta_rhs,alpha,
-                                  betan,betanp1,solve_mode);
+                                  fluxSCn,fluxSCnp1,0,&delta_rhs,sigma,alpha,sigma,
+                                  betan,betanp1,sigma,solve_mode);
 	//
 	// Pull fluxes into flux array
 	//
