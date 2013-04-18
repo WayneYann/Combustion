@@ -55,9 +55,8 @@ mg.cg_solver=1
 
 geometry.prob_lo    = -0.00114 0.0
 geometry.prob_hi    =  0.00114 0.00228
-amr.n_cell          = 128 128
+amr.n_cell          = 96 96
 amr.n_cell          = 384 384
-amr.n_cell          = 192 192
 amr.max_grid_size   = 32
 #amr.max_grid_size   = 256 64 64
 #amr.refine_grid_layout = 0
@@ -128,8 +127,7 @@ ns.oxidizerName    = O2
 ns.flameTracName   = H
 ns.unity_Le = 0
 
-ns.sdc_iterMAX = 2
-#ns.sdc_iterMAX = 1
+ns.sdc_iterMAX = 1
 
 ns.dpdt_option = 0
 #macop.max_order = 3
