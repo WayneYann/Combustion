@@ -1577,15 +1577,9 @@ HeatTransfer::initDataOtherTypes ()
     //
     // Set up diffusivities, viscosities (need for initial divu compute)
     //
-    const Real dt        = -1.0;
-    const int  iteration = 0;
-    const int  ncycle    = 0;
-    //
     // Assume always variable diffusivity.
     // Assume always variable viscosity.
     //
-    const int offset   = BL_SPACEDIM + 1;
-    const int num_diff = NUM_STATE-offset;
     calcDiffusivity(cur_time,true);
     //
     // Assume that by now, S_new has "good" data
@@ -8612,113 +8606,84 @@ HeatTransfer::calcDiffusivity (const Real time,
 
     BL_ASSERT(whichTime == AmrOldTime || whichTime == AmrNewTime);
 
-    const int  nGrow           = 1;
-    const int  offset          = BL_SPACEDIM + 1; // No diffusion coeff for vels or rho
-    const int  num_comp        = NUM_STATE-offset;
-    const int  last_comp       = offset + num_comp - 1;
-    const bool has_spec        = offset < last_spec && last_comp > first_spec;
-    const int  non_spec_comps  = std::max(0,first_spec-offset) + std::max(0,last_comp-last_spec);
-    MultiFab&  visc            = (whichTime == AmrOldTime) ? (*diffn_cc) : (*diffnp1_cc);
+    const int  dotemp         = 1;
+    const int  vflag          = do_VelVisc;
+    const int  nc_bcen        = nspecies+2;
+    const int  nGrow          = 1;
+    const int  offset         = BL_SPACEDIM + 1; // No diffusion coeff for vels or rho
+    const int  num_comp       = NUM_STATE-offset;
+    const int  last_comp      = offset + num_comp - 1;
+    const bool has_spec       = offset < last_spec && last_comp > first_spec;
+    const int  non_spec_comps = std::max(0,first_spec-offset) + std::max(0,last_comp-last_spec);
+    MultiFab&  visc           = (whichTime == AmrOldTime) ? (*diffn_cc) : (*diffnp1_cc);
+    MultiFab&  beta           = (whichTime == AmrOldTime) ? (*viscn_cc) : (*viscnp1_cc);
 
-    MultiFab temp(grids,1,nGrow), rhospec(grids,nspecies+1,nGrow);
+    BL_ASSERT(first_spec == Density+1);
+    BL_ASSERT(nspecies > 0 && has_spec);
+    BL_ASSERT(num_comp >= nspecies+non_spec_comps);
 
-    BL_ASSERT( !has_spec || (num_comp >= nspecies+non_spec_comps) );
+    MultiFab& S_new = get_new_data(State_Type);
 
-    FArrayBox tmp;
+    FArrayBox bcen, temp, rhospec, cpmix;
 
-    for (FillPatchIterator Rho_and_spec_fpi(*this,rhospec,nGrow,time,State_Type,Density,nspecies+1),
-             Temp_fpi(*this,rhospec,nGrow,time,State_Type,Temp,1);
+    for (FillPatchIterator Rho_and_spec_fpi(*this,S_new,nGrow,time,State_Type,Density,nspecies+1),
+             Temp_fpi(*this,S_new,nGrow,time,State_Type,Temp,1);
          Rho_and_spec_fpi.isValid() && Temp_fpi.isValid();
          ++Rho_and_spec_fpi, ++Temp_fpi)
     {
         const int idx = Rho_and_spec_fpi.index();
+        const Box gbx = BoxLib::grow(grids[idx],nGrow);
         //
         // Convert from RhoY_l to Y_l
         //
-        tmp.resize(rhospec[idx].box(),1);
-        tmp.copy(Rho_and_spec_fpi(),0,0,1);
-        tmp.invert(1);
+        temp.resize(gbx,1);
+        bcen.resize(gbx,nc_bcen);
+        rhospec.resize(gbx,nspecies+1);
+
+        temp.copy(Rho_and_spec_fpi(),0,0,1);
+        temp.invert(1);
 
         for (int n = 1; n < nspecies+1; n++)
-            Rho_and_spec_fpi().mult(tmp,0,n,1);
+            Rho_and_spec_fpi().mult(temp,0,n,1);
 
-        rhospec[idx].copy(Rho_and_spec_fpi(),0,0,nspecies+1);
+        rhospec.copy(Rho_and_spec_fpi(),0,0,nspecies+1);
 
-        temp[idx].copy(Temp_fpi(),0,0,1);
-    }
+        temp.copy(Temp_fpi(),0,0,1);
 
-    BL_ASSERT(nspecies > 0 && has_spec);
+        FORT_SPECTEMPVISC(gbx.loVect(),gbx.hiVect(),
+                          ARLIM(temp.loVect()),ARLIM(temp.hiVect()),
+                          temp.dataPtr(),
+                          ARLIM(rhospec.loVect()),ARLIM(rhospec.hiVect()),
+                          rhospec.dataPtr(1),
+                          ARLIM(bcen.loVect()),ARLIM(bcen.hiVect()),bcen.dataPtr(),
+                          &nc_bcen, &P1atm_MKS, &dotemp, &vflag);
 
-    if (nspecies > 0 && has_spec)
-    {
-        BL_ASSERT(first_spec == Density+1);
+        visc[idx].copy(bcen,0,first_spec-offset,nspecies);
+        visc[idx].copy(bcen,nspecies,Temp-offset,1);
 
-        FArrayBox bcen;
-
-        for (MFIter rho_and_spec(rhospec); rho_and_spec.isValid(); ++rho_and_spec)
+        if (do_VelVisc)
+            beta[idx].copy(bcen,nspecies+1,0,1);
+        //
+        // Now get the rest.
+        //
+        for (int icomp = offset; icomp <= last_comp; icomp++)
         {
-            const int  idx     = rho_and_spec.index();
-            const Box& box     = rhospec[idx].box();
-            const int  vflag   = do_VelVisc;
-            FArrayBox& tempFab = temp[idx];
+            const bool is_spec = icomp >= first_spec && icomp <= last_spec;
 
-            BL_ASSERT(box == rhospec[idx].box());
-
-            const int nc_bcen = nspecies+2;
-            int       dotemp  = 1;
-            bcen.resize(box,nc_bcen);
-
-            FORT_SPECTEMPVISC(box.loVect(),box.hiVect(),
-                              ARLIM(tempFab.loVect()),ARLIM(tempFab.hiVect()),
-                              tempFab.dataPtr(),
-                              ARLIM(rhospec[idx].loVect()),ARLIM(rhospec[idx].hiVect()),
-                              rhospec[idx].dataPtr(1),
-                              ARLIM(bcen.loVect()),ARLIM(bcen.hiVect()),bcen.dataPtr(),
-                              &nc_bcen, &P1atm_MKS, &dotemp, &vflag);
-
-            visc[idx].copy(bcen,0,first_spec-offset,nspecies);
-            visc[idx].copy(bcen,nspecies,Temp-offset,1);
-
-            if (do_VelVisc)
+            if (!is_spec)
             {
-                MultiFab& beta = (whichTime==AmrOldTime) ? (*viscn_cc) : (*viscnp1_cc);
-
-                beta[idx].copy(bcen,nspecies+1,0,1);
-            }
-        }
-    }
-    //
-    // Now get the rest.
-    //
-    for (int icomp = offset; icomp <= last_comp; icomp++)
-    {
-        const bool is_spec = icomp >= first_spec && icomp <= last_spec;
-
-        if (!is_spec)
-        {
-            if (icomp == RhoH)
-            {
-                //
-                // We assume that Temp has already been done.
-                //
-                BL_ASSERT(first_spec == Density+1);
-
-                FArrayBox cpmix;
-
-                for (MFIter rho_and_species(rhospec); rho_and_species.isValid(); ++rho_and_species)
+                if (icomp == RhoH)
                 {
-                    const int  idx = rho_and_species.index();
-                    const Box& box = rhospec[idx].box();
                     visc[idx].copy(visc[idx],Temp-offset,RhoH-offset,1);
-                    cpmix.resize(box,1);
+                    cpmix.resize(gbx,1);
                     const int sCompT = 0, sCompY = 1, sCompCp = 0;
-                    getChemSolve().getCpmixGivenTY(cpmix,temp[idx],rhospec[idx],box,sCompT,sCompY,sCompCp);
+                    getChemSolve().getCpmixGivenTY(cpmix,temp,rhospec,gbx,sCompT,sCompY,sCompCp);
                     visc[idx].divide(cpmix,0,RhoH-offset,1);
                 }
-            }
-            else if (icomp == Trac || icomp == RhoRT)
-            {
-                visc.setVal(trac_diff_coef, icomp-offset, 1, nGrow);
+                else if (icomp == Trac || icomp == RhoRT)
+                {
+                    visc.setVal(trac_diff_coef, icomp-offset, 1, nGrow);
+                }
             }
         }
     }
