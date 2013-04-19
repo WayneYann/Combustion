@@ -2724,7 +2724,7 @@ HeatTransfer::differential_spec_diffusion_update (Real dt,
             const int  dComp      = comp;
             const bool do_ApplyBC = true;
 
-            diffusion->setBeta(visc_op_old,dComp,beta);
+            diffusion->setBeta(visc_op_old,beta,dComp);
             //
             // This'll update the ViscBndry in visc_op_old directly.
             //
@@ -3046,7 +3046,7 @@ HeatTransfer::differential_spec_diffusion_update (Real dt,
             const int  dComp      = ispec;
             const bool do_ApplyBC = true;
 
-            diffusion->setBeta(visc_op_new,dComp,beta);
+            diffusion->setBeta(visc_op_new,beta,dComp);
             //
             // This'll update the ViscBndry in visc_op_new directly.
             //
@@ -3403,7 +3403,7 @@ HeatTransfer::adjust_spec_diffusion_update (MultiFab&              Phi_new,
         diffusion->getBndryDataGivenS(*bndry,rho_and_species,rho_and_species_crse,
                                       state_ind,comp+1,1);
 
-        diffusion->setBeta(visc_op,dataComp+comp,betanp1);
+        diffusion->setBeta(visc_op,betanp1,dataComp+comp);
 
 	rho_and_species.setBndry(bogus_value,comp+1,1); // Ensure computable corners
 
@@ -7793,7 +7793,7 @@ HeatTransfer::scalar_advection (Real dt,
             //
             diffusion->getBndryData(*bndry,sigma,1,prev_time,rho_flag);
 
-            diffusion->setBeta(visc_op,dataComp,rhoh_visc);
+            diffusion->setBeta(visc_op,rhoh_visc,dataComp);
 
             MultiFab::Copy(Soln,S_old,sigma,0,1,0);
 
@@ -7881,7 +7881,7 @@ HeatTransfer::scalar_advection (Real dt,
             //
             diffusion->getBndryData(*bndry,sigma,1,cur_time,rho_flag);
 
-            diffusion->setBeta(visc_op,dataComp,rhoh_visc);
+            diffusion->setBeta(visc_op,rhoh_visc,dataComp);
 
             MultiFab::Copy(Soln,S_new,sigma,0,1,0);
 
@@ -8440,7 +8440,7 @@ HeatTransfer::mac_sync ()
                     //
                     diffusion->getBndryData(*bndry,sigma,1,cur_time,rho_flag);
 
-                    diffusion->setBeta(visc_op,dataComp,rhoh_visc);
+                    diffusion->setBeta(visc_op,rhoh_visc,dataComp);
 
                     MultiFab::Copy(Soln,*Ssync,sigma-BL_SPACEDIM,0,1,0);
 
@@ -8986,7 +8986,7 @@ HeatTransfer::differential_spec_diffuse_sync (Real dt)
         //
         bndry->setHomogValues(get_desc_lst()[State_Type].getBC(sigma+BL_SPACEDIM), rr);
 
-        diffusion->setBeta(visc_op,sigma,betanp1);
+        diffusion->setBeta(visc_op,betanp1,sigma);
 
         MultiFab::Copy(tRhs,*Ssync,idx,0,1,0);
 
