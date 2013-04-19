@@ -1586,7 +1586,7 @@ HeatTransfer::initDataOtherTypes ()
     //
     const int offset   = BL_SPACEDIM + 1;
     const int num_diff = NUM_STATE-offset;
-    calcDiffusivity(cur_time, dt, iteration, ncycle, offset, num_diff, true);
+    calcDiffusivity(cur_time,true);
     //
     // Assume that by now, S_new has "good" data
     //
@@ -5765,7 +5765,7 @@ HeatTransfer::advance (Real time,
     //  (these are used in the Godunov extrapolation)
     //
     const int nScalDiffs = NUM_STATE-BL_SPACEDIM-1;
-    calcDiffusivity(prev_time,dt,iteration,ncycle,Density+1,nScalDiffs);
+    calcDiffusivity(prev_time);
     //
     // Godunov-extrapolate states to cell edges
     // computes actual states, NOT fluxes, into EdgeStates
@@ -5851,7 +5851,7 @@ HeatTransfer::advance (Real time,
         
 	// compute coefficients before Eq (14a) in DayBell
 	// results in D_m^{n+1,star}
-        calcDiffusivity(cur_time,dt,iteration,ncycle,Density+1,nScalDiffs);
+        calcDiffusivity(cur_time);
 
 	// Eq (14) and (14a) in DayBell, results in corrected Gamma^{n+1,star}
         spec_update(time,dt,corrector);
@@ -5876,7 +5876,7 @@ HeatTransfer::advance (Real time,
         // Corrector
         //
         corrector = 1;
-        calcDiffusivity(cur_time,dt,iteration,ncycle,Density+1,nScalDiffs);
+        calcDiffusivity(cur_time);
         tracer_update(dt,corrector);
         spec_update(time,dt,corrector);
         
@@ -5974,7 +5974,7 @@ HeatTransfer::advance (Real time,
     // (be sure to use most recent version of state to get
     // viscosity/diffusivity).
     //
-    calcDiffusivity(cur_time,dt,iteration,ncycle,Density+1,nScalDiffs,true);
+    calcDiffusivity(cur_time,true);
     //
     // Set the dependent value of RhoRT to be the thermodynamic pressure.  By keeping this in
     // the state, we can use the average down stuff to be sure that RhoRT_avg is avg(RhoRT),
@@ -8595,23 +8595,13 @@ HeatTransfer::calcViscosity (const Real time,
 }
 
 void
-HeatTransfer::calcDiffusivity (const Real time,
-			       const Real dt,
-			       const int  iteration,
-			       const int  ncycle,
-			       const int  src_comp,
-			       const int  num_comp)
+HeatTransfer::calcDiffusivity (const Real time)
 {
-    calcDiffusivity(time,dt,iteration,ncycle,src_comp,num_comp,false);
+    calcDiffusivity(time,false);
 }
 
 void
 HeatTransfer::calcDiffusivity (const Real time,
-			       const Real dt,
-			       const int  iteration,
-			       const int  ncycle,
-			       const int  src_comp,
-			       const int  num_comp,
                                bool       do_VelVisc)
 {
     BL_PROFILE("HeatTransfer::calcDiffusivity()");
@@ -8624,9 +8614,10 @@ HeatTransfer::calcDiffusivity (const Real time,
 
     const int  nGrow           = 1;
     const int  offset          = BL_SPACEDIM + 1; // No diffusion coeff for vels or rho
-    const int  last_comp       = src_comp + num_comp - 1;
-    const bool has_spec        = src_comp < last_spec && last_comp > first_spec;
-    const int  non_spec_comps  = std::max(0,first_spec-src_comp) + std::max(0,last_comp-last_spec);
+    const int  num_comp        = NUM_STATE-offset;
+    const int  last_comp       = offset + num_comp - 1;
+    const bool has_spec        = offset < last_spec && last_comp > first_spec;
+    const int  non_spec_comps  = std::max(0,first_spec-offset) + std::max(0,last_comp-last_spec);
     MultiFab&  visc            = (whichTime == AmrOldTime) ? (*diffn_cc) : (*diffnp1_cc);
 
     MultiFab temp(grids,1,nGrow), rhospec(grids,nspecies+1,nGrow);
@@ -8699,7 +8690,7 @@ HeatTransfer::calcDiffusivity (const Real time,
     //
     // Now get the rest.
     //
-    for (int icomp = src_comp; icomp <= last_comp; icomp++)
+    for (int icomp = offset; icomp <= last_comp; icomp++)
     {
         const bool is_spec = icomp >= first_spec && icomp <= last_spec;
 
