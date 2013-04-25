@@ -154,9 +154,9 @@ c     -- rbp
       data use_constant_mu     /.true./
       data use_constant_lambda /.true./
       data use_constant_rhoD   /.true./
-      data constant_mu_val     /1.85e-5/
-      data constant_lambda_val /1.85e-5/
-      data constant_rhoD_val   /1.85e-5/
+      data constant_mu_val     /1.85d-5/
+      data constant_lambda_val /1.85d-5/
+      data constant_rhoD_val   /1.85d-5/
       data Pr / one /
       data Sc / one /
       data thickFacTR / one /
