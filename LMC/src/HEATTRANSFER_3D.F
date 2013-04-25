@@ -4,12 +4,12 @@
 #define BL_LANG_FORT
 #endif
 
-#include "REAL.H"
-#include "CONSTANTS.H"
-#include "BC_TYPES.H"
-#include "HEATTRANSFER_F.H"
-#include "ChemDriver_F.H"
-#include "ArrayLim.H"
+#include <REAL.H>
+#include <CONSTANTS.H>
+#include <BC_TYPES.H>
+#include <HEATTRANSFER_F.H>
+#include <ChemDriver_F.H>
+#include <ArrayLim.H>
 
 #   if   BL_SPACEDIM==1
 #       define  ARLIM(x)  x(1)
@@ -26,9 +26,9 @@
      &                         vtY,  DIMS(vtY),    vtT, DIMS(vtT),
      &                         rhoY, DIMS(rhoY),     T, DIMS(T))
       implicit none
-#include "cdwrk.H"
-#include "visc.H"
-#include "htdata.H"
+#include <cdwrk.H>
+#include <visc.H>
+#include <htdata.H>
       integer lo(SDIM),hi(SDIM)
       integer DIMDEC(divu)
       integer DIMDEC(rYdot)
@@ -86,9 +86,9 @@
       subroutine FORT_FLOORSPEC(lo, hi,
      &                          spec,  DIMS(spec))
       implicit none
-#include "cdwrk.H"
-#include "visc.H"
-#include "htdata.H"
+#include <cdwrk.H>
+#include <visc.H>
+#include <htdata.H>
       integer lo(SDIM),hi(SDIM)
       integer DIMDEC(spec)
       REAL_T  spec(DIMV(spec),1:Nspec)
@@ -116,7 +116,7 @@
 
       implicit none
 
-#include "cdwrk.H"      
+#include <cdwrk.H>      
 
       integer lo(SDIM), hi(SDIM), dlo(SDIM), dhi(SDIM), Tbc(SDIM,2)
       REAL_T  dx(SDIM)
@@ -692,8 +692,8 @@ c     zhi
      &                        DIMS(Y), Y,
      &                        DIMS(mu), mu)
       implicit none
-#include "visc.H"
-#include "cdwrk.H"
+#include <visc.H>
+#include <cdwrk.H>
       integer lo(SDIM),hi(SDIM)
       integer DIMDEC(T)
       integer DIMDEC(Y)
@@ -736,9 +736,9 @@ c     zhi
      &     DIMS(rhoD), rhoD,
      &     ncompd, P1ATM_MKS, do_temp, do_VelVisc)
       implicit none
-#include "cdwrk.H"
-#include "visc.H"
-#include "htdata.H"
+#include <cdwrk.H>
+#include <visc.H>
+#include <htdata.H>
       integer lo(SDIM),hi(SDIM)
       integer DIMDEC(T)
       integer DIMDEC(Y)
@@ -747,8 +747,8 @@ c     zhi
       REAL_T  T(DIMV(T))
       REAL_T  Y(DIMV(Y),*)
       REAL_T  rhoD(DIMV(rhoD),ncompd)
- 
-      integer i, j, k, n, nspecies
+      
+      integer i, j, k, n, nc, ncs
       REAL_T P1ATM_MKS, Patm
       REAL_T Yt(maxspec)
       REAL_T cpmix, Tfac, Yfac
@@ -756,10 +756,23 @@ c     zhi
       data lo_chem /1,1,1/
       data hi_chem /1,1,1/
 
-      nspecies = ncompd - 2
-
-c     ncompd-1 is Temp stuff
-c     ncompd   is velocity stuff 
+c     Nspec+1 is Temp stuff, if requested
+c     Nspec+2 is Velocity stuff, if requested
+      nc = Nspec
+      ncs = nc
+      if (do_temp.eq.1) then
+         nc = nc + 1
+         ncs = nc
+         if (do_VelVisc.eq.1) then
+            nc = nc + 1
+         endif
+      endif
+      if (ncompd.lt.nc) then
+         call bl_pd_abort("not enough components in rhoD")
+      endif
+      if (do_temp.eq.0 .and. do_VelVisc.eq.1) then
+         call bl_pd_abort("if do_VelVisc, rhoD requires do_temp")
+      endif
 
 c     Warning, FORT_VELVISC is called separately from this routine, so if there's
 c     any hacking to be done on viscosity, be sure to catch it there as well.
@@ -772,9 +785,8 @@ c     any hacking to be done on viscosity, be sure to catch it there as well.
             call FORT_MIXAVG_RHODIFF_TEMP(lo, hi, rhoD, DIMS(rhoD),
      &           T, DIMS(T), Y, DIMS(Y), Patm, do_temp, do_VelVisc)
             if (thickFacTR.ne.1.d0) then
-!$omp parallel private(i,j,k,n)
-               do n=1,ncompd-1
-!$omp do
+!$omp parallel do private(i,j,k,n)
+               do n=1,ncs
                   do k=lo(3), hi(3)
                      do j=lo(2), hi(2)
                         do i=lo(1), hi(1)
@@ -782,23 +794,27 @@ c     any hacking to be done on viscosity, be sure to catch it there as well.
                         end do
                      end do
                   end do
-!$omp end do nowait
                end do
-!$omp end parallel
+!$omp end parallel do
             endif
          else
             call FORT_VELVISC(lo,hi,DIMS(T),T,DIMS(Y),Y,
      &           DIMS(rhoD),rhoD)
+!$omp parallel do private(i,j,k,n)
             do k=lo(3), hi(3)
                do j=lo(2), hi(2)
                   do i=lo(1), hi(1)
-                     rhoD(i,j,k,ncompd-1) = rhoD(i,j,k,1)
-                     rhoD(i,j,k,ncompd  ) = rhoD(i,j,k,1)
-                     rhoD(i,j,k,1)        = rhoD(i,j,k,1) * Yfac
+                     do n=Nspec+1,nc
+                        rhoD(i,j,k,n) = rhoD(i,j,k,1)
+                     end do
+                     rhoD(i,j,k,1) = rhoD(i,j,k,1) * Yfac
                   end do
                end do
             end do
-            do n=2,nspecies
+!$omp end parallel do
+
+!$omp parallel do private(i,j,k,n)
+            do n=2,Nspec
                do k=lo(3), hi(3)
                   do j=lo(2), hi(2)
                      do i=lo(1), hi(1)
@@ -807,6 +823,7 @@ c     any hacking to be done on viscosity, be sure to catch it there as well.
                   end do
                end do
             end do
+!$omp end parallel do
 
             if (do_temp .ne. 0) then
                do k=lo(3), hi(3)
@@ -816,17 +833,17 @@ c     any hacking to be done on viscosity, be sure to catch it there as well.
                            Yt(n) = Y(i,j,k,n)
                         end do
                         CALL FORT_CPMIXfromTY(lo_chem, hi_chem, 
-     &                       CPMIX,    ARLIM(lo_chem), ARLIM(hi_chem),
+     &                       cpmix,  ARLIM(lo_chem), ARLIM(hi_chem),
      &                       T(i,j,k), ARLIM(lo_chem), ARLIM(hi_chem),
-     &                       Yt,       ARLIM(lo_chem), ARLIM(hi_chem))
-                        rhoD(i,j,k,ncompd-1) = rhoD(i,j,k,ncompd-1)*cpmix*Tfac
+     &                       Yt,     ARLIM(lo_chem), ARLIM(hi_chem))
+                        rhoD(i,j,k,Nspec+1) = rhoD(i,j,k,Nspec+1)*cpmix*Tfac
                      end do
                   end do
                end do
-            endif
+            end if
          end if
       else
-         do n=1,nspecies
+         do n=1,Nspec
             do k=lo(3), hi(3)
                do j=lo(2), hi(2)
                   do i=lo(1), hi(1)
@@ -913,7 +930,7 @@ c
                         dtcell = min(dtcell,dtcell2)
                      endif
                   endif
-                  if(dtcell.le.0.0)then
+                  if(dtcell.le.zero)then
                      write(6,*)'aha'
                   endif
                else if (flag.eq.2) then
@@ -1154,6 +1171,20 @@ c===================================================================
 
       end
 
+      subroutine FORT_RHOYDOTFILL (rhoydot,DIMS(rhoydot),domlo,domhi,delta,
+     &                             xlo,time,bc)
+
+      integer    DIMDEC(rhoydot), bc(SDIM,2)
+      integer    domlo(SDIM), domhi(SDIM)
+      REAL_T     delta(SDIM), xlo(SDIM), time
+      REAL_T     rhoydot(DIMV(rhoydot))
+
+      call filcc (rhoydot,DIMS(rhoydot),domlo,domhi,delta,xlo,bc)
+
+      call fillWithZeros(rhoydot,DIMS(rhoydot),domlo,domhi,bc)
+
+      end
+
       subroutine FORT_FABMINMAX(lo, hi, 
      &                          fab, DIMS(fab),
      &                          fmin, fmax, nc)
@@ -1184,7 +1215,7 @@ c===================================================================
      &                            RhoY, DIMS(RhoY), dir, Ybc)
       implicit none
 
-#include "cdwrk.H"
+#include <cdwrk.H>
 
       integer lo(SDIM), hi(SDIM), dlo(SDIM), dhi(SDIM), dir, Ybc(SDIM,2)
       integer DIMDEC(flux)
@@ -1374,87 +1405,6 @@ c     yzi
       endif
       end
 
-      subroutine  FORT_RECOMP_UPDATE(lo, hi,
-     &                               update, DIMS(update),
-     &                               xflux,  DIMS(xflux),
-     &                               yflux,  DIMS(yflux),
-     &                               zflux,  DIMS(zflux),
-     &                               vol,    DIMS(vol),
-     &                               nc)
-      implicit none
-      integer lo(SDIM), hi(SDIM), nc
-      integer DIMDEC(update)
-      integer DIMDEC(xflux)
-      integer DIMDEC(yflux)
-      integer DIMDEC(zflux)
-      integer DIMDEC(vol)
-      REAL_T update(DIMV(update),nc)
-      REAL_T xflux(DIMV(xflux),nc)
-      REAL_T yflux(DIMV(yflux),nc)
-      REAL_T zflux(DIMV(zflux),nc)
-      REAL_T vol(DIMV(vol))
-
-      integer i, j, k, n
-
-!$omp parallel private(i,j,k,n)
-      do n=1,nc
-!$omp do
-         do k=lo(3),hi(3)
-            do j=lo(2),hi(2)
-               do i=lo(1),hi(1)
-                  update(i,j,k,n)=-((xflux(i+1,j,k,n)-xflux(i,j,k,n))
-     &                 +            (yflux(i,j+1,k,n)-yflux(i,j,k,n))
-     &                 +            (zflux(i,j,k+1,n)-zflux(i,j,k,n)))
-     &                 /vol(i,j,k)
-               end do
-            end do
-         end do
-!$omp end do nowait
-      end do
-!$omp end parallel
-      end
-
-      subroutine  FORT_FLUXDIV(lo, hi,
-     &                         update, DIMS(update),
-     &                         xflux,  DIMS(xflux),
-     &                         yflux,  DIMS(yflux),
-     &                         zflux,  DIMS(zflux),
-     &                         vol,    DIMS(vol),
-     &                         nc, scal)
-      implicit none
-      integer lo(SDIM), hi(SDIM), nc
-      integer DIMDEC(update)
-      integer DIMDEC(xflux)
-      integer DIMDEC(yflux)
-      integer DIMDEC(zflux)
-      integer DIMDEC(vol)
-      REAL_T update(DIMV(update),nc)
-      REAL_T xflux(DIMV(xflux),nc)
-      REAL_T yflux(DIMV(yflux),nc)
-      REAL_T zflux(DIMV(zflux),nc)
-      REAL_T vol(DIMV(vol))
-      REAL_T scal
-
-      integer i, j, k, n
-
-!$omp parallel private(i,j,k,n)
-      do n=1,nc
-!$omp do
-         do k=lo(3),hi(3)
-            do j=lo(2),hi(2)
-               do i=lo(1),hi(1)
-                  update(i,j,k,n)=scal*
-     &                 ( (xflux(i+1,j,k,n)-xflux(i,j,k,n))
-     &                 + (yflux(i,j+1,k,n)-yflux(i,j,k,n)) 
-     &                 + (zflux(i,j,k+1,n)-zflux(i,j,k,n)) )/vol(i,j,k)
-               end do
-            end do
-         end do
-!$omp end do nowait
-      end do
-!$omp end parallel
-      end
-
       subroutine  FORT_INCRWEXTFLXDIV(lo, hi,
      &                                xflux,  DIMS(xflux),
      &                                yflux,  DIMS(yflux),
@@ -1497,6 +1447,47 @@ c     yzi
          end do
       end do
 !$omp end parallel do
+      end
+
+      subroutine  FORT_FLUXDIV(lo, hi,
+     &                         update, DIMS(update),
+     &                         xflux,  DIMS(xflux),
+     &                         yflux,  DIMS(yflux),
+     &                         zflux,  DIMS(zflux),
+     &                         vol,    DIMS(vol),
+     &                         nc, scal)
+      implicit none
+      integer lo(SDIM), hi(SDIM), nc
+      integer DIMDEC(update)
+      integer DIMDEC(xflux)
+      integer DIMDEC(yflux)
+      integer DIMDEC(zflux)
+      integer DIMDEC(vol)
+      REAL_T update(DIMV(update),nc)
+      REAL_T xflux(DIMV(xflux),nc)
+      REAL_T yflux(DIMV(yflux),nc)
+      REAL_T zflux(DIMV(zflux),nc)
+      REAL_T vol(DIMV(vol))
+      REAL_T scal
+
+      integer i, j, k, n
+
+!$omp parallel private(i,j,k,n)
+      do n=1,nc
+!$omp do
+         do k=lo(3),hi(3)
+            do j=lo(2),hi(2)
+               do i=lo(1),hi(1)
+                  update(i,j,k,n)=scal*
+     &                 ( (xflux(i+1,j,k,n)-xflux(i,j,k,n))
+     &                 + (yflux(i,j+1,k,n)-yflux(i,j,k,n)) 
+     &                 + (zflux(i,j,k+1,n)-zflux(i,j,k,n)) )/vol(i,j,k)
+               end do
+            end do
+         end do
+!$omp end do nowait
+      end do
+!$omp end parallel
       end
 
       subroutine fillEdges(dat,DIMS(dat),domlo,domhi,bc )
@@ -2261,7 +2252,7 @@ c     Returns the number of fine cells fixed up
      &     L, DIMS(L), a, DIMS(a), R, DIMS(R), thetaDt, fac, maxRes, maxCor,
      &     for_T0_H1, res_only, mult)
       implicit none
-#include "cdwrk.H"      
+#include <cdwrk.H>      
       integer lo(SDIM), hi(SDIM), yc, Tc, hc, rc
       integer DIMDEC(S)
       integer DIMDEC(L)
@@ -2345,7 +2336,7 @@ c
          enddo
 #ifdef HT_SKIP_NITROGEN
          allocate(tfab(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3)))
-         tfab = 0.0d0
+         tfab = zero
          do n=0,Nspec-2
             do k=lo(3),hi(3)
                do j=lo(2),hi(2)
@@ -2430,8 +2421,8 @@ c
       do k = lo(3),hi(3)
       do j = lo(2),hi(2)
       do i = lo(1),hi(1)
-         if (var(i,j,k,1) .gt. 0.0d0) tag(i,j,k) = set
-         !if (var(i,j,k,1) .gt. 0.0d0) print *,'TAGGING ',i,j,k
+         if (var(i,j,k,1) .gt. zero) tag(i,j,k) = set
+         !if (var(i,j,k,1) .gt. zero) print *,'TAGGING ',i,j,k
       end do
       end do
       end do
@@ -2526,4 +2517,44 @@ c     Fill normal on nodes (assumes 1 grow cell properly filled)
       end do
 !$omp end parallel do
 
+      end
+
+      subroutine  FORT_RECOMP_UPDATE(lo, hi,
+     &                               update, DIMS(update),
+     &                               xflux,  DIMS(xflux),
+     &                               yflux,  DIMS(yflux),
+     &                               zflux,  DIMS(zflux),
+     &                               vol,    DIMS(vol),
+     &                               nc)
+      implicit none
+      integer lo(SDIM), hi(SDIM), nc
+      integer DIMDEC(update)
+      integer DIMDEC(xflux)
+      integer DIMDEC(yflux)
+      integer DIMDEC(zflux)
+      integer DIMDEC(vol)
+      REAL_T update(DIMV(update),nc)
+      REAL_T xflux(DIMV(xflux),nc)
+      REAL_T yflux(DIMV(yflux),nc)
+      REAL_T zflux(DIMV(zflux),nc)
+      REAL_T vol(DIMV(vol))
+
+      integer i, j, k, n
+
+!$omp parallel private(i,j,k,n)
+      do n=1,nc
+!$omp do
+         do k=lo(3),hi(3)
+            do j=lo(2),hi(2)
+               do i=lo(1),hi(1)
+                  update(i,j,k,n)=-((xflux(i+1,j,k,n)-xflux(i,j,k,n))
+     &                 +            (yflux(i,j+1,k,n)-yflux(i,j,k,n))
+     &                 +            (zflux(i,j,k+1,n)-zflux(i,j,k,n)))
+     &                 /vol(i,j,k)
+               end do
+            end do
+         end do
+!$omp end do nowait
+      end do
+!$omp end parallel
       end

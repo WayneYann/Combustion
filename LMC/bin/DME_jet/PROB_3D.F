@@ -369,7 +369,7 @@ c ::: -----------------------------------------------------------
 #include "probdata.H"
 
       integer i, j, k, n, airZone, fuelZone, getZone, zone
-      integer iO2,iN2,iH2,iCH4
+      integer iO2,iH2,iCH4
       character*(maxspnml) name
       REAL_T x, y, z, r, Yl(maxspec), Xl(maxspec), Patm
       REAL_T Xlin(maxspec),alpha,beta,gamma,delt,factor

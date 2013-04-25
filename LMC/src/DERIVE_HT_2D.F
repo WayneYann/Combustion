@@ -3,12 +3,12 @@
 #define BL_LANG_FORT
 #endif
 
-#include "REAL.H"
-#include "CONSTANTS.H"
-#include "BC_TYPES.H"
-#include "PROB_F.H"
-#include "ArrayLim.H"
-#include "ChemDriver_F.H"
+#include <REAL.H>
+#include <CONSTANTS.H>
+#include <BC_TYPES.H>
+#include <PROB_F.H>
+#include <ArrayLim.H>
+#include <ChemDriver_F.H>
 
 #   if   BL_SPACEDIM==1
 #       define  ARLIM(x)  x(1)
@@ -29,7 +29,7 @@ c
 c ::: This routine will computes rho - sum (rho*Y)
 c
 
-#include "cdwrk.H"
+#include <cdwrk.H>
 #include <htdata.H>
 
       integer    lo(2), hi(2)
@@ -90,7 +90,7 @@ c
 c ::: This routine will computes sum (rhoYdot or Ydot)
 c
 
-#include "cdwrk.H"
+#include <cdwrk.H>
 #include <htdata.H>
 
       integer    lo(2), hi(2)
@@ -146,7 +146,7 @@ c
 c ::: This routine will derive rho*R*T
 c
 
-#include "cdwrk.H"
+#include <cdwrk.H>
 #include <htdata.H>
       
       integer    lo(2), hi(2)
@@ -203,7 +203,7 @@ c     Set pointers into state (these must agree with setup for this derived quan
      &                         lo,hi,domlo,domhi,delta,xlo,time,dt,bc,
      $                         level,grid_no)
       implicit none
-#include "cdwrk.H"
+#include <cdwrk.H>
       integer    lo(SDIM), hi(SDIM)
       integer    DIMDEC(x)
       integer    DIMDEC(dat)
@@ -245,7 +245,7 @@ c     Set pointers into state (these must agree with setup for this derived quan
      &                         lo,hi,domlo,domhi,delta,xlo,time,dt,bc,
      $                         level,grid_no)
       implicit none
-#include "cdwrk.H"
+#include <cdwrk.H>
       integer    lo(SDIM), hi(SDIM)
       integer    DIMDEC(C)
       integer    DIMDEC(dat)

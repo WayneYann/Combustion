@@ -1,13 +1,13 @@
-#include "DDOp_F.H"
-#include "ChemDriver_F.H"
-#include "ArrayLim.H"
-#include "CONSTANTS.H"
+#include <DDOp_F.H>
+#include <ChemDriver_F.H>
+#include <ArrayLim.H>
+#include <CONSTANTS.H>
 
 #define SDIM 3
 
       subroutine FORT_DDCOEFS(lo, hi, coefs, DIMS(coefs), T, DIMS(T), Y, DIMS(Y), Cp, DIMS(Cp), Full0_Mix1)
       implicit none
-#include "cdwrk.H"
+#include <cdwrk.H>
       integer lo(SDIM), hi(SDIM)
       integer DIMDEC(coefs)
       integer DIMDEC(T)
@@ -65,7 +65,7 @@ c     Also, the actual code is in DDOp_F.F called by the _ND.F variants
      &                       for_T0_H1, Hic, DIMS(Hic), fillAlpha, alphaYH, DIMS(alphaYH),
      &                       Full0_Mix1)
       implicit none
-#include "cdwrk.H"
+#include <cdwrk.H>
       integer lo(SDIM), hi(SDIM),dir
       integer DIMDEC(fluxYH)
       integer DIMDEC(F_dTe)
@@ -604,7 +604,7 @@ c     Go backwards on n so that we have slot 1 until the end
       subroutine FORT_DDETC(lo, hi, div, DIMS(div), V, DIMS(V),
      &                      a, dir, nc, d0a1);
       implicit none
-#include "cdwrk.H"
+#include <cdwrk.H>
       integer lo(SDIM), hi(SDIM), dir, nc, d0a1
       integer DIMDEC(div)
       integer DIMDEC(V)

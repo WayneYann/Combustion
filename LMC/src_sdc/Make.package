@@ -1,4 +1,2 @@
 CEXE_sources += HeatTransfer.cpp
 CEXE_headers += HeatTransfer.H
-FEXE_headers += HEATTRANSFER_F.h
-FEXE_sources += HEATTRANSFER_$(DIM)D.F HEATTRANSFER_F.F

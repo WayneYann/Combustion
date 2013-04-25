@@ -4,12 +4,12 @@
 #define BL_LANG_FORT
 #endif
 
-#include "REAL.H"
-#include "CONSTANTS.H"
-#include "BC_TYPES.H"
-#include "HEATTRANSFER_F.H"
-#include "ChemDriver_F.H"
-#include "ArrayLim.H"
+#include <REAL.H>
+#include <CONSTANTS.H>
+#include <BC_TYPES.H>
+#include <HEATTRANSFER_F.H>
+#include <ChemDriver_F.H>
+#include <ArrayLim.H>
 
 #   if   BL_SPACEDIM==1
 #       define  ARLIM(x)  x(1)
@@ -26,9 +26,9 @@
      &                         vtY,  DIMS(vtY),    vtT, DIMS(vtT),
      &                         rhoY, DIMS(rhoY),     T, DIMS(T))
       implicit none
-#include "cdwrk.H"
-#include "visc.H"
-#include "htdata.H"
+#include <cdwrk.H>
+#include <visc.H>
+#include <htdata.H>
       integer lo(SDIM),hi(SDIM)
       integer DIMDEC(divu)
       integer DIMDEC(rYdot)
@@ -84,9 +84,9 @@
       subroutine FORT_FLOORSPEC(lo, hi,
      &                          spec,  DIMS(spec))
       implicit none
-#include "cdwrk.H"
-#include "visc.H"
-#include "htdata.H"
+#include <cdwrk.H>
+#include <visc.H>
+#include <htdata.H>
       integer lo(SDIM),hi(SDIM)
       integer DIMDEC(spec)
       REAL_T  spec(DIMV(spec),1:Nspec)
@@ -111,7 +111,7 @@
 
       implicit none
 
-#include "cdwrk.H"      
+#include <cdwrk.H>      
 
       integer lo(SDIM), hi(SDIM), dlo(SDIM), dhi(SDIM), Tbc(SDIM,2)
       REAL_T  dx(SDIM)
@@ -546,8 +546,8 @@ c -------------------- begin here ----------------------------
      &                        DIMS(Y), Y,
      &                        DIMS(mu), mu)
       implicit none
-#include "visc.H"
-#include "cdwrk.H"      
+#include <visc.H>
+#include <cdwrk.H>      
       integer lo(SDIM),hi(SDIM)
       integer DIMDEC(T)
       integer DIMDEC(Y)
@@ -584,8 +584,8 @@ c -------------------- begin here ----------------------------
      &     DIMS(rhoD), rhoD,
      &     ncompd, P1ATM_MKS, do_temp, do_VelVisc)
       implicit none
-#include "cdwrk.H"
-#include "visc.H"
+#include <cdwrk.H>
+#include <visc.H>
 #include <htdata.H>
       integer lo(SDIM),hi(SDIM)
       integer DIMDEC(T)
@@ -596,8 +596,7 @@ c -------------------- begin here ----------------------------
       REAL_T  Y(DIMV(Y),*)
       REAL_T  rhoD(DIMV(rhoD),ncompd)
       
-      integer i, j
-      integer n, nspecies
+      integer i, j, n, nc, ncs
       REAL_T P1ATM_MKS, Patm
       REAL_T Yt(maxspec)
       REAL_T cpmix, Tfac, Yfac
@@ -605,10 +604,23 @@ c -------------------- begin here ----------------------------
       data lo_chem /1,1/
       data hi_chem /1,1/
 
-      nspecies = ncompd - 2
-
-c     ncompd-1 is Temp stuff
-c     ncompd   is Velocity stuff 
+c     Nspec+1 is Temp stuff, if requested
+c     Nspec+2 is Velocity stuff, if requested
+      nc = Nspec
+      ncs = nc
+      if (do_temp.eq.1) then
+         nc = nc + 1
+         ncs = nc
+         if (do_VelVisc.eq.1) then
+            nc = nc + 1
+         endif
+      endif
+      if (ncompd.lt.nc) then
+         call bl_pd_abort("not enough components in rhoD")
+      endif
+      if (do_temp.eq.0 .and. do_VelVisc.eq.1) then
+         call bl_pd_abort("if do_VelVisc, rhoD requires do_temp")
+      endif
 
 c     Warning, FORT_VELVISC is called separately from this routine, so if there's
 c     any hacking to be done on viscosity, be sure to catch it there as well.
@@ -621,7 +633,7 @@ c     any hacking to be done on viscosity, be sure to catch it there as well.
             call FORT_MIXAVG_RHODIFF_TEMP(lo, hi, rhoD, DIMS(rhoD),
      &           T, DIMS(T), Y, DIMS(Y), Patm, do_temp, do_VelVisc)
             if (thickFacTR.ne.1.d0) then
-               do n=1,ncompd-1
+               do n=1,ncs
                   do j=lo(2), hi(2)
                      do i=lo(1), hi(1)
                         rhoD(i,j,n) = rhoD(i,j,n)*thickFacTR
@@ -634,12 +646,13 @@ c     any hacking to be done on viscosity, be sure to catch it there as well.
      &           DIMS(rhoD),rhoD)
             do j=lo(2), hi(2)
                do i=lo(1), hi(1)
-                  rhoD(i,j,ncompd-1) = rhoD(i,j,1)
-                  rhoD(i,j,ncompd  ) = rhoD(i,j,1)
-                  rhoD(i,j,1)        = rhoD(i,j,1) * Yfac
+                  do n=Nspec+1,nc
+                     rhoD(i,j,n) = rhoD(i,j,1)
+                  end do
+                  rhoD(i,j,1) = rhoD(i,j,1) * Yfac
                end do
             end do
-            do n=2,nspecies
+            do n=2,Nspec
                do j=lo(2), hi(2)
                   do i=lo(1), hi(1)
                      rhoD(i,j,n) = rhoD(i,j,1)
@@ -650,20 +663,20 @@ c     any hacking to be done on viscosity, be sure to catch it there as well.
             if (do_temp .ne. 0) then
                do j=lo(2), hi(2)
                   do i=lo(1), hi(1)
-                     do n=1,nspecies
+                     do n=1,Nspec
                         Yt(n) = Y(i,j,n)
                      end do
                      CALL FORT_CPMIXfromTY(lo_chem, hi_chem, 
      &                    cpmix,  ARLIM(lo_chem), ARLIM(hi_chem),
      &                    T(i,j), ARLIM(lo_chem), ARLIM(hi_chem),
      &                    Yt,     ARLIM(lo_chem), ARLIM(hi_chem))
-                     rhoD(i,j,ncompd-1) = rhoD(i,j,ncompd-1)*cpmix*Tfac
+                     rhoD(i,j,Nspec+1) = rhoD(i,j,Nspec+1)*cpmix*Tfac
                   end do
                end do
             end if
          end if
       else
-         do n=1,nspecies
+         do n=1,Nspec
             do j=lo(2), hi(2)
                do i=lo(1), hi(1)
                   rhoD(i,j,n) = constant_rhoD_val
@@ -709,7 +722,7 @@ c     any hacking to be done on viscosity, be sure to catch it there as well.
       REAL_T  fluxtop, fluxbot, fluxleft, fluxright
       REAL_T  a,b,c
 
-      dt = 1.0e20
+      dt = 1.0d20
       do j=lo(2),hi(2)
         do i=lo(1),hi(1)
           dtcell = dt
@@ -744,7 +757,7 @@ c           We use the latter because it is more robust
                 dtcell = min(dtcell,dtcell2)
               endif
             endif
-            if(dtcell.le.0.0)then
+            if(dtcell.le.0.0d0)then
               write(6,*)'aha'
             endif
           else if (flag.eq.2) then
@@ -1237,7 +1250,7 @@ c                               inflow for burner in a can (bic, biac)
 c                               inflow for pipe
            do j = lo(2), domlo(2)-1
               do i = lo(1), hi(1)
-                 ydot(i,j) = 0.0
+                 ydot(i,j) = zero
               enddo
            enddo
       endif            
@@ -1245,7 +1258,7 @@ c                               inflow for pipe
       if (bc(2,2).eq.EXT_DIR.and.hi(2).gt.domhi(2)) then
            do j = domhi(2)+1, hi(2)
               do i = lo(1), hi(1)
-                 ydot(i,j) = 0.0
+                 ydot(i,j) = zero
               enddo
            enddo
       endif            
@@ -1263,6 +1276,67 @@ c                               inflow for pipe
            do j = lo(2),hi(2)
                 x = (float(i-lo(1))+.5)*delta(1)+xlo(1)
 	       ydot(i,j) = zero
+	    enddo
+	 enddo
+      endif            
+      end
+
+      subroutine FORT_RHOYDOTFILL (rhoydot,DIMS(rhoydot),domlo,domhi,delta,
+     &                             xlo,time,bc)
+
+      integer    DIMDEC(rhoydot), bc(SDIM,2)
+      integer    domlo(SDIM), domhi(SDIM)
+      REAL_T     delta(SDIM), xlo(SDIM), time
+      REAL_T     rhoydot(DIMV(rhoydot))
+
+      integer    i, j
+      integer    jlo, jhi, ilo, ihi
+      REAL_T     x
+
+      integer lo(SDIM), hi(SDIM)
+
+      lo(1) = ARG_L1(rhoydot)
+      hi(1) = ARG_H1(rhoydot)
+      lo(2) = ARG_L2(rhoydot)
+      hi(2) = ARG_H2(rhoydot)
+
+      ilo = max(lo(1),domlo(1))
+      ihi = min(hi(1),domhi(1))
+      jlo = max(lo(2),domlo(2))
+      jhi = min(hi(2),domhi(2))
+
+      call filcc (rhoydot,DIMS(rhoydot),domlo,domhi,delta,xlo,bc)
+
+      if (bc(2,1).eq.EXT_DIR.and.lo(2).lt.domlo(2)) then
+c                               inflow for pipe
+           do j = lo(2), domlo(2)-1
+              do i = lo(1), hi(1)
+                 rhoydot(i,j) = 0.0
+              enddo
+           enddo
+      endif            
+
+      if (bc(2,2).eq.EXT_DIR.and.hi(2).gt.domhi(2)) then
+           do j = domhi(2)+1, hi(2)
+              do i = lo(1), hi(1)
+                 rhoydot(i,j) = 0.0
+              enddo
+           enddo
+      endif            
+
+      if (bc(1,1).eq.EXT_DIR.and.lo(1).lt.domlo(1)) then
+           do i = lo(1), domlo(1)-1
+             do j = lo(2), hi(2)
+               rhoydot(i,j) = zero
+             enddo
+           enddo
+      endif            
+
+      if (bc(1,2).eq.EXT_DIR.and.hi(1).gt.domhi(1)) then
+         do i = domhi(1)+1, hi(1)
+           do j = lo(2),hi(2)
+                x = (float(i-lo(1))+.5)*delta(1)+xlo(1)
+	       rhoydot(i,j) = zero
 	    enddo
 	 enddo
       endif            
@@ -1292,7 +1366,7 @@ c                               inflow for pipe
      &                            RhoY, DIMS(RhoY), dir, Ybc)
       implicit none
 
-#include "cdwrk.H"
+#include <cdwrk.H>
 
       integer lo(SDIM), hi(SDIM), dlo(SDIM), dhi(SDIM), dir, Ybc(SDIM,2)
       integer DIMDEC(flux)
@@ -1406,66 +1480,6 @@ c     yhi
       endif
       end
 
-      subroutine  FORT_RECOMP_UPDATE(lo, hi,
-     &                               update, DIMS(update),
-     &                               xflux,  DIMS(xflux),
-     &                               yflux,  DIMS(yflux),
-     &                               vol,    DIMS(vol),
-     &                               nc)
-      implicit none
-      integer lo(SDIM), hi(SDIM), nc
-      integer DIMDEC(update)
-      integer DIMDEC(xflux)
-      integer DIMDEC(yflux)
-      integer DIMDEC(vol)
-      REAL_T update(DIMV(update),nc)
-      REAL_T xflux(DIMV(xflux),nc)
-      REAL_T yflux(DIMV(yflux),nc)
-      REAL_T vol(DIMV(vol))
-
-      integer i, j, n
-
-      do n=1,nc      
-         do j=lo(2),hi(2)
-            do i=lo(1),hi(1)
-               update(i,j,n)=-((xflux(i+1,j,n)-xflux(i,j,n))
-     &              +          (yflux(i,j+1,n)-yflux(i,j,n)))/vol(i,j)
-            end do
-         end do
-      end do
-      end
-
-      subroutine  FORT_FLUXDIV(lo, hi,
-     &                         update, DIMS(update),
-     &                         xflux,  DIMS(xflux),
-     &                         yflux,  DIMS(yflux),
-     &                         vol,    DIMS(vol),
-     &                         nc, scal)
-      implicit none
-      integer lo(SDIM), hi(SDIM), nc
-      integer DIMDEC(update)
-      integer DIMDEC(xflux)
-      integer DIMDEC(yflux)
-      integer DIMDEC(vol)
-      REAL_T update(DIMV(update),nc)
-      REAL_T xflux(DIMV(xflux),nc)
-      REAL_T yflux(DIMV(yflux),nc)
-      REAL_T vol(DIMV(vol))
-      REAL_T scal
-
-      integer i, j, n
-
-      do n=1,nc
-         do j=lo(2),hi(2)
-            do i=lo(1),hi(1)
-               update(i,j,n)=scal*
-     &              ( (xflux(i+1,j,n)-xflux(i,j,n))
-     &              + (yflux(i,j+1,n)-yflux(i,j,n)) )/vol(i,j)
-            end do
-         end do
-      end do
-      end
-
       subroutine  FORT_INCRWEXTFLXDIV(lo, hi,
      &                                xflux,  DIMS(xflux),
      &                                yflux,  DIMS(yflux),
@@ -1501,7 +1515,38 @@ c     yhi
          end do
       end do
       end
-      
+
+      subroutine  FORT_FLUXDIV(lo, hi,
+     &                         update, DIMS(update),
+     &                         xflux,  DIMS(xflux),
+     &                         yflux,  DIMS(yflux),
+     &                         vol,    DIMS(vol),
+     &                         nc, scal)
+      implicit none
+      integer lo(SDIM), hi(SDIM), nc
+      integer DIMDEC(update)
+      integer DIMDEC(xflux)
+      integer DIMDEC(yflux)
+      integer DIMDEC(vol)
+      REAL_T update(DIMV(update),nc)
+      REAL_T xflux(DIMV(xflux),nc)
+      REAL_T yflux(DIMV(yflux),nc)
+      REAL_T vol(DIMV(vol))
+      REAL_T scal
+
+      integer i, j, n
+
+      do n=1,nc
+         do j=lo(2),hi(2)
+            do i=lo(1),hi(1)
+               update(i,j,n)=scal*
+     &              ( (xflux(i+1,j,n)-xflux(i,j,n))
+     &              + (yflux(i,j+1,n)-yflux(i,j,n)) )/vol(i,j)
+            end do
+         end do
+      end do
+      end
+
       subroutine  FORT_COMPUTE_UGRADP(p, DIMS(p), ugradp, DIMS(ugp),
      &                                umac,  DIMS(umac),
      &                                vmac,  DIMS(vmac),
@@ -1633,7 +1678,7 @@ c     Returns the number of fine cells fixed up
      &     L, DIMS(L), a, DIMS(a), R, DIMS(R), thetaDt, fac, maxRes, maxCor,
      &     for_T0_H1, res_only, mult)
       implicit none
-#include "cdwrk.H"      
+#include <cdwrk.H>      
       integer lo(SDIM), hi(SDIM), yc, Tc, hc, rc
       integer DIMDEC(S)
       integer DIMDEC(L)
@@ -1838,7 +1883,6 @@ c     Get curvature at centers from nodal normal, get normal at centers
       end do
       end
 
-
       subroutine FORT_SMOOTH(lo, hi, Tin, DIMS(Tin), Tout, DIMS(Tout))
       implicit none
       integer lo(SDIM), hi(SDIM)
@@ -1860,6 +1904,35 @@ c     Get curvature at centers from nodal normal, get normal at centers
                end do
             end do
             Tout(i,j) = Tout(i,j) / 16.d0
+         end do
+      end do
+      end
+
+      subroutine  FORT_RECOMP_UPDATE(lo, hi,
+     &                               update, DIMS(update),
+     &                               xflux,  DIMS(xflux),
+     &                               yflux,  DIMS(yflux),
+     &                               vol,    DIMS(vol),
+     &                               nc)
+      implicit none
+      integer lo(SDIM), hi(SDIM), nc
+      integer DIMDEC(update)
+      integer DIMDEC(xflux)
+      integer DIMDEC(yflux)
+      integer DIMDEC(vol)
+      REAL_T update(DIMV(update),nc)
+      REAL_T xflux(DIMV(xflux),nc)
+      REAL_T yflux(DIMV(yflux),nc)
+      REAL_T vol(DIMV(vol))
+
+      integer i, j, n
+
+      do n=1,nc      
+         do j=lo(2),hi(2)
+            do i=lo(1),hi(1)
+               update(i,j,n)=-((xflux(i+1,j,n)-xflux(i,j,n))
+     &              +          (yflux(i,j+1,n)-yflux(i,j,n)))/vol(i,j)
+            end do
          end do
       end do
       end

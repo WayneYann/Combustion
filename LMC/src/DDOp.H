@@ -1,8 +1,8 @@
 #ifndef _DDOP_H_
 #define _DDOP_H_
 
-#include "DDBndry.H"
-#include "ChemDriver.H"
+#include <DDBndry.H>
+#include <ChemDriver.H>
 
 class DDOp
 {

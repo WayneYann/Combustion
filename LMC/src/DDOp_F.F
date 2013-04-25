@@ -1,9 +1,9 @@
-#include "REAL.H"
-#include "DDOp_F.H"
+#include <REAL.H>
+#include <DDOp_F.H>
 
       integer function FORT_DDNCOEFS(model_DD0_MA1)
       implicit none
-#include "cdwrk.H"
+#include <cdwrk.H>
       integer model_DD0_MA1,NfullDD, NmixAvg
 
       DMIXoffset = 0
@@ -27,7 +27,7 @@
 
       subroutine calc_coefs(T,Y,CPMS,MWinv,rhoDi,Full0_Mix1,PTC,rhoTD,rhoDij)
       implicit none
-#include "cdwrk.H"
+#include <cdwrk.H>
       REAL_T T, Y(*), CPMS(*), MWinv(*), rhoDi(*)
       REAL_T PTC, rhoTD(*),rhoDij(*)
       REAL_T X(maxspec), WW, Yt(maxspec), Tt, sum

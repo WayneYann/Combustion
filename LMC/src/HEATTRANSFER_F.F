@@ -4,16 +4,16 @@
 #define BL_LANG_FORT
 #endif
 
-#include "REAL.H"
-#include "CONSTANTS.H"
-#include "BC_TYPES.H"
-#include "HEATTRANSFER_F.H"
-#include "ArrayLim.H"
+#include <REAL.H>
+#include <CONSTANTS.H>
+#include <BC_TYPES.H>
+#include <HEATTRANSFER_F.H>
+#include <ArrayLim.H>
 
       subroutine FORT_SET_SCAL_NUMB(DensityIn, TempIn, TracIn, RhoHIn,
      &     FirstSpecIn, LastSpecIn)
       implicit none
-#include "cdwrk.H"
+#include <cdwrk.H>
 #include <htdata.H>
       integer DensityIn, TempIn, TracIn, RhoHIn, FirstSpecIn, LastSpecIn
 c
@@ -30,21 +30,24 @@ c
       end      
       
       subroutine FORT_GETTYPICALVALS(typ_vals,nVals)
-#include "cdwrk.H"
-#include "conp.H"
-#include "htdata.H"
+      implicit none
+#include <cdwrk.H>
+#include <conp.H>
+#include <htdata.H>
       integer nVals,n,nVals1
       REAL_T typ_vals(nVals)
       nVals1 = nVals-BL_SPACEDIM
 c     Note: typical values are defaulted to zero, and may be left that way
       if (Density.gt.nVals1 
      &     .or. Temp.gt.nVals1
-     &     .or. Temp.gt.nVals1
      &     .or. RhoH.gt.nVals1
      &     .or. Trac.gt.nVals1
      &     .or. LastSpec.gt.nVals) then
          call bl_pd_abort('cannot write typical values')
       endif
+      do n=1,BL_SPACEDIM
+         typ_vals(n) = typVal_Vel
+      enddo
       typ_vals(Density+BL_SPACEDIM) = typVal_Density
       typ_vals(Temp+BL_SPACEDIM)    = typVal_Temp
       typ_vals(RhoH+BL_SPACEDIM)    = typVal_RhoH
@@ -54,22 +57,26 @@ c     Note: typical values are defaulted to zero, and may be left that way
       enddo
       end
 
+
       subroutine FORT_SETTYPICALVALS(typ_vals,nVals)
-#include "cdwrk.H"
-#include "conp.H"
-#include "htdata.H"
+      implicit none
+#include <cdwrk.H>
+#include <conp.H>
+#include <htdata.H>
       integer nVals,n,nVals1
       REAL_T typ_vals(nVals)
       nVals1 = nVals-BL_SPACEDIM
 c     Note: typical values are defaulted to zero, and may be left that way
       if (Density.gt.nVals1 
      &     .or. Temp.gt.nVals1
-     &     .or. Temp.gt.nVals1
      &     .or. RhoH.gt.nVals1
      &     .or. Trac.gt.nVals1
      &     .or. LastSpec.gt.nVals) then
          call bl_pd_abort('cannot write typical values')
       endif
+      do n=1,BL_SPACEDIM
+         typVal_Vel = typ_vals(n)
+      enddo
       typVal_Density = typ_vals(Density+BL_SPACEDIM)
       typVal_Temp    = typ_vals(Temp+BL_SPACEDIM)
       typVal_RhoH    = typ_vals(RhoH+BL_SPACEDIM)
@@ -84,10 +91,11 @@ c     Note: typical values are defaulted to zero, and may be left that way
      &                                   lambdaIsVar, lambdaVal,
      &                                   rhoDIsVar,   rhoDVal,
      &                                   prandtl, schmidt, unityLe)
+      implicit none
       integer muIsVar, lambdaIsVar, rhoDIsVar
       REAL_T muVal, lambdaVal, rhoDVal, prandtl, schmidt
       integer unityLe
-#include "visc.H"
+#include <visc.H>
       if (muIsVar .EQ. 1) then
          use_constant_mu = .false.
          constant_mu_val = - one
@@ -117,7 +125,8 @@ c     Note: typical values are defaulted to zero, and may be left that way
 c-----------------------------------------------------------------------
 
       subroutine FORT_GETPAMB(pambout, dpdt_factorout)
-#include "cdwrk.H"
+      implicit none
+#include <cdwrk.H>
 #include <htdata.H>
       REAL_T dpdt_factorout, pambout
 
@@ -139,9 +148,9 @@ c     suck its functionality into some other initialization routine.
 c     -- rbp
 
       implicit none
-#include "cdwrk.H"
-#include "conp.H"
-#include "visc.H"
+#include <cdwrk.H>
+#include <conp.H>
+#include <visc.H>
       data use_constant_mu     /.true./
       data use_constant_lambda /.true./
       data use_constant_rhoD   /.true./
@@ -157,14 +166,17 @@ c     -- rbp
       data typVal_RhoH / 0.d0 /
       data typVal_Trac / 0.d0 /
       data typVal_Y / maxspec*0.d0 /
+      data typVal_YMAX / 1.d0 /
+      data typVal_YMIN / 1.d-6 /
 
       end
 
 
       subroutine FORT_SET_COMMON(time1,iteration1)
+      implicit none
       REAL_T time1
       integer iteration1
-#include "timedata.H"
+#include <timedata.H>
 
       time = time1
       iteration = iteration1

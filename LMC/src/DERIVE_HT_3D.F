@@ -3,12 +3,12 @@
 #define BL_LANG_FORT
 #endif
 
-#include "REAL.H"
-#include "CONSTANTS.H"
-#include "BC_TYPES.H"
-#include "PROB_F.H"
-#include "ArrayLim.H"
-#include "ChemDriver_F.H"
+#include <REAL.H>
+#include <CONSTANTS.H>
+#include <BC_TYPES.H>
+#include <PROB_F.H>
+#include <ArrayLim.H>
+#include <ChemDriver_F.H>
 
 #   if   BL_SPACEDIM==1
 #       define  ARLIM(x)  x(1)
@@ -28,8 +28,8 @@ c
 c ::: This routine will computes rho - sum (rho*Y)
 c
 
-#include "cdwrk.H"
-#include "htdata.H"
+#include <cdwrk.H>
+#include <htdata.H>
 
       integer    lo(SDIM), hi(SDIM)
       integer    DIMDEC(e)
@@ -95,8 +95,8 @@ c
 c ::: This routine will computes sum (rhoYdot or Ydot)
 c
 
-#include "cdwrk.H"
-#include "htdata.H"
+#include <cdwrk.H>
+#include <htdata.H>
 
       integer    lo(SDIM), hi(SDIM)
       integer    DIMDEC(e)
@@ -157,8 +157,8 @@ c
 c ::: This routine will derive rho*R*T
 c
 
-#include "cdwrk.H"
-#include "htdata.H"
+#include <cdwrk.H>
+#include <htdata.H>
       
       integer    lo(SDIM), hi(SDIM)
       integer    DIMDEC(e)
@@ -218,7 +218,7 @@ c
      $                         level,grid_no)
       implicit none
 
-#include "cdwrk.H"
+#include <cdwrk.H>
 
       integer    lo(SDIM), hi(SDIM)
       integer    DIMDEC(x)
@@ -266,7 +266,7 @@ c
      $                         level,grid_no)
       implicit none
 
-#include "cdwrk.H"
+#include <cdwrk.H>
 
       integer    lo(SDIM), hi(SDIM)
       integer    DIMDEC(C)
@@ -321,8 +321,8 @@ c
 c ::: This routine will computes the forcing term
 c
 
-#include "cdwrk.H"
-#include "htdata.H"
+#include <cdwrk.H>
+#include <htdata.H>
 
       integer    lo(SDIM), hi(SDIM)
       integer    DIMDEC(e)
@@ -336,8 +336,8 @@ c
       integer    level, grid_no
 
 #ifdef DO_LMC_FORCE
-#include "probdata.H"
-#include "forcedata.H"
+#include <probdata.H>
+#include <forcedata.H>
 
       integer i, j, k, n
       integer ilo, jlo, klo
@@ -495,8 +495,8 @@ c
 c ::: This routine will computes the forcing term
 c
 
-#include "cdwrk.H"
-#include "htdata.H"
+#include <cdwrk.H>
+#include <htdata.H>
 
       integer    lo(SDIM), hi(SDIM)
       integer    DIMDEC(e)
@@ -510,8 +510,8 @@ c
       integer    level, grid_no
 
 #ifdef DO_LMC_FORCE
-#include "probdata.H"
-#include "forcedata.H"
+#include <probdata.H>
+#include <forcedata.H>
       integer i, j, k, n
       integer ilo, jlo, klo
       integer ihi, jhi, khi
@@ -647,8 +647,8 @@ c
 c ::: This routine will computes the forcing term
 c
 
-#include "cdwrk.H"
-#include "htdata.H"
+#include <cdwrk.H>
+#include <htdata.H>
 
       integer    lo(SDIM), hi(SDIM)
       integer    DIMDEC(e)
@@ -662,8 +662,8 @@ c
       integer    level, grid_no
 
 #ifdef DO_LMC_FORCE
-#include "probdata.H"
-#include "forcedata.H"
+#include <probdata.H>
+#include <forcedata.H>
       integer i, j, k, n
       integer ilo, jlo, klo
       integer ihi, jhi, khi
@@ -799,8 +799,8 @@ c
 c ::: This routine will computes the forcing term
 c
 
-#include "cdwrk.H"
-#include "htdata.H"
+#include <cdwrk.H>
+#include <htdata.H>
 
       integer    lo(SDIM), hi(SDIM)
       integer    DIMDEC(e)
@@ -814,8 +814,8 @@ c
       integer    level, grid_no
 
 #ifdef DO_LMC_FORCE
-#include "probdata.H"
-#include "forcedata.H"
+#include <probdata.H>
+#include <forcedata.H>
       integer i, j, k, n
       integer ilo, jlo, klo
       integer ihi, jhi, khi
