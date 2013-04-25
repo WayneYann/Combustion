@@ -7996,34 +7996,14 @@ HeatTransfer::calc_dpdt (Real      time,
     Peos[S_fpi].copy(S_fpi());
   }
 
-  const Real* dx = geom.CellSize();
-  FArrayBox ugradp, p_denom;
   for (MFIter mfi(dpdt); mfi.isValid(); ++mfi)
   {
-    const int i = mfi.index();
+    const int  i    = mfi.index();
     const Box& vbox = mfi.validbox();
-    const Box gbox = BoxLib::grow(vbox,nGrow);
 
     dpdt[i].copy(Peos[mfi],vbox,0,vbox,0,1);
     dpdt[i].plus(-p_amb,vbox);
     dpdt[i].mult(1.0/dt,vbox);
-
-    ugradp.resize(vbox,1);
-    const int* lo = vbox.loVect();
-    const int* hi = vbox.hiVect();
-    const FArrayBox& peos = Peos[mfi];
-    const FArrayBox D_DECL(&u=u_mac[0][i], &v=u_mac[1][i], &w=u_mac[2][i]);
-
-    //    FORT_COMPUTE_UGRADP(peos.dataPtr(),   ARLIM(peos.loVect()),   ARLIM(peos.hiVect()),
-    //                        ugradp.dataPtr(), ARLIM(ugradp.loVect()), ARLIM(ugradp.hiVect()),
-    //                        u.dataPtr(),      ARLIM(u.loVect()),      ARLIM(u.hiVect()),
-    //                        v.dataPtr(),      ARLIM(v.loVect()),      ARLIM(v.hiVect()),
-#if (BL_SPACEDIM == 3)
-    //                        w.dataPtr(),      ARLIM(w.loVect()),      ARLIM(w.hiVect()),
-#endif
-    //                        lo,hi,dx);
-
-    //    dpdt[i].plus(ugradp,vbox,0,0,1);
     dpdt[i].divide(Peos[mfi],vbox,0,0,1);
     dpdt[i].mult(dpdt_factor,vbox);
   }
