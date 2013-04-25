@@ -51,6 +51,7 @@
          invmtw(n) = one / invmtw(n)
       end do
 
+!$omp parallel do private(i,j,k,n,rhoInv,Y,cpmix,H,mmw,tmp)
       do k=lo(3),hi(3)
          do j=lo(2),hi(2)
             do i=lo(1),hi(1)
@@ -81,6 +82,7 @@
             enddo
          enddo
       enddo
+!$omp end parallel do
       end
 
       subroutine FORT_FLOORSPEC(lo, hi,
@@ -95,17 +97,17 @@
       
       integer i, j, k, n
 
-      do k=lo(3),hi(3)
-         do j=lo(2),hi(2)
-            do i=lo(1),hi(1)
-
-               do n=1,Nspec
+!$omp parallel do private(i,j,k,n)
+      do n=1,Nspec
+         do k=lo(3),hi(3)
+            do j=lo(2),hi(2)
+               do i=lo(1),hi(1)
                   spec(i,j,k,n) = max(0.d0,spec(i,j,k,n))
                end do
-
             enddo
          enddo
       enddo
+!$omp end parallel do
       end
 
       subroutine FORT_ENTH_DIFF_TERMS(lo, hi, dlo, dhi, dx, T, DIMS(T), RhoY, DIMS(RhoY),
@@ -653,33 +655,33 @@ c     zhi
 
       integer i,j,k
       REAL_T  dxsqr, dysqr, dzsqr
-      REAL_T  betadotxlo, betadotxhi, betadotylo, betadotyhi
-      REAL_T  betadotzlo, betadotzhi
+      REAL_T  bdotxlo, bdotxhi, bdotylo, bdotyhi
+      REAL_T  bdotzlo, bdotzhi
 
       dxsqr = dx(1)**2
       dysqr = dx(2)**2
       dzsqr = dx(3)**2
 
-!$omp parallel do private(i,j,k,betadotxlo,betadotxhi,betadotylo)
-!$omp&private(betadotyhi,betadotzlo,betadotzhi)
+!$omp parallel do private(i,j,k,bdotxlo,bdotxhi,bdotylo)
+!$omp&private(bdotyhi,bdotzlo,bdotzhi)
       do k=lo(3),hi(3)
         do j=lo(2),hi(2)
           do i=lo(1),hi(1)
-            betadotxlo = betax(i,j,k  )*(h(i,j,k)-h(i-1,j,k))
-     &                        *(species(i,j,k)-species(i-1,j,k))
-            betadotxhi = betax(i+1,j,k)*(h(i+1,j,k)-h(i,j,k))
-     &                        *(species(i+1,j,k)-species(i,j,k))
-            betadotylo = betay(i,j,k  )*(h(i,j,k)-h(i,j-1,k))
-     &                        *(species(i,j,k)-species(i,j-1,k))
-            betadotyhi = betay(i,j+1,k)*(h(i,j+1,k)-h(i,j,k))
-     &                        *(species(i,j+1,k)-species(i,j,k))
-            betadotzlo = betaz(i,j,k  )*(h(i,j,k)-h(i,j,k-1))
-     &                        *(species(i,j,k)-species(i,j,k-1))
-            betadotzhi = betaz(i,j,k+1)*(h(i,j,k+1)-h(i,j,k))
-     &                        *(species(i,j,k+1)-species(i,j,k))
-            rdghdgy(i,j,k) =  half*((betadotxlo + betadotxhi)/dxsqr +
-     &                            (betadotylo + betadotyhi)/dysqr +
-     &                            (betadotzlo + betadotzhi)/dysqr)
+            bdotxlo = betax(i,j,k  )*(h(i,j,k)-h(i-1,j,k))
+     &            *(species(i,j,k)-species(i-1,j,k))
+            bdotxhi = betax(i+1,j,k)*(h(i+1,j,k)-h(i,j,k))
+     &           *(species(i+1,j,k)-species(i,j,k))
+            bdotylo = betay(i,j,k  )*(h(i,j,k)-h(i,j-1,k))
+     &           *(species(i,j,k)-species(i,j-1,k))
+            bdotyhi = betay(i,j+1,k)*(h(i,j+1,k)-h(i,j,k))
+     &           *(species(i,j+1,k)-species(i,j,k))
+            bdotzlo = betaz(i,j,k  )*(h(i,j,k)-h(i,j,k-1))
+     &           *(species(i,j,k)-species(i,j,k-1))
+            bdotzhi = betaz(i,j,k+1)*(h(i,j,k+1)-h(i,j,k))
+     &           *(species(i,j,k+1)-species(i,j,k))
+            rdghdgy(i,j,k) =  half*((bdotxlo + bdotxhi)/dxsqr +
+     &                              (bdotylo + bdotyhi)/dysqr +
+     &                              (bdotzlo + bdotzhi)/dysqr)
           enddo
         enddo
       enddo
@@ -2281,6 +2283,7 @@ c     -- note that if for Temp both Lphi and alpha have been scaled by (1/rho.Cp
 c     
 c     NOTE: Assumes maxRes and maxCor have been initialized properly
 c
+
       do n=0,Nspec-1
          do k=lo(3),hi(3)
             do j=lo(2),hi(2)
@@ -2291,6 +2294,7 @@ c
             enddo
          enddo
       enddo
+
 #ifdef HT_SKIP_NITROGEN
       do k=lo(3),hi(3)
          do j=lo(2),hi(2)
