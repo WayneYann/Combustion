@@ -2500,57 +2500,6 @@ c
 
       end
 
-      subroutine FORT_CALCDIVU(divu,DIMS(divu),plo,phi,xlo,dx,time)
-c
-c     This routine is for user defined divu, for debugging purposes only.
-c
-      implicit none
-
-      integer    DIMDEC(divu)
-      integer    dlo(SDIM), dhi(SDIM)
-      integer    plo(SDIM), phi(SDIM)
-      REAL_T     xlo(SDIM), dx(SDIM)
-      REAL_T     divu(DIMV(divu))
-
-      integer    i,j
-      REAL_T     x,time
-
-      dlo(1) = divu_l1
-      dlo(2) = divu_l2
-      dhi(1) = divu_h1
-      dhi(2) = divu_h2
-
-#if 0
-      do j=dlo(2),dhi(2)
-        do i = dlo(1), dhi(1)
-          x = xlo(1) + (i-plo(1)+.5)*dx(1)
-          if (x.le..005) then
-            divu(i,j) = zero
-          else
-c            divu(i,j) = one
-c            divu(i,j) = min(one,time/.05)
-c            divu(i,j) = min(two,one+time/.05)
-            divu(i,j) = time
-          endif
-        enddo
-      enddo
-#endif
-#if 0
-      do j=dlo(2),dhi(2)
-        do i = dlo(1), dhi(1)
-            divu(i,j) = time/.0125d0
-        enddo
-      enddo
-#endif
-      do j=dlo(2),dhi(2)
-        do i = dlo(1), dhi(1)
-           x = xlo(1) + (i-plo(1)+.5)*dx(1)
-           divu(i,j) = merge(one,zero,x.GE.0.5d0)
-        enddo
-      enddo
-
-      end
-
       subroutine FORT_CHECK_TURB(add_turb_var,turb_length,
      &                           box_offset,turb_scale_var,delta)
       implicit none

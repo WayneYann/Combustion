@@ -4594,65 +4594,6 @@ c*****************************************************************************
 
       end
 
-      subroutine FORT_CALCDIVU(divu,DIMS(divu),plo,phi,xlo,dx,time)
-c
-c ... This routine is for user defined divu, for debugging purposes only.
-c
-      implicit none
-
-      integer    DIMDEC(divu)
-      integer    dlo(SDIM), dhi(SDIM)
-      integer    plo(SDIM), phi(SDIM)
-      REAL_T     xlo(SDIM), dx(SDIM)
-      REAL_T     divu(DIMV(divu))
-
-      integer    i,j,k
-      REAL_T     x,time
-
-      dlo(1) = divu_l1
-      dlo(2) = divu_l2
-      dlo(3) = divu_l3
-      dhi(1) = divu_h1
-      dhi(2) = divu_h2
-      dhi(3) = divu_h3
-
-#if 0
-      do k=dlo(3),dhi(3)
-         do j=dlo(2),dhi(2)
-            do i = dlo(1), dhi(1)
-               x = xlo(1) + (i-plo(1)+.5)*dx(1)
-               if (x.le..005) then
-                  divu(i,j,k) = zero
-               else
-c     divu(i,j,k) = one
-c     divu(i,j,k) = min(one,time/.05)
-c     divu(i,j,k) = min(two,one+time/.05)
-                  divu(i,j,k) = time
-               endif
-            enddo
-         enddo
-      enddo
-#endif
-#if 0
-      do k=dlo(3),dhi(3)
-         do j=dlo(2),dhi(2)
-            do i = dlo(1), dhi(1)
-               divu(i,j,k) = time/.0125
-            enddo
-         enddo
-      enddo
-#endif
-      do k=dlo(3),dhi(3)
-         do j=dlo(2),dhi(2)
-            do i = dlo(1), dhi(1)
-               x = xlo(1) + (i-plo(1)+.5)*dx(1)
-               divu(i,j,k) = cvmgt(one,zero,x.GE.0.5)
-            enddo
-         enddo
-      enddo
-
-      end
-
       subroutine FORT_RADLOSS(lo,hi,rad,DIMS(rad),
      &                        T,DIMS(T),Y,DIMS(Y),dx,Patm,time)
       implicit none
