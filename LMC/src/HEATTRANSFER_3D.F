@@ -21,6 +21,612 @@
 
 #define SDIM 3
 
+      subroutine FORT_CALCDIVU(lo, hi,
+     &                         divu, DIMS(divu), rYdot, DIMS(rYdot),
+     &                         vtY,  DIMS(vtY),    vtT, DIMS(vtT),
+     &                         rhoY, DIMS(rhoY),     T, DIMS(T))
+      implicit none
+#include "cdwrk.H"
+#include "visc.H"
+#include "htdata.H"
+      integer lo(SDIM),hi(SDIM)
+      integer DIMDEC(divu)
+      integer DIMDEC(rYdot)
+      integer DIMDEC(vtY)
+      integer DIMDEC(vtT)
+      integer DIMDEC(rhoY)
+      integer DIMDEC(T)
+      REAL_T  divu(DIMV(divu))
+      REAL_T  rYdot(DIMV(rYdot),1:Nspec)
+      REAL_T  vtY(DIMV(vtY),1:Nspec)
+      REAL_T  vtT(DIMV(vtT))
+      REAL_T  rhoY(DIMV(rhoY),1:Nspec)
+      REAL_T  T(DIMV(T))
+      
+      integer i, j, k, n
+      REAL_T Y(maxspec), H(maxspec), cpmix, rhoInv, tmp, mmw, invmtw(maxspec)
+
+      call CKWT(IWRK(ckbi),RWRK(ckbr),invmtw)
+      do n=1,Nspec
+         invmtw(n) = one / invmtw(n)
+      end do
+
+      do k=lo(3),hi(3)
+         do j=lo(2),hi(2)
+            do i=lo(1),hi(1)
+               rhoInv = 0.d0
+               do n=1,Nspec
+                  rhoInv = rhoInv + rhoY(i,j,k,n)
+               enddo
+               rhoInv = 1.d0 / rhoInv
+               do n=1,Nspec
+                  Y(n) = rhoInv*rhoY(i,j,k,n)
+               enddo
+               CALL CKCPBS(T(i,j,k),Y,IWRK(ckbi),RWRK(ckbr),cpmix)
+               CALL CKHMS(T(i,j,k),IWRK(ckbi),RWRK(ckbr),H)
+               CALL CKMMWY(Y,IWRK(ckbi),RWRK(ckbr),mmw)
+
+               cpmix = cpmix*1.d-4
+               do n=1,Nspec
+                  H(n) = H(n)*1.d-4
+               enddo
+
+               tmp = 0.d0
+               divu(i,j,k) = vtT(i,j,k)
+               do n=1,Nspec
+                  tmp = tmp + (rYdot(i,j,k,n)+vtY(i,j,k,n))*invmtw(n)
+                  divu(i,j,k) = divu(i,j,k) - rYdot(i,j,k,n)*H(n)
+               enddo
+               divu(i,j,k) = ( divu(i,j,k)/(cpmix*T(i,j,k)) + tmp*mmw ) * rhoInv
+            enddo
+         enddo
+      enddo
+      end
+
+      subroutine FORT_FLOORSPEC(lo, hi,
+     &                          spec,  DIMS(spec))
+      implicit none
+#include "cdwrk.H"
+#include "visc.H"
+#include "htdata.H"
+      integer lo(SDIM),hi(SDIM)
+      integer DIMDEC(spec)
+      REAL_T  spec(DIMV(spec),1:Nspec)
+      
+      integer i, j, k, n
+
+      do k=lo(3),hi(3)
+         do j=lo(2),hi(2)
+            do i=lo(1),hi(1)
+
+               do n=1,Nspec
+                  spec(i,j,k,n) = max(0.d0,spec(i,j,k,n))
+               end do
+
+            enddo
+         enddo
+      enddo
+      end
+
+      subroutine FORT_ENTH_DIFF_TERMS(lo, hi, dlo, dhi, dx, T, DIMS(T), RhoY, DIMS(RhoY),
+     &                                rhoDx, DIMS(rhoDx), Fx, DIMS(Fx), Ax, DIMS(Ax), 
+     &                                rhoDy, DIMS(rhoDy), Fy, DIMS(Fy), Ay, DIMS(Ay), 
+     &                                rhoDz, DIMS(rhoDz), Fz, DIMS(Fz), Az, DIMS(Az), 
+     &                                FiGHi, DIMS(FiGHi), Tbc )
+
+      implicit none
+
+#include "cdwrk.H"      
+
+      integer lo(SDIM), hi(SDIM), dlo(SDIM), dhi(SDIM), Tbc(SDIM,2)
+      REAL_T  dx(SDIM)
+      integer DIMDEC(T)
+      REAL_T  T(DIMV(T))
+      integer DIMDEC(RhoY)
+      REAL_T  RhoY(DIMV(RhoY),Nspec)
+
+      integer DIMDEC(rhoDx)
+      REAL_T  rhoDx(DIMV(rhoDx),Nspec+2)
+      integer DIMDEC(Fx)
+      REAL_T  Fx(DIMV(Fx),Nspec+3)
+      integer DIMDEC(Ax)
+      REAL_T  Ax(DIMV(Ax))
+
+      integer DIMDEC(rhoDy)
+      REAL_T  rhoDy(DIMV(rhoDy),Nspec+2)
+      integer DIMDEC(Fy)
+      REAL_T  Fy(DIMV(Fy),Nspec+3)
+      integer DIMDEC(Ay)
+      REAL_T  Ay(DIMV(Ay))
+
+      integer DIMDEC(rhoDz)
+      REAL_T  rhoDz(DIMV(rhoDz),Nspec+2)
+      integer DIMDEC(Fz)
+      REAL_T  Fz(DIMV(Fz),Nspec+3)
+      integer DIMDEC(Az)
+      REAL_T  Az(DIMV(Az))
+
+      integer DIMDEC(FiGHi)
+      REAL_T  FiGHi(DIMV(FiGHi))
+
+      REAL_T, allocatable :: H(:,:,:,:)
+
+      integer i, j, k, d, n, elo, ehi
+      integer lob(SDIM), hib(SDIM)
+      REAL_T AxDxInv_lo, AxDxInv_hi, dxInv
+      REAL_T AyDyInv_lo, AyDyInv_hi, dyInv
+      REAL_T AzDzInv_lo, AzDzInv_hi, dzInv
+      REAL_T FiHi
+      logical fix_xlo, fix_xhi, fix_ylo, fix_yhi, fix_zlo, fix_zhi
+
+      REAL_T, allocatable :: rhoInv(:,:,:)
+      REAL_T gradY
+
+      fix_xlo = .false.
+      fix_xhi = .false.
+      fix_ylo = .false.
+      fix_yhi = .false.
+      fix_zlo = .false.
+      fix_zhi = .false.
+
+c     Compute species enthalpies on box grown by one
+      do d=1,SDIM
+         lob(d) = lo(d)-1
+         hib(d) = hi(d)+1
+      enddo
+
+c     Make space for Hi, use T box, since this better be big enough as well.
+c     Note that any cells on a physical boundary with Dirichlet conditions will 
+c     actually be centered on the edge, so the stencils below must reflect this
+
+      allocate( H(DIMV(T),1:Nspec) )
+
+      call FORT_HfromT(lob, hib, H, DIMS(T), T, DIMS(T))
+
+c     On entry, Fx(1:Nspec) = spec flux
+c     On exit:
+c     Fx(Nspec+1) = untouched
+c     Fx(Nspec+2) = sum[ (species flux).(species enthalpy) ]
+c     Fx(Nspec+3) = extensive heat conduction
+
+c     Comute lambda.Grad(T)
+      dxInv = 1.d0 / dx(1)
+      dyInv = 1.d0 / dx(2)
+      dzInv = 1.d0 / dx(3)
+
+      do k=lo(3),hi(3)
+         do j=lo(2),hi(2)
+            do i=lo(1),hi(1)+1
+               Fx(i,j,k,Nspec+3) = - rhoDx(i,j,k,Nspec+2)*(T(i,j,k) - T(i-1,j,k))* dxInv * Ax(i,j,k)
+            enddo
+         enddo
+      enddo
+      do k=lo(3),hi(3)
+         do j=lo(2),hi(2)+1
+            do i=lo(1),hi(1)
+               Fy(i,j,k,Nspec+3) = - rhoDy(i,j,k,Nspec+2)*(T(i,j,k) - T(i,j-1,k)) * dyInv * Ay(i,j,k)
+            enddo
+         enddo
+      enddo
+      do k=lo(3),hi(3)+1
+         do j=lo(2),hi(2)
+            do i=lo(1),hi(1)
+               Fz(i,j,k,Nspec+3) = - rhoDz(i,j,k,Nspec+2)*(T(i,j,k) - T(i,j,k-1)) * dzInv * Az(i,j,k)
+            enddo
+         enddo
+      enddo
+
+c     xlo
+      if (lo(1).eq.dlo(1)  .and.  Tbc(1,1).eq.EXT_DIR) then
+         i = dlo(1)
+         do k=lo(3),hi(3)
+            do j=lo(2),hi(2)
+               Fx(i,j,k,Nspec+3) = 2*Fx(i,j,k,Nspec+3)
+            enddo
+         enddo
+      endif
+c     xhi
+      if (hi(1).eq.dhi(1)  .and.  Tbc(1,2).eq.EXT_DIR) then
+         i = dhi(1)+1
+         do k=lo(3),hi(3)
+            do j=lo(2),hi(2)
+               Fx(i,j,k,Nspec+3) = 2*Fx(i,j,k,Nspec+3)
+            enddo
+         enddo
+      endif
+c     ylo
+      if (lo(2).eq.dlo(2) .and. Tbc(2,1).eq.EXT_DIR) then
+         j=lo(2)
+         do k=lo(3),hi(3)
+            do i=lo(1),hi(1)
+               Fy(i,j,k,Nspec+3) = 2*Fy(i,j,k,Nspec+3)
+            enddo
+         enddo
+      endif
+c     yhi
+      if (hi(2).eq.dhi(2) .and. Tbc(2,2).eq.EXT_DIR) then
+         j=hi(2)+1
+         do k=lo(3),hi(3)
+            do i=lo(1),hi(1)
+               Fy(i,j,k,Nspec+3) = 2*Fy(i,j,k,Nspec+3)
+            enddo
+         enddo
+      endif
+c     zlo
+      if (lo(3).eq.dlo(3) .and. Tbc(3,1).eq.EXT_DIR) then
+         k=lo(3)
+         do j=lo(2),hi(2)
+            do i=lo(1),hi(1)
+               Fz(i,j,k,Nspec+3) = 2*Fz(i,j,k,Nspec+3)
+            enddo
+         enddo
+      endif
+c     zhi
+      if (hi(3).eq.dhi(3) .and. Tbc(3,2).eq.EXT_DIR) then
+         k=hi(3)+1
+         do j=lo(2),hi(2)
+            do i=lo(1),hi(1)
+               Fz(i,j,k,Nspec+3) = 2*Fz(i,j,k,Nspec+3)
+            enddo
+         enddo
+      endif
+
+c     Compute enthalpy flux as hi*(Fi+(lambda/cp).Grad(Yi))
+
+      Fx(lo(1):hi(1)+1,lo(2):hi(2),lo(3):hi(3),Nspec+2) = 0.d0
+      Fy(lo(1):hi(1),lo(2):hi(2)+1,lo(3):hi(3),Nspec+2) = 0.d0
+      Fz(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3)+1,Nspec+2) = 0.d0
+
+      allocate(rhoInv(lo(1)-1:hi(1)+1,lo(2)-1:hi(2)+1,lo(3)-1:hi(3)+1))
+
+      rhoInv = 0
+      do n=1,Nspec
+         do k=lo(3)-1,hi(3)+1
+            do j=lo(2)-1,hi(2)+1
+               do i=lo(1)-1,hi(1)+1
+                  rhoInv(i,j,k) = rhoInv(i,j,k) + RhoY(i,j,k,n)
+               enddo
+            enddo
+         enddo
+      enddo
+      rhoInv(:,:,:) = 1/rhoInv(:,:,:)
+
+      do n=1,Nspec
+      do k=lo(3),hi(3)
+      do j=lo(2),hi(2)
+      do i=lo(1),hi(1)+1
+         gradY = (RhoY(i,j,k,n)*rhoInv(i,j,k) - RhoY(i-1,j,k,n)*rhoInv(i-1,j,k))*dxInv
+         Fx(i,j,k,Nspec+2) = Fx(i,j,k,Nspec+2)
+     &        + (Fx(i,j,k,n) + rhoDx(i,j,k,Nspec+1)*gradY*Ax(i,j,k))*(H(i,j,k,n)+H(i-1,j,k,n))*0.5d0
+      enddo
+      enddo
+      enddo
+      enddo
+
+      do n=1,Nspec
+      do k=lo(3),hi(3)
+      do j=lo(2),hi(2)+1
+      do i=lo(1),hi(1)
+         gradY = (RhoY(i,j,k,n)*rhoInv(i,j,k) - RhoY(i,j-1,k,n)*rhoInv(i,j-1,k))*dyInv
+         Fy(i,j,k,Nspec+2) = Fy(i,j,k,Nspec+2)
+     &        + (Fy(i,j,k,n) + rhoDy(i,j,k,Nspec+1)*gradY*Ay(i,j,k))*(H(i,j,k,n)+H(i,j-1,k,n))*0.5d0
+      enddo
+      enddo
+      enddo
+      enddo
+
+      do n=1,Nspec
+      do k=lo(3),hi(3)+1
+      do j=lo(2),hi(2)
+      do i=lo(1),hi(1)
+         gradY = (RhoY(i,j,k,n)*rhoInv(i,j,k) - RhoY(i,j,k-1,n)*rhoInv(i,j,k-1))*dzInv
+         Fz(i,j,k,Nspec+2) = Fz(i,j,k,Nspec+2)
+     &        + (Fz(i,j,k,n) + rhoDz(i,j,k,Nspec+1)*gradY*Az(i,j,k))*(H(i,j,k,n)+H(i,j,k-1,n))*0.5d0
+      enddo
+      enddo
+      enddo
+      enddo
+
+c     xlo
+      if (lo(1).eq.dlo(1)  .and.  Tbc(1,1).eq.EXT_DIR) then
+         i = dlo(1)
+         Fx(i:i,lo(2):hi(2),lo(3):hi(3),Nspec+2) = 0.d0
+         do n=1,Nspec
+            do k=lo(3),hi(3)
+               do j=lo(2),hi(2)
+                  gradY = 2*(RhoY(i,j,k,n)*rhoInv(i,j,k) - RhoY(i-1,j,k,n)*rhoInv(i-1,j,k))*dxInv
+                  Fx(i,j,k,Nspec+2) = Fx(i,j,k,Nspec+2)
+     &                 + (Fx(i,j,k,n) + rhoDx(i,j,k,Nspec+1)*gradY*Ax(i,j,k))*H(i-1,j,k,n)
+               enddo
+            enddo
+         enddo
+      endif
+c     xhi
+      if (hi(1).eq.dhi(1)  .and.  Tbc(1,2).eq.EXT_DIR) then
+         i = dhi(1)+1
+         Fx(i:i,lo(2):hi(2),lo(3):hi(3),Nspec+2) = 0.d0
+         do n=1,Nspec
+            do k=lo(3),hi(3)
+               do j=lo(2),hi(2)
+                  gradY = 2*(RhoY(i,j,k,n)*rhoInv(i,j,k) - RhoY(i-1,j,k,n)*rhoInv(i-1,j,k))*dxInv
+                  Fx(i,j,k,Nspec+2) = Fx(i,j,k,Nspec+2)
+     &                 + (Fx(i,j,k,n) + rhoDx(i,j,k,Nspec+1)*gradY*Ax(i,j,k))*H(i,j,k,n)
+               enddo
+            enddo
+         enddo
+      endif
+c     ylo
+      if (lo(2).eq.dlo(2)  .and.  Tbc(2,1).eq.EXT_DIR) then
+         j = dlo(2)
+         Fy(lo(1):hi(1),j:j,lo(3):hi(3),Nspec+2) = 0.d0
+         do n=1,Nspec
+            do k=lo(3),hi(3)
+               do i=lo(1),hi(1)
+                  gradY = 2*(RhoY(i,j,k,n)*rhoInv(i,j,k) - RhoY(i,j-1,k,n)*rhoInv(i,j-1,k))*dyInv
+                  Fy(i,j,k,Nspec+2) = Fy(i,j,k,Nspec+2)
+     &                 + (Fy(i,j,k,n) + rhoDy(i,j,k,Nspec+1)*gradY*Ay(i,j,k))*H(i,j-1,k,n)
+               enddo
+            enddo
+         enddo
+      endif
+c     yhi
+      if (hi(2).eq.dhi(2)  .and.  Tbc(2,2).eq.EXT_DIR) then
+         j = dhi(2)+1
+         Fy(lo(1):hi(1),j:j,lo(3):hi(3),Nspec+2) = 0.d0
+         do n=1,Nspec
+            do k=lo(3),hi(3)
+               do i=lo(1),hi(1)
+                  gradY = 2*(RhoY(i,j,k,n)*rhoInv(i,j,k) - RhoY(i,j-1,k,n)*rhoInv(i,j-1,k))*dyInv
+                  Fy(i,j,k,Nspec+2) = Fy(i,j,k,Nspec+2)
+     &                 + (Fy(i,j,k,n) + rhoDy(i,j,k,Nspec+1)*gradY*Ay(i,j,k))*H(i,j,k,n)
+               enddo
+            enddo
+         enddo
+      endif
+c     zlo
+      if (lo(3).eq.dlo(3)  .and.  Tbc(3,1).eq.EXT_DIR) then
+         k = dlo(3)
+         Fz(lo(1):hi(1),lo(2):hi(2),k:k,Nspec+2) = 0.d0
+         do n=1,Nspec
+            do j=lo(2),hi(2)
+               do i=lo(1),hi(1)
+                  gradY = 2*(RhoY(i,j,k,n)*rhoInv(i,j,k) - RhoY(i,j,k-1,n)*rhoInv(i,j,k-1))*dzInv
+                  Fz(i,j,k,Nspec+2) = Fz(i,j,k,Nspec+2)
+     &                 + (Fz(i,j,k,n) + rhoDz(i,j,k,Nspec+1)*gradY*Az(i,j,k))*H(i,j,k-1,n)
+               enddo
+            enddo
+         enddo
+      endif
+c     zhi
+      if (hi(3).eq.dhi(3)  .and.  Tbc(3,2).eq.EXT_DIR) then
+         k = dhi(3)+1
+         Fz(lo(1):hi(1),lo(2):hi(2),k:k,Nspec+2) = 0.d0
+         do n=1,Nspec
+            do j=lo(2),hi(2)
+               do i=lo(1),hi(1)
+                  gradY = 2*(RhoY(i,j,k,n)*rhoInv(i,j,k) - RhoY(i,j,k-1,n)*rhoInv(i,j,k-1))*dzInv
+                  Fz(i,j,k,Nspec+2) = Fz(i,j,k,Nspec+2)
+     &                 + (Fz(i,j,k,n) + rhoDz(i,j,k,Nspec+1)*gradY*Az(i,j,k))*H(i,j,k,n)
+               enddo
+            enddo
+         enddo
+      endif
+      deallocate(rhoInv)
+
+
+c     Set FiGHi = (species flux) dot Grad(species enthalpy)
+c        compute Grad(H) on each face, and average across faces in each coordinate
+c        Fi is extensive here, so need to remove area.  Also, assume that we are 
+c        away from domain boundary, fix afterward
+c
+c     FIXME: This will fail for r-z since Ax(dlo(1),:)=0
+c
+      do k=lo(3),hi(3)
+         do j=lo(2),hi(2)
+            do i=lo(1),hi(1)
+               FiGHi(i,j,k) = 0.d0
+            enddo
+         enddo
+      enddo
+      do n=1,Nspec
+      do k=lo(3),hi(3)
+      do j=lo(2),hi(2)
+      do i=lo(1),hi(1)
+         AxDxInv_lo = 1.d0/(Ax(i,j,k)*dx(1))
+         AxDxInv_hi = 1.d0/(Ax(i+1,j,k)*dx(1))
+         AyDyInv_lo = 1.d0/(Ay(i,j,k)*dx(2))
+         AyDyInv_hi = 1.d0/(Ay(i,j+1,k)*dx(2))
+         AzDzInv_lo = 1.d0/(Az(i,j,k)*dx(3))
+         AzDzInv_hi = 1.d0/(Az(i,j,k+1)*dx(3))
+         FiGHi(i,j,k) = FiGHi(i,j,k) - 0.5d0*
+     &        ( ( H(i+1,j,k,n) - H(i,j,k,n) )*Fx(i+1,j  ,k  ,n)*AxDxInv_hi
+     &        + ( H(i,j,k,n) - H(i-1,j,k,n) )*Fx(i  ,j  ,k  ,n)*AxDxInv_lo
+     &        + ( H(i,j+1,k,n) - H(i,j,k,n) )*Fy(i  ,j+1,k  ,n)*AyDyInv_hi
+     &        + ( H(i,j,k,n) - H(i,j-1,k,n) )*Fy(i  ,j  ,k  ,n)*AyDyInv_lo 
+     &        + ( H(i,j,k+1,n) - H(i,j,k,n) )*Fz(i  ,j  ,k+1,n)*AzDzInv_hi
+     &        + ( H(i,j,k,n) - H(i,j,k-1,n) )*Fz(i  ,j  ,k  ,n)*AzDzInv_lo )
+      enddo
+      enddo
+      enddo
+      enddo
+
+c     xlo
+      if (fix_xlo) then
+         i = lo(1)
+         do k=lo(3),hi(3)
+         do j=lo(2),hi(2)
+            FiGHi(i,j,k) = 0.d0
+         enddo
+         enddo
+         do n=1,Nspec
+         do k=lo(3),hi(3)
+         do j=lo(2),hi(2)
+            AxDxInv_lo = 2.d0/(Ax(i,j,k)*dx(1))
+            AxDxInv_hi = 1.d0/(Ax(i+1,j,k)*dx(1))
+            AyDyInv_lo = 1.d0/(Ay(i,j,k)*dx(2))
+            AyDyInv_hi = 1.d0/(Ay(i,j+1,k)*dx(2))
+            AzDzInv_lo = 1.d0/(Az(i,j,k)*dx(3))
+            AzDzInv_hi = 1.d0/(Az(i,j,k+1)*dx(3))
+            FiGHi(i,j,k) = FiGHi(i,j,k) - 0.5d0*
+     &           ( ( H(i+1,j,k,n) - H(i,j,k,n) )*Fx(i+1,j  ,k  ,n)*AxDxInv_hi
+     &           + ( H(i,j,k,n) - H(i-1,j,k,n) )*Fx(i  ,j  ,k  ,n)*AxDxInv_lo
+     &           + ( H(i,j+1,k,n) - H(i,j,k,n) )*Fy(i  ,j+1,k  ,n)*AyDyInv_hi
+     &           + ( H(i,j,k,n) - H(i,j-1,k,n) )*Fy(i  ,j  ,k  ,n)*AyDyInv_lo 
+     &           + ( H(i,j,k+1,n) - H(i,j,k,n) )*Fz(i  ,j  ,k+1,n)*AzDzInv_hi
+     &           + ( H(i,j,k,n) - H(i,j,k-1,n) )*Fz(i  ,j  ,k  ,n)*AzDzInv_lo )
+         enddo
+         enddo
+         enddo
+      endif
+
+c     xhi
+      if (fix_xhi) then
+         i = hi(1)
+         do k=lo(3),hi(3)
+         do j=lo(2),hi(2)
+            FiGHi(i,j,k) = 0.d0
+         enddo
+         enddo
+         do n=1,Nspec
+         do k=lo(3),hi(3)
+         do j=lo(2),hi(2)
+            AxDxInv_lo = 2.d0/(Ax(i,j,k)*dx(1))
+            AxDxInv_hi = 1.d0/(Ax(i+1,j,k)*dx(1))
+            AyDyInv_lo = 1.d0/(Ay(i,j,k)*dx(2))
+            AyDyInv_hi = 1.d0/(Ay(i,j+1,k)*dx(2))
+            AzDzInv_lo = 1.d0/(Az(i,j,k)*dx(3))
+            AzDzInv_hi = 1.d0/(Az(i,j,k+1)*dx(3))
+            FiGHi(i,j,k) = FiGHi(i,j,k) - 0.5d0*
+     &           ( ( H(i+1,j,k,n) - H(i,j,k,n) )*Fx(i+1,j  ,k  ,n)*AxDxInv_hi
+     &           + ( H(i,j,k,n) - H(i-1,j,k,n) )*Fx(i  ,j  ,k  ,n)*AxDxInv_lo
+     &           + ( H(i,j+1,k,n) - H(i,j,k,n) )*Fy(i  ,j+1,k  ,n)*AyDyInv_hi
+     &           + ( H(i,j,k,n) - H(i,j-1,k,n) )*Fy(i  ,j  ,k  ,n)*AyDyInv_lo 
+     &           + ( H(i,j,k+1,n) - H(i,j,k,n) )*Fz(i  ,j  ,k+1,n)*AzDzInv_hi
+     &           + ( H(i,j,k,n) - H(i,j,k-1,n) )*Fz(i  ,j  ,k  ,n)*AzDzInv_lo )
+         enddo
+         enddo
+         enddo
+      endif
+
+c     ylo
+      if (fix_ylo) then
+         j = lo(2)
+         do k=lo(3),hi(3)
+         do i=lo(1),hi(1)
+            FiGHi(i,j,k) = 0.d0
+         enddo
+         enddo
+         do n=1,Nspec
+         do k=lo(3),hi(3)
+         do i=lo(1),hi(1)
+            AxDxInv_lo = 2.d0/(Ax(i,j,k)*dx(1))
+            AxDxInv_hi = 1.d0/(Ax(i+1,j,k)*dx(1))
+            AyDyInv_lo = 1.d0/(Ay(i,j,k)*dx(2))
+            AyDyInv_hi = 1.d0/(Ay(i,j+1,k)*dx(2))
+            AzDzInv_lo = 1.d0/(Az(i,j,k)*dx(3))
+            AzDzInv_hi = 1.d0/(Az(i,j,k+1)*dx(3))
+            FiGHi(i,j,k) = FiGHi(i,j,k) - 0.5d0*
+     &           ( ( H(i+1,j,k,n) - H(i,j,k,n) )*Fx(i+1,j  ,k  ,n)*AxDxInv_hi
+     &           + ( H(i,j,k,n) - H(i-1,j,k,n) )*Fx(i  ,j  ,k  ,n)*AxDxInv_lo
+     &           + ( H(i,j+1,k,n) - H(i,j,k,n) )*Fy(i  ,j+1,k  ,n)*AyDyInv_hi
+     &           + ( H(i,j,k,n) - H(i,j-1,k,n) )*Fy(i  ,j  ,k  ,n)*AyDyInv_lo 
+     &           + ( H(i,j,k+1,n) - H(i,j,k,n) )*Fz(i  ,j  ,k+1,n)*AzDzInv_hi
+     &           + ( H(i,j,k,n) - H(i,j,k-1,n) )*Fz(i  ,j  ,k  ,n)*AzDzInv_lo )
+         enddo
+         enddo
+         enddo
+      endif
+
+c     yhi
+      if (fix_yhi) then
+         j = hi(2)
+         do k=lo(3),hi(3)
+         do i=lo(1),hi(1)
+            FiGHi(i,j,k) = 0.d0
+         enddo
+         enddo
+         do n=1,Nspec
+         do k=lo(3),hi(3)
+         do i=lo(1),hi(1)
+            AxDxInv_lo = 2.d0/(Ax(i,j,k)*dx(1))
+            AxDxInv_hi = 1.d0/(Ax(i+1,j,k)*dx(1))
+            AyDyInv_lo = 1.d0/(Ay(i,j,k)*dx(2))
+            AyDyInv_hi = 1.d0/(Ay(i,j+1,k)*dx(2))
+            AzDzInv_lo = 1.d0/(Az(i,j,k)*dx(3))
+            AzDzInv_hi = 1.d0/(Az(i,j,k+1)*dx(3))
+            FiGHi(i,j,k) = FiGHi(i,j,k) - 0.5d0*
+     &           ( ( H(i+1,j,k,n) - H(i,j,k,n) )*Fx(i+1,j  ,k  ,n)*AxDxInv_hi
+     &           + ( H(i,j,k,n) - H(i-1,j,k,n) )*Fx(i  ,j  ,k  ,n)*AxDxInv_lo
+     &           + ( H(i,j+1,k,n) - H(i,j,k,n) )*Fy(i  ,j+1,k  ,n)*AyDyInv_hi
+     &           + ( H(i,j,k,n) - H(i,j-1,k,n) )*Fy(i  ,j  ,k  ,n)*AyDyInv_lo 
+     &           + ( H(i,j,k+1,n) - H(i,j,k,n) )*Fz(i  ,j  ,k+1,n)*AzDzInv_hi
+     &           + ( H(i,j,k,n) - H(i,j,k-1,n) )*Fz(i  ,j  ,k  ,n)*AzDzInv_lo )
+         enddo
+         enddo
+         enddo
+      endif
+
+c     zlo
+      if (fix_zlo) then
+         k = lo(3)
+         do j=lo(2),hi(2)
+         do i=lo(1),hi(1)
+            FiGHi(i,j,k) = 0.d0
+         enddo
+         enddo
+         do n=1,Nspec
+         do j=lo(2),hi(2)
+         do i=lo(1),hi(1)
+            AxDxInv_lo = 2.d0/(Ax(i,j,k)*dx(1))
+            AxDxInv_hi = 1.d0/(Ax(i+1,j,k)*dx(1))
+            AyDyInv_lo = 1.d0/(Ay(i,j,k)*dx(2))
+            AyDyInv_hi = 1.d0/(Ay(i,j+1,k)*dx(2))
+            AzDzInv_lo = 1.d0/(Az(i,j,k)*dx(3))
+            AzDzInv_hi = 1.d0/(Az(i,j,k+1)*dx(3))
+            FiGHi(i,j,k) = FiGHi(i,j,k) - 0.5d0*
+     &           ( ( H(i+1,j,k,n) - H(i,j,k,n) )*Fx(i+1,j  ,k  ,n)*AxDxInv_hi
+     &           + ( H(i,j,k,n) - H(i-1,j,k,n) )*Fx(i  ,j  ,k  ,n)*AxDxInv_lo
+     &           + ( H(i,j+1,k,n) - H(i,j,k,n) )*Fy(i  ,j+1,k  ,n)*AyDyInv_hi
+     &           + ( H(i,j,k,n) - H(i,j-1,k,n) )*Fy(i  ,j  ,k  ,n)*AyDyInv_lo 
+     &           + ( H(i,j,k+1,n) - H(i,j,k,n) )*Fz(i  ,j  ,k+1,n)*AzDzInv_hi
+     &           + ( H(i,j,k,n) - H(i,j,k-1,n) )*Fz(i  ,j  ,k  ,n)*AzDzInv_lo )
+         enddo
+         enddo
+         enddo
+      endif
+
+c     zhi
+      if (fix_zhi) then
+         k = hi(3)
+         do j=lo(2),hi(2)
+         do i=lo(1),hi(1)
+            FiGHi(i,j,k) = 0.d0
+         enddo
+         enddo
+         do n=1,Nspec
+         do j=lo(2),hi(2)
+         do i=lo(1),hi(1)
+            AxDxInv_lo = 2.d0/(Ax(i,j,k)*dx(1))
+            AxDxInv_hi = 1.d0/(Ax(i+1,j,k)*dx(1))
+            AyDyInv_lo = 1.d0/(Ay(i,j,k)*dx(2))
+            AyDyInv_hi = 1.d0/(Ay(i,j+1,k)*dx(2))
+            AzDzInv_lo = 1.d0/(Az(i,j,k)*dx(3))
+            AzDzInv_hi = 1.d0/(Az(i,j,k+1)*dx(3))
+            FiGHi(i,j,k) = FiGHi(i,j,k) - 0.5d0*
+     &           ( ( H(i+1,j,k,n) - H(i,j,k,n) )*Fx(i+1,j  ,k  ,n)*AxDxInv_hi
+     &           + ( H(i,j,k,n) - H(i-1,j,k,n) )*Fx(i  ,j  ,k  ,n)*AxDxInv_lo
+     &           + ( H(i,j+1,k,n) - H(i,j,k,n) )*Fy(i  ,j+1,k  ,n)*AyDyInv_hi
+     &           + ( H(i,j,k,n) - H(i,j-1,k,n) )*Fy(i  ,j  ,k  ,n)*AyDyInv_lo 
+     &           + ( H(i,j,k+1,n) - H(i,j,k,n) )*Fz(i  ,j  ,k+1,n)*AzDzInv_hi
+     &           + ( H(i,j,k,n) - H(i,j,k-1,n) )*Fz(i  ,j  ,k  ,n)*AzDzInv_lo )
+         enddo
+         enddo
+         enddo
+      endif
+
+      deallocate(H)
+      end
+
       subroutine FORT_COMPUTE_RHODGRADHDOTGRADY(dx,
      &         lo, hi, DIMS(species), species,
      &         DIMS(h), h, DIMS(betax), betax,
@@ -573,83 +1179,199 @@ c===================================================================
 !$omp end parallel
       end
 
-      subroutine FORT_REPAIR_FLUX(lo, hi,
+      subroutine FORT_REPAIR_FLUX(lo, hi, dlo, dhi,
      &                            flux, DIMS(flux),
-     &                            state, DIMS(state), nc, dir)
+     &                            RhoY, DIMS(RhoY), dir, Ybc)
       implicit none
 
 #include "cdwrk.H"
 
-      integer lo(SDIM), hi(SDIM), nc, dir
+      integer lo(SDIM), hi(SDIM), dlo(SDIM), dhi(SDIM), dir, Ybc(SDIM,2)
       integer DIMDEC(flux)
-      integer DIMDEC(state)
-      REAL_T flux(DIMV(flux),nc)
-      REAL_T state(DIMV(state),nc)
-
+      integer DIMDEC(RhoY)
+      REAL_T flux(DIMV(flux),Nspec)
+      REAL_T RhoY(DIMV(RhoY),Nspec)
+      
       integer i, j, k, n
-      REAL_T sum, sumRhoY, yedge(nc)
-         
-!$omp parallel private(i,j,k,n,sum,yedge,sumRhoY)
+      REAL_T sumFlux, RhoYe(Nspec), sumRhoYe
 
       if (dir.eq.0) then
-!$omp do
+
+c     First, assume away from physical boundaries, then use boundary-aware version below if applicable
+
+!$omp parallel do private(i,j,k,n,sumFlux,RhoYe,sumRhoYe)
          do k = lo(3),hi(3)
             do j = lo(2),hi(2)
                do i = lo(1),hi(1)+1
-                  sum     = zero
-                  sumRhoY = zero
-                  do n=1,nc
-                     sum      = sum + flux(i,j,k,n)
-                     yedge(n) = half*(state(i-1,j,k,n)+state(i,j,k,n))
-                     sumRhoY  = sumRhoY + yedge(n)
+                  sumFlux = 0.d0
+                  sumRhoYe = 0.d0
+                  do n=1,Nspec
+                     sumFlux = sumFlux + flux(i,j,k,n)
+                     RhoYe(n) = 0.5d0*(RhoY(i-1,j,k,n) + RhoY(i,j,k,n))
+                     sumRhoYe = sumRhoYe + RhoYe(n)
                   end do               
-                  do n=1,nc
-                     flux(i,j,k,n) = flux(i,j,k,n) - sum*yedge(n)/sumRhoY
+                  do n=1,Nspec
+                     flux(i,j,k,n) = flux(i,j,k,n) - sumFlux*RhoYe(n)/sumRhoYe
                   end do
                end do
             end do
          end do
-!$omp end do
+!$omp end parallel do
+c     xlo
+         if (Ybc(1,1).eq.EXT_DIR) then
+            do i = lo(1),dlo(1)
+               do k = lo(3),hi(3)
+                  do j = lo(2),hi(2)
+                     sumFlux = 0.d0
+                     sumRhoYe = 0.d0
+                     do n=1,Nspec
+                        sumFlux = sumFlux + flux(i,j,k,n)
+                        sumRhoYe = sumRhoYe + RhoY(i-1,j,k,n)
+                     enddo
+                     do n=1,Nspec
+                        flux(i,j,k,n) = flux(i,j,k,n) - sumFlux*RhoY(i-1,j,k,n)/sumRhoYe
+                     enddo
+                  enddo
+               enddo
+            enddo
+         endif
+c     xhi
+         if (Ybc(1,2).eq.EXT_DIR) then
+            do i = dhi(1)+1,hi(1)+1
+               do k = lo(3),hi(3)
+                  do j = lo(2),hi(2)
+                     sumFlux = 0.d0
+                     sumRhoYe = 0.d0
+                     do n=1,Nspec
+                        sumFlux = sumFlux + flux(i,j,k,n)
+                        sumRhoYe = sumRhoYe + RhoY(i,j,k,n)
+                     enddo
+                     do n=1,Nspec
+                        flux(i,j,k,n) = flux(i,j,k,n) - sumFlux*RhoY(i,j,k,n)/sumRhoYe
+                     enddo
+                  enddo
+               enddo
+            enddo
+         endif
+
       else if (dir.eq.1) then
-!$omp do
+
+c     First, assume away from physical boundaries, then replace with boundary-aware version below if applicable
+
+!$omp parallel do private(i,j,k,n,sumFlux,RhoYe,sumRhoYe)
          do k = lo(3),hi(3)
             do j = lo(2),hi(2)+1
                do i = lo(1),hi(1)
-                  sum     = zero
-                  sumRhoY = zero
-                  do n=1,nc
-                     sum      = sum + flux(i,j,k,n)
-                     yedge(n) = half*(state(i,j-1,k,n)+state(i,j,k,n))
-                     sumRhoY  = sumRhoY + yedge(n)
-                  end do
-                  do n=1,nc
-                     flux(i,j,k,n) = flux(i,j,k,n) - sum*yedge(n)/sumRhoY
+                  sumFlux = 0.d0
+                  sumRhoYe = 0.d0
+                  do n=1,Nspec
+                     sumFlux = sumFlux + flux(i,j,k,n)
+                     RhoYe(n) = 0.5d0*(RhoY(i,j-1,k,n) + RhoY(i,j,k,n))
+                     sumRhoYe = sumRhoYe + RhoYe(n)
+                  enddo
+                  do n=1,Nspec
+                     flux(i,j,k,n) = flux(i,j,k,n) - sumFlux*RhoYe(n)/sumRhoYe
                   end do
                end do
             end do
          end do
-!$omp end do
-      else
-!$omp do
+!$omp end parallel do
+c     ylo
+         if (Ybc(2,1).eq.EXT_DIR) then
+            do j = lo(2),dlo(2)
+               do k = lo(3),hi(3)
+                  do i = lo(1),hi(1)
+                     sumFlux = 0.d0
+                     sumRhoYe = 0.d0
+                     do n=1,Nspec
+                        sumFlux = sumFlux + flux(i,j,k,n)
+                        sumRhoYe = sumRhoYe + RhoY(i,j-1,k,n)
+                     enddo
+                     do n=1,Nspec
+                        flux(i,j,k,n) = flux(i,j,k,n) - sumFlux*RhoY(i,j-1,k,n)/sumRhoYe
+                     enddo
+                  enddo
+               enddo
+            enddo
+         endif
+c     yhi
+         if (Ybc(2,2).eq.EXT_DIR) then
+            do j = dhi(2)+1,hi(2)+1
+               do k = lo(3),hi(3)
+                  do i = lo(1),hi(1)
+                     sumFlux = 0.d0
+                     sumRhoYe = 0.d0
+                     do n=1,Nspec
+                        sumFlux = sumFlux + flux(i,j,k,n)
+                        sumRhoYe = sumRhoYe + RhoY(i,j,k,n)
+                     enddo
+                     do n=1,Nspec
+                        flux(i,j,k,n) = flux(i,j,k,n) - sumFlux*RhoY(i,j,k,n)/sumRhoYe
+                     enddo
+                  enddo
+               enddo
+            enddo
+         endif
+
+      else if (dir.eq.2) then
+
+c     First, assume away from physical boundaries, then replace with boundary-aware version below if applicable
+!$omp parallel do private(i,j,k,n,sumFlux,RhoYe,sumRhoYe)
          do k = lo(3),hi(3)+1
             do j = lo(2),hi(2)
                do i = lo(1),hi(1)
-                  sum     = zero
-                  sumRhoY = zero
-                  do n=1,nc
-                     sum      = sum + flux(i,j,k,n)
-                     yedge(n) = half*(state(i,j,k-1,n)+state(i,j,k,n))
-                     sumRhoY  = sumRhoY + yedge(n)
-                  end do
-                  do n=1,nc
-                     flux(i,j,k,n) = flux(i,j,k,n) - sum*yedge(n)/sumRhoY
+                  sumFlux = 0.d0
+                  sumRhoYe = 0.d0
+                  do n=1,Nspec
+                     sumFlux = sumFlux + flux(i,j,k,n)
+                     RhoYe(n) = 0.5d0*(RhoY(i,j,k-1,n) + RhoY(i,j,k,n))
+                     sumRhoYe = sumRhoYe + RhoYe(n)
+                  enddo
+                  do n=1,Nspec
+                     flux(i,j,k,n) = flux(i,j,k,n) - sumFlux*RhoYe(n)/sumRhoYe
                   end do
                end do
             end do
          end do
-!$omp end do
-      end if
-!$omp end parallel
+!$omp end parallel do
+c     zlo
+         if (Ybc(3,1).eq.EXT_DIR) then
+            do k = lo(3),dlo(3)
+               do j = lo(2),hi(2)
+                  do i = lo(1),hi(1)
+                     sumFlux = 0.d0
+                     sumRhoYe = 0.d0
+                     do n=1,Nspec
+                        sumFlux = sumFlux + flux(i,j,k,n)
+                        sumRhoYe = sumRhoYe + RhoY(i,j,k-1,n)
+                     enddo
+                     do n=1,Nspec
+                        flux(i,j,k,n) = flux(i,j,k,n) - sumFlux*RhoY(i,j,k-1,n)/sumRhoYe
+                     enddo
+                  enddo
+               enddo
+            enddo
+         endif
+c     yzi
+         if (Ybc(3,2).eq.EXT_DIR) then
+            do k = dhi(3)+1,hi(3)+1
+               do j = lo(2),hi(2)
+                  do i = lo(1),hi(1)
+                     sumFlux = 0.d0
+                     sumRhoYe = 0.d0
+                     do n=1,Nspec
+                        sumFlux = sumFlux + flux(i,j,k,n)
+                        sumRhoYe = sumRhoYe + RhoY(i,j,k,n)
+                     enddo
+                     do n=1,Nspec
+                        flux(i,j,k,n) = flux(i,j,k,n) - sumFlux*RhoY(i,j,k,n)/sumRhoYe
+                     enddo
+                  enddo
+               enddo
+            enddo
+         endif
+
+      endif
       end
 
       subroutine  FORT_RECOMP_UPDATE(lo, hi,
@@ -684,6 +1406,47 @@ c===================================================================
      &                 +            (yflux(i,j+1,k,n)-yflux(i,j,k,n))
      &                 +            (zflux(i,j,k+1,n)-zflux(i,j,k,n)))
      &                 /vol(i,j,k)
+               end do
+            end do
+         end do
+!$omp end do nowait
+      end do
+!$omp end parallel
+      end
+
+      subroutine  FORT_FLUXDIV(lo, hi,
+     &                         update, DIMS(update),
+     &                         xflux,  DIMS(xflux),
+     &                         yflux,  DIMS(yflux),
+     &                         zflux,  DIMS(zflux),
+     &                         vol,    DIMS(vol),
+     &                         nc, scal)
+      implicit none
+      integer lo(SDIM), hi(SDIM), nc
+      integer DIMDEC(update)
+      integer DIMDEC(xflux)
+      integer DIMDEC(yflux)
+      integer DIMDEC(zflux)
+      integer DIMDEC(vol)
+      REAL_T update(DIMV(update),nc)
+      REAL_T xflux(DIMV(xflux),nc)
+      REAL_T yflux(DIMV(yflux),nc)
+      REAL_T zflux(DIMV(zflux),nc)
+      REAL_T vol(DIMV(vol))
+      REAL_T scal
+
+      integer i, j, k, n
+
+!$omp parallel private(i,j,k,n)
+      do n=1,nc
+!$omp do
+         do k=lo(3),hi(3)
+            do j=lo(2),hi(2)
+               do i=lo(1),hi(1)
+                  update(i,j,k,n)=scal*
+     &                 ( (xflux(i+1,j,k,n)-xflux(i,j,k,n))
+     &                 + (yflux(i,j+1,k,n)-yflux(i,j,k,n)) 
+     &                 + (zflux(i,j,k+1,n)-zflux(i,j,k,n)) )/vol(i,j,k)
                end do
             end do
          end do

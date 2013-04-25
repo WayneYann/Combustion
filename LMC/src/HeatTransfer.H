@@ -381,6 +381,7 @@ protected:
     virtual void compute_differential_diffusion_terms (MultiFab& visc_terms,
 						       int       sComp,
 						       Real      time);
+    void adjust_spec_diffusion_fluxes (Real time);
 
     enum YdotAction { HT_EstimateYdotNew, HT_ImproveYdotOld, HT_LeaveYdotAlone };
 

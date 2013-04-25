@@ -20,6 +20,10 @@
 #    define FORT_REPAIR_FLUX               rparflux
 #    define FORT_RECOMP_UPDATE             recompupdt
 #    define FORT_INCRWEXTFLXDIV            incrwextflxdiv
+#    define FORT_FLUXDIV                   flxdiv
+#    define FORT_CALCDIVU                  calcdivu
+#    define FORT_FLOORSPEC                 floorspec
+#    define FORT_ENTH_DIFF_TERMS           enthdiff
 #    define FORT_SET_COMMON                setcommon
 #    define FORT_COMPUTE_UGRADP            computeugradp
 #    define FORT_HTDDRELAX                 htddrelax
@@ -51,6 +55,10 @@
 #    define FORT_REPAIR_FLUX               RPARFLUX
 #    define FORT_RECOMP_UPDATE             RECOMPUPDT
 #    define FORT_INCRWEXTFLXDIV            INCRWEXTFLXDIV
+#    define FORT_FLUXDIV                   FLXDIV
+#    define FORT_CALCDIVU                  CALCDIVU
+#    define FORT_FLOORSPEC                 FLOORSPEC
+#    define FORT_ENTH_DIFF_TERMS           ENTHDIFF
 #    define FORT_SET_COMMON                SETCOMMON
 #    define FORT_COMPUTE_UGRADP            COMPUTEUGRADP
 #    define FORT_HTDDRELAX                 HTDDRELAX
@@ -81,6 +89,10 @@
 #    define FORT_REPAIR_FLUX               rparflux
 #    define FORT_RECOMP_UPDATE             recompupdt
 #    define FORT_INCRWEXTFLXDIV            incrwextflxdiv
+#    define FORT_FLUXDIV                   flxdiv
+#    define FORT_CALCDIVU                  calcdivu
+#    define FORT_FLOORSPEC                 floorspec
+#    define FORT_ENTH_DIFF_TERMS           enthdiff
 #    define FORT_SET_COMMON                setcommon
 #    define FORT_COMPUTE_UGRADP            computeugradp
 #    define FORT_HTDDRELAX                 htddrelax
@@ -111,6 +123,10 @@
 #    define FORT_REPAIR_FLUX               rparflux_
 #    define FORT_RECOMP_UPDATE             recompupdt_
 #    define FORT_INCRWEXTFLXDIV            incrwextflxdiv_
+#    define FORT_FLUXDIV                   flxdiv_
+#    define FORT_CALCDIVU                  calcdivu_
+#    define FORT_FLOORSPEC                 floorspec_
+#    define FORT_ENTH_DIFF_TERMS           enthdiff_
 #    define FORT_SET_COMMON                setcommon_
 #    define FORT_COMPUTE_UGRADP            computeugradp_
 #    define FORT_HTDDRELAX                 htddrelax_
@@ -226,22 +242,33 @@ extern "C" {
     void FORT_FABMINMAX(const int* lo, const int* hi,
 			Real* fabdat, ARLIM_P(flo), ARLIM_P(fhi),
 			const Real* min, const Real* max, const int* nc);
-    
-    void FORT_REPAIR_FLUX(const int* lo, const int* hi,
-                          Real* flux,  ARLIM_P(flo), ARLIM_P(fhi),
-                          const Real* state, ARLIM_P(slo), ARLIM_P(shi),
-                          const int* nc, const int* dir);
 
-    void FORT_RECOMP_UPDATE(const int* lo, const int* hi,
-			    const Real* updat, ARLIM_P(uplo), ARLIM_P(uphi),
-			    const Real* xflux, ARLIM_P(fxlo), ARLIM_P(fxhi),
-			    const Real* yflux, ARLIM_P(fylo), ARLIM_P(fyhi),
+    void FORT_REPAIR_FLUX(const int* lo,  const int* hi,
+                          const int* dlo, const int* dhi,
+                          Real* flux,    ARLIM_P(flo),  ARLIM_P(fhi),
+                          const Real* RY,ARLIM_P(RYlo), ARLIM_P(RYhi),
+                          const int* dir, const int* bc);
+
+    void FORT_ENTH_DIFF_TERMS(const int* lo, const int* hi, 
+                              const int* dlo, const int* dhi, const Real* dx,
+                              const Real* T, ARLIM_P(Tlo),  ARLIM_P(Thi),
+                              const Real* RhoY, ARLIM_P(rYlo),  ARLIM_P(rYhi),
+
+                              const Real* rDx,ARLIM_P(rDxlo),ARLIM_P(rDxhi),
+                              const Real* Fix,ARLIM_P(Fixlo),ARLIM_P(Fixhi),
+                              const Real* ax, ARLIM_P(axlo), ARLIM_P(axhi),
+
+                              const Real* rDy,ARLIM_P(rDylo),ARLIM_P(rDyhi),
+                              const Real* Fiy,ARLIM_P(Fiylo),ARLIM_P(Fiyhi),
+                              const Real* ay, ARLIM_P(aylo), ARLIM_P(ayhi),
 #if BL_SPACEDIM == 3
-			    const Real* zflux, ARLIM_P(fzlo), ARLIM_P(fzhi),
+                              const Real* rDz,ARLIM_P(rDzlo),ARLIM_P(rDzhi),
+                              const Real* Fiz,ARLIM_P(Fizlo),ARLIM_P(Fizhi),
+                              const Real* az, ARLIM_P(azlo), ARLIM_P(azhi),
 #endif
-			    const Real* vol,   ARLIM_P(vlo),  ARLIM_P(vhi),
-			    const int* nc);
-    
+                              Real* fh,      ARLIM_P(fhlo), ARLIM_P(fhhi),
+                              const int* Tbc);
+
     void FORT_INCRWEXTFLXDIV(const int* lo, const int* hi,
                              const Real* xflux, ARLIM_P(fxlo),  ARLIM_P(fxhi),
                              const Real* yflux, ARLIM_P(fylo),  ARLIM_P(fyhi),
@@ -253,7 +280,29 @@ extern "C" {
                              const Real* vol,     ARLIM_P(vollo),    ARLIM_P(volhi),
                              const int* nc, const Real* dt);
 
+    void FORT_FLUXDIV(const int* lo, const int* hi,
+                      const Real* updat, ARLIM_P(uplo), ARLIM_P(uphi),
+                      const Real* xflux, ARLIM_P(fxlo), ARLIM_P(fxhi),
+                      const Real* yflux, ARLIM_P(fylo), ARLIM_P(fyhi),
+#if BL_SPACEDIM == 3
+                      const Real* zflux, ARLIM_P(fzlo), ARLIM_P(fzhi),
+#endif
+                      const Real* vol,   ARLIM_P(vlo),  ARLIM_P(vhi),
+                      const int* nc, const Real* scale);
+
+    void FORT_CALCDIVU(const int* lo,  const int* hi,
+                       Real* divu,         ARLIM_P(dulo),    ARLIM_P(duhi),
+                       const Real* rYdot,  ARLIM_P(rYdotlo), ARLIM_P(rYdothi),
+                       const Real* vtY,    ARLIM_P(vtYlo),   ARLIM_P(vtYhi),
+                       const Real* vtT,    ARLIM_P(vtTlo),   ARLIM_P(vtThi),
+                       const Real* rhoY,   ARLIM_P(rYlo),    ARLIM_P(rYhi),
+                       const Real* T,      ARLIM_P(Tlo),     ARLIM_P(Thi));
+    
+    void FORT_FLOORSPEC(const int* lo,  const int* hi,
+			const Real* spec,   ARLIM_P(speclo),    ARLIM_P(spechi));
+
     void FORT_SET_COMMON (const Real* time, const int* iteration);
+
     void FORT_COMPUTE_UGRADP(const Real* p, ARLIM_P(p_lo),  ARLIM_P(p_hi),
                              const Real* ugradp, ARLIM_P(up_lo),  ARLIM_P(up_hi),
                              const Real* umac, ARLIM_P(umac_lo),  ARLIM_P(umac_hi),
@@ -272,7 +321,6 @@ extern "C" {
                         const Real* r, ARLIM_P(rlo),  ARLIM_P(rhi),
                         const Real& thetaDt, const Real* fac, Real* maxRes, Real* maxCor,
                         const int& for_T0_H1, const int& res_only, const Real& mult);
-
 
     void FORT_GETTYPICALVALS(Real* vals, const int* nVals);
 
@@ -362,6 +410,16 @@ extern "C" {
                            const Real* dx, const Real* xlo,
                            const Real* prob_lo, const Real* time,
                            const int* level);
+
+    void FORT_RECOMP_UPDATE(const int* lo, const int* hi,
+			    const Real* updat, ARLIM_P(uplo), ARLIM_P(uphi),
+			    const Real* xflux, ARLIM_P(fxlo), ARLIM_P(fxhi),
+			    const Real* yflux, ARLIM_P(fylo), ARLIM_P(fyhi),
+#if BL_SPACEDIM == 3
+			    const Real* zflux, ARLIM_P(fzlo), ARLIM_P(fzhi),
+#endif
+			    const Real* vol,   ARLIM_P(vlo),  ARLIM_P(vhi),
+			    const int* nc);
 
     void FORT_MCURVE(const int* lo, const int* hi,
                      const Real* T, ARLIM_P(Tlo),  ARLIM_P(Thi),

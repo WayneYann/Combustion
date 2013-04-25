@@ -19,9 +19,6 @@
 #    define FORT_VELFILL                velfill
 #    define FORT_CHEMFILL               chemfill
 #    define FORT_ALLCHEMFILL            allchemfill
-#ifndef LMC_SDC
-#    define FORT_CALCDIVU               calcdivu
-#endif
 #    define FORT_DERRHORT               drhort
 #    define FORT_HACK                   hack
 #    define FORT_DERMOLEFRAC            dermolefrac
@@ -50,9 +47,6 @@
 #    define FORT_VELFILL                VELFILL
 #    define FORT_CHEMFILL               CHEMFILL
 #    define FORT_ALLCHEMFILL            ALLCHEMFILL
-#ifndef LMC_SDC
-#    define FORT_CALCDIVU               CALCDIVU
-#endif
 #    define FORT_DERRHORT               DRHORT
 #    define FORT_HACK                   HACK
 #    define FORT_DERMOLEFRAC            DERMOLEFRAC
@@ -80,9 +74,6 @@
 #    define FORT_VELFILL                velfill
 #    define FORT_CHEMFILL               chemfill
 #    define FORT_ALLCHEMFILL            allchemfill
-#ifndef LMC_SDC
-#    define FORT_CALCDIVU               calcdivu
-#endif
 #    define FORT_DERRHORT               drhort
 #    define FORT_DERMOLEFRAC            dermolefrac
 #    define FORT_RADLOSS                radloss
@@ -109,9 +100,6 @@
 #    define FORT_VELFILL                velfill_
 #    define FORT_CHEMFILL               chemfill_
 #    define FORT_ALLCHEMFILL            allchemfill_
-#ifndef LMC_SDC
-#    define FORT_CALCDIVU               calcdivu_
-#endif
 #    define FORT_DERRHORT               drhort_
 #    define FORT_HACK                   hack_
 #    define FORT_DERMOLEFRAC            dermolefrac_
@@ -246,12 +234,6 @@
                             const int* dom_lo, const int* dom_hi,
                             const Real* dx, const Real* grd_lo,
                             const Real* time, const int* bc);
-
-#ifndef LMC_SDC
-     void FORT_CALCDIVU (Real* divu, ARLIM_P(dlo), ARLIM_P(dhi),
-                         const int* plo, const int* phi, const Real* xlo,
-                         const Real* dx, const Real* time);
-#endif
 
      void FORT_DERRHORT  (Real* data, ARLIM_P(dat_lo), ARLIM_P(dat_hi),
 			  const int* nvar, const Real* compdat,

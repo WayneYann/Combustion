@@ -2701,6 +2701,69 @@ HeatTransfer::make_rho_curr_time ()
 }
 
 void
+HeatTransfer::adjust_spec_diffusion_fluxes (Real time)
+{
+    //
+    // In this function we explicitly adjust the species diffusion fluxes so that their sum
+    // is zero.  The fluxes are class member data, either SpecDiffusionFluxn or 
+    // SpecDiffusionFluxnp1, depending on time
+    //
+    const TimeLevel whichTime = which_time(State_Type,time);
+    BL_ASSERT(whichTime == AmrOldTime || whichTime == AmrNewTime);    
+    MultiFab* const * flux = (whichTime == AmrOldTime) ? SpecDiffusionFluxn : SpecDiffusionFluxnp1;
+
+    MultiFab& S = get_data(State_Type,time);
+    //
+    // Fill grow cells in the state for RhoY, Temp
+    // For Dirichlet physical boundary grow cells, this data will live on the cell face, otherwise
+    // it will live at cell centers.
+    //
+    const int nGrow = 1;
+    BL_ASSERT(S.nGrow()>=nGrow);
+    for (FillPatchIterator Tfpi(*this,S,nGrow,time,State_Type,Temp,1),
+             Yfpi(*this,S,nGrow,time,State_Type,first_spec,nspecies);
+         Yfpi.isValid() && Tfpi.isValid();
+         ++Yfpi, ++Tfpi)
+    {
+        const Box& vbox = Yfpi.validbox();
+        FArrayBox& fab = S[Yfpi];
+        BoxList gcells = BoxLib::boxDiff(Box(vbox).grow(nGrow),vbox);
+        for (BoxList::const_iterator it = gcells.begin(), end = gcells.end(); it != end; ++it)
+        {
+            const Box& gbox = *it;
+            fab.copy(Tfpi(),gbox,0,gbox,Temp,1);
+            fab.copy(Yfpi(),gbox,0,gbox,first_spec,nspecies);
+        }
+    }
+    //
+    // Get boundary info for Y (assume all Ys have the same boundary type.
+    //
+    const BCRec& Ybc = get_desc_lst()[State_Type].getBC(first_spec);
+    // 
+    // The following REPAIR_FLUX routine modifies the fluxes of all the species
+    // to ensure that they sum to zero.  It requires the RhoY on valid + 1 grow (and, at least
+    // as of this writing actually used the values of RhoY on edges that it gets by arithmetic
+    // averaging.
+    //
+    const Box& domain = geom.Domain();
+    for (MFIter mfi(S); mfi.isValid(); ++mfi)
+    {
+        const Box& box   = mfi.validbox();
+        FArrayBox& Y = S[mfi];
+        int sCompY=first_spec;
+
+        for (int d =0; d < BL_SPACEDIM; ++d)
+        {
+            FArrayBox& f = (*flux[d])[mfi.index()];
+            FORT_REPAIR_FLUX(box.loVect(), box.hiVect(), domain.loVect(), domain.hiVect(),
+                             f.dataPtr(),      ARLIM(f.loVect()),ARLIM(f.hiVect()),
+                             Y.dataPtr(sCompY),ARLIM(Y.loVect()),ARLIM(Y.hiVect()),
+                             &d, Ybc.vect());
+        }
+    }
+}
+
+void
 HeatTransfer::adjust_spec_diffusion_update (MultiFab&              Phi_new,
 					    const MultiFab*        Phi_old,
 					    int                    sCompS,
@@ -2732,123 +2795,7 @@ HeatTransfer::adjust_spec_diffusion_update (MultiFab&              Phi_new,
     
     MultiFab* const * flux = (whichTime == AmrOldTime) ? SpecDiffusionFluxn : SpecDiffusionFluxnp1;
 
-    const int nGrowOp = 1;
-    MultiFab rho_and_species(grids,nspecies+1,nGrowOp);
-    //
-    // Create and fill a full MultiFab of rho and species at this level and below.
-    //
-    FArrayBox tmp;
-
-    for (FillPatchIterator fpi(*this,rho_and_species,nGrowOp,time,State_Type,Density,nspecies+1);
-         fpi.isValid();
-         ++fpi)
-    {
-        FArrayBox& rho_and_spec = rho_and_species[fpi];
-
-	// copy rho and rho*Y into rho_and_species
-        rho_and_spec.copy(fpi(),0,0,nspecies+1);
-
-	// set tmp = 1/rho
-        tmp.resize(rho_and_spec.box(),1);
-        tmp.copy(rho_and_spec,0,0,1);
-        tmp.invert(1);
-
-	// convert rho*Y to Y in rrho_and_species
-        for (int comp = 0; comp < nspecies; ++comp) 
-            if (rho_flag[comp] == 2)
-                rho_and_spec.mult(tmp,0,comp+1,1);
-    }
-
-    MultiFab rho_and_species_crse;
-
-    //
-    // Now do the coarser level
-    //
-    if (level > 0) 
-    {
-        const int     nGrow   = 1;
-        HeatTransfer& coarser = *(HeatTransfer*) &(parent->getLevel(level-1));
-
-        rho_and_species_crse.define(coarser.grids,nspecies+1,nGrowOp,Fab_allocate);
-
-        for (FillPatchIterator fpi(coarser,rho_and_species_crse,nGrow,time,State_Type,Density,nspecies+1);
-             fpi.isValid();
-             ++fpi)
-        {
-            FArrayBox& rho_and_spec = rho_and_species_crse[fpi];
-
-	    // copy rho and rho*Y into rho_and_species
-            rho_and_spec.copy(fpi(),0,0,nspecies+1);
-
-	    // set tmp = 1/rho
-            tmp.resize(rho_and_spec.box(),1);
-            tmp.copy(rho_and_spec,0,0,1);
-            tmp.invert(1);
-
-	    // convert rho*Y to Y in rrho_and_species
-            for (int comp = 0; comp < nspecies; ++comp) 
-                if (rho_flag[comp] == 2)
-                    rho_and_spec.mult(tmp,0,comp+1,1);
-        }
-    }
-
-    const Real a = 1.0;
-    const Real b = -dt;
-
-    for (int comp = 0; comp < nspecies; ++comp)
-    {
-	const int state_ind = first_spec + comp;
-
-        ViscBndry  visc_bndry;
-        diffusion->getBndryDataGivenS(visc_bndry,rho_and_species,rho_and_species_crse,
-                                      state_ind,comp+1,1);
-        bool bndry_already_filled = true;
-
-	Real           rhsscale;
-        ABecLaplacian* visc_op;
-	visc_op = diffusion->getViscOp(state_ind,a,b,time,visc_bndry,
-                                       rho_half,rho_flag[comp],&rhsscale,
-                                       betanp1,dataComp+comp,alpha,0,
-                                       bndry_already_filled);
-	visc_op->maxOrder(diffusion->maxOrder());
-
-	rho_and_species.setBndry(bogus_value,comp+1,1); // Ensure computable corners
-
-	visc_op->applyBC(rho_and_species,comp+1,1);
-
-	delete visc_op;
-
-	if (rho_flag[comp] == 2)
-        {
-	    for (MFIter Smfi(rho_and_species); Smfi.isValid(); ++Smfi)
-            {
-                FArrayBox& fab = rho_and_species[Smfi];
-     		fab.mult(fab,fab.box(),0,comp+1,1);
-            }
-        }
-    }
-
-    rho_and_species_crse.clear();    
-    //
-    // "Repair" fluxes to ensure they sum to zero, use rho_and_species to pick dominant comp
-    //  Note that rho_and_species is now rho and rho.Y, not rho and Y.
-    //
-    for (MFIter mfi(rho_and_species); mfi.isValid(); ++mfi)
-    {
-        FArrayBox& state = rho_and_species[mfi];
-        const Box& box   = mfi.validbox();
-
-        for (int d =0; d < BL_SPACEDIM; ++d)
-        {
-            FArrayBox& fab = (*flux[d])[mfi.index()];
-            FORT_REPAIR_FLUX(box.loVect(), box.hiVect(),
-                             fab.dataPtr(),  ARLIM(fab.loVect()),  ARLIM(fab.hiVect()),
-                             state.dataPtr(1),ARLIM(state.loVect()),ARLIM(state.hiVect()),
-                             &nspecies, &d);
-        }
-    }
-
-    rho_and_species.clear();
+    adjust_spec_diffusion_fluxes(time);
     //
     // Reset Phi_new using "repaired" fluxes.  Here, we assume the following
     // arrangement of terms:
@@ -2858,7 +2805,7 @@ HeatTransfer::adjust_spec_diffusion_update (MultiFab&              Phi_new,
     //            A = 1            for rho_flag == 2
     //     
     //
-    FArrayBox update, volume;
+    FArrayBox update, volume, tmp;
 
     for (MFIter mfi(Phi_new); mfi.isValid(); ++mfi)
     {

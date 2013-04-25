@@ -2729,8 +2729,7 @@ HeatTransfer::differential_diffusion_update (MultiFab& Force,
     //
     // Modify/update new-time fluxes to ensure sum of species fluxes = 0
     //
-    bool grow_cells_already_filled = false;
-    adjust_spec_diffusion_fluxes(curr_time,grow_cells_already_filled);
+    adjust_spec_diffusion_fluxes(curr_time);
 
     // AJN FLUXREG
     // We have just performed the diffusion solve for Y_m.
@@ -2779,7 +2778,7 @@ HeatTransfer::differential_diffusion_update (MultiFab& Force,
       }
 
       // compute enthalpy fluxes with correct species
-      compute_enthalpy_fluxes(curr_time,betanp1,grow_cells_already_filled);
+      compute_enthalpy_fluxes(curr_time,betanp1);
 
       // AJN FLUXREG
       // We have just computed the time-advanced "DD" terms for the forcing in the
@@ -2856,8 +2855,7 @@ HeatTransfer::differential_diffusion_update (MultiFab& Force,
 }
 
 void
-HeatTransfer::adjust_spec_diffusion_fluxes (Real                   time,
-                                            bool                   grow_cells_already_filled)
+HeatTransfer::adjust_spec_diffusion_fluxes (Real time)
 {
     //
     // In this function we explicitly adjust the species diffusion fluxes so that their sum
@@ -2869,37 +2867,38 @@ HeatTransfer::adjust_spec_diffusion_fluxes (Real                   time,
     MultiFab* const * flux = (whichTime == AmrOldTime) ? SpecDiffusionFluxn : SpecDiffusionFluxnp1;
 
     MultiFab& S = get_data(State_Type,time);
-    if (!grow_cells_already_filled)
+    //
+    // Fill grow cells in the state for RhoY, Temp
+    // For Dirichlet physical boundary grow cells, this data will live on the cell face, otherwise
+    // it will live at cell centers.
+    //
+    const int nGrow = 1;
+    BL_ASSERT(S.nGrow()>=nGrow);
+    for (FillPatchIterator Tfpi(*this,S,nGrow,time,State_Type,Temp,1),
+             Yfpi(*this,S,nGrow,time,State_Type,first_spec,nspecies);
+         Yfpi.isValid() && Tfpi.isValid();
+         ++Yfpi, ++Tfpi)
     {
-        // Fill grow cells in the state for RhoY, Temp
-        // For Dirichlet physical boundary grow cells, this data will live on the cell face, otherwise
-        // it will live at cell centers
-        int nGrow = 1;
-        BL_ASSERT(S.nGrow()>=nGrow);
-        FillPatchIterator Tfpi(*this,S,nGrow,time,State_Type,Temp,1);
-        FillPatchIterator Yfpi(*this,S,nGrow,time,State_Type,first_spec,nspecies);
-        for ( ; Yfpi.isValid() && Tfpi.isValid(); ++Yfpi, ++Tfpi)
+        const Box& vbox = Yfpi.validbox();
+        FArrayBox& fab = S[Yfpi];
+        BoxList gcells = BoxLib::boxDiff(Box(vbox).grow(nGrow),vbox);
+        for (BoxList::const_iterator it = gcells.begin(), end = gcells.end(); it != end; ++it)
         {
-            const Box& vbox = Yfpi.validbox();
-            FArrayBox& fab = S[Yfpi];
-            BoxList gcells = BoxLib::boxDiff(Box(vbox).grow(nGrow),vbox);
-            for (BoxList::const_iterator it = gcells.begin(), end = gcells.end(); it != end; ++it)
-            {
-                const Box& gbox = *it;
-                fab.copy(Tfpi(),gbox,0,gbox,Temp,1);
-                fab.copy(Yfpi(),gbox,0,gbox,first_spec,nspecies);
-            }
+            const Box& gbox = *it;
+            fab.copy(Tfpi(),gbox,0,gbox,Temp,1);
+            fab.copy(Yfpi(),gbox,0,gbox,first_spec,nspecies);
         }
     }
-
-    // Get boundary info for Y (assume all Ys have the same boundary type
+    //
+    // Get boundary info for Y (assume all Ys have the same boundary type.
+    //
     const BCRec& Ybc = get_desc_lst()[State_Type].getBC(first_spec);
-
     // 
     // The following REPAIR_FLUX routine modifies the fluxes of all the species
     // to ensure that they sum to zero.  It requires the RhoY on valid + 1 grow (and, at least
     // as of this writing actually used the values of RhoY on edges that it gets by arithmetic
     // averaging.
+    //
     const Box& domain = geom.Domain();
     for (MFIter mfi(S); mfi.isValid(); ++mfi)
     {
@@ -2916,13 +2915,11 @@ HeatTransfer::adjust_spec_diffusion_fluxes (Real                   time,
                              &d, Ybc.vect());
         }
     }
-
 }
 
 void
 HeatTransfer::compute_enthalpy_fluxes (Real                   time,
-				       const MultiFab* const* beta,
-                                       bool                   grow_cells_already_filled)
+				       const MultiFab* const* beta)
 {
 
 
@@ -2944,19 +2941,17 @@ HeatTransfer::compute_enthalpy_fluxes (Real                   time,
     const Box& domain = geom.Domain();
     const BCRec& Tbc = get_desc_lst()[State_Type].getBC(Temp);
     FArrayBox area[BL_SPACEDIM];
-
-    // fill ghost cells for rhoY and Temp
-    if (!grow_cells_already_filled)
-      {
-	FillPatchIterator rYfpi(*this,S,1,time,State_Type,first_spec,nspecies);
-	FillPatchIterator Tfpi(*this,S,1,time,State_Type,Temp,1);
-
-	for( ; rYfpi.isValid() && Tfpi.isValid(); ++rYfpi,++Tfpi)
-	  {
-	    S[rYfpi].copy(rYfpi(),0,first_spec,nspecies);
-	    S[rYfpi].copy(Tfpi(),0,Temp,1);
-	  }
-      }
+    //
+    // Fill ghost cells for rhoY and Temp.
+    //
+    for (FillPatchIterator rYfpi(*this,S,1,time,State_Type,first_spec,nspecies),
+             Tfpi(*this,S,1,time,State_Type,Temp,1);
+         rYfpi.isValid() && Tfpi.isValid();
+         ++rYfpi,++Tfpi)
+    {
+        S[rYfpi].copy(rYfpi(),0,first_spec,nspecies);
+        S[rYfpi].copy(Tfpi(),0,Temp,1);
+    }
 
     for (MFIter mfi(S); mfi.isValid(); ++mfi)
     {
@@ -4797,10 +4792,9 @@ HeatTransfer::compute_differential_diffusion_fluxes (const Real& time,
     //
     // Modify update/fluxes to preserve flux sum = 0, build heat flux and temperature source terms
     //
-    bool grow_cells_already_filled = true;
 
     // conservatively correct Gamma_m
-    adjust_spec_diffusion_fluxes(time,grow_cells_already_filled);
+    adjust_spec_diffusion_fluxes(time);
 
     //
     // AJN FLUXREG
@@ -4847,7 +4841,7 @@ HeatTransfer::compute_differential_diffusion_fluxes (const Real& time,
     // compute lambda grad T (for temperature and divu)
     // compute sum_m (Gamma_m + lambda/cp grad Y) (for enthalpy)
     // compute sum_m Gamma_m dot grad h_m (for divu)
-    compute_enthalpy_fluxes(time,beta,grow_cells_already_filled);
+    compute_enthalpy_fluxes(time,beta);
 
     //
     // AJN FLUXREG
@@ -7272,8 +7266,7 @@ HeatTransfer::differential_spec_diffuse_sync (Real dt)
     //
 
     // need to correct SpecDiffusionFluxnp1 to contain rhoD grad (delta Y)^sync
-    bool grow_cells_already_filled = false;
-    adjust_spec_diffusion_fluxes(cur_time,grow_cells_already_filled);
+    adjust_spec_diffusion_fluxes(cur_time);
 
     // need to correct Ssync to contain rho^{n+1} * (delta Y)^sync
     // Do this by setting

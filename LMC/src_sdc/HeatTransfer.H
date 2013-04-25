@@ -147,12 +147,10 @@ public:
     void compute_differential_diffusion_fluxes (const Real& time,
 					        const Real& dt);
 
-    void adjust_spec_diffusion_fluxes (Real                   time,
-                                       bool                   grow_cells_already_filled);
+    void adjust_spec_diffusion_fluxes (Real time);
 
     void compute_enthalpy_fluxes (Real                   time,
-                                  const MultiFab* const* beta,
-                                  bool                   grow_cells_already_filled);
+                                  const MultiFab* const* beta);
 
     virtual void velocity_diffusion_update (Real dt);
 
