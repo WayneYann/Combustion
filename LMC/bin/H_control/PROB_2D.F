@@ -14,14 +14,15 @@
       integer zone, n, getZone, fuelZone, airZone, region
       integer b(SDIM)
       integer num_zones_defined
-      integer iO2,iH2
+      integer iO2,iH2,len
       character*(maxspnml) name
       data  b / 1, 1 /
       
       Patm = pamb / FORT_P1ATMMKS()
       num_zones_defined = 0
-      if ( (trim(probtype).eq.BL_PROB_PREMIXED_FIXED_INFLOW) 
-     &     .or. (trim(probtype).eq.BL_PROB_PREMIXED_CONTROLLED_INFLOW) ) then
+      len = len_trim(probtype)
+      if ( (probtype(1:len).eq.BL_PROB_PREMIXED_FIXED_INFLOW) 
+     &     .or. (probtype(1:len).eq.BL_PROB_PREMIXED_CONTROLLED_INFLOW) ) then
          
 c     Take fuel mixture from prob data
 
@@ -67,7 +68,7 @@ c     Take fuel mixture from pmf file
             
          endif
 
-      else if (trim(probtype).eq.BL_PROB_DIFFUSION) then
+      else if (probtype(1:len).eq.BL_PROB_DIFFUSION) then
 
 c     A diffusion flame
          fuelZone = getZone(domnlo(1), domnlo(2))
@@ -156,15 +157,17 @@ c ::: -----------------------------------------------------------
 #include <bc.H>
 #include <probdata.H>
       REAL_T x, y
+      integer len
 
       getZone = BL_VOLUME
+      len     = len_trim(probtype)
 
-      if ( (trim(probtype).eq.BL_PROB_PREMIXED_FIXED_INFLOW) 
-     &     .or. (trim(probtype).eq.BL_PROB_PREMIXED_CONTROLLED_INFLOW) ) then
+      if ( (probtype(1:len).eq.BL_PROB_PREMIXED_FIXED_INFLOW) 
+     &     .or. (probtype(1:len).eq.BL_PROB_PREMIXED_CONTROLLED_INFLOW) ) then
 
          getZone = BL_FUELPIPE
          
-      else if (trim(probtype).eq.BL_PROB_DIFFUSION) then
+      else if (probtype(1:len).eq.BL_PROB_DIFFUSION) then
          
          if (x .ge. splitx) then
             getZone = BL_AMBIENT
@@ -192,15 +195,17 @@ c ::: -----------------------------------------------------------
 #include <bc.H>
 #include <probdata.H>
 
-      integer n, getZone, zone
+      integer n, getZone, zone, len
       REAL_T eta, xmid, etamax
 
       if (.not. bcinit) then
          call bl_abort('Need to initialize boundary condition function')
       end if
+
+      len = len_trim(probtype)
       
-      if ( (trim(probtype).eq.BL_PROB_PREMIXED_FIXED_INFLOW) 
-     &     .or. (trim(probtype).eq.BL_PROB_PREMIXED_CONTROLLED_INFLOW)) then
+      if ( (probtype(1:len).eq.BL_PROB_PREMIXED_FIXED_INFLOW) 
+     &     .or. (probtype(1:len).eq.BL_PROB_PREMIXED_CONTROLLED_INFLOW)) then
 
          if (RegionID .eq. BL_YLO) then
 
@@ -215,9 +220,9 @@ c ::: -----------------------------------------------------------
             if (getuv .eqv. .TRUE.) then
 
                u = zero
-               if (trim(probtype).eq.BL_PROB_PREMIXED_CONTROLLED_INFLOW) then               
+               if (probtype(1:len).eq.BL_PROB_PREMIXED_CONTROLLED_INFLOW) then               
                   v =  V_in + (time-tbase_control)*dV_control
-               else if (trim(probtype).eq.BL_PROB_PREMIXED_FIXED_INFLOW) then
+               else if (probtype(1:len).eq.BL_PROB_PREMIXED_FIXED_INFLOW) then
                   v = v_bc(zone)
                endif
             endif
@@ -227,7 +232,7 @@ c ::: -----------------------------------------------------------
             call bl_pd_abort(' ')
          endif
 
-      elseif (trim(probtype).eq.BL_PROB_DIFFUSION) then
+      elseif (probtype(1:len).eq.BL_PROB_DIFFUSION) then
 
          if (RegionID .eq. BL_YLO) then
 
@@ -266,7 +271,7 @@ c ::: -----------------------------------------------------------
             call bl_pd_abort(' ')
          endif
       else
-         write(6,*) 'No boundary condition for probtype = ', trim(probtype)
+         write(6,*) 'No boundary condition for probtype = ', probtype(1:len)
          write(6,*) 'Available: '
          write(6,*) '            ',BL_PROB_PREMIXED_FIXED_INFLOW
          write(6,*) '            ',BL_PROB_PREMIXED_CONTROLLED_INFLOW
@@ -375,16 +380,19 @@ c ::: -----------------------------------------------------------
 #include <bc.H>
 #include <probdata.H>
 
-      integer i, j, n, airZone, fuelZone, getZone, zone
+      integer i, j, n, airZone, fuelZone, getZone, zone, len
       REAL_T x, y, r, Yl(maxspec), Xl(maxspec), Patm
       REAL_T pmf_vals(maxspec+3), y1, y2, dx
       REAL_T pert,Lx,FORT_P1ATMMKS,eta,u,v,rho,T,h
-           
+
       if (iN2.lt.1 .or. iN2.gt.Nspec) then
          call bl_pd_abort()
       endif
-      if ( (trim(probtype).eq.BL_PROB_PREMIXED_FIXED_INFLOW) 
-     &     .or. (trim(probtype).eq.BL_PROB_PREMIXED_CONTROLLED_INFLOW) ) then
+
+      len = len_trim(probtype)
+
+      if ( (probtype(1:len).eq.BL_PROB_PREMIXED_FIXED_INFLOW) 
+     &     .or. (probtype(1:len).eq.BL_PROB_PREMIXED_CONTROLLED_INFLOW) ) then
 
          do j = lo(2), hi(2)
             y = (float(j)+.5d0)*delta(2)+domnlo(2)
@@ -428,7 +436,7 @@ c ::: -----------------------------------------------------------
             end do
          end do
          
-      else if ((trim(probtype).eq.BL_PROB_DIFFUSION)) then
+      else if ((probtype(1:len).eq.BL_PROB_DIFFUSION)) then
 
          fuelZone = getZone(domnlo(1), domnlo(2))
          airZone  = getZone(domnhi(1), domnhi(2))
@@ -571,12 +579,14 @@ c ::: -----------------------------------------------------------
 #include <cdwrk.H>
 #include <htdata.H>
       integer i, j, n, Tid, RHid, YSid, YEid, ys, ye
-      integer getZone
+      integer getZone, len
       logical do_T, do_RH, do_Y
       REAL_T xl, xr, xh, yb, yt, yh, y
 
-      if ( (trim(probtype).eq.BL_PROB_PREMIXED_FIXED_INFLOW)
-     &     .or. (trim(probtype).eq.BL_PROB_PREMIXED_CONTROLLED_INFLOW) ) then
+      len = len_trim(probtype)
+
+      if ( (probtype(1:len).eq.BL_PROB_PREMIXED_FIXED_INFLOW)
+     &     .or. (probtype(1:len).eq.BL_PROB_PREMIXED_CONTROLLED_INFLOW) ) then
          Tid  = Temp      - id + SDIM
          RHid = RhoH      - id + SDIM
          YSid = FirstSpec - id + SDIM
@@ -726,13 +736,15 @@ c ::: -----------------------------------------------------------
       integer   domlo(SDIM), domhi(SDIM)
       integer   lo(SDIM), hi(SDIM)
       REAL_T    delta(SDIM), xlo(SDIM), problo(SDIM), time
-      integer   tag(DIMV(tag))
+      integer   tag(DIMV(tag)), len
       REAL_T    adv(DIMV(adv),nvar)
 
 #include <probdata.H>
 
-      if ( (trim(probtype).eq.BL_PROB_PREMIXED_FIXED_INFLOW)
-     &     .or. (trim(probtype).eq.BL_PROB_PREMIXED_CONTROLLED_INFLOW) ) then
+      len = len_trim(probtype)
+
+      if ( (probtype(1:len).eq.BL_PROB_PREMIXED_FIXED_INFLOW)
+     &     .or. (probtype(1:len).eq.BL_PROB_PREMIXED_CONTROLLED_INFLOW) ) then
          call FORT_MVERROR(tag,DIMS(tag),set,clear,
      &                     adv,DIMS(adv),lo,hi,nvar,
      &                     domlo,domhi,delta,xlo,

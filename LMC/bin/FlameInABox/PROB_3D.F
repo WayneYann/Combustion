@@ -10,17 +10,16 @@
 
       REAL_T Patm, pmf_vals(maxspec+3)
       REAL_T Xt(maxspec), Yt(maxspec), loc
-      integer zone, n, getZone
-      integer b(SDIM)
-      integer num_zones_defined
+      integer zone, n, getZone, len, b(SDIM), num_zones_defined
       data  b / 1, 1, 1 /
 
       Patm = pamb / 101325.0d0
       num_zones_defined = 0
-      if ( (trim(probtype).eq.BL_PROB_PREMIXED_FIXED_INFLOW) 
-     &     .or. (trim(probtype).eq.BL_PROB_PREMIXED_CONTROLLED_INFLOW)
-     &     .or. (trim(probtype).eq.BL_PROB_PREMIXED_FIXED_INFLOW_FORCED) 
-     &     .or. (trim(probtype).eq.BL_PROB_PREMIXED_CONTROLLED_INFLOW_FORCED) ) then
+      len = len_trim(probtype)
+      if ( (probtype(1:len).eq.BL_PROB_PREMIXED_FIXED_INFLOW) 
+     &     .or. (probtype(1:len).eq.BL_PROB_PREMIXED_CONTROLLED_INFLOW)
+     &     .or. (probtype(1:len).eq.BL_PROB_PREMIXED_FIXED_INFLOW_FORCED) 
+     &     .or. (probtype(1:len).eq.BL_PROB_PREMIXED_CONTROLLED_INFLOW_FORCED) ) then
          
 c     Take fuel mixture from prob data
 
@@ -98,6 +97,7 @@ c ::: -----------------------------------------------------------
 #include <bc.H>
 #include <probdata.H>
       REAL_T x, y, z
+      integer len
 
 c#define BL_FUELPIPE 1
 c#define BL_COFLOW   2
@@ -108,11 +108,12 @@ c#define BL_VOLUME   6
 c#define BL_PIPEEND  7
 
       getZone = BL_VOLUME
+      len     = len_trim(probtype)
 
-      if ( (trim(probtype).eq.BL_PROB_PREMIXED_FIXED_INFLOW) 
-     &     .or. (trim(probtype).eq.BL_PROB_PREMIXED_CONTROLLED_INFLOW)
-     &     .or. (trim(probtype).eq.BL_PROB_PREMIXED_FIXED_INFLOW_FORCED) 
-     &     .or. (trim(probtype).eq.BL_PROB_PREMIXED_CONTROLLED_INFLOW_FORCED) ) then
+      if ( (probtype(1:len).eq.BL_PROB_PREMIXED_FIXED_INFLOW) 
+     &     .or. (probtype(1:len).eq.BL_PROB_PREMIXED_CONTROLLED_INFLOW)
+     &     .or. (probtype(1:len).eq.BL_PROB_PREMIXED_FIXED_INFLOW_FORCED) 
+     &     .or. (probtype(1:len).eq.BL_PROB_PREMIXED_CONTROLLED_INFLOW_FORCED) ) then
 
          getZone = BL_FUELPIPE
          
@@ -137,16 +138,18 @@ c ::: -----------------------------------------------------------
 #include <bc.H>
 #include <probdata.H>
 
-      integer n, getZone, zone
+      integer n, getZone, zone, len
 
       if (.not. bcinit) then
          call bl_abort('Need to initialize boundary condition function')
       end if
+
+      len = len_trim(probtype)
       
-      if ( (trim(probtype).eq.BL_PROB_PREMIXED_FIXED_INFLOW) 
-     &     .or. (trim(probtype).eq.BL_PROB_PREMIXED_CONTROLLED_INFLOW)
-     &     .or. (trim(probtype).eq.BL_PROB_PREMIXED_FIXED_INFLOW_FORCED) 
-     &     .or. (trim(probtype).eq.BL_PROB_PREMIXED_CONTROLLED_INFLOW_FORCED) ) then
+      if ( (probtype(1:len).eq.BL_PROB_PREMIXED_FIXED_INFLOW) 
+     &     .or. (probtype(1:len).eq.BL_PROB_PREMIXED_CONTROLLED_INFLOW)
+     &     .or. (probtype(1:len).eq.BL_PROB_PREMIXED_FIXED_INFLOW_FORCED) 
+     &     .or. (probtype(1:len).eq.BL_PROB_PREMIXED_CONTROLLED_INFLOW_FORCED) ) then
 
          zone = getZone(x,y,z)
          rho = rho_bc(zone)
@@ -160,18 +163,18 @@ c ::: -----------------------------------------------------------
             
             u = zero
             v = zero
-            if ( (trim(probtype).eq.BL_PROB_PREMIXED_CONTROLLED_INFLOW) .or.
-     &           (trim(probtype).eq.BL_PROB_PREMIXED_CONTROLLED_INFLOW_FORCED) ) then               
+            if ( (probtype(1:len).eq.BL_PROB_PREMIXED_CONTROLLED_INFLOW) .or.
+     &           (probtype(1:len).eq.BL_PROB_PREMIXED_CONTROLLED_INFLOW_FORCED) ) then               
                w =  V_in + (time-tbase_control)*dV_control
-            else if ( (trim(probtype).eq.BL_PROB_PREMIXED_FIXED_INFLOW) .or. 
-     &              (trim(probtype).eq.BL_PROB_PREMIXED_FIXED_INFLOW_FORCED) ) then
+            else if ( (probtype(1:len).eq.BL_PROB_PREMIXED_FIXED_INFLOW) .or. 
+     &              (probtype(1:len).eq.BL_PROB_PREMIXED_FIXED_INFLOW_FORCED) ) then
                w = w_bc(zone)
             endif
          endif
 
       else
 
-         write(6,*) 'No boundary condition for probtype = ', trim(probtype)
+         write(6,*) 'No boundary condition for probtype = ', probtype(1:len)
          write(6,*) 'Available: '
          write(6,*) '            ',BL_PROB_PREMIXED_FIXED_INFLOW
          write(6,*) '            ',BL_PROB_PREMIXED_CONTROLLED_INFLOW
@@ -288,15 +291,17 @@ c ::: -----------------------------------------------------------
 #include <INFL_FORCE_F.H>
 #endif
 
-      integer i, j, k, n, etZone, nPMF
+      integer i, j, k, n, etZone, nPMF, len
       REAL_T x, y, z, Yl(maxspec), Xl(maxspec), Patm
       REAL_T pmf_vals(maxspec+3), y1, y2
       REAL_T pert,Lx,Ly,FORT_P1ATMMKS
+
+      len = len_trim(probtype)
            
-      if ( (trim(probtype).eq.BL_PROB_PREMIXED_FIXED_INFLOW) 
-     &     .or. (trim(probtype).eq.BL_PROB_PREMIXED_CONTROLLED_INFLOW)
-     &     .or. (trim(probtype).eq.BL_PROB_PREMIXED_FIXED_INFLOW_FORCED) 
-     &     .or. (trim(probtype).eq.BL_PROB_PREMIXED_CONTROLLED_INFLOW_FORCED) ) then
+      if ( (probtype(1:len).eq.BL_PROB_PREMIXED_FIXED_INFLOW) 
+     &     .or. (probtype(1:len).eq.BL_PROB_PREMIXED_CONTROLLED_INFLOW)
+     &     .or. (probtype(1:len).eq.BL_PROB_PREMIXED_FIXED_INFLOW_FORCED) 
+     &     .or. (probtype(1:len).eq.BL_PROB_PREMIXED_CONTROLLED_INFLOW_FORCED) ) then
 
          do k = lo(3), hi(3)
             z = (float(k)+.5d0)*delta(3)+domnlo(3)
@@ -347,7 +352,7 @@ c ::: -----------------------------------------------------------
          
       else
 
-         write(6,*) 'No initial condition for probtype = ', trim(probtype)
+         write(6,*) 'No initial condition for probtype = ', probtype(1:len)
          write(6,*) 'Available: '
          write(6,*) '            ',BL_PROB_PREMIXED_FIXED_INFLOW
          write(6,*) '            ',BL_PROB_PREMIXED_CONTROLLED_INFLOW
@@ -440,12 +445,14 @@ c ::: -----------------------------------------------------------
 #include <cdwrk.H>
 #include <htdata.H>
       integer i, j, k, n, Tid, RHid, YSid, YEid, ys, ye
-      integer getZone
+      integer getZone,len
       logical do_T, do_RH, do_Y
       REAL_T xl, xr, xh, yb, yt, yh, z
 
-      if ( (trim(probtype).eq.BL_PROB_PREMIXED_FIXED_INFLOW)
-     &     .or. (trim(probtype).eq.BL_PROB_PREMIXED_CONTROLLED_INFLOW) ) then
+      len = len_trim(probtype)
+
+      if ( (probtype(1:len).eq.BL_PROB_PREMIXED_FIXED_INFLOW)
+     &     .or. (probtype(1:len).eq.BL_PROB_PREMIXED_CONTROLLED_INFLOW) ) then
          Tid  = Temp      - id + SDIM
          RHid = RhoH      - id + SDIM
          YSid = FirstSpec - id + SDIM
@@ -614,15 +621,17 @@ c ::: -----------------------------------------------------------
       integer   domlo(SDIM), domhi(SDIM)
       integer   lo(SDIM), hi(SDIM)
       REAL_T    delta(SDIM), xlo(SDIM), problo(SDIM), time
-      integer   tag(DIMV(tag))
+      integer   tag(DIMV(tag)), len
       REAL_T    adv(DIMV(adv),nvar)
 
 #include <probdata.H>
+
+      len = len_trim(probtype)
       
-      if ( (trim(probtype).eq.BL_PROB_PREMIXED_FIXED_INFLOW)
-     &     .or. (trim(probtype).eq.BL_PROB_PREMIXED_CONTROLLED_INFLOW)
-     &     .or. (trim(probtype).eq.BL_PROB_PREMIXED_FIXED_INFLOW_FORCED)
-     &     .or. (trim(probtype).eq.BL_PROB_PREMIXED_CONTROLLED_INFLOW_FORCED) ) then
+      if ( (probtype(1:len).eq.BL_PROB_PREMIXED_FIXED_INFLOW)
+     &     .or. (probtype(1:len).eq.BL_PROB_PREMIXED_CONTROLLED_INFLOW)
+     &     .or. (probtype(1:len).eq.BL_PROB_PREMIXED_FIXED_INFLOW_FORCED)
+     &     .or. (probtype(1:len).eq.BL_PROB_PREMIXED_CONTROLLED_INFLOW_FORCED) ) then
 
          call FORT_MVERROR(tag,DIMS(tag),set,clear,
      &                     adv,DIMS(adv),lo,hi,nvar,
@@ -3803,7 +3812,7 @@ c
       REAL_T  kxd, kyd, kzd
       REAL_T  xt, yt, zt
       integer kx, ky, kz, mode_count, xstep, ystep, zstep
-      integer isioproc
+      integer isioproc, len
       integer nXvel, nYvel, nZvel, nRho, nTrac
 
       call bl_pd_is_ioproc(isioproc)
@@ -3811,6 +3820,8 @@ c
       if (isioproc.eq.1 .and. pseudo_gravity.eq.1) then
          write(*,*) "pseudo_gravity::dV_control = ",dV_control
       endif
+
+      len = len_trim(probtype)
 
       hx = dx(1)
       hy = dx(2)
@@ -3832,8 +3843,8 @@ c     Assumes components are in the following order
 
       if (scomp.eq.0) then
 c     Do velocity forcing
-         if ( (trim(probtype).eq.BL_PROB_PREMIXED_FIXED_INFLOW_FORCED)
-     &        .or. (trim(probtype).eq.BL_PROB_PREMIXED_CONTROLLED_INFLOW_FORCED) ) then
+         if ( (probtype(1:len).eq.BL_PROB_PREMIXED_FIXED_INFLOW_FORCED)
+     &        .or. (probtype(1:len).eq.BL_PROB_PREMIXED_CONTROLLED_INFLOW_FORCED) ) then
 #ifdef DO_LMC_FORCE
 c     Homogeneous Isotropic Turbulence
             twicePi=two*Pi

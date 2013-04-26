@@ -14,14 +14,15 @@
       integer zone, n, getZone, fuelZone, airZone
       integer b(SDIM)
       integer num_zones_defined
-      integer iO2,iCH3OCH3
+      integer iO2,iCH3OCH3,len
       character*(maxspnml) name
       data  b / 1, 1 /
       
       Patm = pamb / FORT_P1ATMMKS()
       num_zones_defined = 0
+      len = len_trim(probtype)
 
-      if (trim(probtype).eq.BL_PROB_JET_DIFFUSION) then
+      if (probtype(1:len).eq.BL_PROB_JET_DIFFUSION) then
 
 c     A diffusion flame
          fuelZone = getZone(0.d0, domnlo(2))
@@ -119,11 +120,12 @@ c ::: -----------------------------------------------------------
 #include <bc.H>
 #include <probdata.H>
       REAL_T x, y
+      integer len
 
       getZone = BL_VOLUME
-
+      len     = len_trim(probtype)
          
-      if (trim(probtype).eq.BL_PROB_JET_DIFFUSION) then
+      if (probtype(1:len).eq.BL_PROB_JET_DIFFUSION) then
          
          if (x .ge. -splitx) then
             getZone = BL_AMBIENT
@@ -153,7 +155,7 @@ c ::: -----------------------------------------------------------
 #include <bc.H>
 #include <probdata.H>
 
-      integer n, getZone, airZone,fuelZone
+      integer n, getZone, airZone,fuelZone, len
       REAL_T eta, sigma
       data dimloc / 1,  1 /
 
@@ -161,8 +163,9 @@ c ::: -----------------------------------------------------------
          call bl_abort('Need to initialize boundary condition function')
       end if
       
+      len = len_trim(probtype)
 
-      if (trim(probtype).eq.BL_PROB_JET_DIFFUSION) then
+      if (probtype(1:len).eq.BL_PROB_JET_DIFFUSION) then
 
          if (RegionID .eq. BL_YLO) then
             fuelZone = getZone(0.d0, domnlo(2))
@@ -204,7 +207,7 @@ c           h = h_bc(airZone)*(1.d0-eta) + eta*h_bc(fuelZone)
             call bl_pd_abort(' ')
          endif
       else
-         write(6,*) 'No boundary condition for probtype = ', trim(probtype)
+         write(6,*) 'No boundary condition for probtype = ', probtype(1:len)
          write(6,*) 'Available: '
          write(6,*) '            ',BL_PROB_JET_DIFFUSION
          call bl_pd_abort(' ')
@@ -310,10 +313,12 @@ c ::: -----------------------------------------------------------
 #include <bc.H>
 #include <probdata.H>
 
-      integer i, j, n, airZone, fuelZone, getZone
+      integer i, j, n, airZone, fuelZone, getZone, len
       REAL_T x, y, r, Patm, sigma, FORT_P1ATMMKS,eta
+
+      len = len_trim(probtype)
            
-      if ((trim(probtype).eq.BL_PROB_JET_DIFFUSION)) then
+      if ((probtype(1:len).eq.BL_PROB_JET_DIFFUSION)) then
 
          fuelZone = getZone(0.d0, domnlo(2))
          airZone  = getZone(domnlo(1), domnlo(2))
@@ -457,11 +462,13 @@ c ::: -----------------------------------------------------------
 #include <probdata.H>
 #include <cdwrk.H>
 #include <htdata.H>
-      integer i, j, n, Tid, RHid, YSid, YEid, ys, ye
+      integer i, j, n, Tid, RHid, YSid, YEid, ys, ye, len
       logical do_T, do_RH, do_Y
       REAL_T xl, xr, xh, y
 
-      if ( (trim(probtype).eq.BL_PROB_JET_DIFFUSION) ) then
+      len = len_trim(probtype)
+
+      if ( (probtype(1:len).eq.BL_PROB_JET_DIFFUSION) ) then
          Tid  = Temp      - id + SDIM
          RHid = RhoH      - id + SDIM
          YSid = FirstSpec - id + SDIM
@@ -604,12 +611,14 @@ c ::: -----------------------------------------------------------
       integer   domlo(SDIM), domhi(SDIM)
       integer   lo(SDIM), hi(SDIM)
       REAL_T    delta(SDIM), xlo(SDIM), problo(SDIM), time
-      integer   tag(DIMV(tag))
+      integer   tag(DIMV(tag)), len
       REAL_T    adv(DIMV(adv),nvar)
 
 #include <probdata.H>
 
-      if ( (trim(probtype).eq.BL_PROB_JET_DIFFUSION) )then
+      len = len_trim(probtype)
+
+      if ( (probtype(1:len).eq.BL_PROB_JET_DIFFUSION) )then
          call FORT_MVERROR(tag,DIMS(tag),set,clear,
      &                     adv,DIMS(adv),lo,hi,nvar,
      &                     domlo,domhi,delta,xlo,

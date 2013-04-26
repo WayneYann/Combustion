@@ -711,20 +711,19 @@ c     Set amplitudes
       REAL_T alpha,beta,gamma,delt,factor
       REAL_T Xt(maxspec), Yt(maxspec)
       integer iO2,iH2,iCH4
-      integer n
+      integer n, len
       character*(maxspnml) name
 
-      if(trim(probtype).eq.BL_PROB_PREMIXED_FREE)then
+      len = len_trim(probtype)
 
+      if (probtype(1:len).eq.BL_PROB_PREMIXED_FREE) then
 
         do n=1,Nspec
-
             call get_spec_name(name,n)
             if (name .eq. 'N2' ) iN2 = n
             if (name .eq. 'O2' ) iO2 = n
             if (name .eq. 'H2' ) iH2 = n
             if (name .eq. 'CH4' ) iCH4 = n
-
         enddo
 
         do n = 1,Nspec
@@ -739,7 +738,6 @@ c     Set amplitudes
         Xt(iCH4) = beta / factor
         Xt(iO2) = gamma / factor
         Xt(iN2) = delt / factor
-
 
       else
 
