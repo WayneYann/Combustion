@@ -3,15 +3,15 @@
 #define BL_LANG_FORT
 #endif
 
-#include "REAL.H"
-#include "CONSTANTS.H"
-#include "BC_TYPES.H"
-#include "PROB_AMR_F.H"
-#include "PROB_F.H"
-#include "ArrayLim.H"
-#include "ChemDriver_F.H"
-#include "HEATTRANSFER_F.H"
-#include "infl_frc.H"
+#include <REAL.H>
+#include <CONSTANTS.H>
+#include <BC_TYPES.H>
+#include <PROB_AMR_F.H>
+#include <PROB_F.H>
+#include <ArrayLim.H>
+#include <ChemDriver_F.H>
+#include <HEATTRANSFER_F.H>
+#include <infl_frc.H>
 
 #   if   BL_SPACEDIM==1
 #       define  ARLIM(x)  x(1)
@@ -34,9 +34,9 @@
 
       implicit none
 
-#include "probdata.H"
-#include "cdwrk.H"
-#include "bc.H"
+#include <probdata.H>
+#include <cdwrk.H>
+#include <bc.H>
 
       REAL_T coft,time,dt,vslope,slocal,V_new,dVmax
       integer myproc,step,ierr,restart
@@ -145,7 +145,7 @@ c
 
       subroutine FORT_SET_PROB_SPEC(fuel, oxid, prod, numspec)
       implicit none
-#include "probdata.H"
+#include <probdata.H>
       integer fuel, oxid, prod, numspec
       fuelID = fuel + 1
       oxidID = oxid + 1
@@ -176,14 +176,14 @@ c ::: -----------------------------------------------------------
       integer untin
       REAL_T problo(SDIM), probhi(SDIM)
 
-#include "probdata.H"
-#include "htdata.H"
-#include "cdwrk.H"
-#include "bc.H"
+#include <probdata.H>
+#include <htdata.H>
+#include <cdwrk.H>
+#include <bc.H>
 #if defined(BL_DO_FLCT)
-#include "INFL_FORCE_F.H"
+#include <INFL_FORCE_F.H>
 #endif
-#include "visc.H"
+#include <visc.H>
 
       integer lo(SDIM), hi(SDIM), i, j, zone, iCH4, getZone
       character*(maxspnml) spName
@@ -410,10 +410,10 @@ c     Load domain dimensions into common, and set up boundary functions
 
       subroutine setupbc()
       implicit none
-#include "cdwrk.H"
-#include "bc.H"
-#include "probdata.H"
-#include "htdata.H"
+#include <cdwrk.H>
+#include <bc.H>
+#include <probdata.H>
+#include <htdata.H>
       
       REAL_T Patm, x, pmf_vals(maxspec+3), sum, Y_pmf(maxspec)
       integer i, zone, n, lo(SDIM), hi(SDIM), iN2, iO2, iCH4, a, getZone
@@ -547,9 +547,9 @@ c              for hc = CH4, a=2, b=1, c=2
 
       integer function getZone(x, y, z)
       implicit none
-#include "cdwrk.H"
-#include "bc.H"
-#include "probdata.H"
+#include <cdwrk.H>
+#include <bc.H>
+#include <probdata.H>
       REAL_T x, y, z, r, x1
 c
 c     ZONE DEF:
@@ -717,10 +717,10 @@ c ::: -----------------------------------------------------------
       REAL_T x, y, z, time, u, v, w, rho, Yl(0:*), T, h, dx(SDIM), bin, bout, Tout
       logical getuvw
 
-#include "htdata.H"
-#include "cdwrk.H"
-#include "bc.H"
-#include "probdata.H"
+#include <htdata.H>
+#include <cdwrk.H>
+#include <bc.H>
+#include <probdata.H>
 
       REAL_T Vbndry(3), eta, Patm, r, rn
       integer n, getZone, zone, lo(SDIM), hi(SDIM)
@@ -858,7 +858,7 @@ c      Fit by Tecplot for 288x288 swirl inlet data, 1/30/04 (MSD)
 
       REAL_T function turbSclT(r)
       REAL_T r, eta
-#include "probdata.H"
+#include <probdata.H>
       turbSclT = 0.d0
       eta = r/Ro
       if(r.lt.Ro)then
@@ -874,7 +874,7 @@ c      Fit by Tecplot for 288x288 swirl inlet data, 1/30/04 (MSD)
 
       REAL_T function turbSclR(r)
       REAL_T r, eta
-#include "probdata.H"
+#include <probdata.H>
       turbSclR = 0.d0
       eta = r/Ro
       if(r.lt.Ro)then
@@ -889,7 +889,7 @@ c      Fit by Tecplot for 288x288 swirl inlet data, 1/30/04 (MSD)
       end
 
       REAL_T function turbSclX(x,y,z)
-#include "probdata.H"
+#include <probdata.H>
       REAL_T x, y, z, shapet, eta, Rmid
       eta = SQRT(x*x+y*y)/Ro
       turbSclX = shapet(eta)
@@ -904,7 +904,7 @@ c      Fit by Tecplot for 288x288 swirl inlet data, 1/30/04 (MSD)
       end
 
       REAL_T function turbSclZ(x,y,z)
-#include "probdata.H"
+#include <probdata.H>
       REAL_T x, y, z, shapen, eta, Rmid
       turbSclZ = zero
       eta = SQRT(x*x+y*y)/Ro
@@ -966,12 +966,12 @@ c ::: -----------------------------------------------------------
       REAL_T    scal(DIMV(state),nscal)
       REAL_T   press(DIMV(press))
 
-#include "htdata.H"
-#include "cdwrk.H"
-#include "bc.H"
-#include "probdata.H"
+#include <htdata.H>
+#include <cdwrk.H>
+#include <bc.H>
+#include <probdata.H>
 #if defined(BL_DO_FLCT)
-#include "INFL_FORCE_F.H"
+#include <INFL_FORCE_F.H>
 #endif
 
       integer i, j, k, n, iN2, iO2
@@ -1354,10 +1354,10 @@ c                  scal(i,j,k,Trac) = zero
       REAL_T   scal(DIMV(state),nscal)
       REAL_T   press(DIMV(press))
 
-#include "htdata.H"
-#include "cdwrk.H"
-#include "bc.H"
-#include "probdata.H"
+#include <htdata.H>
+#include <cdwrk.H>
+#include <bc.H>
+#include <probdata.H>
 
       integer i, j, k, n
       REAL_T Patm
@@ -1428,8 +1428,8 @@ c ::: -----------------------------------------------------------
       REAL_T  dx(SDIM)
       REAL_T  problo(SDIM)
       
-#include "probdata.H"
-#include "htdata.H"
+#include <probdata.H>
+#include <htdata.H>
       integer i, j, k, n, Tid, RHid, YSid, YEid, ys, ye
       integer getZone
       logical do_T, do_RH, do_Y
@@ -1535,7 +1535,7 @@ c ::: -----------------------------------------------------------
 
       integer   i, j
 
-#include "probdata.H"
+#include <probdata.H>
 
       call bl_abort('DENERROR: should no be here')
       
@@ -1561,7 +1561,7 @@ c ::: -----------------------------------------------------------
       REAL_T    x, y, z, r
       logical   in_refine_zone
 
-#include "probdata.H"
+#include <probdata.H>
 
       if (level.lt.max_trac_lev) then
          do k = lo(3), hi(3)
@@ -1656,7 +1656,7 @@ c ::: -----------------------------------------------------------
       integer   tag(DIMV(tag))
       REAL_T    adv(DIMV(adv),nvar)
 
-#include "probdata.H"
+#include <probdata.H>
       
       integer i, j
 
@@ -1708,7 +1708,7 @@ c ::: -----------------------------------------------------------
       REAL_T    x, y, z, ax, ay, az, aerr
       integer   i, j, k, ng
 
-#include "probdata.H"
+#include <probdata.H>
 
       ng = min(ARG_H1(temp)-hi(1),ARG_H2(temp)-hi(2),ARG_H3(temp)-hi(3),
      &         lo(1)-ARG_L1(temp),lo(2)-ARG_L2(temp),lo(3)-ARG_L3(temp))
@@ -1778,7 +1778,7 @@ c ::: -----------------------------------------------------------
       integer   i, j, k
       REAL_T    max_vort, tagval
 
-#include "probdata.H"
+#include <probdata.H>
 
 c     if ((probtype.eq.8 .or. probtype .eq. 28 .or. probtype .eq. 29) 
 c    &     .and. (level .lt. max_vort_lev)) then
@@ -1828,9 +1828,9 @@ c ::: -----------------------------------------------------------
       REAL_T  delta(SDIM), xlo(SDIM), time
       REAL_T  den(DIMV(den))
 
-#include "cdwrk.H"
-#include "bc.H"
-#include "probdata.H"
+#include <cdwrk.H>
+#include <bc.H>
+#include <probdata.H>
       
       integer i, j, k
       integer ilo, ihi, jlo, jhi, klo, khi
@@ -2033,9 +2033,9 @@ c ::: -----------------------------------------------------------
       REAL_T  delta(SDIM), xlo(SDIM), time
       REAL_T  temp(DIMV(temp))
 
-#include "cdwrk.H"
-#include "bc.H"
-#include "probdata.H"
+#include <cdwrk.H>
+#include <bc.H>
+#include <probdata.H>
       
       integer i, j, k
       integer ilo, ihi, jlo, jhi, klo, khi
@@ -2179,9 +2179,9 @@ c ::: -----------------------------------------------------------
       REAL_T  delta(SDIM), xlo(SDIM), time
       REAL_T  rhoh(DIMV(rhoh))
 
-#include "cdwrk.H"
-#include "bc.H"
-#include "probdata.H"
+#include <cdwrk.H>
+#include <bc.H>
+#include <probdata.H>
       
       integer i, j, k
       integer ilo, ihi, jlo, jhi, klo, khi
@@ -2304,11 +2304,11 @@ c
       REAL_T  delta(SDIM), xlo(SDIM), time
       REAL_T  vel(DIMV(vel),SDIM)
 
-#include "cdwrk.H"
-#include "bc.H"
-#include "probdata.H"
+#include <cdwrk.H>
+#include <bc.H>
+#include <probdata.H>
 #if defined(BL_DO_FLCT)
-#include "INFL_FORCE_F.H"
+#include <INFL_FORCE_F.H>
 #endif
       integer i, j, k
       integer ilo, ihi, jlo, jhi, klo, khi
@@ -2705,9 +2705,9 @@ c     the INFL_FILL routine.  Just to be sure, we set convVel = 1 here again.
 
       implicit none
 
-#include "cdwrk.H"
-#include "bc.H"
-#include "probdata.H"
+#include <cdwrk.H>
+#include <bc.H>
+#include <probdata.H>
       
       integer DIMDEC(rhoY), bc(SDIM,2)
       integer domlo(SDIM), domhi(SDIM)
@@ -2874,9 +2874,9 @@ c ::: -----------------------------------------------------------
       REAL_T  delta(SDIM), xlo(SDIM), time
       REAL_T  rhoY(DIMV(rhoY))
 
-#include "cdwrk.H"
-#include "bc.H"
-#include "probdata.H"
+#include <cdwrk.H>
+#include <bc.H>
+#include <probdata.H>
       
       integer i, j, k
       integer ilo, ihi, jlo, jhi, klo, khi
@@ -4016,8 +4016,8 @@ c*****************************************************************************
       subroutine FORT_RADLOSS(lo,hi,rad,DIMS(rad),
      &                        T,DIMS(T),Y,DIMS(Y),dx,Patm,time)
       implicit none
-#include "cdwrk.H"
-#include "probdata.H"
+#include <cdwrk.H>
+#include <probdata.H>
       integer DIMDEC(rad)
       integer DIMDEC(T)
       integer DIMDEC(Y)
@@ -4076,7 +4076,7 @@ c
      &                         lo,hi,domlo,domhi,delta,xlo,time,dt,bc,
      $                         level,grid_no)
       implicit none
-#include "probdata.H"
+#include <probdata.H>
 
       integer    lo(SDIM), hi(SDIM)
       integer    DIMDEC(e)
@@ -4122,7 +4122,7 @@ c     ::::: lets punt if not in domain interior
      &                         lo,hi,domlo,domhi,delta,xlo,time,dt,bc,
      $                         level,grid_no)
       implicit none
-#include "probdata.H"
+#include <probdata.H>
 
       integer    lo(SDIM), hi(SDIM)
       integer    DIMDEC(e)

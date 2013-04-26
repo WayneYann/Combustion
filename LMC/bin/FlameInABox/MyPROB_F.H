@@ -5,16 +5,16 @@
 
 #define SDIM BL_SPACEDIM
 
-#include "REAL.H"
-#include "CONSTANTS.H"
-#include "BC_TYPES.H"
-#include "PROB_AMR_F.H"
-#include "PROB_F.H"
-#include "ArrayLim.H"
-#include "ChemDriver_F.H"
-#include "HEATTRANSFER_F.H"
+#include <REAL.H>
+#include <CONSTANTS.H>
+#include <BC_TYPES.H>
+#include <PROB_AMR_F.H>
+#include <PROB_F.H>
+#include <ArrayLim.H>
+#include <ChemDriver_F.H>
+#include <HEATTRANSFER_F.H>
 #if defined(BL_DO_FLCT)
-#include "infl_frc.H"
+#include <infl_frc.H>
 #endif
 
 #define BL_PROB_PREMIXED_FIXED_INFLOW 'premixed_fixed_inlet'

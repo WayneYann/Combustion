@@ -1,4 +1,4 @@
-#include "REAL.H"
+#include <REAL.H>
 
 c     Hardwired sizes
       integer maxreac, maxspec, maxelts, maxthrdb, maxtp, maxsp,

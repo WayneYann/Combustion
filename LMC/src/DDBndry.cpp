@@ -190,7 +190,7 @@ DDBndry::bndryMasks (int igrid, int level) const
     return bnd_vals[level].bndryMasks(igrid);
 }
 
-#include "Utility.H"
+#include <Utility.H>
 #ifdef WIN32
 static std::string sep = "\\";
 #else

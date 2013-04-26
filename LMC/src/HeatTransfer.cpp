@@ -49,7 +49,7 @@ using std::cerr;
 #include <omp.h>
 #endif
 
-#include "buildInfo.H"
+#include <buildInfo.H>
 
 #define DEF_LIMITS(fab,fabdat,fablo,fabhi)   \
 const int* fablo = (fab).loVect();           \

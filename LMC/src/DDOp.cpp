@@ -842,7 +842,7 @@ DDOp::interpolate (MultiFab&       mfF,
                      &nComp, MGIV.getVect());
     }
 }
-#include "Utility.H"
+#include <Utility.H>
 #ifdef WIN32
 static std::string sep = "\\";
 #else
