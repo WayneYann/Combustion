@@ -4,12 +4,12 @@
 #define BL_LANG_FORT
 #endif
 
-#include "REAL.H"
-#include "CONSTANTS.H"
-#include "BC_TYPES.H"
-#include "HEATTRANSFER_F.H"
-#include "ChemDriver_F.H"
-#include "ArrayLim.H"
+#include <REAL.H>
+#include <CONSTANTS.H>
+#include <BC_TYPES.H>
+#include <HEATTRANSFER_F.H>
+#include <ChemDriver_F.H>
+#include <ArrayLim.H>
 
 #   if   BL_SPACEDIM==1
 #       define  ARLIM(x)  x(1)
@@ -83,8 +83,8 @@ c -------------------- begin here ----------------------------
      &                        DIMS(Y), Y,
      &                        DIMS(mu), mu)
       implicit none
-#include "visc.H"
-#include "cdwrk.H"      
+#include <visc.H>
+#include <cdwrk.H>      
       integer lo(SDIM),hi(SDIM)
       integer DIMDEC(T)
       integer DIMDEC(Y)
@@ -121,8 +121,8 @@ c -------------------- begin here ----------------------------
      &     DIMS(rhoD), rhoD,
      &     ncompd, P1ATM_MKS, do_temp, do_VelVisc)
       implicit none
-#include "cdwrk.H"
-#include "visc.H"
+#include <cdwrk.H>
+#include <visc.H>
 #include <htdata.H>
       integer lo(SDIM),hi(SDIM)
       integer DIMDEC(T)
@@ -829,7 +829,7 @@ c                               inflow for pipe
      &                            state, DIMS(state), nc, dir)
       implicit none
 
-#include "cdwrk.H"
+#include <cdwrk.H>
 
       integer lo(SDIM), hi(SDIM), nc, dir
       integer DIMDEC(flux)
@@ -1071,7 +1071,7 @@ c     Returns the number of fine cells fixed up
      &     L, DIMS(L), a, DIMS(a), R, DIMS(R), thetaDt, fac, maxRes, maxCor,
      &     for_T0_H1, res_only, mult)
       implicit none
-#include "cdwrk.H"      
+#include <cdwrk.H>      
       integer lo(SDIM), hi(SDIM), yc, Tc, hc, rc
       integer DIMDEC(S)
       integer DIMDEC(L)
@@ -1307,7 +1307,7 @@ c     Get curvature at centers from nodal normal, get normal at centers
      &     Y, DIMS(Y), rDe, DIMS(rDe), flux, DIMS(flux),
      &     area, DIMS(area), dx, dir, mult, ispec)
       implicit none
-#include "cdwrk.H"
+#include <cdwrk.H>
       integer lo(SDIM), hi(SDIM)
       integer dir, ispec
       integer DIMDEC(Wbar)

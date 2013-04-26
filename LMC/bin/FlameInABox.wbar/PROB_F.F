@@ -1,13 +1,13 @@
 
-#include "MyPROB_F.H"
+#include <MyPROB_F.H>
 
       subroutine FORT_ACTIVECONTROL(coft,time,dt,myproc,step,restart)
 
       implicit none
 
-#include "probdata.H"
-#include "cdwrk.H"
-#include "bc.H"
+#include <probdata.H>
+#include <cdwrk.H>
+#include <bc.H>
 
       REAL_T coft,time,dt,vslope,slocal,V_new,dVmax
       integer myproc,step,ierr,restart
@@ -104,8 +104,8 @@ c
 
       subroutine FORT_SET_PROB_SPEC(fuel, oxid, prod, numspec)
       implicit none
-#include "cdwrk.H"
-#include "probdata.H"
+#include <cdwrk.H>
+#include <probdata.H>
       integer fuel, oxid, prod, numspec
       fuelID = fuel + 1
       oxidID = oxid + 1
@@ -140,18 +140,18 @@ c ::: -----------------------------------------------------------
       integer untin
       REAL_T problo(SDIM), probhi(SDIM)
 
-#include "probdata.H"
-#include "cdwrk.H"
+#include <probdata.H>
+#include <cdwrk.H>
 #include <htdata.H>
-#include "bc.H"
+#include <bc.H>
 #if defined(BL_DO_FLCT)
-#include "INFL_FORCE_F.H"
+#include <INFL_FORCE_F.H>
 #endif
-#include "visc.H"
-#include "conp.H"
+#include <visc.H>
+#include <conp.H>
 
 #ifdef DO_LMC_FORCE
-#include "forcedata.H"
+#include <forcedata.H>
 #endif
 
       integer i
@@ -697,9 +697,9 @@ c     Set amplitudes
 
       subroutine set_Y_from_Phi(phi,Yt)
       implicit none
-#include "probdata.H"
-#include "cdwrk.H"
-#include "conp.H"
+#include <probdata.H>
+#include <cdwrk.H>
+#include <conp.H>
       REAL_T a, phi
       REAL_T Xt(maxspec), Yt(maxspec)
       integer n

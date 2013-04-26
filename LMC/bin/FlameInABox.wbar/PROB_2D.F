@@ -1,12 +1,12 @@
 
-#include "MyPROB_F.H"
+#include <MyPROB_F.H>
 
       subroutine setupbc()
       implicit none
-#include "cdwrk.H"
-#include "conp.H"
-#include "bc.H"
-#include "probdata.H"
+#include <cdwrk.H>
+#include <conp.H>
+#include <bc.H>
+#include <probdata.H>
 #include <htdata.H>
       
       REAL_T Patm, FORT_P1ATMMKS, pmf_vals(maxspec+3), a
@@ -127,9 +127,9 @@ c ::: -----------------------------------------------------------
       
       integer function getZone(x, y)
       implicit none
-#include "cdwrk.H"
-#include "bc.H"
-#include "probdata.H"
+#include <cdwrk.H>
+#include <bc.H>
+#include <probdata.H>
       REAL_T x, y
 
 c#define BL_FUELPIPE 1
@@ -169,10 +169,10 @@ c ::: -----------------------------------------------------------
       REAL_T x, y, time, u, v, rho, Yl(0:*), T, h, dx(SDIM)
       logical getuv
 
-#include "cdwrk.H"
+#include <cdwrk.H>
 #include <htdata.H>
-#include "bc.H"
-#include "probdata.H"
+#include <bc.H>
+#include <probdata.H>
 
       integer n, getZone, zone
       REAL_T eta, xmid, etamax
@@ -259,10 +259,10 @@ c ::: -----------------------------------------------------------
       REAL_T   scal(DIMV(state),nscal)
       REAL_T   press(DIMV(press))
  
-#include "cdwrk.H"
+#include <cdwrk.H>
 #include <htdata.H>
-#include "bc.H"
-#include "probdata.H"
+#include <bc.H>
+#include <probdata.H>
  
       integer i, j, n
       REAL_T Patm, FORT_P1ATMMKS
@@ -337,11 +337,11 @@ c ::: -----------------------------------------------------------
       REAL_T   press(DIMV(press))
       integer tmpi, nPMF
 
-#include "cdwrk.H"
-#include "conp.H"
-#include "htdata.H"
-#include "bc.H"
-#include "probdata.H"
+#include <cdwrk.H>
+#include <conp.H>
+#include <htdata.H>
+#include <bc.H>
+#include <probdata.H>
 
       integer i, j, n, airZone, fuelZone, getZone, zone
       REAL_T x, y, r, Yl(maxspec), Xl(maxspec), Patm
@@ -531,8 +531,8 @@ c ::: -----------------------------------------------------------
       REAL_T  dx(SDIM)
       REAL_T  problo(SDIM)
       
-#include "probdata.H"
-#include "cdwrk.H"
+#include <probdata.H>
+#include <cdwrk.H>
 #include <htdata.H>
       integer i, j, n, Tid, RHid, YSid, YEid, ys, ye
       integer getZone
@@ -621,7 +621,7 @@ c ::: -----------------------------------------------------------
       integer   tag(DIMV(tag))
       REAL_T    rho(DIMV(rho), nvar)
 
-#include "probdata.H"
+#include <probdata.H>
 
       call bl_abort('DENERROR: should no be here')
       
@@ -645,7 +645,7 @@ c ::: -----------------------------------------------------------
 
       integer   i, j
 
-#include "probdata.H"
+#include <probdata.H>
 
       if (level.lt.max_trac_lev) then
          do j = lo(2), hi(2)
@@ -693,7 +693,7 @@ c ::: -----------------------------------------------------------
       integer   tag(DIMV(tag))
       REAL_T    adv(DIMV(adv),nvar)
 
-#include "probdata.H"
+#include <probdata.H>
 
       if ( (trim(probtype).eq.BL_PROB_PREMIXED_FIXED_INFLOW)
      &     .or. (trim(probtype).eq.BL_PROB_PREMIXED_CONTROLLED_INFLOW) ) then
@@ -743,7 +743,7 @@ c ::: -----------------------------------------------------------
 c      REAL_T    ax, ay, aerr
       integer   i, j, ng
 
-#include "probdata.H"
+#include <probdata.H>
 
       ng = min(ARG_H1(temp)-hi(1),ARG_H2(temp)-hi(2),
      &         lo(1)-ARG_L1(temp),lo(2)-ARG_L2(temp))
@@ -810,7 +810,7 @@ c ::: -----------------------------------------------------------
 
       integer   i, j
 
-#include "probdata.H"
+#include <probdata.H>
 
       if (level .lt. max_vort_lev) then
          do j = lo(2), hi(2)
@@ -856,9 +856,9 @@ c ::: -----------------------------------------------------------
       REAL_T  delta(SDIM), xlo(SDIM), time
       REAL_T  den(DIMV(den))
 
-#include "cdwrk.H"
-#include "bc.H"
-#include "probdata.H"
+#include <cdwrk.H>
+#include <bc.H>
+#include <probdata.H>
       
       integer i, j
       REAL_T  y, x
@@ -1007,9 +1007,9 @@ c ::: -----------------------------------------------------------
       REAL_T  delta(SDIM), xlo(SDIM), time
       REAL_T  temp(DIMV(temp))
 
-#include "cdwrk.H"
-#include "bc.H"
-#include "probdata.H"
+#include <cdwrk.H>
+#include <bc.H>
+#include <probdata.H>
       
       integer i, j
       REAL_T  y, x
@@ -1103,9 +1103,9 @@ c ::: -----------------------------------------------------------
       REAL_T  delta(SDIM), xlo(SDIM), time
       REAL_T  rhoh(DIMV(rhoh))
 
-#include "cdwrk.H"
-#include "bc.H"
-#include "probdata.H"
+#include <cdwrk.H>
+#include <bc.H>
+#include <probdata.H>
       
       integer i, j
       REAL_T  y, x
@@ -1192,9 +1192,9 @@ c
      &                             xlo,time,bc)
 
       implicit none
-#include "cdwrk.H"
-#include "bc.H"
-#include "probdata.H"
+#include <cdwrk.H>
+#include <bc.H>
+#include <probdata.H>
 
       integer DIMDEC(rhoY), bc(SDIM,2,Nspec)
       integer domlo(SDIM), domhi(SDIM)
@@ -1240,9 +1240,9 @@ c ::: -----------------------------------------------------------
       REAL_T  delta(SDIM), xlo(SDIM), time
       REAL_T  xvel(DIMV(xvel))
 
-#include "cdwrk.H"
-#include "bc.H"
-#include "probdata.H"
+#include <cdwrk.H>
+#include <bc.H>
+#include <probdata.H>
 
       integer i, j
       integer ilo, ihi, jlo, jhi
@@ -1350,9 +1350,9 @@ c ::: -----------------------------------------------------------
       REAL_T  delta(SDIM), xlo(SDIM), time
       REAL_T  yvel(DIMV(yvel))
 
-#include "cdwrk.H"
-#include "bc.H"
-#include "probdata.H"
+#include <cdwrk.H>
+#include <bc.H>
+#include <probdata.H>
       
       integer i, j
       integer ilo, ihi, jlo, jhi
@@ -1460,9 +1460,9 @@ c ::: -----------------------------------------------------------
       REAL_T  delta(SDIM), xlo(SDIM), time
       REAL_T  rhoY(DIMV(rhoY))
 
-#include "cdwrk.H"
-#include "bc.H"
-#include "probdata.H"
+#include <cdwrk.H>
+#include <bc.H>
+#include <probdata.H>
       
       integer i, j
       integer ilo, ihi, jlo, jhi
@@ -1711,8 +1711,8 @@ c
      &                        T,DIMS(T),Y,DIMS(Y),dx,Patm,time)
       implicit none
 
-#include "cdwrk.H"
-#include "probdata.H"
+#include <cdwrk.H>
+#include <probdata.H>
 
       integer DIMDEC(rad)
       integer DIMDEC(T)
@@ -1753,9 +1753,9 @@ c
       REAL_T     rho    (DIMV(state))
       REAL_T     gravity
 
-#include "probdata.H"
-#include "cdwrk.H"
-#include "bc.H"
+#include <probdata.H>
+#include <cdwrk.H>
+#include <bc.H>
 
       integer i, j, n
       integer ilo, jlo
