@@ -53,7 +53,6 @@ cg.unstable_criterion = 100
 ns.htt_tempmin=1.0
 ns.htt_tempmax=2.5
 
-mg.cg_solver=1
 cg.cg_solver=1
 cg.use_jacobi_precond=1
 

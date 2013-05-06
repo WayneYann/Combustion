@@ -55,7 +55,6 @@ ns.v = 1
 #mac.v = 1
 proj.v = 1
 
-mg.cg_solver=1
 cg.cg_solver=1
 
 amr.v=1

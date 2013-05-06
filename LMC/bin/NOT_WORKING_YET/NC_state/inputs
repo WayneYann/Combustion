@@ -38,7 +38,6 @@ mg.nu_0 = 1
 mg.nu_1 = 4
 mg.nu_2 = 4
 mg.nu_f = 40
-mg.cg_solver=1
 
 ns.v   = 1
 amr.v  = 1

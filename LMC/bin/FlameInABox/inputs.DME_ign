@@ -66,8 +66,7 @@ mac.v = 0
 proj.v = 0
 ns.do_group_bndry_fills = 1
 
-mg.cg_solver=1
-#cg.cg_solver=1
+cg.cg_solver=1
 
 amr.n_cell    = 128 512
 amr.n_cell    = 128 128

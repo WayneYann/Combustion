@@ -51,7 +51,7 @@ mac.v = 0
 proj.v = 0
 ns.do_group_bndry_fills = 1
 
-mg.cg_solver=1
+cg.cg_solver=1
 
 geometry.prob_lo    = -0.00114 0.0
 geometry.prob_hi    =  0.00114 0.00228

@@ -41,8 +41,7 @@ mac.v = 2
 proj.v = 1
 ns.do_group_bndry_fills = 1
 
-mg.cg_solver=1
-#cg.cg_solver=1
+cg.cg_solver=1
 
 #-------------------------AMR INPUTS----------------------------
 amr.n_cell    = 64 64 64
