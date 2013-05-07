@@ -104,7 +104,8 @@ static const Real typical_RhoH_value_default = -1.e10;
 
 namespace
 {
-    bool initialized = false;
+    bool initialized  = false;
+
 }
 //
 // Set all default values in Initialize()!!!
@@ -118,6 +119,7 @@ namespace
     bool                  do_not_use_funccount;
     bool                  do_active_control;
     Real                  crse_dt;
+    bool                  benchmarking;
 }
 
 int  HeatTransfer::num_divu_iters;
@@ -242,6 +244,7 @@ HeatTransfer::Initialize ()
     ShowMF_Check_Nans    = true;
     do_not_use_funccount = false;
     do_active_control    = false;
+    benchmarking         = false;
     crse_dt              = -1;
     
     HeatTransfer::num_divu_iters            = 1;
@@ -317,6 +320,8 @@ HeatTransfer::Initialize ()
 #endif /*PARTICLES*/
 
     ParmParse pp("ns");
+
+    pp.query("benchmarking",benchmarking);
 
     pp.query("do_diffuse_sync",do_diffuse_sync);
     BL_ASSERT(do_diffuse_sync == 0 || do_diffuse_sync == 1);
@@ -2484,6 +2489,8 @@ HeatTransfer::differential_spec_diffusion_update (Real dt,
 						  int  corrector)
 {
     BL_PROFILE("HeatTransfer::differential_spec_diffusion_update()");
+
+    if (verbose && benchmarking) ParallelDescriptor::Barrier();
 
     const Real strt_time = ParallelDescriptor::second();
 
@@ -6255,6 +6262,8 @@ HeatTransfer::strang_chem (MultiFab&  mf,
     // Sometimes it's the region covered by AuxBoundaryData.
     // When ngrow>0 we're doing AuxBoundaryData with nGrow()==ngrow.
     //
+    if (verbose && benchmarking) ParallelDescriptor::Barrier();
+
     const Real strt_time = ParallelDescriptor::second();
     //
     // I intend that this function be called just prior to the Godunov
@@ -7032,6 +7041,8 @@ HeatTransfer::scalar_advection (Real dt,
 {
     BL_PROFILE("HeatTransfer::scalar_advection()");
 
+    if (verbose && benchmarking) ParallelDescriptor::Barrier();
+
     const Real strt_time = ParallelDescriptor::second();
     //
     // Compute the advection flux divergences
@@ -7560,6 +7571,8 @@ HeatTransfer::mac_sync ()
     if (verbose && ParallelDescriptor::IOProcessor())
         std::cout << "... mac_sync\n";
 
+    if (verbose && benchmarking) ParallelDescriptor::Barrier();
+
     const Real strt_time = ParallelDescriptor::second();
 
     int        sigma;
@@ -7570,12 +7583,13 @@ HeatTransfer::mac_sync ()
     const Real prev_pres_time = state[Press_Type].prevTime();
     const Real dt             = parent->dtLevel(level);
     MultiFab*  Rh             = get_rho_half_time();
+    //
     // will hold q^{n+1,p} * (delta rho)^sync for conserved quantities
     // as defined before Eq (18) in DayBell:2000.  Note that in the paper, 
     // Eq (18) is missing Y_m^{n+1,p} * (delta rho)^sync in the RHS
     // and Eq (19) is missing the h^{n+1,p} * (delta rho)^sync in the RHS
+    //
     MultiFab*  DeltaSsync     = 0;
-
     //
     // Compute the corrective pressure used to compute U^{ADV,corr} in mac_sync_compute
     //
@@ -8275,10 +8289,12 @@ HeatTransfer::differential_spec_diffuse_sync (Real dt)
         return;            
     }
 
-    const Real strt_time = ParallelDescriptor::second();
-
     if (verbose && ParallelDescriptor::IOProcessor())
         std::cout << "Doing differential sync diffusion ..." << '\n';
+
+    if (verbose && benchmarking) ParallelDescriptor::Barrier();
+
+    const Real strt_time = ParallelDescriptor::second();
     //
     // Do implicit c-n solve for each scalar...but dont reflux.
     // Save the fluxes, coeffs and source term, we need 'em for later
@@ -8381,8 +8397,7 @@ HeatTransfer::differential_spec_diffuse_sync (Real dt)
         ParallelDescriptor::ReduceRealMax(run_time,IOProc);
 
         if (ParallelDescriptor::IOProcessor())
-            std::cout << "HeatTransfer::differential_spec_diffuse_sync(): time: " 
-                      << run_time << '\n';
+            std::cout << "HeatTransfer::differential_spec_diffuse_sync(): time: " << run_time << '\n';
     }
 }
 
