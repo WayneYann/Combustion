@@ -66,7 +66,6 @@ amr.derive_plot_vars=rhoRT mag_vort avg_pressure gradpx gradpy gradpz diveru
 
 amr.grid_log        = grdlog  # name of grid logging file
 amr.max_grid_size   = 64
-amr.max_grid_size_chem   = 32
 #amr.derive_plot_vars=ALL
 
 amr.probin_file = probin.3d.test # This will default to file "probin" if not set
