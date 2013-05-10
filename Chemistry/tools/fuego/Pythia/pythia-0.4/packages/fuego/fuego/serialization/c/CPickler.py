@@ -105,6 +105,7 @@ class CPickler(CMill):
         
         self._ckpx(mechanism)
         self._ckpy(mechanism)
+        self._vckpy(mechanism)
         self._ckpc(mechanism)
         self._ckrhox(mechanism)
         self._ckrhoy(mechanism)
@@ -114,6 +115,7 @@ class CPickler(CMill):
         self._ckmmwx(mechanism)
         self._ckmmwc(mechanism)
         self._ckytx(mechanism)
+        self._vckytx(mechanism)
         self._ckytcp(mechanism)
         self._ckytcr(mechanism)
         self._ckxty(mechanism)
@@ -138,6 +140,7 @@ class CPickler(CMill):
         self._ckcpms(mechanism)
         self._ckums(mechanism)
         self._ckhms(mechanism)
+        self._vckhms(mechanism)
         self._ckgms(mechanism)
         self._ckams(mechanism)
         self._cksms(mechanism)
@@ -292,7 +295,11 @@ class CPickler(CMill):
             '#define CKEQYR CKEQYR',
             '#define CKEQXR CKEQXR',
             '#define DWDOT DWDOT',
+            '#define VCKHMS VCKHMS',
+            '#define VCKPY VCKPY',
             '#define VCKWYR VCKWYR',
+            '#define VCKYTX VCKYTX',
+            '#define GET_T_GIVEN_EY GET_T_GIVEN_EY',
             '#elif defined(BL_FORT_USE_LOWERCASE)',
             '#define CKINDX ckindx',
             '#define CKINIT ckinit',
@@ -369,7 +376,11 @@ class CPickler(CMill):
             '#define CKEQYR ckeqyr',
             '#define CKEQXR ckeqxr',
             '#define DWDOT dwdot',
+            '#define VCKHMS vckhms',
+            '#define VCKPY vckpy',
             '#define VCKWYR vckwyr',
+            '#define VCKYTX vckytx',
+            '#define GET_T_GIVEN_EY get_t_given_ey',
             '#elif defined(BL_FORT_USE_UNDERSCORE)',
             '#define CKINDX ckindx_',
             '#define CKINIT ckinit_',
@@ -446,7 +457,11 @@ class CPickler(CMill):
             '#define CKEQYR ckeqyr_',
             '#define CKEQXR ckeqxr_',
             '#define DWDOT dwdot_',
+            '#define VCKHMS vckhms_',
+            '#define VCKPY vckpy_',
             '#define VCKWYR vckwyr_',
+            '#define VCKYTX vckytx_',
+            '#define GET_T_GIVEN_EY get_t_given_ey_',
             '#endif','',
             self.line('function declarations'),
             'void molecularWeight(double * restrict  wt);',
@@ -550,9 +565,12 @@ class CPickler(CMill):
             'void get_t_given_ey_(double * restrict  e, double * restrict  y, int * iwrk, double * restrict rwrk, double * restrict  t, int *ierr);',
             self.line('vector version'),
             'void vproductionRate(int npt, double * restrict wdot, double * restrict c, double * restrict T);',
+            'void VCKHMS'+sym+'(int * restrict np, double * restrict  T, int * iwrk, double * restrict  rwrk, double * restrict  ums);',
+            'void VCKPY'+sym+'(int * restrict np, double * restrict  rho, double * restrict  T, double * restrict  y, int * iwrk, double * restrict rwrk, double * restrict  P);',
             'void VCKWYR'+sym+'(int * restrict np, double * restrict rho, double * restrict T,',
             '            double * restrict y, int * restrict iwrk, double * restrict rwrk,',
             '            double * restrict wdot);',
+            'void VCKYTX'+sym+'(int * restrict np, double * restrict  y, int * iwrk, double * restrict  rwrk, double * restrict  x);',
             ]
         return
 
@@ -913,6 +931,51 @@ class CPickler(CMill):
             '*P = *rho * %g * (*T) * YOW; ' % (R*kelvin*mole/erg)
             + self.line('P = rho*R*T/W'))
         
+        
+        self._write()
+        self._write('return;')
+        self._outdent()
+
+        self._write('}')
+
+        return 
+
+    def _vckpy(self, mechanism):
+        self._write()
+        self._write()
+        self._write(self.line('Compute P = rhoRT/W(y)'))
+        self._write('void VCKPY'+sym+'(int * restrict np, double * restrict  rho, double * restrict  T, double * restrict  y, int * iwrk, double * restrict  rwrk, double * restrict  P)')
+        self._write('{')
+        self._indent()
+
+        species = self.species
+        nSpec = len(species)
+        self._write('double YOW[*np];')
+        self._write('for (int i=0; i<(*np); i++) {')
+        self._indent()
+        self._write('YOW[i] = 0.0;')
+        self._outdent()
+        self._write('}')        
+        self._write('')
+        self._write('for (int n=0; n<%d; n++) {' % (nSpec))
+        self._indent()
+        self._write('for (int i=0; i<(*np); i++) {')
+        self._indent()
+        self._write('YOW[i] += y[n*(*np)+i] * imw[n];')
+        self._outdent()
+        self._write('}')
+        self._outdent()
+        self._write('}')
+
+        self._write('')
+
+        self._write('for (int i=0; i<(*np); i++) {')
+        self._indent()
+        self._write(
+            'P[i] = rho[i] * %g * T[i] * YOW[i]; ' % (R*kelvin*mole/erg)
+            + self.line('P = rho*R*T/W'))
+        self._outdent()
+        self._write('}')
         
         self._write()
         self._write('return;')
@@ -1415,6 +1478,57 @@ class CPickler(CMill):
         self._write('}')
         self._outdent()
 
+        self._write('}')
+
+        return
+
+    def _vckhms(self, mechanism):
+        self._write()
+        self._write()
+        self._write(self.line('Returns enthalpy in mass units (Eq 27.)'))
+        self._write('void VCKHMS'+sym+'(int * restrict np, double * restrict T, int * iwrk, double * restrict  rwrk, double * restrict  hms)')
+        self._write('{')
+        self._indent()
+
+        species = self.species
+        nSpec = len(species)
+
+        self._write('double tc[5], h[%d];' % nSpec)
+
+        self._write()
+
+        self._write('for (int i=0; i<(*np); i++) {')
+        self._indent()
+        self._write('tc[0] = 0.0;')
+        self._write('tc[1] = T[i];')
+        self._write('tc[2] = T[i]*T[i];')
+        self._write('tc[3] = T[i]*T[i]*T[i];')
+        self._write('tc[4] = T[i]*T[i]*T[i]*T[i];')
+
+        self._write()
+
+        self._write('speciesEnthalpy(h, tc);')
+
+        self._write()
+
+        for ispec in range(nSpec):
+            self._write('hms[%d*(*np)+i] = h[%d];' % (ispec, ispec))
+        self._outdent()
+        self._write('}')
+
+        self._write()
+        
+        self._write('for (int n=0; n<%d; n++) {' % (nSpec))
+        self._indent()
+        self._write('for (int i=0; i<(*np); i++) {')
+        self._indent()
+        self._write('hms[n*(*np)+i] *= %g * T[i] * imw[n];' % (R*kelvin*mole/erg))
+        self._outdent()
+        self._write('}')
+        self._outdent()
+        self._write('}')
+
+        self._outdent()
         self._write('}')
 
         return
@@ -2819,6 +2933,58 @@ class CPickler(CMill):
         self._outdent()
         self._write('}')
         self._write('return;')
+        self._outdent()
+        self._write('}')
+        return 
+ 
+    def _vckytx(self, mechanism):
+        self._write()
+        self._write()
+        self._write(self.line(
+            'convert y[npoints*species] (mass fracs) to x[npoints*species] (mole fracs)'))
+        self._write('void VCKYTX'+sym+'(int * restrict np, double * restrict  y, int * iwrk, double * restrict  rwrk, double * restrict  x)')
+        self._write('{')
+        self._indent()
+
+        species = self.species
+        nSpec = len(species)
+        self._write('double YOW[*np];')
+        self._write('for (int i=0; i<(*np); i++) {')
+        self._indent()
+        self._write('YOW[i] = 0.0;')
+        self._outdent()
+        self._write('}')        
+        self._write('')
+        self._write('for (int n=0; n<%d; n++) {' % (nSpec))
+        self._indent()
+        self._write('for (int i=0; i<(*np); i++) {')
+        self._indent()
+        self._write('x[n*(*np)+i] = y[n*(*np)+i] * imw[n];')
+        self._write('YOW[i] += x[n*(*np)+i];')
+        self._outdent()
+        self._write('}')
+        self._outdent()
+        self._write('}')
+
+        self._write('')
+
+        self._write('for (int i=0; i<(*np); i++) {')
+        self._indent()
+        self._write('YOW[i] = 1.0/YOW[i];')
+        self._outdent()
+        self._write('}')
+
+        self._write('')
+        
+        self._write('for (int n=0; n<%d; n++) {' % (nSpec))
+        self._indent()
+        self._write('for (int i=0; i<(*np); i++) {')
+        self._indent()
+        self._write('x[n*(*np)+i] *=  YOW[i];')
+        self._outdent()
+        self._write('}')
+        self._outdent()
+        self._write('}')
         self._outdent()
         self._write('}')
         return 
