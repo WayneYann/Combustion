@@ -120,7 +120,7 @@ contains
        allocate(XZ(wlo(1):whi(1),nspecies))
        allocate(CPZ(wlo(1):whi(1),nspecies))
 
-       !$omp do collapse(2)
+       !$omp do
        do k=wlo(3),whi(3)
           do j=wlo(2),whi(2)
 
@@ -200,7 +200,7 @@ contains
           allocate(XZ(wlo(1):whi(1),nspecies))
           allocate(CPZ(wlo(1):whi(1),nspecies))
        
-          !$omp do collapse(2)
+          !$omp do
           do kk=1,kisize
              do j=wlo(2),whi(2)
 
@@ -281,7 +281,7 @@ contains
           allocate(XZ(wlo(1):whi(1),nspecies))
           allocate(CPZ(wlo(1):whi(1),nspecies))
     
-          !$omp do collapse(2)
+          !$omp do
           do k=lo(3),hi(3)
              do jj=1,jisize
 
@@ -364,7 +364,7 @@ contains
           allocate(XZ(np,nspecies))
           allocate(CPZ(np,nspecies))
         
-          !$omp do collapse(2)
+          !$omp do
           do k=lo(3),hi(3)
              do j=lo(2),hi(2)
 
