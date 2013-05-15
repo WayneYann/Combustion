@@ -477,7 +477,13 @@ typing ``{\tt touch dump\_plotfile}''.  You can force the program to
 abort by typing ``{\tt touch abort\_smc}''.  This has the effect of
 also dumping a final checkpoint file.
 
-% \subsection{OpenMP Stack Size}
+\subsection{OpenMP Stack Size}
+
+The default stack size of OpenMP threads may not be enough for large
+runs.  If that happens, the code will crash due to stack overflow, and
+you could increase the stack size by setting the {\tt OMP\_STACKSIZE}
+environment variable to a large value (e.g., {\tt 100M}).  You may
+also need to increase the stack size of your shell to unlimited.
 
 % \section{Machine Specific Notes}
 
