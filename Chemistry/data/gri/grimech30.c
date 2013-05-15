@@ -80,7 +80,10 @@
 #define CKEQYR CKEQYR
 #define CKEQXR CKEQXR
 #define DWDOT DWDOT
+#define VCKHMS VCKHMS
+#define VCKPY VCKPY
 #define VCKWYR VCKWYR
+#define VCKYTX VCKYTX
 #define GET_T_GIVEN_EY GET_T_GIVEN_EY
 #elif defined(BL_FORT_USE_LOWERCASE)
 #define CKINDX ckindx
@@ -158,7 +161,10 @@
 #define CKEQYR ckeqyr
 #define CKEQXR ckeqxr
 #define DWDOT dwdot
+#define VCKHMS vckhms
+#define VCKPY vckpy
 #define VCKWYR vckwyr
+#define VCKYTX vckytx
 #define GET_T_GIVEN_EY get_t_given_ey
 #elif defined(BL_FORT_USE_UNDERSCORE)
 #define CKINDX ckindx_
@@ -236,7 +242,10 @@
 #define CKEQYR ckeqyr_
 #define CKEQXR ckeqxr_
 #define DWDOT dwdot_
+#define VCKHMS vckhms_
+#define VCKPY vckpy_
 #define VCKWYR vckwyr_
+#define VCKYTX vckytx_
 #define GET_T_GIVEN_EY get_t_given_ey_
 #endif
 
@@ -331,9 +340,12 @@ void DWDOT(double * restrict  J, double * restrict  sc, double * T);
 void GET_T_GIVEN_EY(double * restrict  e, double * restrict  y, int * iwrk, double * restrict rwrk, double * restrict  t, int *ierr);
 /*vector version */
 void vproductionRate(int npt, double * restrict wdot, double * restrict c, double * restrict T);
+void VCKHMS(int * restrict np, double * restrict  T, int * iwrk, double * restrict  rwrk, double * restrict  ums);
+void VCKPY(int * restrict np, double * restrict  rho, double * restrict  T, double * restrict  y, int * iwrk, double * restrict rwrk, double * restrict  P);
 void VCKWYR(int * restrict np, double * restrict rho, double * restrict T,
             double * restrict y, int * restrict iwrk, double * restrict rwrk,
             double * restrict wdot);
+void VCKYTX(int * restrict np, double * restrict  y, int * iwrk, double * restrict  rwrk, double * restrict  x);
 void vcomp_k_f(int npt, double * restrict k_f_s, double * restrict tc, double * restrict invT);
 void vcomp_gibbs(int npt, double * restrict g_RT, double * restrict tc);
 void vcomp_Kc(int npt, double * restrict Kc_s, double * restrict g_RT, double * restrict T);
@@ -983,6 +995,28 @@ void CKPY(double * restrict  rho, double * restrict  T, double * restrict  y, in
 }
 
 
+/*Compute P = rhoRT/W(y) */
+void VCKPY(int * restrict np, double * restrict  rho, double * restrict  T, double * restrict  y, int * iwrk, double * restrict  rwrk, double * restrict  P)
+{
+    double YOW[*np];
+    for (int i=0; i<(*np); i++) {
+        YOW[i] = 0.0;
+    }
+
+    for (int n=0; n<53; n++) {
+        for (int i=0; i<(*np); i++) {
+            YOW[i] += y[n*(*np)+i] * imw[n];
+        }
+    }
+
+    for (int i=0; i<(*np); i++) {
+        P[i] = rho[i] * 8.31451e+07 * T[i] * YOW[i]; /*P = rho*R*T/W */
+    }
+
+    return;
+}
+
+
 /*Compute P = rhoRT/W(c) */
 void CKPC(double * restrict  rho, double * restrict  T, double * restrict  c, int * iwrk, double * restrict  rwrk, double * restrict  P)
 {
@@ -1392,6 +1426,33 @@ void CKYTX(double * restrict  y, int * iwrk, double * restrict  rwrk, double * r
         x[i] = y[i]*imw[i]*YOWINV;
     }
     return;
+}
+
+
+/*convert y[npoints*species] (mass fracs) to x[npoints*species] (mole fracs) */
+void VCKYTX(int * restrict np, double * restrict  y, int * iwrk, double * restrict  rwrk, double * restrict  x)
+{
+    double YOW[*np];
+    for (int i=0; i<(*np); i++) {
+        YOW[i] = 0.0;
+    }
+
+    for (int n=0; n<53; n++) {
+        for (int i=0; i<(*np); i++) {
+            x[n*(*np)+i] = y[n*(*np)+i] * imw[n];
+            YOW[i] += x[n*(*np)+i];
+        }
+    }
+
+    for (int i=0; i<(*np); i++) {
+        YOW[i] = 1.0/YOW[i];
+    }
+
+    for (int n=0; n<53; n++) {
+        for (int i=0; i<(*np); i++) {
+	  x[n*(*np)+i] *=  YOW[i];
+        }
+    }
 }
 
 
@@ -2070,6 +2131,83 @@ void CKHMS(double * restrict T, int * iwrk, double * restrict  rwrk, double * re
     for (int i = 0; i < 53; i++)
     {
         hms[i] *= RT*imw[i];
+    }
+}
+
+
+/*Returns enthalpy in mass units (Eq 27.) */
+void VCKHMS(int * restrict np, double * restrict T, int * iwrk, double * restrict  rwrk, double * restrict  hms)
+{
+    double tc[5], h[53];
+
+    for (int i=0; i<(*np); i++) {
+        tc[0] = 0.0;
+        tc[1] = T[i];
+        tc[2] = T[i]*T[i];
+        tc[3] = T[i]*T[i]*T[i];
+        tc[4] = T[i]*T[i]*T[i]*T[i];
+
+        speciesEnthalpy(h, tc);
+
+        hms[0*(*np)+i] = h[0];
+        hms[1*(*np)+i] = h[1];
+        hms[2*(*np)+i] = h[2];
+        hms[3*(*np)+i] = h[3];
+        hms[4*(*np)+i] = h[4];
+        hms[5*(*np)+i] = h[5];
+        hms[6*(*np)+i] = h[6];
+        hms[7*(*np)+i] = h[7];
+        hms[8*(*np)+i] = h[8];
+        hms[9*(*np)+i] = h[9];
+        hms[10*(*np)+i] = h[10];
+        hms[11*(*np)+i] = h[11];
+        hms[12*(*np)+i] = h[12];
+        hms[13*(*np)+i] = h[13];
+        hms[14*(*np)+i] = h[14];
+        hms[15*(*np)+i] = h[15];
+        hms[16*(*np)+i] = h[16];
+        hms[17*(*np)+i] = h[17];
+        hms[18*(*np)+i] = h[18];
+        hms[19*(*np)+i] = h[19];
+        hms[20*(*np)+i] = h[20];
+        hms[21*(*np)+i] = h[21];
+        hms[22*(*np)+i] = h[22];
+        hms[23*(*np)+i] = h[23];
+        hms[24*(*np)+i] = h[24];
+        hms[25*(*np)+i] = h[25];
+        hms[26*(*np)+i] = h[26];
+        hms[27*(*np)+i] = h[27];
+        hms[28*(*np)+i] = h[28];
+        hms[29*(*np)+i] = h[29];
+        hms[30*(*np)+i] = h[30];
+        hms[31*(*np)+i] = h[31];
+        hms[32*(*np)+i] = h[32];
+        hms[33*(*np)+i] = h[33];
+        hms[34*(*np)+i] = h[34];
+        hms[35*(*np)+i] = h[35];
+        hms[36*(*np)+i] = h[36];
+        hms[37*(*np)+i] = h[37];
+        hms[38*(*np)+i] = h[38];
+        hms[39*(*np)+i] = h[39];
+        hms[40*(*np)+i] = h[40];
+        hms[41*(*np)+i] = h[41];
+        hms[42*(*np)+i] = h[42];
+        hms[43*(*np)+i] = h[43];
+        hms[44*(*np)+i] = h[44];
+        hms[45*(*np)+i] = h[45];
+        hms[46*(*np)+i] = h[46];
+        hms[47*(*np)+i] = h[47];
+        hms[48*(*np)+i] = h[48];
+        hms[49*(*np)+i] = h[49];
+        hms[50*(*np)+i] = h[50];
+        hms[51*(*np)+i] = h[51];
+        hms[52*(*np)+i] = h[52];
+    }
+
+    for (int n=0; n<53; n++) {
+        for (int i=0; i<(*np); i++) {
+            hms[n*(*np)+i] *= 8.31451e+07 * T[i] * imw[n];
+        }
     }
 }
 
@@ -52882,7 +53020,7 @@ void molecularWeight(double * restrict  wt)
     return;
 }
 /* get temperature given internal energy in mass units and mass fracs */
-void get_t_given_ey_(double * restrict  e, double * restrict  y, int * iwrk, double * restrict  rwrk, double * restrict  t, int * ierr)
+void GET_T_GIVEN_EY(double * restrict  e, double * restrict  y, int * iwrk, double * restrict  rwrk, double * restrict  t, int * ierr)
 {
 #ifdef CONVERGENCE
     const int maxiter = 5000;

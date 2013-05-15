@@ -200,7 +200,7 @@ contains
           allocate(XZ(wlo(1):whi(1),nspecies))
           allocate(CPZ(wlo(1):whi(1),nspecies))
        
-          !$omp do collapse(2)
+          !$omp do
           do kk=1,kisize
              do j=wlo(2),whi(2)
 

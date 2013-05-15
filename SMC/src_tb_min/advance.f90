@@ -17,6 +17,7 @@ contains
 
   subroutine advance(U, dt, courno, dx, istep)
 
+    use probin_module, only : check_nans
     use smcdata_module
     implicit none
 
@@ -53,8 +54,10 @@ contains
     call reset_density(U)
     call destroy(bpt_rkstep3)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
 
-    if (contains_nan(U)) then
-       call bl_error("U contains nan")
+    if (check_nans) then
+       if (contains_nan(U)) then
+          call bl_error("U contains nan")
+       end if
     end if
 
   end subroutine advance

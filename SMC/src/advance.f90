@@ -27,7 +27,7 @@ contains
 
   subroutine advance(U, dt, courno, dx, sdc, istep)
 
-    use probin_module, only : advance_method
+    use probin_module, only : advance_method, check_nans
 
     type(multifab),    intent(inout) :: U
     double precision,  intent(inout) :: dt, courno
@@ -46,8 +46,10 @@ contains
        call bl_error("Invalid advance_method.")
     end select
 
-    if (contains_nan(U)) then
-       call bl_error("U contains nan")
+    if (check_nans) then
+       if (contains_nan(U)) then
+          call bl_error("U contains nan")
+       end if
     end if
 
   end subroutine advance

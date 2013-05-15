@@ -158,8 +158,9 @@ contains
        lhi(i) = min(hi(i)+ngto, dhi(i))
     end do
 
-    !$omp parallel do private(i, j, k, n, iwrk, rho, rhoinv, rwrk) &
+    !$omp parallel private(i, j, k, n, iwrk, rho, rhoinv, rwrk) &
     !$omp private(X, Y, h, ei, Tt, Pt, ierr)
+    !$omp do
     do k = llo(3),lhi(3)
        do j = llo(2),lhi(2)
           do i = llo(1),lhi(1)
@@ -210,7 +211,8 @@ contains
           enddo
        enddo
     enddo
-    !$omp end parallel do
+    !$omp end do
+    !$omp end parallel
 
   end subroutine ctoprim_3d
 
@@ -252,8 +254,9 @@ contains
     integer          :: idom
     double precision :: rhoy_dom, rhoy_under
 
-    !$omp parallel do private(i,j,k,n,iryn,rho) &
+    !$omp parallel private(i,j,k,n,iryn,rho) &
     !$omp private(idom, rhoy_dom, rhoy_under)
+    !$omp do
     do k = lo(3),hi(3)
        do j = lo(2),hi(2)
           do i = lo(1),hi(1)
@@ -304,7 +307,8 @@ contains
           end do
        end do
     end do
-    !$omp end parallel do
+    !$omp end do
+    !$omp end parallel
 
   end subroutine reset_rho_3d
 
