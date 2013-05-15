@@ -3126,6 +3126,9 @@ HeatTransfer::diffuse_cleanup (MultiFab*&  delta_rhs,
 void
 HeatTransfer::velocity_diffusion_update (Real dt)
 {
+    BL_PROFILE("HeatTransfer::velocity_diffusion_update()");
+
+    const Real strt_time = ParallelDescriptor::second();
     //
     // Do implicit c-n solve for velocity
     // compute the viscous forcing
@@ -3151,6 +3154,21 @@ HeatTransfer::velocity_diffusion_update (Real dt)
                                     delta_rhs,betan,betanp1);
 
         diffuse_cleanup(delta_rhs, betan, betanp1);
+    }
+
+    if (verbose)
+    {
+        Real run_time    = ParallelDescriptor::second() - strt_time;
+        const int IOProc = ParallelDescriptor::IOProcessorNumber();
+
+        ParallelDescriptor::ReduceRealMax(run_time,IOProc);
+
+        if (ParallelDescriptor::IOProcessor())
+        {
+            std::cout << "HeatTransfer::velocity_diffusion_update(): lev: "
+                      << level
+                      << ", time: " << run_time << '\n';
+        }
     }
 }
     
