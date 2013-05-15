@@ -587,7 +587,6 @@ c     Get the matrix of elements versus species
 #include "cdwrk.H"
 #include "conp.H"
 #include "vode.H"
-#include "htdata.H"
 
       integer lo(SDIM), hi(SDIM)
       integer DIMDEC(Yold)
@@ -881,7 +880,6 @@ c
       implicit none
 
 #include "cdwrk.H"
-#include "htdata.H"
 #include "conp.H"
 #include "vode.H"
 

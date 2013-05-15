@@ -579,7 +579,6 @@ c     Get the matrix of elements versus species
 #include "cdwrk.H"
 #include "conp.H"
 #include "vode.H"
-#include "htdata.H"
 
       integer lo(SDIM), hi(SDIM)
       integer DIMDEC(Yold)
@@ -906,7 +905,6 @@ c     Get the matrix of elements versus species
       implicit none
 
 #include "cdwrk.H"
-#include "htdata.H"
 #include "conp.H"
 #include "vode.H"
 
@@ -1249,7 +1247,6 @@ c     Reset FIRST to .TRUE. to force new Jacobian on each cell
       implicit none
 
 #include "cdwrk.H"
-#include "htdata.H"
 #include "conp.H"
 #include "vode.H"
 
