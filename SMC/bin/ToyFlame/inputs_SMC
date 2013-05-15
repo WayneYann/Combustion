@@ -12,10 +12,17 @@
  cflfac = 0.1d0
  init_shrink = 0.5d0
 
- n_cellx = 64
- n_celly = 64
- n_cellz = 64
- max_grid_size = 32
+ n_cellx = 128
+ n_celly = 128
+ n_cellz = 128
+ max_grid_size = 64
+!
+! for a smaller run, use
+! n_cellx = 64
+! n_celly = 64
+! n_cellz = 64
+! max_grid_size = 32
+
 
  prob_lo_x = -0.5d0
  prob_lo_y = -0.5d0
@@ -26,7 +33,7 @@
 
 
  ! for seeting up initial model
- pertmag = 1.5d0
+ pertmag = 0.0d0
  rfire = 0.1d0
 
 /
