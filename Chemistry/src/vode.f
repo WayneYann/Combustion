@@ -1710,6 +1710,7 @@ C
      1        MF, IPAR
       DIMENSION Y(*), RTOL(*), ATOL(*), RWORK(LRW), IWORK(LIW),
      1          RPAR(*), IPAR(*)
+      INTEGER ABSMF
 C-----------------------------------------------------------------------
 C DVODE.. Variable-coefficient Ordinary Differential Equation solver,
 C with fixed-leading coefficient implementation.
@@ -2879,9 +2880,9 @@ C-----------------------------------------------------------------------
       IF (ITOL .LT. 1 .OR. ITOL .GT. 4) GO TO 606
       IF (IOPT .LT. 0 .OR. IOPT .GT. 1) GO TO 607
       JSV = SIGN(1,MF)
-      MF = ABS(MF)
-      METH = MF/10
-      MITER = MF - 10*METH
+      ABSMF = ABS(MF)
+      METH = ABSMF/10
+      MITER = ABSMF - 10*METH
       IF (METH .LT. 1 .OR. METH .GT. 2) GO TO 608
       IF (MITER .LT. 0 .OR. MITER .GT. 5) GO TO 608
       IF (MITER .LE. 3) GO TO 30
