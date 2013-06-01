@@ -80,7 +80,11 @@
 #define CKEQYR CKEQYR
 #define CKEQXR CKEQXR
 #define DWDOT DWDOT
+#define VCKHMS VCKHMS
+#define VCKPY VCKPY
 #define VCKWYR VCKWYR
+#define VCKYTX VCKYTX
+#define GET_T_GIVEN_EY GET_T_GIVEN_EY
 #elif defined(BL_FORT_USE_LOWERCASE)
 #define CKINDX ckindx
 #define CKINIT ckinit
@@ -157,7 +161,11 @@
 #define CKEQYR ckeqyr
 #define CKEQXR ckeqxr
 #define DWDOT dwdot
+#define VCKHMS vckhms
+#define VCKPY vckpy
 #define VCKWYR vckwyr
+#define VCKYTX vckytx
+#define GET_T_GIVEN_EY get_t_given_ey
 #elif defined(BL_FORT_USE_UNDERSCORE)
 #define CKINDX ckindx_
 #define CKINIT ckinit_
@@ -234,7 +242,11 @@
 #define CKEQYR ckeqyr_
 #define CKEQXR ckeqxr_
 #define DWDOT dwdot_
+#define VCKHMS vckhms_
+#define VCKPY vckpy_
 #define VCKWYR vckwyr_
+#define VCKYTX vckytx_
+#define GET_T_GIVEN_EY get_t_given_ey_
 #endif
 
 /*function declarations */
@@ -324,13 +336,18 @@ void CKEQYP(double * restrict  P, double * restrict  T, double * restrict  y, in
 void CKEQXP(double * restrict  P, double * restrict  T, double * restrict  x, int * iwrk, double * restrict rwrk, double * restrict  eqcon);
 void CKEQYR(double * restrict  rho, double * restrict  T, double * restrict  y, int * iwrk, double * restrict rwrk, double * restrict  eqcon);
 void CKEQXR(double * restrict  rho, double * restrict  T, double * restrict  x, int * iwrk, double * restrict rwrk, double * restrict  eqcon);
-void DWDOT(double * restrict  J, double * restrict  sc, double * T);
-void get_t_given_ey_(double * restrict  e, double * restrict  y, int * iwrk, double * restrict rwrk, double * restrict  t, int *ierr);
+void DWDOT(double * restrict  J, double * restrict  sc, double * T, int * consP);
+void aJacobian(double * restrict J, double * restrict sc, double T, int consP);
+void dcvpRdT(double * restrict  species, double * restrict  tc);
+void GET_T_GIVEN_EY(double * restrict  e, double * restrict  y, int * iwrk, double * restrict rwrk, double * restrict  t, int *ierr);
 /*vector version */
 void vproductionRate(int npt, double * restrict wdot, double * restrict c, double * restrict T);
+void VCKHMS(int * restrict np, double * restrict  T, int * iwrk, double * restrict  rwrk, double * restrict  ums);
+void VCKPY(int * restrict np, double * restrict  rho, double * restrict  T, double * restrict  y, int * iwrk, double * restrict rwrk, double * restrict  P);
 void VCKWYR(int * restrict np, double * restrict rho, double * restrict T,
             double * restrict y, int * restrict iwrk, double * restrict rwrk,
             double * restrict wdot);
+void VCKYTX(int * restrict np, double * restrict  y, int * iwrk, double * restrict  rwrk, double * restrict  x);
 
 /* Inverse molecular weights */
 static const double imw[3] = {
@@ -476,6 +493,28 @@ void CKPY(double * restrict  rho, double * restrict  T, double * restrict  y, in
     YOW += y[1]*imw[1]; /*CH4 */
     YOW += y[2]*imw[2]; /*N2 */
     *P = *rho * 8.31451e+07 * (*T) * YOW; /*P = rho*R*T/W */
+
+    return;
+}
+
+
+/*Compute P = rhoRT/W(y) */
+void VCKPY(int * restrict np, double * restrict  rho, double * restrict  T, double * restrict  y, int * iwrk, double * restrict  rwrk, double * restrict  P)
+{
+    double YOW[*np];
+    for (int i=0; i<(*np); i++) {
+        YOW[i] = 0.0;
+    }
+
+    for (int n=0; n<3; n++) {
+        for (int i=0; i<(*np); i++) {
+            YOW[i] += y[n*(*np)+i] * imw[n];
+        }
+    }
+
+    for (int i=0; i<(*np); i++) {
+        P[i] = rho[i] * 8.31451e+07 * T[i] * YOW[i]; /*P = rho*R*T/W */
+    }
 
     return;
 }
@@ -640,6 +679,33 @@ void CKYTX(double * restrict  y, int * iwrk, double * restrict  rwrk, double * r
         x[i] = y[i]*imw[i]*YOWINV;
     }
     return;
+}
+
+
+/*convert y[npoints*species] (mass fracs) to x[npoints*species] (mole fracs) */
+void VCKYTX(int * restrict np, double * restrict  y, int * iwrk, double * restrict  rwrk, double * restrict  x)
+{
+    double YOW[*np];
+    for (int i=0; i<(*np); i++) {
+        YOW[i] = 0.0;
+    }
+
+    for (int n=0; n<3; n++) {
+        for (int i=0; i<(*np); i++) {
+            x[n*(*np)+i] = y[n*(*np)+i] * imw[n];
+            YOW[i] += x[n*(*np)+i];
+        }
+    }
+
+    for (int i=0; i<(*np); i++) {
+        YOW[i] = 1.0/YOW[i];
+    }
+
+    for (int n=0; n<3; n++) {
+        for (int i=0; i<(*np); i++) {
+            x[n*(*np)+i] *=  YOW[i];
+        }
+    }
 }
 
 
@@ -968,6 +1034,33 @@ void CKHMS(double * restrict T, int * iwrk, double * restrict  rwrk, double * re
     for (int i = 0; i < 3; i++)
     {
         hms[i] *= RT*imw[i];
+    }
+}
+
+
+/*Returns enthalpy in mass units (Eq 27.) */
+void VCKHMS(int * restrict np, double * restrict T, int * iwrk, double * restrict  rwrk, double * restrict  hms)
+{
+    double tc[5], h[3];
+
+    for (int i=0; i<(*np); i++) {
+        tc[0] = 0.0;
+        tc[1] = T[i];
+        tc[2] = T[i]*T[i];
+        tc[3] = T[i]*T[i]*T[i];
+        tc[4] = T[i]*T[i]*T[i]*T[i];
+
+        speciesEnthalpy(h, tc);
+
+        hms[0*(*np)+i] = h[0];
+        hms[1*(*np)+i] = h[1];
+        hms[2*(*np)+i] = h[2];
+    }
+
+    for (int n=0; n<3; n++) {
+        for (int i=0; i<(*np); i++) {
+            hms[n*(*np)+i] *= 8.31451e+07 * T[i] * imw[n];
+        }
     }
 }
 
@@ -1898,140 +1991,161 @@ void vproductionRate(int npt, double * restrict wdot, double * restrict sc, doub
 }
 
 /*compute the reaction Jacobian */
-void DWDOT(double * restrict  J, double * restrict  sc, double * Tp)
+void DWDOT(double * restrict  J, double * restrict  sc, double * Tp, int * consP)
 {
-    double T = *Tp;
-    double qdot, Kf[0], Kr[0], DKfDT[0], DKrDT[0];
+    double c[3];
 
-    int id; /*loop counter */
-    double mixture;                 /*mixture concentration */
-    double g_RT[3];                /*Gibbs free energy */
-    double Kc;                      /*equilibrium constant */
-    double k_f;                     /*forward reaction rate */
-    double k_r;                     /*reverse reaction rate */
-    double q_f;                     /*forward progress rate */
-    double q_r;                     /*reverse progress rate */
-    double phi_f;                   /*forward phase space factor */
-    double phi_r;                   /*reverse phase space factor */
-    double alpha;                   /*enhancement */
-    double redP;                    /*reduced pressure */
-    double logPred;                 /*log of above */
-    double F;                       /*fallof rate enhancement */
+    for (int k=0; k<3; k++) {
+        c[k] = 1.e6 * sc[k];
+    }
 
-    double F_troe;                  /*TROE intermediate */
-    double logFcent;                /*TROE intermediate */
-    double troe;                    /*TROE intermediate */
-    double troe_c;                  /*TROE intermediate */
-    double troe_n;                  /*TROE intermediate */
+    aJacobian(J, c, *Tp, *consP);
+
+    /* dwdot[k]/dT */
+    for (int k=0; k<3; k++) {
+        J[12+k] *= 1.e-6;
+    }
+
+    /* dTdot/d[X] */
+    for (int k=0; k<3; k++) {
+        J[k*4+3] *= 1.e6;
+    }
+
+    return;
+}
+
+/*compute the reaction Jacobian */
+void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
+{
+    for (int i=0; i<16; i++) {
+        J[i] = 0.0;
+    }
+
+    double wdot[3];
+    for (int k=0; k<3; k++) {
+        wdot[k] = 0.0;
+    }
 
     double tc[] = { log(T), T, T*T, T*T*T, T*T*T*T }; /*temperature cache */
-
     double invT = 1.0 / tc[1];
+    double invT2 = invT * invT;
 
     /*reference concentration: P_atm / (RT) in inverse mol/m^3 */
     double refC = 101325 / 8.31451 / T;
     double refCinv = 1 / refC;
 
     /*compute the mixture concentration */
-    mixture = 0.0;
-    for (id = 0; id < 3; ++id) {
-        mixture += sc[id];
+    double mixture = 0.0;
+    for (int k = 0; k < 3; ++k) {
+        mixture += sc[k];
     }
 
     /*compute the Gibbs free energy */
+    double g_RT[3];
     gibbs(g_RT, tc);
-    double invT2 = invT * invT;
-    double invT3 = invT2 * invT;
-    double earg[0], prefac[0];
 
-
-
-    double alphaTB[0];
-
-    for (int i = 0; i < 0; ++i) {
-        Kf[i] = prefac[i] * exp(earg[i]);
-    }
-
-    /* Set (1/Kf) DKf/DT */
-
-    /* Modify Kf and DKfDT for presure-dependent reactions */
-    double dKfDC[0], Pr, f, logPr;
-    /* Set Kp_earg, where Kp = (refC)^{sumNuK} exp(Kp_earg) */
-    double Kp_earg[0];
-
-    /* Initialize Kr to 1/(refC)^{sumNuK} = Kp / Kc */
-
-    /* Now Kr = Kf / Kc */
-    for (int i = 0; i < 0; ++i) {
-        Kr[i] *= Kf[i] * exp(-Kp_earg[i]);
-    }
-
-    double h_RT[3];                /*species enthalpy */
+    /*compute the species enthalpy */
+    double h_RT[3];
     speciesEnthalpy(h_RT, tc);
 
-    /* Initialize (1/Kr) dKrDT to (dKcDT / Kc) = invT*(Sum[nuK] - Sum[nuK.h_RTK] */
-
-    /* Now (1/Kr) DKrDT = (1 / Kc).dKcDT [partially computed above] */
-    for (int i = 0; i < 0; ++i) {
-        DKrDT[i] = DKfDT[i] + DKrDT[i];
+    double phi_f, k_f, k_r, phi_r, Kc, q, q_nocor, Corr, alpha;
+    double dlnkfdT, dlnk0dT, dlnKcdT, dkrdT, dqdT;
+    double dcdc_fac, dqdc[3];
+    double Pr, fPr, F, k_0, logPr;
+    double logFcent, troe_c, troe_n, troePr_den, troePr, troe;
+    double Fcent1, Fcent2, Fcent3, Fcent;
+    double dlogFdc, dlogFdn, dlogFdcn_fac;
+    double dlogPrdT, dlogfPrdT, dlogFdT, dlogFcentdT, dlogFdlogPr, dlnCorrdT;
+    const double ln10 = log(10.0);
+    const double log10e = 1.0/log(10.0);
+    double c_R[3], dcRdT[3], e_RT[3];
+    double * eh_RT;
+    if (consP) {
+        cp_R(c_R, tc);
+        dcvpRdT(dcRdT, tc);
+        eh_RT = &h_RT[0];
+    }
+    else {
+        cv_R(c_R, tc);
+        dcvpRdT(dcRdT, tc);
+        speciesInternalEnergy(e_RT, tc);
+        eh_RT = &e_RT[0];
     }
 
-    /* Form qfwd, qrev */
-    double qfwd[0], qrev[0];
-
-    double DQDa[0], DQDT[0];
-    for (int i = 0; i < 0; ++i) {
-        DQDa[i] = qfwd[i] - qrev[i];/* Note: No alpha */
-        Kf[i] *= alphaTB[i];
-        Kr[i] *= alphaTB[i];
-        DQDT[i] = alphaTB[i] * (DKfDT[i] * qfwd[i] - DKrDT[i] * qrev[i]);
+    double cmix = 0.0, ehmix = 0.0, dcmixdT=0.0, dehmixdT=0.0;
+    for (int k = 0; k < 3; ++k) {
+        cmix += c_R[k]*sc[k];
+        dcmixdT += dcRdT[k]*sc[k];
+        ehmix += eh_RT[k]*wdot[k];
+        dehmixdT += invT*(c_R[k]-eh_RT[k])*wdot[k] + eh_RT[k]*J[12+k];
     }
 
-    /* Jacobian elements, J_ij = domega_i/d_Cj = J[(i*M + j] */
-
-    /*ProductionRate[O2] = 0; */
-
-    /*D(ProductionRate[O2])/D([O2]) */
-    J[0] = 0;
-
-    /*D(ProductionRate[O2])/D([CH4]) */
-    J[4] = 0;
-
-    /*D(ProductionRate[O2])/D([N2]) */
-    J[8] = 0;
-
-    /*D(ProductionRate[O2])/D([Temp]) */
-    J[12] = 0;
-
-    /*ProductionRate[CH4] = 0; */
-
-    /*D(ProductionRate[CH4])/D([O2]) */
-    J[1] = 0;
-
-    /*D(ProductionRate[CH4])/D([CH4]) */
-    J[5] = 0;
-
-    /*D(ProductionRate[CH4])/D([N2]) */
-    J[9] = 0;
-
-    /*D(ProductionRate[CH4])/D([Temp]) */
-    J[13] = 0;
-
-    /*ProductionRate[N2] = 0; */
-
-    /*D(ProductionRate[N2])/D([O2]) */
-    J[2] = 0;
-
-    /*D(ProductionRate[N2])/D([CH4]) */
-    J[6] = 0;
-
-    /*D(ProductionRate[N2])/D([N2]) */
-    J[10] = 0;
-
-    /*D(ProductionRate[N2])/D([Temp]) */
-    J[14] = 0;
+    double cmixinv = 1.0/cmix;
+    double tmp1 = ehmix*cmixinv;
+    double tmp3 = cmixinv*T;
+    double tmp2 = tmp1*tmp3;
+    double dehmixdc;
+    /* dTdot/d[X] */
+    for (int k = 0; k < 3; ++k) {
+        dehmixdc = 0.0;
+        for (int m = 0; m < 3; ++m) {
+            dehmixdc += eh_RT[m]*J[k*4+m];
+        }
+        J[k*4+3] = tmp2*c_R[k] - tmp3*dehmixdc;
+    }
+    /* dTdot/dT */
+    J[15] = -tmp1 + tmp2*dcmixdT - tmp3*dehmixdT;
+}
 
 
+/*compute d(Cp/R)/dT and d(Cv/R)/dT at the given temperature */
+/*tc contains precomputed powers of T, tc[0] = log(T) */
+void dcvpRdT(double * restrict  species, double * restrict  tc)
+{
+
+    /*temperature */
+    double T = tc[1];
+
+    /*species with midpoint at T=1000 kelvin */
+    if (T < 1000) {
+        /*species 0: O2 */
+        species[0] =
+            -2.99673416e-03
+            +1.96946040e-05 * tc[1]
+            -2.90438853e-08 * tc[2]
+            +1.29749135e-11 * tc[3];
+        /*species 1: CH4 */
+        species[1] =
+            -1.36709788e-02
+            +9.83601198e-05 * tc[1]
+            -1.45422908e-07 * tc[2]
+            +6.66775824e-11 * tc[3];
+        /*species 2: N2 */
+        species[2] =
+            +1.40824040e-03
+            -7.92644400e-06 * tc[1]
+            +1.69245450e-08 * tc[2]
+            -9.77941600e-12 * tc[3];
+    } else {
+        /*species 0: O2 */
+        species[0] =
+            +1.48308754e-03
+            -1.51593334e-06 * tc[1]
+            +6.28411665e-10 * tc[2]
+            -8.66871176e-14 * tc[3];
+        /*species 1: CH4 */
+        species[1] =
+            +1.33909467e-02
+            -1.14657162e-05 * tc[1]
+            +3.66877605e-09 * tc[2]
+            -4.07260920e-13 * tc[3];
+        /*species 2: N2 */
+        species[2] =
+            +1.48797680e-03
+            -1.13695200e-06 * tc[1]
+            +3.02911140e-10 * tc[2]
+            -2.70134040e-14 * tc[3];
+    }
     return;
 }
 
@@ -2611,7 +2725,7 @@ void molecularWeight(double * restrict  wt)
     return;
 }
 /* get temperature given internal energy in mass units and mass fracs */
-void get_t_given_ey_(double * restrict  e, double * restrict  y, int * iwrk, double * restrict  rwrk, double * restrict  t, int * ierr)
+void GET_T_GIVEN_EY(double * restrict  e, double * restrict  y, int * iwrk, double * restrict  rwrk, double * restrict  t, int * ierr)
 {
 #ifdef CONVERGENCE
     const int maxiter = 5000;
