@@ -31,7 +31,7 @@
 # Python
 
   export PYTHON_DIR=/usr
-  export PYTHON_VERSION=2.5
+  export PYTHON_VERSION=2.6
   export PYTHON_INCDIR=${PYTHON_DIR}/include/python${PYTHON_VERSION}
   export PYTHON_LIBDIR=${PYTHON_DIR}/lib/python${PYTHON_VERSION}
 
