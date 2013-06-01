@@ -959,7 +959,7 @@ c
       if (do_stiff .eq. 1) then
 #ifdef DO_AJAC
 c     backward difference solver with analytic jacobian
-         MF = 21
+         MF = -21
 #else
 c     backward difference solver with finite difference jacobian
          MF = 22

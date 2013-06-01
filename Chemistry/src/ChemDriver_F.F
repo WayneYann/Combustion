@@ -847,56 +847,28 @@ C
 #include "conp.H"
 #include "vode.H"
 
-      REAL_T FAC, DVNORM, SAVF(maxspec+1), FTEM(maxspec+1), R, YJ
-      REAL_T EWT(maxspec+1),C(maxspec), T, RHO_MKS, Jval, rat, FS
-      integer I, J, M, id
+      REAL_T C(maxspec), T
+      integer I, J, consP
+      parameter (consP=1)
 
       T = Y(Nspec+1)
-      C(1:Nspec) = Y(1:Nspec) * RPAR(NWTI:NWTI+Nspec-1) * 1.d3; 
-      call DWDOT(PD, C, T)
+C     molar concentration in cgs
+      C(1:Nspec) = Y(1:Nspec) * RPAR(NWTI:NWTI+Nspec-1) * 1.d-3;
+      call DWDOT(PD, C, T, consP)
       do J=1,Nspec
          do I=1,Nspec
             PD(I,J) = PD(I,J)*RPAR(NWTI+J-1)*RPAR(NWT+I-1)
          enddo
       enddo
+      J = Nspec + 1
       do I=1,Nspec
-         J = Nspec + 1
-         PD(I,J) = PD(I,J)*RPAR(NWT+I-1)*1.d-3
+         PD(I,J) = PD(I,J)*RPAR(NWT+I-1)*1.d3
       enddo
-
-c     Use numerical Jacobian for remaining elements
-c     (this really needs to be fixed...
-      CALL conpFY_sdc(NY, TIME, Y, SAVF, RPAR, IPAR)
-      do J = 1,NY
-         EWT(J) = RPAR(dvbr+LEWT+j-2)
+      I = Nspec + 1
+      do J=1,Nspec
+         PD(I,J) = PD(I,J)*RPAR(NWTI+J-1)*1.d-3
       enddo
-      do J = 1,NY
-        YJ = Y(J)
-        R = 1.d0 / EWT(J)
-        Y(J) = Y(J) + R
-        FAC = 1.d0 / R
-        call conpFY_sdc(N, TIME, Y, FTEM, RPAR, IPAR)
-#if 1
-        do I = NY,NY
-           PD(I,J) = (FTEM(I) - SAVF(I))*FAC
-        enddo
-#else
-        do I = 1,NY
-           Jval = (FTEM(I) - SAVF(I))*FAC
-           id = 0
-           if (Jval.ne.0) then
-              FS = ABS(Jval - PD(i,j))/ABS(Jval)
-              if (FS .gt. 1.d-5 .and. ABS(PD(i,j)) .gt. 1.e-10) id = 1
-           else
-              FS = -1
-           endif
-           if (id.eq.1) print *,I,J,Jval,PD(I,J),FS,id
-        enddo
-#endif
-        Y(J) = YJ
-      enddo
-      NFE = NFE + NY
-c      stop
+      NFE = NFE + 1
       END
 
 #else
