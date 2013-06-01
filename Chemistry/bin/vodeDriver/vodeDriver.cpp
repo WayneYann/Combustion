@@ -79,12 +79,17 @@ main (int   argc,
     }
     FArrayBox c_0(box,nSpec+1); c_0.setVal(0);
     FArrayBox I_R(box,nSpec+1);
+    double strt_time = ParallelDescriptor::second();
     cd.solveTransient_sdc(nstate,nstate,nstate,ostate,ostate,ostate,
                           c_0,I_R,funcCnt,box,sCompY,sCompRH,sCompT,dt,Patm,0,true);
 #else
+    double strt_time = ParallelDescriptor::second();
     cd.solveTransient(nstate,nstate,ostate,ostate,funcCnt,
                       box,sCompY,sCompT,dt,Patm);
 #endif
+
+    double stop_time = ParallelDescriptor::second();
+    std::cout << " ... solve time: " << stop_time-strt_time << '\n';
 
     std::cout << " ... total function evals: " << funcCnt.norm(1) << '\n';
     std::cout << " ... max evals at a point: " << funcCnt.norm(0) << '\n';
