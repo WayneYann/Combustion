@@ -1227,6 +1227,7 @@ C Multiply Jacobian by scalar, add identity, and do LU decomposition. --
  250    J = J + NP1
       NLU = NLU + 1
       CALL DGEFA (WM(3), N, N, IWM(31), IER)
+C wz LAPACK      CALL DGETRF (N, N, WM(3), N, IWM(31), IER)
       IF (IER .NE. 0) IERPJ = 1
       RETURN
       ENDIF
@@ -3568,6 +3569,7 @@ C
       IERSL = 0
       GO TO (100, 100, 300, 400, 400), MITER
  100  CALL DGESL (WM(3), N, N, IWM(31), X, 0)
+C wz LAPACK 100  CALL DGETRS ('N', N, 1, WM(3), N, IWM(31), X, N, lainfo)
       RETURN
 C
  300  PHRL1 = WM(2)
