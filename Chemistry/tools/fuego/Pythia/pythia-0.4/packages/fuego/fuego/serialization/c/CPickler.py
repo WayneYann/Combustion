@@ -190,6 +190,8 @@ class CPickler(CMill):
         self._productionRate(mechanism)
         self._vproductionRate(mechanism)
         self._DproductionRate(mechanism)
+        self._ajac(mechanism)
+        self._dthermodT(mechanism)
         self._progressRate(mechanism)
         self._progressRateFR(mechanism)
         self._equilibriumConstants(mechanism)
@@ -561,7 +563,9 @@ class CPickler(CMill):
             'void CKEQXP'+sym+'(double * restrict  P, double * restrict  T, double * restrict  x, int * iwrk, double * restrict rwrk, double * restrict  eqcon);',
             'void CKEQYR'+sym+'(double * restrict  rho, double * restrict  T, double * restrict  y, int * iwrk, double * restrict rwrk, double * restrict  eqcon);',
             'void CKEQXR'+sym+'(double * restrict  rho, double * restrict  T, double * restrict  x, int * iwrk, double * restrict rwrk, double * restrict  eqcon);',
-            'void DWDOT(double * restrict  J, double * restrict  sc, double * T);',
+            'void DWDOT(double * restrict  J, double * restrict  sc, double * T, int * consP);',
+            'void aJacobian(double * restrict J, double * restrict sc, double T, int consP);',
+            'void dcvpRdT(double * restrict  species, double * restrict  tc);',
             'void GET_T_GIVEN_EY(double * restrict  e, double * restrict  y, int * iwrk, double * restrict rwrk, double * restrict  t, int *ierr);',
             self.line('vector version'),
             'void vproductionRate(int npt, double * restrict wdot, double * restrict c, double * restrict T);',
@@ -677,7 +681,12 @@ class CPickler(CMill):
         self._speciesInternalEnergy(speciesInfo)
         self._speciesEnthalpy(speciesInfo)
         self._speciesEntropy(speciesInfo)
+        return
 
+
+    def _dthermodT(self, mechanism):
+        speciesInfo = self._analyzeThermodynamics(mechanism)
+        self._dcvpdT(speciesInfo)
         return
 
 
@@ -4242,449 +4251,547 @@ class CPickler(CMill):
 
         species_list = [x.symbol for x in mechanism.species()]
         nSpecies = len(species_list)
-        nReactions = len(mechanism.reaction())
 
         self._write()
         self._write(self.line('compute the reaction Jacobian'))
-        self._write('void DWDOT(double * restrict  J, double * restrict  sc, double * Tp)')
+        self._write('void DWDOT(double * restrict  J, double * restrict  sc, double * Tp, int * consP)')
         self._write('{')
         self._indent()
 
-        # declarations
-        self._write('double T = *Tp;')
-        self._write('double qdot, Kf[%d], Kr[%d], DKfDT[%d], DKrDT[%d];' % (nReactions, nReactions, nReactions, nReactions))
-        self._initializeRateCalculation(mechanism)
-        self._write('double invT2 = invT * invT;')
-        self._write('double invT3 = invT2 * invT;')
-
-        self._write('double earg[%d], prefac[%d];' % (nReactions,nReactions))
+        self._write('double c[%d];' % (nSpecies))
         self._write()
-
-        earg_str = []
-        prefac_str = []
-        dim = []
-        dTB = []
-        alphaTB = []
-        for reaction in mechanism.reaction():
-            earg_str.append(self._arrheniusArg(reaction, reaction.arrhenius))
-
-            dim.append(self._phaseSpaceUnits(reaction.reactants))
-
-            thirdBody = reaction.thirdBody
-            low = reaction.low
-            if not thirdBody:
-                uc = self._prefactorUnits(reaction.units["prefactor"], 1-dim[-1])
-            elif not low:
-                uc = self._prefactorUnits(reaction.units["prefactor"], -dim[-1])
-            else:
-                uc = self._prefactorUnits(reaction.units["prefactor"], 1-dim[-1])
-
-            A, beta, E = reaction.arrhenius
-            factor = A * uc.value
-            str = ""
-            if factor != 0:
-                str = "%g" % (factor)
-            prefac_str.append(str)
-
-            alphaTB.append('1')
-            dTB.append(defaultdict(list))
-            if thirdBody:
-               alphaTB[-1] = self._enhancement(mechanism, reaction)
-               sp3, c3 = reaction.thirdBody
-               eff3 = reaction.efficiencies
-               if not eff3:
-                   if sp3 == "<mixture>":
-                       for s in species_list:
-                           dTB[-1][s] = "1"
-                   else:
-                       dTB[-1][sp3] = "1"
-               else:
-                   v = {}
-                   if sp3 == "<mixture>":
-                       for s in species_list:
-                           v[s] = 1
-                   for s, effVal in eff3:
-                       v[s] += effVal - 1
-                   for s in species_list:
-                       if (v[s] != 0):
-                          dTB[-1][s] = "%g" % (v[s])
-
-        for i in range(nReactions):
-            self._write("earg[%d] = %s;" % (i, earg_str[i]))
-        self._write()
-
-        for i in range(nReactions):
-            self._write("prefac[%d] = %s;" % (i, prefac_str[i]))
-        self._write()
-
-        self._write('double alphaTB[%d];' % (nReactions))
-        for i in range(nReactions):
-            self._write("alphaTB[%d] = %s;" % (i, alphaTB[i]))
-        self._write()
-
-        self._write('for (int i = 0; i < %d; ++i) {' % (nReactions))
+        self._write('for (int k=0; k<%d; k++) {' % nSpecies)
         self._indent()
-        self._write("Kf[i] = prefac[i] * exp(earg[i]);")
+        self._write('c[k] = 1.e6 * sc[k];')
         self._outdent()
         self._write('}')
+
         self._write()
+        self._write('aJacobian(J, c, *Tp, *consP);')
 
-        dKarg_str = []
-        for reaction in mechanism.reaction():
-            dKarg_str.append(self._DarrheniusDT(reaction, reaction.arrhenius))
-
-        self._write(self.line(' Set (1/Kf) DKf/DT'))
-        for i in range(len(dKarg_str)):
-            self._write("DKfDT[%d] = %s;" % (i, dKarg_str[i]))
         self._write()
-
-        self._write(self.line(' Modify Kf and DKfDT for presure-dependent reactions'))
-        self._write('double dKfDC[%d], Pr, f, logPr;' % (nReactions))
-        for reaction in mechanism.reaction():
-            sri = reaction.sri
-            low = reaction.low
-            troe = reaction.troe
-            id = reaction.id -1
-
-            if low:
-                uc = self._prefactorUnits(reaction.units["prefactor"], 1-dim[id])
-                self._write("Pr = 1e-%d * alphaTB[%d] / Kf[%d] * %s;" 
-                   % (dim[id]*6,id,id,self._arrhenius(reaction, reaction.low)))
-                self._write("f = Pr / (1 + Pr);")
-                
-                if sri:
-                    
-                    print 'FIXME: Need to implement sri fit...reaction',id,'(0-based)'
-                    # self._write("logPred = log10(redP);")
-                
-                    # self._write("X = 1.0 / (1.0 + logPred*logPred);")
-                
-                    # divisor=-sri[2]
-                    # if abs(divisor) > 1e-100:
-                    #     SRI = "exp(X * log(%g*exp(%g/T) + exp(T/%g))" % (sri[0], -sri[1], divisor)
-                    # else:
-                    #     SRI = "exp(X * log(%g*exp(%g/T))" % (sri[0], -sri[1])
-                    # if len(sri) > 3:
-                    #     SRI += " * %g * exp(%g*tc[0])" % (sri[3], sri[4])
-                
-                    # self._write("F_sri = %s;" % SRI)
-                    # self._write("F *= Ftroe;")
-                
-                elif troe:
-                    self._write("logPr = log10(Pr);")
-                
-                    logF_cent = "logFcent = log10("
-                    if abs(troe[1]) > 1e-100:
-                        logF_cent += "(%g*exp(%+.20g*T))" % (1-troe[0], -1/troe[1])
-                    if abs(troe[2]) > 1e-100:
-                        logF_cent += "+ (%g*exp(%+.20g*T))" % (troe[0], -1/troe[2])
-                    if len(troe) == 4:
-                        logF_cent += "+ (exp(%g*invT))" % (-troe[3])
-                    logF_cent += ');'
-                    self._write(logF_cent)
-                    
-                    d = .14
-                    self._write("troe_c = -.4 - .67 * logFcent;")
-                    self._write("troe_n = .75 - 1.27 * logFcent;")
-                    self._write("troe = (troe_c + logPr) / (troe_n - .14*(troe_c + logPr));")
-                    self._write("F_troe = pow(10, logFcent / (1.0 + troe*troe));")
-
-                    if len(dTB[id]):
-                        self._write('dKfDC[%d] = F_troe*(1+f)*Pr/(f*alphaTB[%d]);' % (id,id))
-
-                    self._write("Kf[%d] *= f * F_troe / alphaTB[%d];" % (id,id))
-                    self._write("DKfDT[%d] = -f*DKfDT[%d] + (1+f)*(%s);" 
-                           % (id,id,self._DarrheniusDT(reaction, reaction.low)))
-                    self._write()
-
-                else:
-                    if len(dTB[id]):
-                        self._write('dKfDC[%d] = (1+f)*Pr/(f*alphaTB[%d]);' % (id,id))
-
-                    self._write("Kf[%d] *= f / alphaTB[%d];" % (id,id))
-                    self._write("DKfDT[%d] = -f*DKfDT[%d] + (1+f)*(%s);" 
-                           % (id,id,self._DarrheniusDT(reaction, reaction.low)))
-                    self._write()
-
-
-        self._write(self.line(' Set Kp_earg, where Kp = (refC)^{sumNuK} exp(Kp_earg)'))
-
-        self._write('double Kp_earg[%d];' % (nReactions))
-        conv_str = []
-        for i in range(nReactions):
-            reaction = mechanism.reaction()[i]
-            dG = self._Kc_exparg(mechanism, reaction)
-            self._write("Kp_earg[%d] = %s;" % (i, dG))
-        self._write()
-
-        sumNuK = []
-        nuK = []
-        nu1 = []
-        nu2 = []
-        self._write(self.line(' Initialize Kr to 1/(refC)^{sumNuK} = Kp / Kc'))
-        for reaction in mechanism.reaction():            
-            nuK.append(defaultdict(int))
-            nu1.append(defaultdict(int))
-            nu2.append(defaultdict(int))
-            for symbol, coefficient in reaction.reactants:
-                nu1[-1][symbol] += coefficient
-                nuK[-1][symbol] -= coefficient
-            for symbol, coefficient in reaction.products:
-                nu2[-1][symbol] += coefficient
-                nuK[-1][symbol] += coefficient
-            sumNuK.append(sum(nuK[-1].itervalues()))
-
-            s = sumNuK[-1]
-            # Build the inverse of the conversion factor
-            if s == 0:
-                conversion = "1"
-            elif s > 0:
-                conversion = "*".join(["refCinv"] * s)
-            else:
-                conversion = "*".join(["refC"] * -s)
-            conv_str.append(conversion)
-            id = reaction.id - 1 
-            self._write("Kr[%d] = %s;   " % (id, conv_str[id]) + self.line(' sum(nuK[%d]) = ' % (id)+ '%d' % s + '  '))
-        self._write()
-
-        self._write(self.line(' Now Kr = Kf / Kc'))
-        self._write('for (int i = 0; i < %d; ++i) {' % (nReactions))
+        self._write('/* dwdot[k]/dT */')
+        self._write('for (int k=0; k<%d; k++) {' % nSpecies)
         self._indent()
-        self._write("Kr[i] *= Kf[i] * exp(-Kp_earg[i]);")
+        self._write('J[%d+k] *= 1.e-6;' % (nSpecies*(nSpecies+1)))
         self._outdent()
         self._write('}')
+
         self._write()
-
-        self._write('double h_RT[%d];                ' % nSpecies
-                    + self.line('species enthalpy'))
-        self._write('speciesEnthalpy(h_RT, tc);')
-        self._write()
-
-        self._write(self.line(' Initialize (1/Kr) dKrDT to (dKcDT / Kc) = invT*(Sum[nuK] - Sum[nuK.h_RTK]'))
-        for i in range(len(conv_str)):
-            sum_nuK_times_h_RT = []
-
-            for symbol in nuK[i].keys():
-                nu = nuK[i][symbol]
-                if nu != 0:
-                   if nu == 1:
-                      sum_nuK_times_h_RT.append('h_RT[%d]' % (mechanism.species(symbol).id))
-                   elif nu == -1:
-                       sum_nuK_times_h_RT.append('-h_RT[%d]' % (mechanism.species(symbol).id))
-                   else:
-                       sum_nuK_times_h_RT.append('(%d*h_RT[%d])' % (nu, mechanism.species(symbol).id))
-            sum_nuK_times_h_RT = " + ".join(sum_nuK_times_h_RT)
-
-            str = "DKrDT[%d] = invT*(" % (i)
-            if sumNuK[i] != 0:
-                str += "%d" % (sumNuK[i])
-            str += " - (" + sum_nuK_times_h_RT + ") );"
-            self._write(str)
-        self._write()
-
-
-        self._write(self.line(' Now (1/Kr) DKrDT = (1 / Kc).dKcDT [partially computed above]'))
-        self._write('for (int i = 0; i < %d; ++i) {' % (nReactions))
+        self._write('/* dTdot/d[X] */')
+        self._write('for (int k=0; k<%d; k++) {' % nSpecies)
         self._indent()
-        self._write("DKrDT[i] = DKfDT[i] + DKrDT[i];")
+        self._write('J[k*%d+%d] *= 1.e6;' % (nSpecies+1, nSpecies))
         self._outdent()
         self._write('}')
-        self._write()
-
-        J = defaultdict(lambda: defaultdict(lambda: []))
-
-        phi_f_i = []
-        phi_r_i = []
-
-        for reaction in mechanism.reaction():
-
-            phi_f = []
-            phi_r = []
-            dphi_f = defaultdict(lambda: [])
-            dphi_r = defaultdict(lambda: [])
-            id = reaction.id - 1
-
-            for symbol in nu1[id].keys():
-                coefficient = nu1[id][symbol]
-                conc = "sc[%d]" % mechanism.species(symbol).id
-                #conc = "sc[%s]" % symbol
-                phi_f += [conc] * coefficient
-                for symbol1 in nu1[id].keys():
-                    coefficient1 = nu1[id][symbol]
-                    if symbol == symbol1:
-                        if coefficient > 1:
-                          dphi_f[symbol1] +=  ["%d" % (coefficient)] + [conc] * (coefficient-1)
-                        else:
-                          dphi_f[symbol1] +=  "1"
-                    else:
-                        dphi_f[symbol1] += [conc] * coefficient
-
-            for symbol in nu2[id].keys():
-                coefficient = nu2[id][symbol]
-                conc = "sc[%d]" % mechanism.species(symbol).id
-                #conc = "sc[%s]" % symbol
-                phi_r += [conc] * coefficient
-                for symbol1 in nu2[id].keys():
-                    coefficient1 = nu2[id][symbol]
-                    if symbol == symbol1:
-                        if coefficient > 1:
-                          dphi_r[symbol1] +=  ["%d" % (coefficient)] + [conc] * (coefficient-1)
-                        else:
-                          dphi_r[symbol1] +=  "1"
-                    else:
-                        dphi_r[symbol1] += [conc] * coefficient
-
-            for v in dphi_f.keys():
-                l = dphi_f[v]
-                if len(l) > 1:
-                    t = []
-                    for c in l:
-                        if c != '1':
-                            t.append(c)
-                    dphi_f[v] = t
-
-            for v in dphi_r.keys():
-                l = dphi_r[v]
-                if len(l) > 1:
-                    t = []
-                    for c in l:
-                        if c != '1':
-                            t.append(c)
-                    dphi_r[v] = t
-
-            phi_f = "*".join(phi_f)
-            phi_r = "*".join(phi_r)
-
-            phi_f_i.append(phi_f)
-            phi_r_i.append(phi_r)
-
-            dQdC = defaultdict(lambda: [])
-            tmp = defaultdict(lambda: [])
-            for symbol in nu1[id].keys():
-                coefficient = nu1[id][symbol]
-                if len(dphi_f[symbol]) > 0:
-                   if len(dphi_f[symbol]) != 1:
-                      tmp[symbol] = "*".join(dphi_f[symbol])
-                   else:
-                      tmp[symbol] = dphi_f[symbol][0]
-            dphi_f = tmp
-            
-            for symbol in dphi_f.keys():
-                if len(dphi_f[symbol]) > 0:
-                    dQdC[symbol].append('+(%s)*' % (dphi_f[symbol]) + 'Kf[%d]' % (id) )
-
-            tmp = defaultdict(lambda: [])
-            for symbol in nu2[id].keys():
-                coefficient = nu2[id][symbol]
-                if len(dphi_r[symbol]) > 0:
-                   if len(dphi_r[symbol]) != 1:
-                      tmp[symbol] = "*".join(dphi_r[symbol])
-                   else:
-                      tmp[symbol] = dphi_r[symbol][0]
-            dphi_r = tmp
-
-            for symbol in dphi_r.keys():
-                if len(dphi_r[symbol]) > 0:
-                    dQdC[symbol].append('-(%s)*' % (dphi_r[symbol]) + 'Kr[%d]' % (id) )
-            
-            for sym in dQdC.keys():
-                dQdC[sym] = "+".join(dQdC[sym])
-
-            TBderivs = dTB[id]
-            if TBderivs != defaultdict(float):
-                for k in TBderivs.keys():
-                    str = TBderivs[k] + '*'
-                    if TBderivs[k] == '1':
-                       str = ''
-                    str += 'DQDa[%d]' % (id)
-                    if dQdC[k] != []:
-                       dQdC[k] += ' + ' + str
-                    else:
-                       dQdC[k] = str
-
-            for col in dQdC.keys():
-                for row in dQdC.keys():
-                    v = nuK[id][col]
-                    if dQdC[row] != [] and v != 0:
-                       str2 = '(' + dQdC[row] + ')'
-                       str = '(%d)*(%s)' % (v,str2)
-
-                       J[col][row].append(str)
-
-            for col in dQdC.keys():
-                if nuK[id][col] != 0:
-                   J[col]['Temp'].append(' (%d)*DQDT[%d] ' % (nuK[id][col],id))
-
-
-        productionRate = {}
-        for symbol in species_list:
-            productionRate[symbol] = []
-            for reaction in mechanism.reaction():
-                id = reaction.id - 1
-                if nuK[id][symbol] != 0:
-                   productionRate[symbol].append('(%d) * (Kf[%d] * (%s) - Kr[%d] * (%s))' % 
-                                                       (nuK[id][symbol],id,phi_f_i[id],id,phi_r_i[id]))
-
-        self._write(self.line(' Form qfwd, qrev'))
-        self._write('double qfwd[%d], qrev[%d];'  % (nReactions,nReactions))
-        for reaction in mechanism.reaction():
-            id = reaction.id - 1
-            self._write(self.line('   %d: %s  ' % (id, reaction.equation())))
-            self._write("qfwd[%d] = Kf[%d] * (%s);" % (id,id,phi_f_i[id]))
-            self._write("qrev[%d] = Kr[%d] * (%s);" % (id,id,phi_r_i[id]))
-            self._write()
-        self._write()
-
-        self._write('double DQDa[%d], DQDT[%d];' % (nReactions, nReactions))
-        self._write('for (int i = 0; i < %d; ++i) {' % (nReactions))
-        self._indent()
-        self._write("DQDa[i] = qfwd[i] - qrev[i];" + self.line(' Note: No alpha'))
-        self._write("Kf[i] *= alphaTB[i];")
-        self._write("Kr[i] *= alphaTB[i];")
-        self._write("DQDT[i] = alphaTB[i] * (DKfDT[i] * qfwd[i] - DKrDT[i] * qrev[i]);")
-        self._outdent()
-        self._write('}')
-        self._write()
-
-        # Form Jacobian elements.  NOTE: J[a][b] is the derivative of the molar production
-        #  rate of "b" wrt the molar concentration of "a" or temperature.
-        for c in J:
-            for r in J[c]:
-                J[c][r] = "+".join(J[c][r])
-
-        self._write(self.line(' Jacobian elements, J_ij = domega_i/d_Cj = J[(i*M + j]'))
-        self._write()
-
-        independent_variables = species_list + ['Temp']
-        for j in range(nSpecies):
-            offset = j * (nSpecies+1)
-            col = species_list[j]
-
-            str = 'ProductionRate['+col+'] = '
-            if productionRate[col] != []:
-               productionRate[col] = "\n      "+"+\n      ".join(productionRate[col])
-               self._write(self.line(str + '%s' % (productionRate[col]) + ';'))
-            else:
-               self._write(self.line(str + '0;'))
-            self._write()
-
-            for i in range(nSpecies+1):
-                row = independent_variables[i]
-                str = 'J[%d] = ' % (j + i*(nSpecies+1))
-                if J[col][row] == []:
-                   str += '0'
-                else:
-                   str += J[col][row]
-                str += ";"
-                self._write(self.line('D(ProductionRate['+col+'])/D(['+row+'])'))
-                self._write(str)
-                self._write()
 
         self._write()
         self._write('return;')
         self._outdent()
 
         self._write('}')
+
+        return
+
+
+    def _ajac(self, mechanism):
+
+        nSpecies = len(mechanism.species())
+        nReactions = len(mechanism.reaction())
+
+        self._write()
+        self._write(self.line('compute the reaction Jacobian'))
+        self._write('void aJacobian(double * restrict J, double * restrict sc, double T, int consP)')
+        self._write('{')
+        self._indent()
+
+        self._write('for (int i=0; i<%d; i++) {' % (nSpecies+1)**2)
+        self._indent()
+        self._write('J[i] = 0.0;')
+        self._outdent()
+        self._write('}')
+        
+        self._write()
+
+        self._write('double wdot[%d];' % (nSpecies))
+        self._write('for (int k=0; k<%d; k++) {' % (nSpecies))
+        self._indent()
+        self._write('wdot[k] = 0.0;')
+        self._outdent()
+        self._write('}')
+        
+        self._write()
+
+        self._write('double tc[] = { log(T), T, T*T, T*T*T, T*T*T*T }; /*temperature cache */')
+        self._write('double invT = 1.0 / tc[1];')
+        self._write('double invT2 = invT * invT;')
+
+        self._write()
+
+        self._write(self.line('reference concentration: P_atm / (RT) in inverse mol/m^3'))
+        self._write('double refC = %g / %g / T;' % (atm.value, R.value))
+        self._write('double refCinv = 1 / refC;')
+
+        self._write()
+
+        self._write(self.line('compute the mixture concentration'))
+        self._write('double mixture = 0.0;')
+        self._write('for (int k = 0; k < %d; ++k) {' % nSpecies)
+        self._indent()
+        self._write('mixture += sc[k];')
+        self._outdent()
+        self._write('}')
+
+        self._write()
+
+        self._write(self.line('compute the Gibbs free energy'))
+        self._write('double g_RT[%d];' % (nSpecies))
+        self._write('gibbs(g_RT, tc);')
+
+        self._write()
+
+        self._write(self.line('compute the species enthalpy'))
+        self._write('double h_RT[%d];' % (nSpecies))
+        self._write('speciesEnthalpy(h_RT, tc);')
+
+        self._write()
+
+        self._write('double phi_f, k_f, k_r, phi_r, Kc, q, q_nocor, Corr, alpha;') 
+        self._write('double dlnkfdT, dlnk0dT, dlnKcdT, dkrdT, dqdT;')
+        self._write('double dcdc_fac, dqdc[%d];' % (nSpecies))
+        self._write('double Pr, fPr, F, k_0, logPr;') 
+        self._write('double logFcent, troe_c, troe_n, troePr_den, troePr, troe;')
+        self._write('double Fcent1, Fcent2, Fcent3, Fcent;')
+        self._write('double dlogFdc, dlogFdn, dlogFdcn_fac;')
+        self._write('double dlogPrdT, dlogfPrdT, dlogFdT, dlogFcentdT, dlogFdlogPr, dlnCorrdT;')
+        self._write('const double ln10 = log(10.0);')
+        self._write('const double log10e = 1.0/log(10.0);')
+
+        for i, reaction in zip(range(nReactions), mechanism.reaction()):
+
+            lt = reaction.lt
+            if lt:
+                print "Landau-Teller reactions are not supported"
+                sys.exit(1)
+
+            self._write(self.line('reaction %d: %s' % (i+1, reaction.equation())))
+            if reaction.low:  # case 1
+                self._write(self.line('a pressure-fall-off reaction'))
+                self._ajac_reaction(mechanism, reaction, 1)
+            elif reaction.thirdBody:  # case 2
+                self._write(self.line('a third-body and non-pressure-fall-off reaction'))
+                self._ajac_reaction(mechanism, reaction, 2)
+            else:  # case 3
+                self._write(self.line('a non-third-body and non-pressure-fall-off reaction'))
+                self._ajac_reaction(mechanism, reaction, 3)
+            self._write()
+
+        self._write('double c_R[%d], dcRdT[%d], e_RT[%d];' % (nSpecies, nSpecies, nSpecies))
+        self._write('double * eh_RT;')
+        self._write('if (consP) {')
+        self._indent()
+
+        self._write('cp_R(c_R, tc);')
+        self._write('dcvpRdT(dcRdT, tc);')
+        self._write('eh_RT = &h_RT[0];');
+
+        self._outdent()
+        self._write('}')
+        self._write('else {')
+        self._indent()
+
+        self._write('cv_R(c_R, tc);')
+        self._write('dcvpRdT(dcRdT, tc);')
+        self._write('speciesInternalEnergy(e_RT, tc);');
+        self._write('eh_RT = &e_RT[0];');
+
+        self._outdent()
+        self._write('}')
+
+        self._write()
+
+        self._write('double cmix = 0.0, ehmix = 0.0, dcmixdT=0.0, dehmixdT=0.0;')
+        self._write('for (int k = 0; k < %d; ++k) {' % nSpecies)
+        self._indent()
+        self._write('cmix += c_R[k]*sc[k];')
+        self._write('dcmixdT += dcRdT[k]*sc[k];')
+        self._write('ehmix += eh_RT[k]*wdot[k];')
+        self._write('dehmixdT += invT*(c_R[k]-eh_RT[k])*wdot[k] + eh_RT[k]*J[%d+k];' % \
+                        (nSpecies*(nSpecies+1)))
+        self._outdent()
+        self._write('}')
+
+        self._write()
+        self._write('double cmixinv = 1.0/cmix;')
+        self._write('double tmp1 = ehmix*cmixinv;')
+        self._write('double tmp3 = cmixinv*T;')
+        self._write('double tmp2 = tmp1*tmp3;')
+        self._write('double dehmixdc;')
+
+        self._write('/* dTdot/d[X] */')
+        self._write('for (int k = 0; k < %d; ++k) {' % nSpecies)
+        self._indent()
+        self._write('dehmixdc = 0.0;')
+        self._write('for (int m = 0; m < %d; ++m) {' % nSpecies)
+        self._indent()
+        self._write('dehmixdc += eh_RT[m]*J[k*%s+m];' % (nSpecies+1))
+        self._outdent()
+        self._write('}')        
+        self._write('J[k*%d+%d] = tmp2*c_R[k] - tmp3*dehmixdc;' % (nSpecies+1,nSpecies))
+        self._outdent()
+        self._write('}')
+
+        self._write('/* dTdot/dT */')
+        self._write('J[%d] = -tmp1 + tmp2*dcmixdT - tmp3*dehmixdT;' % \
+                        (nSpecies*(nSpecies+1)+nSpecies))
+
+        self._outdent()
+        self._write('}')
+        return
+
+    def _ajac_reaction(self, mechanism, reaction, rcase):
+
+        if rcase == 1: # pressure-dependent reaction
+            isPD = True
+            uc = self._prefactorUnits(reaction.units["prefactor"], 
+                                      1-self._phaseSpaceUnits(reaction.reactants))
+            if reaction.thirdBody:
+                has_alpha = True
+                self._write('/* also 3-body */')
+            else:
+                has_alpha = False
+                self._write('/* non 3-body */')
+                print 'FIXME: pressure dependent non-3-body reaction in _ajac_reaction'
+                sys.exit(1)
+        elif rcase == 2: # third-body and non-pressure-dependent reaction
+            isPD = False
+            uc = self._prefactorUnits(reaction.units["prefactor"], 
+                                      -self._phaseSpaceUnits(reaction.reactants))
+            has_alpha = True
+        elif rcase == 3: # simple non-third and non-pressure-dependent reaction
+            isPD = False
+            has_alpha = False
+            uc = self._prefactorUnits(reaction.units["prefactor"], 
+                                      1-self._phaseSpaceUnits(reaction.reactants))
+        else:
+            print '_ajac_reaction: wrong case ', rcase
+            exit(1)
+
+        nSpecies = len(mechanism.species())
+        rea_dict = {}
+        pro_dict = {}
+        all_dict = {}
+        sumNuk = 0
+        for symbol, coefficient in reaction.reactants:
+            k = mechanism.species(symbol).id
+            sumNuk -= coefficient
+            if k in rea_dict:
+                coe_old = rea_dict[k][1]
+                rea_dict[k] = (symbol, coefficient+coe_old)
+            else:
+                rea_dict[k] = (symbol,  coefficient)
+        for symbol, coefficient in reaction.products:
+            k = mechanism.species(symbol).id
+            sumNuk += coefficient
+            if k in pro_dict:
+                coe_old = pro_dict[k][1]
+                pro_dict[k] = (symbol, coefficient+coe_old)
+            else:
+                pro_dict[k] = (symbol, coefficient)
+        for k in range(nSpecies):
+            if k in rea_dict and k in pro_dict:
+                sr, nur = rea_dict[k]
+                sp, nup = pro_dict[k]
+                all_dict[k] = (sr, nup-nur)
+            elif k in rea_dict:
+                sr, nur = rea_dict[k]
+                all_dict[k] = (sr, -nur)
+            elif k in pro_dict:
+                sp, nup = pro_dict[k]
+                all_dict[k] = (sp, nup)
+
+        sorted_reactants = sorted(rea_dict.values())
+        sorted_products = sorted(pro_dict.values()) 
+
+        if not reaction.reversible:
+            for k in range(nSpecies):
+                if k in sorted_reactants and k in sorted_products:
+                    print 'FIXME: inreversible reaction in _ajac_reaction may not work'
+                    self._write('/* FIXME: inreversible reaction in _ajac_reaction may not work*/')
+
+        if isPD:
+            Corr_s = 'Corr *'
+        elif has_alpha:
+            Corr_s = 'alpha * '
+        else:
+            Corr_s = ''
+
+        if has_alpha:
+            self._write("/* 3-body correction factor */")
+            self._write("alpha = %s;" % self._enhancement(mechanism, reaction))
+
+        # forward
+        self._write('/* forward */')
+        self._write("phi_f = %s;" % self._phaseSpace(mechanism, sorted_reactants))
+        #
+        arrhenius = self._arrhenius(reaction, reaction.arrhenius)
+        self._write("k_f = %g * %s;" % (uc.value, arrhenius))
+        Dlnarrhenius = self._Dlnarrhenius(reaction, reaction.arrhenius)
+        self._write("dlnkfdT = %s;" % (Dlnarrhenius))
+
+        if isPD:
+            self._write('/* pressure-fall-off */')
+            k_0 = self._arrhenius(reaction, reaction.low)
+            self._write('k_0 = %s;' % k_0)
+            dim = self._phaseSpaceUnits(reaction.reactants)
+            self._write('Pr = 1.e-%d * alpha / k_f * k_0;' % (dim*6))
+            self._write('fPr = Pr / (1.0+Pr);')
+            Dlnarrhenius = self._Dlnarrhenius(reaction, reaction.low)
+            self._write("dlnk0dT = %s;" % (Dlnarrhenius))
+            self._write('dlogPrdT = log10e*(dlnk0dT - dlnkfdT);')
+            self._write('dlogfPrdT = dlogPrdT / (1.0+Pr);')
+            if reaction.sri:
+                self._write('/* SRI form */')
+                print "FIXME: sri not supported in _ajac_reaction yet"
+                sys.exit(1)
+            elif reaction.troe:
+                self._write('/* Troe form */')
+                troe = reaction.troe
+                self._write("logPr = log10(Pr);")
+
+                if abs(troe[1]) > 1e-100:
+                    self._write('Fcent1 = %g*exp(T*%g);' % (1-troe[0], -1.0/troe[1]))
+                else:
+                    self._write('Fcent1 = 0.0;')
+                if abs(troe[2]) > 1e-100:
+                    self._write('Fcent2 = %g*exp(T*%g);' % (troe[0], -1.0/troe[2]))
+                else:
+                    self._write('Fcent2 = 0.0;')
+                if len(troe) == 4:
+                    self._write('Fcent3 = exp(%g/T);' % (-troe[3]))
+                Fcent = "Fcent = Fcent1 + Fcent2"
+                if len(troe) == 4:
+                    Fcent += "+ Fcent3;"
+                else:
+                    Fcent += ";"
+                self._write(Fcent);
+                self._write("logFcent = log10(Fcent);")
+
+                d = .14
+                self._write("troe_c = -.4 - .67 * logFcent;")
+                self._write("troe_n = .75 - 1.27 * logFcent;")
+                self._write("troePr_den = 1.0 / (troe_n - .14*(troe_c + logPr));")
+                self._write("troePr = (troe_c + logPr) * troePr_den;")
+                self._write("troe = 1.0 / (1.0 + troePr*troePr);")
+                self._write("F = pow(10.0, logFcent * troe);")
+
+                dlogFcentdT = "dlogFcentdT = log10e/Fcent*("
+                if abs(troe[1]) > 1e-100:
+                    dlogFcentdT += "Fcent1*%g" % (-1.0/troe[1])
+                else:
+                    dlogFcentdT += "0.0"
+                if abs(troe[2]) > 1e-100:
+                    dlogFcentdT += " + Fcent2*%g" % (-1.0/troe[2])
+                if len(troe) == 4:
+                    dlogFcentdT += " + Fcent3*%g*invT2" % (troe[3])
+                dlogFcentdT += ');'
+                self._write(dlogFcentdT)
+
+                self._write("dlogFdcn_fac = logFcent * troe*troe * troePr * troePr_den;")
+                self._write('dlogFdc = -troe_n * dlogFdcn_fac * troePr_den;')
+                self._write('dlogFdn = 2. * dlogFdcn_fac * troePr;')
+                self._write('dlogFdlogPr = dlogFdc;')
+                self._write('dlogFdT = dlogFcentdT*(troe - 0.67*dlogFdc - 1.27*dlogFdn) + dlogFdlogPr * dlogPrdT;')
+            else:
+                self._write('/* Lindemann form */')
+                self._write('F = 1.0;')
+                self._write('dlogFdlogPr = 0.0;')
+                self._write('dlogFdT = 0.0;')
+
+        # reverse
+        if not reaction.reversible:
+            self._write('/* rate of progress */')
+            if (not has_alpha) and (not isPD):
+                self._write('q = k_f*phi_f;')
+            else:
+                self._write('q_nocor = k_f*phi_f;')
+                if isPD:
+                    self._write('Corr = fPr * F;')
+                    self._write('q = Corr * q_nocor;')
+                else: 
+                    self._write('q = alpha * q_nocor;')
+
+            if isPD:
+                self._write('dlnCorrdT = ln10*(dlogfPrdT + dlogFdT);')
+                self._write('dqdT = %sdlnkfdT*k_f*phi_f + dlnCorrdT*q;' % Corr_s)
+            else:
+                self._write('dqdT = %sdlnkfdT*k_f*phi_f;' % Corr_s)
+        else:
+            self._write('/* reverse */')
+            self._write("phi_r = %s;" % self._phaseSpace(mechanism, sorted_products))
+            self._write('Kc = %s;' % self._sortedKc(mechanism, reaction))
+            self._write('k_r = k_f / Kc;')
+
+            dlnKcdT_s = 'invT * ('
+            terms = []
+            for symbol, coefficient in sorted_reactants:
+                k = mechanism.species(symbol).id
+                if coefficient == 1:
+                    terms.append('h_RT[%d]' % (k))
+                else:
+                    terms.append('%d*h_RT[%d]' % (coefficient, k))
+            dlnKcdT_s += '-(' + ' + '.join(terms) + ')'
+            terms = []
+            for symbol, coefficient in sorted_products:
+                k = mechanism.species(symbol).id
+                if coefficient == 1:
+                    terms.append('h_RT[%d]' % (k))
+                else:
+                    terms.append('%d*h_RT[%d]' % (coefficient, k))
+            dlnKcdT_s += ' + (' + ' + '.join(terms) + ')'
+            if sumNuk > 0:
+                dlnKcdT_s += ' - %d' % sumNuk
+            elif sumNuk < 0:
+                dlnKcdT_s += ' + %d' % (-sumNuk)
+            dlnKcdT_s += ')'
+            self._write('dlnKcdT = %s;' % dlnKcdT_s)
+
+            self._write('dkrdT = (dlnkfdT - dlnKcdT)*k_r;')
+
+            self._write('/* rate of progress */')
+            if (not has_alpha) and (not isPD):
+                self._write('q = k_f*phi_f - k_r*phi_r;')
+            else:
+                self._write('q_nocor = k_f*phi_f - k_r*phi_r;')
+                if isPD:
+                    self._write('Corr = fPr * F;')
+                    self._write('q = Corr * q_nocor;')
+                else: 
+                    self._write('q = alpha * q_nocor;')
+
+            if isPD:
+                self._write('dlnCorrdT = ln10*(dlogfPrdT + dlogFdT);')
+                self._write('dqdT = %s(dlnkfdT*k_f*phi_f - dkrdT*phi_r) + dlnCorrdT*q;' % Corr_s)
+            else:
+                self._write('dqdT = %s(dlnkfdT*k_f*phi_f - dkrdT*phi_r);' % Corr_s)
+
+        self._write("/* update wdot */")
+        for k in sorted(all_dict.keys()):
+            s, nu = all_dict[k]
+            if nu == 1:
+                self._write('wdot[%d] += q; /* %s */' % (k, s))
+            elif nu == -1:
+                self._write('wdot[%d] -= q; /* %s */' % (k, s))
+            elif nu > 0:
+                self._write('wdot[%d] += %g * q; /* %s */' % (k, nu, s))
+            elif nu < 0:
+                self._write('wdot[%d] -= %g * q; /* %s */' % (k, -nu, s))
+
+        if isPD:
+            self._write('/* for convenience */')
+            self._write('k_f *= Corr;')
+            if reaction.reversible:
+                self._write('k_r *= Corr;')
+        elif has_alpha:
+            self._write('/* for convenience */')
+            self._write('k_f *= alpha;')
+            if reaction.reversible:
+                self._write('k_r *= alpha;')
+
+        if isPD:
+            self._write('dcdc_fac = q/alpha*(1.0/(Pr+1.0) + dlogFdlogPr);')
+
+        def dqdc_simple(dqdc_s, k):
+            if k in sorted(rea_dict.keys()):
+                dps = self._DphaseSpace(mechanism,sorted_reactants,rea_dict[k][0])
+                if dps == "1.0":
+                    dps_s = ''
+                else:
+                    dps_s = '*'+dps
+                dqdc_s += ' + k_f%s' % dps_s
+            if reaction.reversible:
+                if k in sorted(pro_dict.keys()):
+                    dps = self._DphaseSpace(mechanism,sorted_products,pro_dict[k][0])
+                    if dps == "1.0":
+                        dps_s = ''
+                    else:
+                        dps_s = '*'+dps
+                    dqdc_s += ' - k_r%s' % dps_s
+            return dqdc_s
+
+        if has_alpha or isPD:
+
+            self._write('if (consP) {')
+            self._indent()
+
+            for k in range(nSpecies):
+                dqdc_s = ''
+                dcdc = self._Denhancement(mechanism,reaction,k,True)
+                if dcdc == 0.0:
+                    dqdc_s += ' 0.0'
+                else:
+                    if isPD:
+                        dqdc_s +=' %g*dcdc_fac'%dcdc
+                    elif has_alpha:
+                        dqdc_s +=' %g*q_nocor'%dcdc
+                dqdc_s = dqdc_simple(dqdc_s,k)
+                if dqdc_s:
+                    self._write('dqdc[%d] = %s;' % (k,dqdc_s))
+
+            self._outdent()
+            self._write('}')
+            self._write('else {')
+            self._indent()
+
+            for k in range(nSpecies):
+                dqdc_s = ''
+                dcdc = self._Denhancement(mechanism,reaction,k,False)
+                if dcdc == 0.0:
+                    dqdc_s += ' 0.0'
+                else:
+                    if isPD:
+                        dqdc_s +=' %g*dcdc_fac'%dcdc
+                    elif has_alpha:
+                        dqdc_s +=' %g*q_nocor'%dcdc
+                dqdc_s = dqdc_simple(dqdc_s,k)
+                if dqdc_s:
+                    self._write('dqdc[%d] = %s;' % (k,dqdc_s))
+
+            self._outdent()
+            self._write('}')
+
+            self._write('for (int k=0; k<%d; k++) {' % nSpecies)
+            self._indent()
+            for m in sorted(all_dict.keys()):
+                self._write('J[%d*k+%d] += %g * dqdc[k];' % ((nSpecies+1), m, all_dict[m][1]))
+            self._outdent()
+            self._write('}')
+
+            for m in sorted(all_dict.keys()):
+                self._write('J[%d] += %g * dqdT; /* dwdot[%s]/dT */' % \
+                                (nSpecies*(nSpecies+1)+m, all_dict[m][1], all_dict[m][0]))
+
+        else:
+
+            for k in range(nSpecies):
+                dqdc_s = dqdc_simple('',k)
+                if dqdc_s:
+                    self._write('dqdc[%d] = %s;' % (k,dqdc_s))
+
+            for k in sorted(all_dict.keys()):
+                if reaction.reversible or k in rea_dict:
+                    self._write('/* d()/d[%s] */' % all_dict[k][0])
+                    for m in sorted(all_dict.keys()):
+                        if all_dict[m][1] != 0:
+                            s1 = 'J[%d] += %g * dqdc[%d];' % (k*(nSpecies+1)+m, all_dict[m][1], k)
+                            s2 = '/* dwdot[%s]/d[%s] */' % (all_dict[m][0], all_dict[k][0])
+                            self._write(s1.ljust(30) + s2)
+            self._write('/* d()/dT */')
+            for m in sorted(all_dict.keys()):
+                if all_dict[m][1] != 0:
+                    s1 = 'J[%d] += %g * dqdT;' % (nSpecies*(nSpecies+1)+m, all_dict[m][1])
+                    s2 = '/* dwdot[%s]/dT */' % (all_dict[m][0])
+                    self._write(s1.ljust(30) + s2)
 
         return
 
@@ -5504,6 +5611,19 @@ class CPickler(CMill):
         expr += ")"
         return expr
 
+    def _Dlnarrhenius(self, reaction, parameters):
+        A, beta, E = parameters
+        if A == 0 or (E == 0 and beta == 0):
+            return '0.0'
+        elif E == 0 and beta != 0:
+            return '%g * invT' % beta
+        elif E!= 0 and beta == 0:
+            ucE = self._activationEnergyUnits(reaction.units["activation"])
+            return '%.20g * invT2' % (ucE*E/Rc/kelvin)
+        else:
+            ucE = self._activationEnergyUnits(reaction.units["activation"])
+            return '%g * invT + %+.20g * invT2' % (beta, ucE*E/Rc/kelvin)
+
     def _varrhenius(self, reaction, parameters):
         A, beta, E = parameters
         if A == 0:
@@ -5525,7 +5645,7 @@ class CPickler(CMill):
     def _DarrheniusDT(self, reaction, parameters):
         A, beta, E = parameters
         if A == 0:
-            return ""
+            return "0.0"
 
         expr = ''
         if E == 0:
@@ -5616,6 +5736,26 @@ class CPickler(CMill):
         return "*".join(phi)
 
 
+    def _DphaseSpace(self, mechanism, reagents, r):
+
+        phi = []
+
+        for symbol, coefficient in reagents:
+            if symbol == r:
+                if coefficient > 1:
+                    conc = "sc[%d]" % mechanism.species(symbol).id
+                    phi += ["%d" % coefficient]
+                    phi += [conc] * (coefficient-1)
+            else:
+                conc = "sc[%d]" % mechanism.species(symbol).id
+                phi += [conc] * coefficient
+
+        if phi:
+            return "*".join(phi)
+        else:
+            return "1.0"
+
+
     def _vphaseSpace(self, mechanism, reagents):
 
         phi = []
@@ -5660,6 +5800,38 @@ class CPickler(CMill):
                 alpha.append("%g*%s" % (factor, conc))
 
         return " + ".join(alpha)
+
+    def _Denhancement(self, mechanism, reaction, kid, consP):
+        thirdBody = reaction.thirdBody
+        if not thirdBody:
+            import pyre
+            pyre.debug.Firewall.hit("_enhancement called for a reaction without a third body")
+            return
+
+        species, coefficient = thirdBody
+        efficiencies = reaction.efficiencies
+
+        if not efficiencies:
+            if species == "<mixture>":
+                if consP:
+                    return 0.0
+                else:
+                    return 1.0
+            elif mechanism.species(species).id == kid:
+                return 1.0
+            else:
+                return 0.0
+        else:
+            if consP:
+                for symbol, efficiency in efficiencies:
+                    if mechanism.species(symbol).id == kid:
+                        return efficiency-1.0
+                return 0.0
+            else:
+                for symbol, efficiency in efficiencies:
+                    if mechanism.species(symbol).id == kid:
+                        return efficiency
+                return 1.0
 
     def _venhancement(self, mechanism, reaction):
         thirdBody = reaction.thirdBody
@@ -5708,6 +5880,15 @@ class CPickler(CMill):
 
         return
 
+    def _dcvpdT(self, speciesInfo):
+
+        self._write()
+        self._write()
+        self._write(self.line('compute d(Cp/R)/dT and d(Cv/R)/dT at the given temperature'))
+        self._write(self.line('tc contains precomputed powers of T, tc[0] = log(T)'))
+        self._generateThermoRoutine("dcvpRdT", self._dcpdTNASA, speciesInfo)
+
+        return
 
     def _gibbs(self, speciesInfo):
 
@@ -5776,6 +5957,8 @@ class CPickler(CMill):
         self._write('double T = tc[1];')
         if needsInvT != 0:
            self._write('double invT = 1 / T;')
+        if needsInvT == 2:
+           self._write('double invT2 = invT*invT;')
 
         # temperature check
         # self._write()
@@ -5904,6 +6087,47 @@ class CPickler(CMill):
         return K_c
 
 
+    def _sortedKc(self, mechanism, reaction):
+
+        dim = 0
+        dG = ""
+
+        terms = []
+        for symbol, coefficient in sorted(reaction.reactants):
+            if coefficient == 1:
+                factor = ""
+            else:
+                factor = "%d * " % coefficient
+                    
+            terms.append("%sg_RT[%d]" % (factor, mechanism.species(symbol).id))
+            dim -= coefficient
+        dG += '(' + ' + '.join(terms) + ')'
+
+        # flip the signs
+        terms = []
+        for symbol, coefficient in sorted(reaction.products):
+            if coefficient == 1:
+                factor = ""
+            else:
+                factor = "%d * " % coefficient
+            terms.append("%sg_RT[%d]" % (factor, mechanism.species(symbol).id))
+            dim += coefficient
+        dG += ' - (' + ' + '.join(terms) + ')'
+
+        K_p = 'exp(' + dG + ')'
+
+        if dim == 0:
+            conversion = ""
+        elif dim > 0:
+            conversion = "*".join(["refC"] * dim) + ' * '
+        else:
+            conversion = "*".join(["refCinv"] * abs(dim)) + ' * '
+
+        K_c = conversion + K_p
+
+        return K_c
+
+
     def _vKc(self, mechanism, reaction):
 
         dim = 0
@@ -5981,6 +6205,12 @@ class CPickler(CMill):
         self._write('%+15.8e * tc[4];' % parameters[4])
         return
 
+    def _dcpdTNASA(self, parameters):
+        self._write('%+15.8e' % parameters[1])
+        self._write('%+15.8e * tc[1]' % (parameters[2]*2.))
+        self._write('%+15.8e * tc[2]' % (parameters[3]*3.))
+        self._write('%+15.8e * tc[3];' % (parameters[4]*4.))
+        return
 
     def _cvNASA(self, parameters):
         self._write('%+15.8e' % (parameters[0] - 1.0))
