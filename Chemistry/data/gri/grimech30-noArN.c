@@ -16542,7 +16542,7 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
 
     double phi_f, k_f, k_r, phi_r, Kc, q, q_nocor, Corr, alpha;
     double dlnkfdT, dlnk0dT, dlnKcdT, dkrdT, dqdT;
-    double dcdc_fac, dqdc[35];
+    double dqdci, dcdc_fac, dqdc[35];
     double Pr, fPr, F, k_0, logPr;
     double logFcent, troe_c, troe_n, troePr_den, troePr, troe;
     double Fcent1, Fcent2, Fcent3, Fcent;
@@ -16575,41 +16575,38 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     k_f *= alpha;
     k_r *= alpha;
     if (consP) {
-        dqdc[0] =  1.4*q_nocor;
-        dqdc[1] =  0.0;
-        dqdc[2] =  0.0 + k_f*2*sc[2];
-        dqdc[3] =  0.0 - k_r;
-        dqdc[4] =  0.0;
-        dqdc[5] =  14.4*q_nocor;
-        dqdc[6] =  0.0;
-        dqdc[7] =  0.0;
-        dqdc[8] =  0.0;
-        dqdc[9] =  0.0;
-        dqdc[10] =  0.0;
-        dqdc[11] =  0.0;
-        dqdc[12] =  0.0;
-        dqdc[13] =  1*q_nocor;
-        dqdc[14] =  0.75*q_nocor;
-        dqdc[15] =  2.6*q_nocor;
-        dqdc[16] =  0.0;
-        dqdc[17] =  0.0;
-        dqdc[18] =  0.0;
-        dqdc[19] =  0.0;
-        dqdc[20] =  0.0;
-        dqdc[21] =  0.0;
-        dqdc[22] =  0.0;
-        dqdc[23] =  0.0;
-        dqdc[24] =  0.0;
-        dqdc[25] =  0.0;
-        dqdc[26] =  2*q_nocor;
-        dqdc[27] =  0.0;
-        dqdc[28] =  0.0;
-        dqdc[29] =  0.0;
-        dqdc[30] =  0.0;
-        dqdc[31] =  0.0;
-        dqdc[32] =  0.0;
-        dqdc[33] =  0.0;
-        dqdc[34] =  0.0;
+        /* d()/d[H2] */
+        dqdci =  1.4*q_nocor;
+        J[2] += -2 * dqdci;           /* dwdot[O]/d[H2] */
+        J[3] += 1 * dqdci;            /* dwdot[O2]/d[H2] */
+        /* d()/d[O] */
+        dqdci =  + k_f*2*sc[2];
+        J[74] += -2 * dqdci;          /* dwdot[O]/d[O] */
+        J[75] += 1 * dqdci;           /* dwdot[O2]/d[O] */
+        /* d()/d[O2] */
+        dqdci =  - k_r;
+        J[110] += -2 * dqdci;         /* dwdot[O]/d[O2] */
+        J[111] += 1 * dqdci;          /* dwdot[O2]/d[O2] */
+        /* d()/d[H2O] */
+        dqdci =  14.4*q_nocor;
+        J[182] += -2 * dqdci;         /* dwdot[O]/d[H2O] */
+        J[183] += 1 * dqdci;          /* dwdot[O2]/d[H2O] */
+        /* d()/d[CH4] */
+        dqdci =  1*q_nocor;
+        J[470] += -2 * dqdci;         /* dwdot[O]/d[CH4] */
+        J[471] += 1 * dqdci;          /* dwdot[O2]/d[CH4] */
+        /* d()/d[CO] */
+        dqdci =  0.75*q_nocor;
+        J[506] += -2 * dqdci;         /* dwdot[O]/d[CO] */
+        J[507] += 1 * dqdci;          /* dwdot[O2]/d[CO] */
+        /* d()/d[CO2] */
+        dqdci =  2.6*q_nocor;
+        J[542] += -2 * dqdci;         /* dwdot[O]/d[CO2] */
+        J[543] += 1 * dqdci;          /* dwdot[O2]/d[CO2] */
+        /* d()/d[C2H6] */
+        dqdci =  2*q_nocor;
+        J[938] += -2 * dqdci;         /* dwdot[O]/d[C2H6] */
+        J[939] += 1 * dqdci;          /* dwdot[O2]/d[C2H6] */
     }
     else {
         dqdc[0] =  2.4*q_nocor;
@@ -16647,10 +16644,10 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
         dqdc[32] =  1*q_nocor;
         dqdc[33] =  1*q_nocor;
         dqdc[34] =  1*q_nocor;
-    }
-    for (int k=0; k<35; k++) {
-        J[36*k+2] += -2 * dqdc[k];
-        J[36*k+3] += 1 * dqdc[k];
+        for (int k=0; k<35; k++) {
+            J[36*k+2] += -2 * dqdc[k];
+            J[36*k+3] += 1 * dqdc[k];
+        }
     }
     J[1262] += -2 * dqdT; /* dwdot[O]/dT */
     J[1263] += 1 * dqdT; /* dwdot[O2]/dT */
@@ -16681,41 +16678,51 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     k_f *= alpha;
     k_r *= alpha;
     if (consP) {
-        dqdc[0] =  1*q_nocor;
-        dqdc[1] =  0.0 + k_f*sc[2];
-        dqdc[2] =  0.0 + k_f*sc[1];
-        dqdc[3] =  0.0;
-        dqdc[4] =  0.0 - k_r;
-        dqdc[5] =  5*q_nocor;
-        dqdc[6] =  0.0;
-        dqdc[7] =  0.0;
-        dqdc[8] =  0.0;
-        dqdc[9] =  0.0;
-        dqdc[10] =  0.0;
-        dqdc[11] =  0.0;
-        dqdc[12] =  0.0;
-        dqdc[13] =  1*q_nocor;
-        dqdc[14] =  0.5*q_nocor;
-        dqdc[15] =  1*q_nocor;
-        dqdc[16] =  0.0;
-        dqdc[17] =  0.0;
-        dqdc[18] =  0.0;
-        dqdc[19] =  0.0;
-        dqdc[20] =  0.0;
-        dqdc[21] =  0.0;
-        dqdc[22] =  0.0;
-        dqdc[23] =  0.0;
-        dqdc[24] =  0.0;
-        dqdc[25] =  0.0;
-        dqdc[26] =  2*q_nocor;
-        dqdc[27] =  0.0;
-        dqdc[28] =  0.0;
-        dqdc[29] =  0.0;
-        dqdc[30] =  0.0;
-        dqdc[31] =  0.0;
-        dqdc[32] =  0.0;
-        dqdc[33] =  0.0;
-        dqdc[34] =  0.0;
+        /* d()/d[H2] */
+        dqdci =  1*q_nocor;
+        J[1] += -1 * dqdci;           /* dwdot[H]/d[H2] */
+        J[2] += -1 * dqdci;           /* dwdot[O]/d[H2] */
+        J[4] += 1 * dqdci;            /* dwdot[OH]/d[H2] */
+        /* d()/d[H] */
+        dqdci =  + k_f*sc[2];
+        J[37] += -1 * dqdci;          /* dwdot[H]/d[H] */
+        J[38] += -1 * dqdci;          /* dwdot[O]/d[H] */
+        J[40] += 1 * dqdci;           /* dwdot[OH]/d[H] */
+        /* d()/d[O] */
+        dqdci =  + k_f*sc[1];
+        J[73] += -1 * dqdci;          /* dwdot[H]/d[O] */
+        J[74] += -1 * dqdci;          /* dwdot[O]/d[O] */
+        J[76] += 1 * dqdci;           /* dwdot[OH]/d[O] */
+        /* d()/d[OH] */
+        dqdci =  - k_r;
+        J[145] += -1 * dqdci;         /* dwdot[H]/d[OH] */
+        J[146] += -1 * dqdci;         /* dwdot[O]/d[OH] */
+        J[148] += 1 * dqdci;          /* dwdot[OH]/d[OH] */
+        /* d()/d[H2O] */
+        dqdci =  5*q_nocor;
+        J[181] += -1 * dqdci;         /* dwdot[H]/d[H2O] */
+        J[182] += -1 * dqdci;         /* dwdot[O]/d[H2O] */
+        J[184] += 1 * dqdci;          /* dwdot[OH]/d[H2O] */
+        /* d()/d[CH4] */
+        dqdci =  1*q_nocor;
+        J[469] += -1 * dqdci;         /* dwdot[H]/d[CH4] */
+        J[470] += -1 * dqdci;         /* dwdot[O]/d[CH4] */
+        J[472] += 1 * dqdci;          /* dwdot[OH]/d[CH4] */
+        /* d()/d[CO] */
+        dqdci =  0.5*q_nocor;
+        J[505] += -1 * dqdci;         /* dwdot[H]/d[CO] */
+        J[506] += -1 * dqdci;         /* dwdot[O]/d[CO] */
+        J[508] += 1 * dqdci;          /* dwdot[OH]/d[CO] */
+        /* d()/d[CO2] */
+        dqdci =  1*q_nocor;
+        J[541] += -1 * dqdci;         /* dwdot[H]/d[CO2] */
+        J[542] += -1 * dqdci;         /* dwdot[O]/d[CO2] */
+        J[544] += 1 * dqdci;          /* dwdot[OH]/d[CO2] */
+        /* d()/d[C2H6] */
+        dqdci =  2*q_nocor;
+        J[937] += -1 * dqdci;         /* dwdot[H]/d[C2H6] */
+        J[938] += -1 * dqdci;         /* dwdot[O]/d[C2H6] */
+        J[940] += 1 * dqdci;          /* dwdot[OH]/d[C2H6] */
     }
     else {
         dqdc[0] =  2*q_nocor;
@@ -16753,11 +16760,11 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
         dqdc[32] =  1*q_nocor;
         dqdc[33] =  1*q_nocor;
         dqdc[34] =  1*q_nocor;
-    }
-    for (int k=0; k<35; k++) {
-        J[36*k+1] += -1 * dqdc[k];
-        J[36*k+2] += -1 * dqdc[k];
-        J[36*k+4] += 1 * dqdc[k];
+        for (int k=0; k<35; k++) {
+            J[36*k+1] += -1 * dqdc[k];
+            J[36*k+2] += -1 * dqdc[k];
+            J[36*k+4] += 1 * dqdc[k];
+        }
     }
     J[1261] += -1 * dqdT; /* dwdot[H]/dT */
     J[1262] += -1 * dqdT; /* dwdot[O]/dT */
@@ -16783,30 +16790,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[1] += q; /* H */
     wdot[2] -= q; /* O */
     wdot[4] += q; /* OH */
-    dqdc[0] =  + k_f*sc[2];
-    dqdc[1] =  - k_r*sc[4];
-    dqdc[2] =  + k_f*sc[0];
-    dqdc[4] =  - k_r*sc[1];
     /* d()/d[H2] */
-    J[0] += -1 * dqdc[0];         /* dwdot[H2]/d[H2] */
-    J[1] += 1 * dqdc[0];          /* dwdot[H]/d[H2] */
-    J[2] += -1 * dqdc[0];         /* dwdot[O]/d[H2] */
-    J[4] += 1 * dqdc[0];          /* dwdot[OH]/d[H2] */
+    dqdci =  + k_f*sc[2];
+    J[0] += -1 * dqdci;           /* dwdot[H2]/d[H2] */
+    J[1] += 1 * dqdci;            /* dwdot[H]/d[H2] */
+    J[2] += -1 * dqdci;           /* dwdot[O]/d[H2] */
+    J[4] += 1 * dqdci;            /* dwdot[OH]/d[H2] */
     /* d()/d[H] */
-    J[36] += -1 * dqdc[1];        /* dwdot[H2]/d[H] */
-    J[37] += 1 * dqdc[1];         /* dwdot[H]/d[H] */
-    J[38] += -1 * dqdc[1];        /* dwdot[O]/d[H] */
-    J[40] += 1 * dqdc[1];         /* dwdot[OH]/d[H] */
+    dqdci =  - k_r*sc[4];
+    J[36] += -1 * dqdci;          /* dwdot[H2]/d[H] */
+    J[37] += 1 * dqdci;           /* dwdot[H]/d[H] */
+    J[38] += -1 * dqdci;          /* dwdot[O]/d[H] */
+    J[40] += 1 * dqdci;           /* dwdot[OH]/d[H] */
     /* d()/d[O] */
-    J[72] += -1 * dqdc[2];        /* dwdot[H2]/d[O] */
-    J[73] += 1 * dqdc[2];         /* dwdot[H]/d[O] */
-    J[74] += -1 * dqdc[2];        /* dwdot[O]/d[O] */
-    J[76] += 1 * dqdc[2];         /* dwdot[OH]/d[O] */
+    dqdci =  + k_f*sc[0];
+    J[72] += -1 * dqdci;          /* dwdot[H2]/d[O] */
+    J[73] += 1 * dqdci;           /* dwdot[H]/d[O] */
+    J[74] += -1 * dqdci;          /* dwdot[O]/d[O] */
+    J[76] += 1 * dqdci;           /* dwdot[OH]/d[O] */
     /* d()/d[OH] */
-    J[144] += -1 * dqdc[4];       /* dwdot[H2]/d[OH] */
-    J[145] += 1 * dqdc[4];        /* dwdot[H]/d[OH] */
-    J[146] += -1 * dqdc[4];       /* dwdot[O]/d[OH] */
-    J[148] += 1 * dqdc[4];        /* dwdot[OH]/d[OH] */
+    dqdci =  - k_r*sc[1];
+    J[144] += -1 * dqdci;         /* dwdot[H2]/d[OH] */
+    J[145] += 1 * dqdci;          /* dwdot[H]/d[OH] */
+    J[146] += -1 * dqdci;         /* dwdot[O]/d[OH] */
+    J[148] += 1 * dqdci;          /* dwdot[OH]/d[OH] */
     /* d()/dT */
     J[1260] += -1 * dqdT;         /* dwdot[H2]/dT */
     J[1261] += 1 * dqdT;          /* dwdot[H]/dT */
@@ -16833,30 +16840,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[3] += q; /* O2 */
     wdot[4] += q; /* OH */
     wdot[6] -= q; /* HO2 */
-    dqdc[2] =  + k_f*sc[6];
-    dqdc[3] =  - k_r*sc[4];
-    dqdc[4] =  - k_r*sc[3];
-    dqdc[6] =  + k_f*sc[2];
     /* d()/d[O] */
-    J[74] += -1 * dqdc[2];        /* dwdot[O]/d[O] */
-    J[75] += 1 * dqdc[2];         /* dwdot[O2]/d[O] */
-    J[76] += 1 * dqdc[2];         /* dwdot[OH]/d[O] */
-    J[78] += -1 * dqdc[2];        /* dwdot[HO2]/d[O] */
+    dqdci =  + k_f*sc[6];
+    J[74] += -1 * dqdci;          /* dwdot[O]/d[O] */
+    J[75] += 1 * dqdci;           /* dwdot[O2]/d[O] */
+    J[76] += 1 * dqdci;           /* dwdot[OH]/d[O] */
+    J[78] += -1 * dqdci;          /* dwdot[HO2]/d[O] */
     /* d()/d[O2] */
-    J[110] += -1 * dqdc[3];       /* dwdot[O]/d[O2] */
-    J[111] += 1 * dqdc[3];        /* dwdot[O2]/d[O2] */
-    J[112] += 1 * dqdc[3];        /* dwdot[OH]/d[O2] */
-    J[114] += -1 * dqdc[3];       /* dwdot[HO2]/d[O2] */
+    dqdci =  - k_r*sc[4];
+    J[110] += -1 * dqdci;         /* dwdot[O]/d[O2] */
+    J[111] += 1 * dqdci;          /* dwdot[O2]/d[O2] */
+    J[112] += 1 * dqdci;          /* dwdot[OH]/d[O2] */
+    J[114] += -1 * dqdci;         /* dwdot[HO2]/d[O2] */
     /* d()/d[OH] */
-    J[146] += -1 * dqdc[4];       /* dwdot[O]/d[OH] */
-    J[147] += 1 * dqdc[4];        /* dwdot[O2]/d[OH] */
-    J[148] += 1 * dqdc[4];        /* dwdot[OH]/d[OH] */
-    J[150] += -1 * dqdc[4];       /* dwdot[HO2]/d[OH] */
+    dqdci =  - k_r*sc[3];
+    J[146] += -1 * dqdci;         /* dwdot[O]/d[OH] */
+    J[147] += 1 * dqdci;          /* dwdot[O2]/d[OH] */
+    J[148] += 1 * dqdci;          /* dwdot[OH]/d[OH] */
+    J[150] += -1 * dqdci;         /* dwdot[HO2]/d[OH] */
     /* d()/d[HO2] */
-    J[218] += -1 * dqdc[6];       /* dwdot[O]/d[HO2] */
-    J[219] += 1 * dqdc[6];        /* dwdot[O2]/d[HO2] */
-    J[220] += 1 * dqdc[6];        /* dwdot[OH]/d[HO2] */
-    J[222] += -1 * dqdc[6];       /* dwdot[HO2]/d[HO2] */
+    dqdci =  + k_f*sc[2];
+    J[218] += -1 * dqdci;         /* dwdot[O]/d[HO2] */
+    J[219] += 1 * dqdci;          /* dwdot[O2]/d[HO2] */
+    J[220] += 1 * dqdci;          /* dwdot[OH]/d[HO2] */
+    J[222] += -1 * dqdci;         /* dwdot[HO2]/d[HO2] */
     /* d()/dT */
     J[1262] += -1 * dqdT;         /* dwdot[O]/dT */
     J[1263] += 1 * dqdT;          /* dwdot[O2]/dT */
@@ -16883,30 +16890,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[4] += q; /* OH */
     wdot[6] += q; /* HO2 */
     wdot[7] -= q; /* H2O2 */
-    dqdc[2] =  + k_f*sc[7];
-    dqdc[4] =  - k_r*sc[6];
-    dqdc[6] =  - k_r*sc[4];
-    dqdc[7] =  + k_f*sc[2];
     /* d()/d[O] */
-    J[74] += -1 * dqdc[2];        /* dwdot[O]/d[O] */
-    J[76] += 1 * dqdc[2];         /* dwdot[OH]/d[O] */
-    J[78] += 1 * dqdc[2];         /* dwdot[HO2]/d[O] */
-    J[79] += -1 * dqdc[2];        /* dwdot[H2O2]/d[O] */
+    dqdci =  + k_f*sc[7];
+    J[74] += -1 * dqdci;          /* dwdot[O]/d[O] */
+    J[76] += 1 * dqdci;           /* dwdot[OH]/d[O] */
+    J[78] += 1 * dqdci;           /* dwdot[HO2]/d[O] */
+    J[79] += -1 * dqdci;          /* dwdot[H2O2]/d[O] */
     /* d()/d[OH] */
-    J[146] += -1 * dqdc[4];       /* dwdot[O]/d[OH] */
-    J[148] += 1 * dqdc[4];        /* dwdot[OH]/d[OH] */
-    J[150] += 1 * dqdc[4];        /* dwdot[HO2]/d[OH] */
-    J[151] += -1 * dqdc[4];       /* dwdot[H2O2]/d[OH] */
+    dqdci =  - k_r*sc[6];
+    J[146] += -1 * dqdci;         /* dwdot[O]/d[OH] */
+    J[148] += 1 * dqdci;          /* dwdot[OH]/d[OH] */
+    J[150] += 1 * dqdci;          /* dwdot[HO2]/d[OH] */
+    J[151] += -1 * dqdci;         /* dwdot[H2O2]/d[OH] */
     /* d()/d[HO2] */
-    J[218] += -1 * dqdc[6];       /* dwdot[O]/d[HO2] */
-    J[220] += 1 * dqdc[6];        /* dwdot[OH]/d[HO2] */
-    J[222] += 1 * dqdc[6];        /* dwdot[HO2]/d[HO2] */
-    J[223] += -1 * dqdc[6];       /* dwdot[H2O2]/d[HO2] */
+    dqdci =  - k_r*sc[4];
+    J[218] += -1 * dqdci;         /* dwdot[O]/d[HO2] */
+    J[220] += 1 * dqdci;          /* dwdot[OH]/d[HO2] */
+    J[222] += 1 * dqdci;          /* dwdot[HO2]/d[HO2] */
+    J[223] += -1 * dqdci;         /* dwdot[H2O2]/d[HO2] */
     /* d()/d[H2O2] */
-    J[254] += -1 * dqdc[7];       /* dwdot[O]/d[H2O2] */
-    J[256] += 1 * dqdc[7];        /* dwdot[OH]/d[H2O2] */
-    J[258] += 1 * dqdc[7];        /* dwdot[HO2]/d[H2O2] */
-    J[259] += -1 * dqdc[7];       /* dwdot[H2O2]/d[H2O2] */
+    dqdci =  + k_f*sc[2];
+    J[254] += -1 * dqdci;         /* dwdot[O]/d[H2O2] */
+    J[256] += 1 * dqdci;          /* dwdot[OH]/d[H2O2] */
+    J[258] += 1 * dqdci;          /* dwdot[HO2]/d[H2O2] */
+    J[259] += -1 * dqdci;         /* dwdot[H2O2]/d[H2O2] */
     /* d()/dT */
     J[1262] += -1 * dqdT;         /* dwdot[O]/dT */
     J[1264] += 1 * dqdT;          /* dwdot[OH]/dT */
@@ -16933,30 +16940,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[2] -= q; /* O */
     wdot[9] -= q; /* CH */
     wdot[14] += q; /* CO */
-    dqdc[1] =  - k_r*sc[14];
-    dqdc[2] =  + k_f*sc[9];
-    dqdc[9] =  + k_f*sc[2];
-    dqdc[14] =  - k_r*sc[1];
     /* d()/d[H] */
-    J[37] += 1 * dqdc[1];         /* dwdot[H]/d[H] */
-    J[38] += -1 * dqdc[1];        /* dwdot[O]/d[H] */
-    J[45] += -1 * dqdc[1];        /* dwdot[CH]/d[H] */
-    J[50] += 1 * dqdc[1];         /* dwdot[CO]/d[H] */
+    dqdci =  - k_r*sc[14];
+    J[37] += 1 * dqdci;           /* dwdot[H]/d[H] */
+    J[38] += -1 * dqdci;          /* dwdot[O]/d[H] */
+    J[45] += -1 * dqdci;          /* dwdot[CH]/d[H] */
+    J[50] += 1 * dqdci;           /* dwdot[CO]/d[H] */
     /* d()/d[O] */
-    J[73] += 1 * dqdc[2];         /* dwdot[H]/d[O] */
-    J[74] += -1 * dqdc[2];        /* dwdot[O]/d[O] */
-    J[81] += -1 * dqdc[2];        /* dwdot[CH]/d[O] */
-    J[86] += 1 * dqdc[2];         /* dwdot[CO]/d[O] */
+    dqdci =  + k_f*sc[9];
+    J[73] += 1 * dqdci;           /* dwdot[H]/d[O] */
+    J[74] += -1 * dqdci;          /* dwdot[O]/d[O] */
+    J[81] += -1 * dqdci;          /* dwdot[CH]/d[O] */
+    J[86] += 1 * dqdci;           /* dwdot[CO]/d[O] */
     /* d()/d[CH] */
-    J[325] += 1 * dqdc[9];        /* dwdot[H]/d[CH] */
-    J[326] += -1 * dqdc[9];       /* dwdot[O]/d[CH] */
-    J[333] += -1 * dqdc[9];       /* dwdot[CH]/d[CH] */
-    J[338] += 1 * dqdc[9];        /* dwdot[CO]/d[CH] */
+    dqdci =  + k_f*sc[2];
+    J[325] += 1 * dqdci;          /* dwdot[H]/d[CH] */
+    J[326] += -1 * dqdci;         /* dwdot[O]/d[CH] */
+    J[333] += -1 * dqdci;         /* dwdot[CH]/d[CH] */
+    J[338] += 1 * dqdci;          /* dwdot[CO]/d[CH] */
     /* d()/d[CO] */
-    J[505] += 1 * dqdc[14];       /* dwdot[H]/d[CO] */
-    J[506] += -1 * dqdc[14];      /* dwdot[O]/d[CO] */
-    J[513] += -1 * dqdc[14];      /* dwdot[CH]/d[CO] */
-    J[518] += 1 * dqdc[14];       /* dwdot[CO]/d[CO] */
+    dqdci =  - k_r*sc[1];
+    J[505] += 1 * dqdci;          /* dwdot[H]/d[CO] */
+    J[506] += -1 * dqdci;         /* dwdot[O]/d[CO] */
+    J[513] += -1 * dqdci;         /* dwdot[CH]/d[CO] */
+    J[518] += 1 * dqdci;          /* dwdot[CO]/d[CO] */
     /* d()/dT */
     J[1261] += 1 * dqdT;          /* dwdot[H]/dT */
     J[1262] += -1 * dqdT;         /* dwdot[O]/dT */
@@ -16983,30 +16990,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[2] -= q; /* O */
     wdot[10] -= q; /* CH2 */
     wdot[16] += q; /* HCO */
-    dqdc[1] =  - k_r*sc[16];
-    dqdc[2] =  + k_f*sc[10];
-    dqdc[10] =  + k_f*sc[2];
-    dqdc[16] =  - k_r*sc[1];
     /* d()/d[H] */
-    J[37] += 1 * dqdc[1];         /* dwdot[H]/d[H] */
-    J[38] += -1 * dqdc[1];        /* dwdot[O]/d[H] */
-    J[46] += -1 * dqdc[1];        /* dwdot[CH2]/d[H] */
-    J[52] += 1 * dqdc[1];         /* dwdot[HCO]/d[H] */
+    dqdci =  - k_r*sc[16];
+    J[37] += 1 * dqdci;           /* dwdot[H]/d[H] */
+    J[38] += -1 * dqdci;          /* dwdot[O]/d[H] */
+    J[46] += -1 * dqdci;          /* dwdot[CH2]/d[H] */
+    J[52] += 1 * dqdci;           /* dwdot[HCO]/d[H] */
     /* d()/d[O] */
-    J[73] += 1 * dqdc[2];         /* dwdot[H]/d[O] */
-    J[74] += -1 * dqdc[2];        /* dwdot[O]/d[O] */
-    J[82] += -1 * dqdc[2];        /* dwdot[CH2]/d[O] */
-    J[88] += 1 * dqdc[2];         /* dwdot[HCO]/d[O] */
+    dqdci =  + k_f*sc[10];
+    J[73] += 1 * dqdci;           /* dwdot[H]/d[O] */
+    J[74] += -1 * dqdci;          /* dwdot[O]/d[O] */
+    J[82] += -1 * dqdci;          /* dwdot[CH2]/d[O] */
+    J[88] += 1 * dqdci;           /* dwdot[HCO]/d[O] */
     /* d()/d[CH2] */
-    J[361] += 1 * dqdc[10];       /* dwdot[H]/d[CH2] */
-    J[362] += -1 * dqdc[10];      /* dwdot[O]/d[CH2] */
-    J[370] += -1 * dqdc[10];      /* dwdot[CH2]/d[CH2] */
-    J[376] += 1 * dqdc[10];       /* dwdot[HCO]/d[CH2] */
+    dqdci =  + k_f*sc[2];
+    J[361] += 1 * dqdci;          /* dwdot[H]/d[CH2] */
+    J[362] += -1 * dqdci;         /* dwdot[O]/d[CH2] */
+    J[370] += -1 * dqdci;         /* dwdot[CH2]/d[CH2] */
+    J[376] += 1 * dqdci;          /* dwdot[HCO]/d[CH2] */
     /* d()/d[HCO] */
-    J[577] += 1 * dqdc[16];       /* dwdot[H]/d[HCO] */
-    J[578] += -1 * dqdc[16];      /* dwdot[O]/d[HCO] */
-    J[586] += -1 * dqdc[16];      /* dwdot[CH2]/d[HCO] */
-    J[592] += 1 * dqdc[16];       /* dwdot[HCO]/d[HCO] */
+    dqdci =  - k_r*sc[1];
+    J[577] += 1 * dqdci;          /* dwdot[H]/d[HCO] */
+    J[578] += -1 * dqdci;         /* dwdot[O]/d[HCO] */
+    J[586] += -1 * dqdci;         /* dwdot[CH2]/d[HCO] */
+    J[592] += 1 * dqdci;          /* dwdot[HCO]/d[HCO] */
     /* d()/dT */
     J[1261] += 1 * dqdT;          /* dwdot[H]/dT */
     J[1262] += -1 * dqdT;         /* dwdot[O]/dT */
@@ -17033,30 +17040,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[2] -= q; /* O */
     wdot[11] -= q; /* CH2(S) */
     wdot[14] += q; /* CO */
-    dqdc[0] =  - k_r*sc[14];
-    dqdc[2] =  + k_f*sc[11];
-    dqdc[11] =  + k_f*sc[2];
-    dqdc[14] =  - k_r*sc[0];
     /* d()/d[H2] */
-    J[0] += 1 * dqdc[0];          /* dwdot[H2]/d[H2] */
-    J[2] += -1 * dqdc[0];         /* dwdot[O]/d[H2] */
-    J[11] += -1 * dqdc[0];        /* dwdot[CH2(S)]/d[H2] */
-    J[14] += 1 * dqdc[0];         /* dwdot[CO]/d[H2] */
+    dqdci =  - k_r*sc[14];
+    J[0] += 1 * dqdci;            /* dwdot[H2]/d[H2] */
+    J[2] += -1 * dqdci;           /* dwdot[O]/d[H2] */
+    J[11] += -1 * dqdci;          /* dwdot[CH2(S)]/d[H2] */
+    J[14] += 1 * dqdci;           /* dwdot[CO]/d[H2] */
     /* d()/d[O] */
-    J[72] += 1 * dqdc[2];         /* dwdot[H2]/d[O] */
-    J[74] += -1 * dqdc[2];        /* dwdot[O]/d[O] */
-    J[83] += -1 * dqdc[2];        /* dwdot[CH2(S)]/d[O] */
-    J[86] += 1 * dqdc[2];         /* dwdot[CO]/d[O] */
+    dqdci =  + k_f*sc[11];
+    J[72] += 1 * dqdci;           /* dwdot[H2]/d[O] */
+    J[74] += -1 * dqdci;          /* dwdot[O]/d[O] */
+    J[83] += -1 * dqdci;          /* dwdot[CH2(S)]/d[O] */
+    J[86] += 1 * dqdci;           /* dwdot[CO]/d[O] */
     /* d()/d[CH2(S)] */
-    J[396] += 1 * dqdc[11];       /* dwdot[H2]/d[CH2(S)] */
-    J[398] += -1 * dqdc[11];      /* dwdot[O]/d[CH2(S)] */
-    J[407] += -1 * dqdc[11];      /* dwdot[CH2(S)]/d[CH2(S)] */
-    J[410] += 1 * dqdc[11];       /* dwdot[CO]/d[CH2(S)] */
+    dqdci =  + k_f*sc[2];
+    J[396] += 1 * dqdci;          /* dwdot[H2]/d[CH2(S)] */
+    J[398] += -1 * dqdci;         /* dwdot[O]/d[CH2(S)] */
+    J[407] += -1 * dqdci;         /* dwdot[CH2(S)]/d[CH2(S)] */
+    J[410] += 1 * dqdci;          /* dwdot[CO]/d[CH2(S)] */
     /* d()/d[CO] */
-    J[504] += 1 * dqdc[14];       /* dwdot[H2]/d[CO] */
-    J[506] += -1 * dqdc[14];      /* dwdot[O]/d[CO] */
-    J[515] += -1 * dqdc[14];      /* dwdot[CH2(S)]/d[CO] */
-    J[518] += 1 * dqdc[14];       /* dwdot[CO]/d[CO] */
+    dqdci =  - k_r*sc[0];
+    J[504] += 1 * dqdci;          /* dwdot[H2]/d[CO] */
+    J[506] += -1 * dqdci;         /* dwdot[O]/d[CO] */
+    J[515] += -1 * dqdci;         /* dwdot[CH2(S)]/d[CO] */
+    J[518] += 1 * dqdci;          /* dwdot[CO]/d[CO] */
     /* d()/dT */
     J[1260] += 1 * dqdT;          /* dwdot[H2]/dT */
     J[1262] += -1 * dqdT;         /* dwdot[O]/dT */
@@ -17083,30 +17090,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[2] -= q; /* O */
     wdot[11] -= q; /* CH2(S) */
     wdot[16] += q; /* HCO */
-    dqdc[1] =  - k_r*sc[16];
-    dqdc[2] =  + k_f*sc[11];
-    dqdc[11] =  + k_f*sc[2];
-    dqdc[16] =  - k_r*sc[1];
     /* d()/d[H] */
-    J[37] += 1 * dqdc[1];         /* dwdot[H]/d[H] */
-    J[38] += -1 * dqdc[1];        /* dwdot[O]/d[H] */
-    J[47] += -1 * dqdc[1];        /* dwdot[CH2(S)]/d[H] */
-    J[52] += 1 * dqdc[1];         /* dwdot[HCO]/d[H] */
+    dqdci =  - k_r*sc[16];
+    J[37] += 1 * dqdci;           /* dwdot[H]/d[H] */
+    J[38] += -1 * dqdci;          /* dwdot[O]/d[H] */
+    J[47] += -1 * dqdci;          /* dwdot[CH2(S)]/d[H] */
+    J[52] += 1 * dqdci;           /* dwdot[HCO]/d[H] */
     /* d()/d[O] */
-    J[73] += 1 * dqdc[2];         /* dwdot[H]/d[O] */
-    J[74] += -1 * dqdc[2];        /* dwdot[O]/d[O] */
-    J[83] += -1 * dqdc[2];        /* dwdot[CH2(S)]/d[O] */
-    J[88] += 1 * dqdc[2];         /* dwdot[HCO]/d[O] */
+    dqdci =  + k_f*sc[11];
+    J[73] += 1 * dqdci;           /* dwdot[H]/d[O] */
+    J[74] += -1 * dqdci;          /* dwdot[O]/d[O] */
+    J[83] += -1 * dqdci;          /* dwdot[CH2(S)]/d[O] */
+    J[88] += 1 * dqdci;           /* dwdot[HCO]/d[O] */
     /* d()/d[CH2(S)] */
-    J[397] += 1 * dqdc[11];       /* dwdot[H]/d[CH2(S)] */
-    J[398] += -1 * dqdc[11];      /* dwdot[O]/d[CH2(S)] */
-    J[407] += -1 * dqdc[11];      /* dwdot[CH2(S)]/d[CH2(S)] */
-    J[412] += 1 * dqdc[11];       /* dwdot[HCO]/d[CH2(S)] */
+    dqdci =  + k_f*sc[2];
+    J[397] += 1 * dqdci;          /* dwdot[H]/d[CH2(S)] */
+    J[398] += -1 * dqdci;         /* dwdot[O]/d[CH2(S)] */
+    J[407] += -1 * dqdci;         /* dwdot[CH2(S)]/d[CH2(S)] */
+    J[412] += 1 * dqdci;          /* dwdot[HCO]/d[CH2(S)] */
     /* d()/d[HCO] */
-    J[577] += 1 * dqdc[16];       /* dwdot[H]/d[HCO] */
-    J[578] += -1 * dqdc[16];      /* dwdot[O]/d[HCO] */
-    J[587] += -1 * dqdc[16];      /* dwdot[CH2(S)]/d[HCO] */
-    J[592] += 1 * dqdc[16];       /* dwdot[HCO]/d[HCO] */
+    dqdci =  - k_r*sc[1];
+    J[577] += 1 * dqdci;          /* dwdot[H]/d[HCO] */
+    J[578] += -1 * dqdci;         /* dwdot[O]/d[HCO] */
+    J[587] += -1 * dqdci;         /* dwdot[CH2(S)]/d[HCO] */
+    J[592] += 1 * dqdci;          /* dwdot[HCO]/d[HCO] */
     /* d()/dT */
     J[1261] += 1 * dqdT;          /* dwdot[H]/dT */
     J[1262] += -1 * dqdT;         /* dwdot[O]/dT */
@@ -17133,30 +17140,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[2] -= q; /* O */
     wdot[12] -= q; /* CH3 */
     wdot[17] += q; /* CH2O */
-    dqdc[1] =  - k_r*sc[17];
-    dqdc[2] =  + k_f*sc[12];
-    dqdc[12] =  + k_f*sc[2];
-    dqdc[17] =  - k_r*sc[1];
     /* d()/d[H] */
-    J[37] += 1 * dqdc[1];         /* dwdot[H]/d[H] */
-    J[38] += -1 * dqdc[1];        /* dwdot[O]/d[H] */
-    J[48] += -1 * dqdc[1];        /* dwdot[CH3]/d[H] */
-    J[53] += 1 * dqdc[1];         /* dwdot[CH2O]/d[H] */
+    dqdci =  - k_r*sc[17];
+    J[37] += 1 * dqdci;           /* dwdot[H]/d[H] */
+    J[38] += -1 * dqdci;          /* dwdot[O]/d[H] */
+    J[48] += -1 * dqdci;          /* dwdot[CH3]/d[H] */
+    J[53] += 1 * dqdci;           /* dwdot[CH2O]/d[H] */
     /* d()/d[O] */
-    J[73] += 1 * dqdc[2];         /* dwdot[H]/d[O] */
-    J[74] += -1 * dqdc[2];        /* dwdot[O]/d[O] */
-    J[84] += -1 * dqdc[2];        /* dwdot[CH3]/d[O] */
-    J[89] += 1 * dqdc[2];         /* dwdot[CH2O]/d[O] */
+    dqdci =  + k_f*sc[12];
+    J[73] += 1 * dqdci;           /* dwdot[H]/d[O] */
+    J[74] += -1 * dqdci;          /* dwdot[O]/d[O] */
+    J[84] += -1 * dqdci;          /* dwdot[CH3]/d[O] */
+    J[89] += 1 * dqdci;           /* dwdot[CH2O]/d[O] */
     /* d()/d[CH3] */
-    J[433] += 1 * dqdc[12];       /* dwdot[H]/d[CH3] */
-    J[434] += -1 * dqdc[12];      /* dwdot[O]/d[CH3] */
-    J[444] += -1 * dqdc[12];      /* dwdot[CH3]/d[CH3] */
-    J[449] += 1 * dqdc[12];       /* dwdot[CH2O]/d[CH3] */
+    dqdci =  + k_f*sc[2];
+    J[433] += 1 * dqdci;          /* dwdot[H]/d[CH3] */
+    J[434] += -1 * dqdci;         /* dwdot[O]/d[CH3] */
+    J[444] += -1 * dqdci;         /* dwdot[CH3]/d[CH3] */
+    J[449] += 1 * dqdci;          /* dwdot[CH2O]/d[CH3] */
     /* d()/d[CH2O] */
-    J[613] += 1 * dqdc[17];       /* dwdot[H]/d[CH2O] */
-    J[614] += -1 * dqdc[17];      /* dwdot[O]/d[CH2O] */
-    J[624] += -1 * dqdc[17];      /* dwdot[CH3]/d[CH2O] */
-    J[629] += 1 * dqdc[17];       /* dwdot[CH2O]/d[CH2O] */
+    dqdci =  - k_r*sc[1];
+    J[613] += 1 * dqdci;          /* dwdot[H]/d[CH2O] */
+    J[614] += -1 * dqdci;         /* dwdot[O]/d[CH2O] */
+    J[624] += -1 * dqdci;         /* dwdot[CH3]/d[CH2O] */
+    J[629] += 1 * dqdci;          /* dwdot[CH2O]/d[CH2O] */
     /* d()/dT */
     J[1261] += 1 * dqdT;          /* dwdot[H]/dT */
     J[1262] += -1 * dqdT;         /* dwdot[O]/dT */
@@ -17183,30 +17190,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[4] += q; /* OH */
     wdot[12] += q; /* CH3 */
     wdot[13] -= q; /* CH4 */
-    dqdc[2] =  + k_f*sc[13];
-    dqdc[4] =  - k_r*sc[12];
-    dqdc[12] =  - k_r*sc[4];
-    dqdc[13] =  + k_f*sc[2];
     /* d()/d[O] */
-    J[74] += -1 * dqdc[2];        /* dwdot[O]/d[O] */
-    J[76] += 1 * dqdc[2];         /* dwdot[OH]/d[O] */
-    J[84] += 1 * dqdc[2];         /* dwdot[CH3]/d[O] */
-    J[85] += -1 * dqdc[2];        /* dwdot[CH4]/d[O] */
+    dqdci =  + k_f*sc[13];
+    J[74] += -1 * dqdci;          /* dwdot[O]/d[O] */
+    J[76] += 1 * dqdci;           /* dwdot[OH]/d[O] */
+    J[84] += 1 * dqdci;           /* dwdot[CH3]/d[O] */
+    J[85] += -1 * dqdci;          /* dwdot[CH4]/d[O] */
     /* d()/d[OH] */
-    J[146] += -1 * dqdc[4];       /* dwdot[O]/d[OH] */
-    J[148] += 1 * dqdc[4];        /* dwdot[OH]/d[OH] */
-    J[156] += 1 * dqdc[4];        /* dwdot[CH3]/d[OH] */
-    J[157] += -1 * dqdc[4];       /* dwdot[CH4]/d[OH] */
+    dqdci =  - k_r*sc[12];
+    J[146] += -1 * dqdci;         /* dwdot[O]/d[OH] */
+    J[148] += 1 * dqdci;          /* dwdot[OH]/d[OH] */
+    J[156] += 1 * dqdci;          /* dwdot[CH3]/d[OH] */
+    J[157] += -1 * dqdci;         /* dwdot[CH4]/d[OH] */
     /* d()/d[CH3] */
-    J[434] += -1 * dqdc[12];      /* dwdot[O]/d[CH3] */
-    J[436] += 1 * dqdc[12];       /* dwdot[OH]/d[CH3] */
-    J[444] += 1 * dqdc[12];       /* dwdot[CH3]/d[CH3] */
-    J[445] += -1 * dqdc[12];      /* dwdot[CH4]/d[CH3] */
+    dqdci =  - k_r*sc[4];
+    J[434] += -1 * dqdci;         /* dwdot[O]/d[CH3] */
+    J[436] += 1 * dqdci;          /* dwdot[OH]/d[CH3] */
+    J[444] += 1 * dqdci;          /* dwdot[CH3]/d[CH3] */
+    J[445] += -1 * dqdci;         /* dwdot[CH4]/d[CH3] */
     /* d()/d[CH4] */
-    J[470] += -1 * dqdc[13];      /* dwdot[O]/d[CH4] */
-    J[472] += 1 * dqdc[13];       /* dwdot[OH]/d[CH4] */
-    J[480] += 1 * dqdc[13];       /* dwdot[CH3]/d[CH4] */
-    J[481] += -1 * dqdc[13];      /* dwdot[CH4]/d[CH4] */
+    dqdci =  + k_f*sc[2];
+    J[470] += -1 * dqdci;         /* dwdot[O]/d[CH4] */
+    J[472] += 1 * dqdci;          /* dwdot[OH]/d[CH4] */
+    J[480] += 1 * dqdci;          /* dwdot[CH3]/d[CH4] */
+    J[481] += -1 * dqdci;         /* dwdot[CH4]/d[CH4] */
     /* d()/dT */
     J[1262] += -1 * dqdT;         /* dwdot[O]/dT */
     J[1264] += 1 * dqdT;          /* dwdot[OH]/dT */
@@ -17254,41 +17261,46 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     k_r *= Corr;
     dcdc_fac = q/alpha*(1.0/(Pr+1.0) + dlogFdlogPr);
     if (consP) {
-        dqdc[0] =  1*dcdc_fac;
-        dqdc[1] =  0.0;
-        dqdc[2] =  0.0 + k_f*sc[14];
-        dqdc[3] =  5*dcdc_fac;
-        dqdc[4] =  0.0;
-        dqdc[5] =  5*dcdc_fac;
-        dqdc[6] =  0.0;
-        dqdc[7] =  0.0;
-        dqdc[8] =  0.0;
-        dqdc[9] =  0.0;
-        dqdc[10] =  0.0;
-        dqdc[11] =  0.0;
-        dqdc[12] =  0.0;
-        dqdc[13] =  1*dcdc_fac;
-        dqdc[14] =  0.5*dcdc_fac + k_f*sc[2];
-        dqdc[15] =  2.5*dcdc_fac - k_r;
-        dqdc[16] =  0.0;
-        dqdc[17] =  0.0;
-        dqdc[18] =  0.0;
-        dqdc[19] =  0.0;
-        dqdc[20] =  0.0;
-        dqdc[21] =  0.0;
-        dqdc[22] =  0.0;
-        dqdc[23] =  0.0;
-        dqdc[24] =  0.0;
-        dqdc[25] =  0.0;
-        dqdc[26] =  2*dcdc_fac;
-        dqdc[27] =  0.0;
-        dqdc[28] =  0.0;
-        dqdc[29] =  0.0;
-        dqdc[30] =  0.0;
-        dqdc[31] =  0.0;
-        dqdc[32] =  0.0;
-        dqdc[33] =  0.0;
-        dqdc[34] =  0.0;
+        /* d()/d[H2] */
+        dqdci =  1*dcdc_fac;
+        J[2] += -1 * dqdci;           /* dwdot[O]/d[H2] */
+        J[14] += -1 * dqdci;          /* dwdot[CO]/d[H2] */
+        J[15] += 1 * dqdci;           /* dwdot[CO2]/d[H2] */
+        /* d()/d[O] */
+        dqdci =  + k_f*sc[14];
+        J[74] += -1 * dqdci;          /* dwdot[O]/d[O] */
+        J[86] += -1 * dqdci;          /* dwdot[CO]/d[O] */
+        J[87] += 1 * dqdci;           /* dwdot[CO2]/d[O] */
+        /* d()/d[O2] */
+        dqdci =  5*dcdc_fac;
+        J[110] += -1 * dqdci;         /* dwdot[O]/d[O2] */
+        J[122] += -1 * dqdci;         /* dwdot[CO]/d[O2] */
+        J[123] += 1 * dqdci;          /* dwdot[CO2]/d[O2] */
+        /* d()/d[H2O] */
+        dqdci =  5*dcdc_fac;
+        J[182] += -1 * dqdci;         /* dwdot[O]/d[H2O] */
+        J[194] += -1 * dqdci;         /* dwdot[CO]/d[H2O] */
+        J[195] += 1 * dqdci;          /* dwdot[CO2]/d[H2O] */
+        /* d()/d[CH4] */
+        dqdci =  1*dcdc_fac;
+        J[470] += -1 * dqdci;         /* dwdot[O]/d[CH4] */
+        J[482] += -1 * dqdci;         /* dwdot[CO]/d[CH4] */
+        J[483] += 1 * dqdci;          /* dwdot[CO2]/d[CH4] */
+        /* d()/d[CO] */
+        dqdci =  0.5*dcdc_fac + k_f*sc[2];
+        J[506] += -1 * dqdci;         /* dwdot[O]/d[CO] */
+        J[518] += -1 * dqdci;         /* dwdot[CO]/d[CO] */
+        J[519] += 1 * dqdci;          /* dwdot[CO2]/d[CO] */
+        /* d()/d[CO2] */
+        dqdci =  2.5*dcdc_fac - k_r;
+        J[542] += -1 * dqdci;         /* dwdot[O]/d[CO2] */
+        J[554] += -1 * dqdci;         /* dwdot[CO]/d[CO2] */
+        J[555] += 1 * dqdci;          /* dwdot[CO2]/d[CO2] */
+        /* d()/d[C2H6] */
+        dqdci =  2*dcdc_fac;
+        J[938] += -1 * dqdci;         /* dwdot[O]/d[C2H6] */
+        J[950] += -1 * dqdci;         /* dwdot[CO]/d[C2H6] */
+        J[951] += 1 * dqdci;          /* dwdot[CO2]/d[C2H6] */
     }
     else {
         dqdc[0] =  2*dcdc_fac;
@@ -17326,11 +17338,11 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
         dqdc[32] =  1*dcdc_fac;
         dqdc[33] =  1*dcdc_fac;
         dqdc[34] =  1*dcdc_fac;
-    }
-    for (int k=0; k<35; k++) {
-        J[36*k+2] += -1 * dqdc[k];
-        J[36*k+14] += -1 * dqdc[k];
-        J[36*k+15] += 1 * dqdc[k];
+        for (int k=0; k<35; k++) {
+            J[36*k+2] += -1 * dqdc[k];
+            J[36*k+14] += -1 * dqdc[k];
+            J[36*k+15] += 1 * dqdc[k];
+        }
     }
     J[1262] += -1 * dqdT; /* dwdot[O]/dT */
     J[1274] += -1 * dqdT; /* dwdot[CO]/dT */
@@ -17356,30 +17368,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[4] += q; /* OH */
     wdot[14] += q; /* CO */
     wdot[16] -= q; /* HCO */
-    dqdc[2] =  + k_f*sc[16];
-    dqdc[4] =  - k_r*sc[14];
-    dqdc[14] =  - k_r*sc[4];
-    dqdc[16] =  + k_f*sc[2];
     /* d()/d[O] */
-    J[74] += -1 * dqdc[2];        /* dwdot[O]/d[O] */
-    J[76] += 1 * dqdc[2];         /* dwdot[OH]/d[O] */
-    J[86] += 1 * dqdc[2];         /* dwdot[CO]/d[O] */
-    J[88] += -1 * dqdc[2];        /* dwdot[HCO]/d[O] */
+    dqdci =  + k_f*sc[16];
+    J[74] += -1 * dqdci;          /* dwdot[O]/d[O] */
+    J[76] += 1 * dqdci;           /* dwdot[OH]/d[O] */
+    J[86] += 1 * dqdci;           /* dwdot[CO]/d[O] */
+    J[88] += -1 * dqdci;          /* dwdot[HCO]/d[O] */
     /* d()/d[OH] */
-    J[146] += -1 * dqdc[4];       /* dwdot[O]/d[OH] */
-    J[148] += 1 * dqdc[4];        /* dwdot[OH]/d[OH] */
-    J[158] += 1 * dqdc[4];        /* dwdot[CO]/d[OH] */
-    J[160] += -1 * dqdc[4];       /* dwdot[HCO]/d[OH] */
+    dqdci =  - k_r*sc[14];
+    J[146] += -1 * dqdci;         /* dwdot[O]/d[OH] */
+    J[148] += 1 * dqdci;          /* dwdot[OH]/d[OH] */
+    J[158] += 1 * dqdci;          /* dwdot[CO]/d[OH] */
+    J[160] += -1 * dqdci;         /* dwdot[HCO]/d[OH] */
     /* d()/d[CO] */
-    J[506] += -1 * dqdc[14];      /* dwdot[O]/d[CO] */
-    J[508] += 1 * dqdc[14];       /* dwdot[OH]/d[CO] */
-    J[518] += 1 * dqdc[14];       /* dwdot[CO]/d[CO] */
-    J[520] += -1 * dqdc[14];      /* dwdot[HCO]/d[CO] */
+    dqdci =  - k_r*sc[4];
+    J[506] += -1 * dqdci;         /* dwdot[O]/d[CO] */
+    J[508] += 1 * dqdci;          /* dwdot[OH]/d[CO] */
+    J[518] += 1 * dqdci;          /* dwdot[CO]/d[CO] */
+    J[520] += -1 * dqdci;         /* dwdot[HCO]/d[CO] */
     /* d()/d[HCO] */
-    J[578] += -1 * dqdc[16];      /* dwdot[O]/d[HCO] */
-    J[580] += 1 * dqdc[16];       /* dwdot[OH]/d[HCO] */
-    J[590] += 1 * dqdc[16];       /* dwdot[CO]/d[HCO] */
-    J[592] += -1 * dqdc[16];      /* dwdot[HCO]/d[HCO] */
+    dqdci =  + k_f*sc[2];
+    J[578] += -1 * dqdci;         /* dwdot[O]/d[HCO] */
+    J[580] += 1 * dqdci;          /* dwdot[OH]/d[HCO] */
+    J[590] += 1 * dqdci;          /* dwdot[CO]/d[HCO] */
+    J[592] += -1 * dqdci;         /* dwdot[HCO]/d[HCO] */
     /* d()/dT */
     J[1262] += -1 * dqdT;         /* dwdot[O]/dT */
     J[1264] += 1 * dqdT;          /* dwdot[OH]/dT */
@@ -17406,30 +17418,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[2] -= q; /* O */
     wdot[15] += q; /* CO2 */
     wdot[16] -= q; /* HCO */
-    dqdc[1] =  - k_r*sc[15];
-    dqdc[2] =  + k_f*sc[16];
-    dqdc[15] =  - k_r*sc[1];
-    dqdc[16] =  + k_f*sc[2];
     /* d()/d[H] */
-    J[37] += 1 * dqdc[1];         /* dwdot[H]/d[H] */
-    J[38] += -1 * dqdc[1];        /* dwdot[O]/d[H] */
-    J[51] += 1 * dqdc[1];         /* dwdot[CO2]/d[H] */
-    J[52] += -1 * dqdc[1];        /* dwdot[HCO]/d[H] */
+    dqdci =  - k_r*sc[15];
+    J[37] += 1 * dqdci;           /* dwdot[H]/d[H] */
+    J[38] += -1 * dqdci;          /* dwdot[O]/d[H] */
+    J[51] += 1 * dqdci;           /* dwdot[CO2]/d[H] */
+    J[52] += -1 * dqdci;          /* dwdot[HCO]/d[H] */
     /* d()/d[O] */
-    J[73] += 1 * dqdc[2];         /* dwdot[H]/d[O] */
-    J[74] += -1 * dqdc[2];        /* dwdot[O]/d[O] */
-    J[87] += 1 * dqdc[2];         /* dwdot[CO2]/d[O] */
-    J[88] += -1 * dqdc[2];        /* dwdot[HCO]/d[O] */
+    dqdci =  + k_f*sc[16];
+    J[73] += 1 * dqdci;           /* dwdot[H]/d[O] */
+    J[74] += -1 * dqdci;          /* dwdot[O]/d[O] */
+    J[87] += 1 * dqdci;           /* dwdot[CO2]/d[O] */
+    J[88] += -1 * dqdci;          /* dwdot[HCO]/d[O] */
     /* d()/d[CO2] */
-    J[541] += 1 * dqdc[15];       /* dwdot[H]/d[CO2] */
-    J[542] += -1 * dqdc[15];      /* dwdot[O]/d[CO2] */
-    J[555] += 1 * dqdc[15];       /* dwdot[CO2]/d[CO2] */
-    J[556] += -1 * dqdc[15];      /* dwdot[HCO]/d[CO2] */
+    dqdci =  - k_r*sc[1];
+    J[541] += 1 * dqdci;          /* dwdot[H]/d[CO2] */
+    J[542] += -1 * dqdci;         /* dwdot[O]/d[CO2] */
+    J[555] += 1 * dqdci;          /* dwdot[CO2]/d[CO2] */
+    J[556] += -1 * dqdci;         /* dwdot[HCO]/d[CO2] */
     /* d()/d[HCO] */
-    J[577] += 1 * dqdc[16];       /* dwdot[H]/d[HCO] */
-    J[578] += -1 * dqdc[16];      /* dwdot[O]/d[HCO] */
-    J[591] += 1 * dqdc[16];       /* dwdot[CO2]/d[HCO] */
-    J[592] += -1 * dqdc[16];      /* dwdot[HCO]/d[HCO] */
+    dqdci =  + k_f*sc[2];
+    J[577] += 1 * dqdci;          /* dwdot[H]/d[HCO] */
+    J[578] += -1 * dqdci;         /* dwdot[O]/d[HCO] */
+    J[591] += 1 * dqdci;          /* dwdot[CO2]/d[HCO] */
+    J[592] += -1 * dqdci;         /* dwdot[HCO]/d[HCO] */
     /* d()/dT */
     J[1261] += 1 * dqdT;          /* dwdot[H]/dT */
     J[1262] += -1 * dqdT;         /* dwdot[O]/dT */
@@ -17456,30 +17468,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[4] += q; /* OH */
     wdot[16] += q; /* HCO */
     wdot[17] -= q; /* CH2O */
-    dqdc[2] =  + k_f*sc[17];
-    dqdc[4] =  - k_r*sc[16];
-    dqdc[16] =  - k_r*sc[4];
-    dqdc[17] =  + k_f*sc[2];
     /* d()/d[O] */
-    J[74] += -1 * dqdc[2];        /* dwdot[O]/d[O] */
-    J[76] += 1 * dqdc[2];         /* dwdot[OH]/d[O] */
-    J[88] += 1 * dqdc[2];         /* dwdot[HCO]/d[O] */
-    J[89] += -1 * dqdc[2];        /* dwdot[CH2O]/d[O] */
+    dqdci =  + k_f*sc[17];
+    J[74] += -1 * dqdci;          /* dwdot[O]/d[O] */
+    J[76] += 1 * dqdci;           /* dwdot[OH]/d[O] */
+    J[88] += 1 * dqdci;           /* dwdot[HCO]/d[O] */
+    J[89] += -1 * dqdci;          /* dwdot[CH2O]/d[O] */
     /* d()/d[OH] */
-    J[146] += -1 * dqdc[4];       /* dwdot[O]/d[OH] */
-    J[148] += 1 * dqdc[4];        /* dwdot[OH]/d[OH] */
-    J[160] += 1 * dqdc[4];        /* dwdot[HCO]/d[OH] */
-    J[161] += -1 * dqdc[4];       /* dwdot[CH2O]/d[OH] */
+    dqdci =  - k_r*sc[16];
+    J[146] += -1 * dqdci;         /* dwdot[O]/d[OH] */
+    J[148] += 1 * dqdci;          /* dwdot[OH]/d[OH] */
+    J[160] += 1 * dqdci;          /* dwdot[HCO]/d[OH] */
+    J[161] += -1 * dqdci;         /* dwdot[CH2O]/d[OH] */
     /* d()/d[HCO] */
-    J[578] += -1 * dqdc[16];      /* dwdot[O]/d[HCO] */
-    J[580] += 1 * dqdc[16];       /* dwdot[OH]/d[HCO] */
-    J[592] += 1 * dqdc[16];       /* dwdot[HCO]/d[HCO] */
-    J[593] += -1 * dqdc[16];      /* dwdot[CH2O]/d[HCO] */
+    dqdci =  - k_r*sc[4];
+    J[578] += -1 * dqdci;         /* dwdot[O]/d[HCO] */
+    J[580] += 1 * dqdci;          /* dwdot[OH]/d[HCO] */
+    J[592] += 1 * dqdci;          /* dwdot[HCO]/d[HCO] */
+    J[593] += -1 * dqdci;         /* dwdot[CH2O]/d[HCO] */
     /* d()/d[CH2O] */
-    J[614] += -1 * dqdc[17];      /* dwdot[O]/d[CH2O] */
-    J[616] += 1 * dqdc[17];       /* dwdot[OH]/d[CH2O] */
-    J[628] += 1 * dqdc[17];       /* dwdot[HCO]/d[CH2O] */
-    J[629] += -1 * dqdc[17];      /* dwdot[CH2O]/d[CH2O] */
+    dqdci =  + k_f*sc[2];
+    J[614] += -1 * dqdci;         /* dwdot[O]/d[CH2O] */
+    J[616] += 1 * dqdci;          /* dwdot[OH]/d[CH2O] */
+    J[628] += 1 * dqdci;          /* dwdot[HCO]/d[CH2O] */
+    J[629] += -1 * dqdci;         /* dwdot[CH2O]/d[CH2O] */
     /* d()/dT */
     J[1262] += -1 * dqdT;         /* dwdot[O]/dT */
     J[1264] += 1 * dqdT;          /* dwdot[OH]/dT */
@@ -17506,30 +17518,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[4] += q; /* OH */
     wdot[17] += q; /* CH2O */
     wdot[18] -= q; /* CH2OH */
-    dqdc[2] =  + k_f*sc[18];
-    dqdc[4] =  - k_r*sc[17];
-    dqdc[17] =  - k_r*sc[4];
-    dqdc[18] =  + k_f*sc[2];
     /* d()/d[O] */
-    J[74] += -1 * dqdc[2];        /* dwdot[O]/d[O] */
-    J[76] += 1 * dqdc[2];         /* dwdot[OH]/d[O] */
-    J[89] += 1 * dqdc[2];         /* dwdot[CH2O]/d[O] */
-    J[90] += -1 * dqdc[2];        /* dwdot[CH2OH]/d[O] */
+    dqdci =  + k_f*sc[18];
+    J[74] += -1 * dqdci;          /* dwdot[O]/d[O] */
+    J[76] += 1 * dqdci;           /* dwdot[OH]/d[O] */
+    J[89] += 1 * dqdci;           /* dwdot[CH2O]/d[O] */
+    J[90] += -1 * dqdci;          /* dwdot[CH2OH]/d[O] */
     /* d()/d[OH] */
-    J[146] += -1 * dqdc[4];       /* dwdot[O]/d[OH] */
-    J[148] += 1 * dqdc[4];        /* dwdot[OH]/d[OH] */
-    J[161] += 1 * dqdc[4];        /* dwdot[CH2O]/d[OH] */
-    J[162] += -1 * dqdc[4];       /* dwdot[CH2OH]/d[OH] */
+    dqdci =  - k_r*sc[17];
+    J[146] += -1 * dqdci;         /* dwdot[O]/d[OH] */
+    J[148] += 1 * dqdci;          /* dwdot[OH]/d[OH] */
+    J[161] += 1 * dqdci;          /* dwdot[CH2O]/d[OH] */
+    J[162] += -1 * dqdci;         /* dwdot[CH2OH]/d[OH] */
     /* d()/d[CH2O] */
-    J[614] += -1 * dqdc[17];      /* dwdot[O]/d[CH2O] */
-    J[616] += 1 * dqdc[17];       /* dwdot[OH]/d[CH2O] */
-    J[629] += 1 * dqdc[17];       /* dwdot[CH2O]/d[CH2O] */
-    J[630] += -1 * dqdc[17];      /* dwdot[CH2OH]/d[CH2O] */
+    dqdci =  - k_r*sc[4];
+    J[614] += -1 * dqdci;         /* dwdot[O]/d[CH2O] */
+    J[616] += 1 * dqdci;          /* dwdot[OH]/d[CH2O] */
+    J[629] += 1 * dqdci;          /* dwdot[CH2O]/d[CH2O] */
+    J[630] += -1 * dqdci;         /* dwdot[CH2OH]/d[CH2O] */
     /* d()/d[CH2OH] */
-    J[650] += -1 * dqdc[18];      /* dwdot[O]/d[CH2OH] */
-    J[652] += 1 * dqdc[18];       /* dwdot[OH]/d[CH2OH] */
-    J[665] += 1 * dqdc[18];       /* dwdot[CH2O]/d[CH2OH] */
-    J[666] += -1 * dqdc[18];      /* dwdot[CH2OH]/d[CH2OH] */
+    dqdci =  + k_f*sc[2];
+    J[650] += -1 * dqdci;         /* dwdot[O]/d[CH2OH] */
+    J[652] += 1 * dqdci;          /* dwdot[OH]/d[CH2OH] */
+    J[665] += 1 * dqdci;          /* dwdot[CH2O]/d[CH2OH] */
+    J[666] += -1 * dqdci;         /* dwdot[CH2OH]/d[CH2OH] */
     /* d()/dT */
     J[1262] += -1 * dqdT;         /* dwdot[O]/dT */
     J[1264] += 1 * dqdT;          /* dwdot[OH]/dT */
@@ -17556,30 +17568,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[4] += q; /* OH */
     wdot[17] += q; /* CH2O */
     wdot[19] -= q; /* CH3O */
-    dqdc[2] =  + k_f*sc[19];
-    dqdc[4] =  - k_r*sc[17];
-    dqdc[17] =  - k_r*sc[4];
-    dqdc[19] =  + k_f*sc[2];
     /* d()/d[O] */
-    J[74] += -1 * dqdc[2];        /* dwdot[O]/d[O] */
-    J[76] += 1 * dqdc[2];         /* dwdot[OH]/d[O] */
-    J[89] += 1 * dqdc[2];         /* dwdot[CH2O]/d[O] */
-    J[91] += -1 * dqdc[2];        /* dwdot[CH3O]/d[O] */
+    dqdci =  + k_f*sc[19];
+    J[74] += -1 * dqdci;          /* dwdot[O]/d[O] */
+    J[76] += 1 * dqdci;           /* dwdot[OH]/d[O] */
+    J[89] += 1 * dqdci;           /* dwdot[CH2O]/d[O] */
+    J[91] += -1 * dqdci;          /* dwdot[CH3O]/d[O] */
     /* d()/d[OH] */
-    J[146] += -1 * dqdc[4];       /* dwdot[O]/d[OH] */
-    J[148] += 1 * dqdc[4];        /* dwdot[OH]/d[OH] */
-    J[161] += 1 * dqdc[4];        /* dwdot[CH2O]/d[OH] */
-    J[163] += -1 * dqdc[4];       /* dwdot[CH3O]/d[OH] */
+    dqdci =  - k_r*sc[17];
+    J[146] += -1 * dqdci;         /* dwdot[O]/d[OH] */
+    J[148] += 1 * dqdci;          /* dwdot[OH]/d[OH] */
+    J[161] += 1 * dqdci;          /* dwdot[CH2O]/d[OH] */
+    J[163] += -1 * dqdci;         /* dwdot[CH3O]/d[OH] */
     /* d()/d[CH2O] */
-    J[614] += -1 * dqdc[17];      /* dwdot[O]/d[CH2O] */
-    J[616] += 1 * dqdc[17];       /* dwdot[OH]/d[CH2O] */
-    J[629] += 1 * dqdc[17];       /* dwdot[CH2O]/d[CH2O] */
-    J[631] += -1 * dqdc[17];      /* dwdot[CH3O]/d[CH2O] */
+    dqdci =  - k_r*sc[4];
+    J[614] += -1 * dqdci;         /* dwdot[O]/d[CH2O] */
+    J[616] += 1 * dqdci;          /* dwdot[OH]/d[CH2O] */
+    J[629] += 1 * dqdci;          /* dwdot[CH2O]/d[CH2O] */
+    J[631] += -1 * dqdci;         /* dwdot[CH3O]/d[CH2O] */
     /* d()/d[CH3O] */
-    J[686] += -1 * dqdc[19];      /* dwdot[O]/d[CH3O] */
-    J[688] += 1 * dqdc[19];       /* dwdot[OH]/d[CH3O] */
-    J[701] += 1 * dqdc[19];       /* dwdot[CH2O]/d[CH3O] */
-    J[703] += -1 * dqdc[19];      /* dwdot[CH3O]/d[CH3O] */
+    dqdci =  + k_f*sc[2];
+    J[686] += -1 * dqdci;         /* dwdot[O]/d[CH3O] */
+    J[688] += 1 * dqdci;          /* dwdot[OH]/d[CH3O] */
+    J[701] += 1 * dqdci;          /* dwdot[CH2O]/d[CH3O] */
+    J[703] += -1 * dqdci;         /* dwdot[CH3O]/d[CH3O] */
     /* d()/dT */
     J[1262] += -1 * dqdT;         /* dwdot[O]/dT */
     J[1264] += 1 * dqdT;          /* dwdot[OH]/dT */
@@ -17606,30 +17618,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[4] += q; /* OH */
     wdot[18] += q; /* CH2OH */
     wdot[20] -= q; /* CH3OH */
-    dqdc[2] =  + k_f*sc[20];
-    dqdc[4] =  - k_r*sc[18];
-    dqdc[18] =  - k_r*sc[4];
-    dqdc[20] =  + k_f*sc[2];
     /* d()/d[O] */
-    J[74] += -1 * dqdc[2];        /* dwdot[O]/d[O] */
-    J[76] += 1 * dqdc[2];         /* dwdot[OH]/d[O] */
-    J[90] += 1 * dqdc[2];         /* dwdot[CH2OH]/d[O] */
-    J[92] += -1 * dqdc[2];        /* dwdot[CH3OH]/d[O] */
+    dqdci =  + k_f*sc[20];
+    J[74] += -1 * dqdci;          /* dwdot[O]/d[O] */
+    J[76] += 1 * dqdci;           /* dwdot[OH]/d[O] */
+    J[90] += 1 * dqdci;           /* dwdot[CH2OH]/d[O] */
+    J[92] += -1 * dqdci;          /* dwdot[CH3OH]/d[O] */
     /* d()/d[OH] */
-    J[146] += -1 * dqdc[4];       /* dwdot[O]/d[OH] */
-    J[148] += 1 * dqdc[4];        /* dwdot[OH]/d[OH] */
-    J[162] += 1 * dqdc[4];        /* dwdot[CH2OH]/d[OH] */
-    J[164] += -1 * dqdc[4];       /* dwdot[CH3OH]/d[OH] */
+    dqdci =  - k_r*sc[18];
+    J[146] += -1 * dqdci;         /* dwdot[O]/d[OH] */
+    J[148] += 1 * dqdci;          /* dwdot[OH]/d[OH] */
+    J[162] += 1 * dqdci;          /* dwdot[CH2OH]/d[OH] */
+    J[164] += -1 * dqdci;         /* dwdot[CH3OH]/d[OH] */
     /* d()/d[CH2OH] */
-    J[650] += -1 * dqdc[18];      /* dwdot[O]/d[CH2OH] */
-    J[652] += 1 * dqdc[18];       /* dwdot[OH]/d[CH2OH] */
-    J[666] += 1 * dqdc[18];       /* dwdot[CH2OH]/d[CH2OH] */
-    J[668] += -1 * dqdc[18];      /* dwdot[CH3OH]/d[CH2OH] */
+    dqdci =  - k_r*sc[4];
+    J[650] += -1 * dqdci;         /* dwdot[O]/d[CH2OH] */
+    J[652] += 1 * dqdci;          /* dwdot[OH]/d[CH2OH] */
+    J[666] += 1 * dqdci;          /* dwdot[CH2OH]/d[CH2OH] */
+    J[668] += -1 * dqdci;         /* dwdot[CH3OH]/d[CH2OH] */
     /* d()/d[CH3OH] */
-    J[722] += -1 * dqdc[20];      /* dwdot[O]/d[CH3OH] */
-    J[724] += 1 * dqdc[20];       /* dwdot[OH]/d[CH3OH] */
-    J[738] += 1 * dqdc[20];       /* dwdot[CH2OH]/d[CH3OH] */
-    J[740] += -1 * dqdc[20];      /* dwdot[CH3OH]/d[CH3OH] */
+    dqdci =  + k_f*sc[2];
+    J[722] += -1 * dqdci;         /* dwdot[O]/d[CH3OH] */
+    J[724] += 1 * dqdci;          /* dwdot[OH]/d[CH3OH] */
+    J[738] += 1 * dqdci;          /* dwdot[CH2OH]/d[CH3OH] */
+    J[740] += -1 * dqdci;         /* dwdot[CH3OH]/d[CH3OH] */
     /* d()/dT */
     J[1262] += -1 * dqdT;         /* dwdot[O]/dT */
     J[1264] += 1 * dqdT;          /* dwdot[OH]/dT */
@@ -17656,30 +17668,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[4] += q; /* OH */
     wdot[19] += q; /* CH3O */
     wdot[20] -= q; /* CH3OH */
-    dqdc[2] =  + k_f*sc[20];
-    dqdc[4] =  - k_r*sc[19];
-    dqdc[19] =  - k_r*sc[4];
-    dqdc[20] =  + k_f*sc[2];
     /* d()/d[O] */
-    J[74] += -1 * dqdc[2];        /* dwdot[O]/d[O] */
-    J[76] += 1 * dqdc[2];         /* dwdot[OH]/d[O] */
-    J[91] += 1 * dqdc[2];         /* dwdot[CH3O]/d[O] */
-    J[92] += -1 * dqdc[2];        /* dwdot[CH3OH]/d[O] */
+    dqdci =  + k_f*sc[20];
+    J[74] += -1 * dqdci;          /* dwdot[O]/d[O] */
+    J[76] += 1 * dqdci;           /* dwdot[OH]/d[O] */
+    J[91] += 1 * dqdci;           /* dwdot[CH3O]/d[O] */
+    J[92] += -1 * dqdci;          /* dwdot[CH3OH]/d[O] */
     /* d()/d[OH] */
-    J[146] += -1 * dqdc[4];       /* dwdot[O]/d[OH] */
-    J[148] += 1 * dqdc[4];        /* dwdot[OH]/d[OH] */
-    J[163] += 1 * dqdc[4];        /* dwdot[CH3O]/d[OH] */
-    J[164] += -1 * dqdc[4];       /* dwdot[CH3OH]/d[OH] */
+    dqdci =  - k_r*sc[19];
+    J[146] += -1 * dqdci;         /* dwdot[O]/d[OH] */
+    J[148] += 1 * dqdci;          /* dwdot[OH]/d[OH] */
+    J[163] += 1 * dqdci;          /* dwdot[CH3O]/d[OH] */
+    J[164] += -1 * dqdci;         /* dwdot[CH3OH]/d[OH] */
     /* d()/d[CH3O] */
-    J[686] += -1 * dqdc[19];      /* dwdot[O]/d[CH3O] */
-    J[688] += 1 * dqdc[19];       /* dwdot[OH]/d[CH3O] */
-    J[703] += 1 * dqdc[19];       /* dwdot[CH3O]/d[CH3O] */
-    J[704] += -1 * dqdc[19];      /* dwdot[CH3OH]/d[CH3O] */
+    dqdci =  - k_r*sc[4];
+    J[686] += -1 * dqdci;         /* dwdot[O]/d[CH3O] */
+    J[688] += 1 * dqdci;          /* dwdot[OH]/d[CH3O] */
+    J[703] += 1 * dqdci;          /* dwdot[CH3O]/d[CH3O] */
+    J[704] += -1 * dqdci;         /* dwdot[CH3OH]/d[CH3O] */
     /* d()/d[CH3OH] */
-    J[722] += -1 * dqdc[20];      /* dwdot[O]/d[CH3OH] */
-    J[724] += 1 * dqdc[20];       /* dwdot[OH]/d[CH3OH] */
-    J[739] += 1 * dqdc[20];       /* dwdot[CH3O]/d[CH3OH] */
-    J[740] += -1 * dqdc[20];      /* dwdot[CH3OH]/d[CH3OH] */
+    dqdci =  + k_f*sc[2];
+    J[722] += -1 * dqdci;         /* dwdot[O]/d[CH3OH] */
+    J[724] += 1 * dqdci;          /* dwdot[OH]/d[CH3OH] */
+    J[739] += 1 * dqdci;          /* dwdot[CH3O]/d[CH3OH] */
+    J[740] += -1 * dqdci;         /* dwdot[CH3OH]/d[CH3OH] */
     /* d()/dT */
     J[1262] += -1 * dqdT;         /* dwdot[O]/dT */
     J[1264] += 1 * dqdT;          /* dwdot[OH]/dT */
@@ -17706,30 +17718,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[9] += q; /* CH */
     wdot[14] += q; /* CO */
     wdot[21] -= q; /* C2H */
-    dqdc[2] =  + k_f*sc[21];
-    dqdc[9] =  - k_r*sc[14];
-    dqdc[14] =  - k_r*sc[9];
-    dqdc[21] =  + k_f*sc[2];
     /* d()/d[O] */
-    J[74] += -1 * dqdc[2];        /* dwdot[O]/d[O] */
-    J[81] += 1 * dqdc[2];         /* dwdot[CH]/d[O] */
-    J[86] += 1 * dqdc[2];         /* dwdot[CO]/d[O] */
-    J[93] += -1 * dqdc[2];        /* dwdot[C2H]/d[O] */
+    dqdci =  + k_f*sc[21];
+    J[74] += -1 * dqdci;          /* dwdot[O]/d[O] */
+    J[81] += 1 * dqdci;           /* dwdot[CH]/d[O] */
+    J[86] += 1 * dqdci;           /* dwdot[CO]/d[O] */
+    J[93] += -1 * dqdci;          /* dwdot[C2H]/d[O] */
     /* d()/d[CH] */
-    J[326] += -1 * dqdc[9];       /* dwdot[O]/d[CH] */
-    J[333] += 1 * dqdc[9];        /* dwdot[CH]/d[CH] */
-    J[338] += 1 * dqdc[9];        /* dwdot[CO]/d[CH] */
-    J[345] += -1 * dqdc[9];       /* dwdot[C2H]/d[CH] */
+    dqdci =  - k_r*sc[14];
+    J[326] += -1 * dqdci;         /* dwdot[O]/d[CH] */
+    J[333] += 1 * dqdci;          /* dwdot[CH]/d[CH] */
+    J[338] += 1 * dqdci;          /* dwdot[CO]/d[CH] */
+    J[345] += -1 * dqdci;         /* dwdot[C2H]/d[CH] */
     /* d()/d[CO] */
-    J[506] += -1 * dqdc[14];      /* dwdot[O]/d[CO] */
-    J[513] += 1 * dqdc[14];       /* dwdot[CH]/d[CO] */
-    J[518] += 1 * dqdc[14];       /* dwdot[CO]/d[CO] */
-    J[525] += -1 * dqdc[14];      /* dwdot[C2H]/d[CO] */
+    dqdci =  - k_r*sc[9];
+    J[506] += -1 * dqdci;         /* dwdot[O]/d[CO] */
+    J[513] += 1 * dqdci;          /* dwdot[CH]/d[CO] */
+    J[518] += 1 * dqdci;          /* dwdot[CO]/d[CO] */
+    J[525] += -1 * dqdci;         /* dwdot[C2H]/d[CO] */
     /* d()/d[C2H] */
-    J[758] += -1 * dqdc[21];      /* dwdot[O]/d[C2H] */
-    J[765] += 1 * dqdc[21];       /* dwdot[CH]/d[C2H] */
-    J[770] += 1 * dqdc[21];       /* dwdot[CO]/d[C2H] */
-    J[777] += -1 * dqdc[21];      /* dwdot[C2H]/d[C2H] */
+    dqdci =  + k_f*sc[2];
+    J[758] += -1 * dqdci;         /* dwdot[O]/d[C2H] */
+    J[765] += 1 * dqdci;          /* dwdot[CH]/d[C2H] */
+    J[770] += 1 * dqdci;          /* dwdot[CO]/d[C2H] */
+    J[777] += -1 * dqdci;         /* dwdot[C2H]/d[C2H] */
     /* d()/dT */
     J[1262] += -1 * dqdT;         /* dwdot[O]/dT */
     J[1269] += 1 * dqdT;          /* dwdot[CH]/dT */
@@ -17756,30 +17768,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[2] -= q; /* O */
     wdot[22] -= q; /* C2H2 */
     wdot[27] += q; /* HCCO */
-    dqdc[1] =  - k_r*sc[27];
-    dqdc[2] =  + k_f*sc[22];
-    dqdc[22] =  + k_f*sc[2];
-    dqdc[27] =  - k_r*sc[1];
     /* d()/d[H] */
-    J[37] += 1 * dqdc[1];         /* dwdot[H]/d[H] */
-    J[38] += -1 * dqdc[1];        /* dwdot[O]/d[H] */
-    J[58] += -1 * dqdc[1];        /* dwdot[C2H2]/d[H] */
-    J[63] += 1 * dqdc[1];         /* dwdot[HCCO]/d[H] */
+    dqdci =  - k_r*sc[27];
+    J[37] += 1 * dqdci;           /* dwdot[H]/d[H] */
+    J[38] += -1 * dqdci;          /* dwdot[O]/d[H] */
+    J[58] += -1 * dqdci;          /* dwdot[C2H2]/d[H] */
+    J[63] += 1 * dqdci;           /* dwdot[HCCO]/d[H] */
     /* d()/d[O] */
-    J[73] += 1 * dqdc[2];         /* dwdot[H]/d[O] */
-    J[74] += -1 * dqdc[2];        /* dwdot[O]/d[O] */
-    J[94] += -1 * dqdc[2];        /* dwdot[C2H2]/d[O] */
-    J[99] += 1 * dqdc[2];         /* dwdot[HCCO]/d[O] */
+    dqdci =  + k_f*sc[22];
+    J[73] += 1 * dqdci;           /* dwdot[H]/d[O] */
+    J[74] += -1 * dqdci;          /* dwdot[O]/d[O] */
+    J[94] += -1 * dqdci;          /* dwdot[C2H2]/d[O] */
+    J[99] += 1 * dqdci;           /* dwdot[HCCO]/d[O] */
     /* d()/d[C2H2] */
-    J[793] += 1 * dqdc[22];       /* dwdot[H]/d[C2H2] */
-    J[794] += -1 * dqdc[22];      /* dwdot[O]/d[C2H2] */
-    J[814] += -1 * dqdc[22];      /* dwdot[C2H2]/d[C2H2] */
-    J[819] += 1 * dqdc[22];       /* dwdot[HCCO]/d[C2H2] */
+    dqdci =  + k_f*sc[2];
+    J[793] += 1 * dqdci;          /* dwdot[H]/d[C2H2] */
+    J[794] += -1 * dqdci;         /* dwdot[O]/d[C2H2] */
+    J[814] += -1 * dqdci;         /* dwdot[C2H2]/d[C2H2] */
+    J[819] += 1 * dqdci;          /* dwdot[HCCO]/d[C2H2] */
     /* d()/d[HCCO] */
-    J[973] += 1 * dqdc[27];       /* dwdot[H]/d[HCCO] */
-    J[974] += -1 * dqdc[27];      /* dwdot[O]/d[HCCO] */
-    J[994] += -1 * dqdc[27];      /* dwdot[C2H2]/d[HCCO] */
-    J[999] += 1 * dqdc[27];       /* dwdot[HCCO]/d[HCCO] */
+    dqdci =  - k_r*sc[1];
+    J[973] += 1 * dqdci;          /* dwdot[H]/d[HCCO] */
+    J[974] += -1 * dqdci;         /* dwdot[O]/d[HCCO] */
+    J[994] += -1 * dqdci;         /* dwdot[C2H2]/d[HCCO] */
+    J[999] += 1 * dqdci;          /* dwdot[HCCO]/d[HCCO] */
     /* d()/dT */
     J[1261] += 1 * dqdT;          /* dwdot[H]/dT */
     J[1262] += -1 * dqdT;         /* dwdot[O]/dT */
@@ -17806,30 +17818,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[4] += q; /* OH */
     wdot[21] += q; /* C2H */
     wdot[22] -= q; /* C2H2 */
-    dqdc[2] =  + k_f*sc[22];
-    dqdc[4] =  - k_r*sc[21];
-    dqdc[21] =  - k_r*sc[4];
-    dqdc[22] =  + k_f*sc[2];
     /* d()/d[O] */
-    J[74] += -1 * dqdc[2];        /* dwdot[O]/d[O] */
-    J[76] += 1 * dqdc[2];         /* dwdot[OH]/d[O] */
-    J[93] += 1 * dqdc[2];         /* dwdot[C2H]/d[O] */
-    J[94] += -1 * dqdc[2];        /* dwdot[C2H2]/d[O] */
+    dqdci =  + k_f*sc[22];
+    J[74] += -1 * dqdci;          /* dwdot[O]/d[O] */
+    J[76] += 1 * dqdci;           /* dwdot[OH]/d[O] */
+    J[93] += 1 * dqdci;           /* dwdot[C2H]/d[O] */
+    J[94] += -1 * dqdci;          /* dwdot[C2H2]/d[O] */
     /* d()/d[OH] */
-    J[146] += -1 * dqdc[4];       /* dwdot[O]/d[OH] */
-    J[148] += 1 * dqdc[4];        /* dwdot[OH]/d[OH] */
-    J[165] += 1 * dqdc[4];        /* dwdot[C2H]/d[OH] */
-    J[166] += -1 * dqdc[4];       /* dwdot[C2H2]/d[OH] */
+    dqdci =  - k_r*sc[21];
+    J[146] += -1 * dqdci;         /* dwdot[O]/d[OH] */
+    J[148] += 1 * dqdci;          /* dwdot[OH]/d[OH] */
+    J[165] += 1 * dqdci;          /* dwdot[C2H]/d[OH] */
+    J[166] += -1 * dqdci;         /* dwdot[C2H2]/d[OH] */
     /* d()/d[C2H] */
-    J[758] += -1 * dqdc[21];      /* dwdot[O]/d[C2H] */
-    J[760] += 1 * dqdc[21];       /* dwdot[OH]/d[C2H] */
-    J[777] += 1 * dqdc[21];       /* dwdot[C2H]/d[C2H] */
-    J[778] += -1 * dqdc[21];      /* dwdot[C2H2]/d[C2H] */
+    dqdci =  - k_r*sc[4];
+    J[758] += -1 * dqdci;         /* dwdot[O]/d[C2H] */
+    J[760] += 1 * dqdci;          /* dwdot[OH]/d[C2H] */
+    J[777] += 1 * dqdci;          /* dwdot[C2H]/d[C2H] */
+    J[778] += -1 * dqdci;         /* dwdot[C2H2]/d[C2H] */
     /* d()/d[C2H2] */
-    J[794] += -1 * dqdc[22];      /* dwdot[O]/d[C2H2] */
-    J[796] += 1 * dqdc[22];       /* dwdot[OH]/d[C2H2] */
-    J[813] += 1 * dqdc[22];       /* dwdot[C2H]/d[C2H2] */
-    J[814] += -1 * dqdc[22];      /* dwdot[C2H2]/d[C2H2] */
+    dqdci =  + k_f*sc[2];
+    J[794] += -1 * dqdci;         /* dwdot[O]/d[C2H2] */
+    J[796] += 1 * dqdci;          /* dwdot[OH]/d[C2H2] */
+    J[813] += 1 * dqdci;          /* dwdot[C2H]/d[C2H2] */
+    J[814] += -1 * dqdci;         /* dwdot[C2H2]/d[C2H2] */
     /* d()/dT */
     J[1262] += -1 * dqdT;         /* dwdot[O]/dT */
     J[1264] += 1 * dqdT;          /* dwdot[OH]/dT */
@@ -17856,30 +17868,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[10] += q; /* CH2 */
     wdot[14] += q; /* CO */
     wdot[22] -= q; /* C2H2 */
-    dqdc[2] =  + k_f*sc[22];
-    dqdc[10] =  - k_r*sc[14];
-    dqdc[14] =  - k_r*sc[10];
-    dqdc[22] =  + k_f*sc[2];
     /* d()/d[O] */
-    J[74] += -1 * dqdc[2];        /* dwdot[O]/d[O] */
-    J[82] += 1 * dqdc[2];         /* dwdot[CH2]/d[O] */
-    J[86] += 1 * dqdc[2];         /* dwdot[CO]/d[O] */
-    J[94] += -1 * dqdc[2];        /* dwdot[C2H2]/d[O] */
+    dqdci =  + k_f*sc[22];
+    J[74] += -1 * dqdci;          /* dwdot[O]/d[O] */
+    J[82] += 1 * dqdci;           /* dwdot[CH2]/d[O] */
+    J[86] += 1 * dqdci;           /* dwdot[CO]/d[O] */
+    J[94] += -1 * dqdci;          /* dwdot[C2H2]/d[O] */
     /* d()/d[CH2] */
-    J[362] += -1 * dqdc[10];      /* dwdot[O]/d[CH2] */
-    J[370] += 1 * dqdc[10];       /* dwdot[CH2]/d[CH2] */
-    J[374] += 1 * dqdc[10];       /* dwdot[CO]/d[CH2] */
-    J[382] += -1 * dqdc[10];      /* dwdot[C2H2]/d[CH2] */
+    dqdci =  - k_r*sc[14];
+    J[362] += -1 * dqdci;         /* dwdot[O]/d[CH2] */
+    J[370] += 1 * dqdci;          /* dwdot[CH2]/d[CH2] */
+    J[374] += 1 * dqdci;          /* dwdot[CO]/d[CH2] */
+    J[382] += -1 * dqdci;         /* dwdot[C2H2]/d[CH2] */
     /* d()/d[CO] */
-    J[506] += -1 * dqdc[14];      /* dwdot[O]/d[CO] */
-    J[514] += 1 * dqdc[14];       /* dwdot[CH2]/d[CO] */
-    J[518] += 1 * dqdc[14];       /* dwdot[CO]/d[CO] */
-    J[526] += -1 * dqdc[14];      /* dwdot[C2H2]/d[CO] */
+    dqdci =  - k_r*sc[10];
+    J[506] += -1 * dqdci;         /* dwdot[O]/d[CO] */
+    J[514] += 1 * dqdci;          /* dwdot[CH2]/d[CO] */
+    J[518] += 1 * dqdci;          /* dwdot[CO]/d[CO] */
+    J[526] += -1 * dqdci;         /* dwdot[C2H2]/d[CO] */
     /* d()/d[C2H2] */
-    J[794] += -1 * dqdc[22];      /* dwdot[O]/d[C2H2] */
-    J[802] += 1 * dqdc[22];       /* dwdot[CH2]/d[C2H2] */
-    J[806] += 1 * dqdc[22];       /* dwdot[CO]/d[C2H2] */
-    J[814] += -1 * dqdc[22];      /* dwdot[C2H2]/d[C2H2] */
+    dqdci =  + k_f*sc[2];
+    J[794] += -1 * dqdci;         /* dwdot[O]/d[C2H2] */
+    J[802] += 1 * dqdci;          /* dwdot[CH2]/d[C2H2] */
+    J[806] += 1 * dqdci;          /* dwdot[CO]/d[C2H2] */
+    J[814] += -1 * dqdci;         /* dwdot[C2H2]/d[C2H2] */
     /* d()/dT */
     J[1262] += -1 * dqdT;         /* dwdot[O]/dT */
     J[1270] += 1 * dqdT;          /* dwdot[CH2]/dT */
@@ -17906,30 +17918,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[2] -= q; /* O */
     wdot[23] -= q; /* C2H3 */
     wdot[28] += q; /* CH2CO */
-    dqdc[1] =  - k_r*sc[28];
-    dqdc[2] =  + k_f*sc[23];
-    dqdc[23] =  + k_f*sc[2];
-    dqdc[28] =  - k_r*sc[1];
     /* d()/d[H] */
-    J[37] += 1 * dqdc[1];         /* dwdot[H]/d[H] */
-    J[38] += -1 * dqdc[1];        /* dwdot[O]/d[H] */
-    J[59] += -1 * dqdc[1];        /* dwdot[C2H3]/d[H] */
-    J[64] += 1 * dqdc[1];         /* dwdot[CH2CO]/d[H] */
+    dqdci =  - k_r*sc[28];
+    J[37] += 1 * dqdci;           /* dwdot[H]/d[H] */
+    J[38] += -1 * dqdci;          /* dwdot[O]/d[H] */
+    J[59] += -1 * dqdci;          /* dwdot[C2H3]/d[H] */
+    J[64] += 1 * dqdci;           /* dwdot[CH2CO]/d[H] */
     /* d()/d[O] */
-    J[73] += 1 * dqdc[2];         /* dwdot[H]/d[O] */
-    J[74] += -1 * dqdc[2];        /* dwdot[O]/d[O] */
-    J[95] += -1 * dqdc[2];        /* dwdot[C2H3]/d[O] */
-    J[100] += 1 * dqdc[2];        /* dwdot[CH2CO]/d[O] */
+    dqdci =  + k_f*sc[23];
+    J[73] += 1 * dqdci;           /* dwdot[H]/d[O] */
+    J[74] += -1 * dqdci;          /* dwdot[O]/d[O] */
+    J[95] += -1 * dqdci;          /* dwdot[C2H3]/d[O] */
+    J[100] += 1 * dqdci;          /* dwdot[CH2CO]/d[O] */
     /* d()/d[C2H3] */
-    J[829] += 1 * dqdc[23];       /* dwdot[H]/d[C2H3] */
-    J[830] += -1 * dqdc[23];      /* dwdot[O]/d[C2H3] */
-    J[851] += -1 * dqdc[23];      /* dwdot[C2H3]/d[C2H3] */
-    J[856] += 1 * dqdc[23];       /* dwdot[CH2CO]/d[C2H3] */
+    dqdci =  + k_f*sc[2];
+    J[829] += 1 * dqdci;          /* dwdot[H]/d[C2H3] */
+    J[830] += -1 * dqdci;         /* dwdot[O]/d[C2H3] */
+    J[851] += -1 * dqdci;         /* dwdot[C2H3]/d[C2H3] */
+    J[856] += 1 * dqdci;          /* dwdot[CH2CO]/d[C2H3] */
     /* d()/d[CH2CO] */
-    J[1009] += 1 * dqdc[28];      /* dwdot[H]/d[CH2CO] */
-    J[1010] += -1 * dqdc[28];     /* dwdot[O]/d[CH2CO] */
-    J[1031] += -1 * dqdc[28];     /* dwdot[C2H3]/d[CH2CO] */
-    J[1036] += 1 * dqdc[28];      /* dwdot[CH2CO]/d[CH2CO] */
+    dqdci =  - k_r*sc[1];
+    J[1009] += 1 * dqdci;         /* dwdot[H]/d[CH2CO] */
+    J[1010] += -1 * dqdci;        /* dwdot[O]/d[CH2CO] */
+    J[1031] += -1 * dqdci;        /* dwdot[C2H3]/d[CH2CO] */
+    J[1036] += 1 * dqdci;         /* dwdot[CH2CO]/d[CH2CO] */
     /* d()/dT */
     J[1261] += 1 * dqdT;          /* dwdot[H]/dT */
     J[1262] += -1 * dqdT;         /* dwdot[O]/dT */
@@ -17956,30 +17968,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[12] += q; /* CH3 */
     wdot[16] += q; /* HCO */
     wdot[24] -= q; /* C2H4 */
-    dqdc[2] =  + k_f*sc[24];
-    dqdc[12] =  - k_r*sc[16];
-    dqdc[16] =  - k_r*sc[12];
-    dqdc[24] =  + k_f*sc[2];
     /* d()/d[O] */
-    J[74] += -1 * dqdc[2];        /* dwdot[O]/d[O] */
-    J[84] += 1 * dqdc[2];         /* dwdot[CH3]/d[O] */
-    J[88] += 1 * dqdc[2];         /* dwdot[HCO]/d[O] */
-    J[96] += -1 * dqdc[2];        /* dwdot[C2H4]/d[O] */
+    dqdci =  + k_f*sc[24];
+    J[74] += -1 * dqdci;          /* dwdot[O]/d[O] */
+    J[84] += 1 * dqdci;           /* dwdot[CH3]/d[O] */
+    J[88] += 1 * dqdci;           /* dwdot[HCO]/d[O] */
+    J[96] += -1 * dqdci;          /* dwdot[C2H4]/d[O] */
     /* d()/d[CH3] */
-    J[434] += -1 * dqdc[12];      /* dwdot[O]/d[CH3] */
-    J[444] += 1 * dqdc[12];       /* dwdot[CH3]/d[CH3] */
-    J[448] += 1 * dqdc[12];       /* dwdot[HCO]/d[CH3] */
-    J[456] += -1 * dqdc[12];      /* dwdot[C2H4]/d[CH3] */
+    dqdci =  - k_r*sc[16];
+    J[434] += -1 * dqdci;         /* dwdot[O]/d[CH3] */
+    J[444] += 1 * dqdci;          /* dwdot[CH3]/d[CH3] */
+    J[448] += 1 * dqdci;          /* dwdot[HCO]/d[CH3] */
+    J[456] += -1 * dqdci;         /* dwdot[C2H4]/d[CH3] */
     /* d()/d[HCO] */
-    J[578] += -1 * dqdc[16];      /* dwdot[O]/d[HCO] */
-    J[588] += 1 * dqdc[16];       /* dwdot[CH3]/d[HCO] */
-    J[592] += 1 * dqdc[16];       /* dwdot[HCO]/d[HCO] */
-    J[600] += -1 * dqdc[16];      /* dwdot[C2H4]/d[HCO] */
+    dqdci =  - k_r*sc[12];
+    J[578] += -1 * dqdci;         /* dwdot[O]/d[HCO] */
+    J[588] += 1 * dqdci;          /* dwdot[CH3]/d[HCO] */
+    J[592] += 1 * dqdci;          /* dwdot[HCO]/d[HCO] */
+    J[600] += -1 * dqdci;         /* dwdot[C2H4]/d[HCO] */
     /* d()/d[C2H4] */
-    J[866] += -1 * dqdc[24];      /* dwdot[O]/d[C2H4] */
-    J[876] += 1 * dqdc[24];       /* dwdot[CH3]/d[C2H4] */
-    J[880] += 1 * dqdc[24];       /* dwdot[HCO]/d[C2H4] */
-    J[888] += -1 * dqdc[24];      /* dwdot[C2H4]/d[C2H4] */
+    dqdci =  + k_f*sc[2];
+    J[866] += -1 * dqdci;         /* dwdot[O]/d[C2H4] */
+    J[876] += 1 * dqdci;          /* dwdot[CH3]/d[C2H4] */
+    J[880] += 1 * dqdci;          /* dwdot[HCO]/d[C2H4] */
+    J[888] += -1 * dqdci;         /* dwdot[C2H4]/d[C2H4] */
     /* d()/dT */
     J[1262] += -1 * dqdT;         /* dwdot[O]/dT */
     J[1272] += 1 * dqdT;          /* dwdot[CH3]/dT */
@@ -18006,30 +18018,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[12] += q; /* CH3 */
     wdot[17] += q; /* CH2O */
     wdot[25] -= q; /* C2H5 */
-    dqdc[2] =  + k_f*sc[25];
-    dqdc[12] =  - k_r*sc[17];
-    dqdc[17] =  - k_r*sc[12];
-    dqdc[25] =  + k_f*sc[2];
     /* d()/d[O] */
-    J[74] += -1 * dqdc[2];        /* dwdot[O]/d[O] */
-    J[84] += 1 * dqdc[2];         /* dwdot[CH3]/d[O] */
-    J[89] += 1 * dqdc[2];         /* dwdot[CH2O]/d[O] */
-    J[97] += -1 * dqdc[2];        /* dwdot[C2H5]/d[O] */
+    dqdci =  + k_f*sc[25];
+    J[74] += -1 * dqdci;          /* dwdot[O]/d[O] */
+    J[84] += 1 * dqdci;           /* dwdot[CH3]/d[O] */
+    J[89] += 1 * dqdci;           /* dwdot[CH2O]/d[O] */
+    J[97] += -1 * dqdci;          /* dwdot[C2H5]/d[O] */
     /* d()/d[CH3] */
-    J[434] += -1 * dqdc[12];      /* dwdot[O]/d[CH3] */
-    J[444] += 1 * dqdc[12];       /* dwdot[CH3]/d[CH3] */
-    J[449] += 1 * dqdc[12];       /* dwdot[CH2O]/d[CH3] */
-    J[457] += -1 * dqdc[12];      /* dwdot[C2H5]/d[CH3] */
+    dqdci =  - k_r*sc[17];
+    J[434] += -1 * dqdci;         /* dwdot[O]/d[CH3] */
+    J[444] += 1 * dqdci;          /* dwdot[CH3]/d[CH3] */
+    J[449] += 1 * dqdci;          /* dwdot[CH2O]/d[CH3] */
+    J[457] += -1 * dqdci;         /* dwdot[C2H5]/d[CH3] */
     /* d()/d[CH2O] */
-    J[614] += -1 * dqdc[17];      /* dwdot[O]/d[CH2O] */
-    J[624] += 1 * dqdc[17];       /* dwdot[CH3]/d[CH2O] */
-    J[629] += 1 * dqdc[17];       /* dwdot[CH2O]/d[CH2O] */
-    J[637] += -1 * dqdc[17];      /* dwdot[C2H5]/d[CH2O] */
+    dqdci =  - k_r*sc[12];
+    J[614] += -1 * dqdci;         /* dwdot[O]/d[CH2O] */
+    J[624] += 1 * dqdci;          /* dwdot[CH3]/d[CH2O] */
+    J[629] += 1 * dqdci;          /* dwdot[CH2O]/d[CH2O] */
+    J[637] += -1 * dqdci;         /* dwdot[C2H5]/d[CH2O] */
     /* d()/d[C2H5] */
-    J[902] += -1 * dqdc[25];      /* dwdot[O]/d[C2H5] */
-    J[912] += 1 * dqdc[25];       /* dwdot[CH3]/d[C2H5] */
-    J[917] += 1 * dqdc[25];       /* dwdot[CH2O]/d[C2H5] */
-    J[925] += -1 * dqdc[25];      /* dwdot[C2H5]/d[C2H5] */
+    dqdci =  + k_f*sc[2];
+    J[902] += -1 * dqdci;         /* dwdot[O]/d[C2H5] */
+    J[912] += 1 * dqdci;          /* dwdot[CH3]/d[C2H5] */
+    J[917] += 1 * dqdci;          /* dwdot[CH2O]/d[C2H5] */
+    J[925] += -1 * dqdci;         /* dwdot[C2H5]/d[C2H5] */
     /* d()/dT */
     J[1262] += -1 * dqdT;         /* dwdot[O]/dT */
     J[1272] += 1 * dqdT;          /* dwdot[CH3]/dT */
@@ -18056,30 +18068,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[4] += q; /* OH */
     wdot[25] += q; /* C2H5 */
     wdot[26] -= q; /* C2H6 */
-    dqdc[2] =  + k_f*sc[26];
-    dqdc[4] =  - k_r*sc[25];
-    dqdc[25] =  - k_r*sc[4];
-    dqdc[26] =  + k_f*sc[2];
     /* d()/d[O] */
-    J[74] += -1 * dqdc[2];        /* dwdot[O]/d[O] */
-    J[76] += 1 * dqdc[2];         /* dwdot[OH]/d[O] */
-    J[97] += 1 * dqdc[2];         /* dwdot[C2H5]/d[O] */
-    J[98] += -1 * dqdc[2];        /* dwdot[C2H6]/d[O] */
+    dqdci =  + k_f*sc[26];
+    J[74] += -1 * dqdci;          /* dwdot[O]/d[O] */
+    J[76] += 1 * dqdci;           /* dwdot[OH]/d[O] */
+    J[97] += 1 * dqdci;           /* dwdot[C2H5]/d[O] */
+    J[98] += -1 * dqdci;          /* dwdot[C2H6]/d[O] */
     /* d()/d[OH] */
-    J[146] += -1 * dqdc[4];       /* dwdot[O]/d[OH] */
-    J[148] += 1 * dqdc[4];        /* dwdot[OH]/d[OH] */
-    J[169] += 1 * dqdc[4];        /* dwdot[C2H5]/d[OH] */
-    J[170] += -1 * dqdc[4];       /* dwdot[C2H6]/d[OH] */
+    dqdci =  - k_r*sc[25];
+    J[146] += -1 * dqdci;         /* dwdot[O]/d[OH] */
+    J[148] += 1 * dqdci;          /* dwdot[OH]/d[OH] */
+    J[169] += 1 * dqdci;          /* dwdot[C2H5]/d[OH] */
+    J[170] += -1 * dqdci;         /* dwdot[C2H6]/d[OH] */
     /* d()/d[C2H5] */
-    J[902] += -1 * dqdc[25];      /* dwdot[O]/d[C2H5] */
-    J[904] += 1 * dqdc[25];       /* dwdot[OH]/d[C2H5] */
-    J[925] += 1 * dqdc[25];       /* dwdot[C2H5]/d[C2H5] */
-    J[926] += -1 * dqdc[25];      /* dwdot[C2H6]/d[C2H5] */
+    dqdci =  - k_r*sc[4];
+    J[902] += -1 * dqdci;         /* dwdot[O]/d[C2H5] */
+    J[904] += 1 * dqdci;          /* dwdot[OH]/d[C2H5] */
+    J[925] += 1 * dqdci;          /* dwdot[C2H5]/d[C2H5] */
+    J[926] += -1 * dqdci;         /* dwdot[C2H6]/d[C2H5] */
     /* d()/d[C2H6] */
-    J[938] += -1 * dqdc[26];      /* dwdot[O]/d[C2H6] */
-    J[940] += 1 * dqdc[26];       /* dwdot[OH]/d[C2H6] */
-    J[961] += 1 * dqdc[26];       /* dwdot[C2H5]/d[C2H6] */
-    J[962] += -1 * dqdc[26];      /* dwdot[C2H6]/d[C2H6] */
+    dqdci =  + k_f*sc[2];
+    J[938] += -1 * dqdci;         /* dwdot[O]/d[C2H6] */
+    J[940] += 1 * dqdci;          /* dwdot[OH]/d[C2H6] */
+    J[961] += 1 * dqdci;          /* dwdot[C2H5]/d[C2H6] */
+    J[962] += -1 * dqdci;         /* dwdot[C2H6]/d[C2H6] */
     /* d()/dT */
     J[1262] += -1 * dqdT;         /* dwdot[O]/dT */
     J[1264] += 1 * dqdT;          /* dwdot[OH]/dT */
@@ -18106,30 +18118,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[2] -= q; /* O */
     wdot[14] += 2 * q; /* CO */
     wdot[27] -= q; /* HCCO */
-    dqdc[1] =  - k_r*sc[14]*sc[14];
-    dqdc[2] =  + k_f*sc[27];
-    dqdc[14] =  - k_r*2*sc[14]*sc[1];
-    dqdc[27] =  + k_f*sc[2];
     /* d()/d[H] */
-    J[37] += 1 * dqdc[1];         /* dwdot[H]/d[H] */
-    J[38] += -1 * dqdc[1];        /* dwdot[O]/d[H] */
-    J[50] += 2 * dqdc[1];         /* dwdot[CO]/d[H] */
-    J[63] += -1 * dqdc[1];        /* dwdot[HCCO]/d[H] */
+    dqdci =  - k_r*sc[14]*sc[14];
+    J[37] += 1 * dqdci;           /* dwdot[H]/d[H] */
+    J[38] += -1 * dqdci;          /* dwdot[O]/d[H] */
+    J[50] += 2 * dqdci;           /* dwdot[CO]/d[H] */
+    J[63] += -1 * dqdci;          /* dwdot[HCCO]/d[H] */
     /* d()/d[O] */
-    J[73] += 1 * dqdc[2];         /* dwdot[H]/d[O] */
-    J[74] += -1 * dqdc[2];        /* dwdot[O]/d[O] */
-    J[86] += 2 * dqdc[2];         /* dwdot[CO]/d[O] */
-    J[99] += -1 * dqdc[2];        /* dwdot[HCCO]/d[O] */
+    dqdci =  + k_f*sc[27];
+    J[73] += 1 * dqdci;           /* dwdot[H]/d[O] */
+    J[74] += -1 * dqdci;          /* dwdot[O]/d[O] */
+    J[86] += 2 * dqdci;           /* dwdot[CO]/d[O] */
+    J[99] += -1 * dqdci;          /* dwdot[HCCO]/d[O] */
     /* d()/d[CO] */
-    J[505] += 1 * dqdc[14];       /* dwdot[H]/d[CO] */
-    J[506] += -1 * dqdc[14];      /* dwdot[O]/d[CO] */
-    J[518] += 2 * dqdc[14];       /* dwdot[CO]/d[CO] */
-    J[531] += -1 * dqdc[14];      /* dwdot[HCCO]/d[CO] */
+    dqdci =  - k_r*2*sc[14]*sc[1];
+    J[505] += 1 * dqdci;          /* dwdot[H]/d[CO] */
+    J[506] += -1 * dqdci;         /* dwdot[O]/d[CO] */
+    J[518] += 2 * dqdci;          /* dwdot[CO]/d[CO] */
+    J[531] += -1 * dqdci;         /* dwdot[HCCO]/d[CO] */
     /* d()/d[HCCO] */
-    J[973] += 1 * dqdc[27];       /* dwdot[H]/d[HCCO] */
-    J[974] += -1 * dqdc[27];      /* dwdot[O]/d[HCCO] */
-    J[986] += 2 * dqdc[27];       /* dwdot[CO]/d[HCCO] */
-    J[999] += -1 * dqdc[27];      /* dwdot[HCCO]/d[HCCO] */
+    dqdci =  + k_f*sc[2];
+    J[973] += 1 * dqdci;          /* dwdot[H]/d[HCCO] */
+    J[974] += -1 * dqdci;         /* dwdot[O]/d[HCCO] */
+    J[986] += 2 * dqdci;          /* dwdot[CO]/d[HCCO] */
+    J[999] += -1 * dqdci;         /* dwdot[HCCO]/d[HCCO] */
     /* d()/dT */
     J[1261] += 1 * dqdT;          /* dwdot[H]/dT */
     J[1262] += -1 * dqdT;         /* dwdot[O]/dT */
@@ -18156,30 +18168,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[4] += q; /* OH */
     wdot[27] += q; /* HCCO */
     wdot[28] -= q; /* CH2CO */
-    dqdc[2] =  + k_f*sc[28];
-    dqdc[4] =  - k_r*sc[27];
-    dqdc[27] =  - k_r*sc[4];
-    dqdc[28] =  + k_f*sc[2];
     /* d()/d[O] */
-    J[74] += -1 * dqdc[2];        /* dwdot[O]/d[O] */
-    J[76] += 1 * dqdc[2];         /* dwdot[OH]/d[O] */
-    J[99] += 1 * dqdc[2];         /* dwdot[HCCO]/d[O] */
-    J[100] += -1 * dqdc[2];       /* dwdot[CH2CO]/d[O] */
+    dqdci =  + k_f*sc[28];
+    J[74] += -1 * dqdci;          /* dwdot[O]/d[O] */
+    J[76] += 1 * dqdci;           /* dwdot[OH]/d[O] */
+    J[99] += 1 * dqdci;           /* dwdot[HCCO]/d[O] */
+    J[100] += -1 * dqdci;         /* dwdot[CH2CO]/d[O] */
     /* d()/d[OH] */
-    J[146] += -1 * dqdc[4];       /* dwdot[O]/d[OH] */
-    J[148] += 1 * dqdc[4];        /* dwdot[OH]/d[OH] */
-    J[171] += 1 * dqdc[4];        /* dwdot[HCCO]/d[OH] */
-    J[172] += -1 * dqdc[4];       /* dwdot[CH2CO]/d[OH] */
+    dqdci =  - k_r*sc[27];
+    J[146] += -1 * dqdci;         /* dwdot[O]/d[OH] */
+    J[148] += 1 * dqdci;          /* dwdot[OH]/d[OH] */
+    J[171] += 1 * dqdci;          /* dwdot[HCCO]/d[OH] */
+    J[172] += -1 * dqdci;         /* dwdot[CH2CO]/d[OH] */
     /* d()/d[HCCO] */
-    J[974] += -1 * dqdc[27];      /* dwdot[O]/d[HCCO] */
-    J[976] += 1 * dqdc[27];       /* dwdot[OH]/d[HCCO] */
-    J[999] += 1 * dqdc[27];       /* dwdot[HCCO]/d[HCCO] */
-    J[1000] += -1 * dqdc[27];     /* dwdot[CH2CO]/d[HCCO] */
+    dqdci =  - k_r*sc[4];
+    J[974] += -1 * dqdci;         /* dwdot[O]/d[HCCO] */
+    J[976] += 1 * dqdci;          /* dwdot[OH]/d[HCCO] */
+    J[999] += 1 * dqdci;          /* dwdot[HCCO]/d[HCCO] */
+    J[1000] += -1 * dqdci;        /* dwdot[CH2CO]/d[HCCO] */
     /* d()/d[CH2CO] */
-    J[1010] += -1 * dqdc[28];     /* dwdot[O]/d[CH2CO] */
-    J[1012] += 1 * dqdc[28];      /* dwdot[OH]/d[CH2CO] */
-    J[1035] += 1 * dqdc[28];      /* dwdot[HCCO]/d[CH2CO] */
-    J[1036] += -1 * dqdc[28];     /* dwdot[CH2CO]/d[CH2CO] */
+    dqdci =  + k_f*sc[2];
+    J[1010] += -1 * dqdci;        /* dwdot[O]/d[CH2CO] */
+    J[1012] += 1 * dqdci;         /* dwdot[OH]/d[CH2CO] */
+    J[1035] += 1 * dqdci;         /* dwdot[HCCO]/d[CH2CO] */
+    J[1036] += -1 * dqdci;        /* dwdot[CH2CO]/d[CH2CO] */
     /* d()/dT */
     J[1262] += -1 * dqdT;         /* dwdot[O]/dT */
     J[1264] += 1 * dqdT;          /* dwdot[OH]/dT */
@@ -18206,30 +18218,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[10] += q; /* CH2 */
     wdot[15] += q; /* CO2 */
     wdot[28] -= q; /* CH2CO */
-    dqdc[2] =  + k_f*sc[28];
-    dqdc[10] =  - k_r*sc[15];
-    dqdc[15] =  - k_r*sc[10];
-    dqdc[28] =  + k_f*sc[2];
     /* d()/d[O] */
-    J[74] += -1 * dqdc[2];        /* dwdot[O]/d[O] */
-    J[82] += 1 * dqdc[2];         /* dwdot[CH2]/d[O] */
-    J[87] += 1 * dqdc[2];         /* dwdot[CO2]/d[O] */
-    J[100] += -1 * dqdc[2];       /* dwdot[CH2CO]/d[O] */
+    dqdci =  + k_f*sc[28];
+    J[74] += -1 * dqdci;          /* dwdot[O]/d[O] */
+    J[82] += 1 * dqdci;           /* dwdot[CH2]/d[O] */
+    J[87] += 1 * dqdci;           /* dwdot[CO2]/d[O] */
+    J[100] += -1 * dqdci;         /* dwdot[CH2CO]/d[O] */
     /* d()/d[CH2] */
-    J[362] += -1 * dqdc[10];      /* dwdot[O]/d[CH2] */
-    J[370] += 1 * dqdc[10];       /* dwdot[CH2]/d[CH2] */
-    J[375] += 1 * dqdc[10];       /* dwdot[CO2]/d[CH2] */
-    J[388] += -1 * dqdc[10];      /* dwdot[CH2CO]/d[CH2] */
+    dqdci =  - k_r*sc[15];
+    J[362] += -1 * dqdci;         /* dwdot[O]/d[CH2] */
+    J[370] += 1 * dqdci;          /* dwdot[CH2]/d[CH2] */
+    J[375] += 1 * dqdci;          /* dwdot[CO2]/d[CH2] */
+    J[388] += -1 * dqdci;         /* dwdot[CH2CO]/d[CH2] */
     /* d()/d[CO2] */
-    J[542] += -1 * dqdc[15];      /* dwdot[O]/d[CO2] */
-    J[550] += 1 * dqdc[15];       /* dwdot[CH2]/d[CO2] */
-    J[555] += 1 * dqdc[15];       /* dwdot[CO2]/d[CO2] */
-    J[568] += -1 * dqdc[15];      /* dwdot[CH2CO]/d[CO2] */
+    dqdci =  - k_r*sc[10];
+    J[542] += -1 * dqdci;         /* dwdot[O]/d[CO2] */
+    J[550] += 1 * dqdci;          /* dwdot[CH2]/d[CO2] */
+    J[555] += 1 * dqdci;          /* dwdot[CO2]/d[CO2] */
+    J[568] += -1 * dqdci;         /* dwdot[CH2CO]/d[CO2] */
     /* d()/d[CH2CO] */
-    J[1010] += -1 * dqdc[28];     /* dwdot[O]/d[CH2CO] */
-    J[1018] += 1 * dqdc[28];      /* dwdot[CH2]/d[CH2CO] */
-    J[1023] += 1 * dqdc[28];      /* dwdot[CO2]/d[CH2CO] */
-    J[1036] += -1 * dqdc[28];     /* dwdot[CH2CO]/d[CH2CO] */
+    dqdci =  + k_f*sc[2];
+    J[1010] += -1 * dqdci;        /* dwdot[O]/d[CH2CO] */
+    J[1018] += 1 * dqdci;         /* dwdot[CH2]/d[CH2CO] */
+    J[1023] += 1 * dqdci;         /* dwdot[CO2]/d[CH2CO] */
+    J[1036] += -1 * dqdci;        /* dwdot[CH2CO]/d[CH2CO] */
     /* d()/dT */
     J[1262] += -1 * dqdT;         /* dwdot[O]/dT */
     J[1270] += 1 * dqdT;          /* dwdot[CH2]/dT */
@@ -18256,30 +18268,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[3] -= q; /* O2 */
     wdot[14] -= q; /* CO */
     wdot[15] += q; /* CO2 */
-    dqdc[2] =  - k_r*sc[15];
-    dqdc[3] =  + k_f*sc[14];
-    dqdc[14] =  + k_f*sc[3];
-    dqdc[15] =  - k_r*sc[2];
     /* d()/d[O] */
-    J[74] += 1 * dqdc[2];         /* dwdot[O]/d[O] */
-    J[75] += -1 * dqdc[2];        /* dwdot[O2]/d[O] */
-    J[86] += -1 * dqdc[2];        /* dwdot[CO]/d[O] */
-    J[87] += 1 * dqdc[2];         /* dwdot[CO2]/d[O] */
+    dqdci =  - k_r*sc[15];
+    J[74] += 1 * dqdci;           /* dwdot[O]/d[O] */
+    J[75] += -1 * dqdci;          /* dwdot[O2]/d[O] */
+    J[86] += -1 * dqdci;          /* dwdot[CO]/d[O] */
+    J[87] += 1 * dqdci;           /* dwdot[CO2]/d[O] */
     /* d()/d[O2] */
-    J[110] += 1 * dqdc[3];        /* dwdot[O]/d[O2] */
-    J[111] += -1 * dqdc[3];       /* dwdot[O2]/d[O2] */
-    J[122] += -1 * dqdc[3];       /* dwdot[CO]/d[O2] */
-    J[123] += 1 * dqdc[3];        /* dwdot[CO2]/d[O2] */
+    dqdci =  + k_f*sc[14];
+    J[110] += 1 * dqdci;          /* dwdot[O]/d[O2] */
+    J[111] += -1 * dqdci;         /* dwdot[O2]/d[O2] */
+    J[122] += -1 * dqdci;         /* dwdot[CO]/d[O2] */
+    J[123] += 1 * dqdci;          /* dwdot[CO2]/d[O2] */
     /* d()/d[CO] */
-    J[506] += 1 * dqdc[14];       /* dwdot[O]/d[CO] */
-    J[507] += -1 * dqdc[14];      /* dwdot[O2]/d[CO] */
-    J[518] += -1 * dqdc[14];      /* dwdot[CO]/d[CO] */
-    J[519] += 1 * dqdc[14];       /* dwdot[CO2]/d[CO] */
+    dqdci =  + k_f*sc[3];
+    J[506] += 1 * dqdci;          /* dwdot[O]/d[CO] */
+    J[507] += -1 * dqdci;         /* dwdot[O2]/d[CO] */
+    J[518] += -1 * dqdci;         /* dwdot[CO]/d[CO] */
+    J[519] += 1 * dqdci;          /* dwdot[CO2]/d[CO] */
     /* d()/d[CO2] */
-    J[542] += 1 * dqdc[15];       /* dwdot[O]/d[CO2] */
-    J[543] += -1 * dqdc[15];      /* dwdot[O2]/d[CO2] */
-    J[554] += -1 * dqdc[15];      /* dwdot[CO]/d[CO2] */
-    J[555] += 1 * dqdc[15];       /* dwdot[CO2]/d[CO2] */
+    dqdci =  - k_r*sc[2];
+    J[542] += 1 * dqdci;          /* dwdot[O]/d[CO2] */
+    J[543] += -1 * dqdci;         /* dwdot[O2]/d[CO2] */
+    J[554] += -1 * dqdci;         /* dwdot[CO]/d[CO2] */
+    J[555] += 1 * dqdci;          /* dwdot[CO2]/d[CO2] */
     /* d()/dT */
     J[1262] += 1 * dqdT;          /* dwdot[O]/dT */
     J[1263] += -1 * dqdT;         /* dwdot[O2]/dT */
@@ -18306,30 +18318,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[6] += q; /* HO2 */
     wdot[16] += q; /* HCO */
     wdot[17] -= q; /* CH2O */
-    dqdc[3] =  + k_f*sc[17];
-    dqdc[6] =  - k_r*sc[16];
-    dqdc[16] =  - k_r*sc[6];
-    dqdc[17] =  + k_f*sc[3];
     /* d()/d[O2] */
-    J[111] += -1 * dqdc[3];       /* dwdot[O2]/d[O2] */
-    J[114] += 1 * dqdc[3];        /* dwdot[HO2]/d[O2] */
-    J[124] += 1 * dqdc[3];        /* dwdot[HCO]/d[O2] */
-    J[125] += -1 * dqdc[3];       /* dwdot[CH2O]/d[O2] */
+    dqdci =  + k_f*sc[17];
+    J[111] += -1 * dqdci;         /* dwdot[O2]/d[O2] */
+    J[114] += 1 * dqdci;          /* dwdot[HO2]/d[O2] */
+    J[124] += 1 * dqdci;          /* dwdot[HCO]/d[O2] */
+    J[125] += -1 * dqdci;         /* dwdot[CH2O]/d[O2] */
     /* d()/d[HO2] */
-    J[219] += -1 * dqdc[6];       /* dwdot[O2]/d[HO2] */
-    J[222] += 1 * dqdc[6];        /* dwdot[HO2]/d[HO2] */
-    J[232] += 1 * dqdc[6];        /* dwdot[HCO]/d[HO2] */
-    J[233] += -1 * dqdc[6];       /* dwdot[CH2O]/d[HO2] */
+    dqdci =  - k_r*sc[16];
+    J[219] += -1 * dqdci;         /* dwdot[O2]/d[HO2] */
+    J[222] += 1 * dqdci;          /* dwdot[HO2]/d[HO2] */
+    J[232] += 1 * dqdci;          /* dwdot[HCO]/d[HO2] */
+    J[233] += -1 * dqdci;         /* dwdot[CH2O]/d[HO2] */
     /* d()/d[HCO] */
-    J[579] += -1 * dqdc[16];      /* dwdot[O2]/d[HCO] */
-    J[582] += 1 * dqdc[16];       /* dwdot[HO2]/d[HCO] */
-    J[592] += 1 * dqdc[16];       /* dwdot[HCO]/d[HCO] */
-    J[593] += -1 * dqdc[16];      /* dwdot[CH2O]/d[HCO] */
+    dqdci =  - k_r*sc[6];
+    J[579] += -1 * dqdci;         /* dwdot[O2]/d[HCO] */
+    J[582] += 1 * dqdci;          /* dwdot[HO2]/d[HCO] */
+    J[592] += 1 * dqdci;          /* dwdot[HCO]/d[HCO] */
+    J[593] += -1 * dqdci;         /* dwdot[CH2O]/d[HCO] */
     /* d()/d[CH2O] */
-    J[615] += -1 * dqdc[17];      /* dwdot[O2]/d[CH2O] */
-    J[618] += 1 * dqdc[17];       /* dwdot[HO2]/d[CH2O] */
-    J[628] += 1 * dqdc[17];       /* dwdot[HCO]/d[CH2O] */
-    J[629] += -1 * dqdc[17];      /* dwdot[CH2O]/d[CH2O] */
+    dqdci =  + k_f*sc[3];
+    J[615] += -1 * dqdci;         /* dwdot[O2]/d[CH2O] */
+    J[618] += 1 * dqdci;          /* dwdot[HO2]/d[CH2O] */
+    J[628] += 1 * dqdci;          /* dwdot[HCO]/d[CH2O] */
+    J[629] += -1 * dqdci;         /* dwdot[CH2O]/d[CH2O] */
     /* d()/dT */
     J[1263] += -1 * dqdT;         /* dwdot[O2]/dT */
     J[1266] += 1 * dqdT;          /* dwdot[HO2]/dT */
@@ -18362,41 +18374,46 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     k_f *= alpha;
     k_r *= alpha;
     if (consP) {
-        dqdc[0] =  0.0;
-        dqdc[1] =  0.0 + k_f*sc[3];
-        dqdc[2] =  0.0;
-        dqdc[3] =  -1*q_nocor + k_f*sc[1];
-        dqdc[4] =  0.0;
-        dqdc[5] =  -1*q_nocor;
-        dqdc[6] =  0.0 - k_r;
-        dqdc[7] =  0.0;
-        dqdc[8] =  0.0;
-        dqdc[9] =  0.0;
-        dqdc[10] =  0.0;
-        dqdc[11] =  0.0;
-        dqdc[12] =  0.0;
-        dqdc[13] =  0.0;
-        dqdc[14] =  -0.25*q_nocor;
-        dqdc[15] =  0.5*q_nocor;
-        dqdc[16] =  0.0;
-        dqdc[17] =  0.0;
-        dqdc[18] =  0.0;
-        dqdc[19] =  0.0;
-        dqdc[20] =  0.0;
-        dqdc[21] =  0.0;
-        dqdc[22] =  0.0;
-        dqdc[23] =  0.0;
-        dqdc[24] =  0.0;
-        dqdc[25] =  0.0;
-        dqdc[26] =  0.5*q_nocor;
-        dqdc[27] =  0.0;
-        dqdc[28] =  0.0;
-        dqdc[29] =  0.0;
-        dqdc[30] =  -1*q_nocor;
-        dqdc[31] =  0.0;
-        dqdc[32] =  0.0;
-        dqdc[33] =  0.0;
-        dqdc[34] =  0.0;
+        /* d()/d[H] */
+        dqdci =  + k_f*sc[3];
+        J[37] += -1 * dqdci;          /* dwdot[H]/d[H] */
+        J[39] += -1 * dqdci;          /* dwdot[O2]/d[H] */
+        J[42] += 1 * dqdci;           /* dwdot[HO2]/d[H] */
+        /* d()/d[O2] */
+        dqdci =  -1*q_nocor + k_f*sc[1];
+        J[109] += -1 * dqdci;         /* dwdot[H]/d[O2] */
+        J[111] += -1 * dqdci;         /* dwdot[O2]/d[O2] */
+        J[114] += 1 * dqdci;          /* dwdot[HO2]/d[O2] */
+        /* d()/d[H2O] */
+        dqdci =  -1*q_nocor;
+        J[181] += -1 * dqdci;         /* dwdot[H]/d[H2O] */
+        J[183] += -1 * dqdci;         /* dwdot[O2]/d[H2O] */
+        J[186] += 1 * dqdci;          /* dwdot[HO2]/d[H2O] */
+        /* d()/d[HO2] */
+        dqdci =  - k_r;
+        J[217] += -1 * dqdci;         /* dwdot[H]/d[HO2] */
+        J[219] += -1 * dqdci;         /* dwdot[O2]/d[HO2] */
+        J[222] += 1 * dqdci;          /* dwdot[HO2]/d[HO2] */
+        /* d()/d[CO] */
+        dqdci =  -0.25*q_nocor;
+        J[505] += -1 * dqdci;         /* dwdot[H]/d[CO] */
+        J[507] += -1 * dqdci;         /* dwdot[O2]/d[CO] */
+        J[510] += 1 * dqdci;          /* dwdot[HO2]/d[CO] */
+        /* d()/d[CO2] */
+        dqdci =  0.5*q_nocor;
+        J[541] += -1 * dqdci;         /* dwdot[H]/d[CO2] */
+        J[543] += -1 * dqdci;         /* dwdot[O2]/d[CO2] */
+        J[546] += 1 * dqdci;          /* dwdot[HO2]/d[CO2] */
+        /* d()/d[C2H6] */
+        dqdci =  0.5*q_nocor;
+        J[937] += -1 * dqdci;         /* dwdot[H]/d[C2H6] */
+        J[939] += -1 * dqdci;         /* dwdot[O2]/d[C2H6] */
+        J[942] += 1 * dqdci;          /* dwdot[HO2]/d[C2H6] */
+        /* d()/d[N2] */
+        dqdci =  -1*q_nocor;
+        J[1081] += -1 * dqdci;        /* dwdot[H]/d[N2] */
+        J[1083] += -1 * dqdci;        /* dwdot[O2]/d[N2] */
+        J[1086] += 1 * dqdci;         /* dwdot[HO2]/d[N2] */
     }
     else {
         dqdc[0] =  1*q_nocor;
@@ -18434,11 +18451,11 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
         dqdc[32] =  1*q_nocor;
         dqdc[33] =  1*q_nocor;
         dqdc[34] =  1*q_nocor;
-    }
-    for (int k=0; k<35; k++) {
-        J[36*k+1] += -1 * dqdc[k];
-        J[36*k+3] += -1 * dqdc[k];
-        J[36*k+6] += 1 * dqdc[k];
+        for (int k=0; k<35; k++) {
+            J[36*k+1] += -1 * dqdc[k];
+            J[36*k+3] += -1 * dqdc[k];
+            J[36*k+6] += 1 * dqdc[k];
+        }
     }
     J[1261] += -1 * dqdT; /* dwdot[H]/dT */
     J[1263] += -1 * dqdT; /* dwdot[O2]/dT */
@@ -18463,21 +18480,21 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[1] -= q; /* H */
     wdot[3] -= q; /* O2 */
     wdot[6] += q; /* HO2 */
-    dqdc[1] =  + k_f*sc[3]*sc[3];
-    dqdc[3] =  + k_f*sc[1]*2*sc[3] - k_r*sc[6];
-    dqdc[6] =  - k_r*sc[3];
     /* d()/d[H] */
-    J[37] += -1 * dqdc[1];        /* dwdot[H]/d[H] */
-    J[39] += -1 * dqdc[1];        /* dwdot[O2]/d[H] */
-    J[42] += 1 * dqdc[1];         /* dwdot[HO2]/d[H] */
+    dqdci =  + k_f*sc[3]*sc[3];
+    J[37] += -1 * dqdci;          /* dwdot[H]/d[H] */
+    J[39] += -1 * dqdci;          /* dwdot[O2]/d[H] */
+    J[42] += 1 * dqdci;           /* dwdot[HO2]/d[H] */
     /* d()/d[O2] */
-    J[109] += -1 * dqdc[3];       /* dwdot[H]/d[O2] */
-    J[111] += -1 * dqdc[3];       /* dwdot[O2]/d[O2] */
-    J[114] += 1 * dqdc[3];        /* dwdot[HO2]/d[O2] */
+    dqdci =  + k_f*sc[1]*2*sc[3] - k_r*sc[6];
+    J[109] += -1 * dqdci;         /* dwdot[H]/d[O2] */
+    J[111] += -1 * dqdci;         /* dwdot[O2]/d[O2] */
+    J[114] += 1 * dqdci;          /* dwdot[HO2]/d[O2] */
     /* d()/d[HO2] */
-    J[217] += -1 * dqdc[6];       /* dwdot[H]/d[HO2] */
-    J[219] += -1 * dqdc[6];       /* dwdot[O2]/d[HO2] */
-    J[222] += 1 * dqdc[6];        /* dwdot[HO2]/d[HO2] */
+    dqdci =  - k_r*sc[3];
+    J[217] += -1 * dqdci;         /* dwdot[H]/d[HO2] */
+    J[219] += -1 * dqdci;         /* dwdot[O2]/d[HO2] */
+    J[222] += 1 * dqdci;          /* dwdot[HO2]/d[HO2] */
     /* d()/dT */
     J[1261] += -1 * dqdT;         /* dwdot[H]/dT */
     J[1263] += -1 * dqdT;         /* dwdot[O2]/dT */
@@ -18502,26 +18519,26 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[1] -= q; /* H */
     wdot[3] -= q; /* O2 */
     wdot[6] += q; /* HO2 */
-    dqdc[1] =  + k_f*sc[5]*sc[3];
-    dqdc[3] =  + k_f*sc[1]*sc[5];
-    dqdc[5] =  + k_f*sc[1]*sc[3] - k_r*sc[6];
-    dqdc[6] =  - k_r*sc[5];
     /* d()/d[H] */
-    J[37] += -1 * dqdc[1];        /* dwdot[H]/d[H] */
-    J[39] += -1 * dqdc[1];        /* dwdot[O2]/d[H] */
-    J[42] += 1 * dqdc[1];         /* dwdot[HO2]/d[H] */
+    dqdci =  + k_f*sc[5]*sc[3];
+    J[37] += -1 * dqdci;          /* dwdot[H]/d[H] */
+    J[39] += -1 * dqdci;          /* dwdot[O2]/d[H] */
+    J[42] += 1 * dqdci;           /* dwdot[HO2]/d[H] */
     /* d()/d[O2] */
-    J[109] += -1 * dqdc[3];       /* dwdot[H]/d[O2] */
-    J[111] += -1 * dqdc[3];       /* dwdot[O2]/d[O2] */
-    J[114] += 1 * dqdc[3];        /* dwdot[HO2]/d[O2] */
+    dqdci =  + k_f*sc[1]*sc[5];
+    J[109] += -1 * dqdci;         /* dwdot[H]/d[O2] */
+    J[111] += -1 * dqdci;         /* dwdot[O2]/d[O2] */
+    J[114] += 1 * dqdci;          /* dwdot[HO2]/d[O2] */
     /* d()/d[H2O] */
-    J[181] += -1 * dqdc[5];       /* dwdot[H]/d[H2O] */
-    J[183] += -1 * dqdc[5];       /* dwdot[O2]/d[H2O] */
-    J[186] += 1 * dqdc[5];        /* dwdot[HO2]/d[H2O] */
+    dqdci =  + k_f*sc[1]*sc[3] - k_r*sc[6];
+    J[181] += -1 * dqdci;         /* dwdot[H]/d[H2O] */
+    J[183] += -1 * dqdci;         /* dwdot[O2]/d[H2O] */
+    J[186] += 1 * dqdci;          /* dwdot[HO2]/d[H2O] */
     /* d()/d[HO2] */
-    J[217] += -1 * dqdc[6];       /* dwdot[H]/d[HO2] */
-    J[219] += -1 * dqdc[6];       /* dwdot[O2]/d[HO2] */
-    J[222] += 1 * dqdc[6];        /* dwdot[HO2]/d[HO2] */
+    dqdci =  - k_r*sc[5];
+    J[217] += -1 * dqdci;         /* dwdot[H]/d[HO2] */
+    J[219] += -1 * dqdci;         /* dwdot[O2]/d[HO2] */
+    J[222] += 1 * dqdci;          /* dwdot[HO2]/d[HO2] */
     /* d()/dT */
     J[1261] += -1 * dqdT;         /* dwdot[H]/dT */
     J[1263] += -1 * dqdT;         /* dwdot[O2]/dT */
@@ -18546,26 +18563,26 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[1] -= q; /* H */
     wdot[3] -= q; /* O2 */
     wdot[6] += q; /* HO2 */
-    dqdc[1] =  + k_f*sc[30]*sc[3];
-    dqdc[3] =  + k_f*sc[1]*sc[30];
-    dqdc[6] =  - k_r*sc[30];
-    dqdc[30] =  + k_f*sc[1]*sc[3] - k_r*sc[6];
     /* d()/d[H] */
-    J[37] += -1 * dqdc[1];        /* dwdot[H]/d[H] */
-    J[39] += -1 * dqdc[1];        /* dwdot[O2]/d[H] */
-    J[42] += 1 * dqdc[1];         /* dwdot[HO2]/d[H] */
+    dqdci =  + k_f*sc[30]*sc[3];
+    J[37] += -1 * dqdci;          /* dwdot[H]/d[H] */
+    J[39] += -1 * dqdci;          /* dwdot[O2]/d[H] */
+    J[42] += 1 * dqdci;           /* dwdot[HO2]/d[H] */
     /* d()/d[O2] */
-    J[109] += -1 * dqdc[3];       /* dwdot[H]/d[O2] */
-    J[111] += -1 * dqdc[3];       /* dwdot[O2]/d[O2] */
-    J[114] += 1 * dqdc[3];        /* dwdot[HO2]/d[O2] */
+    dqdci =  + k_f*sc[1]*sc[30];
+    J[109] += -1 * dqdci;         /* dwdot[H]/d[O2] */
+    J[111] += -1 * dqdci;         /* dwdot[O2]/d[O2] */
+    J[114] += 1 * dqdci;          /* dwdot[HO2]/d[O2] */
     /* d()/d[HO2] */
-    J[217] += -1 * dqdc[6];       /* dwdot[H]/d[HO2] */
-    J[219] += -1 * dqdc[6];       /* dwdot[O2]/d[HO2] */
-    J[222] += 1 * dqdc[6];        /* dwdot[HO2]/d[HO2] */
+    dqdci =  - k_r*sc[30];
+    J[217] += -1 * dqdci;         /* dwdot[H]/d[HO2] */
+    J[219] += -1 * dqdci;         /* dwdot[O2]/d[HO2] */
+    J[222] += 1 * dqdci;          /* dwdot[HO2]/d[HO2] */
     /* d()/d[N2] */
-    J[1081] += -1 * dqdc[30];     /* dwdot[H]/d[N2] */
-    J[1083] += -1 * dqdc[30];     /* dwdot[O2]/d[N2] */
-    J[1086] += 1 * dqdc[30];      /* dwdot[HO2]/d[N2] */
+    dqdci =  + k_f*sc[1]*sc[3] - k_r*sc[6];
+    J[1081] += -1 * dqdci;        /* dwdot[H]/d[N2] */
+    J[1083] += -1 * dqdci;        /* dwdot[O2]/d[N2] */
+    J[1086] += 1 * dqdci;         /* dwdot[HO2]/d[N2] */
     /* d()/dT */
     J[1261] += -1 * dqdT;         /* dwdot[H]/dT */
     J[1263] += -1 * dqdT;         /* dwdot[O2]/dT */
@@ -18591,30 +18608,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[2] += q; /* O */
     wdot[3] -= q; /* O2 */
     wdot[4] += q; /* OH */
-    dqdc[1] =  + k_f*sc[3];
-    dqdc[2] =  - k_r*sc[4];
-    dqdc[3] =  + k_f*sc[1];
-    dqdc[4] =  - k_r*sc[2];
     /* d()/d[H] */
-    J[37] += -1 * dqdc[1];        /* dwdot[H]/d[H] */
-    J[38] += 1 * dqdc[1];         /* dwdot[O]/d[H] */
-    J[39] += -1 * dqdc[1];        /* dwdot[O2]/d[H] */
-    J[40] += 1 * dqdc[1];         /* dwdot[OH]/d[H] */
+    dqdci =  + k_f*sc[3];
+    J[37] += -1 * dqdci;          /* dwdot[H]/d[H] */
+    J[38] += 1 * dqdci;           /* dwdot[O]/d[H] */
+    J[39] += -1 * dqdci;          /* dwdot[O2]/d[H] */
+    J[40] += 1 * dqdci;           /* dwdot[OH]/d[H] */
     /* d()/d[O] */
-    J[73] += -1 * dqdc[2];        /* dwdot[H]/d[O] */
-    J[74] += 1 * dqdc[2];         /* dwdot[O]/d[O] */
-    J[75] += -1 * dqdc[2];        /* dwdot[O2]/d[O] */
-    J[76] += 1 * dqdc[2];         /* dwdot[OH]/d[O] */
+    dqdci =  - k_r*sc[4];
+    J[73] += -1 * dqdci;          /* dwdot[H]/d[O] */
+    J[74] += 1 * dqdci;           /* dwdot[O]/d[O] */
+    J[75] += -1 * dqdci;          /* dwdot[O2]/d[O] */
+    J[76] += 1 * dqdci;           /* dwdot[OH]/d[O] */
     /* d()/d[O2] */
-    J[109] += -1 * dqdc[3];       /* dwdot[H]/d[O2] */
-    J[110] += 1 * dqdc[3];        /* dwdot[O]/d[O2] */
-    J[111] += -1 * dqdc[3];       /* dwdot[O2]/d[O2] */
-    J[112] += 1 * dqdc[3];        /* dwdot[OH]/d[O2] */
+    dqdci =  + k_f*sc[1];
+    J[109] += -1 * dqdci;         /* dwdot[H]/d[O2] */
+    J[110] += 1 * dqdci;          /* dwdot[O]/d[O2] */
+    J[111] += -1 * dqdci;         /* dwdot[O2]/d[O2] */
+    J[112] += 1 * dqdci;          /* dwdot[OH]/d[O2] */
     /* d()/d[OH] */
-    J[145] += -1 * dqdc[4];       /* dwdot[H]/d[OH] */
-    J[146] += 1 * dqdc[4];        /* dwdot[O]/d[OH] */
-    J[147] += -1 * dqdc[4];       /* dwdot[O2]/d[OH] */
-    J[148] += 1 * dqdc[4];        /* dwdot[OH]/d[OH] */
+    dqdci =  - k_r*sc[2];
+    J[145] += -1 * dqdci;         /* dwdot[H]/d[OH] */
+    J[146] += 1 * dqdci;          /* dwdot[O]/d[OH] */
+    J[147] += -1 * dqdci;         /* dwdot[O2]/d[OH] */
+    J[148] += 1 * dqdci;          /* dwdot[OH]/d[OH] */
     /* d()/dT */
     J[1261] += -1 * dqdT;         /* dwdot[H]/dT */
     J[1262] += 1 * dqdT;          /* dwdot[O]/dT */
@@ -18646,41 +18663,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     k_f *= alpha;
     k_r *= alpha;
     if (consP) {
-        dqdc[0] =  -1*q_nocor - k_r;
-        dqdc[1] =  0.0 + k_f*2*sc[1];
-        dqdc[2] =  0.0;
-        dqdc[3] =  0.0;
-        dqdc[4] =  0.0;
-        dqdc[5] =  -1*q_nocor;
-        dqdc[6] =  0.0;
-        dqdc[7] =  0.0;
-        dqdc[8] =  0.0;
-        dqdc[9] =  0.0;
-        dqdc[10] =  0.0;
-        dqdc[11] =  0.0;
-        dqdc[12] =  0.0;
-        dqdc[13] =  1*q_nocor;
-        dqdc[14] =  0.0;
-        dqdc[15] =  -1*q_nocor;
-        dqdc[16] =  0.0;
-        dqdc[17] =  0.0;
-        dqdc[18] =  0.0;
-        dqdc[19] =  0.0;
-        dqdc[20] =  0.0;
-        dqdc[21] =  0.0;
-        dqdc[22] =  0.0;
-        dqdc[23] =  0.0;
-        dqdc[24] =  0.0;
-        dqdc[25] =  0.0;
-        dqdc[26] =  2*q_nocor;
-        dqdc[27] =  0.0;
-        dqdc[28] =  0.0;
-        dqdc[29] =  0.0;
-        dqdc[30] =  0.0;
-        dqdc[31] =  0.0;
-        dqdc[32] =  0.0;
-        dqdc[33] =  0.0;
-        dqdc[34] =  0.0;
+        /* d()/d[H2] */
+        dqdci =  -1*q_nocor - k_r;
+        J[0] += 1 * dqdci;            /* dwdot[H2]/d[H2] */
+        J[1] += -2 * dqdci;           /* dwdot[H]/d[H2] */
+        /* d()/d[H] */
+        dqdci =  + k_f*2*sc[1];
+        J[36] += 1 * dqdci;           /* dwdot[H2]/d[H] */
+        J[37] += -2 * dqdci;          /* dwdot[H]/d[H] */
+        /* d()/d[H2O] */
+        dqdci =  -1*q_nocor;
+        J[180] += 1 * dqdci;          /* dwdot[H2]/d[H2O] */
+        J[181] += -2 * dqdci;         /* dwdot[H]/d[H2O] */
+        /* d()/d[CH4] */
+        dqdci =  1*q_nocor;
+        J[468] += 1 * dqdci;          /* dwdot[H2]/d[CH4] */
+        J[469] += -2 * dqdci;         /* dwdot[H]/d[CH4] */
+        /* d()/d[CO2] */
+        dqdci =  -1*q_nocor;
+        J[540] += 1 * dqdci;          /* dwdot[H2]/d[CO2] */
+        J[541] += -2 * dqdci;         /* dwdot[H]/d[CO2] */
+        /* d()/d[C2H6] */
+        dqdci =  2*q_nocor;
+        J[936] += 1 * dqdci;          /* dwdot[H2]/d[C2H6] */
+        J[937] += -2 * dqdci;         /* dwdot[H]/d[C2H6] */
     }
     else {
         dqdc[0] =  0.0 - k_r;
@@ -18718,10 +18724,10 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
         dqdc[32] =  1*q_nocor;
         dqdc[33] =  1*q_nocor;
         dqdc[34] =  1*q_nocor;
-    }
-    for (int k=0; k<35; k++) {
-        J[36*k+0] += 1 * dqdc[k];
-        J[36*k+1] += -2 * dqdc[k];
+        for (int k=0; k<35; k++) {
+            J[36*k+0] += 1 * dqdc[k];
+            J[36*k+1] += -2 * dqdc[k];
+        }
     }
     J[1260] += 1 * dqdT; /* dwdot[H2]/dT */
     J[1261] += -2 * dqdT; /* dwdot[H]/dT */
@@ -18744,14 +18750,14 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     /* update wdot */
     wdot[0] += q; /* H2 */
     wdot[1] -= 2 * q; /* H */
-    dqdc[0] =  + k_f*sc[1]*sc[1] - k_r*2*sc[0];
-    dqdc[1] =  + k_f*2*sc[1]*sc[0];
     /* d()/d[H2] */
-    J[0] += 1 * dqdc[0];          /* dwdot[H2]/d[H2] */
-    J[1] += -2 * dqdc[0];         /* dwdot[H]/d[H2] */
+    dqdci =  + k_f*sc[1]*sc[1] - k_r*2*sc[0];
+    J[0] += 1 * dqdci;            /* dwdot[H2]/d[H2] */
+    J[1] += -2 * dqdci;           /* dwdot[H]/d[H2] */
     /* d()/d[H] */
-    J[36] += 1 * dqdc[1];         /* dwdot[H2]/d[H] */
-    J[37] += -2 * dqdc[1];        /* dwdot[H]/d[H] */
+    dqdci =  + k_f*2*sc[1]*sc[0];
+    J[36] += 1 * dqdci;           /* dwdot[H2]/d[H] */
+    J[37] += -2 * dqdci;          /* dwdot[H]/d[H] */
     /* d()/dT */
     J[1260] += 1 * dqdT;          /* dwdot[H2]/dT */
     J[1261] += -2 * dqdT;         /* dwdot[H]/dT */
@@ -18774,18 +18780,18 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     /* update wdot */
     wdot[0] += q; /* H2 */
     wdot[1] -= 2 * q; /* H */
-    dqdc[0] =  - k_r*sc[5];
-    dqdc[1] =  + k_f*2*sc[1]*sc[5];
-    dqdc[5] =  + k_f*sc[1]*sc[1] - k_r*sc[0];
     /* d()/d[H2] */
-    J[0] += 1 * dqdc[0];          /* dwdot[H2]/d[H2] */
-    J[1] += -2 * dqdc[0];         /* dwdot[H]/d[H2] */
+    dqdci =  - k_r*sc[5];
+    J[0] += 1 * dqdci;            /* dwdot[H2]/d[H2] */
+    J[1] += -2 * dqdci;           /* dwdot[H]/d[H2] */
     /* d()/d[H] */
-    J[36] += 1 * dqdc[1];         /* dwdot[H2]/d[H] */
-    J[37] += -2 * dqdc[1];        /* dwdot[H]/d[H] */
+    dqdci =  + k_f*2*sc[1]*sc[5];
+    J[36] += 1 * dqdci;           /* dwdot[H2]/d[H] */
+    J[37] += -2 * dqdci;          /* dwdot[H]/d[H] */
     /* d()/d[H2O] */
-    J[180] += 1 * dqdc[5];        /* dwdot[H2]/d[H2O] */
-    J[181] += -2 * dqdc[5];       /* dwdot[H]/d[H2O] */
+    dqdci =  + k_f*sc[1]*sc[1] - k_r*sc[0];
+    J[180] += 1 * dqdci;          /* dwdot[H2]/d[H2O] */
+    J[181] += -2 * dqdci;         /* dwdot[H]/d[H2O] */
     /* d()/dT */
     J[1260] += 1 * dqdT;          /* dwdot[H2]/dT */
     J[1261] += -2 * dqdT;         /* dwdot[H]/dT */
@@ -18808,18 +18814,18 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     /* update wdot */
     wdot[0] += q; /* H2 */
     wdot[1] -= 2 * q; /* H */
-    dqdc[0] =  - k_r*sc[15];
-    dqdc[1] =  + k_f*sc[15]*2*sc[1];
-    dqdc[15] =  + k_f*sc[1]*sc[1] - k_r*sc[0];
     /* d()/d[H2] */
-    J[0] += 1 * dqdc[0];          /* dwdot[H2]/d[H2] */
-    J[1] += -2 * dqdc[0];         /* dwdot[H]/d[H2] */
+    dqdci =  - k_r*sc[15];
+    J[0] += 1 * dqdci;            /* dwdot[H2]/d[H2] */
+    J[1] += -2 * dqdci;           /* dwdot[H]/d[H2] */
     /* d()/d[H] */
-    J[36] += 1 * dqdc[1];         /* dwdot[H2]/d[H] */
-    J[37] += -2 * dqdc[1];        /* dwdot[H]/d[H] */
+    dqdci =  + k_f*sc[15]*2*sc[1];
+    J[36] += 1 * dqdci;           /* dwdot[H2]/d[H] */
+    J[37] += -2 * dqdci;          /* dwdot[H]/d[H] */
     /* d()/d[CO2] */
-    J[540] += 1 * dqdc[15];       /* dwdot[H2]/d[CO2] */
-    J[541] += -2 * dqdc[15];      /* dwdot[H]/d[CO2] */
+    dqdci =  + k_f*sc[1]*sc[1] - k_r*sc[0];
+    J[540] += 1 * dqdci;          /* dwdot[H2]/d[CO2] */
+    J[541] += -2 * dqdci;         /* dwdot[H]/d[CO2] */
     /* d()/dT */
     J[1260] += 1 * dqdT;          /* dwdot[H2]/dT */
     J[1261] += -2 * dqdT;         /* dwdot[H]/dT */
@@ -18850,41 +18856,36 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     k_f *= alpha;
     k_r *= alpha;
     if (consP) {
-        dqdc[0] =  -0.27*q_nocor;
-        dqdc[1] =  0.0 + k_f*sc[4];
-        dqdc[2] =  0.0;
-        dqdc[3] =  0.0;
-        dqdc[4] =  0.0 + k_f*sc[1];
-        dqdc[5] =  2.65*q_nocor - k_r;
-        dqdc[6] =  0.0;
-        dqdc[7] =  0.0;
-        dqdc[8] =  0.0;
-        dqdc[9] =  0.0;
-        dqdc[10] =  0.0;
-        dqdc[11] =  0.0;
-        dqdc[12] =  0.0;
-        dqdc[13] =  1*q_nocor;
-        dqdc[14] =  0.0;
-        dqdc[15] =  0.0;
-        dqdc[16] =  0.0;
-        dqdc[17] =  0.0;
-        dqdc[18] =  0.0;
-        dqdc[19] =  0.0;
-        dqdc[20] =  0.0;
-        dqdc[21] =  0.0;
-        dqdc[22] =  0.0;
-        dqdc[23] =  0.0;
-        dqdc[24] =  0.0;
-        dqdc[25] =  0.0;
-        dqdc[26] =  2*q_nocor;
-        dqdc[27] =  0.0;
-        dqdc[28] =  0.0;
-        dqdc[29] =  0.0;
-        dqdc[30] =  0.0;
-        dqdc[31] =  0.0;
-        dqdc[32] =  0.0;
-        dqdc[33] =  0.0;
-        dqdc[34] =  0.0;
+        /* d()/d[H2] */
+        dqdci =  -0.27*q_nocor;
+        J[1] += -1 * dqdci;           /* dwdot[H]/d[H2] */
+        J[4] += -1 * dqdci;           /* dwdot[OH]/d[H2] */
+        J[5] += 1 * dqdci;            /* dwdot[H2O]/d[H2] */
+        /* d()/d[H] */
+        dqdci =  + k_f*sc[4];
+        J[37] += -1 * dqdci;          /* dwdot[H]/d[H] */
+        J[40] += -1 * dqdci;          /* dwdot[OH]/d[H] */
+        J[41] += 1 * dqdci;           /* dwdot[H2O]/d[H] */
+        /* d()/d[OH] */
+        dqdci =  + k_f*sc[1];
+        J[145] += -1 * dqdci;         /* dwdot[H]/d[OH] */
+        J[148] += -1 * dqdci;         /* dwdot[OH]/d[OH] */
+        J[149] += 1 * dqdci;          /* dwdot[H2O]/d[OH] */
+        /* d()/d[H2O] */
+        dqdci =  2.65*q_nocor - k_r;
+        J[181] += -1 * dqdci;         /* dwdot[H]/d[H2O] */
+        J[184] += -1 * dqdci;         /* dwdot[OH]/d[H2O] */
+        J[185] += 1 * dqdci;          /* dwdot[H2O]/d[H2O] */
+        /* d()/d[CH4] */
+        dqdci =  1*q_nocor;
+        J[469] += -1 * dqdci;         /* dwdot[H]/d[CH4] */
+        J[472] += -1 * dqdci;         /* dwdot[OH]/d[CH4] */
+        J[473] += 1 * dqdci;          /* dwdot[H2O]/d[CH4] */
+        /* d()/d[C2H6] */
+        dqdci =  2*q_nocor;
+        J[937] += -1 * dqdci;         /* dwdot[H]/d[C2H6] */
+        J[940] += -1 * dqdci;         /* dwdot[OH]/d[C2H6] */
+        J[941] += 1 * dqdci;          /* dwdot[H2O]/d[C2H6] */
     }
     else {
         dqdc[0] =  0.73*q_nocor;
@@ -18922,11 +18923,11 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
         dqdc[32] =  1*q_nocor;
         dqdc[33] =  1*q_nocor;
         dqdc[34] =  1*q_nocor;
-    }
-    for (int k=0; k<35; k++) {
-        J[36*k+1] += -1 * dqdc[k];
-        J[36*k+4] += -1 * dqdc[k];
-        J[36*k+5] += 1 * dqdc[k];
+        for (int k=0; k<35; k++) {
+            J[36*k+1] += -1 * dqdc[k];
+            J[36*k+4] += -1 * dqdc[k];
+            J[36*k+5] += 1 * dqdc[k];
+        }
     }
     J[1261] += -1 * dqdT; /* dwdot[H]/dT */
     J[1264] += -1 * dqdT; /* dwdot[OH]/dT */
@@ -18952,30 +18953,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[2] += q; /* O */
     wdot[5] += q; /* H2O */
     wdot[6] -= q; /* HO2 */
-    dqdc[1] =  + k_f*sc[6];
-    dqdc[2] =  - k_r*sc[5];
-    dqdc[5] =  - k_r*sc[2];
-    dqdc[6] =  + k_f*sc[1];
     /* d()/d[H] */
-    J[37] += -1 * dqdc[1];        /* dwdot[H]/d[H] */
-    J[38] += 1 * dqdc[1];         /* dwdot[O]/d[H] */
-    J[41] += 1 * dqdc[1];         /* dwdot[H2O]/d[H] */
-    J[42] += -1 * dqdc[1];        /* dwdot[HO2]/d[H] */
+    dqdci =  + k_f*sc[6];
+    J[37] += -1 * dqdci;          /* dwdot[H]/d[H] */
+    J[38] += 1 * dqdci;           /* dwdot[O]/d[H] */
+    J[41] += 1 * dqdci;           /* dwdot[H2O]/d[H] */
+    J[42] += -1 * dqdci;          /* dwdot[HO2]/d[H] */
     /* d()/d[O] */
-    J[73] += -1 * dqdc[2];        /* dwdot[H]/d[O] */
-    J[74] += 1 * dqdc[2];         /* dwdot[O]/d[O] */
-    J[77] += 1 * dqdc[2];         /* dwdot[H2O]/d[O] */
-    J[78] += -1 * dqdc[2];        /* dwdot[HO2]/d[O] */
+    dqdci =  - k_r*sc[5];
+    J[73] += -1 * dqdci;          /* dwdot[H]/d[O] */
+    J[74] += 1 * dqdci;           /* dwdot[O]/d[O] */
+    J[77] += 1 * dqdci;           /* dwdot[H2O]/d[O] */
+    J[78] += -1 * dqdci;          /* dwdot[HO2]/d[O] */
     /* d()/d[H2O] */
-    J[181] += -1 * dqdc[5];       /* dwdot[H]/d[H2O] */
-    J[182] += 1 * dqdc[5];        /* dwdot[O]/d[H2O] */
-    J[185] += 1 * dqdc[5];        /* dwdot[H2O]/d[H2O] */
-    J[186] += -1 * dqdc[5];       /* dwdot[HO2]/d[H2O] */
+    dqdci =  - k_r*sc[2];
+    J[181] += -1 * dqdci;         /* dwdot[H]/d[H2O] */
+    J[182] += 1 * dqdci;          /* dwdot[O]/d[H2O] */
+    J[185] += 1 * dqdci;          /* dwdot[H2O]/d[H2O] */
+    J[186] += -1 * dqdci;         /* dwdot[HO2]/d[H2O] */
     /* d()/d[HO2] */
-    J[217] += -1 * dqdc[6];       /* dwdot[H]/d[HO2] */
-    J[218] += 1 * dqdc[6];        /* dwdot[O]/d[HO2] */
-    J[221] += 1 * dqdc[6];        /* dwdot[H2O]/d[HO2] */
-    J[222] += -1 * dqdc[6];       /* dwdot[HO2]/d[HO2] */
+    dqdci =  + k_f*sc[1];
+    J[217] += -1 * dqdci;         /* dwdot[H]/d[HO2] */
+    J[218] += 1 * dqdci;          /* dwdot[O]/d[HO2] */
+    J[221] += 1 * dqdci;          /* dwdot[H2O]/d[HO2] */
+    J[222] += -1 * dqdci;         /* dwdot[HO2]/d[HO2] */
     /* d()/dT */
     J[1261] += -1 * dqdT;         /* dwdot[H]/dT */
     J[1262] += 1 * dqdT;          /* dwdot[O]/dT */
@@ -19002,30 +19003,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[1] -= q; /* H */
     wdot[3] += q; /* O2 */
     wdot[6] -= q; /* HO2 */
-    dqdc[0] =  - k_r*sc[3];
-    dqdc[1] =  + k_f*sc[6];
-    dqdc[3] =  - k_r*sc[0];
-    dqdc[6] =  + k_f*sc[1];
     /* d()/d[H2] */
-    J[0] += 1 * dqdc[0];          /* dwdot[H2]/d[H2] */
-    J[1] += -1 * dqdc[0];         /* dwdot[H]/d[H2] */
-    J[3] += 1 * dqdc[0];          /* dwdot[O2]/d[H2] */
-    J[6] += -1 * dqdc[0];         /* dwdot[HO2]/d[H2] */
+    dqdci =  - k_r*sc[3];
+    J[0] += 1 * dqdci;            /* dwdot[H2]/d[H2] */
+    J[1] += -1 * dqdci;           /* dwdot[H]/d[H2] */
+    J[3] += 1 * dqdci;            /* dwdot[O2]/d[H2] */
+    J[6] += -1 * dqdci;           /* dwdot[HO2]/d[H2] */
     /* d()/d[H] */
-    J[36] += 1 * dqdc[1];         /* dwdot[H2]/d[H] */
-    J[37] += -1 * dqdc[1];        /* dwdot[H]/d[H] */
-    J[39] += 1 * dqdc[1];         /* dwdot[O2]/d[H] */
-    J[42] += -1 * dqdc[1];        /* dwdot[HO2]/d[H] */
+    dqdci =  + k_f*sc[6];
+    J[36] += 1 * dqdci;           /* dwdot[H2]/d[H] */
+    J[37] += -1 * dqdci;          /* dwdot[H]/d[H] */
+    J[39] += 1 * dqdci;           /* dwdot[O2]/d[H] */
+    J[42] += -1 * dqdci;          /* dwdot[HO2]/d[H] */
     /* d()/d[O2] */
-    J[108] += 1 * dqdc[3];        /* dwdot[H2]/d[O2] */
-    J[109] += -1 * dqdc[3];       /* dwdot[H]/d[O2] */
-    J[111] += 1 * dqdc[3];        /* dwdot[O2]/d[O2] */
-    J[114] += -1 * dqdc[3];       /* dwdot[HO2]/d[O2] */
+    dqdci =  - k_r*sc[0];
+    J[108] += 1 * dqdci;          /* dwdot[H2]/d[O2] */
+    J[109] += -1 * dqdci;         /* dwdot[H]/d[O2] */
+    J[111] += 1 * dqdci;          /* dwdot[O2]/d[O2] */
+    J[114] += -1 * dqdci;         /* dwdot[HO2]/d[O2] */
     /* d()/d[HO2] */
-    J[216] += 1 * dqdc[6];        /* dwdot[H2]/d[HO2] */
-    J[217] += -1 * dqdc[6];       /* dwdot[H]/d[HO2] */
-    J[219] += 1 * dqdc[6];        /* dwdot[O2]/d[HO2] */
-    J[222] += -1 * dqdc[6];       /* dwdot[HO2]/d[HO2] */
+    dqdci =  + k_f*sc[1];
+    J[216] += 1 * dqdci;          /* dwdot[H2]/d[HO2] */
+    J[217] += -1 * dqdci;         /* dwdot[H]/d[HO2] */
+    J[219] += 1 * dqdci;          /* dwdot[O2]/d[HO2] */
+    J[222] += -1 * dqdci;         /* dwdot[HO2]/d[HO2] */
     /* d()/dT */
     J[1260] += 1 * dqdT;          /* dwdot[H2]/dT */
     J[1261] += -1 * dqdT;         /* dwdot[H]/dT */
@@ -19051,21 +19052,21 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[1] -= q; /* H */
     wdot[4] += 2 * q; /* OH */
     wdot[6] -= q; /* HO2 */
-    dqdc[1] =  + k_f*sc[6];
-    dqdc[4] =  - k_r*2*sc[4];
-    dqdc[6] =  + k_f*sc[1];
     /* d()/d[H] */
-    J[37] += -1 * dqdc[1];        /* dwdot[H]/d[H] */
-    J[40] += 2 * dqdc[1];         /* dwdot[OH]/d[H] */
-    J[42] += -1 * dqdc[1];        /* dwdot[HO2]/d[H] */
+    dqdci =  + k_f*sc[6];
+    J[37] += -1 * dqdci;          /* dwdot[H]/d[H] */
+    J[40] += 2 * dqdci;           /* dwdot[OH]/d[H] */
+    J[42] += -1 * dqdci;          /* dwdot[HO2]/d[H] */
     /* d()/d[OH] */
-    J[145] += -1 * dqdc[4];       /* dwdot[H]/d[OH] */
-    J[148] += 2 * dqdc[4];        /* dwdot[OH]/d[OH] */
-    J[150] += -1 * dqdc[4];       /* dwdot[HO2]/d[OH] */
+    dqdci =  - k_r*2*sc[4];
+    J[145] += -1 * dqdci;         /* dwdot[H]/d[OH] */
+    J[148] += 2 * dqdci;          /* dwdot[OH]/d[OH] */
+    J[150] += -1 * dqdci;         /* dwdot[HO2]/d[OH] */
     /* d()/d[HO2] */
-    J[217] += -1 * dqdc[6];       /* dwdot[H]/d[HO2] */
-    J[220] += 2 * dqdc[6];        /* dwdot[OH]/d[HO2] */
-    J[222] += -1 * dqdc[6];       /* dwdot[HO2]/d[HO2] */
+    dqdci =  + k_f*sc[1];
+    J[217] += -1 * dqdci;         /* dwdot[H]/d[HO2] */
+    J[220] += 2 * dqdci;          /* dwdot[OH]/d[HO2] */
+    J[222] += -1 * dqdci;         /* dwdot[HO2]/d[HO2] */
     /* d()/dT */
     J[1261] += -1 * dqdT;         /* dwdot[H]/dT */
     J[1264] += 2 * dqdT;          /* dwdot[OH]/dT */
@@ -19091,30 +19092,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[1] -= q; /* H */
     wdot[6] += q; /* HO2 */
     wdot[7] -= q; /* H2O2 */
-    dqdc[0] =  - k_r*sc[6];
-    dqdc[1] =  + k_f*sc[7];
-    dqdc[6] =  - k_r*sc[0];
-    dqdc[7] =  + k_f*sc[1];
     /* d()/d[H2] */
-    J[0] += 1 * dqdc[0];          /* dwdot[H2]/d[H2] */
-    J[1] += -1 * dqdc[0];         /* dwdot[H]/d[H2] */
-    J[6] += 1 * dqdc[0];          /* dwdot[HO2]/d[H2] */
-    J[7] += -1 * dqdc[0];         /* dwdot[H2O2]/d[H2] */
+    dqdci =  - k_r*sc[6];
+    J[0] += 1 * dqdci;            /* dwdot[H2]/d[H2] */
+    J[1] += -1 * dqdci;           /* dwdot[H]/d[H2] */
+    J[6] += 1 * dqdci;            /* dwdot[HO2]/d[H2] */
+    J[7] += -1 * dqdci;           /* dwdot[H2O2]/d[H2] */
     /* d()/d[H] */
-    J[36] += 1 * dqdc[1];         /* dwdot[H2]/d[H] */
-    J[37] += -1 * dqdc[1];        /* dwdot[H]/d[H] */
-    J[42] += 1 * dqdc[1];         /* dwdot[HO2]/d[H] */
-    J[43] += -1 * dqdc[1];        /* dwdot[H2O2]/d[H] */
+    dqdci =  + k_f*sc[7];
+    J[36] += 1 * dqdci;           /* dwdot[H2]/d[H] */
+    J[37] += -1 * dqdci;          /* dwdot[H]/d[H] */
+    J[42] += 1 * dqdci;           /* dwdot[HO2]/d[H] */
+    J[43] += -1 * dqdci;          /* dwdot[H2O2]/d[H] */
     /* d()/d[HO2] */
-    J[216] += 1 * dqdc[6];        /* dwdot[H2]/d[HO2] */
-    J[217] += -1 * dqdc[6];       /* dwdot[H]/d[HO2] */
-    J[222] += 1 * dqdc[6];        /* dwdot[HO2]/d[HO2] */
-    J[223] += -1 * dqdc[6];       /* dwdot[H2O2]/d[HO2] */
+    dqdci =  - k_r*sc[0];
+    J[216] += 1 * dqdci;          /* dwdot[H2]/d[HO2] */
+    J[217] += -1 * dqdci;         /* dwdot[H]/d[HO2] */
+    J[222] += 1 * dqdci;          /* dwdot[HO2]/d[HO2] */
+    J[223] += -1 * dqdci;         /* dwdot[H2O2]/d[HO2] */
     /* d()/d[H2O2] */
-    J[252] += 1 * dqdc[7];        /* dwdot[H2]/d[H2O2] */
-    J[253] += -1 * dqdc[7];       /* dwdot[H]/d[H2O2] */
-    J[258] += 1 * dqdc[7];        /* dwdot[HO2]/d[H2O2] */
-    J[259] += -1 * dqdc[7];       /* dwdot[H2O2]/d[H2O2] */
+    dqdci =  + k_f*sc[1];
+    J[252] += 1 * dqdci;          /* dwdot[H2]/d[H2O2] */
+    J[253] += -1 * dqdci;         /* dwdot[H]/d[H2O2] */
+    J[258] += 1 * dqdci;          /* dwdot[HO2]/d[H2O2] */
+    J[259] += -1 * dqdci;         /* dwdot[H2O2]/d[H2O2] */
     /* d()/dT */
     J[1260] += 1 * dqdT;          /* dwdot[H2]/dT */
     J[1261] += -1 * dqdT;         /* dwdot[H]/dT */
@@ -19141,30 +19142,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[4] += q; /* OH */
     wdot[5] += q; /* H2O */
     wdot[7] -= q; /* H2O2 */
-    dqdc[1] =  + k_f*sc[7];
-    dqdc[4] =  - k_r*sc[5];
-    dqdc[5] =  - k_r*sc[4];
-    dqdc[7] =  + k_f*sc[1];
     /* d()/d[H] */
-    J[37] += -1 * dqdc[1];        /* dwdot[H]/d[H] */
-    J[40] += 1 * dqdc[1];         /* dwdot[OH]/d[H] */
-    J[41] += 1 * dqdc[1];         /* dwdot[H2O]/d[H] */
-    J[43] += -1 * dqdc[1];        /* dwdot[H2O2]/d[H] */
+    dqdci =  + k_f*sc[7];
+    J[37] += -1 * dqdci;          /* dwdot[H]/d[H] */
+    J[40] += 1 * dqdci;           /* dwdot[OH]/d[H] */
+    J[41] += 1 * dqdci;           /* dwdot[H2O]/d[H] */
+    J[43] += -1 * dqdci;          /* dwdot[H2O2]/d[H] */
     /* d()/d[OH] */
-    J[145] += -1 * dqdc[4];       /* dwdot[H]/d[OH] */
-    J[148] += 1 * dqdc[4];        /* dwdot[OH]/d[OH] */
-    J[149] += 1 * dqdc[4];        /* dwdot[H2O]/d[OH] */
-    J[151] += -1 * dqdc[4];       /* dwdot[H2O2]/d[OH] */
+    dqdci =  - k_r*sc[5];
+    J[145] += -1 * dqdci;         /* dwdot[H]/d[OH] */
+    J[148] += 1 * dqdci;          /* dwdot[OH]/d[OH] */
+    J[149] += 1 * dqdci;          /* dwdot[H2O]/d[OH] */
+    J[151] += -1 * dqdci;         /* dwdot[H2O2]/d[OH] */
     /* d()/d[H2O] */
-    J[181] += -1 * dqdc[5];       /* dwdot[H]/d[H2O] */
-    J[184] += 1 * dqdc[5];        /* dwdot[OH]/d[H2O] */
-    J[185] += 1 * dqdc[5];        /* dwdot[H2O]/d[H2O] */
-    J[187] += -1 * dqdc[5];       /* dwdot[H2O2]/d[H2O] */
+    dqdci =  - k_r*sc[4];
+    J[181] += -1 * dqdci;         /* dwdot[H]/d[H2O] */
+    J[184] += 1 * dqdci;          /* dwdot[OH]/d[H2O] */
+    J[185] += 1 * dqdci;          /* dwdot[H2O]/d[H2O] */
+    J[187] += -1 * dqdci;         /* dwdot[H2O2]/d[H2O] */
     /* d()/d[H2O2] */
-    J[253] += -1 * dqdc[7];       /* dwdot[H]/d[H2O2] */
-    J[256] += 1 * dqdc[7];        /* dwdot[OH]/d[H2O2] */
-    J[257] += 1 * dqdc[7];        /* dwdot[H2O]/d[H2O2] */
-    J[259] += -1 * dqdc[7];       /* dwdot[H2O2]/d[H2O2] */
+    dqdci =  + k_f*sc[1];
+    J[253] += -1 * dqdci;         /* dwdot[H]/d[H2O2] */
+    J[256] += 1 * dqdci;          /* dwdot[OH]/d[H2O2] */
+    J[257] += 1 * dqdci;          /* dwdot[H2O]/d[H2O2] */
+    J[259] += -1 * dqdci;         /* dwdot[H2O2]/d[H2O2] */
     /* d()/dT */
     J[1261] += -1 * dqdT;         /* dwdot[H]/dT */
     J[1264] += 1 * dqdT;          /* dwdot[OH]/dT */
@@ -19191,30 +19192,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[1] -= q; /* H */
     wdot[8] += q; /* C */
     wdot[9] -= q; /* CH */
-    dqdc[0] =  - k_r*sc[8];
-    dqdc[1] =  + k_f*sc[9];
-    dqdc[8] =  - k_r*sc[0];
-    dqdc[9] =  + k_f*sc[1];
     /* d()/d[H2] */
-    J[0] += 1 * dqdc[0];          /* dwdot[H2]/d[H2] */
-    J[1] += -1 * dqdc[0];         /* dwdot[H]/d[H2] */
-    J[8] += 1 * dqdc[0];          /* dwdot[C]/d[H2] */
-    J[9] += -1 * dqdc[0];         /* dwdot[CH]/d[H2] */
+    dqdci =  - k_r*sc[8];
+    J[0] += 1 * dqdci;            /* dwdot[H2]/d[H2] */
+    J[1] += -1 * dqdci;           /* dwdot[H]/d[H2] */
+    J[8] += 1 * dqdci;            /* dwdot[C]/d[H2] */
+    J[9] += -1 * dqdci;           /* dwdot[CH]/d[H2] */
     /* d()/d[H] */
-    J[36] += 1 * dqdc[1];         /* dwdot[H2]/d[H] */
-    J[37] += -1 * dqdc[1];        /* dwdot[H]/d[H] */
-    J[44] += 1 * dqdc[1];         /* dwdot[C]/d[H] */
-    J[45] += -1 * dqdc[1];        /* dwdot[CH]/d[H] */
+    dqdci =  + k_f*sc[9];
+    J[36] += 1 * dqdci;           /* dwdot[H2]/d[H] */
+    J[37] += -1 * dqdci;          /* dwdot[H]/d[H] */
+    J[44] += 1 * dqdci;           /* dwdot[C]/d[H] */
+    J[45] += -1 * dqdci;          /* dwdot[CH]/d[H] */
     /* d()/d[C] */
-    J[288] += 1 * dqdc[8];        /* dwdot[H2]/d[C] */
-    J[289] += -1 * dqdc[8];       /* dwdot[H]/d[C] */
-    J[296] += 1 * dqdc[8];        /* dwdot[C]/d[C] */
-    J[297] += -1 * dqdc[8];       /* dwdot[CH]/d[C] */
+    dqdci =  - k_r*sc[0];
+    J[288] += 1 * dqdci;          /* dwdot[H2]/d[C] */
+    J[289] += -1 * dqdci;         /* dwdot[H]/d[C] */
+    J[296] += 1 * dqdci;          /* dwdot[C]/d[C] */
+    J[297] += -1 * dqdci;         /* dwdot[CH]/d[C] */
     /* d()/d[CH] */
-    J[324] += 1 * dqdc[9];        /* dwdot[H2]/d[CH] */
-    J[325] += -1 * dqdc[9];       /* dwdot[H]/d[CH] */
-    J[332] += 1 * dqdc[9];        /* dwdot[C]/d[CH] */
-    J[333] += -1 * dqdc[9];       /* dwdot[CH]/d[CH] */
+    dqdci =  + k_f*sc[1];
+    J[324] += 1 * dqdci;          /* dwdot[H2]/d[CH] */
+    J[325] += -1 * dqdci;         /* dwdot[H]/d[CH] */
+    J[332] += 1 * dqdci;          /* dwdot[C]/d[CH] */
+    J[333] += -1 * dqdci;         /* dwdot[CH]/d[CH] */
     /* d()/dT */
     J[1260] += 1 * dqdT;          /* dwdot[H2]/dT */
     J[1261] += -1 * dqdT;         /* dwdot[H]/dT */
@@ -19251,9 +19252,9 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     troe = 1.0 / (1.0 + troePr*troePr);
     F = pow(10.0, logFcent * troe);
     dlogFcentdT = log10e/Fcent*(Fcent1*-0.010989 + Fcent2*-0.00017135 + Fcent3*8552*invT2);
-    dlogFdcn_fac = logFcent * troe*troe * troePr * troePr_den;
+    dlogFdcn_fac = 2.0 * logFcent * troe*troe * troePr * troePr_den;
     dlogFdc = -troe_n * dlogFdcn_fac * troePr_den;
-    dlogFdn = 2. * dlogFdcn_fac * troePr;
+    dlogFdn = dlogFdcn_fac * troePr;
     dlogFdlogPr = dlogFdc;
     dlogFdT = dlogFcentdT*(troe - 0.67*dlogFdc - 1.27*dlogFdn) + dlogFdlogPr * dlogPrdT;
     /* reverse */
@@ -19277,41 +19278,51 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     k_r *= Corr;
     dcdc_fac = q/alpha*(1.0/(Pr+1.0) + dlogFdlogPr);
     if (consP) {
-        dqdc[0] =  1*dcdc_fac;
-        dqdc[1] =  0.0 + k_f*sc[10];
-        dqdc[2] =  0.0;
-        dqdc[3] =  0.0;
-        dqdc[4] =  0.0;
-        dqdc[5] =  5*dcdc_fac;
-        dqdc[6] =  0.0;
-        dqdc[7] =  0.0;
-        dqdc[8] =  0.0;
-        dqdc[9] =  0.0;
-        dqdc[10] =  0.0 + k_f*sc[1];
-        dqdc[11] =  0.0;
-        dqdc[12] =  0.0 - k_r;
-        dqdc[13] =  1*dcdc_fac;
-        dqdc[14] =  0.5*dcdc_fac;
-        dqdc[15] =  1*dcdc_fac;
-        dqdc[16] =  0.0;
-        dqdc[17] =  0.0;
-        dqdc[18] =  0.0;
-        dqdc[19] =  0.0;
-        dqdc[20] =  0.0;
-        dqdc[21] =  0.0;
-        dqdc[22] =  0.0;
-        dqdc[23] =  0.0;
-        dqdc[24] =  0.0;
-        dqdc[25] =  0.0;
-        dqdc[26] =  2*dcdc_fac;
-        dqdc[27] =  0.0;
-        dqdc[28] =  0.0;
-        dqdc[29] =  0.0;
-        dqdc[30] =  0.0;
-        dqdc[31] =  0.0;
-        dqdc[32] =  0.0;
-        dqdc[33] =  0.0;
-        dqdc[34] =  0.0;
+        /* d()/d[H2] */
+        dqdci =  1*dcdc_fac;
+        J[1] += -1 * dqdci;           /* dwdot[H]/d[H2] */
+        J[10] += -1 * dqdci;          /* dwdot[CH2]/d[H2] */
+        J[12] += 1 * dqdci;           /* dwdot[CH3]/d[H2] */
+        /* d()/d[H] */
+        dqdci =  + k_f*sc[10];
+        J[37] += -1 * dqdci;          /* dwdot[H]/d[H] */
+        J[46] += -1 * dqdci;          /* dwdot[CH2]/d[H] */
+        J[48] += 1 * dqdci;           /* dwdot[CH3]/d[H] */
+        /* d()/d[H2O] */
+        dqdci =  5*dcdc_fac;
+        J[181] += -1 * dqdci;         /* dwdot[H]/d[H2O] */
+        J[190] += -1 * dqdci;         /* dwdot[CH2]/d[H2O] */
+        J[192] += 1 * dqdci;          /* dwdot[CH3]/d[H2O] */
+        /* d()/d[CH2] */
+        dqdci =  + k_f*sc[1];
+        J[361] += -1 * dqdci;         /* dwdot[H]/d[CH2] */
+        J[370] += -1 * dqdci;         /* dwdot[CH2]/d[CH2] */
+        J[372] += 1 * dqdci;          /* dwdot[CH3]/d[CH2] */
+        /* d()/d[CH3] */
+        dqdci =  - k_r;
+        J[433] += -1 * dqdci;         /* dwdot[H]/d[CH3] */
+        J[442] += -1 * dqdci;         /* dwdot[CH2]/d[CH3] */
+        J[444] += 1 * dqdci;          /* dwdot[CH3]/d[CH3] */
+        /* d()/d[CH4] */
+        dqdci =  1*dcdc_fac;
+        J[469] += -1 * dqdci;         /* dwdot[H]/d[CH4] */
+        J[478] += -1 * dqdci;         /* dwdot[CH2]/d[CH4] */
+        J[480] += 1 * dqdci;          /* dwdot[CH3]/d[CH4] */
+        /* d()/d[CO] */
+        dqdci =  0.5*dcdc_fac;
+        J[505] += -1 * dqdci;         /* dwdot[H]/d[CO] */
+        J[514] += -1 * dqdci;         /* dwdot[CH2]/d[CO] */
+        J[516] += 1 * dqdci;          /* dwdot[CH3]/d[CO] */
+        /* d()/d[CO2] */
+        dqdci =  1*dcdc_fac;
+        J[541] += -1 * dqdci;         /* dwdot[H]/d[CO2] */
+        J[550] += -1 * dqdci;         /* dwdot[CH2]/d[CO2] */
+        J[552] += 1 * dqdci;          /* dwdot[CH3]/d[CO2] */
+        /* d()/d[C2H6] */
+        dqdci =  2*dcdc_fac;
+        J[937] += -1 * dqdci;         /* dwdot[H]/d[C2H6] */
+        J[946] += -1 * dqdci;         /* dwdot[CH2]/d[C2H6] */
+        J[948] += 1 * dqdci;          /* dwdot[CH3]/d[C2H6] */
     }
     else {
         dqdc[0] =  2*dcdc_fac;
@@ -19349,11 +19360,11 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
         dqdc[32] =  1*dcdc_fac;
         dqdc[33] =  1*dcdc_fac;
         dqdc[34] =  1*dcdc_fac;
-    }
-    for (int k=0; k<35; k++) {
-        J[36*k+1] += -1 * dqdc[k];
-        J[36*k+10] += -1 * dqdc[k];
-        J[36*k+12] += 1 * dqdc[k];
+        for (int k=0; k<35; k++) {
+            J[36*k+1] += -1 * dqdc[k];
+            J[36*k+10] += -1 * dqdc[k];
+            J[36*k+12] += 1 * dqdc[k];
+        }
     }
     J[1261] += -1 * dqdT; /* dwdot[H]/dT */
     J[1270] += -1 * dqdT; /* dwdot[CH2]/dT */
@@ -19379,30 +19390,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[1] -= q; /* H */
     wdot[9] += q; /* CH */
     wdot[11] -= q; /* CH2(S) */
-    dqdc[0] =  - k_r*sc[9];
-    dqdc[1] =  + k_f*sc[11];
-    dqdc[9] =  - k_r*sc[0];
-    dqdc[11] =  + k_f*sc[1];
     /* d()/d[H2] */
-    J[0] += 1 * dqdc[0];          /* dwdot[H2]/d[H2] */
-    J[1] += -1 * dqdc[0];         /* dwdot[H]/d[H2] */
-    J[9] += 1 * dqdc[0];          /* dwdot[CH]/d[H2] */
-    J[11] += -1 * dqdc[0];        /* dwdot[CH2(S)]/d[H2] */
+    dqdci =  - k_r*sc[9];
+    J[0] += 1 * dqdci;            /* dwdot[H2]/d[H2] */
+    J[1] += -1 * dqdci;           /* dwdot[H]/d[H2] */
+    J[9] += 1 * dqdci;            /* dwdot[CH]/d[H2] */
+    J[11] += -1 * dqdci;          /* dwdot[CH2(S)]/d[H2] */
     /* d()/d[H] */
-    J[36] += 1 * dqdc[1];         /* dwdot[H2]/d[H] */
-    J[37] += -1 * dqdc[1];        /* dwdot[H]/d[H] */
-    J[45] += 1 * dqdc[1];         /* dwdot[CH]/d[H] */
-    J[47] += -1 * dqdc[1];        /* dwdot[CH2(S)]/d[H] */
+    dqdci =  + k_f*sc[11];
+    J[36] += 1 * dqdci;           /* dwdot[H2]/d[H] */
+    J[37] += -1 * dqdci;          /* dwdot[H]/d[H] */
+    J[45] += 1 * dqdci;           /* dwdot[CH]/d[H] */
+    J[47] += -1 * dqdci;          /* dwdot[CH2(S)]/d[H] */
     /* d()/d[CH] */
-    J[324] += 1 * dqdc[9];        /* dwdot[H2]/d[CH] */
-    J[325] += -1 * dqdc[9];       /* dwdot[H]/d[CH] */
-    J[333] += 1 * dqdc[9];        /* dwdot[CH]/d[CH] */
-    J[335] += -1 * dqdc[9];       /* dwdot[CH2(S)]/d[CH] */
+    dqdci =  - k_r*sc[0];
+    J[324] += 1 * dqdci;          /* dwdot[H2]/d[CH] */
+    J[325] += -1 * dqdci;         /* dwdot[H]/d[CH] */
+    J[333] += 1 * dqdci;          /* dwdot[CH]/d[CH] */
+    J[335] += -1 * dqdci;         /* dwdot[CH2(S)]/d[CH] */
     /* d()/d[CH2(S)] */
-    J[396] += 1 * dqdc[11];       /* dwdot[H2]/d[CH2(S)] */
-    J[397] += -1 * dqdc[11];      /* dwdot[H]/d[CH2(S)] */
-    J[405] += 1 * dqdc[11];       /* dwdot[CH]/d[CH2(S)] */
-    J[407] += -1 * dqdc[11];      /* dwdot[CH2(S)]/d[CH2(S)] */
+    dqdci =  + k_f*sc[1];
+    J[396] += 1 * dqdci;          /* dwdot[H2]/d[CH2(S)] */
+    J[397] += -1 * dqdci;         /* dwdot[H]/d[CH2(S)] */
+    J[405] += 1 * dqdci;          /* dwdot[CH]/d[CH2(S)] */
+    J[407] += -1 * dqdci;         /* dwdot[CH2(S)]/d[CH2(S)] */
     /* d()/dT */
     J[1260] += 1 * dqdT;          /* dwdot[H2]/dT */
     J[1261] += -1 * dqdT;         /* dwdot[H]/dT */
@@ -19439,9 +19450,9 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     troe = 1.0 / (1.0 + troePr*troePr);
     F = pow(10.0, logFcent * troe);
     dlogFcentdT = log10e/Fcent*(Fcent1*-0.0135135 + Fcent2*-0.00034002 + Fcent3*6964*invT2);
-    dlogFdcn_fac = logFcent * troe*troe * troePr * troePr_den;
+    dlogFdcn_fac = 2.0 * logFcent * troe*troe * troePr * troePr_den;
     dlogFdc = -troe_n * dlogFdcn_fac * troePr_den;
-    dlogFdn = 2. * dlogFdcn_fac * troePr;
+    dlogFdn = dlogFdcn_fac * troePr;
     dlogFdlogPr = dlogFdc;
     dlogFdT = dlogFcentdT*(troe - 0.67*dlogFdc - 1.27*dlogFdn) + dlogFdlogPr * dlogPrdT;
     /* reverse */
@@ -19465,41 +19476,46 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     k_r *= Corr;
     dcdc_fac = q/alpha*(1.0/(Pr+1.0) + dlogFdlogPr);
     if (consP) {
-        dqdc[0] =  1*dcdc_fac;
-        dqdc[1] =  0.0 + k_f*sc[12];
-        dqdc[2] =  0.0;
-        dqdc[3] =  0.0;
-        dqdc[4] =  0.0;
-        dqdc[5] =  5*dcdc_fac;
-        dqdc[6] =  0.0;
-        dqdc[7] =  0.0;
-        dqdc[8] =  0.0;
-        dqdc[9] =  0.0;
-        dqdc[10] =  0.0;
-        dqdc[11] =  0.0;
-        dqdc[12] =  0.0 + k_f*sc[1];
-        dqdc[13] =  2*dcdc_fac - k_r;
-        dqdc[14] =  0.5*dcdc_fac;
-        dqdc[15] =  1*dcdc_fac;
-        dqdc[16] =  0.0;
-        dqdc[17] =  0.0;
-        dqdc[18] =  0.0;
-        dqdc[19] =  0.0;
-        dqdc[20] =  0.0;
-        dqdc[21] =  0.0;
-        dqdc[22] =  0.0;
-        dqdc[23] =  0.0;
-        dqdc[24] =  0.0;
-        dqdc[25] =  0.0;
-        dqdc[26] =  2*dcdc_fac;
-        dqdc[27] =  0.0;
-        dqdc[28] =  0.0;
-        dqdc[29] =  0.0;
-        dqdc[30] =  0.0;
-        dqdc[31] =  0.0;
-        dqdc[32] =  0.0;
-        dqdc[33] =  0.0;
-        dqdc[34] =  0.0;
+        /* d()/d[H2] */
+        dqdci =  1*dcdc_fac;
+        J[1] += -1 * dqdci;           /* dwdot[H]/d[H2] */
+        J[12] += -1 * dqdci;          /* dwdot[CH3]/d[H2] */
+        J[13] += 1 * dqdci;           /* dwdot[CH4]/d[H2] */
+        /* d()/d[H] */
+        dqdci =  + k_f*sc[12];
+        J[37] += -1 * dqdci;          /* dwdot[H]/d[H] */
+        J[48] += -1 * dqdci;          /* dwdot[CH3]/d[H] */
+        J[49] += 1 * dqdci;           /* dwdot[CH4]/d[H] */
+        /* d()/d[H2O] */
+        dqdci =  5*dcdc_fac;
+        J[181] += -1 * dqdci;         /* dwdot[H]/d[H2O] */
+        J[192] += -1 * dqdci;         /* dwdot[CH3]/d[H2O] */
+        J[193] += 1 * dqdci;          /* dwdot[CH4]/d[H2O] */
+        /* d()/d[CH3] */
+        dqdci =  + k_f*sc[1];
+        J[433] += -1 * dqdci;         /* dwdot[H]/d[CH3] */
+        J[444] += -1 * dqdci;         /* dwdot[CH3]/d[CH3] */
+        J[445] += 1 * dqdci;          /* dwdot[CH4]/d[CH3] */
+        /* d()/d[CH4] */
+        dqdci =  2*dcdc_fac - k_r;
+        J[469] += -1 * dqdci;         /* dwdot[H]/d[CH4] */
+        J[480] += -1 * dqdci;         /* dwdot[CH3]/d[CH4] */
+        J[481] += 1 * dqdci;          /* dwdot[CH4]/d[CH4] */
+        /* d()/d[CO] */
+        dqdci =  0.5*dcdc_fac;
+        J[505] += -1 * dqdci;         /* dwdot[H]/d[CO] */
+        J[516] += -1 * dqdci;         /* dwdot[CH3]/d[CO] */
+        J[517] += 1 * dqdci;          /* dwdot[CH4]/d[CO] */
+        /* d()/d[CO2] */
+        dqdci =  1*dcdc_fac;
+        J[541] += -1 * dqdci;         /* dwdot[H]/d[CO2] */
+        J[552] += -1 * dqdci;         /* dwdot[CH3]/d[CO2] */
+        J[553] += 1 * dqdci;          /* dwdot[CH4]/d[CO2] */
+        /* d()/d[C2H6] */
+        dqdci =  2*dcdc_fac;
+        J[937] += -1 * dqdci;         /* dwdot[H]/d[C2H6] */
+        J[948] += -1 * dqdci;         /* dwdot[CH3]/d[C2H6] */
+        J[949] += 1 * dqdci;          /* dwdot[CH4]/d[C2H6] */
     }
     else {
         dqdc[0] =  2*dcdc_fac;
@@ -19537,11 +19553,11 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
         dqdc[32] =  1*dcdc_fac;
         dqdc[33] =  1*dcdc_fac;
         dqdc[34] =  1*dcdc_fac;
-    }
-    for (int k=0; k<35; k++) {
-        J[36*k+1] += -1 * dqdc[k];
-        J[36*k+12] += -1 * dqdc[k];
-        J[36*k+13] += 1 * dqdc[k];
+        for (int k=0; k<35; k++) {
+            J[36*k+1] += -1 * dqdc[k];
+            J[36*k+12] += -1 * dqdc[k];
+            J[36*k+13] += 1 * dqdc[k];
+        }
     }
     J[1261] += -1 * dqdT; /* dwdot[H]/dT */
     J[1272] += -1 * dqdT; /* dwdot[CH3]/dT */
@@ -19567,30 +19583,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[1] -= q; /* H */
     wdot[12] += q; /* CH3 */
     wdot[13] -= q; /* CH4 */
-    dqdc[0] =  - k_r*sc[12];
-    dqdc[1] =  + k_f*sc[13];
-    dqdc[12] =  - k_r*sc[0];
-    dqdc[13] =  + k_f*sc[1];
     /* d()/d[H2] */
-    J[0] += 1 * dqdc[0];          /* dwdot[H2]/d[H2] */
-    J[1] += -1 * dqdc[0];         /* dwdot[H]/d[H2] */
-    J[12] += 1 * dqdc[0];         /* dwdot[CH3]/d[H2] */
-    J[13] += -1 * dqdc[0];        /* dwdot[CH4]/d[H2] */
+    dqdci =  - k_r*sc[12];
+    J[0] += 1 * dqdci;            /* dwdot[H2]/d[H2] */
+    J[1] += -1 * dqdci;           /* dwdot[H]/d[H2] */
+    J[12] += 1 * dqdci;           /* dwdot[CH3]/d[H2] */
+    J[13] += -1 * dqdci;          /* dwdot[CH4]/d[H2] */
     /* d()/d[H] */
-    J[36] += 1 * dqdc[1];         /* dwdot[H2]/d[H] */
-    J[37] += -1 * dqdc[1];        /* dwdot[H]/d[H] */
-    J[48] += 1 * dqdc[1];         /* dwdot[CH3]/d[H] */
-    J[49] += -1 * dqdc[1];        /* dwdot[CH4]/d[H] */
+    dqdci =  + k_f*sc[13];
+    J[36] += 1 * dqdci;           /* dwdot[H2]/d[H] */
+    J[37] += -1 * dqdci;          /* dwdot[H]/d[H] */
+    J[48] += 1 * dqdci;           /* dwdot[CH3]/d[H] */
+    J[49] += -1 * dqdci;          /* dwdot[CH4]/d[H] */
     /* d()/d[CH3] */
-    J[432] += 1 * dqdc[12];       /* dwdot[H2]/d[CH3] */
-    J[433] += -1 * dqdc[12];      /* dwdot[H]/d[CH3] */
-    J[444] += 1 * dqdc[12];       /* dwdot[CH3]/d[CH3] */
-    J[445] += -1 * dqdc[12];      /* dwdot[CH4]/d[CH3] */
+    dqdci =  - k_r*sc[0];
+    J[432] += 1 * dqdci;          /* dwdot[H2]/d[CH3] */
+    J[433] += -1 * dqdci;         /* dwdot[H]/d[CH3] */
+    J[444] += 1 * dqdci;          /* dwdot[CH3]/d[CH3] */
+    J[445] += -1 * dqdci;         /* dwdot[CH4]/d[CH3] */
     /* d()/d[CH4] */
-    J[468] += 1 * dqdc[13];       /* dwdot[H2]/d[CH4] */
-    J[469] += -1 * dqdc[13];      /* dwdot[H]/d[CH4] */
-    J[480] += 1 * dqdc[13];       /* dwdot[CH3]/d[CH4] */
-    J[481] += -1 * dqdc[13];      /* dwdot[CH4]/d[CH4] */
+    dqdci =  + k_f*sc[1];
+    J[468] += 1 * dqdci;          /* dwdot[H2]/d[CH4] */
+    J[469] += -1 * dqdci;         /* dwdot[H]/d[CH4] */
+    J[480] += 1 * dqdci;          /* dwdot[CH3]/d[CH4] */
+    J[481] += -1 * dqdci;         /* dwdot[CH4]/d[CH4] */
     /* d()/dT */
     J[1260] += 1 * dqdT;          /* dwdot[H2]/dT */
     J[1261] += -1 * dqdT;         /* dwdot[H]/dT */
@@ -19627,9 +19643,9 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     troe = 1.0 / (1.0 + troePr*troePr);
     F = pow(10.0, logFcent * troe);
     dlogFcentdT = log10e/Fcent*(Fcent1*-0.00369004 + Fcent2*-0.000362976 + Fcent3*6570*invT2);
-    dlogFdcn_fac = logFcent * troe*troe * troePr * troePr_den;
+    dlogFdcn_fac = 2.0 * logFcent * troe*troe * troePr * troePr_den;
     dlogFdc = -troe_n * dlogFdcn_fac * troePr_den;
-    dlogFdn = 2. * dlogFdcn_fac * troePr;
+    dlogFdn = dlogFdcn_fac * troePr;
     dlogFdlogPr = dlogFdc;
     dlogFdT = dlogFcentdT*(troe - 0.67*dlogFdc - 1.27*dlogFdn) + dlogFdlogPr * dlogPrdT;
     /* reverse */
@@ -19653,41 +19669,51 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     k_r *= Corr;
     dcdc_fac = q/alpha*(1.0/(Pr+1.0) + dlogFdlogPr);
     if (consP) {
-        dqdc[0] =  1*dcdc_fac;
-        dqdc[1] =  0.0 + k_f*sc[16];
-        dqdc[2] =  0.0;
-        dqdc[3] =  0.0;
-        dqdc[4] =  0.0;
-        dqdc[5] =  5*dcdc_fac;
-        dqdc[6] =  0.0;
-        dqdc[7] =  0.0;
-        dqdc[8] =  0.0;
-        dqdc[9] =  0.0;
-        dqdc[10] =  0.0;
-        dqdc[11] =  0.0;
-        dqdc[12] =  0.0;
-        dqdc[13] =  1*dcdc_fac;
-        dqdc[14] =  0.5*dcdc_fac;
-        dqdc[15] =  1*dcdc_fac;
-        dqdc[16] =  0.0 + k_f*sc[1];
-        dqdc[17] =  0.0 - k_r;
-        dqdc[18] =  0.0;
-        dqdc[19] =  0.0;
-        dqdc[20] =  0.0;
-        dqdc[21] =  0.0;
-        dqdc[22] =  0.0;
-        dqdc[23] =  0.0;
-        dqdc[24] =  0.0;
-        dqdc[25] =  0.0;
-        dqdc[26] =  2*dcdc_fac;
-        dqdc[27] =  0.0;
-        dqdc[28] =  0.0;
-        dqdc[29] =  0.0;
-        dqdc[30] =  0.0;
-        dqdc[31] =  0.0;
-        dqdc[32] =  0.0;
-        dqdc[33] =  0.0;
-        dqdc[34] =  0.0;
+        /* d()/d[H2] */
+        dqdci =  1*dcdc_fac;
+        J[1] += -1 * dqdci;           /* dwdot[H]/d[H2] */
+        J[16] += -1 * dqdci;          /* dwdot[HCO]/d[H2] */
+        J[17] += 1 * dqdci;           /* dwdot[CH2O]/d[H2] */
+        /* d()/d[H] */
+        dqdci =  + k_f*sc[16];
+        J[37] += -1 * dqdci;          /* dwdot[H]/d[H] */
+        J[52] += -1 * dqdci;          /* dwdot[HCO]/d[H] */
+        J[53] += 1 * dqdci;           /* dwdot[CH2O]/d[H] */
+        /* d()/d[H2O] */
+        dqdci =  5*dcdc_fac;
+        J[181] += -1 * dqdci;         /* dwdot[H]/d[H2O] */
+        J[196] += -1 * dqdci;         /* dwdot[HCO]/d[H2O] */
+        J[197] += 1 * dqdci;          /* dwdot[CH2O]/d[H2O] */
+        /* d()/d[CH4] */
+        dqdci =  1*dcdc_fac;
+        J[469] += -1 * dqdci;         /* dwdot[H]/d[CH4] */
+        J[484] += -1 * dqdci;         /* dwdot[HCO]/d[CH4] */
+        J[485] += 1 * dqdci;          /* dwdot[CH2O]/d[CH4] */
+        /* d()/d[CO] */
+        dqdci =  0.5*dcdc_fac;
+        J[505] += -1 * dqdci;         /* dwdot[H]/d[CO] */
+        J[520] += -1 * dqdci;         /* dwdot[HCO]/d[CO] */
+        J[521] += 1 * dqdci;          /* dwdot[CH2O]/d[CO] */
+        /* d()/d[CO2] */
+        dqdci =  1*dcdc_fac;
+        J[541] += -1 * dqdci;         /* dwdot[H]/d[CO2] */
+        J[556] += -1 * dqdci;         /* dwdot[HCO]/d[CO2] */
+        J[557] += 1 * dqdci;          /* dwdot[CH2O]/d[CO2] */
+        /* d()/d[HCO] */
+        dqdci =  + k_f*sc[1];
+        J[577] += -1 * dqdci;         /* dwdot[H]/d[HCO] */
+        J[592] += -1 * dqdci;         /* dwdot[HCO]/d[HCO] */
+        J[593] += 1 * dqdci;          /* dwdot[CH2O]/d[HCO] */
+        /* d()/d[CH2O] */
+        dqdci =  - k_r;
+        J[613] += -1 * dqdci;         /* dwdot[H]/d[CH2O] */
+        J[628] += -1 * dqdci;         /* dwdot[HCO]/d[CH2O] */
+        J[629] += 1 * dqdci;          /* dwdot[CH2O]/d[CH2O] */
+        /* d()/d[C2H6] */
+        dqdci =  2*dcdc_fac;
+        J[937] += -1 * dqdci;         /* dwdot[H]/d[C2H6] */
+        J[952] += -1 * dqdci;         /* dwdot[HCO]/d[C2H6] */
+        J[953] += 1 * dqdci;          /* dwdot[CH2O]/d[C2H6] */
     }
     else {
         dqdc[0] =  2*dcdc_fac;
@@ -19725,11 +19751,11 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
         dqdc[32] =  1*dcdc_fac;
         dqdc[33] =  1*dcdc_fac;
         dqdc[34] =  1*dcdc_fac;
-    }
-    for (int k=0; k<35; k++) {
-        J[36*k+1] += -1 * dqdc[k];
-        J[36*k+16] += -1 * dqdc[k];
-        J[36*k+17] += 1 * dqdc[k];
+        for (int k=0; k<35; k++) {
+            J[36*k+1] += -1 * dqdc[k];
+            J[36*k+16] += -1 * dqdc[k];
+            J[36*k+17] += 1 * dqdc[k];
+        }
     }
     J[1261] += -1 * dqdT; /* dwdot[H]/dT */
     J[1276] += -1 * dqdT; /* dwdot[HCO]/dT */
@@ -19755,30 +19781,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[1] -= q; /* H */
     wdot[14] += q; /* CO */
     wdot[16] -= q; /* HCO */
-    dqdc[0] =  - k_r*sc[14];
-    dqdc[1] =  + k_f*sc[16];
-    dqdc[14] =  - k_r*sc[0];
-    dqdc[16] =  + k_f*sc[1];
     /* d()/d[H2] */
-    J[0] += 1 * dqdc[0];          /* dwdot[H2]/d[H2] */
-    J[1] += -1 * dqdc[0];         /* dwdot[H]/d[H2] */
-    J[14] += 1 * dqdc[0];         /* dwdot[CO]/d[H2] */
-    J[16] += -1 * dqdc[0];        /* dwdot[HCO]/d[H2] */
+    dqdci =  - k_r*sc[14];
+    J[0] += 1 * dqdci;            /* dwdot[H2]/d[H2] */
+    J[1] += -1 * dqdci;           /* dwdot[H]/d[H2] */
+    J[14] += 1 * dqdci;           /* dwdot[CO]/d[H2] */
+    J[16] += -1 * dqdci;          /* dwdot[HCO]/d[H2] */
     /* d()/d[H] */
-    J[36] += 1 * dqdc[1];         /* dwdot[H2]/d[H] */
-    J[37] += -1 * dqdc[1];        /* dwdot[H]/d[H] */
-    J[50] += 1 * dqdc[1];         /* dwdot[CO]/d[H] */
-    J[52] += -1 * dqdc[1];        /* dwdot[HCO]/d[H] */
+    dqdci =  + k_f*sc[16];
+    J[36] += 1 * dqdci;           /* dwdot[H2]/d[H] */
+    J[37] += -1 * dqdci;          /* dwdot[H]/d[H] */
+    J[50] += 1 * dqdci;           /* dwdot[CO]/d[H] */
+    J[52] += -1 * dqdci;          /* dwdot[HCO]/d[H] */
     /* d()/d[CO] */
-    J[504] += 1 * dqdc[14];       /* dwdot[H2]/d[CO] */
-    J[505] += -1 * dqdc[14];      /* dwdot[H]/d[CO] */
-    J[518] += 1 * dqdc[14];       /* dwdot[CO]/d[CO] */
-    J[520] += -1 * dqdc[14];      /* dwdot[HCO]/d[CO] */
+    dqdci =  - k_r*sc[0];
+    J[504] += 1 * dqdci;          /* dwdot[H2]/d[CO] */
+    J[505] += -1 * dqdci;         /* dwdot[H]/d[CO] */
+    J[518] += 1 * dqdci;          /* dwdot[CO]/d[CO] */
+    J[520] += -1 * dqdci;         /* dwdot[HCO]/d[CO] */
     /* d()/d[HCO] */
-    J[576] += 1 * dqdc[16];       /* dwdot[H2]/d[HCO] */
-    J[577] += -1 * dqdc[16];      /* dwdot[H]/d[HCO] */
-    J[590] += 1 * dqdc[16];       /* dwdot[CO]/d[HCO] */
-    J[592] += -1 * dqdc[16];      /* dwdot[HCO]/d[HCO] */
+    dqdci =  + k_f*sc[1];
+    J[576] += 1 * dqdci;          /* dwdot[H2]/d[HCO] */
+    J[577] += -1 * dqdci;         /* dwdot[H]/d[HCO] */
+    J[590] += 1 * dqdci;          /* dwdot[CO]/d[HCO] */
+    J[592] += -1 * dqdci;         /* dwdot[HCO]/d[HCO] */
     /* d()/dT */
     J[1260] += 1 * dqdT;          /* dwdot[H2]/dT */
     J[1261] += -1 * dqdT;         /* dwdot[H]/dT */
@@ -19815,9 +19841,9 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     troe = 1.0 / (1.0 + troePr*troePr);
     F = pow(10.0, logFcent * troe);
     dlogFcentdT = log10e/Fcent*(Fcent1*-0.00970874 + Fcent2*-0.000774593 + Fcent3*4160*invT2);
-    dlogFdcn_fac = logFcent * troe*troe * troePr * troePr_den;
+    dlogFdcn_fac = 2.0 * logFcent * troe*troe * troePr * troePr_den;
     dlogFdc = -troe_n * dlogFdcn_fac * troePr_den;
-    dlogFdn = 2. * dlogFdcn_fac * troePr;
+    dlogFdn = dlogFdcn_fac * troePr;
     dlogFdlogPr = dlogFdc;
     dlogFdT = dlogFcentdT*(troe - 0.67*dlogFdc - 1.27*dlogFdn) + dlogFdlogPr * dlogPrdT;
     /* reverse */
@@ -19841,41 +19867,51 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     k_r *= Corr;
     dcdc_fac = q/alpha*(1.0/(Pr+1.0) + dlogFdlogPr);
     if (consP) {
-        dqdc[0] =  1*dcdc_fac;
-        dqdc[1] =  0.0 + k_f*sc[17];
-        dqdc[2] =  0.0;
-        dqdc[3] =  0.0;
-        dqdc[4] =  0.0;
-        dqdc[5] =  5*dcdc_fac;
-        dqdc[6] =  0.0;
-        dqdc[7] =  0.0;
-        dqdc[8] =  0.0;
-        dqdc[9] =  0.0;
-        dqdc[10] =  0.0;
-        dqdc[11] =  0.0;
-        dqdc[12] =  0.0;
-        dqdc[13] =  1*dcdc_fac;
-        dqdc[14] =  0.5*dcdc_fac;
-        dqdc[15] =  1*dcdc_fac;
-        dqdc[16] =  0.0;
-        dqdc[17] =  0.0 + k_f*sc[1];
-        dqdc[18] =  0.0 - k_r;
-        dqdc[19] =  0.0;
-        dqdc[20] =  0.0;
-        dqdc[21] =  0.0;
-        dqdc[22] =  0.0;
-        dqdc[23] =  0.0;
-        dqdc[24] =  0.0;
-        dqdc[25] =  0.0;
-        dqdc[26] =  2*dcdc_fac;
-        dqdc[27] =  0.0;
-        dqdc[28] =  0.0;
-        dqdc[29] =  0.0;
-        dqdc[30] =  0.0;
-        dqdc[31] =  0.0;
-        dqdc[32] =  0.0;
-        dqdc[33] =  0.0;
-        dqdc[34] =  0.0;
+        /* d()/d[H2] */
+        dqdci =  1*dcdc_fac;
+        J[1] += -1 * dqdci;           /* dwdot[H]/d[H2] */
+        J[17] += -1 * dqdci;          /* dwdot[CH2O]/d[H2] */
+        J[18] += 1 * dqdci;           /* dwdot[CH2OH]/d[H2] */
+        /* d()/d[H] */
+        dqdci =  + k_f*sc[17];
+        J[37] += -1 * dqdci;          /* dwdot[H]/d[H] */
+        J[53] += -1 * dqdci;          /* dwdot[CH2O]/d[H] */
+        J[54] += 1 * dqdci;           /* dwdot[CH2OH]/d[H] */
+        /* d()/d[H2O] */
+        dqdci =  5*dcdc_fac;
+        J[181] += -1 * dqdci;         /* dwdot[H]/d[H2O] */
+        J[197] += -1 * dqdci;         /* dwdot[CH2O]/d[H2O] */
+        J[198] += 1 * dqdci;          /* dwdot[CH2OH]/d[H2O] */
+        /* d()/d[CH4] */
+        dqdci =  1*dcdc_fac;
+        J[469] += -1 * dqdci;         /* dwdot[H]/d[CH4] */
+        J[485] += -1 * dqdci;         /* dwdot[CH2O]/d[CH4] */
+        J[486] += 1 * dqdci;          /* dwdot[CH2OH]/d[CH4] */
+        /* d()/d[CO] */
+        dqdci =  0.5*dcdc_fac;
+        J[505] += -1 * dqdci;         /* dwdot[H]/d[CO] */
+        J[521] += -1 * dqdci;         /* dwdot[CH2O]/d[CO] */
+        J[522] += 1 * dqdci;          /* dwdot[CH2OH]/d[CO] */
+        /* d()/d[CO2] */
+        dqdci =  1*dcdc_fac;
+        J[541] += -1 * dqdci;         /* dwdot[H]/d[CO2] */
+        J[557] += -1 * dqdci;         /* dwdot[CH2O]/d[CO2] */
+        J[558] += 1 * dqdci;          /* dwdot[CH2OH]/d[CO2] */
+        /* d()/d[CH2O] */
+        dqdci =  + k_f*sc[1];
+        J[613] += -1 * dqdci;         /* dwdot[H]/d[CH2O] */
+        J[629] += -1 * dqdci;         /* dwdot[CH2O]/d[CH2O] */
+        J[630] += 1 * dqdci;          /* dwdot[CH2OH]/d[CH2O] */
+        /* d()/d[CH2OH] */
+        dqdci =  - k_r;
+        J[649] += -1 * dqdci;         /* dwdot[H]/d[CH2OH] */
+        J[665] += -1 * dqdci;         /* dwdot[CH2O]/d[CH2OH] */
+        J[666] += 1 * dqdci;          /* dwdot[CH2OH]/d[CH2OH] */
+        /* d()/d[C2H6] */
+        dqdci =  2*dcdc_fac;
+        J[937] += -1 * dqdci;         /* dwdot[H]/d[C2H6] */
+        J[953] += -1 * dqdci;         /* dwdot[CH2O]/d[C2H6] */
+        J[954] += 1 * dqdci;          /* dwdot[CH2OH]/d[C2H6] */
     }
     else {
         dqdc[0] =  2*dcdc_fac;
@@ -19913,11 +19949,11 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
         dqdc[32] =  1*dcdc_fac;
         dqdc[33] =  1*dcdc_fac;
         dqdc[34] =  1*dcdc_fac;
-    }
-    for (int k=0; k<35; k++) {
-        J[36*k+1] += -1 * dqdc[k];
-        J[36*k+17] += -1 * dqdc[k];
-        J[36*k+18] += 1 * dqdc[k];
+        for (int k=0; k<35; k++) {
+            J[36*k+1] += -1 * dqdc[k];
+            J[36*k+17] += -1 * dqdc[k];
+            J[36*k+18] += 1 * dqdc[k];
+        }
     }
     J[1261] += -1 * dqdT; /* dwdot[H]/dT */
     J[1277] += -1 * dqdT; /* dwdot[CH2O]/dT */
@@ -19953,9 +19989,9 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     troe = 1.0 / (1.0 + troePr*troePr);
     F = pow(10.0, logFcent * troe);
     dlogFcentdT = log10e/Fcent*(Fcent1*-0.0106383 + Fcent2*-0.000643087 + Fcent3*4200*invT2);
-    dlogFdcn_fac = logFcent * troe*troe * troePr * troePr_den;
+    dlogFdcn_fac = 2.0 * logFcent * troe*troe * troePr * troePr_den;
     dlogFdc = -troe_n * dlogFdcn_fac * troePr_den;
-    dlogFdn = 2. * dlogFdcn_fac * troePr;
+    dlogFdn = dlogFdcn_fac * troePr;
     dlogFdlogPr = dlogFdc;
     dlogFdT = dlogFcentdT*(troe - 0.67*dlogFdc - 1.27*dlogFdn) + dlogFdlogPr * dlogPrdT;
     /* reverse */
@@ -19979,41 +20015,51 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     k_r *= Corr;
     dcdc_fac = q/alpha*(1.0/(Pr+1.0) + dlogFdlogPr);
     if (consP) {
-        dqdc[0] =  1*dcdc_fac;
-        dqdc[1] =  0.0 + k_f*sc[17];
-        dqdc[2] =  0.0;
-        dqdc[3] =  0.0;
-        dqdc[4] =  0.0;
-        dqdc[5] =  5*dcdc_fac;
-        dqdc[6] =  0.0;
-        dqdc[7] =  0.0;
-        dqdc[8] =  0.0;
-        dqdc[9] =  0.0;
-        dqdc[10] =  0.0;
-        dqdc[11] =  0.0;
-        dqdc[12] =  0.0;
-        dqdc[13] =  1*dcdc_fac;
-        dqdc[14] =  0.5*dcdc_fac;
-        dqdc[15] =  1*dcdc_fac;
-        dqdc[16] =  0.0;
-        dqdc[17] =  0.0 + k_f*sc[1];
-        dqdc[18] =  0.0;
-        dqdc[19] =  0.0 - k_r;
-        dqdc[20] =  0.0;
-        dqdc[21] =  0.0;
-        dqdc[22] =  0.0;
-        dqdc[23] =  0.0;
-        dqdc[24] =  0.0;
-        dqdc[25] =  0.0;
-        dqdc[26] =  2*dcdc_fac;
-        dqdc[27] =  0.0;
-        dqdc[28] =  0.0;
-        dqdc[29] =  0.0;
-        dqdc[30] =  0.0;
-        dqdc[31] =  0.0;
-        dqdc[32] =  0.0;
-        dqdc[33] =  0.0;
-        dqdc[34] =  0.0;
+        /* d()/d[H2] */
+        dqdci =  1*dcdc_fac;
+        J[1] += -1 * dqdci;           /* dwdot[H]/d[H2] */
+        J[17] += -1 * dqdci;          /* dwdot[CH2O]/d[H2] */
+        J[19] += 1 * dqdci;           /* dwdot[CH3O]/d[H2] */
+        /* d()/d[H] */
+        dqdci =  + k_f*sc[17];
+        J[37] += -1 * dqdci;          /* dwdot[H]/d[H] */
+        J[53] += -1 * dqdci;          /* dwdot[CH2O]/d[H] */
+        J[55] += 1 * dqdci;           /* dwdot[CH3O]/d[H] */
+        /* d()/d[H2O] */
+        dqdci =  5*dcdc_fac;
+        J[181] += -1 * dqdci;         /* dwdot[H]/d[H2O] */
+        J[197] += -1 * dqdci;         /* dwdot[CH2O]/d[H2O] */
+        J[199] += 1 * dqdci;          /* dwdot[CH3O]/d[H2O] */
+        /* d()/d[CH4] */
+        dqdci =  1*dcdc_fac;
+        J[469] += -1 * dqdci;         /* dwdot[H]/d[CH4] */
+        J[485] += -1 * dqdci;         /* dwdot[CH2O]/d[CH4] */
+        J[487] += 1 * dqdci;          /* dwdot[CH3O]/d[CH4] */
+        /* d()/d[CO] */
+        dqdci =  0.5*dcdc_fac;
+        J[505] += -1 * dqdci;         /* dwdot[H]/d[CO] */
+        J[521] += -1 * dqdci;         /* dwdot[CH2O]/d[CO] */
+        J[523] += 1 * dqdci;          /* dwdot[CH3O]/d[CO] */
+        /* d()/d[CO2] */
+        dqdci =  1*dcdc_fac;
+        J[541] += -1 * dqdci;         /* dwdot[H]/d[CO2] */
+        J[557] += -1 * dqdci;         /* dwdot[CH2O]/d[CO2] */
+        J[559] += 1 * dqdci;          /* dwdot[CH3O]/d[CO2] */
+        /* d()/d[CH2O] */
+        dqdci =  + k_f*sc[1];
+        J[613] += -1 * dqdci;         /* dwdot[H]/d[CH2O] */
+        J[629] += -1 * dqdci;         /* dwdot[CH2O]/d[CH2O] */
+        J[631] += 1 * dqdci;          /* dwdot[CH3O]/d[CH2O] */
+        /* d()/d[CH3O] */
+        dqdci =  - k_r;
+        J[685] += -1 * dqdci;         /* dwdot[H]/d[CH3O] */
+        J[701] += -1 * dqdci;         /* dwdot[CH2O]/d[CH3O] */
+        J[703] += 1 * dqdci;          /* dwdot[CH3O]/d[CH3O] */
+        /* d()/d[C2H6] */
+        dqdci =  2*dcdc_fac;
+        J[937] += -1 * dqdci;         /* dwdot[H]/d[C2H6] */
+        J[953] += -1 * dqdci;         /* dwdot[CH2O]/d[C2H6] */
+        J[955] += 1 * dqdci;          /* dwdot[CH3O]/d[C2H6] */
     }
     else {
         dqdc[0] =  2*dcdc_fac;
@@ -20051,11 +20097,11 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
         dqdc[32] =  1*dcdc_fac;
         dqdc[33] =  1*dcdc_fac;
         dqdc[34] =  1*dcdc_fac;
-    }
-    for (int k=0; k<35; k++) {
-        J[36*k+1] += -1 * dqdc[k];
-        J[36*k+17] += -1 * dqdc[k];
-        J[36*k+19] += 1 * dqdc[k];
+        for (int k=0; k<35; k++) {
+            J[36*k+1] += -1 * dqdc[k];
+            J[36*k+17] += -1 * dqdc[k];
+            J[36*k+19] += 1 * dqdc[k];
+        }
     }
     J[1261] += -1 * dqdT; /* dwdot[H]/dT */
     J[1277] += -1 * dqdT; /* dwdot[CH2O]/dT */
@@ -20081,30 +20127,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[1] -= q; /* H */
     wdot[16] += q; /* HCO */
     wdot[17] -= q; /* CH2O */
-    dqdc[0] =  - k_r*sc[16];
-    dqdc[1] =  + k_f*sc[17];
-    dqdc[16] =  - k_r*sc[0];
-    dqdc[17] =  + k_f*sc[1];
     /* d()/d[H2] */
-    J[0] += 1 * dqdc[0];          /* dwdot[H2]/d[H2] */
-    J[1] += -1 * dqdc[0];         /* dwdot[H]/d[H2] */
-    J[16] += 1 * dqdc[0];         /* dwdot[HCO]/d[H2] */
-    J[17] += -1 * dqdc[0];        /* dwdot[CH2O]/d[H2] */
+    dqdci =  - k_r*sc[16];
+    J[0] += 1 * dqdci;            /* dwdot[H2]/d[H2] */
+    J[1] += -1 * dqdci;           /* dwdot[H]/d[H2] */
+    J[16] += 1 * dqdci;           /* dwdot[HCO]/d[H2] */
+    J[17] += -1 * dqdci;          /* dwdot[CH2O]/d[H2] */
     /* d()/d[H] */
-    J[36] += 1 * dqdc[1];         /* dwdot[H2]/d[H] */
-    J[37] += -1 * dqdc[1];        /* dwdot[H]/d[H] */
-    J[52] += 1 * dqdc[1];         /* dwdot[HCO]/d[H] */
-    J[53] += -1 * dqdc[1];        /* dwdot[CH2O]/d[H] */
+    dqdci =  + k_f*sc[17];
+    J[36] += 1 * dqdci;           /* dwdot[H2]/d[H] */
+    J[37] += -1 * dqdci;          /* dwdot[H]/d[H] */
+    J[52] += 1 * dqdci;           /* dwdot[HCO]/d[H] */
+    J[53] += -1 * dqdci;          /* dwdot[CH2O]/d[H] */
     /* d()/d[HCO] */
-    J[576] += 1 * dqdc[16];       /* dwdot[H2]/d[HCO] */
-    J[577] += -1 * dqdc[16];      /* dwdot[H]/d[HCO] */
-    J[592] += 1 * dqdc[16];       /* dwdot[HCO]/d[HCO] */
-    J[593] += -1 * dqdc[16];      /* dwdot[CH2O]/d[HCO] */
+    dqdci =  - k_r*sc[0];
+    J[576] += 1 * dqdci;          /* dwdot[H2]/d[HCO] */
+    J[577] += -1 * dqdci;         /* dwdot[H]/d[HCO] */
+    J[592] += 1 * dqdci;          /* dwdot[HCO]/d[HCO] */
+    J[593] += -1 * dqdci;         /* dwdot[CH2O]/d[HCO] */
     /* d()/d[CH2O] */
-    J[612] += 1 * dqdc[17];       /* dwdot[H2]/d[CH2O] */
-    J[613] += -1 * dqdc[17];      /* dwdot[H]/d[CH2O] */
-    J[628] += 1 * dqdc[17];       /* dwdot[HCO]/d[CH2O] */
-    J[629] += -1 * dqdc[17];      /* dwdot[CH2O]/d[CH2O] */
+    dqdci =  + k_f*sc[1];
+    J[612] += 1 * dqdci;          /* dwdot[H2]/d[CH2O] */
+    J[613] += -1 * dqdci;         /* dwdot[H]/d[CH2O] */
+    J[628] += 1 * dqdci;          /* dwdot[HCO]/d[CH2O] */
+    J[629] += -1 * dqdci;         /* dwdot[CH2O]/d[CH2O] */
     /* d()/dT */
     J[1260] += 1 * dqdT;          /* dwdot[H2]/dT */
     J[1261] += -1 * dqdT;         /* dwdot[H]/dT */
@@ -20141,9 +20187,9 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     troe = 1.0 / (1.0 + troePr*troePr);
     F = pow(10.0, logFcent * troe);
     dlogFcentdT = log10e/Fcent*(Fcent1*-0.01 + Fcent2*-1.11111e-05 + Fcent3*10000*invT2);
-    dlogFdcn_fac = logFcent * troe*troe * troePr * troePr_den;
+    dlogFdcn_fac = 2.0 * logFcent * troe*troe * troePr * troePr_den;
     dlogFdc = -troe_n * dlogFdcn_fac * troePr_den;
-    dlogFdn = 2. * dlogFdcn_fac * troePr;
+    dlogFdn = dlogFdcn_fac * troePr;
     dlogFdlogPr = dlogFdc;
     dlogFdT = dlogFcentdT*(troe - 0.67*dlogFdc - 1.27*dlogFdn) + dlogFdlogPr * dlogPrdT;
     /* reverse */
@@ -20167,41 +20213,51 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     k_r *= Corr;
     dcdc_fac = q/alpha*(1.0/(Pr+1.0) + dlogFdlogPr);
     if (consP) {
-        dqdc[0] =  1*dcdc_fac;
-        dqdc[1] =  0.0 + k_f*sc[18];
-        dqdc[2] =  0.0;
-        dqdc[3] =  0.0;
-        dqdc[4] =  0.0;
-        dqdc[5] =  5*dcdc_fac;
-        dqdc[6] =  0.0;
-        dqdc[7] =  0.0;
-        dqdc[8] =  0.0;
-        dqdc[9] =  0.0;
-        dqdc[10] =  0.0;
-        dqdc[11] =  0.0;
-        dqdc[12] =  0.0;
-        dqdc[13] =  1*dcdc_fac;
-        dqdc[14] =  0.5*dcdc_fac;
-        dqdc[15] =  1*dcdc_fac;
-        dqdc[16] =  0.0;
-        dqdc[17] =  0.0;
-        dqdc[18] =  0.0 + k_f*sc[1];
-        dqdc[19] =  0.0;
-        dqdc[20] =  0.0 - k_r;
-        dqdc[21] =  0.0;
-        dqdc[22] =  0.0;
-        dqdc[23] =  0.0;
-        dqdc[24] =  0.0;
-        dqdc[25] =  0.0;
-        dqdc[26] =  2*dcdc_fac;
-        dqdc[27] =  0.0;
-        dqdc[28] =  0.0;
-        dqdc[29] =  0.0;
-        dqdc[30] =  0.0;
-        dqdc[31] =  0.0;
-        dqdc[32] =  0.0;
-        dqdc[33] =  0.0;
-        dqdc[34] =  0.0;
+        /* d()/d[H2] */
+        dqdci =  1*dcdc_fac;
+        J[1] += -1 * dqdci;           /* dwdot[H]/d[H2] */
+        J[18] += -1 * dqdci;          /* dwdot[CH2OH]/d[H2] */
+        J[20] += 1 * dqdci;           /* dwdot[CH3OH]/d[H2] */
+        /* d()/d[H] */
+        dqdci =  + k_f*sc[18];
+        J[37] += -1 * dqdci;          /* dwdot[H]/d[H] */
+        J[54] += -1 * dqdci;          /* dwdot[CH2OH]/d[H] */
+        J[56] += 1 * dqdci;           /* dwdot[CH3OH]/d[H] */
+        /* d()/d[H2O] */
+        dqdci =  5*dcdc_fac;
+        J[181] += -1 * dqdci;         /* dwdot[H]/d[H2O] */
+        J[198] += -1 * dqdci;         /* dwdot[CH2OH]/d[H2O] */
+        J[200] += 1 * dqdci;          /* dwdot[CH3OH]/d[H2O] */
+        /* d()/d[CH4] */
+        dqdci =  1*dcdc_fac;
+        J[469] += -1 * dqdci;         /* dwdot[H]/d[CH4] */
+        J[486] += -1 * dqdci;         /* dwdot[CH2OH]/d[CH4] */
+        J[488] += 1 * dqdci;          /* dwdot[CH3OH]/d[CH4] */
+        /* d()/d[CO] */
+        dqdci =  0.5*dcdc_fac;
+        J[505] += -1 * dqdci;         /* dwdot[H]/d[CO] */
+        J[522] += -1 * dqdci;         /* dwdot[CH2OH]/d[CO] */
+        J[524] += 1 * dqdci;          /* dwdot[CH3OH]/d[CO] */
+        /* d()/d[CO2] */
+        dqdci =  1*dcdc_fac;
+        J[541] += -1 * dqdci;         /* dwdot[H]/d[CO2] */
+        J[558] += -1 * dqdci;         /* dwdot[CH2OH]/d[CO2] */
+        J[560] += 1 * dqdci;          /* dwdot[CH3OH]/d[CO2] */
+        /* d()/d[CH2OH] */
+        dqdci =  + k_f*sc[1];
+        J[649] += -1 * dqdci;         /* dwdot[H]/d[CH2OH] */
+        J[666] += -1 * dqdci;         /* dwdot[CH2OH]/d[CH2OH] */
+        J[668] += 1 * dqdci;          /* dwdot[CH3OH]/d[CH2OH] */
+        /* d()/d[CH3OH] */
+        dqdci =  - k_r;
+        J[721] += -1 * dqdci;         /* dwdot[H]/d[CH3OH] */
+        J[738] += -1 * dqdci;         /* dwdot[CH2OH]/d[CH3OH] */
+        J[740] += 1 * dqdci;          /* dwdot[CH3OH]/d[CH3OH] */
+        /* d()/d[C2H6] */
+        dqdci =  2*dcdc_fac;
+        J[937] += -1 * dqdci;         /* dwdot[H]/d[C2H6] */
+        J[954] += -1 * dqdci;         /* dwdot[CH2OH]/d[C2H6] */
+        J[956] += 1 * dqdci;          /* dwdot[CH3OH]/d[C2H6] */
     }
     else {
         dqdc[0] =  2*dcdc_fac;
@@ -20239,11 +20295,11 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
         dqdc[32] =  1*dcdc_fac;
         dqdc[33] =  1*dcdc_fac;
         dqdc[34] =  1*dcdc_fac;
-    }
-    for (int k=0; k<35; k++) {
-        J[36*k+1] += -1 * dqdc[k];
-        J[36*k+18] += -1 * dqdc[k];
-        J[36*k+20] += 1 * dqdc[k];
+        for (int k=0; k<35; k++) {
+            J[36*k+1] += -1 * dqdc[k];
+            J[36*k+18] += -1 * dqdc[k];
+            J[36*k+20] += 1 * dqdc[k];
+        }
     }
     J[1261] += -1 * dqdT; /* dwdot[H]/dT */
     J[1278] += -1 * dqdT; /* dwdot[CH2OH]/dT */
@@ -20269,30 +20325,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[1] -= q; /* H */
     wdot[17] += q; /* CH2O */
     wdot[18] -= q; /* CH2OH */
-    dqdc[0] =  - k_r*sc[17];
-    dqdc[1] =  + k_f*sc[18];
-    dqdc[17] =  - k_r*sc[0];
-    dqdc[18] =  + k_f*sc[1];
     /* d()/d[H2] */
-    J[0] += 1 * dqdc[0];          /* dwdot[H2]/d[H2] */
-    J[1] += -1 * dqdc[0];         /* dwdot[H]/d[H2] */
-    J[17] += 1 * dqdc[0];         /* dwdot[CH2O]/d[H2] */
-    J[18] += -1 * dqdc[0];        /* dwdot[CH2OH]/d[H2] */
+    dqdci =  - k_r*sc[17];
+    J[0] += 1 * dqdci;            /* dwdot[H2]/d[H2] */
+    J[1] += -1 * dqdci;           /* dwdot[H]/d[H2] */
+    J[17] += 1 * dqdci;           /* dwdot[CH2O]/d[H2] */
+    J[18] += -1 * dqdci;          /* dwdot[CH2OH]/d[H2] */
     /* d()/d[H] */
-    J[36] += 1 * dqdc[1];         /* dwdot[H2]/d[H] */
-    J[37] += -1 * dqdc[1];        /* dwdot[H]/d[H] */
-    J[53] += 1 * dqdc[1];         /* dwdot[CH2O]/d[H] */
-    J[54] += -1 * dqdc[1];        /* dwdot[CH2OH]/d[H] */
+    dqdci =  + k_f*sc[18];
+    J[36] += 1 * dqdci;           /* dwdot[H2]/d[H] */
+    J[37] += -1 * dqdci;          /* dwdot[H]/d[H] */
+    J[53] += 1 * dqdci;           /* dwdot[CH2O]/d[H] */
+    J[54] += -1 * dqdci;          /* dwdot[CH2OH]/d[H] */
     /* d()/d[CH2O] */
-    J[612] += 1 * dqdc[17];       /* dwdot[H2]/d[CH2O] */
-    J[613] += -1 * dqdc[17];      /* dwdot[H]/d[CH2O] */
-    J[629] += 1 * dqdc[17];       /* dwdot[CH2O]/d[CH2O] */
-    J[630] += -1 * dqdc[17];      /* dwdot[CH2OH]/d[CH2O] */
+    dqdci =  - k_r*sc[0];
+    J[612] += 1 * dqdci;          /* dwdot[H2]/d[CH2O] */
+    J[613] += -1 * dqdci;         /* dwdot[H]/d[CH2O] */
+    J[629] += 1 * dqdci;          /* dwdot[CH2O]/d[CH2O] */
+    J[630] += -1 * dqdci;         /* dwdot[CH2OH]/d[CH2O] */
     /* d()/d[CH2OH] */
-    J[648] += 1 * dqdc[18];       /* dwdot[H2]/d[CH2OH] */
-    J[649] += -1 * dqdc[18];      /* dwdot[H]/d[CH2OH] */
-    J[665] += 1 * dqdc[18];       /* dwdot[CH2O]/d[CH2OH] */
-    J[666] += -1 * dqdc[18];      /* dwdot[CH2OH]/d[CH2OH] */
+    dqdci =  + k_f*sc[1];
+    J[648] += 1 * dqdci;          /* dwdot[H2]/d[CH2OH] */
+    J[649] += -1 * dqdci;         /* dwdot[H]/d[CH2OH] */
+    J[665] += 1 * dqdci;          /* dwdot[CH2O]/d[CH2OH] */
+    J[666] += -1 * dqdci;         /* dwdot[CH2OH]/d[CH2OH] */
     /* d()/dT */
     J[1260] += 1 * dqdT;          /* dwdot[H2]/dT */
     J[1261] += -1 * dqdT;         /* dwdot[H]/dT */
@@ -20319,30 +20375,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[4] += q; /* OH */
     wdot[12] += q; /* CH3 */
     wdot[18] -= q; /* CH2OH */
-    dqdc[1] =  + k_f*sc[18];
-    dqdc[4] =  - k_r*sc[12];
-    dqdc[12] =  - k_r*sc[4];
-    dqdc[18] =  + k_f*sc[1];
     /* d()/d[H] */
-    J[37] += -1 * dqdc[1];        /* dwdot[H]/d[H] */
-    J[40] += 1 * dqdc[1];         /* dwdot[OH]/d[H] */
-    J[48] += 1 * dqdc[1];         /* dwdot[CH3]/d[H] */
-    J[54] += -1 * dqdc[1];        /* dwdot[CH2OH]/d[H] */
+    dqdci =  + k_f*sc[18];
+    J[37] += -1 * dqdci;          /* dwdot[H]/d[H] */
+    J[40] += 1 * dqdci;           /* dwdot[OH]/d[H] */
+    J[48] += 1 * dqdci;           /* dwdot[CH3]/d[H] */
+    J[54] += -1 * dqdci;          /* dwdot[CH2OH]/d[H] */
     /* d()/d[OH] */
-    J[145] += -1 * dqdc[4];       /* dwdot[H]/d[OH] */
-    J[148] += 1 * dqdc[4];        /* dwdot[OH]/d[OH] */
-    J[156] += 1 * dqdc[4];        /* dwdot[CH3]/d[OH] */
-    J[162] += -1 * dqdc[4];       /* dwdot[CH2OH]/d[OH] */
+    dqdci =  - k_r*sc[12];
+    J[145] += -1 * dqdci;         /* dwdot[H]/d[OH] */
+    J[148] += 1 * dqdci;          /* dwdot[OH]/d[OH] */
+    J[156] += 1 * dqdci;          /* dwdot[CH3]/d[OH] */
+    J[162] += -1 * dqdci;         /* dwdot[CH2OH]/d[OH] */
     /* d()/d[CH3] */
-    J[433] += -1 * dqdc[12];      /* dwdot[H]/d[CH3] */
-    J[436] += 1 * dqdc[12];       /* dwdot[OH]/d[CH3] */
-    J[444] += 1 * dqdc[12];       /* dwdot[CH3]/d[CH3] */
-    J[450] += -1 * dqdc[12];      /* dwdot[CH2OH]/d[CH3] */
+    dqdci =  - k_r*sc[4];
+    J[433] += -1 * dqdci;         /* dwdot[H]/d[CH3] */
+    J[436] += 1 * dqdci;          /* dwdot[OH]/d[CH3] */
+    J[444] += 1 * dqdci;          /* dwdot[CH3]/d[CH3] */
+    J[450] += -1 * dqdci;         /* dwdot[CH2OH]/d[CH3] */
     /* d()/d[CH2OH] */
-    J[649] += -1 * dqdc[18];      /* dwdot[H]/d[CH2OH] */
-    J[652] += 1 * dqdc[18];       /* dwdot[OH]/d[CH2OH] */
-    J[660] += 1 * dqdc[18];       /* dwdot[CH3]/d[CH2OH] */
-    J[666] += -1 * dqdc[18];      /* dwdot[CH2OH]/d[CH2OH] */
+    dqdci =  + k_f*sc[1];
+    J[649] += -1 * dqdci;         /* dwdot[H]/d[CH2OH] */
+    J[652] += 1 * dqdci;          /* dwdot[OH]/d[CH2OH] */
+    J[660] += 1 * dqdci;          /* dwdot[CH3]/d[CH2OH] */
+    J[666] += -1 * dqdci;         /* dwdot[CH2OH]/d[CH2OH] */
     /* d()/dT */
     J[1261] += -1 * dqdT;         /* dwdot[H]/dT */
     J[1264] += 1 * dqdT;          /* dwdot[OH]/dT */
@@ -20369,30 +20425,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[5] += q; /* H2O */
     wdot[11] += q; /* CH2(S) */
     wdot[18] -= q; /* CH2OH */
-    dqdc[1] =  + k_f*sc[18];
-    dqdc[5] =  - k_r*sc[11];
-    dqdc[11] =  - k_r*sc[5];
-    dqdc[18] =  + k_f*sc[1];
     /* d()/d[H] */
-    J[37] += -1 * dqdc[1];        /* dwdot[H]/d[H] */
-    J[41] += 1 * dqdc[1];         /* dwdot[H2O]/d[H] */
-    J[47] += 1 * dqdc[1];         /* dwdot[CH2(S)]/d[H] */
-    J[54] += -1 * dqdc[1];        /* dwdot[CH2OH]/d[H] */
+    dqdci =  + k_f*sc[18];
+    J[37] += -1 * dqdci;          /* dwdot[H]/d[H] */
+    J[41] += 1 * dqdci;           /* dwdot[H2O]/d[H] */
+    J[47] += 1 * dqdci;           /* dwdot[CH2(S)]/d[H] */
+    J[54] += -1 * dqdci;          /* dwdot[CH2OH]/d[H] */
     /* d()/d[H2O] */
-    J[181] += -1 * dqdc[5];       /* dwdot[H]/d[H2O] */
-    J[185] += 1 * dqdc[5];        /* dwdot[H2O]/d[H2O] */
-    J[191] += 1 * dqdc[5];        /* dwdot[CH2(S)]/d[H2O] */
-    J[198] += -1 * dqdc[5];       /* dwdot[CH2OH]/d[H2O] */
+    dqdci =  - k_r*sc[11];
+    J[181] += -1 * dqdci;         /* dwdot[H]/d[H2O] */
+    J[185] += 1 * dqdci;          /* dwdot[H2O]/d[H2O] */
+    J[191] += 1 * dqdci;          /* dwdot[CH2(S)]/d[H2O] */
+    J[198] += -1 * dqdci;         /* dwdot[CH2OH]/d[H2O] */
     /* d()/d[CH2(S)] */
-    J[397] += -1 * dqdc[11];      /* dwdot[H]/d[CH2(S)] */
-    J[401] += 1 * dqdc[11];       /* dwdot[H2O]/d[CH2(S)] */
-    J[407] += 1 * dqdc[11];       /* dwdot[CH2(S)]/d[CH2(S)] */
-    J[414] += -1 * dqdc[11];      /* dwdot[CH2OH]/d[CH2(S)] */
+    dqdci =  - k_r*sc[5];
+    J[397] += -1 * dqdci;         /* dwdot[H]/d[CH2(S)] */
+    J[401] += 1 * dqdci;          /* dwdot[H2O]/d[CH2(S)] */
+    J[407] += 1 * dqdci;          /* dwdot[CH2(S)]/d[CH2(S)] */
+    J[414] += -1 * dqdci;         /* dwdot[CH2OH]/d[CH2(S)] */
     /* d()/d[CH2OH] */
-    J[649] += -1 * dqdc[18];      /* dwdot[H]/d[CH2OH] */
-    J[653] += 1 * dqdc[18];       /* dwdot[H2O]/d[CH2OH] */
-    J[659] += 1 * dqdc[18];       /* dwdot[CH2(S)]/d[CH2OH] */
-    J[666] += -1 * dqdc[18];      /* dwdot[CH2OH]/d[CH2OH] */
+    dqdci =  + k_f*sc[1];
+    J[649] += -1 * dqdci;         /* dwdot[H]/d[CH2OH] */
+    J[653] += 1 * dqdci;          /* dwdot[H2O]/d[CH2OH] */
+    J[659] += 1 * dqdci;          /* dwdot[CH2(S)]/d[CH2OH] */
+    J[666] += -1 * dqdci;         /* dwdot[CH2OH]/d[CH2OH] */
     /* d()/dT */
     J[1261] += -1 * dqdT;         /* dwdot[H]/dT */
     J[1265] += 1 * dqdT;          /* dwdot[H2O]/dT */
@@ -20429,9 +20485,9 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     troe = 1.0 / (1.0 + troePr*troePr);
     F = pow(10.0, logFcent * troe);
     dlogFcentdT = log10e/Fcent*(Fcent1*-0.01 + Fcent2*-1.11111e-05 + Fcent3*10000*invT2);
-    dlogFdcn_fac = logFcent * troe*troe * troePr * troePr_den;
+    dlogFdcn_fac = 2.0 * logFcent * troe*troe * troePr * troePr_den;
     dlogFdc = -troe_n * dlogFdcn_fac * troePr_den;
-    dlogFdn = 2. * dlogFdcn_fac * troePr;
+    dlogFdn = dlogFdcn_fac * troePr;
     dlogFdlogPr = dlogFdc;
     dlogFdT = dlogFcentdT*(troe - 0.67*dlogFdc - 1.27*dlogFdn) + dlogFdlogPr * dlogPrdT;
     /* reverse */
@@ -20455,41 +20511,51 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     k_r *= Corr;
     dcdc_fac = q/alpha*(1.0/(Pr+1.0) + dlogFdlogPr);
     if (consP) {
-        dqdc[0] =  1*dcdc_fac;
-        dqdc[1] =  0.0 + k_f*sc[19];
-        dqdc[2] =  0.0;
-        dqdc[3] =  0.0;
-        dqdc[4] =  0.0;
-        dqdc[5] =  5*dcdc_fac;
-        dqdc[6] =  0.0;
-        dqdc[7] =  0.0;
-        dqdc[8] =  0.0;
-        dqdc[9] =  0.0;
-        dqdc[10] =  0.0;
-        dqdc[11] =  0.0;
-        dqdc[12] =  0.0;
-        dqdc[13] =  1*dcdc_fac;
-        dqdc[14] =  0.5*dcdc_fac;
-        dqdc[15] =  1*dcdc_fac;
-        dqdc[16] =  0.0;
-        dqdc[17] =  0.0;
-        dqdc[18] =  0.0;
-        dqdc[19] =  0.0 + k_f*sc[1];
-        dqdc[20] =  0.0 - k_r;
-        dqdc[21] =  0.0;
-        dqdc[22] =  0.0;
-        dqdc[23] =  0.0;
-        dqdc[24] =  0.0;
-        dqdc[25] =  0.0;
-        dqdc[26] =  2*dcdc_fac;
-        dqdc[27] =  0.0;
-        dqdc[28] =  0.0;
-        dqdc[29] =  0.0;
-        dqdc[30] =  0.0;
-        dqdc[31] =  0.0;
-        dqdc[32] =  0.0;
-        dqdc[33] =  0.0;
-        dqdc[34] =  0.0;
+        /* d()/d[H2] */
+        dqdci =  1*dcdc_fac;
+        J[1] += -1 * dqdci;           /* dwdot[H]/d[H2] */
+        J[19] += -1 * dqdci;          /* dwdot[CH3O]/d[H2] */
+        J[20] += 1 * dqdci;           /* dwdot[CH3OH]/d[H2] */
+        /* d()/d[H] */
+        dqdci =  + k_f*sc[19];
+        J[37] += -1 * dqdci;          /* dwdot[H]/d[H] */
+        J[55] += -1 * dqdci;          /* dwdot[CH3O]/d[H] */
+        J[56] += 1 * dqdci;           /* dwdot[CH3OH]/d[H] */
+        /* d()/d[H2O] */
+        dqdci =  5*dcdc_fac;
+        J[181] += -1 * dqdci;         /* dwdot[H]/d[H2O] */
+        J[199] += -1 * dqdci;         /* dwdot[CH3O]/d[H2O] */
+        J[200] += 1 * dqdci;          /* dwdot[CH3OH]/d[H2O] */
+        /* d()/d[CH4] */
+        dqdci =  1*dcdc_fac;
+        J[469] += -1 * dqdci;         /* dwdot[H]/d[CH4] */
+        J[487] += -1 * dqdci;         /* dwdot[CH3O]/d[CH4] */
+        J[488] += 1 * dqdci;          /* dwdot[CH3OH]/d[CH4] */
+        /* d()/d[CO] */
+        dqdci =  0.5*dcdc_fac;
+        J[505] += -1 * dqdci;         /* dwdot[H]/d[CO] */
+        J[523] += -1 * dqdci;         /* dwdot[CH3O]/d[CO] */
+        J[524] += 1 * dqdci;          /* dwdot[CH3OH]/d[CO] */
+        /* d()/d[CO2] */
+        dqdci =  1*dcdc_fac;
+        J[541] += -1 * dqdci;         /* dwdot[H]/d[CO2] */
+        J[559] += -1 * dqdci;         /* dwdot[CH3O]/d[CO2] */
+        J[560] += 1 * dqdci;          /* dwdot[CH3OH]/d[CO2] */
+        /* d()/d[CH3O] */
+        dqdci =  + k_f*sc[1];
+        J[685] += -1 * dqdci;         /* dwdot[H]/d[CH3O] */
+        J[703] += -1 * dqdci;         /* dwdot[CH3O]/d[CH3O] */
+        J[704] += 1 * dqdci;          /* dwdot[CH3OH]/d[CH3O] */
+        /* d()/d[CH3OH] */
+        dqdci =  - k_r;
+        J[721] += -1 * dqdci;         /* dwdot[H]/d[CH3OH] */
+        J[739] += -1 * dqdci;         /* dwdot[CH3O]/d[CH3OH] */
+        J[740] += 1 * dqdci;          /* dwdot[CH3OH]/d[CH3OH] */
+        /* d()/d[C2H6] */
+        dqdci =  2*dcdc_fac;
+        J[937] += -1 * dqdci;         /* dwdot[H]/d[C2H6] */
+        J[955] += -1 * dqdci;         /* dwdot[CH3O]/d[C2H6] */
+        J[956] += 1 * dqdci;          /* dwdot[CH3OH]/d[C2H6] */
     }
     else {
         dqdc[0] =  2*dcdc_fac;
@@ -20527,11 +20593,11 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
         dqdc[32] =  1*dcdc_fac;
         dqdc[33] =  1*dcdc_fac;
         dqdc[34] =  1*dcdc_fac;
-    }
-    for (int k=0; k<35; k++) {
-        J[36*k+1] += -1 * dqdc[k];
-        J[36*k+19] += -1 * dqdc[k];
-        J[36*k+20] += 1 * dqdc[k];
+        for (int k=0; k<35; k++) {
+            J[36*k+1] += -1 * dqdc[k];
+            J[36*k+19] += -1 * dqdc[k];
+            J[36*k+20] += 1 * dqdc[k];
+        }
     }
     J[1261] += -1 * dqdT; /* dwdot[H]/dT */
     J[1279] += -1 * dqdT; /* dwdot[CH3O]/dT */
@@ -20555,18 +20621,18 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     /* update wdot */
     wdot[18] += q; /* CH2OH */
     wdot[19] -= q; /* CH3O */
-    dqdc[1] =  + k_f*sc[19] - k_r*sc[18];
-    dqdc[18] =  - k_r*sc[1];
-    dqdc[19] =  + k_f*sc[1];
     /* d()/d[H] */
-    J[54] += 1 * dqdc[1];         /* dwdot[CH2OH]/d[H] */
-    J[55] += -1 * dqdc[1];        /* dwdot[CH3O]/d[H] */
+    dqdci =  + k_f*sc[19] - k_r*sc[18];
+    J[54] += 1 * dqdci;           /* dwdot[CH2OH]/d[H] */
+    J[55] += -1 * dqdci;          /* dwdot[CH3O]/d[H] */
     /* d()/d[CH2OH] */
-    J[666] += 1 * dqdc[18];       /* dwdot[CH2OH]/d[CH2OH] */
-    J[667] += -1 * dqdc[18];      /* dwdot[CH3O]/d[CH2OH] */
+    dqdci =  - k_r*sc[1];
+    J[666] += 1 * dqdci;          /* dwdot[CH2OH]/d[CH2OH] */
+    J[667] += -1 * dqdci;         /* dwdot[CH3O]/d[CH2OH] */
     /* d()/d[CH3O] */
-    J[702] += 1 * dqdc[19];       /* dwdot[CH2OH]/d[CH3O] */
-    J[703] += -1 * dqdc[19];      /* dwdot[CH3O]/d[CH3O] */
+    dqdci =  + k_f*sc[1];
+    J[702] += 1 * dqdci;          /* dwdot[CH2OH]/d[CH3O] */
+    J[703] += -1 * dqdci;         /* dwdot[CH3O]/d[CH3O] */
     /* d()/dT */
     J[1278] += 1 * dqdT;          /* dwdot[CH2OH]/dT */
     J[1279] += -1 * dqdT;         /* dwdot[CH3O]/dT */
@@ -20591,30 +20657,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[1] -= q; /* H */
     wdot[17] += q; /* CH2O */
     wdot[19] -= q; /* CH3O */
-    dqdc[0] =  - k_r*sc[17];
-    dqdc[1] =  + k_f*sc[19];
-    dqdc[17] =  - k_r*sc[0];
-    dqdc[19] =  + k_f*sc[1];
     /* d()/d[H2] */
-    J[0] += 1 * dqdc[0];          /* dwdot[H2]/d[H2] */
-    J[1] += -1 * dqdc[0];         /* dwdot[H]/d[H2] */
-    J[17] += 1 * dqdc[0];         /* dwdot[CH2O]/d[H2] */
-    J[19] += -1 * dqdc[0];        /* dwdot[CH3O]/d[H2] */
+    dqdci =  - k_r*sc[17];
+    J[0] += 1 * dqdci;            /* dwdot[H2]/d[H2] */
+    J[1] += -1 * dqdci;           /* dwdot[H]/d[H2] */
+    J[17] += 1 * dqdci;           /* dwdot[CH2O]/d[H2] */
+    J[19] += -1 * dqdci;          /* dwdot[CH3O]/d[H2] */
     /* d()/d[H] */
-    J[36] += 1 * dqdc[1];         /* dwdot[H2]/d[H] */
-    J[37] += -1 * dqdc[1];        /* dwdot[H]/d[H] */
-    J[53] += 1 * dqdc[1];         /* dwdot[CH2O]/d[H] */
-    J[55] += -1 * dqdc[1];        /* dwdot[CH3O]/d[H] */
+    dqdci =  + k_f*sc[19];
+    J[36] += 1 * dqdci;           /* dwdot[H2]/d[H] */
+    J[37] += -1 * dqdci;          /* dwdot[H]/d[H] */
+    J[53] += 1 * dqdci;           /* dwdot[CH2O]/d[H] */
+    J[55] += -1 * dqdci;          /* dwdot[CH3O]/d[H] */
     /* d()/d[CH2O] */
-    J[612] += 1 * dqdc[17];       /* dwdot[H2]/d[CH2O] */
-    J[613] += -1 * dqdc[17];      /* dwdot[H]/d[CH2O] */
-    J[629] += 1 * dqdc[17];       /* dwdot[CH2O]/d[CH2O] */
-    J[631] += -1 * dqdc[17];      /* dwdot[CH3O]/d[CH2O] */
+    dqdci =  - k_r*sc[0];
+    J[612] += 1 * dqdci;          /* dwdot[H2]/d[CH2O] */
+    J[613] += -1 * dqdci;         /* dwdot[H]/d[CH2O] */
+    J[629] += 1 * dqdci;          /* dwdot[CH2O]/d[CH2O] */
+    J[631] += -1 * dqdci;         /* dwdot[CH3O]/d[CH2O] */
     /* d()/d[CH3O] */
-    J[684] += 1 * dqdc[19];       /* dwdot[H2]/d[CH3O] */
-    J[685] += -1 * dqdc[19];      /* dwdot[H]/d[CH3O] */
-    J[701] += 1 * dqdc[19];       /* dwdot[CH2O]/d[CH3O] */
-    J[703] += -1 * dqdc[19];      /* dwdot[CH3O]/d[CH3O] */
+    dqdci =  + k_f*sc[1];
+    J[684] += 1 * dqdci;          /* dwdot[H2]/d[CH3O] */
+    J[685] += -1 * dqdci;         /* dwdot[H]/d[CH3O] */
+    J[701] += 1 * dqdci;          /* dwdot[CH2O]/d[CH3O] */
+    J[703] += -1 * dqdci;         /* dwdot[CH3O]/d[CH3O] */
     /* d()/dT */
     J[1260] += 1 * dqdT;          /* dwdot[H2]/dT */
     J[1261] += -1 * dqdT;         /* dwdot[H]/dT */
@@ -20641,30 +20707,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[4] += q; /* OH */
     wdot[12] += q; /* CH3 */
     wdot[19] -= q; /* CH3O */
-    dqdc[1] =  + k_f*sc[19];
-    dqdc[4] =  - k_r*sc[12];
-    dqdc[12] =  - k_r*sc[4];
-    dqdc[19] =  + k_f*sc[1];
     /* d()/d[H] */
-    J[37] += -1 * dqdc[1];        /* dwdot[H]/d[H] */
-    J[40] += 1 * dqdc[1];         /* dwdot[OH]/d[H] */
-    J[48] += 1 * dqdc[1];         /* dwdot[CH3]/d[H] */
-    J[55] += -1 * dqdc[1];        /* dwdot[CH3O]/d[H] */
+    dqdci =  + k_f*sc[19];
+    J[37] += -1 * dqdci;          /* dwdot[H]/d[H] */
+    J[40] += 1 * dqdci;           /* dwdot[OH]/d[H] */
+    J[48] += 1 * dqdci;           /* dwdot[CH3]/d[H] */
+    J[55] += -1 * dqdci;          /* dwdot[CH3O]/d[H] */
     /* d()/d[OH] */
-    J[145] += -1 * dqdc[4];       /* dwdot[H]/d[OH] */
-    J[148] += 1 * dqdc[4];        /* dwdot[OH]/d[OH] */
-    J[156] += 1 * dqdc[4];        /* dwdot[CH3]/d[OH] */
-    J[163] += -1 * dqdc[4];       /* dwdot[CH3O]/d[OH] */
+    dqdci =  - k_r*sc[12];
+    J[145] += -1 * dqdci;         /* dwdot[H]/d[OH] */
+    J[148] += 1 * dqdci;          /* dwdot[OH]/d[OH] */
+    J[156] += 1 * dqdci;          /* dwdot[CH3]/d[OH] */
+    J[163] += -1 * dqdci;         /* dwdot[CH3O]/d[OH] */
     /* d()/d[CH3] */
-    J[433] += -1 * dqdc[12];      /* dwdot[H]/d[CH3] */
-    J[436] += 1 * dqdc[12];       /* dwdot[OH]/d[CH3] */
-    J[444] += 1 * dqdc[12];       /* dwdot[CH3]/d[CH3] */
-    J[451] += -1 * dqdc[12];      /* dwdot[CH3O]/d[CH3] */
+    dqdci =  - k_r*sc[4];
+    J[433] += -1 * dqdci;         /* dwdot[H]/d[CH3] */
+    J[436] += 1 * dqdci;          /* dwdot[OH]/d[CH3] */
+    J[444] += 1 * dqdci;          /* dwdot[CH3]/d[CH3] */
+    J[451] += -1 * dqdci;         /* dwdot[CH3O]/d[CH3] */
     /* d()/d[CH3O] */
-    J[685] += -1 * dqdc[19];      /* dwdot[H]/d[CH3O] */
-    J[688] += 1 * dqdc[19];       /* dwdot[OH]/d[CH3O] */
-    J[696] += 1 * dqdc[19];       /* dwdot[CH3]/d[CH3O] */
-    J[703] += -1 * dqdc[19];      /* dwdot[CH3O]/d[CH3O] */
+    dqdci =  + k_f*sc[1];
+    J[685] += -1 * dqdci;         /* dwdot[H]/d[CH3O] */
+    J[688] += 1 * dqdci;          /* dwdot[OH]/d[CH3O] */
+    J[696] += 1 * dqdci;          /* dwdot[CH3]/d[CH3O] */
+    J[703] += -1 * dqdci;         /* dwdot[CH3O]/d[CH3O] */
     /* d()/dT */
     J[1261] += -1 * dqdT;         /* dwdot[H]/dT */
     J[1264] += 1 * dqdT;          /* dwdot[OH]/dT */
@@ -20691,30 +20757,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[5] += q; /* H2O */
     wdot[11] += q; /* CH2(S) */
     wdot[19] -= q; /* CH3O */
-    dqdc[1] =  + k_f*sc[19];
-    dqdc[5] =  - k_r*sc[11];
-    dqdc[11] =  - k_r*sc[5];
-    dqdc[19] =  + k_f*sc[1];
     /* d()/d[H] */
-    J[37] += -1 * dqdc[1];        /* dwdot[H]/d[H] */
-    J[41] += 1 * dqdc[1];         /* dwdot[H2O]/d[H] */
-    J[47] += 1 * dqdc[1];         /* dwdot[CH2(S)]/d[H] */
-    J[55] += -1 * dqdc[1];        /* dwdot[CH3O]/d[H] */
+    dqdci =  + k_f*sc[19];
+    J[37] += -1 * dqdci;          /* dwdot[H]/d[H] */
+    J[41] += 1 * dqdci;           /* dwdot[H2O]/d[H] */
+    J[47] += 1 * dqdci;           /* dwdot[CH2(S)]/d[H] */
+    J[55] += -1 * dqdci;          /* dwdot[CH3O]/d[H] */
     /* d()/d[H2O] */
-    J[181] += -1 * dqdc[5];       /* dwdot[H]/d[H2O] */
-    J[185] += 1 * dqdc[5];        /* dwdot[H2O]/d[H2O] */
-    J[191] += 1 * dqdc[5];        /* dwdot[CH2(S)]/d[H2O] */
-    J[199] += -1 * dqdc[5];       /* dwdot[CH3O]/d[H2O] */
+    dqdci =  - k_r*sc[11];
+    J[181] += -1 * dqdci;         /* dwdot[H]/d[H2O] */
+    J[185] += 1 * dqdci;          /* dwdot[H2O]/d[H2O] */
+    J[191] += 1 * dqdci;          /* dwdot[CH2(S)]/d[H2O] */
+    J[199] += -1 * dqdci;         /* dwdot[CH3O]/d[H2O] */
     /* d()/d[CH2(S)] */
-    J[397] += -1 * dqdc[11];      /* dwdot[H]/d[CH2(S)] */
-    J[401] += 1 * dqdc[11];       /* dwdot[H2O]/d[CH2(S)] */
-    J[407] += 1 * dqdc[11];       /* dwdot[CH2(S)]/d[CH2(S)] */
-    J[415] += -1 * dqdc[11];      /* dwdot[CH3O]/d[CH2(S)] */
+    dqdci =  - k_r*sc[5];
+    J[397] += -1 * dqdci;         /* dwdot[H]/d[CH2(S)] */
+    J[401] += 1 * dqdci;          /* dwdot[H2O]/d[CH2(S)] */
+    J[407] += 1 * dqdci;          /* dwdot[CH2(S)]/d[CH2(S)] */
+    J[415] += -1 * dqdci;         /* dwdot[CH3O]/d[CH2(S)] */
     /* d()/d[CH3O] */
-    J[685] += -1 * dqdc[19];      /* dwdot[H]/d[CH3O] */
-    J[689] += 1 * dqdc[19];       /* dwdot[H2O]/d[CH3O] */
-    J[695] += 1 * dqdc[19];       /* dwdot[CH2(S)]/d[CH3O] */
-    J[703] += -1 * dqdc[19];      /* dwdot[CH3O]/d[CH3O] */
+    dqdci =  + k_f*sc[1];
+    J[685] += -1 * dqdci;         /* dwdot[H]/d[CH3O] */
+    J[689] += 1 * dqdci;          /* dwdot[H2O]/d[CH3O] */
+    J[695] += 1 * dqdci;          /* dwdot[CH2(S)]/d[CH3O] */
+    J[703] += -1 * dqdci;         /* dwdot[CH3O]/d[CH3O] */
     /* d()/dT */
     J[1261] += -1 * dqdT;         /* dwdot[H]/dT */
     J[1265] += 1 * dqdT;          /* dwdot[H2O]/dT */
@@ -20741,30 +20807,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[1] -= q; /* H */
     wdot[18] += q; /* CH2OH */
     wdot[20] -= q; /* CH3OH */
-    dqdc[0] =  - k_r*sc[18];
-    dqdc[1] =  + k_f*sc[20];
-    dqdc[18] =  - k_r*sc[0];
-    dqdc[20] =  + k_f*sc[1];
     /* d()/d[H2] */
-    J[0] += 1 * dqdc[0];          /* dwdot[H2]/d[H2] */
-    J[1] += -1 * dqdc[0];         /* dwdot[H]/d[H2] */
-    J[18] += 1 * dqdc[0];         /* dwdot[CH2OH]/d[H2] */
-    J[20] += -1 * dqdc[0];        /* dwdot[CH3OH]/d[H2] */
+    dqdci =  - k_r*sc[18];
+    J[0] += 1 * dqdci;            /* dwdot[H2]/d[H2] */
+    J[1] += -1 * dqdci;           /* dwdot[H]/d[H2] */
+    J[18] += 1 * dqdci;           /* dwdot[CH2OH]/d[H2] */
+    J[20] += -1 * dqdci;          /* dwdot[CH3OH]/d[H2] */
     /* d()/d[H] */
-    J[36] += 1 * dqdc[1];         /* dwdot[H2]/d[H] */
-    J[37] += -1 * dqdc[1];        /* dwdot[H]/d[H] */
-    J[54] += 1 * dqdc[1];         /* dwdot[CH2OH]/d[H] */
-    J[56] += -1 * dqdc[1];        /* dwdot[CH3OH]/d[H] */
+    dqdci =  + k_f*sc[20];
+    J[36] += 1 * dqdci;           /* dwdot[H2]/d[H] */
+    J[37] += -1 * dqdci;          /* dwdot[H]/d[H] */
+    J[54] += 1 * dqdci;           /* dwdot[CH2OH]/d[H] */
+    J[56] += -1 * dqdci;          /* dwdot[CH3OH]/d[H] */
     /* d()/d[CH2OH] */
-    J[648] += 1 * dqdc[18];       /* dwdot[H2]/d[CH2OH] */
-    J[649] += -1 * dqdc[18];      /* dwdot[H]/d[CH2OH] */
-    J[666] += 1 * dqdc[18];       /* dwdot[CH2OH]/d[CH2OH] */
-    J[668] += -1 * dqdc[18];      /* dwdot[CH3OH]/d[CH2OH] */
+    dqdci =  - k_r*sc[0];
+    J[648] += 1 * dqdci;          /* dwdot[H2]/d[CH2OH] */
+    J[649] += -1 * dqdci;         /* dwdot[H]/d[CH2OH] */
+    J[666] += 1 * dqdci;          /* dwdot[CH2OH]/d[CH2OH] */
+    J[668] += -1 * dqdci;         /* dwdot[CH3OH]/d[CH2OH] */
     /* d()/d[CH3OH] */
-    J[720] += 1 * dqdc[20];       /* dwdot[H2]/d[CH3OH] */
-    J[721] += -1 * dqdc[20];      /* dwdot[H]/d[CH3OH] */
-    J[738] += 1 * dqdc[20];       /* dwdot[CH2OH]/d[CH3OH] */
-    J[740] += -1 * dqdc[20];      /* dwdot[CH3OH]/d[CH3OH] */
+    dqdci =  + k_f*sc[1];
+    J[720] += 1 * dqdci;          /* dwdot[H2]/d[CH3OH] */
+    J[721] += -1 * dqdci;         /* dwdot[H]/d[CH3OH] */
+    J[738] += 1 * dqdci;          /* dwdot[CH2OH]/d[CH3OH] */
+    J[740] += -1 * dqdci;         /* dwdot[CH3OH]/d[CH3OH] */
     /* d()/dT */
     J[1260] += 1 * dqdT;          /* dwdot[H2]/dT */
     J[1261] += -1 * dqdT;         /* dwdot[H]/dT */
@@ -20791,30 +20857,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[1] -= q; /* H */
     wdot[19] += q; /* CH3O */
     wdot[20] -= q; /* CH3OH */
-    dqdc[0] =  - k_r*sc[19];
-    dqdc[1] =  + k_f*sc[20];
-    dqdc[19] =  - k_r*sc[0];
-    dqdc[20] =  + k_f*sc[1];
     /* d()/d[H2] */
-    J[0] += 1 * dqdc[0];          /* dwdot[H2]/d[H2] */
-    J[1] += -1 * dqdc[0];         /* dwdot[H]/d[H2] */
-    J[19] += 1 * dqdc[0];         /* dwdot[CH3O]/d[H2] */
-    J[20] += -1 * dqdc[0];        /* dwdot[CH3OH]/d[H2] */
+    dqdci =  - k_r*sc[19];
+    J[0] += 1 * dqdci;            /* dwdot[H2]/d[H2] */
+    J[1] += -1 * dqdci;           /* dwdot[H]/d[H2] */
+    J[19] += 1 * dqdci;           /* dwdot[CH3O]/d[H2] */
+    J[20] += -1 * dqdci;          /* dwdot[CH3OH]/d[H2] */
     /* d()/d[H] */
-    J[36] += 1 * dqdc[1];         /* dwdot[H2]/d[H] */
-    J[37] += -1 * dqdc[1];        /* dwdot[H]/d[H] */
-    J[55] += 1 * dqdc[1];         /* dwdot[CH3O]/d[H] */
-    J[56] += -1 * dqdc[1];        /* dwdot[CH3OH]/d[H] */
+    dqdci =  + k_f*sc[20];
+    J[36] += 1 * dqdci;           /* dwdot[H2]/d[H] */
+    J[37] += -1 * dqdci;          /* dwdot[H]/d[H] */
+    J[55] += 1 * dqdci;           /* dwdot[CH3O]/d[H] */
+    J[56] += -1 * dqdci;          /* dwdot[CH3OH]/d[H] */
     /* d()/d[CH3O] */
-    J[684] += 1 * dqdc[19];       /* dwdot[H2]/d[CH3O] */
-    J[685] += -1 * dqdc[19];      /* dwdot[H]/d[CH3O] */
-    J[703] += 1 * dqdc[19];       /* dwdot[CH3O]/d[CH3O] */
-    J[704] += -1 * dqdc[19];      /* dwdot[CH3OH]/d[CH3O] */
+    dqdci =  - k_r*sc[0];
+    J[684] += 1 * dqdci;          /* dwdot[H2]/d[CH3O] */
+    J[685] += -1 * dqdci;         /* dwdot[H]/d[CH3O] */
+    J[703] += 1 * dqdci;          /* dwdot[CH3O]/d[CH3O] */
+    J[704] += -1 * dqdci;         /* dwdot[CH3OH]/d[CH3O] */
     /* d()/d[CH3OH] */
-    J[720] += 1 * dqdc[20];       /* dwdot[H2]/d[CH3OH] */
-    J[721] += -1 * dqdc[20];      /* dwdot[H]/d[CH3OH] */
-    J[739] += 1 * dqdc[20];       /* dwdot[CH3O]/d[CH3OH] */
-    J[740] += -1 * dqdc[20];      /* dwdot[CH3OH]/d[CH3OH] */
+    dqdci =  + k_f*sc[1];
+    J[720] += 1 * dqdci;          /* dwdot[H2]/d[CH3OH] */
+    J[721] += -1 * dqdci;         /* dwdot[H]/d[CH3OH] */
+    J[739] += 1 * dqdci;          /* dwdot[CH3O]/d[CH3OH] */
+    J[740] += -1 * dqdci;         /* dwdot[CH3OH]/d[CH3OH] */
     /* d()/dT */
     J[1260] += 1 * dqdT;          /* dwdot[H2]/dT */
     J[1261] += -1 * dqdT;         /* dwdot[H]/dT */
@@ -20851,9 +20917,9 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     troe = 1.0 / (1.0 + troePr*troePr);
     F = pow(10.0, logFcent * troe);
     dlogFcentdT = log10e/Fcent*(Fcent1*-0.00757576 + Fcent2*-0.000760456 + Fcent3*5566*invT2);
-    dlogFdcn_fac = logFcent * troe*troe * troePr * troePr_den;
+    dlogFdcn_fac = 2.0 * logFcent * troe*troe * troePr * troePr_den;
     dlogFdc = -troe_n * dlogFdcn_fac * troePr_den;
-    dlogFdn = 2. * dlogFdcn_fac * troePr;
+    dlogFdn = dlogFdcn_fac * troePr;
     dlogFdlogPr = dlogFdc;
     dlogFdT = dlogFcentdT*(troe - 0.67*dlogFdc - 1.27*dlogFdn) + dlogFdlogPr * dlogPrdT;
     /* reverse */
@@ -20877,41 +20943,51 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     k_r *= Corr;
     dcdc_fac = q/alpha*(1.0/(Pr+1.0) + dlogFdlogPr);
     if (consP) {
-        dqdc[0] =  1*dcdc_fac;
-        dqdc[1] =  0.0 + k_f*sc[21];
-        dqdc[2] =  0.0;
-        dqdc[3] =  0.0;
-        dqdc[4] =  0.0;
-        dqdc[5] =  5*dcdc_fac;
-        dqdc[6] =  0.0;
-        dqdc[7] =  0.0;
-        dqdc[8] =  0.0;
-        dqdc[9] =  0.0;
-        dqdc[10] =  0.0;
-        dqdc[11] =  0.0;
-        dqdc[12] =  0.0;
-        dqdc[13] =  1*dcdc_fac;
-        dqdc[14] =  0.5*dcdc_fac;
-        dqdc[15] =  1*dcdc_fac;
-        dqdc[16] =  0.0;
-        dqdc[17] =  0.0;
-        dqdc[18] =  0.0;
-        dqdc[19] =  0.0;
-        dqdc[20] =  0.0;
-        dqdc[21] =  0.0 + k_f*sc[1];
-        dqdc[22] =  0.0 - k_r;
-        dqdc[23] =  0.0;
-        dqdc[24] =  0.0;
-        dqdc[25] =  0.0;
-        dqdc[26] =  2*dcdc_fac;
-        dqdc[27] =  0.0;
-        dqdc[28] =  0.0;
-        dqdc[29] =  0.0;
-        dqdc[30] =  0.0;
-        dqdc[31] =  0.0;
-        dqdc[32] =  0.0;
-        dqdc[33] =  0.0;
-        dqdc[34] =  0.0;
+        /* d()/d[H2] */
+        dqdci =  1*dcdc_fac;
+        J[1] += -1 * dqdci;           /* dwdot[H]/d[H2] */
+        J[21] += -1 * dqdci;          /* dwdot[C2H]/d[H2] */
+        J[22] += 1 * dqdci;           /* dwdot[C2H2]/d[H2] */
+        /* d()/d[H] */
+        dqdci =  + k_f*sc[21];
+        J[37] += -1 * dqdci;          /* dwdot[H]/d[H] */
+        J[57] += -1 * dqdci;          /* dwdot[C2H]/d[H] */
+        J[58] += 1 * dqdci;           /* dwdot[C2H2]/d[H] */
+        /* d()/d[H2O] */
+        dqdci =  5*dcdc_fac;
+        J[181] += -1 * dqdci;         /* dwdot[H]/d[H2O] */
+        J[201] += -1 * dqdci;         /* dwdot[C2H]/d[H2O] */
+        J[202] += 1 * dqdci;          /* dwdot[C2H2]/d[H2O] */
+        /* d()/d[CH4] */
+        dqdci =  1*dcdc_fac;
+        J[469] += -1 * dqdci;         /* dwdot[H]/d[CH4] */
+        J[489] += -1 * dqdci;         /* dwdot[C2H]/d[CH4] */
+        J[490] += 1 * dqdci;          /* dwdot[C2H2]/d[CH4] */
+        /* d()/d[CO] */
+        dqdci =  0.5*dcdc_fac;
+        J[505] += -1 * dqdci;         /* dwdot[H]/d[CO] */
+        J[525] += -1 * dqdci;         /* dwdot[C2H]/d[CO] */
+        J[526] += 1 * dqdci;          /* dwdot[C2H2]/d[CO] */
+        /* d()/d[CO2] */
+        dqdci =  1*dcdc_fac;
+        J[541] += -1 * dqdci;         /* dwdot[H]/d[CO2] */
+        J[561] += -1 * dqdci;         /* dwdot[C2H]/d[CO2] */
+        J[562] += 1 * dqdci;          /* dwdot[C2H2]/d[CO2] */
+        /* d()/d[C2H] */
+        dqdci =  + k_f*sc[1];
+        J[757] += -1 * dqdci;         /* dwdot[H]/d[C2H] */
+        J[777] += -1 * dqdci;         /* dwdot[C2H]/d[C2H] */
+        J[778] += 1 * dqdci;          /* dwdot[C2H2]/d[C2H] */
+        /* d()/d[C2H2] */
+        dqdci =  - k_r;
+        J[793] += -1 * dqdci;         /* dwdot[H]/d[C2H2] */
+        J[813] += -1 * dqdci;         /* dwdot[C2H]/d[C2H2] */
+        J[814] += 1 * dqdci;          /* dwdot[C2H2]/d[C2H2] */
+        /* d()/d[C2H6] */
+        dqdci =  2*dcdc_fac;
+        J[937] += -1 * dqdci;         /* dwdot[H]/d[C2H6] */
+        J[957] += -1 * dqdci;         /* dwdot[C2H]/d[C2H6] */
+        J[958] += 1 * dqdci;          /* dwdot[C2H2]/d[C2H6] */
     }
     else {
         dqdc[0] =  2*dcdc_fac;
@@ -20949,11 +21025,11 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
         dqdc[32] =  1*dcdc_fac;
         dqdc[33] =  1*dcdc_fac;
         dqdc[34] =  1*dcdc_fac;
-    }
-    for (int k=0; k<35; k++) {
-        J[36*k+1] += -1 * dqdc[k];
-        J[36*k+21] += -1 * dqdc[k];
-        J[36*k+22] += 1 * dqdc[k];
+        for (int k=0; k<35; k++) {
+            J[36*k+1] += -1 * dqdc[k];
+            J[36*k+21] += -1 * dqdc[k];
+            J[36*k+22] += 1 * dqdc[k];
+        }
     }
     J[1261] += -1 * dqdT; /* dwdot[H]/dT */
     J[1281] += -1 * dqdT; /* dwdot[C2H]/dT */
@@ -20989,9 +21065,9 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     troe = 1.0 / (1.0 + troePr*troePr);
     F = pow(10.0, logFcent * troe);
     dlogFcentdT = log10e/Fcent*(Fcent1*-0.0101523 + Fcent2*-0.000768049 + Fcent3*4167*invT2);
-    dlogFdcn_fac = logFcent * troe*troe * troePr * troePr_den;
+    dlogFdcn_fac = 2.0 * logFcent * troe*troe * troePr * troePr_den;
     dlogFdc = -troe_n * dlogFdcn_fac * troePr_den;
-    dlogFdn = 2. * dlogFdcn_fac * troePr;
+    dlogFdn = dlogFdcn_fac * troePr;
     dlogFdlogPr = dlogFdc;
     dlogFdT = dlogFcentdT*(troe - 0.67*dlogFdc - 1.27*dlogFdn) + dlogFdlogPr * dlogPrdT;
     /* reverse */
@@ -21015,41 +21091,51 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     k_r *= Corr;
     dcdc_fac = q/alpha*(1.0/(Pr+1.0) + dlogFdlogPr);
     if (consP) {
-        dqdc[0] =  1*dcdc_fac;
-        dqdc[1] =  0.0 + k_f*sc[22];
-        dqdc[2] =  0.0;
-        dqdc[3] =  0.0;
-        dqdc[4] =  0.0;
-        dqdc[5] =  5*dcdc_fac;
-        dqdc[6] =  0.0;
-        dqdc[7] =  0.0;
-        dqdc[8] =  0.0;
-        dqdc[9] =  0.0;
-        dqdc[10] =  0.0;
-        dqdc[11] =  0.0;
-        dqdc[12] =  0.0;
-        dqdc[13] =  1*dcdc_fac;
-        dqdc[14] =  0.5*dcdc_fac;
-        dqdc[15] =  1*dcdc_fac;
-        dqdc[16] =  0.0;
-        dqdc[17] =  0.0;
-        dqdc[18] =  0.0;
-        dqdc[19] =  0.0;
-        dqdc[20] =  0.0;
-        dqdc[21] =  0.0;
-        dqdc[22] =  0.0 + k_f*sc[1];
-        dqdc[23] =  0.0 - k_r;
-        dqdc[24] =  0.0;
-        dqdc[25] =  0.0;
-        dqdc[26] =  2*dcdc_fac;
-        dqdc[27] =  0.0;
-        dqdc[28] =  0.0;
-        dqdc[29] =  0.0;
-        dqdc[30] =  0.0;
-        dqdc[31] =  0.0;
-        dqdc[32] =  0.0;
-        dqdc[33] =  0.0;
-        dqdc[34] =  0.0;
+        /* d()/d[H2] */
+        dqdci =  1*dcdc_fac;
+        J[1] += -1 * dqdci;           /* dwdot[H]/d[H2] */
+        J[22] += -1 * dqdci;          /* dwdot[C2H2]/d[H2] */
+        J[23] += 1 * dqdci;           /* dwdot[C2H3]/d[H2] */
+        /* d()/d[H] */
+        dqdci =  + k_f*sc[22];
+        J[37] += -1 * dqdci;          /* dwdot[H]/d[H] */
+        J[58] += -1 * dqdci;          /* dwdot[C2H2]/d[H] */
+        J[59] += 1 * dqdci;           /* dwdot[C2H3]/d[H] */
+        /* d()/d[H2O] */
+        dqdci =  5*dcdc_fac;
+        J[181] += -1 * dqdci;         /* dwdot[H]/d[H2O] */
+        J[202] += -1 * dqdci;         /* dwdot[C2H2]/d[H2O] */
+        J[203] += 1 * dqdci;          /* dwdot[C2H3]/d[H2O] */
+        /* d()/d[CH4] */
+        dqdci =  1*dcdc_fac;
+        J[469] += -1 * dqdci;         /* dwdot[H]/d[CH4] */
+        J[490] += -1 * dqdci;         /* dwdot[C2H2]/d[CH4] */
+        J[491] += 1 * dqdci;          /* dwdot[C2H3]/d[CH4] */
+        /* d()/d[CO] */
+        dqdci =  0.5*dcdc_fac;
+        J[505] += -1 * dqdci;         /* dwdot[H]/d[CO] */
+        J[526] += -1 * dqdci;         /* dwdot[C2H2]/d[CO] */
+        J[527] += 1 * dqdci;          /* dwdot[C2H3]/d[CO] */
+        /* d()/d[CO2] */
+        dqdci =  1*dcdc_fac;
+        J[541] += -1 * dqdci;         /* dwdot[H]/d[CO2] */
+        J[562] += -1 * dqdci;         /* dwdot[C2H2]/d[CO2] */
+        J[563] += 1 * dqdci;          /* dwdot[C2H3]/d[CO2] */
+        /* d()/d[C2H2] */
+        dqdci =  + k_f*sc[1];
+        J[793] += -1 * dqdci;         /* dwdot[H]/d[C2H2] */
+        J[814] += -1 * dqdci;         /* dwdot[C2H2]/d[C2H2] */
+        J[815] += 1 * dqdci;          /* dwdot[C2H3]/d[C2H2] */
+        /* d()/d[C2H3] */
+        dqdci =  - k_r;
+        J[829] += -1 * dqdci;         /* dwdot[H]/d[C2H3] */
+        J[850] += -1 * dqdci;         /* dwdot[C2H2]/d[C2H3] */
+        J[851] += 1 * dqdci;          /* dwdot[C2H3]/d[C2H3] */
+        /* d()/d[C2H6] */
+        dqdci =  2*dcdc_fac;
+        J[937] += -1 * dqdci;         /* dwdot[H]/d[C2H6] */
+        J[958] += -1 * dqdci;         /* dwdot[C2H2]/d[C2H6] */
+        J[959] += 1 * dqdci;          /* dwdot[C2H3]/d[C2H6] */
     }
     else {
         dqdc[0] =  2*dcdc_fac;
@@ -21087,11 +21173,11 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
         dqdc[32] =  1*dcdc_fac;
         dqdc[33] =  1*dcdc_fac;
         dqdc[34] =  1*dcdc_fac;
-    }
-    for (int k=0; k<35; k++) {
-        J[36*k+1] += -1 * dqdc[k];
-        J[36*k+22] += -1 * dqdc[k];
-        J[36*k+23] += 1 * dqdc[k];
+        for (int k=0; k<35; k++) {
+            J[36*k+1] += -1 * dqdc[k];
+            J[36*k+22] += -1 * dqdc[k];
+            J[36*k+23] += 1 * dqdc[k];
+        }
     }
     J[1261] += -1 * dqdT; /* dwdot[H]/dT */
     J[1282] += -1 * dqdT; /* dwdot[C2H2]/dT */
@@ -21127,9 +21213,9 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     troe = 1.0 / (1.0 + troePr*troePr);
     F = pow(10.0, logFcent * troe);
     dlogFcentdT = log10e/Fcent*(Fcent1*-0.00481928 + Fcent2*-0.000375516 + Fcent3*6095*invT2);
-    dlogFdcn_fac = logFcent * troe*troe * troePr * troePr_den;
+    dlogFdcn_fac = 2.0 * logFcent * troe*troe * troePr * troePr_den;
     dlogFdc = -troe_n * dlogFdcn_fac * troePr_den;
-    dlogFdn = 2. * dlogFdcn_fac * troePr;
+    dlogFdn = dlogFdcn_fac * troePr;
     dlogFdlogPr = dlogFdc;
     dlogFdT = dlogFcentdT*(troe - 0.67*dlogFdc - 1.27*dlogFdn) + dlogFdlogPr * dlogPrdT;
     /* reverse */
@@ -21153,41 +21239,51 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     k_r *= Corr;
     dcdc_fac = q/alpha*(1.0/(Pr+1.0) + dlogFdlogPr);
     if (consP) {
-        dqdc[0] =  1*dcdc_fac;
-        dqdc[1] =  0.0 + k_f*sc[23];
-        dqdc[2] =  0.0;
-        dqdc[3] =  0.0;
-        dqdc[4] =  0.0;
-        dqdc[5] =  5*dcdc_fac;
-        dqdc[6] =  0.0;
-        dqdc[7] =  0.0;
-        dqdc[8] =  0.0;
-        dqdc[9] =  0.0;
-        dqdc[10] =  0.0;
-        dqdc[11] =  0.0;
-        dqdc[12] =  0.0;
-        dqdc[13] =  1*dcdc_fac;
-        dqdc[14] =  0.5*dcdc_fac;
-        dqdc[15] =  1*dcdc_fac;
-        dqdc[16] =  0.0;
-        dqdc[17] =  0.0;
-        dqdc[18] =  0.0;
-        dqdc[19] =  0.0;
-        dqdc[20] =  0.0;
-        dqdc[21] =  0.0;
-        dqdc[22] =  0.0;
-        dqdc[23] =  0.0 + k_f*sc[1];
-        dqdc[24] =  0.0 - k_r;
-        dqdc[25] =  0.0;
-        dqdc[26] =  2*dcdc_fac;
-        dqdc[27] =  0.0;
-        dqdc[28] =  0.0;
-        dqdc[29] =  0.0;
-        dqdc[30] =  0.0;
-        dqdc[31] =  0.0;
-        dqdc[32] =  0.0;
-        dqdc[33] =  0.0;
-        dqdc[34] =  0.0;
+        /* d()/d[H2] */
+        dqdci =  1*dcdc_fac;
+        J[1] += -1 * dqdci;           /* dwdot[H]/d[H2] */
+        J[23] += -1 * dqdci;          /* dwdot[C2H3]/d[H2] */
+        J[24] += 1 * dqdci;           /* dwdot[C2H4]/d[H2] */
+        /* d()/d[H] */
+        dqdci =  + k_f*sc[23];
+        J[37] += -1 * dqdci;          /* dwdot[H]/d[H] */
+        J[59] += -1 * dqdci;          /* dwdot[C2H3]/d[H] */
+        J[60] += 1 * dqdci;           /* dwdot[C2H4]/d[H] */
+        /* d()/d[H2O] */
+        dqdci =  5*dcdc_fac;
+        J[181] += -1 * dqdci;         /* dwdot[H]/d[H2O] */
+        J[203] += -1 * dqdci;         /* dwdot[C2H3]/d[H2O] */
+        J[204] += 1 * dqdci;          /* dwdot[C2H4]/d[H2O] */
+        /* d()/d[CH4] */
+        dqdci =  1*dcdc_fac;
+        J[469] += -1 * dqdci;         /* dwdot[H]/d[CH4] */
+        J[491] += -1 * dqdci;         /* dwdot[C2H3]/d[CH4] */
+        J[492] += 1 * dqdci;          /* dwdot[C2H4]/d[CH4] */
+        /* d()/d[CO] */
+        dqdci =  0.5*dcdc_fac;
+        J[505] += -1 * dqdci;         /* dwdot[H]/d[CO] */
+        J[527] += -1 * dqdci;         /* dwdot[C2H3]/d[CO] */
+        J[528] += 1 * dqdci;          /* dwdot[C2H4]/d[CO] */
+        /* d()/d[CO2] */
+        dqdci =  1*dcdc_fac;
+        J[541] += -1 * dqdci;         /* dwdot[H]/d[CO2] */
+        J[563] += -1 * dqdci;         /* dwdot[C2H3]/d[CO2] */
+        J[564] += 1 * dqdci;          /* dwdot[C2H4]/d[CO2] */
+        /* d()/d[C2H3] */
+        dqdci =  + k_f*sc[1];
+        J[829] += -1 * dqdci;         /* dwdot[H]/d[C2H3] */
+        J[851] += -1 * dqdci;         /* dwdot[C2H3]/d[C2H3] */
+        J[852] += 1 * dqdci;          /* dwdot[C2H4]/d[C2H3] */
+        /* d()/d[C2H4] */
+        dqdci =  - k_r;
+        J[865] += -1 * dqdci;         /* dwdot[H]/d[C2H4] */
+        J[887] += -1 * dqdci;         /* dwdot[C2H3]/d[C2H4] */
+        J[888] += 1 * dqdci;          /* dwdot[C2H4]/d[C2H4] */
+        /* d()/d[C2H6] */
+        dqdci =  2*dcdc_fac;
+        J[937] += -1 * dqdci;         /* dwdot[H]/d[C2H6] */
+        J[959] += -1 * dqdci;         /* dwdot[C2H3]/d[C2H6] */
+        J[960] += 1 * dqdci;          /* dwdot[C2H4]/d[C2H6] */
     }
     else {
         dqdc[0] =  2*dcdc_fac;
@@ -21225,11 +21321,11 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
         dqdc[32] =  1*dcdc_fac;
         dqdc[33] =  1*dcdc_fac;
         dqdc[34] =  1*dcdc_fac;
-    }
-    for (int k=0; k<35; k++) {
-        J[36*k+1] += -1 * dqdc[k];
-        J[36*k+23] += -1 * dqdc[k];
-        J[36*k+24] += 1 * dqdc[k];
+        for (int k=0; k<35; k++) {
+            J[36*k+1] += -1 * dqdc[k];
+            J[36*k+23] += -1 * dqdc[k];
+            J[36*k+24] += 1 * dqdc[k];
+        }
     }
     J[1261] += -1 * dqdT; /* dwdot[H]/dT */
     J[1283] += -1 * dqdT; /* dwdot[C2H3]/dT */
@@ -21255,30 +21351,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[1] -= q; /* H */
     wdot[22] += q; /* C2H2 */
     wdot[23] -= q; /* C2H3 */
-    dqdc[0] =  - k_r*sc[22];
-    dqdc[1] =  + k_f*sc[23];
-    dqdc[22] =  - k_r*sc[0];
-    dqdc[23] =  + k_f*sc[1];
     /* d()/d[H2] */
-    J[0] += 1 * dqdc[0];          /* dwdot[H2]/d[H2] */
-    J[1] += -1 * dqdc[0];         /* dwdot[H]/d[H2] */
-    J[22] += 1 * dqdc[0];         /* dwdot[C2H2]/d[H2] */
-    J[23] += -1 * dqdc[0];        /* dwdot[C2H3]/d[H2] */
+    dqdci =  - k_r*sc[22];
+    J[0] += 1 * dqdci;            /* dwdot[H2]/d[H2] */
+    J[1] += -1 * dqdci;           /* dwdot[H]/d[H2] */
+    J[22] += 1 * dqdci;           /* dwdot[C2H2]/d[H2] */
+    J[23] += -1 * dqdci;          /* dwdot[C2H3]/d[H2] */
     /* d()/d[H] */
-    J[36] += 1 * dqdc[1];         /* dwdot[H2]/d[H] */
-    J[37] += -1 * dqdc[1];        /* dwdot[H]/d[H] */
-    J[58] += 1 * dqdc[1];         /* dwdot[C2H2]/d[H] */
-    J[59] += -1 * dqdc[1];        /* dwdot[C2H3]/d[H] */
+    dqdci =  + k_f*sc[23];
+    J[36] += 1 * dqdci;           /* dwdot[H2]/d[H] */
+    J[37] += -1 * dqdci;          /* dwdot[H]/d[H] */
+    J[58] += 1 * dqdci;           /* dwdot[C2H2]/d[H] */
+    J[59] += -1 * dqdci;          /* dwdot[C2H3]/d[H] */
     /* d()/d[C2H2] */
-    J[792] += 1 * dqdc[22];       /* dwdot[H2]/d[C2H2] */
-    J[793] += -1 * dqdc[22];      /* dwdot[H]/d[C2H2] */
-    J[814] += 1 * dqdc[22];       /* dwdot[C2H2]/d[C2H2] */
-    J[815] += -1 * dqdc[22];      /* dwdot[C2H3]/d[C2H2] */
+    dqdci =  - k_r*sc[0];
+    J[792] += 1 * dqdci;          /* dwdot[H2]/d[C2H2] */
+    J[793] += -1 * dqdci;         /* dwdot[H]/d[C2H2] */
+    J[814] += 1 * dqdci;          /* dwdot[C2H2]/d[C2H2] */
+    J[815] += -1 * dqdci;         /* dwdot[C2H3]/d[C2H2] */
     /* d()/d[C2H3] */
-    J[828] += 1 * dqdc[23];       /* dwdot[H2]/d[C2H3] */
-    J[829] += -1 * dqdc[23];      /* dwdot[H]/d[C2H3] */
-    J[850] += 1 * dqdc[23];       /* dwdot[C2H2]/d[C2H3] */
-    J[851] += -1 * dqdc[23];      /* dwdot[C2H3]/d[C2H3] */
+    dqdci =  + k_f*sc[1];
+    J[828] += 1 * dqdci;          /* dwdot[H2]/d[C2H3] */
+    J[829] += -1 * dqdci;         /* dwdot[H]/d[C2H3] */
+    J[850] += 1 * dqdci;          /* dwdot[C2H2]/d[C2H3] */
+    J[851] += -1 * dqdci;         /* dwdot[C2H3]/d[C2H3] */
     /* d()/dT */
     J[1260] += 1 * dqdT;          /* dwdot[H2]/dT */
     J[1261] += -1 * dqdT;         /* dwdot[H]/dT */
@@ -21315,9 +21411,9 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     troe = 1.0 / (1.0 + troePr*troePr);
     F = pow(10.0, logFcent * troe);
     dlogFcentdT = log10e/Fcent*(Fcent1*-0.0047619 + Fcent2*-0.00101626 + Fcent3*4374*invT2);
-    dlogFdcn_fac = logFcent * troe*troe * troePr * troePr_den;
+    dlogFdcn_fac = 2.0 * logFcent * troe*troe * troePr * troePr_den;
     dlogFdc = -troe_n * dlogFdcn_fac * troePr_den;
-    dlogFdn = 2. * dlogFdcn_fac * troePr;
+    dlogFdn = dlogFdcn_fac * troePr;
     dlogFdlogPr = dlogFdc;
     dlogFdT = dlogFcentdT*(troe - 0.67*dlogFdc - 1.27*dlogFdn) + dlogFdlogPr * dlogPrdT;
     /* reverse */
@@ -21341,41 +21437,51 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     k_r *= Corr;
     dcdc_fac = q/alpha*(1.0/(Pr+1.0) + dlogFdlogPr);
     if (consP) {
-        dqdc[0] =  1*dcdc_fac;
-        dqdc[1] =  0.0 + k_f*sc[24];
-        dqdc[2] =  0.0;
-        dqdc[3] =  0.0;
-        dqdc[4] =  0.0;
-        dqdc[5] =  5*dcdc_fac;
-        dqdc[6] =  0.0;
-        dqdc[7] =  0.0;
-        dqdc[8] =  0.0;
-        dqdc[9] =  0.0;
-        dqdc[10] =  0.0;
-        dqdc[11] =  0.0;
-        dqdc[12] =  0.0;
-        dqdc[13] =  1*dcdc_fac;
-        dqdc[14] =  0.5*dcdc_fac;
-        dqdc[15] =  1*dcdc_fac;
-        dqdc[16] =  0.0;
-        dqdc[17] =  0.0;
-        dqdc[18] =  0.0;
-        dqdc[19] =  0.0;
-        dqdc[20] =  0.0;
-        dqdc[21] =  0.0;
-        dqdc[22] =  0.0;
-        dqdc[23] =  0.0;
-        dqdc[24] =  0.0 + k_f*sc[1];
-        dqdc[25] =  0.0 - k_r;
-        dqdc[26] =  2*dcdc_fac;
-        dqdc[27] =  0.0;
-        dqdc[28] =  0.0;
-        dqdc[29] =  0.0;
-        dqdc[30] =  0.0;
-        dqdc[31] =  0.0;
-        dqdc[32] =  0.0;
-        dqdc[33] =  0.0;
-        dqdc[34] =  0.0;
+        /* d()/d[H2] */
+        dqdci =  1*dcdc_fac;
+        J[1] += -1 * dqdci;           /* dwdot[H]/d[H2] */
+        J[24] += -1 * dqdci;          /* dwdot[C2H4]/d[H2] */
+        J[25] += 1 * dqdci;           /* dwdot[C2H5]/d[H2] */
+        /* d()/d[H] */
+        dqdci =  + k_f*sc[24];
+        J[37] += -1 * dqdci;          /* dwdot[H]/d[H] */
+        J[60] += -1 * dqdci;          /* dwdot[C2H4]/d[H] */
+        J[61] += 1 * dqdci;           /* dwdot[C2H5]/d[H] */
+        /* d()/d[H2O] */
+        dqdci =  5*dcdc_fac;
+        J[181] += -1 * dqdci;         /* dwdot[H]/d[H2O] */
+        J[204] += -1 * dqdci;         /* dwdot[C2H4]/d[H2O] */
+        J[205] += 1 * dqdci;          /* dwdot[C2H5]/d[H2O] */
+        /* d()/d[CH4] */
+        dqdci =  1*dcdc_fac;
+        J[469] += -1 * dqdci;         /* dwdot[H]/d[CH4] */
+        J[492] += -1 * dqdci;         /* dwdot[C2H4]/d[CH4] */
+        J[493] += 1 * dqdci;          /* dwdot[C2H5]/d[CH4] */
+        /* d()/d[CO] */
+        dqdci =  0.5*dcdc_fac;
+        J[505] += -1 * dqdci;         /* dwdot[H]/d[CO] */
+        J[528] += -1 * dqdci;         /* dwdot[C2H4]/d[CO] */
+        J[529] += 1 * dqdci;          /* dwdot[C2H5]/d[CO] */
+        /* d()/d[CO2] */
+        dqdci =  1*dcdc_fac;
+        J[541] += -1 * dqdci;         /* dwdot[H]/d[CO2] */
+        J[564] += -1 * dqdci;         /* dwdot[C2H4]/d[CO2] */
+        J[565] += 1 * dqdci;          /* dwdot[C2H5]/d[CO2] */
+        /* d()/d[C2H4] */
+        dqdci =  + k_f*sc[1];
+        J[865] += -1 * dqdci;         /* dwdot[H]/d[C2H4] */
+        J[888] += -1 * dqdci;         /* dwdot[C2H4]/d[C2H4] */
+        J[889] += 1 * dqdci;          /* dwdot[C2H5]/d[C2H4] */
+        /* d()/d[C2H5] */
+        dqdci =  - k_r;
+        J[901] += -1 * dqdci;         /* dwdot[H]/d[C2H5] */
+        J[924] += -1 * dqdci;         /* dwdot[C2H4]/d[C2H5] */
+        J[925] += 1 * dqdci;          /* dwdot[C2H5]/d[C2H5] */
+        /* d()/d[C2H6] */
+        dqdci =  2*dcdc_fac;
+        J[937] += -1 * dqdci;         /* dwdot[H]/d[C2H6] */
+        J[960] += -1 * dqdci;         /* dwdot[C2H4]/d[C2H6] */
+        J[961] += 1 * dqdci;          /* dwdot[C2H5]/d[C2H6] */
     }
     else {
         dqdc[0] =  2*dcdc_fac;
@@ -21413,11 +21519,11 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
         dqdc[32] =  1*dcdc_fac;
         dqdc[33] =  1*dcdc_fac;
         dqdc[34] =  1*dcdc_fac;
-    }
-    for (int k=0; k<35; k++) {
-        J[36*k+1] += -1 * dqdc[k];
-        J[36*k+24] += -1 * dqdc[k];
-        J[36*k+25] += 1 * dqdc[k];
+        for (int k=0; k<35; k++) {
+            J[36*k+1] += -1 * dqdc[k];
+            J[36*k+24] += -1 * dqdc[k];
+            J[36*k+25] += 1 * dqdc[k];
+        }
     }
     J[1261] += -1 * dqdT; /* dwdot[H]/dT */
     J[1284] += -1 * dqdT; /* dwdot[C2H4]/dT */
@@ -21443,30 +21549,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[1] -= q; /* H */
     wdot[23] += q; /* C2H3 */
     wdot[24] -= q; /* C2H4 */
-    dqdc[0] =  - k_r*sc[23];
-    dqdc[1] =  + k_f*sc[24];
-    dqdc[23] =  - k_r*sc[0];
-    dqdc[24] =  + k_f*sc[1];
     /* d()/d[H2] */
-    J[0] += 1 * dqdc[0];          /* dwdot[H2]/d[H2] */
-    J[1] += -1 * dqdc[0];         /* dwdot[H]/d[H2] */
-    J[23] += 1 * dqdc[0];         /* dwdot[C2H3]/d[H2] */
-    J[24] += -1 * dqdc[0];        /* dwdot[C2H4]/d[H2] */
+    dqdci =  - k_r*sc[23];
+    J[0] += 1 * dqdci;            /* dwdot[H2]/d[H2] */
+    J[1] += -1 * dqdci;           /* dwdot[H]/d[H2] */
+    J[23] += 1 * dqdci;           /* dwdot[C2H3]/d[H2] */
+    J[24] += -1 * dqdci;          /* dwdot[C2H4]/d[H2] */
     /* d()/d[H] */
-    J[36] += 1 * dqdc[1];         /* dwdot[H2]/d[H] */
-    J[37] += -1 * dqdc[1];        /* dwdot[H]/d[H] */
-    J[59] += 1 * dqdc[1];         /* dwdot[C2H3]/d[H] */
-    J[60] += -1 * dqdc[1];        /* dwdot[C2H4]/d[H] */
+    dqdci =  + k_f*sc[24];
+    J[36] += 1 * dqdci;           /* dwdot[H2]/d[H] */
+    J[37] += -1 * dqdci;          /* dwdot[H]/d[H] */
+    J[59] += 1 * dqdci;           /* dwdot[C2H3]/d[H] */
+    J[60] += -1 * dqdci;          /* dwdot[C2H4]/d[H] */
     /* d()/d[C2H3] */
-    J[828] += 1 * dqdc[23];       /* dwdot[H2]/d[C2H3] */
-    J[829] += -1 * dqdc[23];      /* dwdot[H]/d[C2H3] */
-    J[851] += 1 * dqdc[23];       /* dwdot[C2H3]/d[C2H3] */
-    J[852] += -1 * dqdc[23];      /* dwdot[C2H4]/d[C2H3] */
+    dqdci =  - k_r*sc[0];
+    J[828] += 1 * dqdci;          /* dwdot[H2]/d[C2H3] */
+    J[829] += -1 * dqdci;         /* dwdot[H]/d[C2H3] */
+    J[851] += 1 * dqdci;          /* dwdot[C2H3]/d[C2H3] */
+    J[852] += -1 * dqdci;         /* dwdot[C2H4]/d[C2H3] */
     /* d()/d[C2H4] */
-    J[864] += 1 * dqdc[24];       /* dwdot[H2]/d[C2H4] */
-    J[865] += -1 * dqdc[24];      /* dwdot[H]/d[C2H4] */
-    J[887] += 1 * dqdc[24];       /* dwdot[C2H3]/d[C2H4] */
-    J[888] += -1 * dqdc[24];      /* dwdot[C2H4]/d[C2H4] */
+    dqdci =  + k_f*sc[1];
+    J[864] += 1 * dqdci;          /* dwdot[H2]/d[C2H4] */
+    J[865] += -1 * dqdci;         /* dwdot[H]/d[C2H4] */
+    J[887] += 1 * dqdci;          /* dwdot[C2H3]/d[C2H4] */
+    J[888] += -1 * dqdci;         /* dwdot[C2H4]/d[C2H4] */
     /* d()/dT */
     J[1260] += 1 * dqdT;          /* dwdot[H2]/dT */
     J[1261] += -1 * dqdT;         /* dwdot[H]/dT */
@@ -21503,9 +21609,9 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     troe = 1.0 / (1.0 + troePr*troePr);
     F = pow(10.0, logFcent * troe);
     dlogFcentdT = log10e/Fcent*(Fcent1*-0.008 + Fcent2*-0.000450653 + Fcent3*6882*invT2);
-    dlogFdcn_fac = logFcent * troe*troe * troePr * troePr_den;
+    dlogFdcn_fac = 2.0 * logFcent * troe*troe * troePr * troePr_den;
     dlogFdc = -troe_n * dlogFdcn_fac * troePr_den;
-    dlogFdn = 2. * dlogFdcn_fac * troePr;
+    dlogFdn = dlogFdcn_fac * troePr;
     dlogFdlogPr = dlogFdc;
     dlogFdT = dlogFcentdT*(troe - 0.67*dlogFdc - 1.27*dlogFdn) + dlogFdlogPr * dlogPrdT;
     /* reverse */
@@ -21529,41 +21635,46 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     k_r *= Corr;
     dcdc_fac = q/alpha*(1.0/(Pr+1.0) + dlogFdlogPr);
     if (consP) {
-        dqdc[0] =  1*dcdc_fac;
-        dqdc[1] =  0.0 + k_f*sc[25];
-        dqdc[2] =  0.0;
-        dqdc[3] =  0.0;
-        dqdc[4] =  0.0;
-        dqdc[5] =  5*dcdc_fac;
-        dqdc[6] =  0.0;
-        dqdc[7] =  0.0;
-        dqdc[8] =  0.0;
-        dqdc[9] =  0.0;
-        dqdc[10] =  0.0;
-        dqdc[11] =  0.0;
-        dqdc[12] =  0.0;
-        dqdc[13] =  1*dcdc_fac;
-        dqdc[14] =  0.5*dcdc_fac;
-        dqdc[15] =  1*dcdc_fac;
-        dqdc[16] =  0.0;
-        dqdc[17] =  0.0;
-        dqdc[18] =  0.0;
-        dqdc[19] =  0.0;
-        dqdc[20] =  0.0;
-        dqdc[21] =  0.0;
-        dqdc[22] =  0.0;
-        dqdc[23] =  0.0;
-        dqdc[24] =  0.0;
-        dqdc[25] =  0.0 + k_f*sc[1];
-        dqdc[26] =  2*dcdc_fac - k_r;
-        dqdc[27] =  0.0;
-        dqdc[28] =  0.0;
-        dqdc[29] =  0.0;
-        dqdc[30] =  0.0;
-        dqdc[31] =  0.0;
-        dqdc[32] =  0.0;
-        dqdc[33] =  0.0;
-        dqdc[34] =  0.0;
+        /* d()/d[H2] */
+        dqdci =  1*dcdc_fac;
+        J[1] += -1 * dqdci;           /* dwdot[H]/d[H2] */
+        J[25] += -1 * dqdci;          /* dwdot[C2H5]/d[H2] */
+        J[26] += 1 * dqdci;           /* dwdot[C2H6]/d[H2] */
+        /* d()/d[H] */
+        dqdci =  + k_f*sc[25];
+        J[37] += -1 * dqdci;          /* dwdot[H]/d[H] */
+        J[61] += -1 * dqdci;          /* dwdot[C2H5]/d[H] */
+        J[62] += 1 * dqdci;           /* dwdot[C2H6]/d[H] */
+        /* d()/d[H2O] */
+        dqdci =  5*dcdc_fac;
+        J[181] += -1 * dqdci;         /* dwdot[H]/d[H2O] */
+        J[205] += -1 * dqdci;         /* dwdot[C2H5]/d[H2O] */
+        J[206] += 1 * dqdci;          /* dwdot[C2H6]/d[H2O] */
+        /* d()/d[CH4] */
+        dqdci =  1*dcdc_fac;
+        J[469] += -1 * dqdci;         /* dwdot[H]/d[CH4] */
+        J[493] += -1 * dqdci;         /* dwdot[C2H5]/d[CH4] */
+        J[494] += 1 * dqdci;          /* dwdot[C2H6]/d[CH4] */
+        /* d()/d[CO] */
+        dqdci =  0.5*dcdc_fac;
+        J[505] += -1 * dqdci;         /* dwdot[H]/d[CO] */
+        J[529] += -1 * dqdci;         /* dwdot[C2H5]/d[CO] */
+        J[530] += 1 * dqdci;          /* dwdot[C2H6]/d[CO] */
+        /* d()/d[CO2] */
+        dqdci =  1*dcdc_fac;
+        J[541] += -1 * dqdci;         /* dwdot[H]/d[CO2] */
+        J[565] += -1 * dqdci;         /* dwdot[C2H5]/d[CO2] */
+        J[566] += 1 * dqdci;          /* dwdot[C2H6]/d[CO2] */
+        /* d()/d[C2H5] */
+        dqdci =  + k_f*sc[1];
+        J[901] += -1 * dqdci;         /* dwdot[H]/d[C2H5] */
+        J[925] += -1 * dqdci;         /* dwdot[C2H5]/d[C2H5] */
+        J[926] += 1 * dqdci;          /* dwdot[C2H6]/d[C2H5] */
+        /* d()/d[C2H6] */
+        dqdci =  2*dcdc_fac - k_r;
+        J[937] += -1 * dqdci;         /* dwdot[H]/d[C2H6] */
+        J[961] += -1 * dqdci;         /* dwdot[C2H5]/d[C2H6] */
+        J[962] += 1 * dqdci;          /* dwdot[C2H6]/d[C2H6] */
     }
     else {
         dqdc[0] =  2*dcdc_fac;
@@ -21601,11 +21712,11 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
         dqdc[32] =  1*dcdc_fac;
         dqdc[33] =  1*dcdc_fac;
         dqdc[34] =  1*dcdc_fac;
-    }
-    for (int k=0; k<35; k++) {
-        J[36*k+1] += -1 * dqdc[k];
-        J[36*k+25] += -1 * dqdc[k];
-        J[36*k+26] += 1 * dqdc[k];
+        for (int k=0; k<35; k++) {
+            J[36*k+1] += -1 * dqdc[k];
+            J[36*k+25] += -1 * dqdc[k];
+            J[36*k+26] += 1 * dqdc[k];
+        }
     }
     J[1261] += -1 * dqdT; /* dwdot[H]/dT */
     J[1285] += -1 * dqdT; /* dwdot[C2H5]/dT */
@@ -21631,30 +21742,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[1] -= q; /* H */
     wdot[24] += q; /* C2H4 */
     wdot[25] -= q; /* C2H5 */
-    dqdc[0] =  - k_r*sc[24];
-    dqdc[1] =  + k_f*sc[25];
-    dqdc[24] =  - k_r*sc[0];
-    dqdc[25] =  + k_f*sc[1];
     /* d()/d[H2] */
-    J[0] += 1 * dqdc[0];          /* dwdot[H2]/d[H2] */
-    J[1] += -1 * dqdc[0];         /* dwdot[H]/d[H2] */
-    J[24] += 1 * dqdc[0];         /* dwdot[C2H4]/d[H2] */
-    J[25] += -1 * dqdc[0];        /* dwdot[C2H5]/d[H2] */
+    dqdci =  - k_r*sc[24];
+    J[0] += 1 * dqdci;            /* dwdot[H2]/d[H2] */
+    J[1] += -1 * dqdci;           /* dwdot[H]/d[H2] */
+    J[24] += 1 * dqdci;           /* dwdot[C2H4]/d[H2] */
+    J[25] += -1 * dqdci;          /* dwdot[C2H5]/d[H2] */
     /* d()/d[H] */
-    J[36] += 1 * dqdc[1];         /* dwdot[H2]/d[H] */
-    J[37] += -1 * dqdc[1];        /* dwdot[H]/d[H] */
-    J[60] += 1 * dqdc[1];         /* dwdot[C2H4]/d[H] */
-    J[61] += -1 * dqdc[1];        /* dwdot[C2H5]/d[H] */
+    dqdci =  + k_f*sc[25];
+    J[36] += 1 * dqdci;           /* dwdot[H2]/d[H] */
+    J[37] += -1 * dqdci;          /* dwdot[H]/d[H] */
+    J[60] += 1 * dqdci;           /* dwdot[C2H4]/d[H] */
+    J[61] += -1 * dqdci;          /* dwdot[C2H5]/d[H] */
     /* d()/d[C2H4] */
-    J[864] += 1 * dqdc[24];       /* dwdot[H2]/d[C2H4] */
-    J[865] += -1 * dqdc[24];      /* dwdot[H]/d[C2H4] */
-    J[888] += 1 * dqdc[24];       /* dwdot[C2H4]/d[C2H4] */
-    J[889] += -1 * dqdc[24];      /* dwdot[C2H5]/d[C2H4] */
+    dqdci =  - k_r*sc[0];
+    J[864] += 1 * dqdci;          /* dwdot[H2]/d[C2H4] */
+    J[865] += -1 * dqdci;         /* dwdot[H]/d[C2H4] */
+    J[888] += 1 * dqdci;          /* dwdot[C2H4]/d[C2H4] */
+    J[889] += -1 * dqdci;         /* dwdot[C2H5]/d[C2H4] */
     /* d()/d[C2H5] */
-    J[900] += 1 * dqdc[25];       /* dwdot[H2]/d[C2H5] */
-    J[901] += -1 * dqdc[25];      /* dwdot[H]/d[C2H5] */
-    J[924] += 1 * dqdc[25];       /* dwdot[C2H4]/d[C2H5] */
-    J[925] += -1 * dqdc[25];      /* dwdot[C2H5]/d[C2H5] */
+    dqdci =  + k_f*sc[1];
+    J[900] += 1 * dqdci;          /* dwdot[H2]/d[C2H5] */
+    J[901] += -1 * dqdci;         /* dwdot[H]/d[C2H5] */
+    J[924] += 1 * dqdci;          /* dwdot[C2H4]/d[C2H5] */
+    J[925] += -1 * dqdci;         /* dwdot[C2H5]/d[C2H5] */
     /* d()/dT */
     J[1260] += 1 * dqdT;          /* dwdot[H2]/dT */
     J[1261] += -1 * dqdT;         /* dwdot[H]/dT */
@@ -21681,30 +21792,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[1] -= q; /* H */
     wdot[25] += q; /* C2H5 */
     wdot[26] -= q; /* C2H6 */
-    dqdc[0] =  - k_r*sc[25];
-    dqdc[1] =  + k_f*sc[26];
-    dqdc[25] =  - k_r*sc[0];
-    dqdc[26] =  + k_f*sc[1];
     /* d()/d[H2] */
-    J[0] += 1 * dqdc[0];          /* dwdot[H2]/d[H2] */
-    J[1] += -1 * dqdc[0];         /* dwdot[H]/d[H2] */
-    J[25] += 1 * dqdc[0];         /* dwdot[C2H5]/d[H2] */
-    J[26] += -1 * dqdc[0];        /* dwdot[C2H6]/d[H2] */
+    dqdci =  - k_r*sc[25];
+    J[0] += 1 * dqdci;            /* dwdot[H2]/d[H2] */
+    J[1] += -1 * dqdci;           /* dwdot[H]/d[H2] */
+    J[25] += 1 * dqdci;           /* dwdot[C2H5]/d[H2] */
+    J[26] += -1 * dqdci;          /* dwdot[C2H6]/d[H2] */
     /* d()/d[H] */
-    J[36] += 1 * dqdc[1];         /* dwdot[H2]/d[H] */
-    J[37] += -1 * dqdc[1];        /* dwdot[H]/d[H] */
-    J[61] += 1 * dqdc[1];         /* dwdot[C2H5]/d[H] */
-    J[62] += -1 * dqdc[1];        /* dwdot[C2H6]/d[H] */
+    dqdci =  + k_f*sc[26];
+    J[36] += 1 * dqdci;           /* dwdot[H2]/d[H] */
+    J[37] += -1 * dqdci;          /* dwdot[H]/d[H] */
+    J[61] += 1 * dqdci;           /* dwdot[C2H5]/d[H] */
+    J[62] += -1 * dqdci;          /* dwdot[C2H6]/d[H] */
     /* d()/d[C2H5] */
-    J[900] += 1 * dqdc[25];       /* dwdot[H2]/d[C2H5] */
-    J[901] += -1 * dqdc[25];      /* dwdot[H]/d[C2H5] */
-    J[925] += 1 * dqdc[25];       /* dwdot[C2H5]/d[C2H5] */
-    J[926] += -1 * dqdc[25];      /* dwdot[C2H6]/d[C2H5] */
+    dqdci =  - k_r*sc[0];
+    J[900] += 1 * dqdci;          /* dwdot[H2]/d[C2H5] */
+    J[901] += -1 * dqdci;         /* dwdot[H]/d[C2H5] */
+    J[925] += 1 * dqdci;          /* dwdot[C2H5]/d[C2H5] */
+    J[926] += -1 * dqdci;         /* dwdot[C2H6]/d[C2H5] */
     /* d()/d[C2H6] */
-    J[936] += 1 * dqdc[26];       /* dwdot[H2]/d[C2H6] */
-    J[937] += -1 * dqdc[26];      /* dwdot[H]/d[C2H6] */
-    J[961] += 1 * dqdc[26];       /* dwdot[C2H5]/d[C2H6] */
-    J[962] += -1 * dqdc[26];      /* dwdot[C2H6]/d[C2H6] */
+    dqdci =  + k_f*sc[1];
+    J[936] += 1 * dqdci;          /* dwdot[H2]/d[C2H6] */
+    J[937] += -1 * dqdci;         /* dwdot[H]/d[C2H6] */
+    J[961] += 1 * dqdci;          /* dwdot[C2H5]/d[C2H6] */
+    J[962] += -1 * dqdci;         /* dwdot[C2H6]/d[C2H6] */
     /* d()/dT */
     J[1260] += 1 * dqdT;          /* dwdot[H2]/dT */
     J[1261] += -1 * dqdT;         /* dwdot[H]/dT */
@@ -21731,30 +21842,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[11] += q; /* CH2(S) */
     wdot[14] += q; /* CO */
     wdot[27] -= q; /* HCCO */
-    dqdc[1] =  + k_f*sc[27];
-    dqdc[11] =  - k_r*sc[14];
-    dqdc[14] =  - k_r*sc[11];
-    dqdc[27] =  + k_f*sc[1];
     /* d()/d[H] */
-    J[37] += -1 * dqdc[1];        /* dwdot[H]/d[H] */
-    J[47] += 1 * dqdc[1];         /* dwdot[CH2(S)]/d[H] */
-    J[50] += 1 * dqdc[1];         /* dwdot[CO]/d[H] */
-    J[63] += -1 * dqdc[1];        /* dwdot[HCCO]/d[H] */
+    dqdci =  + k_f*sc[27];
+    J[37] += -1 * dqdci;          /* dwdot[H]/d[H] */
+    J[47] += 1 * dqdci;           /* dwdot[CH2(S)]/d[H] */
+    J[50] += 1 * dqdci;           /* dwdot[CO]/d[H] */
+    J[63] += -1 * dqdci;          /* dwdot[HCCO]/d[H] */
     /* d()/d[CH2(S)] */
-    J[397] += -1 * dqdc[11];      /* dwdot[H]/d[CH2(S)] */
-    J[407] += 1 * dqdc[11];       /* dwdot[CH2(S)]/d[CH2(S)] */
-    J[410] += 1 * dqdc[11];       /* dwdot[CO]/d[CH2(S)] */
-    J[423] += -1 * dqdc[11];      /* dwdot[HCCO]/d[CH2(S)] */
+    dqdci =  - k_r*sc[14];
+    J[397] += -1 * dqdci;         /* dwdot[H]/d[CH2(S)] */
+    J[407] += 1 * dqdci;          /* dwdot[CH2(S)]/d[CH2(S)] */
+    J[410] += 1 * dqdci;          /* dwdot[CO]/d[CH2(S)] */
+    J[423] += -1 * dqdci;         /* dwdot[HCCO]/d[CH2(S)] */
     /* d()/d[CO] */
-    J[505] += -1 * dqdc[14];      /* dwdot[H]/d[CO] */
-    J[515] += 1 * dqdc[14];       /* dwdot[CH2(S)]/d[CO] */
-    J[518] += 1 * dqdc[14];       /* dwdot[CO]/d[CO] */
-    J[531] += -1 * dqdc[14];      /* dwdot[HCCO]/d[CO] */
+    dqdci =  - k_r*sc[11];
+    J[505] += -1 * dqdci;         /* dwdot[H]/d[CO] */
+    J[515] += 1 * dqdci;          /* dwdot[CH2(S)]/d[CO] */
+    J[518] += 1 * dqdci;          /* dwdot[CO]/d[CO] */
+    J[531] += -1 * dqdci;         /* dwdot[HCCO]/d[CO] */
     /* d()/d[HCCO] */
-    J[973] += -1 * dqdc[27];      /* dwdot[H]/d[HCCO] */
-    J[983] += 1 * dqdc[27];       /* dwdot[CH2(S)]/d[HCCO] */
-    J[986] += 1 * dqdc[27];       /* dwdot[CO]/d[HCCO] */
-    J[999] += -1 * dqdc[27];      /* dwdot[HCCO]/d[HCCO] */
+    dqdci =  + k_f*sc[1];
+    J[973] += -1 * dqdci;         /* dwdot[H]/d[HCCO] */
+    J[983] += 1 * dqdci;          /* dwdot[CH2(S)]/d[HCCO] */
+    J[986] += 1 * dqdci;          /* dwdot[CO]/d[HCCO] */
+    J[999] += -1 * dqdci;         /* dwdot[HCCO]/d[HCCO] */
     /* d()/dT */
     J[1261] += -1 * dqdT;         /* dwdot[H]/dT */
     J[1271] += 1 * dqdT;          /* dwdot[CH2(S)]/dT */
@@ -21781,30 +21892,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[1] -= q; /* H */
     wdot[27] += q; /* HCCO */
     wdot[28] -= q; /* CH2CO */
-    dqdc[0] =  - k_r*sc[27];
-    dqdc[1] =  + k_f*sc[28];
-    dqdc[27] =  - k_r*sc[0];
-    dqdc[28] =  + k_f*sc[1];
     /* d()/d[H2] */
-    J[0] += 1 * dqdc[0];          /* dwdot[H2]/d[H2] */
-    J[1] += -1 * dqdc[0];         /* dwdot[H]/d[H2] */
-    J[27] += 1 * dqdc[0];         /* dwdot[HCCO]/d[H2] */
-    J[28] += -1 * dqdc[0];        /* dwdot[CH2CO]/d[H2] */
+    dqdci =  - k_r*sc[27];
+    J[0] += 1 * dqdci;            /* dwdot[H2]/d[H2] */
+    J[1] += -1 * dqdci;           /* dwdot[H]/d[H2] */
+    J[27] += 1 * dqdci;           /* dwdot[HCCO]/d[H2] */
+    J[28] += -1 * dqdci;          /* dwdot[CH2CO]/d[H2] */
     /* d()/d[H] */
-    J[36] += 1 * dqdc[1];         /* dwdot[H2]/d[H] */
-    J[37] += -1 * dqdc[1];        /* dwdot[H]/d[H] */
-    J[63] += 1 * dqdc[1];         /* dwdot[HCCO]/d[H] */
-    J[64] += -1 * dqdc[1];        /* dwdot[CH2CO]/d[H] */
+    dqdci =  + k_f*sc[28];
+    J[36] += 1 * dqdci;           /* dwdot[H2]/d[H] */
+    J[37] += -1 * dqdci;          /* dwdot[H]/d[H] */
+    J[63] += 1 * dqdci;           /* dwdot[HCCO]/d[H] */
+    J[64] += -1 * dqdci;          /* dwdot[CH2CO]/d[H] */
     /* d()/d[HCCO] */
-    J[972] += 1 * dqdc[27];       /* dwdot[H2]/d[HCCO] */
-    J[973] += -1 * dqdc[27];      /* dwdot[H]/d[HCCO] */
-    J[999] += 1 * dqdc[27];       /* dwdot[HCCO]/d[HCCO] */
-    J[1000] += -1 * dqdc[27];     /* dwdot[CH2CO]/d[HCCO] */
+    dqdci =  - k_r*sc[0];
+    J[972] += 1 * dqdci;          /* dwdot[H2]/d[HCCO] */
+    J[973] += -1 * dqdci;         /* dwdot[H]/d[HCCO] */
+    J[999] += 1 * dqdci;          /* dwdot[HCCO]/d[HCCO] */
+    J[1000] += -1 * dqdci;        /* dwdot[CH2CO]/d[HCCO] */
     /* d()/d[CH2CO] */
-    J[1008] += 1 * dqdc[28];      /* dwdot[H2]/d[CH2CO] */
-    J[1009] += -1 * dqdc[28];     /* dwdot[H]/d[CH2CO] */
-    J[1035] += 1 * dqdc[28];      /* dwdot[HCCO]/d[CH2CO] */
-    J[1036] += -1 * dqdc[28];     /* dwdot[CH2CO]/d[CH2CO] */
+    dqdci =  + k_f*sc[1];
+    J[1008] += 1 * dqdci;         /* dwdot[H2]/d[CH2CO] */
+    J[1009] += -1 * dqdci;        /* dwdot[H]/d[CH2CO] */
+    J[1035] += 1 * dqdci;         /* dwdot[HCCO]/d[CH2CO] */
+    J[1036] += -1 * dqdci;        /* dwdot[CH2CO]/d[CH2CO] */
     /* d()/dT */
     J[1260] += 1 * dqdT;          /* dwdot[H2]/dT */
     J[1261] += -1 * dqdT;         /* dwdot[H]/dT */
@@ -21831,30 +21942,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[12] += q; /* CH3 */
     wdot[14] += q; /* CO */
     wdot[28] -= q; /* CH2CO */
-    dqdc[1] =  + k_f*sc[28];
-    dqdc[12] =  - k_r*sc[14];
-    dqdc[14] =  - k_r*sc[12];
-    dqdc[28] =  + k_f*sc[1];
     /* d()/d[H] */
-    J[37] += -1 * dqdc[1];        /* dwdot[H]/d[H] */
-    J[48] += 1 * dqdc[1];         /* dwdot[CH3]/d[H] */
-    J[50] += 1 * dqdc[1];         /* dwdot[CO]/d[H] */
-    J[64] += -1 * dqdc[1];        /* dwdot[CH2CO]/d[H] */
+    dqdci =  + k_f*sc[28];
+    J[37] += -1 * dqdci;          /* dwdot[H]/d[H] */
+    J[48] += 1 * dqdci;           /* dwdot[CH3]/d[H] */
+    J[50] += 1 * dqdci;           /* dwdot[CO]/d[H] */
+    J[64] += -1 * dqdci;          /* dwdot[CH2CO]/d[H] */
     /* d()/d[CH3] */
-    J[433] += -1 * dqdc[12];      /* dwdot[H]/d[CH3] */
-    J[444] += 1 * dqdc[12];       /* dwdot[CH3]/d[CH3] */
-    J[446] += 1 * dqdc[12];       /* dwdot[CO]/d[CH3] */
-    J[460] += -1 * dqdc[12];      /* dwdot[CH2CO]/d[CH3] */
+    dqdci =  - k_r*sc[14];
+    J[433] += -1 * dqdci;         /* dwdot[H]/d[CH3] */
+    J[444] += 1 * dqdci;          /* dwdot[CH3]/d[CH3] */
+    J[446] += 1 * dqdci;          /* dwdot[CO]/d[CH3] */
+    J[460] += -1 * dqdci;         /* dwdot[CH2CO]/d[CH3] */
     /* d()/d[CO] */
-    J[505] += -1 * dqdc[14];      /* dwdot[H]/d[CO] */
-    J[516] += 1 * dqdc[14];       /* dwdot[CH3]/d[CO] */
-    J[518] += 1 * dqdc[14];       /* dwdot[CO]/d[CO] */
-    J[532] += -1 * dqdc[14];      /* dwdot[CH2CO]/d[CO] */
+    dqdci =  - k_r*sc[12];
+    J[505] += -1 * dqdci;         /* dwdot[H]/d[CO] */
+    J[516] += 1 * dqdci;          /* dwdot[CH3]/d[CO] */
+    J[518] += 1 * dqdci;          /* dwdot[CO]/d[CO] */
+    J[532] += -1 * dqdci;         /* dwdot[CH2CO]/d[CO] */
     /* d()/d[CH2CO] */
-    J[1009] += -1 * dqdc[28];     /* dwdot[H]/d[CH2CO] */
-    J[1020] += 1 * dqdc[28];      /* dwdot[CH3]/d[CH2CO] */
-    J[1022] += 1 * dqdc[28];      /* dwdot[CO]/d[CH2CO] */
-    J[1036] += -1 * dqdc[28];     /* dwdot[CH2CO]/d[CH2CO] */
+    dqdci =  + k_f*sc[1];
+    J[1009] += -1 * dqdci;        /* dwdot[H]/d[CH2CO] */
+    J[1020] += 1 * dqdci;         /* dwdot[CH3]/d[CH2CO] */
+    J[1022] += 1 * dqdci;         /* dwdot[CO]/d[CH2CO] */
+    J[1036] += -1 * dqdci;        /* dwdot[CH2CO]/d[CH2CO] */
     /* d()/dT */
     J[1261] += -1 * dqdT;         /* dwdot[H]/dT */
     J[1272] += 1 * dqdT;          /* dwdot[CH3]/dT */
@@ -21879,18 +21990,18 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     /* update wdot */
     wdot[28] += q; /* CH2CO */
     wdot[29] -= q; /* HCCOH */
-    dqdc[1] =  + k_f*sc[29] - k_r*sc[28];
-    dqdc[28] =  - k_r*sc[1];
-    dqdc[29] =  + k_f*sc[1];
     /* d()/d[H] */
-    J[64] += 1 * dqdc[1];         /* dwdot[CH2CO]/d[H] */
-    J[65] += -1 * dqdc[1];        /* dwdot[HCCOH]/d[H] */
+    dqdci =  + k_f*sc[29] - k_r*sc[28];
+    J[64] += 1 * dqdci;           /* dwdot[CH2CO]/d[H] */
+    J[65] += -1 * dqdci;          /* dwdot[HCCOH]/d[H] */
     /* d()/d[CH2CO] */
-    J[1036] += 1 * dqdc[28];      /* dwdot[CH2CO]/d[CH2CO] */
-    J[1037] += -1 * dqdc[28];     /* dwdot[HCCOH]/d[CH2CO] */
+    dqdci =  - k_r*sc[1];
+    J[1036] += 1 * dqdci;         /* dwdot[CH2CO]/d[CH2CO] */
+    J[1037] += -1 * dqdci;        /* dwdot[HCCOH]/d[CH2CO] */
     /* d()/d[HCCOH] */
-    J[1072] += 1 * dqdc[29];      /* dwdot[CH2CO]/d[HCCOH] */
-    J[1073] += -1 * dqdc[29];     /* dwdot[HCCOH]/d[HCCOH] */
+    dqdci =  + k_f*sc[1];
+    J[1072] += 1 * dqdci;         /* dwdot[CH2CO]/d[HCCOH] */
+    J[1073] += -1 * dqdci;        /* dwdot[HCCOH]/d[HCCOH] */
     /* d()/dT */
     J[1288] += 1 * dqdT;          /* dwdot[CH2CO]/dT */
     J[1289] += -1 * dqdT;         /* dwdot[HCCOH]/dT */
@@ -21925,9 +22036,9 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     troe = 1.0 / (1.0 + troePr*troePr);
     F = pow(10.0, logFcent * troe);
     dlogFcentdT = log10e/Fcent*(Fcent1*-0.00507614 + Fcent2*-0.000649351 + Fcent3*10300*invT2);
-    dlogFdcn_fac = logFcent * troe*troe * troePr * troePr_den;
+    dlogFdcn_fac = 2.0 * logFcent * troe*troe * troePr * troePr_den;
     dlogFdc = -troe_n * dlogFdcn_fac * troePr_den;
-    dlogFdn = 2. * dlogFdcn_fac * troePr;
+    dlogFdn = dlogFdcn_fac * troePr;
     dlogFdlogPr = dlogFdc;
     dlogFdT = dlogFcentdT*(troe - 0.67*dlogFdc - 1.27*dlogFdn) + dlogFdlogPr * dlogPrdT;
     /* reverse */
@@ -21951,41 +22062,41 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     k_r *= Corr;
     dcdc_fac = q/alpha*(1.0/(Pr+1.0) + dlogFdlogPr);
     if (consP) {
-        dqdc[0] =  1*dcdc_fac + k_f*sc[14];
-        dqdc[1] =  0.0;
-        dqdc[2] =  0.0;
-        dqdc[3] =  0.0;
-        dqdc[4] =  0.0;
-        dqdc[5] =  5*dcdc_fac;
-        dqdc[6] =  0.0;
-        dqdc[7] =  0.0;
-        dqdc[8] =  0.0;
-        dqdc[9] =  0.0;
-        dqdc[10] =  0.0;
-        dqdc[11] =  0.0;
-        dqdc[12] =  0.0;
-        dqdc[13] =  1*dcdc_fac;
-        dqdc[14] =  0.5*dcdc_fac + k_f*sc[0];
-        dqdc[15] =  1*dcdc_fac;
-        dqdc[16] =  0.0;
-        dqdc[17] =  0.0 - k_r;
-        dqdc[18] =  0.0;
-        dqdc[19] =  0.0;
-        dqdc[20] =  0.0;
-        dqdc[21] =  0.0;
-        dqdc[22] =  0.0;
-        dqdc[23] =  0.0;
-        dqdc[24] =  0.0;
-        dqdc[25] =  0.0;
-        dqdc[26] =  2*dcdc_fac;
-        dqdc[27] =  0.0;
-        dqdc[28] =  0.0;
-        dqdc[29] =  0.0;
-        dqdc[30] =  0.0;
-        dqdc[31] =  0.0;
-        dqdc[32] =  0.0;
-        dqdc[33] =  0.0;
-        dqdc[34] =  0.0;
+        /* d()/d[H2] */
+        dqdci =  1*dcdc_fac + k_f*sc[14];
+        J[0] += -1 * dqdci;           /* dwdot[H2]/d[H2] */
+        J[14] += -1 * dqdci;          /* dwdot[CO]/d[H2] */
+        J[17] += 1 * dqdci;           /* dwdot[CH2O]/d[H2] */
+        /* d()/d[H2O] */
+        dqdci =  5*dcdc_fac;
+        J[180] += -1 * dqdci;         /* dwdot[H2]/d[H2O] */
+        J[194] += -1 * dqdci;         /* dwdot[CO]/d[H2O] */
+        J[197] += 1 * dqdci;          /* dwdot[CH2O]/d[H2O] */
+        /* d()/d[CH4] */
+        dqdci =  1*dcdc_fac;
+        J[468] += -1 * dqdci;         /* dwdot[H2]/d[CH4] */
+        J[482] += -1 * dqdci;         /* dwdot[CO]/d[CH4] */
+        J[485] += 1 * dqdci;          /* dwdot[CH2O]/d[CH4] */
+        /* d()/d[CO] */
+        dqdci =  0.5*dcdc_fac + k_f*sc[0];
+        J[504] += -1 * dqdci;         /* dwdot[H2]/d[CO] */
+        J[518] += -1 * dqdci;         /* dwdot[CO]/d[CO] */
+        J[521] += 1 * dqdci;          /* dwdot[CH2O]/d[CO] */
+        /* d()/d[CO2] */
+        dqdci =  1*dcdc_fac;
+        J[540] += -1 * dqdci;         /* dwdot[H2]/d[CO2] */
+        J[554] += -1 * dqdci;         /* dwdot[CO]/d[CO2] */
+        J[557] += 1 * dqdci;          /* dwdot[CH2O]/d[CO2] */
+        /* d()/d[CH2O] */
+        dqdci =  - k_r;
+        J[612] += -1 * dqdci;         /* dwdot[H2]/d[CH2O] */
+        J[626] += -1 * dqdci;         /* dwdot[CO]/d[CH2O] */
+        J[629] += 1 * dqdci;          /* dwdot[CH2O]/d[CH2O] */
+        /* d()/d[C2H6] */
+        dqdci =  2*dcdc_fac;
+        J[936] += -1 * dqdci;         /* dwdot[H2]/d[C2H6] */
+        J[950] += -1 * dqdci;         /* dwdot[CO]/d[C2H6] */
+        J[953] += 1 * dqdci;          /* dwdot[CH2O]/d[C2H6] */
     }
     else {
         dqdc[0] =  2*dcdc_fac + k_f*sc[14];
@@ -22023,11 +22134,11 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
         dqdc[32] =  1*dcdc_fac;
         dqdc[33] =  1*dcdc_fac;
         dqdc[34] =  1*dcdc_fac;
-    }
-    for (int k=0; k<35; k++) {
-        J[36*k+0] += -1 * dqdc[k];
-        J[36*k+14] += -1 * dqdc[k];
-        J[36*k+17] += 1 * dqdc[k];
+        for (int k=0; k<35; k++) {
+            J[36*k+0] += -1 * dqdc[k];
+            J[36*k+14] += -1 * dqdc[k];
+            J[36*k+17] += 1 * dqdc[k];
+        }
     }
     J[1260] += -1 * dqdT; /* dwdot[H2]/dT */
     J[1274] += -1 * dqdT; /* dwdot[CO]/dT */
@@ -22053,30 +22164,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[1] += q; /* H */
     wdot[4] -= q; /* OH */
     wdot[5] += q; /* H2O */
-    dqdc[0] =  + k_f*sc[4];
-    dqdc[1] =  - k_r*sc[5];
-    dqdc[4] =  + k_f*sc[0];
-    dqdc[5] =  - k_r*sc[1];
     /* d()/d[H2] */
-    J[0] += -1 * dqdc[0];         /* dwdot[H2]/d[H2] */
-    J[1] += 1 * dqdc[0];          /* dwdot[H]/d[H2] */
-    J[4] += -1 * dqdc[0];         /* dwdot[OH]/d[H2] */
-    J[5] += 1 * dqdc[0];          /* dwdot[H2O]/d[H2] */
+    dqdci =  + k_f*sc[4];
+    J[0] += -1 * dqdci;           /* dwdot[H2]/d[H2] */
+    J[1] += 1 * dqdci;            /* dwdot[H]/d[H2] */
+    J[4] += -1 * dqdci;           /* dwdot[OH]/d[H2] */
+    J[5] += 1 * dqdci;            /* dwdot[H2O]/d[H2] */
     /* d()/d[H] */
-    J[36] += -1 * dqdc[1];        /* dwdot[H2]/d[H] */
-    J[37] += 1 * dqdc[1];         /* dwdot[H]/d[H] */
-    J[40] += -1 * dqdc[1];        /* dwdot[OH]/d[H] */
-    J[41] += 1 * dqdc[1];         /* dwdot[H2O]/d[H] */
+    dqdci =  - k_r*sc[5];
+    J[36] += -1 * dqdci;          /* dwdot[H2]/d[H] */
+    J[37] += 1 * dqdci;           /* dwdot[H]/d[H] */
+    J[40] += -1 * dqdci;          /* dwdot[OH]/d[H] */
+    J[41] += 1 * dqdci;           /* dwdot[H2O]/d[H] */
     /* d()/d[OH] */
-    J[144] += -1 * dqdc[4];       /* dwdot[H2]/d[OH] */
-    J[145] += 1 * dqdc[4];        /* dwdot[H]/d[OH] */
-    J[148] += -1 * dqdc[4];       /* dwdot[OH]/d[OH] */
-    J[149] += 1 * dqdc[4];        /* dwdot[H2O]/d[OH] */
+    dqdci =  + k_f*sc[0];
+    J[144] += -1 * dqdci;         /* dwdot[H2]/d[OH] */
+    J[145] += 1 * dqdci;          /* dwdot[H]/d[OH] */
+    J[148] += -1 * dqdci;         /* dwdot[OH]/d[OH] */
+    J[149] += 1 * dqdci;          /* dwdot[H2O]/d[OH] */
     /* d()/d[H2O] */
-    J[180] += -1 * dqdc[5];       /* dwdot[H2]/d[H2O] */
-    J[181] += 1 * dqdc[5];        /* dwdot[H]/d[H2O] */
-    J[184] += -1 * dqdc[5];       /* dwdot[OH]/d[H2O] */
-    J[185] += 1 * dqdc[5];        /* dwdot[H2O]/d[H2O] */
+    dqdci =  - k_r*sc[1];
+    J[180] += -1 * dqdci;         /* dwdot[H2]/d[H2O] */
+    J[181] += 1 * dqdci;          /* dwdot[H]/d[H2O] */
+    J[184] += -1 * dqdci;         /* dwdot[OH]/d[H2O] */
+    J[185] += 1 * dqdci;          /* dwdot[H2O]/d[H2O] */
     /* d()/dT */
     J[1260] += -1 * dqdT;         /* dwdot[H2]/dT */
     J[1261] += 1 * dqdT;          /* dwdot[H]/dT */
@@ -22113,9 +22224,9 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     troe = 1.0 / (1.0 + troePr*troePr);
     F = pow(10.0, logFcent * troe);
     dlogFcentdT = log10e/Fcent*(Fcent1*-0.0106383 + Fcent2*-0.000569476 + Fcent3*5182*invT2);
-    dlogFdcn_fac = logFcent * troe*troe * troePr * troePr_den;
+    dlogFdcn_fac = 2.0 * logFcent * troe*troe * troePr * troePr_den;
     dlogFdc = -troe_n * dlogFdcn_fac * troePr_den;
-    dlogFdn = 2. * dlogFdcn_fac * troePr;
+    dlogFdn = dlogFdcn_fac * troePr;
     dlogFdlogPr = dlogFdc;
     dlogFdT = dlogFcentdT*(troe - 0.67*dlogFdc - 1.27*dlogFdn) + dlogFdlogPr * dlogPrdT;
     /* reverse */
@@ -22138,41 +22249,38 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     k_r *= Corr;
     dcdc_fac = q/alpha*(1.0/(Pr+1.0) + dlogFdlogPr);
     if (consP) {
-        dqdc[0] =  1*dcdc_fac;
-        dqdc[1] =  0.0;
-        dqdc[2] =  0.0;
-        dqdc[3] =  0.0;
-        dqdc[4] =  0.0 + k_f*2*sc[4];
-        dqdc[5] =  5*dcdc_fac;
-        dqdc[6] =  0.0;
-        dqdc[7] =  0.0 - k_r;
-        dqdc[8] =  0.0;
-        dqdc[9] =  0.0;
-        dqdc[10] =  0.0;
-        dqdc[11] =  0.0;
-        dqdc[12] =  0.0;
-        dqdc[13] =  1*dcdc_fac;
-        dqdc[14] =  0.5*dcdc_fac;
-        dqdc[15] =  1*dcdc_fac;
-        dqdc[16] =  0.0;
-        dqdc[17] =  0.0;
-        dqdc[18] =  0.0;
-        dqdc[19] =  0.0;
-        dqdc[20] =  0.0;
-        dqdc[21] =  0.0;
-        dqdc[22] =  0.0;
-        dqdc[23] =  0.0;
-        dqdc[24] =  0.0;
-        dqdc[25] =  0.0;
-        dqdc[26] =  2*dcdc_fac;
-        dqdc[27] =  0.0;
-        dqdc[28] =  0.0;
-        dqdc[29] =  0.0;
-        dqdc[30] =  0.0;
-        dqdc[31] =  0.0;
-        dqdc[32] =  0.0;
-        dqdc[33] =  0.0;
-        dqdc[34] =  0.0;
+        /* d()/d[H2] */
+        dqdci =  1*dcdc_fac;
+        J[4] += -2 * dqdci;           /* dwdot[OH]/d[H2] */
+        J[7] += 1 * dqdci;            /* dwdot[H2O2]/d[H2] */
+        /* d()/d[OH] */
+        dqdci =  + k_f*2*sc[4];
+        J[148] += -2 * dqdci;         /* dwdot[OH]/d[OH] */
+        J[151] += 1 * dqdci;          /* dwdot[H2O2]/d[OH] */
+        /* d()/d[H2O] */
+        dqdci =  5*dcdc_fac;
+        J[184] += -2 * dqdci;         /* dwdot[OH]/d[H2O] */
+        J[187] += 1 * dqdci;          /* dwdot[H2O2]/d[H2O] */
+        /* d()/d[H2O2] */
+        dqdci =  - k_r;
+        J[256] += -2 * dqdci;         /* dwdot[OH]/d[H2O2] */
+        J[259] += 1 * dqdci;          /* dwdot[H2O2]/d[H2O2] */
+        /* d()/d[CH4] */
+        dqdci =  1*dcdc_fac;
+        J[472] += -2 * dqdci;         /* dwdot[OH]/d[CH4] */
+        J[475] += 1 * dqdci;          /* dwdot[H2O2]/d[CH4] */
+        /* d()/d[CO] */
+        dqdci =  0.5*dcdc_fac;
+        J[508] += -2 * dqdci;         /* dwdot[OH]/d[CO] */
+        J[511] += 1 * dqdci;          /* dwdot[H2O2]/d[CO] */
+        /* d()/d[CO2] */
+        dqdci =  1*dcdc_fac;
+        J[544] += -2 * dqdci;         /* dwdot[OH]/d[CO2] */
+        J[547] += 1 * dqdci;          /* dwdot[H2O2]/d[CO2] */
+        /* d()/d[C2H6] */
+        dqdci =  2*dcdc_fac;
+        J[940] += -2 * dqdci;         /* dwdot[OH]/d[C2H6] */
+        J[943] += 1 * dqdci;          /* dwdot[H2O2]/d[C2H6] */
     }
     else {
         dqdc[0] =  2*dcdc_fac;
@@ -22210,10 +22318,10 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
         dqdc[32] =  1*dcdc_fac;
         dqdc[33] =  1*dcdc_fac;
         dqdc[34] =  1*dcdc_fac;
-    }
-    for (int k=0; k<35; k++) {
-        J[36*k+4] += -2 * dqdc[k];
-        J[36*k+7] += 1 * dqdc[k];
+        for (int k=0; k<35; k++) {
+            J[36*k+4] += -2 * dqdc[k];
+            J[36*k+7] += 1 * dqdc[k];
+        }
     }
     J[1264] += -2 * dqdT; /* dwdot[OH]/dT */
     J[1267] += 1 * dqdT; /* dwdot[H2O2]/dT */
@@ -22237,21 +22345,21 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[2] += q; /* O */
     wdot[4] -= 2 * q; /* OH */
     wdot[5] += q; /* H2O */
-    dqdc[2] =  - k_r*sc[5];
-    dqdc[4] =  + k_f*2*sc[4];
-    dqdc[5] =  - k_r*sc[2];
     /* d()/d[O] */
-    J[74] += 1 * dqdc[2];         /* dwdot[O]/d[O] */
-    J[76] += -2 * dqdc[2];        /* dwdot[OH]/d[O] */
-    J[77] += 1 * dqdc[2];         /* dwdot[H2O]/d[O] */
+    dqdci =  - k_r*sc[5];
+    J[74] += 1 * dqdci;           /* dwdot[O]/d[O] */
+    J[76] += -2 * dqdci;          /* dwdot[OH]/d[O] */
+    J[77] += 1 * dqdci;           /* dwdot[H2O]/d[O] */
     /* d()/d[OH] */
-    J[146] += 1 * dqdc[4];        /* dwdot[O]/d[OH] */
-    J[148] += -2 * dqdc[4];       /* dwdot[OH]/d[OH] */
-    J[149] += 1 * dqdc[4];        /* dwdot[H2O]/d[OH] */
+    dqdci =  + k_f*2*sc[4];
+    J[146] += 1 * dqdci;          /* dwdot[O]/d[OH] */
+    J[148] += -2 * dqdci;         /* dwdot[OH]/d[OH] */
+    J[149] += 1 * dqdci;          /* dwdot[H2O]/d[OH] */
     /* d()/d[H2O] */
-    J[182] += 1 * dqdc[5];        /* dwdot[O]/d[H2O] */
-    J[184] += -2 * dqdc[5];       /* dwdot[OH]/d[H2O] */
-    J[185] += 1 * dqdc[5];        /* dwdot[H2O]/d[H2O] */
+    dqdci =  - k_r*sc[2];
+    J[182] += 1 * dqdci;          /* dwdot[O]/d[H2O] */
+    J[184] += -2 * dqdci;         /* dwdot[OH]/d[H2O] */
+    J[185] += 1 * dqdci;          /* dwdot[H2O]/d[H2O] */
     /* d()/dT */
     J[1262] += 1 * dqdT;          /* dwdot[O]/dT */
     J[1264] += -2 * dqdT;         /* dwdot[OH]/dT */
@@ -22277,30 +22385,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[4] -= q; /* OH */
     wdot[5] += q; /* H2O */
     wdot[6] -= q; /* HO2 */
-    dqdc[3] =  - k_r*sc[5];
-    dqdc[4] =  + k_f*sc[6];
-    dqdc[5] =  - k_r*sc[3];
-    dqdc[6] =  + k_f*sc[4];
     /* d()/d[O2] */
-    J[111] += 1 * dqdc[3];        /* dwdot[O2]/d[O2] */
-    J[112] += -1 * dqdc[3];       /* dwdot[OH]/d[O2] */
-    J[113] += 1 * dqdc[3];        /* dwdot[H2O]/d[O2] */
-    J[114] += -1 * dqdc[3];       /* dwdot[HO2]/d[O2] */
+    dqdci =  - k_r*sc[5];
+    J[111] += 1 * dqdci;          /* dwdot[O2]/d[O2] */
+    J[112] += -1 * dqdci;         /* dwdot[OH]/d[O2] */
+    J[113] += 1 * dqdci;          /* dwdot[H2O]/d[O2] */
+    J[114] += -1 * dqdci;         /* dwdot[HO2]/d[O2] */
     /* d()/d[OH] */
-    J[147] += 1 * dqdc[4];        /* dwdot[O2]/d[OH] */
-    J[148] += -1 * dqdc[4];       /* dwdot[OH]/d[OH] */
-    J[149] += 1 * dqdc[4];        /* dwdot[H2O]/d[OH] */
-    J[150] += -1 * dqdc[4];       /* dwdot[HO2]/d[OH] */
+    dqdci =  + k_f*sc[6];
+    J[147] += 1 * dqdci;          /* dwdot[O2]/d[OH] */
+    J[148] += -1 * dqdci;         /* dwdot[OH]/d[OH] */
+    J[149] += 1 * dqdci;          /* dwdot[H2O]/d[OH] */
+    J[150] += -1 * dqdci;         /* dwdot[HO2]/d[OH] */
     /* d()/d[H2O] */
-    J[183] += 1 * dqdc[5];        /* dwdot[O2]/d[H2O] */
-    J[184] += -1 * dqdc[5];       /* dwdot[OH]/d[H2O] */
-    J[185] += 1 * dqdc[5];        /* dwdot[H2O]/d[H2O] */
-    J[186] += -1 * dqdc[5];       /* dwdot[HO2]/d[H2O] */
+    dqdci =  - k_r*sc[3];
+    J[183] += 1 * dqdci;          /* dwdot[O2]/d[H2O] */
+    J[184] += -1 * dqdci;         /* dwdot[OH]/d[H2O] */
+    J[185] += 1 * dqdci;          /* dwdot[H2O]/d[H2O] */
+    J[186] += -1 * dqdci;         /* dwdot[HO2]/d[H2O] */
     /* d()/d[HO2] */
-    J[219] += 1 * dqdc[6];        /* dwdot[O2]/d[HO2] */
-    J[220] += -1 * dqdc[6];       /* dwdot[OH]/d[HO2] */
-    J[221] += 1 * dqdc[6];        /* dwdot[H2O]/d[HO2] */
-    J[222] += -1 * dqdc[6];       /* dwdot[HO2]/d[HO2] */
+    dqdci =  + k_f*sc[4];
+    J[219] += 1 * dqdci;          /* dwdot[O2]/d[HO2] */
+    J[220] += -1 * dqdci;         /* dwdot[OH]/d[HO2] */
+    J[221] += 1 * dqdci;          /* dwdot[H2O]/d[HO2] */
+    J[222] += -1 * dqdci;         /* dwdot[HO2]/d[HO2] */
     /* d()/dT */
     J[1263] += 1 * dqdT;          /* dwdot[O2]/dT */
     J[1264] += -1 * dqdT;         /* dwdot[OH]/dT */
@@ -22327,30 +22435,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[5] += q; /* H2O */
     wdot[6] += q; /* HO2 */
     wdot[7] -= q; /* H2O2 */
-    dqdc[4] =  + k_f*sc[7];
-    dqdc[5] =  - k_r*sc[6];
-    dqdc[6] =  - k_r*sc[5];
-    dqdc[7] =  + k_f*sc[4];
     /* d()/d[OH] */
-    J[148] += -1 * dqdc[4];       /* dwdot[OH]/d[OH] */
-    J[149] += 1 * dqdc[4];        /* dwdot[H2O]/d[OH] */
-    J[150] += 1 * dqdc[4];        /* dwdot[HO2]/d[OH] */
-    J[151] += -1 * dqdc[4];       /* dwdot[H2O2]/d[OH] */
+    dqdci =  + k_f*sc[7];
+    J[148] += -1 * dqdci;         /* dwdot[OH]/d[OH] */
+    J[149] += 1 * dqdci;          /* dwdot[H2O]/d[OH] */
+    J[150] += 1 * dqdci;          /* dwdot[HO2]/d[OH] */
+    J[151] += -1 * dqdci;         /* dwdot[H2O2]/d[OH] */
     /* d()/d[H2O] */
-    J[184] += -1 * dqdc[5];       /* dwdot[OH]/d[H2O] */
-    J[185] += 1 * dqdc[5];        /* dwdot[H2O]/d[H2O] */
-    J[186] += 1 * dqdc[5];        /* dwdot[HO2]/d[H2O] */
-    J[187] += -1 * dqdc[5];       /* dwdot[H2O2]/d[H2O] */
+    dqdci =  - k_r*sc[6];
+    J[184] += -1 * dqdci;         /* dwdot[OH]/d[H2O] */
+    J[185] += 1 * dqdci;          /* dwdot[H2O]/d[H2O] */
+    J[186] += 1 * dqdci;          /* dwdot[HO2]/d[H2O] */
+    J[187] += -1 * dqdci;         /* dwdot[H2O2]/d[H2O] */
     /* d()/d[HO2] */
-    J[220] += -1 * dqdc[6];       /* dwdot[OH]/d[HO2] */
-    J[221] += 1 * dqdc[6];        /* dwdot[H2O]/d[HO2] */
-    J[222] += 1 * dqdc[6];        /* dwdot[HO2]/d[HO2] */
-    J[223] += -1 * dqdc[6];       /* dwdot[H2O2]/d[HO2] */
+    dqdci =  - k_r*sc[5];
+    J[220] += -1 * dqdci;         /* dwdot[OH]/d[HO2] */
+    J[221] += 1 * dqdci;          /* dwdot[H2O]/d[HO2] */
+    J[222] += 1 * dqdci;          /* dwdot[HO2]/d[HO2] */
+    J[223] += -1 * dqdci;         /* dwdot[H2O2]/d[HO2] */
     /* d()/d[H2O2] */
-    J[256] += -1 * dqdc[7];       /* dwdot[OH]/d[H2O2] */
-    J[257] += 1 * dqdc[7];        /* dwdot[H2O]/d[H2O2] */
-    J[258] += 1 * dqdc[7];        /* dwdot[HO2]/d[H2O2] */
-    J[259] += -1 * dqdc[7];       /* dwdot[H2O2]/d[H2O2] */
+    dqdci =  + k_f*sc[4];
+    J[256] += -1 * dqdci;         /* dwdot[OH]/d[H2O2] */
+    J[257] += 1 * dqdci;          /* dwdot[H2O]/d[H2O2] */
+    J[258] += 1 * dqdci;          /* dwdot[HO2]/d[H2O2] */
+    J[259] += -1 * dqdci;         /* dwdot[H2O2]/d[H2O2] */
     /* d()/dT */
     J[1264] += -1 * dqdT;         /* dwdot[OH]/dT */
     J[1265] += 1 * dqdT;          /* dwdot[H2O]/dT */
@@ -22377,30 +22485,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[5] += q; /* H2O */
     wdot[6] += q; /* HO2 */
     wdot[7] -= q; /* H2O2 */
-    dqdc[4] =  + k_f*sc[7];
-    dqdc[5] =  - k_r*sc[6];
-    dqdc[6] =  - k_r*sc[5];
-    dqdc[7] =  + k_f*sc[4];
     /* d()/d[OH] */
-    J[148] += -1 * dqdc[4];       /* dwdot[OH]/d[OH] */
-    J[149] += 1 * dqdc[4];        /* dwdot[H2O]/d[OH] */
-    J[150] += 1 * dqdc[4];        /* dwdot[HO2]/d[OH] */
-    J[151] += -1 * dqdc[4];       /* dwdot[H2O2]/d[OH] */
+    dqdci =  + k_f*sc[7];
+    J[148] += -1 * dqdci;         /* dwdot[OH]/d[OH] */
+    J[149] += 1 * dqdci;          /* dwdot[H2O]/d[OH] */
+    J[150] += 1 * dqdci;          /* dwdot[HO2]/d[OH] */
+    J[151] += -1 * dqdci;         /* dwdot[H2O2]/d[OH] */
     /* d()/d[H2O] */
-    J[184] += -1 * dqdc[5];       /* dwdot[OH]/d[H2O] */
-    J[185] += 1 * dqdc[5];        /* dwdot[H2O]/d[H2O] */
-    J[186] += 1 * dqdc[5];        /* dwdot[HO2]/d[H2O] */
-    J[187] += -1 * dqdc[5];       /* dwdot[H2O2]/d[H2O] */
+    dqdci =  - k_r*sc[6];
+    J[184] += -1 * dqdci;         /* dwdot[OH]/d[H2O] */
+    J[185] += 1 * dqdci;          /* dwdot[H2O]/d[H2O] */
+    J[186] += 1 * dqdci;          /* dwdot[HO2]/d[H2O] */
+    J[187] += -1 * dqdci;         /* dwdot[H2O2]/d[H2O] */
     /* d()/d[HO2] */
-    J[220] += -1 * dqdc[6];       /* dwdot[OH]/d[HO2] */
-    J[221] += 1 * dqdc[6];        /* dwdot[H2O]/d[HO2] */
-    J[222] += 1 * dqdc[6];        /* dwdot[HO2]/d[HO2] */
-    J[223] += -1 * dqdc[6];       /* dwdot[H2O2]/d[HO2] */
+    dqdci =  - k_r*sc[5];
+    J[220] += -1 * dqdci;         /* dwdot[OH]/d[HO2] */
+    J[221] += 1 * dqdci;          /* dwdot[H2O]/d[HO2] */
+    J[222] += 1 * dqdci;          /* dwdot[HO2]/d[HO2] */
+    J[223] += -1 * dqdci;         /* dwdot[H2O2]/d[HO2] */
     /* d()/d[H2O2] */
-    J[256] += -1 * dqdc[7];       /* dwdot[OH]/d[H2O2] */
-    J[257] += 1 * dqdc[7];        /* dwdot[H2O]/d[H2O2] */
-    J[258] += 1 * dqdc[7];        /* dwdot[HO2]/d[H2O2] */
-    J[259] += -1 * dqdc[7];       /* dwdot[H2O2]/d[H2O2] */
+    dqdci =  + k_f*sc[4];
+    J[256] += -1 * dqdci;         /* dwdot[OH]/d[H2O2] */
+    J[257] += 1 * dqdci;          /* dwdot[H2O]/d[H2O2] */
+    J[258] += 1 * dqdci;          /* dwdot[HO2]/d[H2O2] */
+    J[259] += -1 * dqdci;         /* dwdot[H2O2]/d[H2O2] */
     /* d()/dT */
     J[1264] += -1 * dqdT;         /* dwdot[OH]/dT */
     J[1265] += 1 * dqdT;          /* dwdot[H2O]/dT */
@@ -22427,30 +22535,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[4] -= q; /* OH */
     wdot[8] -= q; /* C */
     wdot[14] += q; /* CO */
-    dqdc[1] =  - k_r*sc[14];
-    dqdc[4] =  + k_f*sc[8];
-    dqdc[8] =  + k_f*sc[4];
-    dqdc[14] =  - k_r*sc[1];
     /* d()/d[H] */
-    J[37] += 1 * dqdc[1];         /* dwdot[H]/d[H] */
-    J[40] += -1 * dqdc[1];        /* dwdot[OH]/d[H] */
-    J[44] += -1 * dqdc[1];        /* dwdot[C]/d[H] */
-    J[50] += 1 * dqdc[1];         /* dwdot[CO]/d[H] */
+    dqdci =  - k_r*sc[14];
+    J[37] += 1 * dqdci;           /* dwdot[H]/d[H] */
+    J[40] += -1 * dqdci;          /* dwdot[OH]/d[H] */
+    J[44] += -1 * dqdci;          /* dwdot[C]/d[H] */
+    J[50] += 1 * dqdci;           /* dwdot[CO]/d[H] */
     /* d()/d[OH] */
-    J[145] += 1 * dqdc[4];        /* dwdot[H]/d[OH] */
-    J[148] += -1 * dqdc[4];       /* dwdot[OH]/d[OH] */
-    J[152] += -1 * dqdc[4];       /* dwdot[C]/d[OH] */
-    J[158] += 1 * dqdc[4];        /* dwdot[CO]/d[OH] */
+    dqdci =  + k_f*sc[8];
+    J[145] += 1 * dqdci;          /* dwdot[H]/d[OH] */
+    J[148] += -1 * dqdci;         /* dwdot[OH]/d[OH] */
+    J[152] += -1 * dqdci;         /* dwdot[C]/d[OH] */
+    J[158] += 1 * dqdci;          /* dwdot[CO]/d[OH] */
     /* d()/d[C] */
-    J[289] += 1 * dqdc[8];        /* dwdot[H]/d[C] */
-    J[292] += -1 * dqdc[8];       /* dwdot[OH]/d[C] */
-    J[296] += -1 * dqdc[8];       /* dwdot[C]/d[C] */
-    J[302] += 1 * dqdc[8];        /* dwdot[CO]/d[C] */
+    dqdci =  + k_f*sc[4];
+    J[289] += 1 * dqdci;          /* dwdot[H]/d[C] */
+    J[292] += -1 * dqdci;         /* dwdot[OH]/d[C] */
+    J[296] += -1 * dqdci;         /* dwdot[C]/d[C] */
+    J[302] += 1 * dqdci;          /* dwdot[CO]/d[C] */
     /* d()/d[CO] */
-    J[505] += 1 * dqdc[14];       /* dwdot[H]/d[CO] */
-    J[508] += -1 * dqdc[14];      /* dwdot[OH]/d[CO] */
-    J[512] += -1 * dqdc[14];      /* dwdot[C]/d[CO] */
-    J[518] += 1 * dqdc[14];       /* dwdot[CO]/d[CO] */
+    dqdci =  - k_r*sc[1];
+    J[505] += 1 * dqdci;          /* dwdot[H]/d[CO] */
+    J[508] += -1 * dqdci;         /* dwdot[OH]/d[CO] */
+    J[512] += -1 * dqdci;         /* dwdot[C]/d[CO] */
+    J[518] += 1 * dqdci;          /* dwdot[CO]/d[CO] */
     /* d()/dT */
     J[1261] += 1 * dqdT;          /* dwdot[H]/dT */
     J[1264] += -1 * dqdT;         /* dwdot[OH]/dT */
@@ -22477,30 +22585,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[4] -= q; /* OH */
     wdot[9] -= q; /* CH */
     wdot[16] += q; /* HCO */
-    dqdc[1] =  - k_r*sc[16];
-    dqdc[4] =  + k_f*sc[9];
-    dqdc[9] =  + k_f*sc[4];
-    dqdc[16] =  - k_r*sc[1];
     /* d()/d[H] */
-    J[37] += 1 * dqdc[1];         /* dwdot[H]/d[H] */
-    J[40] += -1 * dqdc[1];        /* dwdot[OH]/d[H] */
-    J[45] += -1 * dqdc[1];        /* dwdot[CH]/d[H] */
-    J[52] += 1 * dqdc[1];         /* dwdot[HCO]/d[H] */
+    dqdci =  - k_r*sc[16];
+    J[37] += 1 * dqdci;           /* dwdot[H]/d[H] */
+    J[40] += -1 * dqdci;          /* dwdot[OH]/d[H] */
+    J[45] += -1 * dqdci;          /* dwdot[CH]/d[H] */
+    J[52] += 1 * dqdci;           /* dwdot[HCO]/d[H] */
     /* d()/d[OH] */
-    J[145] += 1 * dqdc[4];        /* dwdot[H]/d[OH] */
-    J[148] += -1 * dqdc[4];       /* dwdot[OH]/d[OH] */
-    J[153] += -1 * dqdc[4];       /* dwdot[CH]/d[OH] */
-    J[160] += 1 * dqdc[4];        /* dwdot[HCO]/d[OH] */
+    dqdci =  + k_f*sc[9];
+    J[145] += 1 * dqdci;          /* dwdot[H]/d[OH] */
+    J[148] += -1 * dqdci;         /* dwdot[OH]/d[OH] */
+    J[153] += -1 * dqdci;         /* dwdot[CH]/d[OH] */
+    J[160] += 1 * dqdci;          /* dwdot[HCO]/d[OH] */
     /* d()/d[CH] */
-    J[325] += 1 * dqdc[9];        /* dwdot[H]/d[CH] */
-    J[328] += -1 * dqdc[9];       /* dwdot[OH]/d[CH] */
-    J[333] += -1 * dqdc[9];       /* dwdot[CH]/d[CH] */
-    J[340] += 1 * dqdc[9];        /* dwdot[HCO]/d[CH] */
+    dqdci =  + k_f*sc[4];
+    J[325] += 1 * dqdci;          /* dwdot[H]/d[CH] */
+    J[328] += -1 * dqdci;         /* dwdot[OH]/d[CH] */
+    J[333] += -1 * dqdci;         /* dwdot[CH]/d[CH] */
+    J[340] += 1 * dqdci;          /* dwdot[HCO]/d[CH] */
     /* d()/d[HCO] */
-    J[577] += 1 * dqdc[16];       /* dwdot[H]/d[HCO] */
-    J[580] += -1 * dqdc[16];      /* dwdot[OH]/d[HCO] */
-    J[585] += -1 * dqdc[16];      /* dwdot[CH]/d[HCO] */
-    J[592] += 1 * dqdc[16];       /* dwdot[HCO]/d[HCO] */
+    dqdci =  - k_r*sc[1];
+    J[577] += 1 * dqdci;          /* dwdot[H]/d[HCO] */
+    J[580] += -1 * dqdci;         /* dwdot[OH]/d[HCO] */
+    J[585] += -1 * dqdci;         /* dwdot[CH]/d[HCO] */
+    J[592] += 1 * dqdci;          /* dwdot[HCO]/d[HCO] */
     /* d()/dT */
     J[1261] += 1 * dqdT;          /* dwdot[H]/dT */
     J[1264] += -1 * dqdT;         /* dwdot[OH]/dT */
@@ -22527,30 +22635,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[4] -= q; /* OH */
     wdot[10] -= q; /* CH2 */
     wdot[17] += q; /* CH2O */
-    dqdc[1] =  - k_r*sc[17];
-    dqdc[4] =  + k_f*sc[10];
-    dqdc[10] =  + k_f*sc[4];
-    dqdc[17] =  - k_r*sc[1];
     /* d()/d[H] */
-    J[37] += 1 * dqdc[1];         /* dwdot[H]/d[H] */
-    J[40] += -1 * dqdc[1];        /* dwdot[OH]/d[H] */
-    J[46] += -1 * dqdc[1];        /* dwdot[CH2]/d[H] */
-    J[53] += 1 * dqdc[1];         /* dwdot[CH2O]/d[H] */
+    dqdci =  - k_r*sc[17];
+    J[37] += 1 * dqdci;           /* dwdot[H]/d[H] */
+    J[40] += -1 * dqdci;          /* dwdot[OH]/d[H] */
+    J[46] += -1 * dqdci;          /* dwdot[CH2]/d[H] */
+    J[53] += 1 * dqdci;           /* dwdot[CH2O]/d[H] */
     /* d()/d[OH] */
-    J[145] += 1 * dqdc[4];        /* dwdot[H]/d[OH] */
-    J[148] += -1 * dqdc[4];       /* dwdot[OH]/d[OH] */
-    J[154] += -1 * dqdc[4];       /* dwdot[CH2]/d[OH] */
-    J[161] += 1 * dqdc[4];        /* dwdot[CH2O]/d[OH] */
+    dqdci =  + k_f*sc[10];
+    J[145] += 1 * dqdci;          /* dwdot[H]/d[OH] */
+    J[148] += -1 * dqdci;         /* dwdot[OH]/d[OH] */
+    J[154] += -1 * dqdci;         /* dwdot[CH2]/d[OH] */
+    J[161] += 1 * dqdci;          /* dwdot[CH2O]/d[OH] */
     /* d()/d[CH2] */
-    J[361] += 1 * dqdc[10];       /* dwdot[H]/d[CH2] */
-    J[364] += -1 * dqdc[10];      /* dwdot[OH]/d[CH2] */
-    J[370] += -1 * dqdc[10];      /* dwdot[CH2]/d[CH2] */
-    J[377] += 1 * dqdc[10];       /* dwdot[CH2O]/d[CH2] */
+    dqdci =  + k_f*sc[4];
+    J[361] += 1 * dqdci;          /* dwdot[H]/d[CH2] */
+    J[364] += -1 * dqdci;         /* dwdot[OH]/d[CH2] */
+    J[370] += -1 * dqdci;         /* dwdot[CH2]/d[CH2] */
+    J[377] += 1 * dqdci;          /* dwdot[CH2O]/d[CH2] */
     /* d()/d[CH2O] */
-    J[613] += 1 * dqdc[17];       /* dwdot[H]/d[CH2O] */
-    J[616] += -1 * dqdc[17];      /* dwdot[OH]/d[CH2O] */
-    J[622] += -1 * dqdc[17];      /* dwdot[CH2]/d[CH2O] */
-    J[629] += 1 * dqdc[17];       /* dwdot[CH2O]/d[CH2O] */
+    dqdci =  - k_r*sc[1];
+    J[613] += 1 * dqdci;          /* dwdot[H]/d[CH2O] */
+    J[616] += -1 * dqdci;         /* dwdot[OH]/d[CH2O] */
+    J[622] += -1 * dqdci;         /* dwdot[CH2]/d[CH2O] */
+    J[629] += 1 * dqdci;          /* dwdot[CH2O]/d[CH2O] */
     /* d()/dT */
     J[1261] += 1 * dqdT;          /* dwdot[H]/dT */
     J[1264] += -1 * dqdT;         /* dwdot[OH]/dT */
@@ -22577,30 +22685,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[5] += q; /* H2O */
     wdot[9] += q; /* CH */
     wdot[10] -= q; /* CH2 */
-    dqdc[4] =  + k_f*sc[10];
-    dqdc[5] =  - k_r*sc[9];
-    dqdc[9] =  - k_r*sc[5];
-    dqdc[10] =  + k_f*sc[4];
     /* d()/d[OH] */
-    J[148] += -1 * dqdc[4];       /* dwdot[OH]/d[OH] */
-    J[149] += 1 * dqdc[4];        /* dwdot[H2O]/d[OH] */
-    J[153] += 1 * dqdc[4];        /* dwdot[CH]/d[OH] */
-    J[154] += -1 * dqdc[4];       /* dwdot[CH2]/d[OH] */
+    dqdci =  + k_f*sc[10];
+    J[148] += -1 * dqdci;         /* dwdot[OH]/d[OH] */
+    J[149] += 1 * dqdci;          /* dwdot[H2O]/d[OH] */
+    J[153] += 1 * dqdci;          /* dwdot[CH]/d[OH] */
+    J[154] += -1 * dqdci;         /* dwdot[CH2]/d[OH] */
     /* d()/d[H2O] */
-    J[184] += -1 * dqdc[5];       /* dwdot[OH]/d[H2O] */
-    J[185] += 1 * dqdc[5];        /* dwdot[H2O]/d[H2O] */
-    J[189] += 1 * dqdc[5];        /* dwdot[CH]/d[H2O] */
-    J[190] += -1 * dqdc[5];       /* dwdot[CH2]/d[H2O] */
+    dqdci =  - k_r*sc[9];
+    J[184] += -1 * dqdci;         /* dwdot[OH]/d[H2O] */
+    J[185] += 1 * dqdci;          /* dwdot[H2O]/d[H2O] */
+    J[189] += 1 * dqdci;          /* dwdot[CH]/d[H2O] */
+    J[190] += -1 * dqdci;         /* dwdot[CH2]/d[H2O] */
     /* d()/d[CH] */
-    J[328] += -1 * dqdc[9];       /* dwdot[OH]/d[CH] */
-    J[329] += 1 * dqdc[9];        /* dwdot[H2O]/d[CH] */
-    J[333] += 1 * dqdc[9];        /* dwdot[CH]/d[CH] */
-    J[334] += -1 * dqdc[9];       /* dwdot[CH2]/d[CH] */
+    dqdci =  - k_r*sc[5];
+    J[328] += -1 * dqdci;         /* dwdot[OH]/d[CH] */
+    J[329] += 1 * dqdci;          /* dwdot[H2O]/d[CH] */
+    J[333] += 1 * dqdci;          /* dwdot[CH]/d[CH] */
+    J[334] += -1 * dqdci;         /* dwdot[CH2]/d[CH] */
     /* d()/d[CH2] */
-    J[364] += -1 * dqdc[10];      /* dwdot[OH]/d[CH2] */
-    J[365] += 1 * dqdc[10];       /* dwdot[H2O]/d[CH2] */
-    J[369] += 1 * dqdc[10];       /* dwdot[CH]/d[CH2] */
-    J[370] += -1 * dqdc[10];      /* dwdot[CH2]/d[CH2] */
+    dqdci =  + k_f*sc[4];
+    J[364] += -1 * dqdci;         /* dwdot[OH]/d[CH2] */
+    J[365] += 1 * dqdci;          /* dwdot[H2O]/d[CH2] */
+    J[369] += 1 * dqdci;          /* dwdot[CH]/d[CH2] */
+    J[370] += -1 * dqdci;         /* dwdot[CH2]/d[CH2] */
     /* d()/dT */
     J[1264] += -1 * dqdT;         /* dwdot[OH]/dT */
     J[1265] += 1 * dqdT;          /* dwdot[H2O]/dT */
@@ -22627,30 +22735,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[4] -= q; /* OH */
     wdot[11] -= q; /* CH2(S) */
     wdot[17] += q; /* CH2O */
-    dqdc[1] =  - k_r*sc[17];
-    dqdc[4] =  + k_f*sc[11];
-    dqdc[11] =  + k_f*sc[4];
-    dqdc[17] =  - k_r*sc[1];
     /* d()/d[H] */
-    J[37] += 1 * dqdc[1];         /* dwdot[H]/d[H] */
-    J[40] += -1 * dqdc[1];        /* dwdot[OH]/d[H] */
-    J[47] += -1 * dqdc[1];        /* dwdot[CH2(S)]/d[H] */
-    J[53] += 1 * dqdc[1];         /* dwdot[CH2O]/d[H] */
+    dqdci =  - k_r*sc[17];
+    J[37] += 1 * dqdci;           /* dwdot[H]/d[H] */
+    J[40] += -1 * dqdci;          /* dwdot[OH]/d[H] */
+    J[47] += -1 * dqdci;          /* dwdot[CH2(S)]/d[H] */
+    J[53] += 1 * dqdci;           /* dwdot[CH2O]/d[H] */
     /* d()/d[OH] */
-    J[145] += 1 * dqdc[4];        /* dwdot[H]/d[OH] */
-    J[148] += -1 * dqdc[4];       /* dwdot[OH]/d[OH] */
-    J[155] += -1 * dqdc[4];       /* dwdot[CH2(S)]/d[OH] */
-    J[161] += 1 * dqdc[4];        /* dwdot[CH2O]/d[OH] */
+    dqdci =  + k_f*sc[11];
+    J[145] += 1 * dqdci;          /* dwdot[H]/d[OH] */
+    J[148] += -1 * dqdci;         /* dwdot[OH]/d[OH] */
+    J[155] += -1 * dqdci;         /* dwdot[CH2(S)]/d[OH] */
+    J[161] += 1 * dqdci;          /* dwdot[CH2O]/d[OH] */
     /* d()/d[CH2(S)] */
-    J[397] += 1 * dqdc[11];       /* dwdot[H]/d[CH2(S)] */
-    J[400] += -1 * dqdc[11];      /* dwdot[OH]/d[CH2(S)] */
-    J[407] += -1 * dqdc[11];      /* dwdot[CH2(S)]/d[CH2(S)] */
-    J[413] += 1 * dqdc[11];       /* dwdot[CH2O]/d[CH2(S)] */
+    dqdci =  + k_f*sc[4];
+    J[397] += 1 * dqdci;          /* dwdot[H]/d[CH2(S)] */
+    J[400] += -1 * dqdci;         /* dwdot[OH]/d[CH2(S)] */
+    J[407] += -1 * dqdci;         /* dwdot[CH2(S)]/d[CH2(S)] */
+    J[413] += 1 * dqdci;          /* dwdot[CH2O]/d[CH2(S)] */
     /* d()/d[CH2O] */
-    J[613] += 1 * dqdc[17];       /* dwdot[H]/d[CH2O] */
-    J[616] += -1 * dqdc[17];      /* dwdot[OH]/d[CH2O] */
-    J[623] += -1 * dqdc[17];      /* dwdot[CH2(S)]/d[CH2O] */
-    J[629] += 1 * dqdc[17];       /* dwdot[CH2O]/d[CH2O] */
+    dqdci =  - k_r*sc[1];
+    J[613] += 1 * dqdci;          /* dwdot[H]/d[CH2O] */
+    J[616] += -1 * dqdci;         /* dwdot[OH]/d[CH2O] */
+    J[623] += -1 * dqdci;         /* dwdot[CH2(S)]/d[CH2O] */
+    J[629] += 1 * dqdci;          /* dwdot[CH2O]/d[CH2O] */
     /* d()/dT */
     J[1261] += 1 * dqdT;          /* dwdot[H]/dT */
     J[1264] += -1 * dqdT;         /* dwdot[OH]/dT */
@@ -22687,9 +22795,9 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     troe = 1.0 / (1.0 + troePr*troePr);
     F = pow(10.0, logFcent * troe);
     dlogFcentdT = log10e/Fcent*(Fcent1*-0.00512821 + Fcent2*-0.000169492 + Fcent3*6394*invT2);
-    dlogFdcn_fac = logFcent * troe*troe * troePr * troePr_den;
+    dlogFdcn_fac = 2.0 * logFcent * troe*troe * troePr * troePr_den;
     dlogFdc = -troe_n * dlogFdcn_fac * troePr_den;
-    dlogFdn = 2. * dlogFdcn_fac * troePr;
+    dlogFdn = dlogFdcn_fac * troePr;
     dlogFdlogPr = dlogFdc;
     dlogFdT = dlogFcentdT*(troe - 0.67*dlogFdc - 1.27*dlogFdn) + dlogFdlogPr * dlogPrdT;
     /* reverse */
@@ -22713,41 +22821,51 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     k_r *= Corr;
     dcdc_fac = q/alpha*(1.0/(Pr+1.0) + dlogFdlogPr);
     if (consP) {
-        dqdc[0] =  1*dcdc_fac;
-        dqdc[1] =  0.0;
-        dqdc[2] =  0.0;
-        dqdc[3] =  0.0;
-        dqdc[4] =  0.0 + k_f*sc[12];
-        dqdc[5] =  5*dcdc_fac;
-        dqdc[6] =  0.0;
-        dqdc[7] =  0.0;
-        dqdc[8] =  0.0;
-        dqdc[9] =  0.0;
-        dqdc[10] =  0.0;
-        dqdc[11] =  0.0;
-        dqdc[12] =  0.0 + k_f*sc[4];
-        dqdc[13] =  1*dcdc_fac;
-        dqdc[14] =  0.5*dcdc_fac;
-        dqdc[15] =  1*dcdc_fac;
-        dqdc[16] =  0.0;
-        dqdc[17] =  0.0;
-        dqdc[18] =  0.0;
-        dqdc[19] =  0.0;
-        dqdc[20] =  0.0 - k_r;
-        dqdc[21] =  0.0;
-        dqdc[22] =  0.0;
-        dqdc[23] =  0.0;
-        dqdc[24] =  0.0;
-        dqdc[25] =  0.0;
-        dqdc[26] =  2*dcdc_fac;
-        dqdc[27] =  0.0;
-        dqdc[28] =  0.0;
-        dqdc[29] =  0.0;
-        dqdc[30] =  0.0;
-        dqdc[31] =  0.0;
-        dqdc[32] =  0.0;
-        dqdc[33] =  0.0;
-        dqdc[34] =  0.0;
+        /* d()/d[H2] */
+        dqdci =  1*dcdc_fac;
+        J[4] += -1 * dqdci;           /* dwdot[OH]/d[H2] */
+        J[12] += -1 * dqdci;          /* dwdot[CH3]/d[H2] */
+        J[20] += 1 * dqdci;           /* dwdot[CH3OH]/d[H2] */
+        /* d()/d[OH] */
+        dqdci =  + k_f*sc[12];
+        J[148] += -1 * dqdci;         /* dwdot[OH]/d[OH] */
+        J[156] += -1 * dqdci;         /* dwdot[CH3]/d[OH] */
+        J[164] += 1 * dqdci;          /* dwdot[CH3OH]/d[OH] */
+        /* d()/d[H2O] */
+        dqdci =  5*dcdc_fac;
+        J[184] += -1 * dqdci;         /* dwdot[OH]/d[H2O] */
+        J[192] += -1 * dqdci;         /* dwdot[CH3]/d[H2O] */
+        J[200] += 1 * dqdci;          /* dwdot[CH3OH]/d[H2O] */
+        /* d()/d[CH3] */
+        dqdci =  + k_f*sc[4];
+        J[436] += -1 * dqdci;         /* dwdot[OH]/d[CH3] */
+        J[444] += -1 * dqdci;         /* dwdot[CH3]/d[CH3] */
+        J[452] += 1 * dqdci;          /* dwdot[CH3OH]/d[CH3] */
+        /* d()/d[CH4] */
+        dqdci =  1*dcdc_fac;
+        J[472] += -1 * dqdci;         /* dwdot[OH]/d[CH4] */
+        J[480] += -1 * dqdci;         /* dwdot[CH3]/d[CH4] */
+        J[488] += 1 * dqdci;          /* dwdot[CH3OH]/d[CH4] */
+        /* d()/d[CO] */
+        dqdci =  0.5*dcdc_fac;
+        J[508] += -1 * dqdci;         /* dwdot[OH]/d[CO] */
+        J[516] += -1 * dqdci;         /* dwdot[CH3]/d[CO] */
+        J[524] += 1 * dqdci;          /* dwdot[CH3OH]/d[CO] */
+        /* d()/d[CO2] */
+        dqdci =  1*dcdc_fac;
+        J[544] += -1 * dqdci;         /* dwdot[OH]/d[CO2] */
+        J[552] += -1 * dqdci;         /* dwdot[CH3]/d[CO2] */
+        J[560] += 1 * dqdci;          /* dwdot[CH3OH]/d[CO2] */
+        /* d()/d[CH3OH] */
+        dqdci =  - k_r;
+        J[724] += -1 * dqdci;         /* dwdot[OH]/d[CH3OH] */
+        J[732] += -1 * dqdci;         /* dwdot[CH3]/d[CH3OH] */
+        J[740] += 1 * dqdci;          /* dwdot[CH3OH]/d[CH3OH] */
+        /* d()/d[C2H6] */
+        dqdci =  2*dcdc_fac;
+        J[940] += -1 * dqdci;         /* dwdot[OH]/d[C2H6] */
+        J[948] += -1 * dqdci;         /* dwdot[CH3]/d[C2H6] */
+        J[956] += 1 * dqdci;          /* dwdot[CH3OH]/d[C2H6] */
     }
     else {
         dqdc[0] =  2*dcdc_fac;
@@ -22785,11 +22903,11 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
         dqdc[32] =  1*dcdc_fac;
         dqdc[33] =  1*dcdc_fac;
         dqdc[34] =  1*dcdc_fac;
-    }
-    for (int k=0; k<35; k++) {
-        J[36*k+4] += -1 * dqdc[k];
-        J[36*k+12] += -1 * dqdc[k];
-        J[36*k+20] += 1 * dqdc[k];
+        for (int k=0; k<35; k++) {
+            J[36*k+4] += -1 * dqdc[k];
+            J[36*k+12] += -1 * dqdc[k];
+            J[36*k+20] += 1 * dqdc[k];
+        }
     }
     J[1264] += -1 * dqdT; /* dwdot[OH]/dT */
     J[1272] += -1 * dqdT; /* dwdot[CH3]/dT */
@@ -22815,30 +22933,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[5] += q; /* H2O */
     wdot[10] += q; /* CH2 */
     wdot[12] -= q; /* CH3 */
-    dqdc[4] =  + k_f*sc[12];
-    dqdc[5] =  - k_r*sc[10];
-    dqdc[10] =  - k_r*sc[5];
-    dqdc[12] =  + k_f*sc[4];
     /* d()/d[OH] */
-    J[148] += -1 * dqdc[4];       /* dwdot[OH]/d[OH] */
-    J[149] += 1 * dqdc[4];        /* dwdot[H2O]/d[OH] */
-    J[154] += 1 * dqdc[4];        /* dwdot[CH2]/d[OH] */
-    J[156] += -1 * dqdc[4];       /* dwdot[CH3]/d[OH] */
+    dqdci =  + k_f*sc[12];
+    J[148] += -1 * dqdci;         /* dwdot[OH]/d[OH] */
+    J[149] += 1 * dqdci;          /* dwdot[H2O]/d[OH] */
+    J[154] += 1 * dqdci;          /* dwdot[CH2]/d[OH] */
+    J[156] += -1 * dqdci;         /* dwdot[CH3]/d[OH] */
     /* d()/d[H2O] */
-    J[184] += -1 * dqdc[5];       /* dwdot[OH]/d[H2O] */
-    J[185] += 1 * dqdc[5];        /* dwdot[H2O]/d[H2O] */
-    J[190] += 1 * dqdc[5];        /* dwdot[CH2]/d[H2O] */
-    J[192] += -1 * dqdc[5];       /* dwdot[CH3]/d[H2O] */
+    dqdci =  - k_r*sc[10];
+    J[184] += -1 * dqdci;         /* dwdot[OH]/d[H2O] */
+    J[185] += 1 * dqdci;          /* dwdot[H2O]/d[H2O] */
+    J[190] += 1 * dqdci;          /* dwdot[CH2]/d[H2O] */
+    J[192] += -1 * dqdci;         /* dwdot[CH3]/d[H2O] */
     /* d()/d[CH2] */
-    J[364] += -1 * dqdc[10];      /* dwdot[OH]/d[CH2] */
-    J[365] += 1 * dqdc[10];       /* dwdot[H2O]/d[CH2] */
-    J[370] += 1 * dqdc[10];       /* dwdot[CH2]/d[CH2] */
-    J[372] += -1 * dqdc[10];      /* dwdot[CH3]/d[CH2] */
+    dqdci =  - k_r*sc[5];
+    J[364] += -1 * dqdci;         /* dwdot[OH]/d[CH2] */
+    J[365] += 1 * dqdci;          /* dwdot[H2O]/d[CH2] */
+    J[370] += 1 * dqdci;          /* dwdot[CH2]/d[CH2] */
+    J[372] += -1 * dqdci;         /* dwdot[CH3]/d[CH2] */
     /* d()/d[CH3] */
-    J[436] += -1 * dqdc[12];      /* dwdot[OH]/d[CH3] */
-    J[437] += 1 * dqdc[12];       /* dwdot[H2O]/d[CH3] */
-    J[442] += 1 * dqdc[12];       /* dwdot[CH2]/d[CH3] */
-    J[444] += -1 * dqdc[12];      /* dwdot[CH3]/d[CH3] */
+    dqdci =  + k_f*sc[4];
+    J[436] += -1 * dqdci;         /* dwdot[OH]/d[CH3] */
+    J[437] += 1 * dqdci;          /* dwdot[H2O]/d[CH3] */
+    J[442] += 1 * dqdci;          /* dwdot[CH2]/d[CH3] */
+    J[444] += -1 * dqdci;         /* dwdot[CH3]/d[CH3] */
     /* d()/dT */
     J[1264] += -1 * dqdT;         /* dwdot[OH]/dT */
     J[1265] += 1 * dqdT;          /* dwdot[H2O]/dT */
@@ -22865,30 +22983,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[5] += q; /* H2O */
     wdot[11] += q; /* CH2(S) */
     wdot[12] -= q; /* CH3 */
-    dqdc[4] =  + k_f*sc[12];
-    dqdc[5] =  - k_r*sc[11];
-    dqdc[11] =  - k_r*sc[5];
-    dqdc[12] =  + k_f*sc[4];
     /* d()/d[OH] */
-    J[148] += -1 * dqdc[4];       /* dwdot[OH]/d[OH] */
-    J[149] += 1 * dqdc[4];        /* dwdot[H2O]/d[OH] */
-    J[155] += 1 * dqdc[4];        /* dwdot[CH2(S)]/d[OH] */
-    J[156] += -1 * dqdc[4];       /* dwdot[CH3]/d[OH] */
+    dqdci =  + k_f*sc[12];
+    J[148] += -1 * dqdci;         /* dwdot[OH]/d[OH] */
+    J[149] += 1 * dqdci;          /* dwdot[H2O]/d[OH] */
+    J[155] += 1 * dqdci;          /* dwdot[CH2(S)]/d[OH] */
+    J[156] += -1 * dqdci;         /* dwdot[CH3]/d[OH] */
     /* d()/d[H2O] */
-    J[184] += -1 * dqdc[5];       /* dwdot[OH]/d[H2O] */
-    J[185] += 1 * dqdc[5];        /* dwdot[H2O]/d[H2O] */
-    J[191] += 1 * dqdc[5];        /* dwdot[CH2(S)]/d[H2O] */
-    J[192] += -1 * dqdc[5];       /* dwdot[CH3]/d[H2O] */
+    dqdci =  - k_r*sc[11];
+    J[184] += -1 * dqdci;         /* dwdot[OH]/d[H2O] */
+    J[185] += 1 * dqdci;          /* dwdot[H2O]/d[H2O] */
+    J[191] += 1 * dqdci;          /* dwdot[CH2(S)]/d[H2O] */
+    J[192] += -1 * dqdci;         /* dwdot[CH3]/d[H2O] */
     /* d()/d[CH2(S)] */
-    J[400] += -1 * dqdc[11];      /* dwdot[OH]/d[CH2(S)] */
-    J[401] += 1 * dqdc[11];       /* dwdot[H2O]/d[CH2(S)] */
-    J[407] += 1 * dqdc[11];       /* dwdot[CH2(S)]/d[CH2(S)] */
-    J[408] += -1 * dqdc[11];      /* dwdot[CH3]/d[CH2(S)] */
+    dqdci =  - k_r*sc[5];
+    J[400] += -1 * dqdci;         /* dwdot[OH]/d[CH2(S)] */
+    J[401] += 1 * dqdci;          /* dwdot[H2O]/d[CH2(S)] */
+    J[407] += 1 * dqdci;          /* dwdot[CH2(S)]/d[CH2(S)] */
+    J[408] += -1 * dqdci;         /* dwdot[CH3]/d[CH2(S)] */
     /* d()/d[CH3] */
-    J[436] += -1 * dqdc[12];      /* dwdot[OH]/d[CH3] */
-    J[437] += 1 * dqdc[12];       /* dwdot[H2O]/d[CH3] */
-    J[443] += 1 * dqdc[12];       /* dwdot[CH2(S)]/d[CH3] */
-    J[444] += -1 * dqdc[12];      /* dwdot[CH3]/d[CH3] */
+    dqdci =  + k_f*sc[4];
+    J[436] += -1 * dqdci;         /* dwdot[OH]/d[CH3] */
+    J[437] += 1 * dqdci;          /* dwdot[H2O]/d[CH3] */
+    J[443] += 1 * dqdci;          /* dwdot[CH2(S)]/d[CH3] */
+    J[444] += -1 * dqdci;         /* dwdot[CH3]/d[CH3] */
     /* d()/dT */
     J[1264] += -1 * dqdT;         /* dwdot[OH]/dT */
     J[1265] += 1 * dqdT;          /* dwdot[H2O]/dT */
@@ -22915,30 +23033,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[5] += q; /* H2O */
     wdot[12] += q; /* CH3 */
     wdot[13] -= q; /* CH4 */
-    dqdc[4] =  + k_f*sc[13];
-    dqdc[5] =  - k_r*sc[12];
-    dqdc[12] =  - k_r*sc[5];
-    dqdc[13] =  + k_f*sc[4];
     /* d()/d[OH] */
-    J[148] += -1 * dqdc[4];       /* dwdot[OH]/d[OH] */
-    J[149] += 1 * dqdc[4];        /* dwdot[H2O]/d[OH] */
-    J[156] += 1 * dqdc[4];        /* dwdot[CH3]/d[OH] */
-    J[157] += -1 * dqdc[4];       /* dwdot[CH4]/d[OH] */
+    dqdci =  + k_f*sc[13];
+    J[148] += -1 * dqdci;         /* dwdot[OH]/d[OH] */
+    J[149] += 1 * dqdci;          /* dwdot[H2O]/d[OH] */
+    J[156] += 1 * dqdci;          /* dwdot[CH3]/d[OH] */
+    J[157] += -1 * dqdci;         /* dwdot[CH4]/d[OH] */
     /* d()/d[H2O] */
-    J[184] += -1 * dqdc[5];       /* dwdot[OH]/d[H2O] */
-    J[185] += 1 * dqdc[5];        /* dwdot[H2O]/d[H2O] */
-    J[192] += 1 * dqdc[5];        /* dwdot[CH3]/d[H2O] */
-    J[193] += -1 * dqdc[5];       /* dwdot[CH4]/d[H2O] */
+    dqdci =  - k_r*sc[12];
+    J[184] += -1 * dqdci;         /* dwdot[OH]/d[H2O] */
+    J[185] += 1 * dqdci;          /* dwdot[H2O]/d[H2O] */
+    J[192] += 1 * dqdci;          /* dwdot[CH3]/d[H2O] */
+    J[193] += -1 * dqdci;         /* dwdot[CH4]/d[H2O] */
     /* d()/d[CH3] */
-    J[436] += -1 * dqdc[12];      /* dwdot[OH]/d[CH3] */
-    J[437] += 1 * dqdc[12];       /* dwdot[H2O]/d[CH3] */
-    J[444] += 1 * dqdc[12];       /* dwdot[CH3]/d[CH3] */
-    J[445] += -1 * dqdc[12];      /* dwdot[CH4]/d[CH3] */
+    dqdci =  - k_r*sc[5];
+    J[436] += -1 * dqdci;         /* dwdot[OH]/d[CH3] */
+    J[437] += 1 * dqdci;          /* dwdot[H2O]/d[CH3] */
+    J[444] += 1 * dqdci;          /* dwdot[CH3]/d[CH3] */
+    J[445] += -1 * dqdci;         /* dwdot[CH4]/d[CH3] */
     /* d()/d[CH4] */
-    J[472] += -1 * dqdc[13];      /* dwdot[OH]/d[CH4] */
-    J[473] += 1 * dqdc[13];       /* dwdot[H2O]/d[CH4] */
-    J[480] += 1 * dqdc[13];       /* dwdot[CH3]/d[CH4] */
-    J[481] += -1 * dqdc[13];      /* dwdot[CH4]/d[CH4] */
+    dqdci =  + k_f*sc[4];
+    J[472] += -1 * dqdci;         /* dwdot[OH]/d[CH4] */
+    J[473] += 1 * dqdci;          /* dwdot[H2O]/d[CH4] */
+    J[480] += 1 * dqdci;          /* dwdot[CH3]/d[CH4] */
+    J[481] += -1 * dqdci;         /* dwdot[CH4]/d[CH4] */
     /* d()/dT */
     J[1264] += -1 * dqdT;         /* dwdot[OH]/dT */
     J[1265] += 1 * dqdT;          /* dwdot[H2O]/dT */
@@ -22965,30 +23083,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[4] -= q; /* OH */
     wdot[14] -= q; /* CO */
     wdot[15] += q; /* CO2 */
-    dqdc[1] =  - k_r*sc[15];
-    dqdc[4] =  + k_f*sc[14];
-    dqdc[14] =  + k_f*sc[4];
-    dqdc[15] =  - k_r*sc[1];
     /* d()/d[H] */
-    J[37] += 1 * dqdc[1];         /* dwdot[H]/d[H] */
-    J[40] += -1 * dqdc[1];        /* dwdot[OH]/d[H] */
-    J[50] += -1 * dqdc[1];        /* dwdot[CO]/d[H] */
-    J[51] += 1 * dqdc[1];         /* dwdot[CO2]/d[H] */
+    dqdci =  - k_r*sc[15];
+    J[37] += 1 * dqdci;           /* dwdot[H]/d[H] */
+    J[40] += -1 * dqdci;          /* dwdot[OH]/d[H] */
+    J[50] += -1 * dqdci;          /* dwdot[CO]/d[H] */
+    J[51] += 1 * dqdci;           /* dwdot[CO2]/d[H] */
     /* d()/d[OH] */
-    J[145] += 1 * dqdc[4];        /* dwdot[H]/d[OH] */
-    J[148] += -1 * dqdc[4];       /* dwdot[OH]/d[OH] */
-    J[158] += -1 * dqdc[4];       /* dwdot[CO]/d[OH] */
-    J[159] += 1 * dqdc[4];        /* dwdot[CO2]/d[OH] */
+    dqdci =  + k_f*sc[14];
+    J[145] += 1 * dqdci;          /* dwdot[H]/d[OH] */
+    J[148] += -1 * dqdci;         /* dwdot[OH]/d[OH] */
+    J[158] += -1 * dqdci;         /* dwdot[CO]/d[OH] */
+    J[159] += 1 * dqdci;          /* dwdot[CO2]/d[OH] */
     /* d()/d[CO] */
-    J[505] += 1 * dqdc[14];       /* dwdot[H]/d[CO] */
-    J[508] += -1 * dqdc[14];      /* dwdot[OH]/d[CO] */
-    J[518] += -1 * dqdc[14];      /* dwdot[CO]/d[CO] */
-    J[519] += 1 * dqdc[14];       /* dwdot[CO2]/d[CO] */
+    dqdci =  + k_f*sc[4];
+    J[505] += 1 * dqdci;          /* dwdot[H]/d[CO] */
+    J[508] += -1 * dqdci;         /* dwdot[OH]/d[CO] */
+    J[518] += -1 * dqdci;         /* dwdot[CO]/d[CO] */
+    J[519] += 1 * dqdci;          /* dwdot[CO2]/d[CO] */
     /* d()/d[CO2] */
-    J[541] += 1 * dqdc[15];       /* dwdot[H]/d[CO2] */
-    J[544] += -1 * dqdc[15];      /* dwdot[OH]/d[CO2] */
-    J[554] += -1 * dqdc[15];      /* dwdot[CO]/d[CO2] */
-    J[555] += 1 * dqdc[15];       /* dwdot[CO2]/d[CO2] */
+    dqdci =  - k_r*sc[1];
+    J[541] += 1 * dqdci;          /* dwdot[H]/d[CO2] */
+    J[544] += -1 * dqdci;         /* dwdot[OH]/d[CO2] */
+    J[554] += -1 * dqdci;         /* dwdot[CO]/d[CO2] */
+    J[555] += 1 * dqdci;          /* dwdot[CO2]/d[CO2] */
     /* d()/dT */
     J[1261] += 1 * dqdT;          /* dwdot[H]/dT */
     J[1264] += -1 * dqdT;         /* dwdot[OH]/dT */
@@ -23015,30 +23133,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[5] += q; /* H2O */
     wdot[14] += q; /* CO */
     wdot[16] -= q; /* HCO */
-    dqdc[4] =  + k_f*sc[16];
-    dqdc[5] =  - k_r*sc[14];
-    dqdc[14] =  - k_r*sc[5];
-    dqdc[16] =  + k_f*sc[4];
     /* d()/d[OH] */
-    J[148] += -1 * dqdc[4];       /* dwdot[OH]/d[OH] */
-    J[149] += 1 * dqdc[4];        /* dwdot[H2O]/d[OH] */
-    J[158] += 1 * dqdc[4];        /* dwdot[CO]/d[OH] */
-    J[160] += -1 * dqdc[4];       /* dwdot[HCO]/d[OH] */
+    dqdci =  + k_f*sc[16];
+    J[148] += -1 * dqdci;         /* dwdot[OH]/d[OH] */
+    J[149] += 1 * dqdci;          /* dwdot[H2O]/d[OH] */
+    J[158] += 1 * dqdci;          /* dwdot[CO]/d[OH] */
+    J[160] += -1 * dqdci;         /* dwdot[HCO]/d[OH] */
     /* d()/d[H2O] */
-    J[184] += -1 * dqdc[5];       /* dwdot[OH]/d[H2O] */
-    J[185] += 1 * dqdc[5];        /* dwdot[H2O]/d[H2O] */
-    J[194] += 1 * dqdc[5];        /* dwdot[CO]/d[H2O] */
-    J[196] += -1 * dqdc[5];       /* dwdot[HCO]/d[H2O] */
+    dqdci =  - k_r*sc[14];
+    J[184] += -1 * dqdci;         /* dwdot[OH]/d[H2O] */
+    J[185] += 1 * dqdci;          /* dwdot[H2O]/d[H2O] */
+    J[194] += 1 * dqdci;          /* dwdot[CO]/d[H2O] */
+    J[196] += -1 * dqdci;         /* dwdot[HCO]/d[H2O] */
     /* d()/d[CO] */
-    J[508] += -1 * dqdc[14];      /* dwdot[OH]/d[CO] */
-    J[509] += 1 * dqdc[14];       /* dwdot[H2O]/d[CO] */
-    J[518] += 1 * dqdc[14];       /* dwdot[CO]/d[CO] */
-    J[520] += -1 * dqdc[14];      /* dwdot[HCO]/d[CO] */
+    dqdci =  - k_r*sc[5];
+    J[508] += -1 * dqdci;         /* dwdot[OH]/d[CO] */
+    J[509] += 1 * dqdci;          /* dwdot[H2O]/d[CO] */
+    J[518] += 1 * dqdci;          /* dwdot[CO]/d[CO] */
+    J[520] += -1 * dqdci;         /* dwdot[HCO]/d[CO] */
     /* d()/d[HCO] */
-    J[580] += -1 * dqdc[16];      /* dwdot[OH]/d[HCO] */
-    J[581] += 1 * dqdc[16];       /* dwdot[H2O]/d[HCO] */
-    J[590] += 1 * dqdc[16];       /* dwdot[CO]/d[HCO] */
-    J[592] += -1 * dqdc[16];      /* dwdot[HCO]/d[HCO] */
+    dqdci =  + k_f*sc[4];
+    J[580] += -1 * dqdci;         /* dwdot[OH]/d[HCO] */
+    J[581] += 1 * dqdci;          /* dwdot[H2O]/d[HCO] */
+    J[590] += 1 * dqdci;          /* dwdot[CO]/d[HCO] */
+    J[592] += -1 * dqdci;         /* dwdot[HCO]/d[HCO] */
     /* d()/dT */
     J[1264] += -1 * dqdT;         /* dwdot[OH]/dT */
     J[1265] += 1 * dqdT;          /* dwdot[H2O]/dT */
@@ -23065,30 +23183,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[5] += q; /* H2O */
     wdot[16] += q; /* HCO */
     wdot[17] -= q; /* CH2O */
-    dqdc[4] =  + k_f*sc[17];
-    dqdc[5] =  - k_r*sc[16];
-    dqdc[16] =  - k_r*sc[5];
-    dqdc[17] =  + k_f*sc[4];
     /* d()/d[OH] */
-    J[148] += -1 * dqdc[4];       /* dwdot[OH]/d[OH] */
-    J[149] += 1 * dqdc[4];        /* dwdot[H2O]/d[OH] */
-    J[160] += 1 * dqdc[4];        /* dwdot[HCO]/d[OH] */
-    J[161] += -1 * dqdc[4];       /* dwdot[CH2O]/d[OH] */
+    dqdci =  + k_f*sc[17];
+    J[148] += -1 * dqdci;         /* dwdot[OH]/d[OH] */
+    J[149] += 1 * dqdci;          /* dwdot[H2O]/d[OH] */
+    J[160] += 1 * dqdci;          /* dwdot[HCO]/d[OH] */
+    J[161] += -1 * dqdci;         /* dwdot[CH2O]/d[OH] */
     /* d()/d[H2O] */
-    J[184] += -1 * dqdc[5];       /* dwdot[OH]/d[H2O] */
-    J[185] += 1 * dqdc[5];        /* dwdot[H2O]/d[H2O] */
-    J[196] += 1 * dqdc[5];        /* dwdot[HCO]/d[H2O] */
-    J[197] += -1 * dqdc[5];       /* dwdot[CH2O]/d[H2O] */
+    dqdci =  - k_r*sc[16];
+    J[184] += -1 * dqdci;         /* dwdot[OH]/d[H2O] */
+    J[185] += 1 * dqdci;          /* dwdot[H2O]/d[H2O] */
+    J[196] += 1 * dqdci;          /* dwdot[HCO]/d[H2O] */
+    J[197] += -1 * dqdci;         /* dwdot[CH2O]/d[H2O] */
     /* d()/d[HCO] */
-    J[580] += -1 * dqdc[16];      /* dwdot[OH]/d[HCO] */
-    J[581] += 1 * dqdc[16];       /* dwdot[H2O]/d[HCO] */
-    J[592] += 1 * dqdc[16];       /* dwdot[HCO]/d[HCO] */
-    J[593] += -1 * dqdc[16];      /* dwdot[CH2O]/d[HCO] */
+    dqdci =  - k_r*sc[5];
+    J[580] += -1 * dqdci;         /* dwdot[OH]/d[HCO] */
+    J[581] += 1 * dqdci;          /* dwdot[H2O]/d[HCO] */
+    J[592] += 1 * dqdci;          /* dwdot[HCO]/d[HCO] */
+    J[593] += -1 * dqdci;         /* dwdot[CH2O]/d[HCO] */
     /* d()/d[CH2O] */
-    J[616] += -1 * dqdc[17];      /* dwdot[OH]/d[CH2O] */
-    J[617] += 1 * dqdc[17];       /* dwdot[H2O]/d[CH2O] */
-    J[628] += 1 * dqdc[17];       /* dwdot[HCO]/d[CH2O] */
-    J[629] += -1 * dqdc[17];      /* dwdot[CH2O]/d[CH2O] */
+    dqdci =  + k_f*sc[4];
+    J[616] += -1 * dqdci;         /* dwdot[OH]/d[CH2O] */
+    J[617] += 1 * dqdci;          /* dwdot[H2O]/d[CH2O] */
+    J[628] += 1 * dqdci;          /* dwdot[HCO]/d[CH2O] */
+    J[629] += -1 * dqdci;         /* dwdot[CH2O]/d[CH2O] */
     /* d()/dT */
     J[1264] += -1 * dqdT;         /* dwdot[OH]/dT */
     J[1265] += 1 * dqdT;          /* dwdot[H2O]/dT */
@@ -23115,30 +23233,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[5] += q; /* H2O */
     wdot[17] += q; /* CH2O */
     wdot[18] -= q; /* CH2OH */
-    dqdc[4] =  + k_f*sc[18];
-    dqdc[5] =  - k_r*sc[17];
-    dqdc[17] =  - k_r*sc[5];
-    dqdc[18] =  + k_f*sc[4];
     /* d()/d[OH] */
-    J[148] += -1 * dqdc[4];       /* dwdot[OH]/d[OH] */
-    J[149] += 1 * dqdc[4];        /* dwdot[H2O]/d[OH] */
-    J[161] += 1 * dqdc[4];        /* dwdot[CH2O]/d[OH] */
-    J[162] += -1 * dqdc[4];       /* dwdot[CH2OH]/d[OH] */
+    dqdci =  + k_f*sc[18];
+    J[148] += -1 * dqdci;         /* dwdot[OH]/d[OH] */
+    J[149] += 1 * dqdci;          /* dwdot[H2O]/d[OH] */
+    J[161] += 1 * dqdci;          /* dwdot[CH2O]/d[OH] */
+    J[162] += -1 * dqdci;         /* dwdot[CH2OH]/d[OH] */
     /* d()/d[H2O] */
-    J[184] += -1 * dqdc[5];       /* dwdot[OH]/d[H2O] */
-    J[185] += 1 * dqdc[5];        /* dwdot[H2O]/d[H2O] */
-    J[197] += 1 * dqdc[5];        /* dwdot[CH2O]/d[H2O] */
-    J[198] += -1 * dqdc[5];       /* dwdot[CH2OH]/d[H2O] */
+    dqdci =  - k_r*sc[17];
+    J[184] += -1 * dqdci;         /* dwdot[OH]/d[H2O] */
+    J[185] += 1 * dqdci;          /* dwdot[H2O]/d[H2O] */
+    J[197] += 1 * dqdci;          /* dwdot[CH2O]/d[H2O] */
+    J[198] += -1 * dqdci;         /* dwdot[CH2OH]/d[H2O] */
     /* d()/d[CH2O] */
-    J[616] += -1 * dqdc[17];      /* dwdot[OH]/d[CH2O] */
-    J[617] += 1 * dqdc[17];       /* dwdot[H2O]/d[CH2O] */
-    J[629] += 1 * dqdc[17];       /* dwdot[CH2O]/d[CH2O] */
-    J[630] += -1 * dqdc[17];      /* dwdot[CH2OH]/d[CH2O] */
+    dqdci =  - k_r*sc[5];
+    J[616] += -1 * dqdci;         /* dwdot[OH]/d[CH2O] */
+    J[617] += 1 * dqdci;          /* dwdot[H2O]/d[CH2O] */
+    J[629] += 1 * dqdci;          /* dwdot[CH2O]/d[CH2O] */
+    J[630] += -1 * dqdci;         /* dwdot[CH2OH]/d[CH2O] */
     /* d()/d[CH2OH] */
-    J[652] += -1 * dqdc[18];      /* dwdot[OH]/d[CH2OH] */
-    J[653] += 1 * dqdc[18];       /* dwdot[H2O]/d[CH2OH] */
-    J[665] += 1 * dqdc[18];       /* dwdot[CH2O]/d[CH2OH] */
-    J[666] += -1 * dqdc[18];      /* dwdot[CH2OH]/d[CH2OH] */
+    dqdci =  + k_f*sc[4];
+    J[652] += -1 * dqdci;         /* dwdot[OH]/d[CH2OH] */
+    J[653] += 1 * dqdci;          /* dwdot[H2O]/d[CH2OH] */
+    J[665] += 1 * dqdci;          /* dwdot[CH2O]/d[CH2OH] */
+    J[666] += -1 * dqdci;         /* dwdot[CH2OH]/d[CH2OH] */
     /* d()/dT */
     J[1264] += -1 * dqdT;         /* dwdot[OH]/dT */
     J[1265] += 1 * dqdT;          /* dwdot[H2O]/dT */
@@ -23165,30 +23283,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[5] += q; /* H2O */
     wdot[17] += q; /* CH2O */
     wdot[19] -= q; /* CH3O */
-    dqdc[4] =  + k_f*sc[19];
-    dqdc[5] =  - k_r*sc[17];
-    dqdc[17] =  - k_r*sc[5];
-    dqdc[19] =  + k_f*sc[4];
     /* d()/d[OH] */
-    J[148] += -1 * dqdc[4];       /* dwdot[OH]/d[OH] */
-    J[149] += 1 * dqdc[4];        /* dwdot[H2O]/d[OH] */
-    J[161] += 1 * dqdc[4];        /* dwdot[CH2O]/d[OH] */
-    J[163] += -1 * dqdc[4];       /* dwdot[CH3O]/d[OH] */
+    dqdci =  + k_f*sc[19];
+    J[148] += -1 * dqdci;         /* dwdot[OH]/d[OH] */
+    J[149] += 1 * dqdci;          /* dwdot[H2O]/d[OH] */
+    J[161] += 1 * dqdci;          /* dwdot[CH2O]/d[OH] */
+    J[163] += -1 * dqdci;         /* dwdot[CH3O]/d[OH] */
     /* d()/d[H2O] */
-    J[184] += -1 * dqdc[5];       /* dwdot[OH]/d[H2O] */
-    J[185] += 1 * dqdc[5];        /* dwdot[H2O]/d[H2O] */
-    J[197] += 1 * dqdc[5];        /* dwdot[CH2O]/d[H2O] */
-    J[199] += -1 * dqdc[5];       /* dwdot[CH3O]/d[H2O] */
+    dqdci =  - k_r*sc[17];
+    J[184] += -1 * dqdci;         /* dwdot[OH]/d[H2O] */
+    J[185] += 1 * dqdci;          /* dwdot[H2O]/d[H2O] */
+    J[197] += 1 * dqdci;          /* dwdot[CH2O]/d[H2O] */
+    J[199] += -1 * dqdci;         /* dwdot[CH3O]/d[H2O] */
     /* d()/d[CH2O] */
-    J[616] += -1 * dqdc[17];      /* dwdot[OH]/d[CH2O] */
-    J[617] += 1 * dqdc[17];       /* dwdot[H2O]/d[CH2O] */
-    J[629] += 1 * dqdc[17];       /* dwdot[CH2O]/d[CH2O] */
-    J[631] += -1 * dqdc[17];      /* dwdot[CH3O]/d[CH2O] */
+    dqdci =  - k_r*sc[5];
+    J[616] += -1 * dqdci;         /* dwdot[OH]/d[CH2O] */
+    J[617] += 1 * dqdci;          /* dwdot[H2O]/d[CH2O] */
+    J[629] += 1 * dqdci;          /* dwdot[CH2O]/d[CH2O] */
+    J[631] += -1 * dqdci;         /* dwdot[CH3O]/d[CH2O] */
     /* d()/d[CH3O] */
-    J[688] += -1 * dqdc[19];      /* dwdot[OH]/d[CH3O] */
-    J[689] += 1 * dqdc[19];       /* dwdot[H2O]/d[CH3O] */
-    J[701] += 1 * dqdc[19];       /* dwdot[CH2O]/d[CH3O] */
-    J[703] += -1 * dqdc[19];      /* dwdot[CH3O]/d[CH3O] */
+    dqdci =  + k_f*sc[4];
+    J[688] += -1 * dqdci;         /* dwdot[OH]/d[CH3O] */
+    J[689] += 1 * dqdci;          /* dwdot[H2O]/d[CH3O] */
+    J[701] += 1 * dqdci;          /* dwdot[CH2O]/d[CH3O] */
+    J[703] += -1 * dqdci;         /* dwdot[CH3O]/d[CH3O] */
     /* d()/dT */
     J[1264] += -1 * dqdT;         /* dwdot[OH]/dT */
     J[1265] += 1 * dqdT;          /* dwdot[H2O]/dT */
@@ -23215,30 +23333,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[5] += q; /* H2O */
     wdot[18] += q; /* CH2OH */
     wdot[20] -= q; /* CH3OH */
-    dqdc[4] =  + k_f*sc[20];
-    dqdc[5] =  - k_r*sc[18];
-    dqdc[18] =  - k_r*sc[5];
-    dqdc[20] =  + k_f*sc[4];
     /* d()/d[OH] */
-    J[148] += -1 * dqdc[4];       /* dwdot[OH]/d[OH] */
-    J[149] += 1 * dqdc[4];        /* dwdot[H2O]/d[OH] */
-    J[162] += 1 * dqdc[4];        /* dwdot[CH2OH]/d[OH] */
-    J[164] += -1 * dqdc[4];       /* dwdot[CH3OH]/d[OH] */
+    dqdci =  + k_f*sc[20];
+    J[148] += -1 * dqdci;         /* dwdot[OH]/d[OH] */
+    J[149] += 1 * dqdci;          /* dwdot[H2O]/d[OH] */
+    J[162] += 1 * dqdci;          /* dwdot[CH2OH]/d[OH] */
+    J[164] += -1 * dqdci;         /* dwdot[CH3OH]/d[OH] */
     /* d()/d[H2O] */
-    J[184] += -1 * dqdc[5];       /* dwdot[OH]/d[H2O] */
-    J[185] += 1 * dqdc[5];        /* dwdot[H2O]/d[H2O] */
-    J[198] += 1 * dqdc[5];        /* dwdot[CH2OH]/d[H2O] */
-    J[200] += -1 * dqdc[5];       /* dwdot[CH3OH]/d[H2O] */
+    dqdci =  - k_r*sc[18];
+    J[184] += -1 * dqdci;         /* dwdot[OH]/d[H2O] */
+    J[185] += 1 * dqdci;          /* dwdot[H2O]/d[H2O] */
+    J[198] += 1 * dqdci;          /* dwdot[CH2OH]/d[H2O] */
+    J[200] += -1 * dqdci;         /* dwdot[CH3OH]/d[H2O] */
     /* d()/d[CH2OH] */
-    J[652] += -1 * dqdc[18];      /* dwdot[OH]/d[CH2OH] */
-    J[653] += 1 * dqdc[18];       /* dwdot[H2O]/d[CH2OH] */
-    J[666] += 1 * dqdc[18];       /* dwdot[CH2OH]/d[CH2OH] */
-    J[668] += -1 * dqdc[18];      /* dwdot[CH3OH]/d[CH2OH] */
+    dqdci =  - k_r*sc[5];
+    J[652] += -1 * dqdci;         /* dwdot[OH]/d[CH2OH] */
+    J[653] += 1 * dqdci;          /* dwdot[H2O]/d[CH2OH] */
+    J[666] += 1 * dqdci;          /* dwdot[CH2OH]/d[CH2OH] */
+    J[668] += -1 * dqdci;         /* dwdot[CH3OH]/d[CH2OH] */
     /* d()/d[CH3OH] */
-    J[724] += -1 * dqdc[20];      /* dwdot[OH]/d[CH3OH] */
-    J[725] += 1 * dqdc[20];       /* dwdot[H2O]/d[CH3OH] */
-    J[738] += 1 * dqdc[20];       /* dwdot[CH2OH]/d[CH3OH] */
-    J[740] += -1 * dqdc[20];      /* dwdot[CH3OH]/d[CH3OH] */
+    dqdci =  + k_f*sc[4];
+    J[724] += -1 * dqdci;         /* dwdot[OH]/d[CH3OH] */
+    J[725] += 1 * dqdci;          /* dwdot[H2O]/d[CH3OH] */
+    J[738] += 1 * dqdci;          /* dwdot[CH2OH]/d[CH3OH] */
+    J[740] += -1 * dqdci;         /* dwdot[CH3OH]/d[CH3OH] */
     /* d()/dT */
     J[1264] += -1 * dqdT;         /* dwdot[OH]/dT */
     J[1265] += 1 * dqdT;          /* dwdot[H2O]/dT */
@@ -23265,30 +23383,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[5] += q; /* H2O */
     wdot[19] += q; /* CH3O */
     wdot[20] -= q; /* CH3OH */
-    dqdc[4] =  + k_f*sc[20];
-    dqdc[5] =  - k_r*sc[19];
-    dqdc[19] =  - k_r*sc[5];
-    dqdc[20] =  + k_f*sc[4];
     /* d()/d[OH] */
-    J[148] += -1 * dqdc[4];       /* dwdot[OH]/d[OH] */
-    J[149] += 1 * dqdc[4];        /* dwdot[H2O]/d[OH] */
-    J[163] += 1 * dqdc[4];        /* dwdot[CH3O]/d[OH] */
-    J[164] += -1 * dqdc[4];       /* dwdot[CH3OH]/d[OH] */
+    dqdci =  + k_f*sc[20];
+    J[148] += -1 * dqdci;         /* dwdot[OH]/d[OH] */
+    J[149] += 1 * dqdci;          /* dwdot[H2O]/d[OH] */
+    J[163] += 1 * dqdci;          /* dwdot[CH3O]/d[OH] */
+    J[164] += -1 * dqdci;         /* dwdot[CH3OH]/d[OH] */
     /* d()/d[H2O] */
-    J[184] += -1 * dqdc[5];       /* dwdot[OH]/d[H2O] */
-    J[185] += 1 * dqdc[5];        /* dwdot[H2O]/d[H2O] */
-    J[199] += 1 * dqdc[5];        /* dwdot[CH3O]/d[H2O] */
-    J[200] += -1 * dqdc[5];       /* dwdot[CH3OH]/d[H2O] */
+    dqdci =  - k_r*sc[19];
+    J[184] += -1 * dqdci;         /* dwdot[OH]/d[H2O] */
+    J[185] += 1 * dqdci;          /* dwdot[H2O]/d[H2O] */
+    J[199] += 1 * dqdci;          /* dwdot[CH3O]/d[H2O] */
+    J[200] += -1 * dqdci;         /* dwdot[CH3OH]/d[H2O] */
     /* d()/d[CH3O] */
-    J[688] += -1 * dqdc[19];      /* dwdot[OH]/d[CH3O] */
-    J[689] += 1 * dqdc[19];       /* dwdot[H2O]/d[CH3O] */
-    J[703] += 1 * dqdc[19];       /* dwdot[CH3O]/d[CH3O] */
-    J[704] += -1 * dqdc[19];      /* dwdot[CH3OH]/d[CH3O] */
+    dqdci =  - k_r*sc[5];
+    J[688] += -1 * dqdci;         /* dwdot[OH]/d[CH3O] */
+    J[689] += 1 * dqdci;          /* dwdot[H2O]/d[CH3O] */
+    J[703] += 1 * dqdci;          /* dwdot[CH3O]/d[CH3O] */
+    J[704] += -1 * dqdci;         /* dwdot[CH3OH]/d[CH3O] */
     /* d()/d[CH3OH] */
-    J[724] += -1 * dqdc[20];      /* dwdot[OH]/d[CH3OH] */
-    J[725] += 1 * dqdc[20];       /* dwdot[H2O]/d[CH3OH] */
-    J[739] += 1 * dqdc[20];       /* dwdot[CH3O]/d[CH3OH] */
-    J[740] += -1 * dqdc[20];      /* dwdot[CH3OH]/d[CH3OH] */
+    dqdci =  + k_f*sc[4];
+    J[724] += -1 * dqdci;         /* dwdot[OH]/d[CH3OH] */
+    J[725] += 1 * dqdci;          /* dwdot[H2O]/d[CH3OH] */
+    J[739] += 1 * dqdci;          /* dwdot[CH3O]/d[CH3OH] */
+    J[740] += -1 * dqdci;         /* dwdot[CH3OH]/d[CH3OH] */
     /* d()/dT */
     J[1264] += -1 * dqdT;         /* dwdot[OH]/dT */
     J[1265] += 1 * dqdT;          /* dwdot[H2O]/dT */
@@ -23315,30 +23433,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[4] -= q; /* OH */
     wdot[21] -= q; /* C2H */
     wdot[27] += q; /* HCCO */
-    dqdc[1] =  - k_r*sc[27];
-    dqdc[4] =  + k_f*sc[21];
-    dqdc[21] =  + k_f*sc[4];
-    dqdc[27] =  - k_r*sc[1];
     /* d()/d[H] */
-    J[37] += 1 * dqdc[1];         /* dwdot[H]/d[H] */
-    J[40] += -1 * dqdc[1];        /* dwdot[OH]/d[H] */
-    J[57] += -1 * dqdc[1];        /* dwdot[C2H]/d[H] */
-    J[63] += 1 * dqdc[1];         /* dwdot[HCCO]/d[H] */
+    dqdci =  - k_r*sc[27];
+    J[37] += 1 * dqdci;           /* dwdot[H]/d[H] */
+    J[40] += -1 * dqdci;          /* dwdot[OH]/d[H] */
+    J[57] += -1 * dqdci;          /* dwdot[C2H]/d[H] */
+    J[63] += 1 * dqdci;           /* dwdot[HCCO]/d[H] */
     /* d()/d[OH] */
-    J[145] += 1 * dqdc[4];        /* dwdot[H]/d[OH] */
-    J[148] += -1 * dqdc[4];       /* dwdot[OH]/d[OH] */
-    J[165] += -1 * dqdc[4];       /* dwdot[C2H]/d[OH] */
-    J[171] += 1 * dqdc[4];        /* dwdot[HCCO]/d[OH] */
+    dqdci =  + k_f*sc[21];
+    J[145] += 1 * dqdci;          /* dwdot[H]/d[OH] */
+    J[148] += -1 * dqdci;         /* dwdot[OH]/d[OH] */
+    J[165] += -1 * dqdci;         /* dwdot[C2H]/d[OH] */
+    J[171] += 1 * dqdci;          /* dwdot[HCCO]/d[OH] */
     /* d()/d[C2H] */
-    J[757] += 1 * dqdc[21];       /* dwdot[H]/d[C2H] */
-    J[760] += -1 * dqdc[21];      /* dwdot[OH]/d[C2H] */
-    J[777] += -1 * dqdc[21];      /* dwdot[C2H]/d[C2H] */
-    J[783] += 1 * dqdc[21];       /* dwdot[HCCO]/d[C2H] */
+    dqdci =  + k_f*sc[4];
+    J[757] += 1 * dqdci;          /* dwdot[H]/d[C2H] */
+    J[760] += -1 * dqdci;         /* dwdot[OH]/d[C2H] */
+    J[777] += -1 * dqdci;         /* dwdot[C2H]/d[C2H] */
+    J[783] += 1 * dqdci;          /* dwdot[HCCO]/d[C2H] */
     /* d()/d[HCCO] */
-    J[973] += 1 * dqdc[27];       /* dwdot[H]/d[HCCO] */
-    J[976] += -1 * dqdc[27];      /* dwdot[OH]/d[HCCO] */
-    J[993] += -1 * dqdc[27];      /* dwdot[C2H]/d[HCCO] */
-    J[999] += 1 * dqdc[27];       /* dwdot[HCCO]/d[HCCO] */
+    dqdci =  - k_r*sc[1];
+    J[973] += 1 * dqdci;          /* dwdot[H]/d[HCCO] */
+    J[976] += -1 * dqdci;         /* dwdot[OH]/d[HCCO] */
+    J[993] += -1 * dqdci;         /* dwdot[C2H]/d[HCCO] */
+    J[999] += 1 * dqdci;          /* dwdot[HCCO]/d[HCCO] */
     /* d()/dT */
     J[1261] += 1 * dqdT;          /* dwdot[H]/dT */
     J[1264] += -1 * dqdT;         /* dwdot[OH]/dT */
@@ -23365,30 +23483,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[4] -= q; /* OH */
     wdot[22] -= q; /* C2H2 */
     wdot[28] += q; /* CH2CO */
-    dqdc[1] =  - k_r*sc[28];
-    dqdc[4] =  + k_f*sc[22];
-    dqdc[22] =  + k_f*sc[4];
-    dqdc[28] =  - k_r*sc[1];
     /* d()/d[H] */
-    J[37] += 1 * dqdc[1];         /* dwdot[H]/d[H] */
-    J[40] += -1 * dqdc[1];        /* dwdot[OH]/d[H] */
-    J[58] += -1 * dqdc[1];        /* dwdot[C2H2]/d[H] */
-    J[64] += 1 * dqdc[1];         /* dwdot[CH2CO]/d[H] */
+    dqdci =  - k_r*sc[28];
+    J[37] += 1 * dqdci;           /* dwdot[H]/d[H] */
+    J[40] += -1 * dqdci;          /* dwdot[OH]/d[H] */
+    J[58] += -1 * dqdci;          /* dwdot[C2H2]/d[H] */
+    J[64] += 1 * dqdci;           /* dwdot[CH2CO]/d[H] */
     /* d()/d[OH] */
-    J[145] += 1 * dqdc[4];        /* dwdot[H]/d[OH] */
-    J[148] += -1 * dqdc[4];       /* dwdot[OH]/d[OH] */
-    J[166] += -1 * dqdc[4];       /* dwdot[C2H2]/d[OH] */
-    J[172] += 1 * dqdc[4];        /* dwdot[CH2CO]/d[OH] */
+    dqdci =  + k_f*sc[22];
+    J[145] += 1 * dqdci;          /* dwdot[H]/d[OH] */
+    J[148] += -1 * dqdci;         /* dwdot[OH]/d[OH] */
+    J[166] += -1 * dqdci;         /* dwdot[C2H2]/d[OH] */
+    J[172] += 1 * dqdci;          /* dwdot[CH2CO]/d[OH] */
     /* d()/d[C2H2] */
-    J[793] += 1 * dqdc[22];       /* dwdot[H]/d[C2H2] */
-    J[796] += -1 * dqdc[22];      /* dwdot[OH]/d[C2H2] */
-    J[814] += -1 * dqdc[22];      /* dwdot[C2H2]/d[C2H2] */
-    J[820] += 1 * dqdc[22];       /* dwdot[CH2CO]/d[C2H2] */
+    dqdci =  + k_f*sc[4];
+    J[793] += 1 * dqdci;          /* dwdot[H]/d[C2H2] */
+    J[796] += -1 * dqdci;         /* dwdot[OH]/d[C2H2] */
+    J[814] += -1 * dqdci;         /* dwdot[C2H2]/d[C2H2] */
+    J[820] += 1 * dqdci;          /* dwdot[CH2CO]/d[C2H2] */
     /* d()/d[CH2CO] */
-    J[1009] += 1 * dqdc[28];      /* dwdot[H]/d[CH2CO] */
-    J[1012] += -1 * dqdc[28];     /* dwdot[OH]/d[CH2CO] */
-    J[1030] += -1 * dqdc[28];     /* dwdot[C2H2]/d[CH2CO] */
-    J[1036] += 1 * dqdc[28];      /* dwdot[CH2CO]/d[CH2CO] */
+    dqdci =  - k_r*sc[1];
+    J[1009] += 1 * dqdci;         /* dwdot[H]/d[CH2CO] */
+    J[1012] += -1 * dqdci;        /* dwdot[OH]/d[CH2CO] */
+    J[1030] += -1 * dqdci;        /* dwdot[C2H2]/d[CH2CO] */
+    J[1036] += 1 * dqdci;         /* dwdot[CH2CO]/d[CH2CO] */
     /* d()/dT */
     J[1261] += 1 * dqdT;          /* dwdot[H]/dT */
     J[1264] += -1 * dqdT;         /* dwdot[OH]/dT */
@@ -23415,30 +23533,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[4] -= q; /* OH */
     wdot[22] -= q; /* C2H2 */
     wdot[29] += q; /* HCCOH */
-    dqdc[1] =  - k_r*sc[29];
-    dqdc[4] =  + k_f*sc[22];
-    dqdc[22] =  + k_f*sc[4];
-    dqdc[29] =  - k_r*sc[1];
     /* d()/d[H] */
-    J[37] += 1 * dqdc[1];         /* dwdot[H]/d[H] */
-    J[40] += -1 * dqdc[1];        /* dwdot[OH]/d[H] */
-    J[58] += -1 * dqdc[1];        /* dwdot[C2H2]/d[H] */
-    J[65] += 1 * dqdc[1];         /* dwdot[HCCOH]/d[H] */
+    dqdci =  - k_r*sc[29];
+    J[37] += 1 * dqdci;           /* dwdot[H]/d[H] */
+    J[40] += -1 * dqdci;          /* dwdot[OH]/d[H] */
+    J[58] += -1 * dqdci;          /* dwdot[C2H2]/d[H] */
+    J[65] += 1 * dqdci;           /* dwdot[HCCOH]/d[H] */
     /* d()/d[OH] */
-    J[145] += 1 * dqdc[4];        /* dwdot[H]/d[OH] */
-    J[148] += -1 * dqdc[4];       /* dwdot[OH]/d[OH] */
-    J[166] += -1 * dqdc[4];       /* dwdot[C2H2]/d[OH] */
-    J[173] += 1 * dqdc[4];        /* dwdot[HCCOH]/d[OH] */
+    dqdci =  + k_f*sc[22];
+    J[145] += 1 * dqdci;          /* dwdot[H]/d[OH] */
+    J[148] += -1 * dqdci;         /* dwdot[OH]/d[OH] */
+    J[166] += -1 * dqdci;         /* dwdot[C2H2]/d[OH] */
+    J[173] += 1 * dqdci;          /* dwdot[HCCOH]/d[OH] */
     /* d()/d[C2H2] */
-    J[793] += 1 * dqdc[22];       /* dwdot[H]/d[C2H2] */
-    J[796] += -1 * dqdc[22];      /* dwdot[OH]/d[C2H2] */
-    J[814] += -1 * dqdc[22];      /* dwdot[C2H2]/d[C2H2] */
-    J[821] += 1 * dqdc[22];       /* dwdot[HCCOH]/d[C2H2] */
+    dqdci =  + k_f*sc[4];
+    J[793] += 1 * dqdci;          /* dwdot[H]/d[C2H2] */
+    J[796] += -1 * dqdci;         /* dwdot[OH]/d[C2H2] */
+    J[814] += -1 * dqdci;         /* dwdot[C2H2]/d[C2H2] */
+    J[821] += 1 * dqdci;          /* dwdot[HCCOH]/d[C2H2] */
     /* d()/d[HCCOH] */
-    J[1045] += 1 * dqdc[29];      /* dwdot[H]/d[HCCOH] */
-    J[1048] += -1 * dqdc[29];     /* dwdot[OH]/d[HCCOH] */
-    J[1066] += -1 * dqdc[29];     /* dwdot[C2H2]/d[HCCOH] */
-    J[1073] += 1 * dqdc[29];      /* dwdot[HCCOH]/d[HCCOH] */
+    dqdci =  - k_r*sc[1];
+    J[1045] += 1 * dqdci;         /* dwdot[H]/d[HCCOH] */
+    J[1048] += -1 * dqdci;        /* dwdot[OH]/d[HCCOH] */
+    J[1066] += -1 * dqdci;        /* dwdot[C2H2]/d[HCCOH] */
+    J[1073] += 1 * dqdci;         /* dwdot[HCCOH]/d[HCCOH] */
     /* d()/dT */
     J[1261] += 1 * dqdT;          /* dwdot[H]/dT */
     J[1264] += -1 * dqdT;         /* dwdot[OH]/dT */
@@ -23465,30 +23583,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[5] += q; /* H2O */
     wdot[21] += q; /* C2H */
     wdot[22] -= q; /* C2H2 */
-    dqdc[4] =  + k_f*sc[22];
-    dqdc[5] =  - k_r*sc[21];
-    dqdc[21] =  - k_r*sc[5];
-    dqdc[22] =  + k_f*sc[4];
     /* d()/d[OH] */
-    J[148] += -1 * dqdc[4];       /* dwdot[OH]/d[OH] */
-    J[149] += 1 * dqdc[4];        /* dwdot[H2O]/d[OH] */
-    J[165] += 1 * dqdc[4];        /* dwdot[C2H]/d[OH] */
-    J[166] += -1 * dqdc[4];       /* dwdot[C2H2]/d[OH] */
+    dqdci =  + k_f*sc[22];
+    J[148] += -1 * dqdci;         /* dwdot[OH]/d[OH] */
+    J[149] += 1 * dqdci;          /* dwdot[H2O]/d[OH] */
+    J[165] += 1 * dqdci;          /* dwdot[C2H]/d[OH] */
+    J[166] += -1 * dqdci;         /* dwdot[C2H2]/d[OH] */
     /* d()/d[H2O] */
-    J[184] += -1 * dqdc[5];       /* dwdot[OH]/d[H2O] */
-    J[185] += 1 * dqdc[5];        /* dwdot[H2O]/d[H2O] */
-    J[201] += 1 * dqdc[5];        /* dwdot[C2H]/d[H2O] */
-    J[202] += -1 * dqdc[5];       /* dwdot[C2H2]/d[H2O] */
+    dqdci =  - k_r*sc[21];
+    J[184] += -1 * dqdci;         /* dwdot[OH]/d[H2O] */
+    J[185] += 1 * dqdci;          /* dwdot[H2O]/d[H2O] */
+    J[201] += 1 * dqdci;          /* dwdot[C2H]/d[H2O] */
+    J[202] += -1 * dqdci;         /* dwdot[C2H2]/d[H2O] */
     /* d()/d[C2H] */
-    J[760] += -1 * dqdc[21];      /* dwdot[OH]/d[C2H] */
-    J[761] += 1 * dqdc[21];       /* dwdot[H2O]/d[C2H] */
-    J[777] += 1 * dqdc[21];       /* dwdot[C2H]/d[C2H] */
-    J[778] += -1 * dqdc[21];      /* dwdot[C2H2]/d[C2H] */
+    dqdci =  - k_r*sc[5];
+    J[760] += -1 * dqdci;         /* dwdot[OH]/d[C2H] */
+    J[761] += 1 * dqdci;          /* dwdot[H2O]/d[C2H] */
+    J[777] += 1 * dqdci;          /* dwdot[C2H]/d[C2H] */
+    J[778] += -1 * dqdci;         /* dwdot[C2H2]/d[C2H] */
     /* d()/d[C2H2] */
-    J[796] += -1 * dqdc[22];      /* dwdot[OH]/d[C2H2] */
-    J[797] += 1 * dqdc[22];       /* dwdot[H2O]/d[C2H2] */
-    J[813] += 1 * dqdc[22];       /* dwdot[C2H]/d[C2H2] */
-    J[814] += -1 * dqdc[22];      /* dwdot[C2H2]/d[C2H2] */
+    dqdci =  + k_f*sc[4];
+    J[796] += -1 * dqdci;         /* dwdot[OH]/d[C2H2] */
+    J[797] += 1 * dqdci;          /* dwdot[H2O]/d[C2H2] */
+    J[813] += 1 * dqdci;          /* dwdot[C2H]/d[C2H2] */
+    J[814] += -1 * dqdci;         /* dwdot[C2H2]/d[C2H2] */
     /* d()/dT */
     J[1264] += -1 * dqdT;         /* dwdot[OH]/dT */
     J[1265] += 1 * dqdT;          /* dwdot[H2O]/dT */
@@ -23515,30 +23633,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[12] += q; /* CH3 */
     wdot[14] += q; /* CO */
     wdot[22] -= q; /* C2H2 */
-    dqdc[4] =  + k_f*sc[22];
-    dqdc[12] =  - k_r*sc[14];
-    dqdc[14] =  - k_r*sc[12];
-    dqdc[22] =  + k_f*sc[4];
     /* d()/d[OH] */
-    J[148] += -1 * dqdc[4];       /* dwdot[OH]/d[OH] */
-    J[156] += 1 * dqdc[4];        /* dwdot[CH3]/d[OH] */
-    J[158] += 1 * dqdc[4];        /* dwdot[CO]/d[OH] */
-    J[166] += -1 * dqdc[4];       /* dwdot[C2H2]/d[OH] */
+    dqdci =  + k_f*sc[22];
+    J[148] += -1 * dqdci;         /* dwdot[OH]/d[OH] */
+    J[156] += 1 * dqdci;          /* dwdot[CH3]/d[OH] */
+    J[158] += 1 * dqdci;          /* dwdot[CO]/d[OH] */
+    J[166] += -1 * dqdci;         /* dwdot[C2H2]/d[OH] */
     /* d()/d[CH3] */
-    J[436] += -1 * dqdc[12];      /* dwdot[OH]/d[CH3] */
-    J[444] += 1 * dqdc[12];       /* dwdot[CH3]/d[CH3] */
-    J[446] += 1 * dqdc[12];       /* dwdot[CO]/d[CH3] */
-    J[454] += -1 * dqdc[12];      /* dwdot[C2H2]/d[CH3] */
+    dqdci =  - k_r*sc[14];
+    J[436] += -1 * dqdci;         /* dwdot[OH]/d[CH3] */
+    J[444] += 1 * dqdci;          /* dwdot[CH3]/d[CH3] */
+    J[446] += 1 * dqdci;          /* dwdot[CO]/d[CH3] */
+    J[454] += -1 * dqdci;         /* dwdot[C2H2]/d[CH3] */
     /* d()/d[CO] */
-    J[508] += -1 * dqdc[14];      /* dwdot[OH]/d[CO] */
-    J[516] += 1 * dqdc[14];       /* dwdot[CH3]/d[CO] */
-    J[518] += 1 * dqdc[14];       /* dwdot[CO]/d[CO] */
-    J[526] += -1 * dqdc[14];      /* dwdot[C2H2]/d[CO] */
+    dqdci =  - k_r*sc[12];
+    J[508] += -1 * dqdci;         /* dwdot[OH]/d[CO] */
+    J[516] += 1 * dqdci;          /* dwdot[CH3]/d[CO] */
+    J[518] += 1 * dqdci;          /* dwdot[CO]/d[CO] */
+    J[526] += -1 * dqdci;         /* dwdot[C2H2]/d[CO] */
     /* d()/d[C2H2] */
-    J[796] += -1 * dqdc[22];      /* dwdot[OH]/d[C2H2] */
-    J[804] += 1 * dqdc[22];       /* dwdot[CH3]/d[C2H2] */
-    J[806] += 1 * dqdc[22];       /* dwdot[CO]/d[C2H2] */
-    J[814] += -1 * dqdc[22];      /* dwdot[C2H2]/d[C2H2] */
+    dqdci =  + k_f*sc[4];
+    J[796] += -1 * dqdci;         /* dwdot[OH]/d[C2H2] */
+    J[804] += 1 * dqdci;          /* dwdot[CH3]/d[C2H2] */
+    J[806] += 1 * dqdci;          /* dwdot[CO]/d[C2H2] */
+    J[814] += -1 * dqdci;         /* dwdot[C2H2]/d[C2H2] */
     /* d()/dT */
     J[1264] += -1 * dqdT;         /* dwdot[OH]/dT */
     J[1272] += 1 * dqdT;          /* dwdot[CH3]/dT */
@@ -23565,30 +23683,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[5] += q; /* H2O */
     wdot[22] += q; /* C2H2 */
     wdot[23] -= q; /* C2H3 */
-    dqdc[4] =  + k_f*sc[23];
-    dqdc[5] =  - k_r*sc[22];
-    dqdc[22] =  - k_r*sc[5];
-    dqdc[23] =  + k_f*sc[4];
     /* d()/d[OH] */
-    J[148] += -1 * dqdc[4];       /* dwdot[OH]/d[OH] */
-    J[149] += 1 * dqdc[4];        /* dwdot[H2O]/d[OH] */
-    J[166] += 1 * dqdc[4];        /* dwdot[C2H2]/d[OH] */
-    J[167] += -1 * dqdc[4];       /* dwdot[C2H3]/d[OH] */
+    dqdci =  + k_f*sc[23];
+    J[148] += -1 * dqdci;         /* dwdot[OH]/d[OH] */
+    J[149] += 1 * dqdci;          /* dwdot[H2O]/d[OH] */
+    J[166] += 1 * dqdci;          /* dwdot[C2H2]/d[OH] */
+    J[167] += -1 * dqdci;         /* dwdot[C2H3]/d[OH] */
     /* d()/d[H2O] */
-    J[184] += -1 * dqdc[5];       /* dwdot[OH]/d[H2O] */
-    J[185] += 1 * dqdc[5];        /* dwdot[H2O]/d[H2O] */
-    J[202] += 1 * dqdc[5];        /* dwdot[C2H2]/d[H2O] */
-    J[203] += -1 * dqdc[5];       /* dwdot[C2H3]/d[H2O] */
+    dqdci =  - k_r*sc[22];
+    J[184] += -1 * dqdci;         /* dwdot[OH]/d[H2O] */
+    J[185] += 1 * dqdci;          /* dwdot[H2O]/d[H2O] */
+    J[202] += 1 * dqdci;          /* dwdot[C2H2]/d[H2O] */
+    J[203] += -1 * dqdci;         /* dwdot[C2H3]/d[H2O] */
     /* d()/d[C2H2] */
-    J[796] += -1 * dqdc[22];      /* dwdot[OH]/d[C2H2] */
-    J[797] += 1 * dqdc[22];       /* dwdot[H2O]/d[C2H2] */
-    J[814] += 1 * dqdc[22];       /* dwdot[C2H2]/d[C2H2] */
-    J[815] += -1 * dqdc[22];      /* dwdot[C2H3]/d[C2H2] */
+    dqdci =  - k_r*sc[5];
+    J[796] += -1 * dqdci;         /* dwdot[OH]/d[C2H2] */
+    J[797] += 1 * dqdci;          /* dwdot[H2O]/d[C2H2] */
+    J[814] += 1 * dqdci;          /* dwdot[C2H2]/d[C2H2] */
+    J[815] += -1 * dqdci;         /* dwdot[C2H3]/d[C2H2] */
     /* d()/d[C2H3] */
-    J[832] += -1 * dqdc[23];      /* dwdot[OH]/d[C2H3] */
-    J[833] += 1 * dqdc[23];       /* dwdot[H2O]/d[C2H3] */
-    J[850] += 1 * dqdc[23];       /* dwdot[C2H2]/d[C2H3] */
-    J[851] += -1 * dqdc[23];      /* dwdot[C2H3]/d[C2H3] */
+    dqdci =  + k_f*sc[4];
+    J[832] += -1 * dqdci;         /* dwdot[OH]/d[C2H3] */
+    J[833] += 1 * dqdci;          /* dwdot[H2O]/d[C2H3] */
+    J[850] += 1 * dqdci;          /* dwdot[C2H2]/d[C2H3] */
+    J[851] += -1 * dqdci;         /* dwdot[C2H3]/d[C2H3] */
     /* d()/dT */
     J[1264] += -1 * dqdT;         /* dwdot[OH]/dT */
     J[1265] += 1 * dqdT;          /* dwdot[H2O]/dT */
@@ -23615,30 +23733,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[5] += q; /* H2O */
     wdot[23] += q; /* C2H3 */
     wdot[24] -= q; /* C2H4 */
-    dqdc[4] =  + k_f*sc[24];
-    dqdc[5] =  - k_r*sc[23];
-    dqdc[23] =  - k_r*sc[5];
-    dqdc[24] =  + k_f*sc[4];
     /* d()/d[OH] */
-    J[148] += -1 * dqdc[4];       /* dwdot[OH]/d[OH] */
-    J[149] += 1 * dqdc[4];        /* dwdot[H2O]/d[OH] */
-    J[167] += 1 * dqdc[4];        /* dwdot[C2H3]/d[OH] */
-    J[168] += -1 * dqdc[4];       /* dwdot[C2H4]/d[OH] */
+    dqdci =  + k_f*sc[24];
+    J[148] += -1 * dqdci;         /* dwdot[OH]/d[OH] */
+    J[149] += 1 * dqdci;          /* dwdot[H2O]/d[OH] */
+    J[167] += 1 * dqdci;          /* dwdot[C2H3]/d[OH] */
+    J[168] += -1 * dqdci;         /* dwdot[C2H4]/d[OH] */
     /* d()/d[H2O] */
-    J[184] += -1 * dqdc[5];       /* dwdot[OH]/d[H2O] */
-    J[185] += 1 * dqdc[5];        /* dwdot[H2O]/d[H2O] */
-    J[203] += 1 * dqdc[5];        /* dwdot[C2H3]/d[H2O] */
-    J[204] += -1 * dqdc[5];       /* dwdot[C2H4]/d[H2O] */
+    dqdci =  - k_r*sc[23];
+    J[184] += -1 * dqdci;         /* dwdot[OH]/d[H2O] */
+    J[185] += 1 * dqdci;          /* dwdot[H2O]/d[H2O] */
+    J[203] += 1 * dqdci;          /* dwdot[C2H3]/d[H2O] */
+    J[204] += -1 * dqdci;         /* dwdot[C2H4]/d[H2O] */
     /* d()/d[C2H3] */
-    J[832] += -1 * dqdc[23];      /* dwdot[OH]/d[C2H3] */
-    J[833] += 1 * dqdc[23];       /* dwdot[H2O]/d[C2H3] */
-    J[851] += 1 * dqdc[23];       /* dwdot[C2H3]/d[C2H3] */
-    J[852] += -1 * dqdc[23];      /* dwdot[C2H4]/d[C2H3] */
+    dqdci =  - k_r*sc[5];
+    J[832] += -1 * dqdci;         /* dwdot[OH]/d[C2H3] */
+    J[833] += 1 * dqdci;          /* dwdot[H2O]/d[C2H3] */
+    J[851] += 1 * dqdci;          /* dwdot[C2H3]/d[C2H3] */
+    J[852] += -1 * dqdci;         /* dwdot[C2H4]/d[C2H3] */
     /* d()/d[C2H4] */
-    J[868] += -1 * dqdc[24];      /* dwdot[OH]/d[C2H4] */
-    J[869] += 1 * dqdc[24];       /* dwdot[H2O]/d[C2H4] */
-    J[887] += 1 * dqdc[24];       /* dwdot[C2H3]/d[C2H4] */
-    J[888] += -1 * dqdc[24];      /* dwdot[C2H4]/d[C2H4] */
+    dqdci =  + k_f*sc[4];
+    J[868] += -1 * dqdci;         /* dwdot[OH]/d[C2H4] */
+    J[869] += 1 * dqdci;          /* dwdot[H2O]/d[C2H4] */
+    J[887] += 1 * dqdci;          /* dwdot[C2H3]/d[C2H4] */
+    J[888] += -1 * dqdci;         /* dwdot[C2H4]/d[C2H4] */
     /* d()/dT */
     J[1264] += -1 * dqdT;         /* dwdot[OH]/dT */
     J[1265] += 1 * dqdT;          /* dwdot[H2O]/dT */
@@ -23665,30 +23783,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[5] += q; /* H2O */
     wdot[25] += q; /* C2H5 */
     wdot[26] -= q; /* C2H6 */
-    dqdc[4] =  + k_f*sc[26];
-    dqdc[5] =  - k_r*sc[25];
-    dqdc[25] =  - k_r*sc[5];
-    dqdc[26] =  + k_f*sc[4];
     /* d()/d[OH] */
-    J[148] += -1 * dqdc[4];       /* dwdot[OH]/d[OH] */
-    J[149] += 1 * dqdc[4];        /* dwdot[H2O]/d[OH] */
-    J[169] += 1 * dqdc[4];        /* dwdot[C2H5]/d[OH] */
-    J[170] += -1 * dqdc[4];       /* dwdot[C2H6]/d[OH] */
+    dqdci =  + k_f*sc[26];
+    J[148] += -1 * dqdci;         /* dwdot[OH]/d[OH] */
+    J[149] += 1 * dqdci;          /* dwdot[H2O]/d[OH] */
+    J[169] += 1 * dqdci;          /* dwdot[C2H5]/d[OH] */
+    J[170] += -1 * dqdci;         /* dwdot[C2H6]/d[OH] */
     /* d()/d[H2O] */
-    J[184] += -1 * dqdc[5];       /* dwdot[OH]/d[H2O] */
-    J[185] += 1 * dqdc[5];        /* dwdot[H2O]/d[H2O] */
-    J[205] += 1 * dqdc[5];        /* dwdot[C2H5]/d[H2O] */
-    J[206] += -1 * dqdc[5];       /* dwdot[C2H6]/d[H2O] */
+    dqdci =  - k_r*sc[25];
+    J[184] += -1 * dqdci;         /* dwdot[OH]/d[H2O] */
+    J[185] += 1 * dqdci;          /* dwdot[H2O]/d[H2O] */
+    J[205] += 1 * dqdci;          /* dwdot[C2H5]/d[H2O] */
+    J[206] += -1 * dqdci;         /* dwdot[C2H6]/d[H2O] */
     /* d()/d[C2H5] */
-    J[904] += -1 * dqdc[25];      /* dwdot[OH]/d[C2H5] */
-    J[905] += 1 * dqdc[25];       /* dwdot[H2O]/d[C2H5] */
-    J[925] += 1 * dqdc[25];       /* dwdot[C2H5]/d[C2H5] */
-    J[926] += -1 * dqdc[25];      /* dwdot[C2H6]/d[C2H5] */
+    dqdci =  - k_r*sc[5];
+    J[904] += -1 * dqdci;         /* dwdot[OH]/d[C2H5] */
+    J[905] += 1 * dqdci;          /* dwdot[H2O]/d[C2H5] */
+    J[925] += 1 * dqdci;          /* dwdot[C2H5]/d[C2H5] */
+    J[926] += -1 * dqdci;         /* dwdot[C2H6]/d[C2H5] */
     /* d()/d[C2H6] */
-    J[940] += -1 * dqdc[26];      /* dwdot[OH]/d[C2H6] */
-    J[941] += 1 * dqdc[26];       /* dwdot[H2O]/d[C2H6] */
-    J[961] += 1 * dqdc[26];       /* dwdot[C2H5]/d[C2H6] */
-    J[962] += -1 * dqdc[26];      /* dwdot[C2H6]/d[C2H6] */
+    dqdci =  + k_f*sc[4];
+    J[940] += -1 * dqdci;         /* dwdot[OH]/d[C2H6] */
+    J[941] += 1 * dqdci;          /* dwdot[H2O]/d[C2H6] */
+    J[961] += 1 * dqdci;          /* dwdot[C2H5]/d[C2H6] */
+    J[962] += -1 * dqdci;         /* dwdot[C2H6]/d[C2H6] */
     /* d()/dT */
     J[1264] += -1 * dqdT;         /* dwdot[OH]/dT */
     J[1265] += 1 * dqdT;          /* dwdot[H2O]/dT */
@@ -23715,30 +23833,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[5] += q; /* H2O */
     wdot[27] += q; /* HCCO */
     wdot[28] -= q; /* CH2CO */
-    dqdc[4] =  + k_f*sc[28];
-    dqdc[5] =  - k_r*sc[27];
-    dqdc[27] =  - k_r*sc[5];
-    dqdc[28] =  + k_f*sc[4];
     /* d()/d[OH] */
-    J[148] += -1 * dqdc[4];       /* dwdot[OH]/d[OH] */
-    J[149] += 1 * dqdc[4];        /* dwdot[H2O]/d[OH] */
-    J[171] += 1 * dqdc[4];        /* dwdot[HCCO]/d[OH] */
-    J[172] += -1 * dqdc[4];       /* dwdot[CH2CO]/d[OH] */
+    dqdci =  + k_f*sc[28];
+    J[148] += -1 * dqdci;         /* dwdot[OH]/d[OH] */
+    J[149] += 1 * dqdci;          /* dwdot[H2O]/d[OH] */
+    J[171] += 1 * dqdci;          /* dwdot[HCCO]/d[OH] */
+    J[172] += -1 * dqdci;         /* dwdot[CH2CO]/d[OH] */
     /* d()/d[H2O] */
-    J[184] += -1 * dqdc[5];       /* dwdot[OH]/d[H2O] */
-    J[185] += 1 * dqdc[5];        /* dwdot[H2O]/d[H2O] */
-    J[207] += 1 * dqdc[5];        /* dwdot[HCCO]/d[H2O] */
-    J[208] += -1 * dqdc[5];       /* dwdot[CH2CO]/d[H2O] */
+    dqdci =  - k_r*sc[27];
+    J[184] += -1 * dqdci;         /* dwdot[OH]/d[H2O] */
+    J[185] += 1 * dqdci;          /* dwdot[H2O]/d[H2O] */
+    J[207] += 1 * dqdci;          /* dwdot[HCCO]/d[H2O] */
+    J[208] += -1 * dqdci;         /* dwdot[CH2CO]/d[H2O] */
     /* d()/d[HCCO] */
-    J[976] += -1 * dqdc[27];      /* dwdot[OH]/d[HCCO] */
-    J[977] += 1 * dqdc[27];       /* dwdot[H2O]/d[HCCO] */
-    J[999] += 1 * dqdc[27];       /* dwdot[HCCO]/d[HCCO] */
-    J[1000] += -1 * dqdc[27];     /* dwdot[CH2CO]/d[HCCO] */
+    dqdci =  - k_r*sc[5];
+    J[976] += -1 * dqdci;         /* dwdot[OH]/d[HCCO] */
+    J[977] += 1 * dqdci;          /* dwdot[H2O]/d[HCCO] */
+    J[999] += 1 * dqdci;          /* dwdot[HCCO]/d[HCCO] */
+    J[1000] += -1 * dqdci;        /* dwdot[CH2CO]/d[HCCO] */
     /* d()/d[CH2CO] */
-    J[1012] += -1 * dqdc[28];     /* dwdot[OH]/d[CH2CO] */
-    J[1013] += 1 * dqdc[28];      /* dwdot[H2O]/d[CH2CO] */
-    J[1035] += 1 * dqdc[28];      /* dwdot[HCCO]/d[CH2CO] */
-    J[1036] += -1 * dqdc[28];     /* dwdot[CH2CO]/d[CH2CO] */
+    dqdci =  + k_f*sc[4];
+    J[1012] += -1 * dqdci;        /* dwdot[OH]/d[CH2CO] */
+    J[1013] += 1 * dqdci;         /* dwdot[H2O]/d[CH2CO] */
+    J[1035] += 1 * dqdci;         /* dwdot[HCCO]/d[CH2CO] */
+    J[1036] += -1 * dqdci;        /* dwdot[CH2CO]/d[CH2CO] */
     /* d()/dT */
     J[1264] += -1 * dqdT;         /* dwdot[OH]/dT */
     J[1265] += 1 * dqdT;          /* dwdot[H2O]/dT */
@@ -23764,21 +23882,21 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[3] += q; /* O2 */
     wdot[6] -= 2 * q; /* HO2 */
     wdot[7] += q; /* H2O2 */
-    dqdc[3] =  - k_r*sc[7];
-    dqdc[6] =  + k_f*2*sc[6];
-    dqdc[7] =  - k_r*sc[3];
     /* d()/d[O2] */
-    J[111] += 1 * dqdc[3];        /* dwdot[O2]/d[O2] */
-    J[114] += -2 * dqdc[3];       /* dwdot[HO2]/d[O2] */
-    J[115] += 1 * dqdc[3];        /* dwdot[H2O2]/d[O2] */
+    dqdci =  - k_r*sc[7];
+    J[111] += 1 * dqdci;          /* dwdot[O2]/d[O2] */
+    J[114] += -2 * dqdci;         /* dwdot[HO2]/d[O2] */
+    J[115] += 1 * dqdci;          /* dwdot[H2O2]/d[O2] */
     /* d()/d[HO2] */
-    J[219] += 1 * dqdc[6];        /* dwdot[O2]/d[HO2] */
-    J[222] += -2 * dqdc[6];       /* dwdot[HO2]/d[HO2] */
-    J[223] += 1 * dqdc[6];        /* dwdot[H2O2]/d[HO2] */
+    dqdci =  + k_f*2*sc[6];
+    J[219] += 1 * dqdci;          /* dwdot[O2]/d[HO2] */
+    J[222] += -2 * dqdci;         /* dwdot[HO2]/d[HO2] */
+    J[223] += 1 * dqdci;          /* dwdot[H2O2]/d[HO2] */
     /* d()/d[H2O2] */
-    J[255] += 1 * dqdc[7];        /* dwdot[O2]/d[H2O2] */
-    J[258] += -2 * dqdc[7];       /* dwdot[HO2]/d[H2O2] */
-    J[259] += 1 * dqdc[7];        /* dwdot[H2O2]/d[H2O2] */
+    dqdci =  - k_r*sc[3];
+    J[255] += 1 * dqdci;          /* dwdot[O2]/d[H2O2] */
+    J[258] += -2 * dqdci;         /* dwdot[HO2]/d[H2O2] */
+    J[259] += 1 * dqdci;          /* dwdot[H2O2]/d[H2O2] */
     /* d()/dT */
     J[1263] += 1 * dqdT;          /* dwdot[O2]/dT */
     J[1266] += -2 * dqdT;         /* dwdot[HO2]/dT */
@@ -23803,21 +23921,21 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[3] += q; /* O2 */
     wdot[6] -= 2 * q; /* HO2 */
     wdot[7] += q; /* H2O2 */
-    dqdc[3] =  - k_r*sc[7];
-    dqdc[6] =  + k_f*2*sc[6];
-    dqdc[7] =  - k_r*sc[3];
     /* d()/d[O2] */
-    J[111] += 1 * dqdc[3];        /* dwdot[O2]/d[O2] */
-    J[114] += -2 * dqdc[3];       /* dwdot[HO2]/d[O2] */
-    J[115] += 1 * dqdc[3];        /* dwdot[H2O2]/d[O2] */
+    dqdci =  - k_r*sc[7];
+    J[111] += 1 * dqdci;          /* dwdot[O2]/d[O2] */
+    J[114] += -2 * dqdci;         /* dwdot[HO2]/d[O2] */
+    J[115] += 1 * dqdci;          /* dwdot[H2O2]/d[O2] */
     /* d()/d[HO2] */
-    J[219] += 1 * dqdc[6];        /* dwdot[O2]/d[HO2] */
-    J[222] += -2 * dqdc[6];       /* dwdot[HO2]/d[HO2] */
-    J[223] += 1 * dqdc[6];        /* dwdot[H2O2]/d[HO2] */
+    dqdci =  + k_f*2*sc[6];
+    J[219] += 1 * dqdci;          /* dwdot[O2]/d[HO2] */
+    J[222] += -2 * dqdci;         /* dwdot[HO2]/d[HO2] */
+    J[223] += 1 * dqdci;          /* dwdot[H2O2]/d[HO2] */
     /* d()/d[H2O2] */
-    J[255] += 1 * dqdc[7];        /* dwdot[O2]/d[H2O2] */
-    J[258] += -2 * dqdc[7];       /* dwdot[HO2]/d[H2O2] */
-    J[259] += 1 * dqdc[7];        /* dwdot[H2O2]/d[H2O2] */
+    dqdci =  - k_r*sc[3];
+    J[255] += 1 * dqdci;          /* dwdot[O2]/d[H2O2] */
+    J[258] += -2 * dqdci;         /* dwdot[HO2]/d[H2O2] */
+    J[259] += 1 * dqdci;          /* dwdot[H2O2]/d[H2O2] */
     /* d()/dT */
     J[1263] += 1 * dqdT;          /* dwdot[O2]/dT */
     J[1266] += -2 * dqdT;         /* dwdot[HO2]/dT */
@@ -23843,30 +23961,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[6] -= q; /* HO2 */
     wdot[10] -= q; /* CH2 */
     wdot[17] += q; /* CH2O */
-    dqdc[4] =  - k_r*sc[17];
-    dqdc[6] =  + k_f*sc[10];
-    dqdc[10] =  + k_f*sc[6];
-    dqdc[17] =  - k_r*sc[4];
     /* d()/d[OH] */
-    J[148] += 1 * dqdc[4];        /* dwdot[OH]/d[OH] */
-    J[150] += -1 * dqdc[4];       /* dwdot[HO2]/d[OH] */
-    J[154] += -1 * dqdc[4];       /* dwdot[CH2]/d[OH] */
-    J[161] += 1 * dqdc[4];        /* dwdot[CH2O]/d[OH] */
+    dqdci =  - k_r*sc[17];
+    J[148] += 1 * dqdci;          /* dwdot[OH]/d[OH] */
+    J[150] += -1 * dqdci;         /* dwdot[HO2]/d[OH] */
+    J[154] += -1 * dqdci;         /* dwdot[CH2]/d[OH] */
+    J[161] += 1 * dqdci;          /* dwdot[CH2O]/d[OH] */
     /* d()/d[HO2] */
-    J[220] += 1 * dqdc[6];        /* dwdot[OH]/d[HO2] */
-    J[222] += -1 * dqdc[6];       /* dwdot[HO2]/d[HO2] */
-    J[226] += -1 * dqdc[6];       /* dwdot[CH2]/d[HO2] */
-    J[233] += 1 * dqdc[6];        /* dwdot[CH2O]/d[HO2] */
+    dqdci =  + k_f*sc[10];
+    J[220] += 1 * dqdci;          /* dwdot[OH]/d[HO2] */
+    J[222] += -1 * dqdci;         /* dwdot[HO2]/d[HO2] */
+    J[226] += -1 * dqdci;         /* dwdot[CH2]/d[HO2] */
+    J[233] += 1 * dqdci;          /* dwdot[CH2O]/d[HO2] */
     /* d()/d[CH2] */
-    J[364] += 1 * dqdc[10];       /* dwdot[OH]/d[CH2] */
-    J[366] += -1 * dqdc[10];      /* dwdot[HO2]/d[CH2] */
-    J[370] += -1 * dqdc[10];      /* dwdot[CH2]/d[CH2] */
-    J[377] += 1 * dqdc[10];       /* dwdot[CH2O]/d[CH2] */
+    dqdci =  + k_f*sc[6];
+    J[364] += 1 * dqdci;          /* dwdot[OH]/d[CH2] */
+    J[366] += -1 * dqdci;         /* dwdot[HO2]/d[CH2] */
+    J[370] += -1 * dqdci;         /* dwdot[CH2]/d[CH2] */
+    J[377] += 1 * dqdci;          /* dwdot[CH2O]/d[CH2] */
     /* d()/d[CH2O] */
-    J[616] += 1 * dqdc[17];       /* dwdot[OH]/d[CH2O] */
-    J[618] += -1 * dqdc[17];      /* dwdot[HO2]/d[CH2O] */
-    J[622] += -1 * dqdc[17];      /* dwdot[CH2]/d[CH2O] */
-    J[629] += 1 * dqdc[17];       /* dwdot[CH2O]/d[CH2O] */
+    dqdci =  - k_r*sc[4];
+    J[616] += 1 * dqdci;          /* dwdot[OH]/d[CH2O] */
+    J[618] += -1 * dqdci;         /* dwdot[HO2]/d[CH2O] */
+    J[622] += -1 * dqdci;         /* dwdot[CH2]/d[CH2O] */
+    J[629] += 1 * dqdci;          /* dwdot[CH2O]/d[CH2O] */
     /* d()/dT */
     J[1264] += 1 * dqdT;          /* dwdot[OH]/dT */
     J[1266] += -1 * dqdT;         /* dwdot[HO2]/dT */
@@ -23893,30 +24011,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[6] -= q; /* HO2 */
     wdot[12] -= q; /* CH3 */
     wdot[13] += q; /* CH4 */
-    dqdc[3] =  - k_r*sc[13];
-    dqdc[6] =  + k_f*sc[12];
-    dqdc[12] =  + k_f*sc[6];
-    dqdc[13] =  - k_r*sc[3];
     /* d()/d[O2] */
-    J[111] += 1 * dqdc[3];        /* dwdot[O2]/d[O2] */
-    J[114] += -1 * dqdc[3];       /* dwdot[HO2]/d[O2] */
-    J[120] += -1 * dqdc[3];       /* dwdot[CH3]/d[O2] */
-    J[121] += 1 * dqdc[3];        /* dwdot[CH4]/d[O2] */
+    dqdci =  - k_r*sc[13];
+    J[111] += 1 * dqdci;          /* dwdot[O2]/d[O2] */
+    J[114] += -1 * dqdci;         /* dwdot[HO2]/d[O2] */
+    J[120] += -1 * dqdci;         /* dwdot[CH3]/d[O2] */
+    J[121] += 1 * dqdci;          /* dwdot[CH4]/d[O2] */
     /* d()/d[HO2] */
-    J[219] += 1 * dqdc[6];        /* dwdot[O2]/d[HO2] */
-    J[222] += -1 * dqdc[6];       /* dwdot[HO2]/d[HO2] */
-    J[228] += -1 * dqdc[6];       /* dwdot[CH3]/d[HO2] */
-    J[229] += 1 * dqdc[6];        /* dwdot[CH4]/d[HO2] */
+    dqdci =  + k_f*sc[12];
+    J[219] += 1 * dqdci;          /* dwdot[O2]/d[HO2] */
+    J[222] += -1 * dqdci;         /* dwdot[HO2]/d[HO2] */
+    J[228] += -1 * dqdci;         /* dwdot[CH3]/d[HO2] */
+    J[229] += 1 * dqdci;          /* dwdot[CH4]/d[HO2] */
     /* d()/d[CH3] */
-    J[435] += 1 * dqdc[12];       /* dwdot[O2]/d[CH3] */
-    J[438] += -1 * dqdc[12];      /* dwdot[HO2]/d[CH3] */
-    J[444] += -1 * dqdc[12];      /* dwdot[CH3]/d[CH3] */
-    J[445] += 1 * dqdc[12];       /* dwdot[CH4]/d[CH3] */
+    dqdci =  + k_f*sc[6];
+    J[435] += 1 * dqdci;          /* dwdot[O2]/d[CH3] */
+    J[438] += -1 * dqdci;         /* dwdot[HO2]/d[CH3] */
+    J[444] += -1 * dqdci;         /* dwdot[CH3]/d[CH3] */
+    J[445] += 1 * dqdci;          /* dwdot[CH4]/d[CH3] */
     /* d()/d[CH4] */
-    J[471] += 1 * dqdc[13];       /* dwdot[O2]/d[CH4] */
-    J[474] += -1 * dqdc[13];      /* dwdot[HO2]/d[CH4] */
-    J[480] += -1 * dqdc[13];      /* dwdot[CH3]/d[CH4] */
-    J[481] += 1 * dqdc[13];       /* dwdot[CH4]/d[CH4] */
+    dqdci =  - k_r*sc[3];
+    J[471] += 1 * dqdci;          /* dwdot[O2]/d[CH4] */
+    J[474] += -1 * dqdci;         /* dwdot[HO2]/d[CH4] */
+    J[480] += -1 * dqdci;         /* dwdot[CH3]/d[CH4] */
+    J[481] += 1 * dqdci;          /* dwdot[CH4]/d[CH4] */
     /* d()/dT */
     J[1263] += 1 * dqdT;          /* dwdot[O2]/dT */
     J[1266] += -1 * dqdT;         /* dwdot[HO2]/dT */
@@ -23943,30 +24061,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[6] -= q; /* HO2 */
     wdot[12] -= q; /* CH3 */
     wdot[19] += q; /* CH3O */
-    dqdc[4] =  - k_r*sc[19];
-    dqdc[6] =  + k_f*sc[12];
-    dqdc[12] =  + k_f*sc[6];
-    dqdc[19] =  - k_r*sc[4];
     /* d()/d[OH] */
-    J[148] += 1 * dqdc[4];        /* dwdot[OH]/d[OH] */
-    J[150] += -1 * dqdc[4];       /* dwdot[HO2]/d[OH] */
-    J[156] += -1 * dqdc[4];       /* dwdot[CH3]/d[OH] */
-    J[163] += 1 * dqdc[4];        /* dwdot[CH3O]/d[OH] */
+    dqdci =  - k_r*sc[19];
+    J[148] += 1 * dqdci;          /* dwdot[OH]/d[OH] */
+    J[150] += -1 * dqdci;         /* dwdot[HO2]/d[OH] */
+    J[156] += -1 * dqdci;         /* dwdot[CH3]/d[OH] */
+    J[163] += 1 * dqdci;          /* dwdot[CH3O]/d[OH] */
     /* d()/d[HO2] */
-    J[220] += 1 * dqdc[6];        /* dwdot[OH]/d[HO2] */
-    J[222] += -1 * dqdc[6];       /* dwdot[HO2]/d[HO2] */
-    J[228] += -1 * dqdc[6];       /* dwdot[CH3]/d[HO2] */
-    J[235] += 1 * dqdc[6];        /* dwdot[CH3O]/d[HO2] */
+    dqdci =  + k_f*sc[12];
+    J[220] += 1 * dqdci;          /* dwdot[OH]/d[HO2] */
+    J[222] += -1 * dqdci;         /* dwdot[HO2]/d[HO2] */
+    J[228] += -1 * dqdci;         /* dwdot[CH3]/d[HO2] */
+    J[235] += 1 * dqdci;          /* dwdot[CH3O]/d[HO2] */
     /* d()/d[CH3] */
-    J[436] += 1 * dqdc[12];       /* dwdot[OH]/d[CH3] */
-    J[438] += -1 * dqdc[12];      /* dwdot[HO2]/d[CH3] */
-    J[444] += -1 * dqdc[12];      /* dwdot[CH3]/d[CH3] */
-    J[451] += 1 * dqdc[12];       /* dwdot[CH3O]/d[CH3] */
+    dqdci =  + k_f*sc[6];
+    J[436] += 1 * dqdci;          /* dwdot[OH]/d[CH3] */
+    J[438] += -1 * dqdci;         /* dwdot[HO2]/d[CH3] */
+    J[444] += -1 * dqdci;         /* dwdot[CH3]/d[CH3] */
+    J[451] += 1 * dqdci;          /* dwdot[CH3O]/d[CH3] */
     /* d()/d[CH3O] */
-    J[688] += 1 * dqdc[19];       /* dwdot[OH]/d[CH3O] */
-    J[690] += -1 * dqdc[19];      /* dwdot[HO2]/d[CH3O] */
-    J[696] += -1 * dqdc[19];      /* dwdot[CH3]/d[CH3O] */
-    J[703] += 1 * dqdc[19];       /* dwdot[CH3O]/d[CH3O] */
+    dqdci =  - k_r*sc[4];
+    J[688] += 1 * dqdci;          /* dwdot[OH]/d[CH3O] */
+    J[690] += -1 * dqdci;         /* dwdot[HO2]/d[CH3O] */
+    J[696] += -1 * dqdci;         /* dwdot[CH3]/d[CH3O] */
+    J[703] += 1 * dqdci;          /* dwdot[CH3O]/d[CH3O] */
     /* d()/dT */
     J[1264] += 1 * dqdT;          /* dwdot[OH]/dT */
     J[1266] += -1 * dqdT;         /* dwdot[HO2]/dT */
@@ -23993,30 +24111,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[6] -= q; /* HO2 */
     wdot[14] -= q; /* CO */
     wdot[15] += q; /* CO2 */
-    dqdc[4] =  - k_r*sc[15];
-    dqdc[6] =  + k_f*sc[14];
-    dqdc[14] =  + k_f*sc[6];
-    dqdc[15] =  - k_r*sc[4];
     /* d()/d[OH] */
-    J[148] += 1 * dqdc[4];        /* dwdot[OH]/d[OH] */
-    J[150] += -1 * dqdc[4];       /* dwdot[HO2]/d[OH] */
-    J[158] += -1 * dqdc[4];       /* dwdot[CO]/d[OH] */
-    J[159] += 1 * dqdc[4];        /* dwdot[CO2]/d[OH] */
+    dqdci =  - k_r*sc[15];
+    J[148] += 1 * dqdci;          /* dwdot[OH]/d[OH] */
+    J[150] += -1 * dqdci;         /* dwdot[HO2]/d[OH] */
+    J[158] += -1 * dqdci;         /* dwdot[CO]/d[OH] */
+    J[159] += 1 * dqdci;          /* dwdot[CO2]/d[OH] */
     /* d()/d[HO2] */
-    J[220] += 1 * dqdc[6];        /* dwdot[OH]/d[HO2] */
-    J[222] += -1 * dqdc[6];       /* dwdot[HO2]/d[HO2] */
-    J[230] += -1 * dqdc[6];       /* dwdot[CO]/d[HO2] */
-    J[231] += 1 * dqdc[6];        /* dwdot[CO2]/d[HO2] */
+    dqdci =  + k_f*sc[14];
+    J[220] += 1 * dqdci;          /* dwdot[OH]/d[HO2] */
+    J[222] += -1 * dqdci;         /* dwdot[HO2]/d[HO2] */
+    J[230] += -1 * dqdci;         /* dwdot[CO]/d[HO2] */
+    J[231] += 1 * dqdci;          /* dwdot[CO2]/d[HO2] */
     /* d()/d[CO] */
-    J[508] += 1 * dqdc[14];       /* dwdot[OH]/d[CO] */
-    J[510] += -1 * dqdc[14];      /* dwdot[HO2]/d[CO] */
-    J[518] += -1 * dqdc[14];      /* dwdot[CO]/d[CO] */
-    J[519] += 1 * dqdc[14];       /* dwdot[CO2]/d[CO] */
+    dqdci =  + k_f*sc[6];
+    J[508] += 1 * dqdci;          /* dwdot[OH]/d[CO] */
+    J[510] += -1 * dqdci;         /* dwdot[HO2]/d[CO] */
+    J[518] += -1 * dqdci;         /* dwdot[CO]/d[CO] */
+    J[519] += 1 * dqdci;          /* dwdot[CO2]/d[CO] */
     /* d()/d[CO2] */
-    J[544] += 1 * dqdc[15];       /* dwdot[OH]/d[CO2] */
-    J[546] += -1 * dqdc[15];      /* dwdot[HO2]/d[CO2] */
-    J[554] += -1 * dqdc[15];      /* dwdot[CO]/d[CO2] */
-    J[555] += 1 * dqdc[15];       /* dwdot[CO2]/d[CO2] */
+    dqdci =  - k_r*sc[4];
+    J[544] += 1 * dqdci;          /* dwdot[OH]/d[CO2] */
+    J[546] += -1 * dqdci;         /* dwdot[HO2]/d[CO2] */
+    J[554] += -1 * dqdci;         /* dwdot[CO]/d[CO2] */
+    J[555] += 1 * dqdci;          /* dwdot[CO2]/d[CO2] */
     /* d()/dT */
     J[1264] += 1 * dqdT;          /* dwdot[OH]/dT */
     J[1266] += -1 * dqdT;         /* dwdot[HO2]/dT */
@@ -24043,30 +24161,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[7] += q; /* H2O2 */
     wdot[16] += q; /* HCO */
     wdot[17] -= q; /* CH2O */
-    dqdc[6] =  + k_f*sc[17];
-    dqdc[7] =  - k_r*sc[16];
-    dqdc[16] =  - k_r*sc[7];
-    dqdc[17] =  + k_f*sc[6];
     /* d()/d[HO2] */
-    J[222] += -1 * dqdc[6];       /* dwdot[HO2]/d[HO2] */
-    J[223] += 1 * dqdc[6];        /* dwdot[H2O2]/d[HO2] */
-    J[232] += 1 * dqdc[6];        /* dwdot[HCO]/d[HO2] */
-    J[233] += -1 * dqdc[6];       /* dwdot[CH2O]/d[HO2] */
+    dqdci =  + k_f*sc[17];
+    J[222] += -1 * dqdci;         /* dwdot[HO2]/d[HO2] */
+    J[223] += 1 * dqdci;          /* dwdot[H2O2]/d[HO2] */
+    J[232] += 1 * dqdci;          /* dwdot[HCO]/d[HO2] */
+    J[233] += -1 * dqdci;         /* dwdot[CH2O]/d[HO2] */
     /* d()/d[H2O2] */
-    J[258] += -1 * dqdc[7];       /* dwdot[HO2]/d[H2O2] */
-    J[259] += 1 * dqdc[7];        /* dwdot[H2O2]/d[H2O2] */
-    J[268] += 1 * dqdc[7];        /* dwdot[HCO]/d[H2O2] */
-    J[269] += -1 * dqdc[7];       /* dwdot[CH2O]/d[H2O2] */
+    dqdci =  - k_r*sc[16];
+    J[258] += -1 * dqdci;         /* dwdot[HO2]/d[H2O2] */
+    J[259] += 1 * dqdci;          /* dwdot[H2O2]/d[H2O2] */
+    J[268] += 1 * dqdci;          /* dwdot[HCO]/d[H2O2] */
+    J[269] += -1 * dqdci;         /* dwdot[CH2O]/d[H2O2] */
     /* d()/d[HCO] */
-    J[582] += -1 * dqdc[16];      /* dwdot[HO2]/d[HCO] */
-    J[583] += 1 * dqdc[16];       /* dwdot[H2O2]/d[HCO] */
-    J[592] += 1 * dqdc[16];       /* dwdot[HCO]/d[HCO] */
-    J[593] += -1 * dqdc[16];      /* dwdot[CH2O]/d[HCO] */
+    dqdci =  - k_r*sc[7];
+    J[582] += -1 * dqdci;         /* dwdot[HO2]/d[HCO] */
+    J[583] += 1 * dqdci;          /* dwdot[H2O2]/d[HCO] */
+    J[592] += 1 * dqdci;          /* dwdot[HCO]/d[HCO] */
+    J[593] += -1 * dqdci;         /* dwdot[CH2O]/d[HCO] */
     /* d()/d[CH2O] */
-    J[618] += -1 * dqdc[17];      /* dwdot[HO2]/d[CH2O] */
-    J[619] += 1 * dqdc[17];       /* dwdot[H2O2]/d[CH2O] */
-    J[628] += 1 * dqdc[17];       /* dwdot[HCO]/d[CH2O] */
-    J[629] += -1 * dqdc[17];      /* dwdot[CH2O]/d[CH2O] */
+    dqdci =  + k_f*sc[6];
+    J[618] += -1 * dqdci;         /* dwdot[HO2]/d[CH2O] */
+    J[619] += 1 * dqdci;          /* dwdot[H2O2]/d[CH2O] */
+    J[628] += 1 * dqdci;          /* dwdot[HCO]/d[CH2O] */
+    J[629] += -1 * dqdci;         /* dwdot[CH2O]/d[CH2O] */
     /* d()/dT */
     J[1266] += -1 * dqdT;         /* dwdot[HO2]/dT */
     J[1267] += 1 * dqdT;          /* dwdot[H2O2]/dT */
@@ -24093,30 +24211,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[3] -= q; /* O2 */
     wdot[8] -= q; /* C */
     wdot[14] += q; /* CO */
-    dqdc[2] =  - k_r*sc[14];
-    dqdc[3] =  + k_f*sc[8];
-    dqdc[8] =  + k_f*sc[3];
-    dqdc[14] =  - k_r*sc[2];
     /* d()/d[O] */
-    J[74] += 1 * dqdc[2];         /* dwdot[O]/d[O] */
-    J[75] += -1 * dqdc[2];        /* dwdot[O2]/d[O] */
-    J[80] += -1 * dqdc[2];        /* dwdot[C]/d[O] */
-    J[86] += 1 * dqdc[2];         /* dwdot[CO]/d[O] */
+    dqdci =  - k_r*sc[14];
+    J[74] += 1 * dqdci;           /* dwdot[O]/d[O] */
+    J[75] += -1 * dqdci;          /* dwdot[O2]/d[O] */
+    J[80] += -1 * dqdci;          /* dwdot[C]/d[O] */
+    J[86] += 1 * dqdci;           /* dwdot[CO]/d[O] */
     /* d()/d[O2] */
-    J[110] += 1 * dqdc[3];        /* dwdot[O]/d[O2] */
-    J[111] += -1 * dqdc[3];       /* dwdot[O2]/d[O2] */
-    J[116] += -1 * dqdc[3];       /* dwdot[C]/d[O2] */
-    J[122] += 1 * dqdc[3];        /* dwdot[CO]/d[O2] */
+    dqdci =  + k_f*sc[8];
+    J[110] += 1 * dqdci;          /* dwdot[O]/d[O2] */
+    J[111] += -1 * dqdci;         /* dwdot[O2]/d[O2] */
+    J[116] += -1 * dqdci;         /* dwdot[C]/d[O2] */
+    J[122] += 1 * dqdci;          /* dwdot[CO]/d[O2] */
     /* d()/d[C] */
-    J[290] += 1 * dqdc[8];        /* dwdot[O]/d[C] */
-    J[291] += -1 * dqdc[8];       /* dwdot[O2]/d[C] */
-    J[296] += -1 * dqdc[8];       /* dwdot[C]/d[C] */
-    J[302] += 1 * dqdc[8];        /* dwdot[CO]/d[C] */
+    dqdci =  + k_f*sc[3];
+    J[290] += 1 * dqdci;          /* dwdot[O]/d[C] */
+    J[291] += -1 * dqdci;         /* dwdot[O2]/d[C] */
+    J[296] += -1 * dqdci;         /* dwdot[C]/d[C] */
+    J[302] += 1 * dqdci;          /* dwdot[CO]/d[C] */
     /* d()/d[CO] */
-    J[506] += 1 * dqdc[14];       /* dwdot[O]/d[CO] */
-    J[507] += -1 * dqdc[14];      /* dwdot[O2]/d[CO] */
-    J[512] += -1 * dqdc[14];      /* dwdot[C]/d[CO] */
-    J[518] += 1 * dqdc[14];       /* dwdot[CO]/d[CO] */
+    dqdci =  - k_r*sc[2];
+    J[506] += 1 * dqdci;          /* dwdot[O]/d[CO] */
+    J[507] += -1 * dqdci;         /* dwdot[O2]/d[CO] */
+    J[512] += -1 * dqdci;         /* dwdot[C]/d[CO] */
+    J[518] += 1 * dqdci;          /* dwdot[CO]/d[CO] */
     /* d()/dT */
     J[1262] += 1 * dqdT;          /* dwdot[O]/dT */
     J[1263] += -1 * dqdT;         /* dwdot[O2]/dT */
@@ -24143,30 +24261,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[8] -= q; /* C */
     wdot[10] -= q; /* CH2 */
     wdot[21] += q; /* C2H */
-    dqdc[1] =  - k_r*sc[21];
-    dqdc[8] =  + k_f*sc[10];
-    dqdc[10] =  + k_f*sc[8];
-    dqdc[21] =  - k_r*sc[1];
     /* d()/d[H] */
-    J[37] += 1 * dqdc[1];         /* dwdot[H]/d[H] */
-    J[44] += -1 * dqdc[1];        /* dwdot[C]/d[H] */
-    J[46] += -1 * dqdc[1];        /* dwdot[CH2]/d[H] */
-    J[57] += 1 * dqdc[1];         /* dwdot[C2H]/d[H] */
+    dqdci =  - k_r*sc[21];
+    J[37] += 1 * dqdci;           /* dwdot[H]/d[H] */
+    J[44] += -1 * dqdci;          /* dwdot[C]/d[H] */
+    J[46] += -1 * dqdci;          /* dwdot[CH2]/d[H] */
+    J[57] += 1 * dqdci;           /* dwdot[C2H]/d[H] */
     /* d()/d[C] */
-    J[289] += 1 * dqdc[8];        /* dwdot[H]/d[C] */
-    J[296] += -1 * dqdc[8];       /* dwdot[C]/d[C] */
-    J[298] += -1 * dqdc[8];       /* dwdot[CH2]/d[C] */
-    J[309] += 1 * dqdc[8];        /* dwdot[C2H]/d[C] */
+    dqdci =  + k_f*sc[10];
+    J[289] += 1 * dqdci;          /* dwdot[H]/d[C] */
+    J[296] += -1 * dqdci;         /* dwdot[C]/d[C] */
+    J[298] += -1 * dqdci;         /* dwdot[CH2]/d[C] */
+    J[309] += 1 * dqdci;          /* dwdot[C2H]/d[C] */
     /* d()/d[CH2] */
-    J[361] += 1 * dqdc[10];       /* dwdot[H]/d[CH2] */
-    J[368] += -1 * dqdc[10];      /* dwdot[C]/d[CH2] */
-    J[370] += -1 * dqdc[10];      /* dwdot[CH2]/d[CH2] */
-    J[381] += 1 * dqdc[10];       /* dwdot[C2H]/d[CH2] */
+    dqdci =  + k_f*sc[8];
+    J[361] += 1 * dqdci;          /* dwdot[H]/d[CH2] */
+    J[368] += -1 * dqdci;         /* dwdot[C]/d[CH2] */
+    J[370] += -1 * dqdci;         /* dwdot[CH2]/d[CH2] */
+    J[381] += 1 * dqdci;          /* dwdot[C2H]/d[CH2] */
     /* d()/d[C2H] */
-    J[757] += 1 * dqdc[21];       /* dwdot[H]/d[C2H] */
-    J[764] += -1 * dqdc[21];      /* dwdot[C]/d[C2H] */
-    J[766] += -1 * dqdc[21];      /* dwdot[CH2]/d[C2H] */
-    J[777] += 1 * dqdc[21];       /* dwdot[C2H]/d[C2H] */
+    dqdci =  - k_r*sc[1];
+    J[757] += 1 * dqdci;          /* dwdot[H]/d[C2H] */
+    J[764] += -1 * dqdci;         /* dwdot[C]/d[C2H] */
+    J[766] += -1 * dqdci;         /* dwdot[CH2]/d[C2H] */
+    J[777] += 1 * dqdci;          /* dwdot[C2H]/d[C2H] */
     /* d()/dT */
     J[1261] += 1 * dqdT;          /* dwdot[H]/dT */
     J[1268] += -1 * dqdT;         /* dwdot[C]/dT */
@@ -24193,30 +24311,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[8] -= q; /* C */
     wdot[12] -= q; /* CH3 */
     wdot[22] += q; /* C2H2 */
-    dqdc[1] =  - k_r*sc[22];
-    dqdc[8] =  + k_f*sc[12];
-    dqdc[12] =  + k_f*sc[8];
-    dqdc[22] =  - k_r*sc[1];
     /* d()/d[H] */
-    J[37] += 1 * dqdc[1];         /* dwdot[H]/d[H] */
-    J[44] += -1 * dqdc[1];        /* dwdot[C]/d[H] */
-    J[48] += -1 * dqdc[1];        /* dwdot[CH3]/d[H] */
-    J[58] += 1 * dqdc[1];         /* dwdot[C2H2]/d[H] */
+    dqdci =  - k_r*sc[22];
+    J[37] += 1 * dqdci;           /* dwdot[H]/d[H] */
+    J[44] += -1 * dqdci;          /* dwdot[C]/d[H] */
+    J[48] += -1 * dqdci;          /* dwdot[CH3]/d[H] */
+    J[58] += 1 * dqdci;           /* dwdot[C2H2]/d[H] */
     /* d()/d[C] */
-    J[289] += 1 * dqdc[8];        /* dwdot[H]/d[C] */
-    J[296] += -1 * dqdc[8];       /* dwdot[C]/d[C] */
-    J[300] += -1 * dqdc[8];       /* dwdot[CH3]/d[C] */
-    J[310] += 1 * dqdc[8];        /* dwdot[C2H2]/d[C] */
+    dqdci =  + k_f*sc[12];
+    J[289] += 1 * dqdci;          /* dwdot[H]/d[C] */
+    J[296] += -1 * dqdci;         /* dwdot[C]/d[C] */
+    J[300] += -1 * dqdci;         /* dwdot[CH3]/d[C] */
+    J[310] += 1 * dqdci;          /* dwdot[C2H2]/d[C] */
     /* d()/d[CH3] */
-    J[433] += 1 * dqdc[12];       /* dwdot[H]/d[CH3] */
-    J[440] += -1 * dqdc[12];      /* dwdot[C]/d[CH3] */
-    J[444] += -1 * dqdc[12];      /* dwdot[CH3]/d[CH3] */
-    J[454] += 1 * dqdc[12];       /* dwdot[C2H2]/d[CH3] */
+    dqdci =  + k_f*sc[8];
+    J[433] += 1 * dqdci;          /* dwdot[H]/d[CH3] */
+    J[440] += -1 * dqdci;         /* dwdot[C]/d[CH3] */
+    J[444] += -1 * dqdci;         /* dwdot[CH3]/d[CH3] */
+    J[454] += 1 * dqdci;          /* dwdot[C2H2]/d[CH3] */
     /* d()/d[C2H2] */
-    J[793] += 1 * dqdc[22];       /* dwdot[H]/d[C2H2] */
-    J[800] += -1 * dqdc[22];      /* dwdot[C]/d[C2H2] */
-    J[804] += -1 * dqdc[22];      /* dwdot[CH3]/d[C2H2] */
-    J[814] += 1 * dqdc[22];       /* dwdot[C2H2]/d[C2H2] */
+    dqdci =  - k_r*sc[1];
+    J[793] += 1 * dqdci;          /* dwdot[H]/d[C2H2] */
+    J[800] += -1 * dqdci;         /* dwdot[C]/d[C2H2] */
+    J[804] += -1 * dqdci;         /* dwdot[CH3]/d[C2H2] */
+    J[814] += 1 * dqdci;          /* dwdot[C2H2]/d[C2H2] */
     /* d()/dT */
     J[1261] += 1 * dqdT;          /* dwdot[H]/dT */
     J[1268] += -1 * dqdT;         /* dwdot[C]/dT */
@@ -24243,30 +24361,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[3] -= q; /* O2 */
     wdot[9] -= q; /* CH */
     wdot[16] += q; /* HCO */
-    dqdc[2] =  - k_r*sc[16];
-    dqdc[3] =  + k_f*sc[9];
-    dqdc[9] =  + k_f*sc[3];
-    dqdc[16] =  - k_r*sc[2];
     /* d()/d[O] */
-    J[74] += 1 * dqdc[2];         /* dwdot[O]/d[O] */
-    J[75] += -1 * dqdc[2];        /* dwdot[O2]/d[O] */
-    J[81] += -1 * dqdc[2];        /* dwdot[CH]/d[O] */
-    J[88] += 1 * dqdc[2];         /* dwdot[HCO]/d[O] */
+    dqdci =  - k_r*sc[16];
+    J[74] += 1 * dqdci;           /* dwdot[O]/d[O] */
+    J[75] += -1 * dqdci;          /* dwdot[O2]/d[O] */
+    J[81] += -1 * dqdci;          /* dwdot[CH]/d[O] */
+    J[88] += 1 * dqdci;           /* dwdot[HCO]/d[O] */
     /* d()/d[O2] */
-    J[110] += 1 * dqdc[3];        /* dwdot[O]/d[O2] */
-    J[111] += -1 * dqdc[3];       /* dwdot[O2]/d[O2] */
-    J[117] += -1 * dqdc[3];       /* dwdot[CH]/d[O2] */
-    J[124] += 1 * dqdc[3];        /* dwdot[HCO]/d[O2] */
+    dqdci =  + k_f*sc[9];
+    J[110] += 1 * dqdci;          /* dwdot[O]/d[O2] */
+    J[111] += -1 * dqdci;         /* dwdot[O2]/d[O2] */
+    J[117] += -1 * dqdci;         /* dwdot[CH]/d[O2] */
+    J[124] += 1 * dqdci;          /* dwdot[HCO]/d[O2] */
     /* d()/d[CH] */
-    J[326] += 1 * dqdc[9];        /* dwdot[O]/d[CH] */
-    J[327] += -1 * dqdc[9];       /* dwdot[O2]/d[CH] */
-    J[333] += -1 * dqdc[9];       /* dwdot[CH]/d[CH] */
-    J[340] += 1 * dqdc[9];        /* dwdot[HCO]/d[CH] */
+    dqdci =  + k_f*sc[3];
+    J[326] += 1 * dqdci;          /* dwdot[O]/d[CH] */
+    J[327] += -1 * dqdci;         /* dwdot[O2]/d[CH] */
+    J[333] += -1 * dqdci;         /* dwdot[CH]/d[CH] */
+    J[340] += 1 * dqdci;          /* dwdot[HCO]/d[CH] */
     /* d()/d[HCO] */
-    J[578] += 1 * dqdc[16];       /* dwdot[O]/d[HCO] */
-    J[579] += -1 * dqdc[16];      /* dwdot[O2]/d[HCO] */
-    J[585] += -1 * dqdc[16];      /* dwdot[CH]/d[HCO] */
-    J[592] += 1 * dqdc[16];       /* dwdot[HCO]/d[HCO] */
+    dqdci =  - k_r*sc[2];
+    J[578] += 1 * dqdci;          /* dwdot[O]/d[HCO] */
+    J[579] += -1 * dqdci;         /* dwdot[O2]/d[HCO] */
+    J[585] += -1 * dqdci;         /* dwdot[CH]/d[HCO] */
+    J[592] += 1 * dqdci;          /* dwdot[HCO]/d[HCO] */
     /* d()/dT */
     J[1262] += 1 * dqdT;          /* dwdot[O]/dT */
     J[1263] += -1 * dqdT;         /* dwdot[O2]/dT */
@@ -24293,30 +24411,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[1] += q; /* H */
     wdot[9] -= q; /* CH */
     wdot[10] += q; /* CH2 */
-    dqdc[0] =  + k_f*sc[9];
-    dqdc[1] =  - k_r*sc[10];
-    dqdc[9] =  + k_f*sc[0];
-    dqdc[10] =  - k_r*sc[1];
     /* d()/d[H2] */
-    J[0] += -1 * dqdc[0];         /* dwdot[H2]/d[H2] */
-    J[1] += 1 * dqdc[0];          /* dwdot[H]/d[H2] */
-    J[9] += -1 * dqdc[0];         /* dwdot[CH]/d[H2] */
-    J[10] += 1 * dqdc[0];         /* dwdot[CH2]/d[H2] */
+    dqdci =  + k_f*sc[9];
+    J[0] += -1 * dqdci;           /* dwdot[H2]/d[H2] */
+    J[1] += 1 * dqdci;            /* dwdot[H]/d[H2] */
+    J[9] += -1 * dqdci;           /* dwdot[CH]/d[H2] */
+    J[10] += 1 * dqdci;           /* dwdot[CH2]/d[H2] */
     /* d()/d[H] */
-    J[36] += -1 * dqdc[1];        /* dwdot[H2]/d[H] */
-    J[37] += 1 * dqdc[1];         /* dwdot[H]/d[H] */
-    J[45] += -1 * dqdc[1];        /* dwdot[CH]/d[H] */
-    J[46] += 1 * dqdc[1];         /* dwdot[CH2]/d[H] */
+    dqdci =  - k_r*sc[10];
+    J[36] += -1 * dqdci;          /* dwdot[H2]/d[H] */
+    J[37] += 1 * dqdci;           /* dwdot[H]/d[H] */
+    J[45] += -1 * dqdci;          /* dwdot[CH]/d[H] */
+    J[46] += 1 * dqdci;           /* dwdot[CH2]/d[H] */
     /* d()/d[CH] */
-    J[324] += -1 * dqdc[9];       /* dwdot[H2]/d[CH] */
-    J[325] += 1 * dqdc[9];        /* dwdot[H]/d[CH] */
-    J[333] += -1 * dqdc[9];       /* dwdot[CH]/d[CH] */
-    J[334] += 1 * dqdc[9];        /* dwdot[CH2]/d[CH] */
+    dqdci =  + k_f*sc[0];
+    J[324] += -1 * dqdci;         /* dwdot[H2]/d[CH] */
+    J[325] += 1 * dqdci;          /* dwdot[H]/d[CH] */
+    J[333] += -1 * dqdci;         /* dwdot[CH]/d[CH] */
+    J[334] += 1 * dqdci;          /* dwdot[CH2]/d[CH] */
     /* d()/d[CH2] */
-    J[360] += -1 * dqdc[10];      /* dwdot[H2]/d[CH2] */
-    J[361] += 1 * dqdc[10];       /* dwdot[H]/d[CH2] */
-    J[369] += -1 * dqdc[10];      /* dwdot[CH]/d[CH2] */
-    J[370] += 1 * dqdc[10];       /* dwdot[CH2]/d[CH2] */
+    dqdci =  - k_r*sc[1];
+    J[360] += -1 * dqdci;         /* dwdot[H2]/d[CH2] */
+    J[361] += 1 * dqdci;          /* dwdot[H]/d[CH2] */
+    J[369] += -1 * dqdci;         /* dwdot[CH]/d[CH2] */
+    J[370] += 1 * dqdci;          /* dwdot[CH2]/d[CH2] */
     /* d()/dT */
     J[1260] += -1 * dqdT;         /* dwdot[H2]/dT */
     J[1261] += 1 * dqdT;          /* dwdot[H]/dT */
@@ -24343,30 +24461,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[5] -= q; /* H2O */
     wdot[9] -= q; /* CH */
     wdot[17] += q; /* CH2O */
-    dqdc[1] =  - k_r*sc[17];
-    dqdc[5] =  + k_f*sc[9];
-    dqdc[9] =  + k_f*sc[5];
-    dqdc[17] =  - k_r*sc[1];
     /* d()/d[H] */
-    J[37] += 1 * dqdc[1];         /* dwdot[H]/d[H] */
-    J[41] += -1 * dqdc[1];        /* dwdot[H2O]/d[H] */
-    J[45] += -1 * dqdc[1];        /* dwdot[CH]/d[H] */
-    J[53] += 1 * dqdc[1];         /* dwdot[CH2O]/d[H] */
+    dqdci =  - k_r*sc[17];
+    J[37] += 1 * dqdci;           /* dwdot[H]/d[H] */
+    J[41] += -1 * dqdci;          /* dwdot[H2O]/d[H] */
+    J[45] += -1 * dqdci;          /* dwdot[CH]/d[H] */
+    J[53] += 1 * dqdci;           /* dwdot[CH2O]/d[H] */
     /* d()/d[H2O] */
-    J[181] += 1 * dqdc[5];        /* dwdot[H]/d[H2O] */
-    J[185] += -1 * dqdc[5];       /* dwdot[H2O]/d[H2O] */
-    J[189] += -1 * dqdc[5];       /* dwdot[CH]/d[H2O] */
-    J[197] += 1 * dqdc[5];        /* dwdot[CH2O]/d[H2O] */
+    dqdci =  + k_f*sc[9];
+    J[181] += 1 * dqdci;          /* dwdot[H]/d[H2O] */
+    J[185] += -1 * dqdci;         /* dwdot[H2O]/d[H2O] */
+    J[189] += -1 * dqdci;         /* dwdot[CH]/d[H2O] */
+    J[197] += 1 * dqdci;          /* dwdot[CH2O]/d[H2O] */
     /* d()/d[CH] */
-    J[325] += 1 * dqdc[9];        /* dwdot[H]/d[CH] */
-    J[329] += -1 * dqdc[9];       /* dwdot[H2O]/d[CH] */
-    J[333] += -1 * dqdc[9];       /* dwdot[CH]/d[CH] */
-    J[341] += 1 * dqdc[9];        /* dwdot[CH2O]/d[CH] */
+    dqdci =  + k_f*sc[5];
+    J[325] += 1 * dqdci;          /* dwdot[H]/d[CH] */
+    J[329] += -1 * dqdci;         /* dwdot[H2O]/d[CH] */
+    J[333] += -1 * dqdci;         /* dwdot[CH]/d[CH] */
+    J[341] += 1 * dqdci;          /* dwdot[CH2O]/d[CH] */
     /* d()/d[CH2O] */
-    J[613] += 1 * dqdc[17];       /* dwdot[H]/d[CH2O] */
-    J[617] += -1 * dqdc[17];      /* dwdot[H2O]/d[CH2O] */
-    J[621] += -1 * dqdc[17];      /* dwdot[CH]/d[CH2O] */
-    J[629] += 1 * dqdc[17];       /* dwdot[CH2O]/d[CH2O] */
+    dqdci =  - k_r*sc[1];
+    J[613] += 1 * dqdci;          /* dwdot[H]/d[CH2O] */
+    J[617] += -1 * dqdci;         /* dwdot[H2O]/d[CH2O] */
+    J[621] += -1 * dqdci;         /* dwdot[CH]/d[CH2O] */
+    J[629] += 1 * dqdci;          /* dwdot[CH2O]/d[CH2O] */
     /* d()/dT */
     J[1261] += 1 * dqdT;          /* dwdot[H]/dT */
     J[1265] += -1 * dqdT;         /* dwdot[H2O]/dT */
@@ -24393,30 +24511,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[9] -= q; /* CH */
     wdot[10] -= q; /* CH2 */
     wdot[22] += q; /* C2H2 */
-    dqdc[1] =  - k_r*sc[22];
-    dqdc[9] =  + k_f*sc[10];
-    dqdc[10] =  + k_f*sc[9];
-    dqdc[22] =  - k_r*sc[1];
     /* d()/d[H] */
-    J[37] += 1 * dqdc[1];         /* dwdot[H]/d[H] */
-    J[45] += -1 * dqdc[1];        /* dwdot[CH]/d[H] */
-    J[46] += -1 * dqdc[1];        /* dwdot[CH2]/d[H] */
-    J[58] += 1 * dqdc[1];         /* dwdot[C2H2]/d[H] */
+    dqdci =  - k_r*sc[22];
+    J[37] += 1 * dqdci;           /* dwdot[H]/d[H] */
+    J[45] += -1 * dqdci;          /* dwdot[CH]/d[H] */
+    J[46] += -1 * dqdci;          /* dwdot[CH2]/d[H] */
+    J[58] += 1 * dqdci;           /* dwdot[C2H2]/d[H] */
     /* d()/d[CH] */
-    J[325] += 1 * dqdc[9];        /* dwdot[H]/d[CH] */
-    J[333] += -1 * dqdc[9];       /* dwdot[CH]/d[CH] */
-    J[334] += -1 * dqdc[9];       /* dwdot[CH2]/d[CH] */
-    J[346] += 1 * dqdc[9];        /* dwdot[C2H2]/d[CH] */
+    dqdci =  + k_f*sc[10];
+    J[325] += 1 * dqdci;          /* dwdot[H]/d[CH] */
+    J[333] += -1 * dqdci;         /* dwdot[CH]/d[CH] */
+    J[334] += -1 * dqdci;         /* dwdot[CH2]/d[CH] */
+    J[346] += 1 * dqdci;          /* dwdot[C2H2]/d[CH] */
     /* d()/d[CH2] */
-    J[361] += 1 * dqdc[10];       /* dwdot[H]/d[CH2] */
-    J[369] += -1 * dqdc[10];      /* dwdot[CH]/d[CH2] */
-    J[370] += -1 * dqdc[10];      /* dwdot[CH2]/d[CH2] */
-    J[382] += 1 * dqdc[10];       /* dwdot[C2H2]/d[CH2] */
+    dqdci =  + k_f*sc[9];
+    J[361] += 1 * dqdci;          /* dwdot[H]/d[CH2] */
+    J[369] += -1 * dqdci;         /* dwdot[CH]/d[CH2] */
+    J[370] += -1 * dqdci;         /* dwdot[CH2]/d[CH2] */
+    J[382] += 1 * dqdci;          /* dwdot[C2H2]/d[CH2] */
     /* d()/d[C2H2] */
-    J[793] += 1 * dqdc[22];       /* dwdot[H]/d[C2H2] */
-    J[801] += -1 * dqdc[22];      /* dwdot[CH]/d[C2H2] */
-    J[802] += -1 * dqdc[22];      /* dwdot[CH2]/d[C2H2] */
-    J[814] += 1 * dqdc[22];       /* dwdot[C2H2]/d[C2H2] */
+    dqdci =  - k_r*sc[1];
+    J[793] += 1 * dqdci;          /* dwdot[H]/d[C2H2] */
+    J[801] += -1 * dqdci;         /* dwdot[CH]/d[C2H2] */
+    J[802] += -1 * dqdci;         /* dwdot[CH2]/d[C2H2] */
+    J[814] += 1 * dqdci;          /* dwdot[C2H2]/d[C2H2] */
     /* d()/dT */
     J[1261] += 1 * dqdT;          /* dwdot[H]/dT */
     J[1269] += -1 * dqdT;         /* dwdot[CH]/dT */
@@ -24443,30 +24561,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[9] -= q; /* CH */
     wdot[12] -= q; /* CH3 */
     wdot[23] += q; /* C2H3 */
-    dqdc[1] =  - k_r*sc[23];
-    dqdc[9] =  + k_f*sc[12];
-    dqdc[12] =  + k_f*sc[9];
-    dqdc[23] =  - k_r*sc[1];
     /* d()/d[H] */
-    J[37] += 1 * dqdc[1];         /* dwdot[H]/d[H] */
-    J[45] += -1 * dqdc[1];        /* dwdot[CH]/d[H] */
-    J[48] += -1 * dqdc[1];        /* dwdot[CH3]/d[H] */
-    J[59] += 1 * dqdc[1];         /* dwdot[C2H3]/d[H] */
+    dqdci =  - k_r*sc[23];
+    J[37] += 1 * dqdci;           /* dwdot[H]/d[H] */
+    J[45] += -1 * dqdci;          /* dwdot[CH]/d[H] */
+    J[48] += -1 * dqdci;          /* dwdot[CH3]/d[H] */
+    J[59] += 1 * dqdci;           /* dwdot[C2H3]/d[H] */
     /* d()/d[CH] */
-    J[325] += 1 * dqdc[9];        /* dwdot[H]/d[CH] */
-    J[333] += -1 * dqdc[9];       /* dwdot[CH]/d[CH] */
-    J[336] += -1 * dqdc[9];       /* dwdot[CH3]/d[CH] */
-    J[347] += 1 * dqdc[9];        /* dwdot[C2H3]/d[CH] */
+    dqdci =  + k_f*sc[12];
+    J[325] += 1 * dqdci;          /* dwdot[H]/d[CH] */
+    J[333] += -1 * dqdci;         /* dwdot[CH]/d[CH] */
+    J[336] += -1 * dqdci;         /* dwdot[CH3]/d[CH] */
+    J[347] += 1 * dqdci;          /* dwdot[C2H3]/d[CH] */
     /* d()/d[CH3] */
-    J[433] += 1 * dqdc[12];       /* dwdot[H]/d[CH3] */
-    J[441] += -1 * dqdc[12];      /* dwdot[CH]/d[CH3] */
-    J[444] += -1 * dqdc[12];      /* dwdot[CH3]/d[CH3] */
-    J[455] += 1 * dqdc[12];       /* dwdot[C2H3]/d[CH3] */
+    dqdci =  + k_f*sc[9];
+    J[433] += 1 * dqdci;          /* dwdot[H]/d[CH3] */
+    J[441] += -1 * dqdci;         /* dwdot[CH]/d[CH3] */
+    J[444] += -1 * dqdci;         /* dwdot[CH3]/d[CH3] */
+    J[455] += 1 * dqdci;          /* dwdot[C2H3]/d[CH3] */
     /* d()/d[C2H3] */
-    J[829] += 1 * dqdc[23];       /* dwdot[H]/d[C2H3] */
-    J[837] += -1 * dqdc[23];      /* dwdot[CH]/d[C2H3] */
-    J[840] += -1 * dqdc[23];      /* dwdot[CH3]/d[C2H3] */
-    J[851] += 1 * dqdc[23];       /* dwdot[C2H3]/d[C2H3] */
+    dqdci =  - k_r*sc[1];
+    J[829] += 1 * dqdci;          /* dwdot[H]/d[C2H3] */
+    J[837] += -1 * dqdci;         /* dwdot[CH]/d[C2H3] */
+    J[840] += -1 * dqdci;         /* dwdot[CH3]/d[C2H3] */
+    J[851] += 1 * dqdci;          /* dwdot[C2H3]/d[C2H3] */
     /* d()/dT */
     J[1261] += 1 * dqdT;          /* dwdot[H]/dT */
     J[1269] += -1 * dqdT;         /* dwdot[CH]/dT */
@@ -24493,30 +24611,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[9] -= q; /* CH */
     wdot[13] -= q; /* CH4 */
     wdot[24] += q; /* C2H4 */
-    dqdc[1] =  - k_r*sc[24];
-    dqdc[9] =  + k_f*sc[13];
-    dqdc[13] =  + k_f*sc[9];
-    dqdc[24] =  - k_r*sc[1];
     /* d()/d[H] */
-    J[37] += 1 * dqdc[1];         /* dwdot[H]/d[H] */
-    J[45] += -1 * dqdc[1];        /* dwdot[CH]/d[H] */
-    J[49] += -1 * dqdc[1];        /* dwdot[CH4]/d[H] */
-    J[60] += 1 * dqdc[1];         /* dwdot[C2H4]/d[H] */
+    dqdci =  - k_r*sc[24];
+    J[37] += 1 * dqdci;           /* dwdot[H]/d[H] */
+    J[45] += -1 * dqdci;          /* dwdot[CH]/d[H] */
+    J[49] += -1 * dqdci;          /* dwdot[CH4]/d[H] */
+    J[60] += 1 * dqdci;           /* dwdot[C2H4]/d[H] */
     /* d()/d[CH] */
-    J[325] += 1 * dqdc[9];        /* dwdot[H]/d[CH] */
-    J[333] += -1 * dqdc[9];       /* dwdot[CH]/d[CH] */
-    J[337] += -1 * dqdc[9];       /* dwdot[CH4]/d[CH] */
-    J[348] += 1 * dqdc[9];        /* dwdot[C2H4]/d[CH] */
+    dqdci =  + k_f*sc[13];
+    J[325] += 1 * dqdci;          /* dwdot[H]/d[CH] */
+    J[333] += -1 * dqdci;         /* dwdot[CH]/d[CH] */
+    J[337] += -1 * dqdci;         /* dwdot[CH4]/d[CH] */
+    J[348] += 1 * dqdci;          /* dwdot[C2H4]/d[CH] */
     /* d()/d[CH4] */
-    J[469] += 1 * dqdc[13];       /* dwdot[H]/d[CH4] */
-    J[477] += -1 * dqdc[13];      /* dwdot[CH]/d[CH4] */
-    J[481] += -1 * dqdc[13];      /* dwdot[CH4]/d[CH4] */
-    J[492] += 1 * dqdc[13];       /* dwdot[C2H4]/d[CH4] */
+    dqdci =  + k_f*sc[9];
+    J[469] += 1 * dqdci;          /* dwdot[H]/d[CH4] */
+    J[477] += -1 * dqdci;         /* dwdot[CH]/d[CH4] */
+    J[481] += -1 * dqdci;         /* dwdot[CH4]/d[CH4] */
+    J[492] += 1 * dqdci;          /* dwdot[C2H4]/d[CH4] */
     /* d()/d[C2H4] */
-    J[865] += 1 * dqdc[24];       /* dwdot[H]/d[C2H4] */
-    J[873] += -1 * dqdc[24];      /* dwdot[CH]/d[C2H4] */
-    J[877] += -1 * dqdc[24];      /* dwdot[CH4]/d[C2H4] */
-    J[888] += 1 * dqdc[24];       /* dwdot[C2H4]/d[C2H4] */
+    dqdci =  - k_r*sc[1];
+    J[865] += 1 * dqdci;          /* dwdot[H]/d[C2H4] */
+    J[873] += -1 * dqdci;         /* dwdot[CH]/d[C2H4] */
+    J[877] += -1 * dqdci;         /* dwdot[CH4]/d[C2H4] */
+    J[888] += 1 * dqdci;          /* dwdot[C2H4]/d[C2H4] */
     /* d()/dT */
     J[1261] += 1 * dqdT;          /* dwdot[H]/dT */
     J[1269] += -1 * dqdT;         /* dwdot[CH]/dT */
@@ -24553,9 +24671,9 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     troe = 1.0 / (1.0 + troePr*troePr);
     F = pow(10.0, logFcent * troe);
     dlogFcentdT = log10e/Fcent*(Fcent1*-0.00421941 + Fcent2*-0.000605327 + Fcent3*5069*invT2);
-    dlogFdcn_fac = logFcent * troe*troe * troePr * troePr_den;
+    dlogFdcn_fac = 2.0 * logFcent * troe*troe * troePr * troePr_den;
     dlogFdc = -troe_n * dlogFdcn_fac * troePr_den;
-    dlogFdn = 2. * dlogFdcn_fac * troePr;
+    dlogFdn = dlogFdcn_fac * troePr;
     dlogFdlogPr = dlogFdc;
     dlogFdT = dlogFcentdT*(troe - 0.67*dlogFdc - 1.27*dlogFdn) + dlogFdlogPr * dlogPrdT;
     /* reverse */
@@ -24579,41 +24697,46 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     k_r *= Corr;
     dcdc_fac = q/alpha*(1.0/(Pr+1.0) + dlogFdlogPr);
     if (consP) {
-        dqdc[0] =  1*dcdc_fac;
-        dqdc[1] =  0.0;
-        dqdc[2] =  0.0;
-        dqdc[3] =  0.0;
-        dqdc[4] =  0.0;
-        dqdc[5] =  5*dcdc_fac;
-        dqdc[6] =  0.0;
-        dqdc[7] =  0.0;
-        dqdc[8] =  0.0;
-        dqdc[9] =  0.0 + k_f*sc[14];
-        dqdc[10] =  0.0;
-        dqdc[11] =  0.0;
-        dqdc[12] =  0.0;
-        dqdc[13] =  1*dcdc_fac;
-        dqdc[14] =  0.5*dcdc_fac + k_f*sc[9];
-        dqdc[15] =  1*dcdc_fac;
-        dqdc[16] =  0.0;
-        dqdc[17] =  0.0;
-        dqdc[18] =  0.0;
-        dqdc[19] =  0.0;
-        dqdc[20] =  0.0;
-        dqdc[21] =  0.0;
-        dqdc[22] =  0.0;
-        dqdc[23] =  0.0;
-        dqdc[24] =  0.0;
-        dqdc[25] =  0.0;
-        dqdc[26] =  2*dcdc_fac;
-        dqdc[27] =  0.0 - k_r;
-        dqdc[28] =  0.0;
-        dqdc[29] =  0.0;
-        dqdc[30] =  0.0;
-        dqdc[31] =  0.0;
-        dqdc[32] =  0.0;
-        dqdc[33] =  0.0;
-        dqdc[34] =  0.0;
+        /* d()/d[H2] */
+        dqdci =  1*dcdc_fac;
+        J[9] += -1 * dqdci;           /* dwdot[CH]/d[H2] */
+        J[14] += -1 * dqdci;          /* dwdot[CO]/d[H2] */
+        J[27] += 1 * dqdci;           /* dwdot[HCCO]/d[H2] */
+        /* d()/d[H2O] */
+        dqdci =  5*dcdc_fac;
+        J[189] += -1 * dqdci;         /* dwdot[CH]/d[H2O] */
+        J[194] += -1 * dqdci;         /* dwdot[CO]/d[H2O] */
+        J[207] += 1 * dqdci;          /* dwdot[HCCO]/d[H2O] */
+        /* d()/d[CH] */
+        dqdci =  + k_f*sc[14];
+        J[333] += -1 * dqdci;         /* dwdot[CH]/d[CH] */
+        J[338] += -1 * dqdci;         /* dwdot[CO]/d[CH] */
+        J[351] += 1 * dqdci;          /* dwdot[HCCO]/d[CH] */
+        /* d()/d[CH4] */
+        dqdci =  1*dcdc_fac;
+        J[477] += -1 * dqdci;         /* dwdot[CH]/d[CH4] */
+        J[482] += -1 * dqdci;         /* dwdot[CO]/d[CH4] */
+        J[495] += 1 * dqdci;          /* dwdot[HCCO]/d[CH4] */
+        /* d()/d[CO] */
+        dqdci =  0.5*dcdc_fac + k_f*sc[9];
+        J[513] += -1 * dqdci;         /* dwdot[CH]/d[CO] */
+        J[518] += -1 * dqdci;         /* dwdot[CO]/d[CO] */
+        J[531] += 1 * dqdci;          /* dwdot[HCCO]/d[CO] */
+        /* d()/d[CO2] */
+        dqdci =  1*dcdc_fac;
+        J[549] += -1 * dqdci;         /* dwdot[CH]/d[CO2] */
+        J[554] += -1 * dqdci;         /* dwdot[CO]/d[CO2] */
+        J[567] += 1 * dqdci;          /* dwdot[HCCO]/d[CO2] */
+        /* d()/d[C2H6] */
+        dqdci =  2*dcdc_fac;
+        J[945] += -1 * dqdci;         /* dwdot[CH]/d[C2H6] */
+        J[950] += -1 * dqdci;         /* dwdot[CO]/d[C2H6] */
+        J[963] += 1 * dqdci;          /* dwdot[HCCO]/d[C2H6] */
+        /* d()/d[HCCO] */
+        dqdci =  - k_r;
+        J[981] += -1 * dqdci;         /* dwdot[CH]/d[HCCO] */
+        J[986] += -1 * dqdci;         /* dwdot[CO]/d[HCCO] */
+        J[999] += 1 * dqdci;          /* dwdot[HCCO]/d[HCCO] */
     }
     else {
         dqdc[0] =  2*dcdc_fac;
@@ -24651,11 +24774,11 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
         dqdc[32] =  1*dcdc_fac;
         dqdc[33] =  1*dcdc_fac;
         dqdc[34] =  1*dcdc_fac;
-    }
-    for (int k=0; k<35; k++) {
-        J[36*k+9] += -1 * dqdc[k];
-        J[36*k+14] += -1 * dqdc[k];
-        J[36*k+27] += 1 * dqdc[k];
+        for (int k=0; k<35; k++) {
+            J[36*k+9] += -1 * dqdc[k];
+            J[36*k+14] += -1 * dqdc[k];
+            J[36*k+27] += 1 * dqdc[k];
+        }
     }
     J[1269] += -1 * dqdT; /* dwdot[CH]/dT */
     J[1274] += -1 * dqdT; /* dwdot[CO]/dT */
@@ -24681,30 +24804,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[14] += q; /* CO */
     wdot[15] -= q; /* CO2 */
     wdot[16] += q; /* HCO */
-    dqdc[9] =  + k_f*sc[15];
-    dqdc[14] =  - k_r*sc[16];
-    dqdc[15] =  + k_f*sc[9];
-    dqdc[16] =  - k_r*sc[14];
     /* d()/d[CH] */
-    J[333] += -1 * dqdc[9];       /* dwdot[CH]/d[CH] */
-    J[338] += 1 * dqdc[9];        /* dwdot[CO]/d[CH] */
-    J[339] += -1 * dqdc[9];       /* dwdot[CO2]/d[CH] */
-    J[340] += 1 * dqdc[9];        /* dwdot[HCO]/d[CH] */
+    dqdci =  + k_f*sc[15];
+    J[333] += -1 * dqdci;         /* dwdot[CH]/d[CH] */
+    J[338] += 1 * dqdci;          /* dwdot[CO]/d[CH] */
+    J[339] += -1 * dqdci;         /* dwdot[CO2]/d[CH] */
+    J[340] += 1 * dqdci;          /* dwdot[HCO]/d[CH] */
     /* d()/d[CO] */
-    J[513] += -1 * dqdc[14];      /* dwdot[CH]/d[CO] */
-    J[518] += 1 * dqdc[14];       /* dwdot[CO]/d[CO] */
-    J[519] += -1 * dqdc[14];      /* dwdot[CO2]/d[CO] */
-    J[520] += 1 * dqdc[14];       /* dwdot[HCO]/d[CO] */
+    dqdci =  - k_r*sc[16];
+    J[513] += -1 * dqdci;         /* dwdot[CH]/d[CO] */
+    J[518] += 1 * dqdci;          /* dwdot[CO]/d[CO] */
+    J[519] += -1 * dqdci;         /* dwdot[CO2]/d[CO] */
+    J[520] += 1 * dqdci;          /* dwdot[HCO]/d[CO] */
     /* d()/d[CO2] */
-    J[549] += -1 * dqdc[15];      /* dwdot[CH]/d[CO2] */
-    J[554] += 1 * dqdc[15];       /* dwdot[CO]/d[CO2] */
-    J[555] += -1 * dqdc[15];      /* dwdot[CO2]/d[CO2] */
-    J[556] += 1 * dqdc[15];       /* dwdot[HCO]/d[CO2] */
+    dqdci =  + k_f*sc[9];
+    J[549] += -1 * dqdci;         /* dwdot[CH]/d[CO2] */
+    J[554] += 1 * dqdci;          /* dwdot[CO]/d[CO2] */
+    J[555] += -1 * dqdci;         /* dwdot[CO2]/d[CO2] */
+    J[556] += 1 * dqdci;          /* dwdot[HCO]/d[CO2] */
     /* d()/d[HCO] */
-    J[585] += -1 * dqdc[16];      /* dwdot[CH]/d[HCO] */
-    J[590] += 1 * dqdc[16];       /* dwdot[CO]/d[HCO] */
-    J[591] += -1 * dqdc[16];      /* dwdot[CO2]/d[HCO] */
-    J[592] += 1 * dqdc[16];       /* dwdot[HCO]/d[HCO] */
+    dqdci =  - k_r*sc[14];
+    J[585] += -1 * dqdci;         /* dwdot[CH]/d[HCO] */
+    J[590] += 1 * dqdci;          /* dwdot[CO]/d[HCO] */
+    J[591] += -1 * dqdci;         /* dwdot[CO2]/d[HCO] */
+    J[592] += 1 * dqdci;          /* dwdot[HCO]/d[HCO] */
     /* d()/dT */
     J[1269] += -1 * dqdT;         /* dwdot[CH]/dT */
     J[1274] += 1 * dqdT;          /* dwdot[CO]/dT */
@@ -24731,30 +24854,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[9] -= q; /* CH */
     wdot[17] -= q; /* CH2O */
     wdot[28] += q; /* CH2CO */
-    dqdc[1] =  - k_r*sc[28];
-    dqdc[9] =  + k_f*sc[17];
-    dqdc[17] =  + k_f*sc[9];
-    dqdc[28] =  - k_r*sc[1];
     /* d()/d[H] */
-    J[37] += 1 * dqdc[1];         /* dwdot[H]/d[H] */
-    J[45] += -1 * dqdc[1];        /* dwdot[CH]/d[H] */
-    J[53] += -1 * dqdc[1];        /* dwdot[CH2O]/d[H] */
-    J[64] += 1 * dqdc[1];         /* dwdot[CH2CO]/d[H] */
+    dqdci =  - k_r*sc[28];
+    J[37] += 1 * dqdci;           /* dwdot[H]/d[H] */
+    J[45] += -1 * dqdci;          /* dwdot[CH]/d[H] */
+    J[53] += -1 * dqdci;          /* dwdot[CH2O]/d[H] */
+    J[64] += 1 * dqdci;           /* dwdot[CH2CO]/d[H] */
     /* d()/d[CH] */
-    J[325] += 1 * dqdc[9];        /* dwdot[H]/d[CH] */
-    J[333] += -1 * dqdc[9];       /* dwdot[CH]/d[CH] */
-    J[341] += -1 * dqdc[9];       /* dwdot[CH2O]/d[CH] */
-    J[352] += 1 * dqdc[9];        /* dwdot[CH2CO]/d[CH] */
+    dqdci =  + k_f*sc[17];
+    J[325] += 1 * dqdci;          /* dwdot[H]/d[CH] */
+    J[333] += -1 * dqdci;         /* dwdot[CH]/d[CH] */
+    J[341] += -1 * dqdci;         /* dwdot[CH2O]/d[CH] */
+    J[352] += 1 * dqdci;          /* dwdot[CH2CO]/d[CH] */
     /* d()/d[CH2O] */
-    J[613] += 1 * dqdc[17];       /* dwdot[H]/d[CH2O] */
-    J[621] += -1 * dqdc[17];      /* dwdot[CH]/d[CH2O] */
-    J[629] += -1 * dqdc[17];      /* dwdot[CH2O]/d[CH2O] */
-    J[640] += 1 * dqdc[17];       /* dwdot[CH2CO]/d[CH2O] */
+    dqdci =  + k_f*sc[9];
+    J[613] += 1 * dqdci;          /* dwdot[H]/d[CH2O] */
+    J[621] += -1 * dqdci;         /* dwdot[CH]/d[CH2O] */
+    J[629] += -1 * dqdci;         /* dwdot[CH2O]/d[CH2O] */
+    J[640] += 1 * dqdci;          /* dwdot[CH2CO]/d[CH2O] */
     /* d()/d[CH2CO] */
-    J[1009] += 1 * dqdc[28];      /* dwdot[H]/d[CH2CO] */
-    J[1017] += -1 * dqdc[28];     /* dwdot[CH]/d[CH2CO] */
-    J[1025] += -1 * dqdc[28];     /* dwdot[CH2O]/d[CH2CO] */
-    J[1036] += 1 * dqdc[28];      /* dwdot[CH2CO]/d[CH2CO] */
+    dqdci =  - k_r*sc[1];
+    J[1009] += 1 * dqdci;         /* dwdot[H]/d[CH2CO] */
+    J[1017] += -1 * dqdci;        /* dwdot[CH]/d[CH2CO] */
+    J[1025] += -1 * dqdci;        /* dwdot[CH2O]/d[CH2CO] */
+    J[1036] += 1 * dqdci;         /* dwdot[CH2CO]/d[CH2CO] */
     /* d()/dT */
     J[1261] += 1 * dqdT;          /* dwdot[H]/dT */
     J[1269] += -1 * dqdT;         /* dwdot[CH]/dT */
@@ -24781,30 +24904,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[14] += q; /* CO */
     wdot[22] += q; /* C2H2 */
     wdot[27] -= q; /* HCCO */
-    dqdc[9] =  + k_f*sc[27];
-    dqdc[14] =  - k_r*sc[22];
-    dqdc[22] =  - k_r*sc[14];
-    dqdc[27] =  + k_f*sc[9];
     /* d()/d[CH] */
-    J[333] += -1 * dqdc[9];       /* dwdot[CH]/d[CH] */
-    J[338] += 1 * dqdc[9];        /* dwdot[CO]/d[CH] */
-    J[346] += 1 * dqdc[9];        /* dwdot[C2H2]/d[CH] */
-    J[351] += -1 * dqdc[9];       /* dwdot[HCCO]/d[CH] */
+    dqdci =  + k_f*sc[27];
+    J[333] += -1 * dqdci;         /* dwdot[CH]/d[CH] */
+    J[338] += 1 * dqdci;          /* dwdot[CO]/d[CH] */
+    J[346] += 1 * dqdci;          /* dwdot[C2H2]/d[CH] */
+    J[351] += -1 * dqdci;         /* dwdot[HCCO]/d[CH] */
     /* d()/d[CO] */
-    J[513] += -1 * dqdc[14];      /* dwdot[CH]/d[CO] */
-    J[518] += 1 * dqdc[14];       /* dwdot[CO]/d[CO] */
-    J[526] += 1 * dqdc[14];       /* dwdot[C2H2]/d[CO] */
-    J[531] += -1 * dqdc[14];      /* dwdot[HCCO]/d[CO] */
+    dqdci =  - k_r*sc[22];
+    J[513] += -1 * dqdci;         /* dwdot[CH]/d[CO] */
+    J[518] += 1 * dqdci;          /* dwdot[CO]/d[CO] */
+    J[526] += 1 * dqdci;          /* dwdot[C2H2]/d[CO] */
+    J[531] += -1 * dqdci;         /* dwdot[HCCO]/d[CO] */
     /* d()/d[C2H2] */
-    J[801] += -1 * dqdc[22];      /* dwdot[CH]/d[C2H2] */
-    J[806] += 1 * dqdc[22];       /* dwdot[CO]/d[C2H2] */
-    J[814] += 1 * dqdc[22];       /* dwdot[C2H2]/d[C2H2] */
-    J[819] += -1 * dqdc[22];      /* dwdot[HCCO]/d[C2H2] */
+    dqdci =  - k_r*sc[14];
+    J[801] += -1 * dqdci;         /* dwdot[CH]/d[C2H2] */
+    J[806] += 1 * dqdci;          /* dwdot[CO]/d[C2H2] */
+    J[814] += 1 * dqdci;          /* dwdot[C2H2]/d[C2H2] */
+    J[819] += -1 * dqdci;         /* dwdot[HCCO]/d[C2H2] */
     /* d()/d[HCCO] */
-    J[981] += -1 * dqdc[27];      /* dwdot[CH]/d[HCCO] */
-    J[986] += 1 * dqdc[27];       /* dwdot[CO]/d[HCCO] */
-    J[994] += 1 * dqdc[27];       /* dwdot[C2H2]/d[HCCO] */
-    J[999] += -1 * dqdc[27];      /* dwdot[HCCO]/d[HCCO] */
+    dqdci =  + k_f*sc[9];
+    J[981] += -1 * dqdci;         /* dwdot[CH]/d[HCCO] */
+    J[986] += 1 * dqdci;          /* dwdot[CO]/d[HCCO] */
+    J[994] += 1 * dqdci;          /* dwdot[C2H2]/d[HCCO] */
+    J[999] += -1 * dqdci;         /* dwdot[HCCO]/d[HCCO] */
     /* d()/dT */
     J[1269] += -1 * dqdT;         /* dwdot[CH]/dT */
     J[1274] += 1 * dqdT;          /* dwdot[CO]/dT */
@@ -24826,20 +24949,20 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[4] += q; /* OH */
     wdot[10] -= q; /* CH2 */
     wdot[14] += q; /* CO */
-    dqdc[3] =  + k_f*sc[10];
-    dqdc[10] =  + k_f*sc[3];
     /* d()/d[O2] */
-    J[109] += 1 * dqdc[3];        /* dwdot[H]/d[O2] */
-    J[111] += -1 * dqdc[3];       /* dwdot[O2]/d[O2] */
-    J[112] += 1 * dqdc[3];        /* dwdot[OH]/d[O2] */
-    J[118] += -1 * dqdc[3];       /* dwdot[CH2]/d[O2] */
-    J[122] += 1 * dqdc[3];        /* dwdot[CO]/d[O2] */
+    dqdci =  + k_f*sc[10];
+    J[109] += 1 * dqdci;          /* dwdot[H]/d[O2] */
+    J[111] += -1 * dqdci;         /* dwdot[O2]/d[O2] */
+    J[112] += 1 * dqdci;          /* dwdot[OH]/d[O2] */
+    J[118] += -1 * dqdci;         /* dwdot[CH2]/d[O2] */
+    J[122] += 1 * dqdci;          /* dwdot[CO]/d[O2] */
     /* d()/d[CH2] */
-    J[361] += 1 * dqdc[10];       /* dwdot[H]/d[CH2] */
-    J[363] += -1 * dqdc[10];      /* dwdot[O2]/d[CH2] */
-    J[364] += 1 * dqdc[10];       /* dwdot[OH]/d[CH2] */
-    J[370] += -1 * dqdc[10];      /* dwdot[CH2]/d[CH2] */
-    J[374] += 1 * dqdc[10];       /* dwdot[CO]/d[CH2] */
+    dqdci =  + k_f*sc[3];
+    J[361] += 1 * dqdci;          /* dwdot[H]/d[CH2] */
+    J[363] += -1 * dqdci;         /* dwdot[O2]/d[CH2] */
+    J[364] += 1 * dqdci;          /* dwdot[OH]/d[CH2] */
+    J[370] += -1 * dqdci;         /* dwdot[CH2]/d[CH2] */
+    J[374] += 1 * dqdci;          /* dwdot[CO]/d[CH2] */
     /* d()/dT */
     J[1261] += 1 * dqdT;          /* dwdot[H]/dT */
     J[1263] += -1 * dqdT;         /* dwdot[O2]/dT */
@@ -24867,30 +24990,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[1] += q; /* H */
     wdot[10] -= q; /* CH2 */
     wdot[12] += q; /* CH3 */
-    dqdc[0] =  + k_f*sc[10];
-    dqdc[1] =  - k_r*sc[12];
-    dqdc[10] =  + k_f*sc[0];
-    dqdc[12] =  - k_r*sc[1];
     /* d()/d[H2] */
-    J[0] += -1 * dqdc[0];         /* dwdot[H2]/d[H2] */
-    J[1] += 1 * dqdc[0];          /* dwdot[H]/d[H2] */
-    J[10] += -1 * dqdc[0];        /* dwdot[CH2]/d[H2] */
-    J[12] += 1 * dqdc[0];         /* dwdot[CH3]/d[H2] */
+    dqdci =  + k_f*sc[10];
+    J[0] += -1 * dqdci;           /* dwdot[H2]/d[H2] */
+    J[1] += 1 * dqdci;            /* dwdot[H]/d[H2] */
+    J[10] += -1 * dqdci;          /* dwdot[CH2]/d[H2] */
+    J[12] += 1 * dqdci;           /* dwdot[CH3]/d[H2] */
     /* d()/d[H] */
-    J[36] += -1 * dqdc[1];        /* dwdot[H2]/d[H] */
-    J[37] += 1 * dqdc[1];         /* dwdot[H]/d[H] */
-    J[46] += -1 * dqdc[1];        /* dwdot[CH2]/d[H] */
-    J[48] += 1 * dqdc[1];         /* dwdot[CH3]/d[H] */
+    dqdci =  - k_r*sc[12];
+    J[36] += -1 * dqdci;          /* dwdot[H2]/d[H] */
+    J[37] += 1 * dqdci;           /* dwdot[H]/d[H] */
+    J[46] += -1 * dqdci;          /* dwdot[CH2]/d[H] */
+    J[48] += 1 * dqdci;           /* dwdot[CH3]/d[H] */
     /* d()/d[CH2] */
-    J[360] += -1 * dqdc[10];      /* dwdot[H2]/d[CH2] */
-    J[361] += 1 * dqdc[10];       /* dwdot[H]/d[CH2] */
-    J[370] += -1 * dqdc[10];      /* dwdot[CH2]/d[CH2] */
-    J[372] += 1 * dqdc[10];       /* dwdot[CH3]/d[CH2] */
+    dqdci =  + k_f*sc[0];
+    J[360] += -1 * dqdci;         /* dwdot[H2]/d[CH2] */
+    J[361] += 1 * dqdci;          /* dwdot[H]/d[CH2] */
+    J[370] += -1 * dqdci;         /* dwdot[CH2]/d[CH2] */
+    J[372] += 1 * dqdci;          /* dwdot[CH3]/d[CH2] */
     /* d()/d[CH3] */
-    J[432] += -1 * dqdc[12];      /* dwdot[H2]/d[CH3] */
-    J[433] += 1 * dqdc[12];       /* dwdot[H]/d[CH3] */
-    J[442] += -1 * dqdc[12];      /* dwdot[CH2]/d[CH3] */
-    J[444] += 1 * dqdc[12];       /* dwdot[CH3]/d[CH3] */
+    dqdci =  - k_r*sc[1];
+    J[432] += -1 * dqdci;         /* dwdot[H2]/d[CH3] */
+    J[433] += 1 * dqdci;          /* dwdot[H]/d[CH3] */
+    J[442] += -1 * dqdci;         /* dwdot[CH2]/d[CH3] */
+    J[444] += 1 * dqdci;          /* dwdot[CH3]/d[CH3] */
     /* d()/dT */
     J[1260] += -1 * dqdT;         /* dwdot[H2]/dT */
     J[1261] += 1 * dqdT;          /* dwdot[H]/dT */
@@ -24916,21 +25039,21 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[0] += q; /* H2 */
     wdot[10] -= 2 * q; /* CH2 */
     wdot[22] += q; /* C2H2 */
-    dqdc[0] =  - k_r*sc[22];
-    dqdc[10] =  + k_f*2*sc[10];
-    dqdc[22] =  - k_r*sc[0];
     /* d()/d[H2] */
-    J[0] += 1 * dqdc[0];          /* dwdot[H2]/d[H2] */
-    J[10] += -2 * dqdc[0];        /* dwdot[CH2]/d[H2] */
-    J[22] += 1 * dqdc[0];         /* dwdot[C2H2]/d[H2] */
+    dqdci =  - k_r*sc[22];
+    J[0] += 1 * dqdci;            /* dwdot[H2]/d[H2] */
+    J[10] += -2 * dqdci;          /* dwdot[CH2]/d[H2] */
+    J[22] += 1 * dqdci;           /* dwdot[C2H2]/d[H2] */
     /* d()/d[CH2] */
-    J[360] += 1 * dqdc[10];       /* dwdot[H2]/d[CH2] */
-    J[370] += -2 * dqdc[10];      /* dwdot[CH2]/d[CH2] */
-    J[382] += 1 * dqdc[10];       /* dwdot[C2H2]/d[CH2] */
+    dqdci =  + k_f*2*sc[10];
+    J[360] += 1 * dqdci;          /* dwdot[H2]/d[CH2] */
+    J[370] += -2 * dqdci;         /* dwdot[CH2]/d[CH2] */
+    J[382] += 1 * dqdci;          /* dwdot[C2H2]/d[CH2] */
     /* d()/d[C2H2] */
-    J[792] += 1 * dqdc[22];       /* dwdot[H2]/d[C2H2] */
-    J[802] += -2 * dqdc[22];      /* dwdot[CH2]/d[C2H2] */
-    J[814] += 1 * dqdc[22];       /* dwdot[C2H2]/d[C2H2] */
+    dqdci =  - k_r*sc[0];
+    J[792] += 1 * dqdci;          /* dwdot[H2]/d[C2H2] */
+    J[802] += -2 * dqdci;         /* dwdot[CH2]/d[C2H2] */
+    J[814] += 1 * dqdci;          /* dwdot[C2H2]/d[C2H2] */
     /* d()/dT */
     J[1260] += 1 * dqdT;          /* dwdot[H2]/dT */
     J[1270] += -2 * dqdT;         /* dwdot[CH2]/dT */
@@ -24956,30 +25079,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[10] -= q; /* CH2 */
     wdot[12] -= q; /* CH3 */
     wdot[24] += q; /* C2H4 */
-    dqdc[1] =  - k_r*sc[24];
-    dqdc[10] =  + k_f*sc[12];
-    dqdc[12] =  + k_f*sc[10];
-    dqdc[24] =  - k_r*sc[1];
     /* d()/d[H] */
-    J[37] += 1 * dqdc[1];         /* dwdot[H]/d[H] */
-    J[46] += -1 * dqdc[1];        /* dwdot[CH2]/d[H] */
-    J[48] += -1 * dqdc[1];        /* dwdot[CH3]/d[H] */
-    J[60] += 1 * dqdc[1];         /* dwdot[C2H4]/d[H] */
+    dqdci =  - k_r*sc[24];
+    J[37] += 1 * dqdci;           /* dwdot[H]/d[H] */
+    J[46] += -1 * dqdci;          /* dwdot[CH2]/d[H] */
+    J[48] += -1 * dqdci;          /* dwdot[CH3]/d[H] */
+    J[60] += 1 * dqdci;           /* dwdot[C2H4]/d[H] */
     /* d()/d[CH2] */
-    J[361] += 1 * dqdc[10];       /* dwdot[H]/d[CH2] */
-    J[370] += -1 * dqdc[10];      /* dwdot[CH2]/d[CH2] */
-    J[372] += -1 * dqdc[10];      /* dwdot[CH3]/d[CH2] */
-    J[384] += 1 * dqdc[10];       /* dwdot[C2H4]/d[CH2] */
+    dqdci =  + k_f*sc[12];
+    J[361] += 1 * dqdci;          /* dwdot[H]/d[CH2] */
+    J[370] += -1 * dqdci;         /* dwdot[CH2]/d[CH2] */
+    J[372] += -1 * dqdci;         /* dwdot[CH3]/d[CH2] */
+    J[384] += 1 * dqdci;          /* dwdot[C2H4]/d[CH2] */
     /* d()/d[CH3] */
-    J[433] += 1 * dqdc[12];       /* dwdot[H]/d[CH3] */
-    J[442] += -1 * dqdc[12];      /* dwdot[CH2]/d[CH3] */
-    J[444] += -1 * dqdc[12];      /* dwdot[CH3]/d[CH3] */
-    J[456] += 1 * dqdc[12];       /* dwdot[C2H4]/d[CH3] */
+    dqdci =  + k_f*sc[10];
+    J[433] += 1 * dqdci;          /* dwdot[H]/d[CH3] */
+    J[442] += -1 * dqdci;         /* dwdot[CH2]/d[CH3] */
+    J[444] += -1 * dqdci;         /* dwdot[CH3]/d[CH3] */
+    J[456] += 1 * dqdci;          /* dwdot[C2H4]/d[CH3] */
     /* d()/d[C2H4] */
-    J[865] += 1 * dqdc[24];       /* dwdot[H]/d[C2H4] */
-    J[874] += -1 * dqdc[24];      /* dwdot[CH2]/d[C2H4] */
-    J[876] += -1 * dqdc[24];      /* dwdot[CH3]/d[C2H4] */
-    J[888] += 1 * dqdc[24];       /* dwdot[C2H4]/d[C2H4] */
+    dqdci =  - k_r*sc[1];
+    J[865] += 1 * dqdci;          /* dwdot[H]/d[C2H4] */
+    J[874] += -1 * dqdci;         /* dwdot[CH2]/d[C2H4] */
+    J[876] += -1 * dqdci;         /* dwdot[CH3]/d[C2H4] */
+    J[888] += 1 * dqdci;          /* dwdot[C2H4]/d[C2H4] */
     /* d()/dT */
     J[1261] += 1 * dqdT;          /* dwdot[H]/dT */
     J[1270] += -1 * dqdT;         /* dwdot[CH2]/dT */
@@ -25005,21 +25128,21 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[10] -= q; /* CH2 */
     wdot[12] += 2 * q; /* CH3 */
     wdot[13] -= q; /* CH4 */
-    dqdc[10] =  + k_f*sc[13];
-    dqdc[12] =  - k_r*2*sc[12];
-    dqdc[13] =  + k_f*sc[10];
     /* d()/d[CH2] */
-    J[370] += -1 * dqdc[10];      /* dwdot[CH2]/d[CH2] */
-    J[372] += 2 * dqdc[10];       /* dwdot[CH3]/d[CH2] */
-    J[373] += -1 * dqdc[10];      /* dwdot[CH4]/d[CH2] */
+    dqdci =  + k_f*sc[13];
+    J[370] += -1 * dqdci;         /* dwdot[CH2]/d[CH2] */
+    J[372] += 2 * dqdci;          /* dwdot[CH3]/d[CH2] */
+    J[373] += -1 * dqdci;         /* dwdot[CH4]/d[CH2] */
     /* d()/d[CH3] */
-    J[442] += -1 * dqdc[12];      /* dwdot[CH2]/d[CH3] */
-    J[444] += 2 * dqdc[12];       /* dwdot[CH3]/d[CH3] */
-    J[445] += -1 * dqdc[12];      /* dwdot[CH4]/d[CH3] */
+    dqdci =  - k_r*2*sc[12];
+    J[442] += -1 * dqdci;         /* dwdot[CH2]/d[CH3] */
+    J[444] += 2 * dqdci;          /* dwdot[CH3]/d[CH3] */
+    J[445] += -1 * dqdci;         /* dwdot[CH4]/d[CH3] */
     /* d()/d[CH4] */
-    J[478] += -1 * dqdc[13];      /* dwdot[CH2]/d[CH4] */
-    J[480] += 2 * dqdc[13];       /* dwdot[CH3]/d[CH4] */
-    J[481] += -1 * dqdc[13];      /* dwdot[CH4]/d[CH4] */
+    dqdci =  + k_f*sc[10];
+    J[478] += -1 * dqdci;         /* dwdot[CH2]/d[CH4] */
+    J[480] += 2 * dqdci;          /* dwdot[CH3]/d[CH4] */
+    J[481] += -1 * dqdci;         /* dwdot[CH4]/d[CH4] */
     /* d()/dT */
     J[1270] += -1 * dqdT;         /* dwdot[CH2]/dT */
     J[1272] += 2 * dqdT;          /* dwdot[CH3]/dT */
@@ -25055,9 +25178,9 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     troe = 1.0 / (1.0 + troePr*troePr);
     F = pow(10.0, logFcent * troe);
     dlogFcentdT = log10e/Fcent*(Fcent1*-0.00363636 + Fcent2*-0.000815661 + Fcent3*5185*invT2);
-    dlogFdcn_fac = logFcent * troe*troe * troePr * troePr_den;
+    dlogFdcn_fac = 2.0 * logFcent * troe*troe * troePr * troePr_den;
     dlogFdc = -troe_n * dlogFdcn_fac * troePr_den;
-    dlogFdn = 2. * dlogFdcn_fac * troePr;
+    dlogFdn = dlogFdcn_fac * troePr;
     dlogFdlogPr = dlogFdc;
     dlogFdT = dlogFcentdT*(troe - 0.67*dlogFdc - 1.27*dlogFdn) + dlogFdlogPr * dlogPrdT;
     /* reverse */
@@ -25081,41 +25204,46 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     k_r *= Corr;
     dcdc_fac = q/alpha*(1.0/(Pr+1.0) + dlogFdlogPr);
     if (consP) {
-        dqdc[0] =  1*dcdc_fac;
-        dqdc[1] =  0.0;
-        dqdc[2] =  0.0;
-        dqdc[3] =  0.0;
-        dqdc[4] =  0.0;
-        dqdc[5] =  5*dcdc_fac;
-        dqdc[6] =  0.0;
-        dqdc[7] =  0.0;
-        dqdc[8] =  0.0;
-        dqdc[9] =  0.0;
-        dqdc[10] =  0.0 + k_f*sc[14];
-        dqdc[11] =  0.0;
-        dqdc[12] =  0.0;
-        dqdc[13] =  1*dcdc_fac;
-        dqdc[14] =  0.5*dcdc_fac + k_f*sc[10];
-        dqdc[15] =  1*dcdc_fac;
-        dqdc[16] =  0.0;
-        dqdc[17] =  0.0;
-        dqdc[18] =  0.0;
-        dqdc[19] =  0.0;
-        dqdc[20] =  0.0;
-        dqdc[21] =  0.0;
-        dqdc[22] =  0.0;
-        dqdc[23] =  0.0;
-        dqdc[24] =  0.0;
-        dqdc[25] =  0.0;
-        dqdc[26] =  2*dcdc_fac;
-        dqdc[27] =  0.0;
-        dqdc[28] =  0.0 - k_r;
-        dqdc[29] =  0.0;
-        dqdc[30] =  0.0;
-        dqdc[31] =  0.0;
-        dqdc[32] =  0.0;
-        dqdc[33] =  0.0;
-        dqdc[34] =  0.0;
+        /* d()/d[H2] */
+        dqdci =  1*dcdc_fac;
+        J[10] += -1 * dqdci;          /* dwdot[CH2]/d[H2] */
+        J[14] += -1 * dqdci;          /* dwdot[CO]/d[H2] */
+        J[28] += 1 * dqdci;           /* dwdot[CH2CO]/d[H2] */
+        /* d()/d[H2O] */
+        dqdci =  5*dcdc_fac;
+        J[190] += -1 * dqdci;         /* dwdot[CH2]/d[H2O] */
+        J[194] += -1 * dqdci;         /* dwdot[CO]/d[H2O] */
+        J[208] += 1 * dqdci;          /* dwdot[CH2CO]/d[H2O] */
+        /* d()/d[CH2] */
+        dqdci =  + k_f*sc[14];
+        J[370] += -1 * dqdci;         /* dwdot[CH2]/d[CH2] */
+        J[374] += -1 * dqdci;         /* dwdot[CO]/d[CH2] */
+        J[388] += 1 * dqdci;          /* dwdot[CH2CO]/d[CH2] */
+        /* d()/d[CH4] */
+        dqdci =  1*dcdc_fac;
+        J[478] += -1 * dqdci;         /* dwdot[CH2]/d[CH4] */
+        J[482] += -1 * dqdci;         /* dwdot[CO]/d[CH4] */
+        J[496] += 1 * dqdci;          /* dwdot[CH2CO]/d[CH4] */
+        /* d()/d[CO] */
+        dqdci =  0.5*dcdc_fac + k_f*sc[10];
+        J[514] += -1 * dqdci;         /* dwdot[CH2]/d[CO] */
+        J[518] += -1 * dqdci;         /* dwdot[CO]/d[CO] */
+        J[532] += 1 * dqdci;          /* dwdot[CH2CO]/d[CO] */
+        /* d()/d[CO2] */
+        dqdci =  1*dcdc_fac;
+        J[550] += -1 * dqdci;         /* dwdot[CH2]/d[CO2] */
+        J[554] += -1 * dqdci;         /* dwdot[CO]/d[CO2] */
+        J[568] += 1 * dqdci;          /* dwdot[CH2CO]/d[CO2] */
+        /* d()/d[C2H6] */
+        dqdci =  2*dcdc_fac;
+        J[946] += -1 * dqdci;         /* dwdot[CH2]/d[C2H6] */
+        J[950] += -1 * dqdci;         /* dwdot[CO]/d[C2H6] */
+        J[964] += 1 * dqdci;          /* dwdot[CH2CO]/d[C2H6] */
+        /* d()/d[CH2CO] */
+        dqdci =  - k_r;
+        J[1018] += -1 * dqdci;        /* dwdot[CH2]/d[CH2CO] */
+        J[1022] += -1 * dqdci;        /* dwdot[CO]/d[CH2CO] */
+        J[1036] += 1 * dqdci;         /* dwdot[CH2CO]/d[CH2CO] */
     }
     else {
         dqdc[0] =  2*dcdc_fac;
@@ -25153,11 +25281,11 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
         dqdc[32] =  1*dcdc_fac;
         dqdc[33] =  1*dcdc_fac;
         dqdc[34] =  1*dcdc_fac;
-    }
-    for (int k=0; k<35; k++) {
-        J[36*k+10] += -1 * dqdc[k];
-        J[36*k+14] += -1 * dqdc[k];
-        J[36*k+28] += 1 * dqdc[k];
+        for (int k=0; k<35; k++) {
+            J[36*k+10] += -1 * dqdc[k];
+            J[36*k+14] += -1 * dqdc[k];
+            J[36*k+28] += 1 * dqdc[k];
+        }
     }
     J[1270] += -1 * dqdT; /* dwdot[CH2]/dT */
     J[1274] += -1 * dqdT; /* dwdot[CO]/dT */
@@ -25183,30 +25311,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[14] += q; /* CO */
     wdot[23] += q; /* C2H3 */
     wdot[27] -= q; /* HCCO */
-    dqdc[10] =  + k_f*sc[27];
-    dqdc[14] =  - k_r*sc[23];
-    dqdc[23] =  - k_r*sc[14];
-    dqdc[27] =  + k_f*sc[10];
     /* d()/d[CH2] */
-    J[370] += -1 * dqdc[10];      /* dwdot[CH2]/d[CH2] */
-    J[374] += 1 * dqdc[10];       /* dwdot[CO]/d[CH2] */
-    J[383] += 1 * dqdc[10];       /* dwdot[C2H3]/d[CH2] */
-    J[387] += -1 * dqdc[10];      /* dwdot[HCCO]/d[CH2] */
+    dqdci =  + k_f*sc[27];
+    J[370] += -1 * dqdci;         /* dwdot[CH2]/d[CH2] */
+    J[374] += 1 * dqdci;          /* dwdot[CO]/d[CH2] */
+    J[383] += 1 * dqdci;          /* dwdot[C2H3]/d[CH2] */
+    J[387] += -1 * dqdci;         /* dwdot[HCCO]/d[CH2] */
     /* d()/d[CO] */
-    J[514] += -1 * dqdc[14];      /* dwdot[CH2]/d[CO] */
-    J[518] += 1 * dqdc[14];       /* dwdot[CO]/d[CO] */
-    J[527] += 1 * dqdc[14];       /* dwdot[C2H3]/d[CO] */
-    J[531] += -1 * dqdc[14];      /* dwdot[HCCO]/d[CO] */
+    dqdci =  - k_r*sc[23];
+    J[514] += -1 * dqdci;         /* dwdot[CH2]/d[CO] */
+    J[518] += 1 * dqdci;          /* dwdot[CO]/d[CO] */
+    J[527] += 1 * dqdci;          /* dwdot[C2H3]/d[CO] */
+    J[531] += -1 * dqdci;         /* dwdot[HCCO]/d[CO] */
     /* d()/d[C2H3] */
-    J[838] += -1 * dqdc[23];      /* dwdot[CH2]/d[C2H3] */
-    J[842] += 1 * dqdc[23];       /* dwdot[CO]/d[C2H3] */
-    J[851] += 1 * dqdc[23];       /* dwdot[C2H3]/d[C2H3] */
-    J[855] += -1 * dqdc[23];      /* dwdot[HCCO]/d[C2H3] */
+    dqdci =  - k_r*sc[14];
+    J[838] += -1 * dqdci;         /* dwdot[CH2]/d[C2H3] */
+    J[842] += 1 * dqdci;          /* dwdot[CO]/d[C2H3] */
+    J[851] += 1 * dqdci;          /* dwdot[C2H3]/d[C2H3] */
+    J[855] += -1 * dqdci;         /* dwdot[HCCO]/d[C2H3] */
     /* d()/d[HCCO] */
-    J[982] += -1 * dqdc[27];      /* dwdot[CH2]/d[HCCO] */
-    J[986] += 1 * dqdc[27];       /* dwdot[CO]/d[HCCO] */
-    J[995] += 1 * dqdc[27];       /* dwdot[C2H3]/d[HCCO] */
-    J[999] += -1 * dqdc[27];      /* dwdot[HCCO]/d[HCCO] */
+    dqdci =  + k_f*sc[10];
+    J[982] += -1 * dqdci;         /* dwdot[CH2]/d[HCCO] */
+    J[986] += 1 * dqdci;          /* dwdot[CO]/d[HCCO] */
+    J[995] += 1 * dqdci;          /* dwdot[C2H3]/d[HCCO] */
+    J[999] += -1 * dqdci;         /* dwdot[HCCO]/d[HCCO] */
     /* d()/dT */
     J[1270] += -1 * dqdT;         /* dwdot[CH2]/dT */
     J[1274] += 1 * dqdT;          /* dwdot[CO]/dT */
@@ -25231,18 +25359,18 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     /* update wdot */
     wdot[10] += q; /* CH2 */
     wdot[11] -= q; /* CH2(S) */
-    dqdc[10] =  - k_r*sc[30];
-    dqdc[11] =  + k_f*sc[30];
-    dqdc[30] =  + k_f*sc[11] - k_r*sc[10];
     /* d()/d[CH2] */
-    J[370] += 1 * dqdc[10];       /* dwdot[CH2]/d[CH2] */
-    J[371] += -1 * dqdc[10];      /* dwdot[CH2(S)]/d[CH2] */
+    dqdci =  - k_r*sc[30];
+    J[370] += 1 * dqdci;          /* dwdot[CH2]/d[CH2] */
+    J[371] += -1 * dqdci;         /* dwdot[CH2(S)]/d[CH2] */
     /* d()/d[CH2(S)] */
-    J[406] += 1 * dqdc[11];       /* dwdot[CH2]/d[CH2(S)] */
-    J[407] += -1 * dqdc[11];      /* dwdot[CH2(S)]/d[CH2(S)] */
+    dqdci =  + k_f*sc[30];
+    J[406] += 1 * dqdci;          /* dwdot[CH2]/d[CH2(S)] */
+    J[407] += -1 * dqdci;         /* dwdot[CH2(S)]/d[CH2(S)] */
     /* d()/d[N2] */
-    J[1090] += 1 * dqdc[30];      /* dwdot[CH2]/d[N2] */
-    J[1091] += -1 * dqdc[30];     /* dwdot[CH2(S)]/d[N2] */
+    dqdci =  + k_f*sc[11] - k_r*sc[10];
+    J[1090] += 1 * dqdci;         /* dwdot[CH2]/d[N2] */
+    J[1091] += -1 * dqdci;        /* dwdot[CH2(S)]/d[N2] */
     /* d()/dT */
     J[1270] += 1 * dqdT;          /* dwdot[CH2]/dT */
     J[1271] += -1 * dqdT;         /* dwdot[CH2(S)]/dT */
@@ -25268,41 +25396,41 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[4] += q; /* OH */
     wdot[11] -= q; /* CH2(S) */
     wdot[14] += q; /* CO */
-    dqdc[1] =  - k_r*sc[14]*sc[4];
-    dqdc[3] =  + k_f*sc[11];
-    dqdc[4] =  - k_r*sc[14]*sc[1];
-    dqdc[11] =  + k_f*sc[3];
-    dqdc[14] =  - k_r*sc[1]*sc[4];
     /* d()/d[H] */
-    J[37] += 1 * dqdc[1];         /* dwdot[H]/d[H] */
-    J[39] += -1 * dqdc[1];        /* dwdot[O2]/d[H] */
-    J[40] += 1 * dqdc[1];         /* dwdot[OH]/d[H] */
-    J[47] += -1 * dqdc[1];        /* dwdot[CH2(S)]/d[H] */
-    J[50] += 1 * dqdc[1];         /* dwdot[CO]/d[H] */
+    dqdci =  - k_r*sc[14]*sc[4];
+    J[37] += 1 * dqdci;           /* dwdot[H]/d[H] */
+    J[39] += -1 * dqdci;          /* dwdot[O2]/d[H] */
+    J[40] += 1 * dqdci;           /* dwdot[OH]/d[H] */
+    J[47] += -1 * dqdci;          /* dwdot[CH2(S)]/d[H] */
+    J[50] += 1 * dqdci;           /* dwdot[CO]/d[H] */
     /* d()/d[O2] */
-    J[109] += 1 * dqdc[3];        /* dwdot[H]/d[O2] */
-    J[111] += -1 * dqdc[3];       /* dwdot[O2]/d[O2] */
-    J[112] += 1 * dqdc[3];        /* dwdot[OH]/d[O2] */
-    J[119] += -1 * dqdc[3];       /* dwdot[CH2(S)]/d[O2] */
-    J[122] += 1 * dqdc[3];        /* dwdot[CO]/d[O2] */
+    dqdci =  + k_f*sc[11];
+    J[109] += 1 * dqdci;          /* dwdot[H]/d[O2] */
+    J[111] += -1 * dqdci;         /* dwdot[O2]/d[O2] */
+    J[112] += 1 * dqdci;          /* dwdot[OH]/d[O2] */
+    J[119] += -1 * dqdci;         /* dwdot[CH2(S)]/d[O2] */
+    J[122] += 1 * dqdci;          /* dwdot[CO]/d[O2] */
     /* d()/d[OH] */
-    J[145] += 1 * dqdc[4];        /* dwdot[H]/d[OH] */
-    J[147] += -1 * dqdc[4];       /* dwdot[O2]/d[OH] */
-    J[148] += 1 * dqdc[4];        /* dwdot[OH]/d[OH] */
-    J[155] += -1 * dqdc[4];       /* dwdot[CH2(S)]/d[OH] */
-    J[158] += 1 * dqdc[4];        /* dwdot[CO]/d[OH] */
+    dqdci =  - k_r*sc[14]*sc[1];
+    J[145] += 1 * dqdci;          /* dwdot[H]/d[OH] */
+    J[147] += -1 * dqdci;         /* dwdot[O2]/d[OH] */
+    J[148] += 1 * dqdci;          /* dwdot[OH]/d[OH] */
+    J[155] += -1 * dqdci;         /* dwdot[CH2(S)]/d[OH] */
+    J[158] += 1 * dqdci;          /* dwdot[CO]/d[OH] */
     /* d()/d[CH2(S)] */
-    J[397] += 1 * dqdc[11];       /* dwdot[H]/d[CH2(S)] */
-    J[399] += -1 * dqdc[11];      /* dwdot[O2]/d[CH2(S)] */
-    J[400] += 1 * dqdc[11];       /* dwdot[OH]/d[CH2(S)] */
-    J[407] += -1 * dqdc[11];      /* dwdot[CH2(S)]/d[CH2(S)] */
-    J[410] += 1 * dqdc[11];       /* dwdot[CO]/d[CH2(S)] */
+    dqdci =  + k_f*sc[3];
+    J[397] += 1 * dqdci;          /* dwdot[H]/d[CH2(S)] */
+    J[399] += -1 * dqdci;         /* dwdot[O2]/d[CH2(S)] */
+    J[400] += 1 * dqdci;          /* dwdot[OH]/d[CH2(S)] */
+    J[407] += -1 * dqdci;         /* dwdot[CH2(S)]/d[CH2(S)] */
+    J[410] += 1 * dqdci;          /* dwdot[CO]/d[CH2(S)] */
     /* d()/d[CO] */
-    J[505] += 1 * dqdc[14];       /* dwdot[H]/d[CO] */
-    J[507] += -1 * dqdc[14];      /* dwdot[O2]/d[CO] */
-    J[508] += 1 * dqdc[14];       /* dwdot[OH]/d[CO] */
-    J[515] += -1 * dqdc[14];      /* dwdot[CH2(S)]/d[CO] */
-    J[518] += 1 * dqdc[14];       /* dwdot[CO]/d[CO] */
+    dqdci =  - k_r*sc[1]*sc[4];
+    J[505] += 1 * dqdci;          /* dwdot[H]/d[CO] */
+    J[507] += -1 * dqdci;         /* dwdot[O2]/d[CO] */
+    J[508] += 1 * dqdci;          /* dwdot[OH]/d[CO] */
+    J[515] += -1 * dqdci;         /* dwdot[CH2(S)]/d[CO] */
+    J[518] += 1 * dqdci;          /* dwdot[CO]/d[CO] */
     /* d()/dT */
     J[1261] += 1 * dqdT;          /* dwdot[H]/dT */
     J[1263] += -1 * dqdT;         /* dwdot[O2]/dT */
@@ -25330,30 +25458,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[5] += q; /* H2O */
     wdot[11] -= q; /* CH2(S) */
     wdot[14] += q; /* CO */
-    dqdc[3] =  + k_f*sc[11];
-    dqdc[5] =  - k_r*sc[14];
-    dqdc[11] =  + k_f*sc[3];
-    dqdc[14] =  - k_r*sc[5];
     /* d()/d[O2] */
-    J[111] += -1 * dqdc[3];       /* dwdot[O2]/d[O2] */
-    J[113] += 1 * dqdc[3];        /* dwdot[H2O]/d[O2] */
-    J[119] += -1 * dqdc[3];       /* dwdot[CH2(S)]/d[O2] */
-    J[122] += 1 * dqdc[3];        /* dwdot[CO]/d[O2] */
+    dqdci =  + k_f*sc[11];
+    J[111] += -1 * dqdci;         /* dwdot[O2]/d[O2] */
+    J[113] += 1 * dqdci;          /* dwdot[H2O]/d[O2] */
+    J[119] += -1 * dqdci;         /* dwdot[CH2(S)]/d[O2] */
+    J[122] += 1 * dqdci;          /* dwdot[CO]/d[O2] */
     /* d()/d[H2O] */
-    J[183] += -1 * dqdc[5];       /* dwdot[O2]/d[H2O] */
-    J[185] += 1 * dqdc[5];        /* dwdot[H2O]/d[H2O] */
-    J[191] += -1 * dqdc[5];       /* dwdot[CH2(S)]/d[H2O] */
-    J[194] += 1 * dqdc[5];        /* dwdot[CO]/d[H2O] */
+    dqdci =  - k_r*sc[14];
+    J[183] += -1 * dqdci;         /* dwdot[O2]/d[H2O] */
+    J[185] += 1 * dqdci;          /* dwdot[H2O]/d[H2O] */
+    J[191] += -1 * dqdci;         /* dwdot[CH2(S)]/d[H2O] */
+    J[194] += 1 * dqdci;          /* dwdot[CO]/d[H2O] */
     /* d()/d[CH2(S)] */
-    J[399] += -1 * dqdc[11];      /* dwdot[O2]/d[CH2(S)] */
-    J[401] += 1 * dqdc[11];       /* dwdot[H2O]/d[CH2(S)] */
-    J[407] += -1 * dqdc[11];      /* dwdot[CH2(S)]/d[CH2(S)] */
-    J[410] += 1 * dqdc[11];       /* dwdot[CO]/d[CH2(S)] */
+    dqdci =  + k_f*sc[3];
+    J[399] += -1 * dqdci;         /* dwdot[O2]/d[CH2(S)] */
+    J[401] += 1 * dqdci;          /* dwdot[H2O]/d[CH2(S)] */
+    J[407] += -1 * dqdci;         /* dwdot[CH2(S)]/d[CH2(S)] */
+    J[410] += 1 * dqdci;          /* dwdot[CO]/d[CH2(S)] */
     /* d()/d[CO] */
-    J[507] += -1 * dqdc[14];      /* dwdot[O2]/d[CO] */
-    J[509] += 1 * dqdc[14];       /* dwdot[H2O]/d[CO] */
-    J[515] += -1 * dqdc[14];      /* dwdot[CH2(S)]/d[CO] */
-    J[518] += 1 * dqdc[14];       /* dwdot[CO]/d[CO] */
+    dqdci =  - k_r*sc[5];
+    J[507] += -1 * dqdci;         /* dwdot[O2]/d[CO] */
+    J[509] += 1 * dqdci;          /* dwdot[H2O]/d[CO] */
+    J[515] += -1 * dqdci;         /* dwdot[CH2(S)]/d[CO] */
+    J[518] += 1 * dqdci;          /* dwdot[CO]/d[CO] */
     /* d()/dT */
     J[1263] += -1 * dqdT;         /* dwdot[O2]/dT */
     J[1265] += 1 * dqdT;          /* dwdot[H2O]/dT */
@@ -25380,30 +25508,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[1] += q; /* H */
     wdot[11] -= q; /* CH2(S) */
     wdot[12] += q; /* CH3 */
-    dqdc[0] =  + k_f*sc[11];
-    dqdc[1] =  - k_r*sc[12];
-    dqdc[11] =  + k_f*sc[0];
-    dqdc[12] =  - k_r*sc[1];
     /* d()/d[H2] */
-    J[0] += -1 * dqdc[0];         /* dwdot[H2]/d[H2] */
-    J[1] += 1 * dqdc[0];          /* dwdot[H]/d[H2] */
-    J[11] += -1 * dqdc[0];        /* dwdot[CH2(S)]/d[H2] */
-    J[12] += 1 * dqdc[0];         /* dwdot[CH3]/d[H2] */
+    dqdci =  + k_f*sc[11];
+    J[0] += -1 * dqdci;           /* dwdot[H2]/d[H2] */
+    J[1] += 1 * dqdci;            /* dwdot[H]/d[H2] */
+    J[11] += -1 * dqdci;          /* dwdot[CH2(S)]/d[H2] */
+    J[12] += 1 * dqdci;           /* dwdot[CH3]/d[H2] */
     /* d()/d[H] */
-    J[36] += -1 * dqdc[1];        /* dwdot[H2]/d[H] */
-    J[37] += 1 * dqdc[1];         /* dwdot[H]/d[H] */
-    J[47] += -1 * dqdc[1];        /* dwdot[CH2(S)]/d[H] */
-    J[48] += 1 * dqdc[1];         /* dwdot[CH3]/d[H] */
+    dqdci =  - k_r*sc[12];
+    J[36] += -1 * dqdci;          /* dwdot[H2]/d[H] */
+    J[37] += 1 * dqdci;           /* dwdot[H]/d[H] */
+    J[47] += -1 * dqdci;          /* dwdot[CH2(S)]/d[H] */
+    J[48] += 1 * dqdci;           /* dwdot[CH3]/d[H] */
     /* d()/d[CH2(S)] */
-    J[396] += -1 * dqdc[11];      /* dwdot[H2]/d[CH2(S)] */
-    J[397] += 1 * dqdc[11];       /* dwdot[H]/d[CH2(S)] */
-    J[407] += -1 * dqdc[11];      /* dwdot[CH2(S)]/d[CH2(S)] */
-    J[408] += 1 * dqdc[11];       /* dwdot[CH3]/d[CH2(S)] */
+    dqdci =  + k_f*sc[0];
+    J[396] += -1 * dqdci;         /* dwdot[H2]/d[CH2(S)] */
+    J[397] += 1 * dqdci;          /* dwdot[H]/d[CH2(S)] */
+    J[407] += -1 * dqdci;         /* dwdot[CH2(S)]/d[CH2(S)] */
+    J[408] += 1 * dqdci;          /* dwdot[CH3]/d[CH2(S)] */
     /* d()/d[CH3] */
-    J[432] += -1 * dqdc[12];      /* dwdot[H2]/d[CH3] */
-    J[433] += 1 * dqdc[12];       /* dwdot[H]/d[CH3] */
-    J[443] += -1 * dqdc[12];      /* dwdot[CH2(S)]/d[CH3] */
-    J[444] += 1 * dqdc[12];       /* dwdot[CH3]/d[CH3] */
+    dqdci =  - k_r*sc[1];
+    J[432] += -1 * dqdci;         /* dwdot[H2]/d[CH3] */
+    J[433] += 1 * dqdci;          /* dwdot[H]/d[CH3] */
+    J[443] += -1 * dqdci;         /* dwdot[CH2(S)]/d[CH3] */
+    J[444] += 1 * dqdci;          /* dwdot[CH3]/d[CH3] */
     /* d()/dT */
     J[1260] += -1 * dqdT;         /* dwdot[H2]/dT */
     J[1261] += 1 * dqdT;          /* dwdot[H]/dT */
@@ -25440,9 +25568,9 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     troe = 1.0 / (1.0 + troePr*troePr);
     F = pow(10.0, logFcent * troe);
     dlogFcentdT = log10e/Fcent*(Fcent1*-0.00480769 + Fcent2*-0.000254972 + Fcent3*10180*invT2);
-    dlogFdcn_fac = logFcent * troe*troe * troePr * troePr_den;
+    dlogFdcn_fac = 2.0 * logFcent * troe*troe * troePr * troePr_den;
     dlogFdc = -troe_n * dlogFdcn_fac * troePr_den;
-    dlogFdn = 2. * dlogFdcn_fac * troePr;
+    dlogFdn = dlogFdcn_fac * troePr;
     dlogFdlogPr = dlogFdc;
     dlogFdT = dlogFcentdT*(troe - 0.67*dlogFdc - 1.27*dlogFdn) + dlogFdlogPr * dlogPrdT;
     /* reverse */
@@ -25466,41 +25594,46 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     k_r *= Corr;
     dcdc_fac = q/alpha*(1.0/(Pr+1.0) + dlogFdlogPr);
     if (consP) {
-        dqdc[0] =  1*dcdc_fac;
-        dqdc[1] =  0.0;
-        dqdc[2] =  0.0;
-        dqdc[3] =  0.0;
-        dqdc[4] =  0.0;
-        dqdc[5] =  5*dcdc_fac + k_f*sc[11];
-        dqdc[6] =  0.0;
-        dqdc[7] =  0.0;
-        dqdc[8] =  0.0;
-        dqdc[9] =  0.0;
-        dqdc[10] =  0.0;
-        dqdc[11] =  0.0 + k_f*sc[5];
-        dqdc[12] =  0.0;
-        dqdc[13] =  1*dcdc_fac;
-        dqdc[14] =  0.5*dcdc_fac;
-        dqdc[15] =  1*dcdc_fac;
-        dqdc[16] =  0.0;
-        dqdc[17] =  0.0;
-        dqdc[18] =  0.0;
-        dqdc[19] =  0.0;
-        dqdc[20] =  0.0 - k_r;
-        dqdc[21] =  0.0;
-        dqdc[22] =  0.0;
-        dqdc[23] =  0.0;
-        dqdc[24] =  0.0;
-        dqdc[25] =  0.0;
-        dqdc[26] =  2*dcdc_fac;
-        dqdc[27] =  0.0;
-        dqdc[28] =  0.0;
-        dqdc[29] =  0.0;
-        dqdc[30] =  0.0;
-        dqdc[31] =  0.0;
-        dqdc[32] =  0.0;
-        dqdc[33] =  0.0;
-        dqdc[34] =  0.0;
+        /* d()/d[H2] */
+        dqdci =  1*dcdc_fac;
+        J[5] += -1 * dqdci;           /* dwdot[H2O]/d[H2] */
+        J[11] += -1 * dqdci;          /* dwdot[CH2(S)]/d[H2] */
+        J[20] += 1 * dqdci;           /* dwdot[CH3OH]/d[H2] */
+        /* d()/d[H2O] */
+        dqdci =  5*dcdc_fac + k_f*sc[11];
+        J[185] += -1 * dqdci;         /* dwdot[H2O]/d[H2O] */
+        J[191] += -1 * dqdci;         /* dwdot[CH2(S)]/d[H2O] */
+        J[200] += 1 * dqdci;          /* dwdot[CH3OH]/d[H2O] */
+        /* d()/d[CH2(S)] */
+        dqdci =  + k_f*sc[5];
+        J[401] += -1 * dqdci;         /* dwdot[H2O]/d[CH2(S)] */
+        J[407] += -1 * dqdci;         /* dwdot[CH2(S)]/d[CH2(S)] */
+        J[416] += 1 * dqdci;          /* dwdot[CH3OH]/d[CH2(S)] */
+        /* d()/d[CH4] */
+        dqdci =  1*dcdc_fac;
+        J[473] += -1 * dqdci;         /* dwdot[H2O]/d[CH4] */
+        J[479] += -1 * dqdci;         /* dwdot[CH2(S)]/d[CH4] */
+        J[488] += 1 * dqdci;          /* dwdot[CH3OH]/d[CH4] */
+        /* d()/d[CO] */
+        dqdci =  0.5*dcdc_fac;
+        J[509] += -1 * dqdci;         /* dwdot[H2O]/d[CO] */
+        J[515] += -1 * dqdci;         /* dwdot[CH2(S)]/d[CO] */
+        J[524] += 1 * dqdci;          /* dwdot[CH3OH]/d[CO] */
+        /* d()/d[CO2] */
+        dqdci =  1*dcdc_fac;
+        J[545] += -1 * dqdci;         /* dwdot[H2O]/d[CO2] */
+        J[551] += -1 * dqdci;         /* dwdot[CH2(S)]/d[CO2] */
+        J[560] += 1 * dqdci;          /* dwdot[CH3OH]/d[CO2] */
+        /* d()/d[CH3OH] */
+        dqdci =  - k_r;
+        J[725] += -1 * dqdci;         /* dwdot[H2O]/d[CH3OH] */
+        J[731] += -1 * dqdci;         /* dwdot[CH2(S)]/d[CH3OH] */
+        J[740] += 1 * dqdci;          /* dwdot[CH3OH]/d[CH3OH] */
+        /* d()/d[C2H6] */
+        dqdci =  2*dcdc_fac;
+        J[941] += -1 * dqdci;         /* dwdot[H2O]/d[C2H6] */
+        J[947] += -1 * dqdci;         /* dwdot[CH2(S)]/d[C2H6] */
+        J[956] += 1 * dqdci;          /* dwdot[CH3OH]/d[C2H6] */
     }
     else {
         dqdc[0] =  2*dcdc_fac;
@@ -25538,11 +25671,11 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
         dqdc[32] =  1*dcdc_fac;
         dqdc[33] =  1*dcdc_fac;
         dqdc[34] =  1*dcdc_fac;
-    }
-    for (int k=0; k<35; k++) {
-        J[36*k+5] += -1 * dqdc[k];
-        J[36*k+11] += -1 * dqdc[k];
-        J[36*k+20] += 1 * dqdc[k];
+        for (int k=0; k<35; k++) {
+            J[36*k+5] += -1 * dqdc[k];
+            J[36*k+11] += -1 * dqdc[k];
+            J[36*k+20] += 1 * dqdc[k];
+        }
     }
     J[1265] += -1 * dqdT; /* dwdot[H2O]/dT */
     J[1271] += -1 * dqdT; /* dwdot[CH2(S)]/dT */
@@ -25566,18 +25699,18 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     /* update wdot */
     wdot[10] += q; /* CH2 */
     wdot[11] -= q; /* CH2(S) */
-    dqdc[5] =  + k_f*sc[11] - k_r*sc[10];
-    dqdc[10] =  - k_r*sc[5];
-    dqdc[11] =  + k_f*sc[5];
     /* d()/d[H2O] */
-    J[190] += 1 * dqdc[5];        /* dwdot[CH2]/d[H2O] */
-    J[191] += -1 * dqdc[5];       /* dwdot[CH2(S)]/d[H2O] */
+    dqdci =  + k_f*sc[11] - k_r*sc[10];
+    J[190] += 1 * dqdci;          /* dwdot[CH2]/d[H2O] */
+    J[191] += -1 * dqdci;         /* dwdot[CH2(S)]/d[H2O] */
     /* d()/d[CH2] */
-    J[370] += 1 * dqdc[10];       /* dwdot[CH2]/d[CH2] */
-    J[371] += -1 * dqdc[10];      /* dwdot[CH2(S)]/d[CH2] */
+    dqdci =  - k_r*sc[5];
+    J[370] += 1 * dqdci;          /* dwdot[CH2]/d[CH2] */
+    J[371] += -1 * dqdci;         /* dwdot[CH2(S)]/d[CH2] */
     /* d()/d[CH2(S)] */
-    J[406] += 1 * dqdc[11];       /* dwdot[CH2]/d[CH2(S)] */
-    J[407] += -1 * dqdc[11];      /* dwdot[CH2(S)]/d[CH2(S)] */
+    dqdci =  + k_f*sc[5];
+    J[406] += 1 * dqdci;          /* dwdot[CH2]/d[CH2(S)] */
+    J[407] += -1 * dqdci;         /* dwdot[CH2(S)]/d[CH2(S)] */
     /* d()/dT */
     J[1270] += 1 * dqdT;          /* dwdot[CH2]/dT */
     J[1271] += -1 * dqdT;         /* dwdot[CH2(S)]/dT */
@@ -25602,30 +25735,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[11] -= q; /* CH2(S) */
     wdot[12] -= q; /* CH3 */
     wdot[24] += q; /* C2H4 */
-    dqdc[1] =  - k_r*sc[24];
-    dqdc[11] =  + k_f*sc[12];
-    dqdc[12] =  + k_f*sc[11];
-    dqdc[24] =  - k_r*sc[1];
     /* d()/d[H] */
-    J[37] += 1 * dqdc[1];         /* dwdot[H]/d[H] */
-    J[47] += -1 * dqdc[1];        /* dwdot[CH2(S)]/d[H] */
-    J[48] += -1 * dqdc[1];        /* dwdot[CH3]/d[H] */
-    J[60] += 1 * dqdc[1];         /* dwdot[C2H4]/d[H] */
+    dqdci =  - k_r*sc[24];
+    J[37] += 1 * dqdci;           /* dwdot[H]/d[H] */
+    J[47] += -1 * dqdci;          /* dwdot[CH2(S)]/d[H] */
+    J[48] += -1 * dqdci;          /* dwdot[CH3]/d[H] */
+    J[60] += 1 * dqdci;           /* dwdot[C2H4]/d[H] */
     /* d()/d[CH2(S)] */
-    J[397] += 1 * dqdc[11];       /* dwdot[H]/d[CH2(S)] */
-    J[407] += -1 * dqdc[11];      /* dwdot[CH2(S)]/d[CH2(S)] */
-    J[408] += -1 * dqdc[11];      /* dwdot[CH3]/d[CH2(S)] */
-    J[420] += 1 * dqdc[11];       /* dwdot[C2H4]/d[CH2(S)] */
+    dqdci =  + k_f*sc[12];
+    J[397] += 1 * dqdci;          /* dwdot[H]/d[CH2(S)] */
+    J[407] += -1 * dqdci;         /* dwdot[CH2(S)]/d[CH2(S)] */
+    J[408] += -1 * dqdci;         /* dwdot[CH3]/d[CH2(S)] */
+    J[420] += 1 * dqdci;          /* dwdot[C2H4]/d[CH2(S)] */
     /* d()/d[CH3] */
-    J[433] += 1 * dqdc[12];       /* dwdot[H]/d[CH3] */
-    J[443] += -1 * dqdc[12];      /* dwdot[CH2(S)]/d[CH3] */
-    J[444] += -1 * dqdc[12];      /* dwdot[CH3]/d[CH3] */
-    J[456] += 1 * dqdc[12];       /* dwdot[C2H4]/d[CH3] */
+    dqdci =  + k_f*sc[11];
+    J[433] += 1 * dqdci;          /* dwdot[H]/d[CH3] */
+    J[443] += -1 * dqdci;         /* dwdot[CH2(S)]/d[CH3] */
+    J[444] += -1 * dqdci;         /* dwdot[CH3]/d[CH3] */
+    J[456] += 1 * dqdci;          /* dwdot[C2H4]/d[CH3] */
     /* d()/d[C2H4] */
-    J[865] += 1 * dqdc[24];       /* dwdot[H]/d[C2H4] */
-    J[875] += -1 * dqdc[24];      /* dwdot[CH2(S)]/d[C2H4] */
-    J[876] += -1 * dqdc[24];      /* dwdot[CH3]/d[C2H4] */
-    J[888] += 1 * dqdc[24];       /* dwdot[C2H4]/d[C2H4] */
+    dqdci =  - k_r*sc[1];
+    J[865] += 1 * dqdci;          /* dwdot[H]/d[C2H4] */
+    J[875] += -1 * dqdci;         /* dwdot[CH2(S)]/d[C2H4] */
+    J[876] += -1 * dqdci;         /* dwdot[CH3]/d[C2H4] */
+    J[888] += 1 * dqdci;          /* dwdot[C2H4]/d[C2H4] */
     /* d()/dT */
     J[1261] += 1 * dqdT;          /* dwdot[H]/dT */
     J[1271] += -1 * dqdT;         /* dwdot[CH2(S)]/dT */
@@ -25651,21 +25784,21 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[11] -= q; /* CH2(S) */
     wdot[12] += 2 * q; /* CH3 */
     wdot[13] -= q; /* CH4 */
-    dqdc[11] =  + k_f*sc[13];
-    dqdc[12] =  - k_r*2*sc[12];
-    dqdc[13] =  + k_f*sc[11];
     /* d()/d[CH2(S)] */
-    J[407] += -1 * dqdc[11];      /* dwdot[CH2(S)]/d[CH2(S)] */
-    J[408] += 2 * dqdc[11];       /* dwdot[CH3]/d[CH2(S)] */
-    J[409] += -1 * dqdc[11];      /* dwdot[CH4]/d[CH2(S)] */
+    dqdci =  + k_f*sc[13];
+    J[407] += -1 * dqdci;         /* dwdot[CH2(S)]/d[CH2(S)] */
+    J[408] += 2 * dqdci;          /* dwdot[CH3]/d[CH2(S)] */
+    J[409] += -1 * dqdci;         /* dwdot[CH4]/d[CH2(S)] */
     /* d()/d[CH3] */
-    J[443] += -1 * dqdc[12];      /* dwdot[CH2(S)]/d[CH3] */
-    J[444] += 2 * dqdc[12];       /* dwdot[CH3]/d[CH3] */
-    J[445] += -1 * dqdc[12];      /* dwdot[CH4]/d[CH3] */
+    dqdci =  - k_r*2*sc[12];
+    J[443] += -1 * dqdci;         /* dwdot[CH2(S)]/d[CH3] */
+    J[444] += 2 * dqdci;          /* dwdot[CH3]/d[CH3] */
+    J[445] += -1 * dqdci;         /* dwdot[CH4]/d[CH3] */
     /* d()/d[CH4] */
-    J[479] += -1 * dqdc[13];      /* dwdot[CH2(S)]/d[CH4] */
-    J[480] += 2 * dqdc[13];       /* dwdot[CH3]/d[CH4] */
-    J[481] += -1 * dqdc[13];      /* dwdot[CH4]/d[CH4] */
+    dqdci =  + k_f*sc[11];
+    J[479] += -1 * dqdci;         /* dwdot[CH2(S)]/d[CH4] */
+    J[480] += 2 * dqdci;          /* dwdot[CH3]/d[CH4] */
+    J[481] += -1 * dqdci;         /* dwdot[CH4]/d[CH4] */
     /* d()/dT */
     J[1271] += -1 * dqdT;         /* dwdot[CH2(S)]/dT */
     J[1272] += 2 * dqdT;          /* dwdot[CH3]/dT */
@@ -25689,18 +25822,18 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     /* update wdot */
     wdot[10] += q; /* CH2 */
     wdot[11] -= q; /* CH2(S) */
-    dqdc[10] =  - k_r*sc[14];
-    dqdc[11] =  + k_f*sc[14];
-    dqdc[14] =  + k_f*sc[11] - k_r*sc[10];
     /* d()/d[CH2] */
-    J[370] += 1 * dqdc[10];       /* dwdot[CH2]/d[CH2] */
-    J[371] += -1 * dqdc[10];      /* dwdot[CH2(S)]/d[CH2] */
+    dqdci =  - k_r*sc[14];
+    J[370] += 1 * dqdci;          /* dwdot[CH2]/d[CH2] */
+    J[371] += -1 * dqdci;         /* dwdot[CH2(S)]/d[CH2] */
     /* d()/d[CH2(S)] */
-    J[406] += 1 * dqdc[11];       /* dwdot[CH2]/d[CH2(S)] */
-    J[407] += -1 * dqdc[11];      /* dwdot[CH2(S)]/d[CH2(S)] */
+    dqdci =  + k_f*sc[14];
+    J[406] += 1 * dqdci;          /* dwdot[CH2]/d[CH2(S)] */
+    J[407] += -1 * dqdci;         /* dwdot[CH2(S)]/d[CH2(S)] */
     /* d()/d[CO] */
-    J[514] += 1 * dqdc[14];       /* dwdot[CH2]/d[CO] */
-    J[515] += -1 * dqdc[14];      /* dwdot[CH2(S)]/d[CO] */
+    dqdci =  + k_f*sc[11] - k_r*sc[10];
+    J[514] += 1 * dqdci;          /* dwdot[CH2]/d[CO] */
+    J[515] += -1 * dqdci;         /* dwdot[CH2(S)]/d[CO] */
     /* d()/dT */
     J[1270] += 1 * dqdT;          /* dwdot[CH2]/dT */
     J[1271] += -1 * dqdT;         /* dwdot[CH2(S)]/dT */
@@ -25723,18 +25856,18 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     /* update wdot */
     wdot[10] += q; /* CH2 */
     wdot[11] -= q; /* CH2(S) */
-    dqdc[10] =  - k_r*sc[15];
-    dqdc[11] =  + k_f*sc[15];
-    dqdc[15] =  + k_f*sc[11] - k_r*sc[10];
     /* d()/d[CH2] */
-    J[370] += 1 * dqdc[10];       /* dwdot[CH2]/d[CH2] */
-    J[371] += -1 * dqdc[10];      /* dwdot[CH2(S)]/d[CH2] */
+    dqdci =  - k_r*sc[15];
+    J[370] += 1 * dqdci;          /* dwdot[CH2]/d[CH2] */
+    J[371] += -1 * dqdci;         /* dwdot[CH2(S)]/d[CH2] */
     /* d()/d[CH2(S)] */
-    J[406] += 1 * dqdc[11];       /* dwdot[CH2]/d[CH2(S)] */
-    J[407] += -1 * dqdc[11];      /* dwdot[CH2(S)]/d[CH2(S)] */
+    dqdci =  + k_f*sc[15];
+    J[406] += 1 * dqdci;          /* dwdot[CH2]/d[CH2(S)] */
+    J[407] += -1 * dqdci;         /* dwdot[CH2(S)]/d[CH2(S)] */
     /* d()/d[CO2] */
-    J[550] += 1 * dqdc[15];       /* dwdot[CH2]/d[CO2] */
-    J[551] += -1 * dqdc[15];      /* dwdot[CH2(S)]/d[CO2] */
+    dqdci =  + k_f*sc[11] - k_r*sc[10];
+    J[550] += 1 * dqdci;          /* dwdot[CH2]/d[CO2] */
+    J[551] += -1 * dqdci;         /* dwdot[CH2(S)]/d[CO2] */
     /* d()/dT */
     J[1270] += 1 * dqdT;          /* dwdot[CH2]/dT */
     J[1271] += -1 * dqdT;         /* dwdot[CH2(S)]/dT */
@@ -25759,30 +25892,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[14] += q; /* CO */
     wdot[15] -= q; /* CO2 */
     wdot[17] += q; /* CH2O */
-    dqdc[11] =  + k_f*sc[15];
-    dqdc[14] =  - k_r*sc[17];
-    dqdc[15] =  + k_f*sc[11];
-    dqdc[17] =  - k_r*sc[14];
     /* d()/d[CH2(S)] */
-    J[407] += -1 * dqdc[11];      /* dwdot[CH2(S)]/d[CH2(S)] */
-    J[410] += 1 * dqdc[11];       /* dwdot[CO]/d[CH2(S)] */
-    J[411] += -1 * dqdc[11];      /* dwdot[CO2]/d[CH2(S)] */
-    J[413] += 1 * dqdc[11];       /* dwdot[CH2O]/d[CH2(S)] */
+    dqdci =  + k_f*sc[15];
+    J[407] += -1 * dqdci;         /* dwdot[CH2(S)]/d[CH2(S)] */
+    J[410] += 1 * dqdci;          /* dwdot[CO]/d[CH2(S)] */
+    J[411] += -1 * dqdci;         /* dwdot[CO2]/d[CH2(S)] */
+    J[413] += 1 * dqdci;          /* dwdot[CH2O]/d[CH2(S)] */
     /* d()/d[CO] */
-    J[515] += -1 * dqdc[14];      /* dwdot[CH2(S)]/d[CO] */
-    J[518] += 1 * dqdc[14];       /* dwdot[CO]/d[CO] */
-    J[519] += -1 * dqdc[14];      /* dwdot[CO2]/d[CO] */
-    J[521] += 1 * dqdc[14];       /* dwdot[CH2O]/d[CO] */
+    dqdci =  - k_r*sc[17];
+    J[515] += -1 * dqdci;         /* dwdot[CH2(S)]/d[CO] */
+    J[518] += 1 * dqdci;          /* dwdot[CO]/d[CO] */
+    J[519] += -1 * dqdci;         /* dwdot[CO2]/d[CO] */
+    J[521] += 1 * dqdci;          /* dwdot[CH2O]/d[CO] */
     /* d()/d[CO2] */
-    J[551] += -1 * dqdc[15];      /* dwdot[CH2(S)]/d[CO2] */
-    J[554] += 1 * dqdc[15];       /* dwdot[CO]/d[CO2] */
-    J[555] += -1 * dqdc[15];      /* dwdot[CO2]/d[CO2] */
-    J[557] += 1 * dqdc[15];       /* dwdot[CH2O]/d[CO2] */
+    dqdci =  + k_f*sc[11];
+    J[551] += -1 * dqdci;         /* dwdot[CH2(S)]/d[CO2] */
+    J[554] += 1 * dqdci;          /* dwdot[CO]/d[CO2] */
+    J[555] += -1 * dqdci;         /* dwdot[CO2]/d[CO2] */
+    J[557] += 1 * dqdci;          /* dwdot[CH2O]/d[CO2] */
     /* d()/d[CH2O] */
-    J[623] += -1 * dqdc[17];      /* dwdot[CH2(S)]/d[CH2O] */
-    J[626] += 1 * dqdc[17];       /* dwdot[CO]/d[CH2O] */
-    J[627] += -1 * dqdc[17];      /* dwdot[CO2]/d[CH2O] */
-    J[629] += 1 * dqdc[17];       /* dwdot[CH2O]/d[CH2O] */
+    dqdci =  - k_r*sc[14];
+    J[623] += -1 * dqdci;         /* dwdot[CH2(S)]/d[CH2O] */
+    J[626] += 1 * dqdci;          /* dwdot[CO]/d[CH2O] */
+    J[627] += -1 * dqdci;         /* dwdot[CO2]/d[CH2O] */
+    J[629] += 1 * dqdci;          /* dwdot[CH2O]/d[CH2O] */
     /* d()/dT */
     J[1271] += -1 * dqdT;         /* dwdot[CH2(S)]/dT */
     J[1274] += 1 * dqdT;          /* dwdot[CO]/dT */
@@ -25809,30 +25942,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[12] += q; /* CH3 */
     wdot[25] += q; /* C2H5 */
     wdot[26] -= q; /* C2H6 */
-    dqdc[11] =  + k_f*sc[26];
-    dqdc[12] =  - k_r*sc[25];
-    dqdc[25] =  - k_r*sc[12];
-    dqdc[26] =  + k_f*sc[11];
     /* d()/d[CH2(S)] */
-    J[407] += -1 * dqdc[11];      /* dwdot[CH2(S)]/d[CH2(S)] */
-    J[408] += 1 * dqdc[11];       /* dwdot[CH3]/d[CH2(S)] */
-    J[421] += 1 * dqdc[11];       /* dwdot[C2H5]/d[CH2(S)] */
-    J[422] += -1 * dqdc[11];      /* dwdot[C2H6]/d[CH2(S)] */
+    dqdci =  + k_f*sc[26];
+    J[407] += -1 * dqdci;         /* dwdot[CH2(S)]/d[CH2(S)] */
+    J[408] += 1 * dqdci;          /* dwdot[CH3]/d[CH2(S)] */
+    J[421] += 1 * dqdci;          /* dwdot[C2H5]/d[CH2(S)] */
+    J[422] += -1 * dqdci;         /* dwdot[C2H6]/d[CH2(S)] */
     /* d()/d[CH3] */
-    J[443] += -1 * dqdc[12];      /* dwdot[CH2(S)]/d[CH3] */
-    J[444] += 1 * dqdc[12];       /* dwdot[CH3]/d[CH3] */
-    J[457] += 1 * dqdc[12];       /* dwdot[C2H5]/d[CH3] */
-    J[458] += -1 * dqdc[12];      /* dwdot[C2H6]/d[CH3] */
+    dqdci =  - k_r*sc[25];
+    J[443] += -1 * dqdci;         /* dwdot[CH2(S)]/d[CH3] */
+    J[444] += 1 * dqdci;          /* dwdot[CH3]/d[CH3] */
+    J[457] += 1 * dqdci;          /* dwdot[C2H5]/d[CH3] */
+    J[458] += -1 * dqdci;         /* dwdot[C2H6]/d[CH3] */
     /* d()/d[C2H5] */
-    J[911] += -1 * dqdc[25];      /* dwdot[CH2(S)]/d[C2H5] */
-    J[912] += 1 * dqdc[25];       /* dwdot[CH3]/d[C2H5] */
-    J[925] += 1 * dqdc[25];       /* dwdot[C2H5]/d[C2H5] */
-    J[926] += -1 * dqdc[25];      /* dwdot[C2H6]/d[C2H5] */
+    dqdci =  - k_r*sc[12];
+    J[911] += -1 * dqdci;         /* dwdot[CH2(S)]/d[C2H5] */
+    J[912] += 1 * dqdci;          /* dwdot[CH3]/d[C2H5] */
+    J[925] += 1 * dqdci;          /* dwdot[C2H5]/d[C2H5] */
+    J[926] += -1 * dqdci;         /* dwdot[C2H6]/d[C2H5] */
     /* d()/d[C2H6] */
-    J[947] += -1 * dqdc[26];      /* dwdot[CH2(S)]/d[C2H6] */
-    J[948] += 1 * dqdc[26];       /* dwdot[CH3]/d[C2H6] */
-    J[961] += 1 * dqdc[26];       /* dwdot[C2H5]/d[C2H6] */
-    J[962] += -1 * dqdc[26];      /* dwdot[C2H6]/d[C2H6] */
+    dqdci =  + k_f*sc[11];
+    J[947] += -1 * dqdci;         /* dwdot[CH2(S)]/d[C2H6] */
+    J[948] += 1 * dqdci;          /* dwdot[CH3]/d[C2H6] */
+    J[961] += 1 * dqdci;          /* dwdot[C2H5]/d[C2H6] */
+    J[962] += -1 * dqdci;         /* dwdot[C2H6]/d[C2H6] */
     /* d()/dT */
     J[1271] += -1 * dqdT;         /* dwdot[CH2(S)]/dT */
     J[1272] += 1 * dqdT;          /* dwdot[CH3]/dT */
@@ -25859,30 +25992,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[3] -= q; /* O2 */
     wdot[12] -= q; /* CH3 */
     wdot[19] += q; /* CH3O */
-    dqdc[2] =  - k_r*sc[19];
-    dqdc[3] =  + k_f*sc[12];
-    dqdc[12] =  + k_f*sc[3];
-    dqdc[19] =  - k_r*sc[2];
     /* d()/d[O] */
-    J[74] += 1 * dqdc[2];         /* dwdot[O]/d[O] */
-    J[75] += -1 * dqdc[2];        /* dwdot[O2]/d[O] */
-    J[84] += -1 * dqdc[2];        /* dwdot[CH3]/d[O] */
-    J[91] += 1 * dqdc[2];         /* dwdot[CH3O]/d[O] */
+    dqdci =  - k_r*sc[19];
+    J[74] += 1 * dqdci;           /* dwdot[O]/d[O] */
+    J[75] += -1 * dqdci;          /* dwdot[O2]/d[O] */
+    J[84] += -1 * dqdci;          /* dwdot[CH3]/d[O] */
+    J[91] += 1 * dqdci;           /* dwdot[CH3O]/d[O] */
     /* d()/d[O2] */
-    J[110] += 1 * dqdc[3];        /* dwdot[O]/d[O2] */
-    J[111] += -1 * dqdc[3];       /* dwdot[O2]/d[O2] */
-    J[120] += -1 * dqdc[3];       /* dwdot[CH3]/d[O2] */
-    J[127] += 1 * dqdc[3];        /* dwdot[CH3O]/d[O2] */
+    dqdci =  + k_f*sc[12];
+    J[110] += 1 * dqdci;          /* dwdot[O]/d[O2] */
+    J[111] += -1 * dqdci;         /* dwdot[O2]/d[O2] */
+    J[120] += -1 * dqdci;         /* dwdot[CH3]/d[O2] */
+    J[127] += 1 * dqdci;          /* dwdot[CH3O]/d[O2] */
     /* d()/d[CH3] */
-    J[434] += 1 * dqdc[12];       /* dwdot[O]/d[CH3] */
-    J[435] += -1 * dqdc[12];      /* dwdot[O2]/d[CH3] */
-    J[444] += -1 * dqdc[12];      /* dwdot[CH3]/d[CH3] */
-    J[451] += 1 * dqdc[12];       /* dwdot[CH3O]/d[CH3] */
+    dqdci =  + k_f*sc[3];
+    J[434] += 1 * dqdci;          /* dwdot[O]/d[CH3] */
+    J[435] += -1 * dqdci;         /* dwdot[O2]/d[CH3] */
+    J[444] += -1 * dqdci;         /* dwdot[CH3]/d[CH3] */
+    J[451] += 1 * dqdci;          /* dwdot[CH3O]/d[CH3] */
     /* d()/d[CH3O] */
-    J[686] += 1 * dqdc[19];       /* dwdot[O]/d[CH3O] */
-    J[687] += -1 * dqdc[19];      /* dwdot[O2]/d[CH3O] */
-    J[696] += -1 * dqdc[19];      /* dwdot[CH3]/d[CH3O] */
-    J[703] += 1 * dqdc[19];       /* dwdot[CH3O]/d[CH3O] */
+    dqdci =  - k_r*sc[2];
+    J[686] += 1 * dqdci;          /* dwdot[O]/d[CH3O] */
+    J[687] += -1 * dqdci;         /* dwdot[O2]/d[CH3O] */
+    J[696] += -1 * dqdci;         /* dwdot[CH3]/d[CH3O] */
+    J[703] += 1 * dqdci;          /* dwdot[CH3O]/d[CH3O] */
     /* d()/dT */
     J[1262] += 1 * dqdT;          /* dwdot[O]/dT */
     J[1263] += -1 * dqdT;         /* dwdot[O2]/dT */
@@ -25909,30 +26042,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[4] += q; /* OH */
     wdot[12] -= q; /* CH3 */
     wdot[17] += q; /* CH2O */
-    dqdc[3] =  + k_f*sc[12];
-    dqdc[4] =  - k_r*sc[17];
-    dqdc[12] =  + k_f*sc[3];
-    dqdc[17] =  - k_r*sc[4];
     /* d()/d[O2] */
-    J[111] += -1 * dqdc[3];       /* dwdot[O2]/d[O2] */
-    J[112] += 1 * dqdc[3];        /* dwdot[OH]/d[O2] */
-    J[120] += -1 * dqdc[3];       /* dwdot[CH3]/d[O2] */
-    J[125] += 1 * dqdc[3];        /* dwdot[CH2O]/d[O2] */
+    dqdci =  + k_f*sc[12];
+    J[111] += -1 * dqdci;         /* dwdot[O2]/d[O2] */
+    J[112] += 1 * dqdci;          /* dwdot[OH]/d[O2] */
+    J[120] += -1 * dqdci;         /* dwdot[CH3]/d[O2] */
+    J[125] += 1 * dqdci;          /* dwdot[CH2O]/d[O2] */
     /* d()/d[OH] */
-    J[147] += -1 * dqdc[4];       /* dwdot[O2]/d[OH] */
-    J[148] += 1 * dqdc[4];        /* dwdot[OH]/d[OH] */
-    J[156] += -1 * dqdc[4];       /* dwdot[CH3]/d[OH] */
-    J[161] += 1 * dqdc[4];        /* dwdot[CH2O]/d[OH] */
+    dqdci =  - k_r*sc[17];
+    J[147] += -1 * dqdci;         /* dwdot[O2]/d[OH] */
+    J[148] += 1 * dqdci;          /* dwdot[OH]/d[OH] */
+    J[156] += -1 * dqdci;         /* dwdot[CH3]/d[OH] */
+    J[161] += 1 * dqdci;          /* dwdot[CH2O]/d[OH] */
     /* d()/d[CH3] */
-    J[435] += -1 * dqdc[12];      /* dwdot[O2]/d[CH3] */
-    J[436] += 1 * dqdc[12];       /* dwdot[OH]/d[CH3] */
-    J[444] += -1 * dqdc[12];      /* dwdot[CH3]/d[CH3] */
-    J[449] += 1 * dqdc[12];       /* dwdot[CH2O]/d[CH3] */
+    dqdci =  + k_f*sc[3];
+    J[435] += -1 * dqdci;         /* dwdot[O2]/d[CH3] */
+    J[436] += 1 * dqdci;          /* dwdot[OH]/d[CH3] */
+    J[444] += -1 * dqdci;         /* dwdot[CH3]/d[CH3] */
+    J[449] += 1 * dqdci;          /* dwdot[CH2O]/d[CH3] */
     /* d()/d[CH2O] */
-    J[615] += -1 * dqdc[17];      /* dwdot[O2]/d[CH2O] */
-    J[616] += 1 * dqdc[17];       /* dwdot[OH]/d[CH2O] */
-    J[624] += -1 * dqdc[17];      /* dwdot[CH3]/d[CH2O] */
-    J[629] += 1 * dqdc[17];       /* dwdot[CH2O]/d[CH2O] */
+    dqdci =  - k_r*sc[4];
+    J[615] += -1 * dqdci;         /* dwdot[O2]/d[CH2O] */
+    J[616] += 1 * dqdci;          /* dwdot[OH]/d[CH2O] */
+    J[624] += -1 * dqdci;         /* dwdot[CH3]/d[CH2O] */
+    J[629] += 1 * dqdci;          /* dwdot[CH2O]/d[CH2O] */
     /* d()/dT */
     J[1263] += -1 * dqdT;         /* dwdot[O2]/dT */
     J[1264] += 1 * dqdT;          /* dwdot[OH]/dT */
@@ -25959,30 +26092,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[7] -= q; /* H2O2 */
     wdot[12] -= q; /* CH3 */
     wdot[13] += q; /* CH4 */
-    dqdc[6] =  - k_r*sc[13];
-    dqdc[7] =  + k_f*sc[12];
-    dqdc[12] =  + k_f*sc[7];
-    dqdc[13] =  - k_r*sc[6];
     /* d()/d[HO2] */
-    J[222] += 1 * dqdc[6];        /* dwdot[HO2]/d[HO2] */
-    J[223] += -1 * dqdc[6];       /* dwdot[H2O2]/d[HO2] */
-    J[228] += -1 * dqdc[6];       /* dwdot[CH3]/d[HO2] */
-    J[229] += 1 * dqdc[6];        /* dwdot[CH4]/d[HO2] */
+    dqdci =  - k_r*sc[13];
+    J[222] += 1 * dqdci;          /* dwdot[HO2]/d[HO2] */
+    J[223] += -1 * dqdci;         /* dwdot[H2O2]/d[HO2] */
+    J[228] += -1 * dqdci;         /* dwdot[CH3]/d[HO2] */
+    J[229] += 1 * dqdci;          /* dwdot[CH4]/d[HO2] */
     /* d()/d[H2O2] */
-    J[258] += 1 * dqdc[7];        /* dwdot[HO2]/d[H2O2] */
-    J[259] += -1 * dqdc[7];       /* dwdot[H2O2]/d[H2O2] */
-    J[264] += -1 * dqdc[7];       /* dwdot[CH3]/d[H2O2] */
-    J[265] += 1 * dqdc[7];        /* dwdot[CH4]/d[H2O2] */
+    dqdci =  + k_f*sc[12];
+    J[258] += 1 * dqdci;          /* dwdot[HO2]/d[H2O2] */
+    J[259] += -1 * dqdci;         /* dwdot[H2O2]/d[H2O2] */
+    J[264] += -1 * dqdci;         /* dwdot[CH3]/d[H2O2] */
+    J[265] += 1 * dqdci;          /* dwdot[CH4]/d[H2O2] */
     /* d()/d[CH3] */
-    J[438] += 1 * dqdc[12];       /* dwdot[HO2]/d[CH3] */
-    J[439] += -1 * dqdc[12];      /* dwdot[H2O2]/d[CH3] */
-    J[444] += -1 * dqdc[12];      /* dwdot[CH3]/d[CH3] */
-    J[445] += 1 * dqdc[12];       /* dwdot[CH4]/d[CH3] */
+    dqdci =  + k_f*sc[7];
+    J[438] += 1 * dqdci;          /* dwdot[HO2]/d[CH3] */
+    J[439] += -1 * dqdci;         /* dwdot[H2O2]/d[CH3] */
+    J[444] += -1 * dqdci;         /* dwdot[CH3]/d[CH3] */
+    J[445] += 1 * dqdci;          /* dwdot[CH4]/d[CH3] */
     /* d()/d[CH4] */
-    J[474] += 1 * dqdc[13];       /* dwdot[HO2]/d[CH4] */
-    J[475] += -1 * dqdc[13];      /* dwdot[H2O2]/d[CH4] */
-    J[480] += -1 * dqdc[13];      /* dwdot[CH3]/d[CH4] */
-    J[481] += 1 * dqdc[13];       /* dwdot[CH4]/d[CH4] */
+    dqdci =  - k_r*sc[6];
+    J[474] += 1 * dqdci;          /* dwdot[HO2]/d[CH4] */
+    J[475] += -1 * dqdci;         /* dwdot[H2O2]/d[CH4] */
+    J[480] += -1 * dqdci;         /* dwdot[CH3]/d[CH4] */
+    J[481] += 1 * dqdci;          /* dwdot[CH4]/d[CH4] */
     /* d()/dT */
     J[1266] += 1 * dqdT;          /* dwdot[HO2]/dT */
     J[1267] += -1 * dqdT;         /* dwdot[H2O2]/dT */
@@ -26019,9 +26152,9 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     troe = 1.0 / (1.0 + troePr*troePr);
     F = pow(10.0, logFcent * troe);
     dlogFcentdT = log10e/Fcent*(Fcent1*-0.0136612 + Fcent2*-0.000847458 + Fcent3*9999*invT2);
-    dlogFdcn_fac = logFcent * troe*troe * troePr * troePr_den;
+    dlogFdcn_fac = 2.0 * logFcent * troe*troe * troePr * troePr_den;
     dlogFdc = -troe_n * dlogFdcn_fac * troePr_den;
-    dlogFdn = 2. * dlogFdcn_fac * troePr;
+    dlogFdn = dlogFdcn_fac * troePr;
     dlogFdlogPr = dlogFdc;
     dlogFdT = dlogFcentdT*(troe - 0.67*dlogFdc - 1.27*dlogFdn) + dlogFdlogPr * dlogPrdT;
     /* reverse */
@@ -26044,41 +26177,34 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     k_r *= Corr;
     dcdc_fac = q/alpha*(1.0/(Pr+1.0) + dlogFdlogPr);
     if (consP) {
-        dqdc[0] =  1*dcdc_fac;
-        dqdc[1] =  0.0;
-        dqdc[2] =  0.0;
-        dqdc[3] =  0.0;
-        dqdc[4] =  0.0;
-        dqdc[5] =  5*dcdc_fac;
-        dqdc[6] =  0.0;
-        dqdc[7] =  0.0;
-        dqdc[8] =  0.0;
-        dqdc[9] =  0.0;
-        dqdc[10] =  0.0;
-        dqdc[11] =  0.0;
-        dqdc[12] =  0.0 + k_f*2*sc[12];
-        dqdc[13] =  1*dcdc_fac;
-        dqdc[14] =  0.5*dcdc_fac;
-        dqdc[15] =  1*dcdc_fac;
-        dqdc[16] =  0.0;
-        dqdc[17] =  0.0;
-        dqdc[18] =  0.0;
-        dqdc[19] =  0.0;
-        dqdc[20] =  0.0;
-        dqdc[21] =  0.0;
-        dqdc[22] =  0.0;
-        dqdc[23] =  0.0;
-        dqdc[24] =  0.0;
-        dqdc[25] =  0.0;
-        dqdc[26] =  2*dcdc_fac - k_r;
-        dqdc[27] =  0.0;
-        dqdc[28] =  0.0;
-        dqdc[29] =  0.0;
-        dqdc[30] =  0.0;
-        dqdc[31] =  0.0;
-        dqdc[32] =  0.0;
-        dqdc[33] =  0.0;
-        dqdc[34] =  0.0;
+        /* d()/d[H2] */
+        dqdci =  1*dcdc_fac;
+        J[12] += -2 * dqdci;          /* dwdot[CH3]/d[H2] */
+        J[26] += 1 * dqdci;           /* dwdot[C2H6]/d[H2] */
+        /* d()/d[H2O] */
+        dqdci =  5*dcdc_fac;
+        J[192] += -2 * dqdci;         /* dwdot[CH3]/d[H2O] */
+        J[206] += 1 * dqdci;          /* dwdot[C2H6]/d[H2O] */
+        /* d()/d[CH3] */
+        dqdci =  + k_f*2*sc[12];
+        J[444] += -2 * dqdci;         /* dwdot[CH3]/d[CH3] */
+        J[458] += 1 * dqdci;          /* dwdot[C2H6]/d[CH3] */
+        /* d()/d[CH4] */
+        dqdci =  1*dcdc_fac;
+        J[480] += -2 * dqdci;         /* dwdot[CH3]/d[CH4] */
+        J[494] += 1 * dqdci;          /* dwdot[C2H6]/d[CH4] */
+        /* d()/d[CO] */
+        dqdci =  0.5*dcdc_fac;
+        J[516] += -2 * dqdci;         /* dwdot[CH3]/d[CO] */
+        J[530] += 1 * dqdci;          /* dwdot[C2H6]/d[CO] */
+        /* d()/d[CO2] */
+        dqdci =  1*dcdc_fac;
+        J[552] += -2 * dqdci;         /* dwdot[CH3]/d[CO2] */
+        J[566] += 1 * dqdci;          /* dwdot[C2H6]/d[CO2] */
+        /* d()/d[C2H6] */
+        dqdci =  2*dcdc_fac - k_r;
+        J[948] += -2 * dqdci;         /* dwdot[CH3]/d[C2H6] */
+        J[962] += 1 * dqdci;          /* dwdot[C2H6]/d[C2H6] */
     }
     else {
         dqdc[0] =  2*dcdc_fac;
@@ -26116,10 +26242,10 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
         dqdc[32] =  1*dcdc_fac;
         dqdc[33] =  1*dcdc_fac;
         dqdc[34] =  1*dcdc_fac;
-    }
-    for (int k=0; k<35; k++) {
-        J[36*k+12] += -2 * dqdc[k];
-        J[36*k+26] += 1 * dqdc[k];
+        for (int k=0; k<35; k++) {
+            J[36*k+12] += -2 * dqdc[k];
+            J[36*k+26] += 1 * dqdc[k];
+        }
     }
     J[1272] += -2 * dqdT; /* dwdot[CH3]/dT */
     J[1286] += 1 * dqdT; /* dwdot[C2H6]/dT */
@@ -26143,21 +26269,21 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[1] += q; /* H */
     wdot[12] -= 2 * q; /* CH3 */
     wdot[25] += q; /* C2H5 */
-    dqdc[1] =  - k_r*sc[25];
-    dqdc[12] =  + k_f*2*sc[12];
-    dqdc[25] =  - k_r*sc[1];
     /* d()/d[H] */
-    J[37] += 1 * dqdc[1];         /* dwdot[H]/d[H] */
-    J[48] += -2 * dqdc[1];        /* dwdot[CH3]/d[H] */
-    J[61] += 1 * dqdc[1];         /* dwdot[C2H5]/d[H] */
+    dqdci =  - k_r*sc[25];
+    J[37] += 1 * dqdci;           /* dwdot[H]/d[H] */
+    J[48] += -2 * dqdci;          /* dwdot[CH3]/d[H] */
+    J[61] += 1 * dqdci;           /* dwdot[C2H5]/d[H] */
     /* d()/d[CH3] */
-    J[433] += 1 * dqdc[12];       /* dwdot[H]/d[CH3] */
-    J[444] += -2 * dqdc[12];      /* dwdot[CH3]/d[CH3] */
-    J[457] += 1 * dqdc[12];       /* dwdot[C2H5]/d[CH3] */
+    dqdci =  + k_f*2*sc[12];
+    J[433] += 1 * dqdci;          /* dwdot[H]/d[CH3] */
+    J[444] += -2 * dqdci;         /* dwdot[CH3]/d[CH3] */
+    J[457] += 1 * dqdci;          /* dwdot[C2H5]/d[CH3] */
     /* d()/d[C2H5] */
-    J[901] += 1 * dqdc[25];       /* dwdot[H]/d[C2H5] */
-    J[912] += -2 * dqdc[25];      /* dwdot[CH3]/d[C2H5] */
-    J[925] += 1 * dqdc[25];       /* dwdot[C2H5]/d[C2H5] */
+    dqdci =  - k_r*sc[1];
+    J[901] += 1 * dqdci;          /* dwdot[H]/d[C2H5] */
+    J[912] += -2 * dqdci;         /* dwdot[CH3]/d[C2H5] */
+    J[925] += 1 * dqdci;          /* dwdot[C2H5]/d[C2H5] */
     /* d()/dT */
     J[1261] += 1 * dqdT;          /* dwdot[H]/dT */
     J[1272] += -2 * dqdT;         /* dwdot[CH3]/dT */
@@ -26183,30 +26309,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[13] += q; /* CH4 */
     wdot[14] += q; /* CO */
     wdot[16] -= q; /* HCO */
-    dqdc[12] =  + k_f*sc[16];
-    dqdc[13] =  - k_r*sc[14];
-    dqdc[14] =  - k_r*sc[13];
-    dqdc[16] =  + k_f*sc[12];
     /* d()/d[CH3] */
-    J[444] += -1 * dqdc[12];      /* dwdot[CH3]/d[CH3] */
-    J[445] += 1 * dqdc[12];       /* dwdot[CH4]/d[CH3] */
-    J[446] += 1 * dqdc[12];       /* dwdot[CO]/d[CH3] */
-    J[448] += -1 * dqdc[12];      /* dwdot[HCO]/d[CH3] */
+    dqdci =  + k_f*sc[16];
+    J[444] += -1 * dqdci;         /* dwdot[CH3]/d[CH3] */
+    J[445] += 1 * dqdci;          /* dwdot[CH4]/d[CH3] */
+    J[446] += 1 * dqdci;          /* dwdot[CO]/d[CH3] */
+    J[448] += -1 * dqdci;         /* dwdot[HCO]/d[CH3] */
     /* d()/d[CH4] */
-    J[480] += -1 * dqdc[13];      /* dwdot[CH3]/d[CH4] */
-    J[481] += 1 * dqdc[13];       /* dwdot[CH4]/d[CH4] */
-    J[482] += 1 * dqdc[13];       /* dwdot[CO]/d[CH4] */
-    J[484] += -1 * dqdc[13];      /* dwdot[HCO]/d[CH4] */
+    dqdci =  - k_r*sc[14];
+    J[480] += -1 * dqdci;         /* dwdot[CH3]/d[CH4] */
+    J[481] += 1 * dqdci;          /* dwdot[CH4]/d[CH4] */
+    J[482] += 1 * dqdci;          /* dwdot[CO]/d[CH4] */
+    J[484] += -1 * dqdci;         /* dwdot[HCO]/d[CH4] */
     /* d()/d[CO] */
-    J[516] += -1 * dqdc[14];      /* dwdot[CH3]/d[CO] */
-    J[517] += 1 * dqdc[14];       /* dwdot[CH4]/d[CO] */
-    J[518] += 1 * dqdc[14];       /* dwdot[CO]/d[CO] */
-    J[520] += -1 * dqdc[14];      /* dwdot[HCO]/d[CO] */
+    dqdci =  - k_r*sc[13];
+    J[516] += -1 * dqdci;         /* dwdot[CH3]/d[CO] */
+    J[517] += 1 * dqdci;          /* dwdot[CH4]/d[CO] */
+    J[518] += 1 * dqdci;          /* dwdot[CO]/d[CO] */
+    J[520] += -1 * dqdci;         /* dwdot[HCO]/d[CO] */
     /* d()/d[HCO] */
-    J[588] += -1 * dqdc[16];      /* dwdot[CH3]/d[HCO] */
-    J[589] += 1 * dqdc[16];       /* dwdot[CH4]/d[HCO] */
-    J[590] += 1 * dqdc[16];       /* dwdot[CO]/d[HCO] */
-    J[592] += -1 * dqdc[16];      /* dwdot[HCO]/d[HCO] */
+    dqdci =  + k_f*sc[12];
+    J[588] += -1 * dqdci;         /* dwdot[CH3]/d[HCO] */
+    J[589] += 1 * dqdci;          /* dwdot[CH4]/d[HCO] */
+    J[590] += 1 * dqdci;          /* dwdot[CO]/d[HCO] */
+    J[592] += -1 * dqdci;         /* dwdot[HCO]/d[HCO] */
     /* d()/dT */
     J[1272] += -1 * dqdT;         /* dwdot[CH3]/dT */
     J[1273] += 1 * dqdT;          /* dwdot[CH4]/dT */
@@ -26233,30 +26359,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[13] += q; /* CH4 */
     wdot[16] += q; /* HCO */
     wdot[17] -= q; /* CH2O */
-    dqdc[12] =  + k_f*sc[17];
-    dqdc[13] =  - k_r*sc[16];
-    dqdc[16] =  - k_r*sc[13];
-    dqdc[17] =  + k_f*sc[12];
     /* d()/d[CH3] */
-    J[444] += -1 * dqdc[12];      /* dwdot[CH3]/d[CH3] */
-    J[445] += 1 * dqdc[12];       /* dwdot[CH4]/d[CH3] */
-    J[448] += 1 * dqdc[12];       /* dwdot[HCO]/d[CH3] */
-    J[449] += -1 * dqdc[12];      /* dwdot[CH2O]/d[CH3] */
+    dqdci =  + k_f*sc[17];
+    J[444] += -1 * dqdci;         /* dwdot[CH3]/d[CH3] */
+    J[445] += 1 * dqdci;          /* dwdot[CH4]/d[CH3] */
+    J[448] += 1 * dqdci;          /* dwdot[HCO]/d[CH3] */
+    J[449] += -1 * dqdci;         /* dwdot[CH2O]/d[CH3] */
     /* d()/d[CH4] */
-    J[480] += -1 * dqdc[13];      /* dwdot[CH3]/d[CH4] */
-    J[481] += 1 * dqdc[13];       /* dwdot[CH4]/d[CH4] */
-    J[484] += 1 * dqdc[13];       /* dwdot[HCO]/d[CH4] */
-    J[485] += -1 * dqdc[13];      /* dwdot[CH2O]/d[CH4] */
+    dqdci =  - k_r*sc[16];
+    J[480] += -1 * dqdci;         /* dwdot[CH3]/d[CH4] */
+    J[481] += 1 * dqdci;          /* dwdot[CH4]/d[CH4] */
+    J[484] += 1 * dqdci;          /* dwdot[HCO]/d[CH4] */
+    J[485] += -1 * dqdci;         /* dwdot[CH2O]/d[CH4] */
     /* d()/d[HCO] */
-    J[588] += -1 * dqdc[16];      /* dwdot[CH3]/d[HCO] */
-    J[589] += 1 * dqdc[16];       /* dwdot[CH4]/d[HCO] */
-    J[592] += 1 * dqdc[16];       /* dwdot[HCO]/d[HCO] */
-    J[593] += -1 * dqdc[16];      /* dwdot[CH2O]/d[HCO] */
+    dqdci =  - k_r*sc[13];
+    J[588] += -1 * dqdci;         /* dwdot[CH3]/d[HCO] */
+    J[589] += 1 * dqdci;          /* dwdot[CH4]/d[HCO] */
+    J[592] += 1 * dqdci;          /* dwdot[HCO]/d[HCO] */
+    J[593] += -1 * dqdci;         /* dwdot[CH2O]/d[HCO] */
     /* d()/d[CH2O] */
-    J[624] += -1 * dqdc[17];      /* dwdot[CH3]/d[CH2O] */
-    J[625] += 1 * dqdc[17];       /* dwdot[CH4]/d[CH2O] */
-    J[628] += 1 * dqdc[17];       /* dwdot[HCO]/d[CH2O] */
-    J[629] += -1 * dqdc[17];      /* dwdot[CH2O]/d[CH2O] */
+    dqdci =  + k_f*sc[12];
+    J[624] += -1 * dqdci;         /* dwdot[CH3]/d[CH2O] */
+    J[625] += 1 * dqdci;          /* dwdot[CH4]/d[CH2O] */
+    J[628] += 1 * dqdci;          /* dwdot[HCO]/d[CH2O] */
+    J[629] += -1 * dqdci;         /* dwdot[CH2O]/d[CH2O] */
     /* d()/dT */
     J[1272] += -1 * dqdT;         /* dwdot[CH3]/dT */
     J[1273] += 1 * dqdT;          /* dwdot[CH4]/dT */
@@ -26283,30 +26409,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[13] += q; /* CH4 */
     wdot[18] += q; /* CH2OH */
     wdot[20] -= q; /* CH3OH */
-    dqdc[12] =  + k_f*sc[20];
-    dqdc[13] =  - k_r*sc[18];
-    dqdc[18] =  - k_r*sc[13];
-    dqdc[20] =  + k_f*sc[12];
     /* d()/d[CH3] */
-    J[444] += -1 * dqdc[12];      /* dwdot[CH3]/d[CH3] */
-    J[445] += 1 * dqdc[12];       /* dwdot[CH4]/d[CH3] */
-    J[450] += 1 * dqdc[12];       /* dwdot[CH2OH]/d[CH3] */
-    J[452] += -1 * dqdc[12];      /* dwdot[CH3OH]/d[CH3] */
+    dqdci =  + k_f*sc[20];
+    J[444] += -1 * dqdci;         /* dwdot[CH3]/d[CH3] */
+    J[445] += 1 * dqdci;          /* dwdot[CH4]/d[CH3] */
+    J[450] += 1 * dqdci;          /* dwdot[CH2OH]/d[CH3] */
+    J[452] += -1 * dqdci;         /* dwdot[CH3OH]/d[CH3] */
     /* d()/d[CH4] */
-    J[480] += -1 * dqdc[13];      /* dwdot[CH3]/d[CH4] */
-    J[481] += 1 * dqdc[13];       /* dwdot[CH4]/d[CH4] */
-    J[486] += 1 * dqdc[13];       /* dwdot[CH2OH]/d[CH4] */
-    J[488] += -1 * dqdc[13];      /* dwdot[CH3OH]/d[CH4] */
+    dqdci =  - k_r*sc[18];
+    J[480] += -1 * dqdci;         /* dwdot[CH3]/d[CH4] */
+    J[481] += 1 * dqdci;          /* dwdot[CH4]/d[CH4] */
+    J[486] += 1 * dqdci;          /* dwdot[CH2OH]/d[CH4] */
+    J[488] += -1 * dqdci;         /* dwdot[CH3OH]/d[CH4] */
     /* d()/d[CH2OH] */
-    J[660] += -1 * dqdc[18];      /* dwdot[CH3]/d[CH2OH] */
-    J[661] += 1 * dqdc[18];       /* dwdot[CH4]/d[CH2OH] */
-    J[666] += 1 * dqdc[18];       /* dwdot[CH2OH]/d[CH2OH] */
-    J[668] += -1 * dqdc[18];      /* dwdot[CH3OH]/d[CH2OH] */
+    dqdci =  - k_r*sc[13];
+    J[660] += -1 * dqdci;         /* dwdot[CH3]/d[CH2OH] */
+    J[661] += 1 * dqdci;          /* dwdot[CH4]/d[CH2OH] */
+    J[666] += 1 * dqdci;          /* dwdot[CH2OH]/d[CH2OH] */
+    J[668] += -1 * dqdci;         /* dwdot[CH3OH]/d[CH2OH] */
     /* d()/d[CH3OH] */
-    J[732] += -1 * dqdc[20];      /* dwdot[CH3]/d[CH3OH] */
-    J[733] += 1 * dqdc[20];       /* dwdot[CH4]/d[CH3OH] */
-    J[738] += 1 * dqdc[20];       /* dwdot[CH2OH]/d[CH3OH] */
-    J[740] += -1 * dqdc[20];      /* dwdot[CH3OH]/d[CH3OH] */
+    dqdci =  + k_f*sc[12];
+    J[732] += -1 * dqdci;         /* dwdot[CH3]/d[CH3OH] */
+    J[733] += 1 * dqdci;          /* dwdot[CH4]/d[CH3OH] */
+    J[738] += 1 * dqdci;          /* dwdot[CH2OH]/d[CH3OH] */
+    J[740] += -1 * dqdci;         /* dwdot[CH3OH]/d[CH3OH] */
     /* d()/dT */
     J[1272] += -1 * dqdT;         /* dwdot[CH3]/dT */
     J[1273] += 1 * dqdT;          /* dwdot[CH4]/dT */
@@ -26333,30 +26459,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[13] += q; /* CH4 */
     wdot[19] += q; /* CH3O */
     wdot[20] -= q; /* CH3OH */
-    dqdc[12] =  + k_f*sc[20];
-    dqdc[13] =  - k_r*sc[19];
-    dqdc[19] =  - k_r*sc[13];
-    dqdc[20] =  + k_f*sc[12];
     /* d()/d[CH3] */
-    J[444] += -1 * dqdc[12];      /* dwdot[CH3]/d[CH3] */
-    J[445] += 1 * dqdc[12];       /* dwdot[CH4]/d[CH3] */
-    J[451] += 1 * dqdc[12];       /* dwdot[CH3O]/d[CH3] */
-    J[452] += -1 * dqdc[12];      /* dwdot[CH3OH]/d[CH3] */
+    dqdci =  + k_f*sc[20];
+    J[444] += -1 * dqdci;         /* dwdot[CH3]/d[CH3] */
+    J[445] += 1 * dqdci;          /* dwdot[CH4]/d[CH3] */
+    J[451] += 1 * dqdci;          /* dwdot[CH3O]/d[CH3] */
+    J[452] += -1 * dqdci;         /* dwdot[CH3OH]/d[CH3] */
     /* d()/d[CH4] */
-    J[480] += -1 * dqdc[13];      /* dwdot[CH3]/d[CH4] */
-    J[481] += 1 * dqdc[13];       /* dwdot[CH4]/d[CH4] */
-    J[487] += 1 * dqdc[13];       /* dwdot[CH3O]/d[CH4] */
-    J[488] += -1 * dqdc[13];      /* dwdot[CH3OH]/d[CH4] */
+    dqdci =  - k_r*sc[19];
+    J[480] += -1 * dqdci;         /* dwdot[CH3]/d[CH4] */
+    J[481] += 1 * dqdci;          /* dwdot[CH4]/d[CH4] */
+    J[487] += 1 * dqdci;          /* dwdot[CH3O]/d[CH4] */
+    J[488] += -1 * dqdci;         /* dwdot[CH3OH]/d[CH4] */
     /* d()/d[CH3O] */
-    J[696] += -1 * dqdc[19];      /* dwdot[CH3]/d[CH3O] */
-    J[697] += 1 * dqdc[19];       /* dwdot[CH4]/d[CH3O] */
-    J[703] += 1 * dqdc[19];       /* dwdot[CH3O]/d[CH3O] */
-    J[704] += -1 * dqdc[19];      /* dwdot[CH3OH]/d[CH3O] */
+    dqdci =  - k_r*sc[13];
+    J[696] += -1 * dqdci;         /* dwdot[CH3]/d[CH3O] */
+    J[697] += 1 * dqdci;          /* dwdot[CH4]/d[CH3O] */
+    J[703] += 1 * dqdci;          /* dwdot[CH3O]/d[CH3O] */
+    J[704] += -1 * dqdci;         /* dwdot[CH3OH]/d[CH3O] */
     /* d()/d[CH3OH] */
-    J[732] += -1 * dqdc[20];      /* dwdot[CH3]/d[CH3OH] */
-    J[733] += 1 * dqdc[20];       /* dwdot[CH4]/d[CH3OH] */
-    J[739] += 1 * dqdc[20];       /* dwdot[CH3O]/d[CH3OH] */
-    J[740] += -1 * dqdc[20];      /* dwdot[CH3OH]/d[CH3OH] */
+    dqdci =  + k_f*sc[12];
+    J[732] += -1 * dqdci;         /* dwdot[CH3]/d[CH3OH] */
+    J[733] += 1 * dqdci;          /* dwdot[CH4]/d[CH3OH] */
+    J[739] += 1 * dqdci;          /* dwdot[CH3O]/d[CH3OH] */
+    J[740] += -1 * dqdci;         /* dwdot[CH3OH]/d[CH3OH] */
     /* d()/dT */
     J[1272] += -1 * dqdT;         /* dwdot[CH3]/dT */
     J[1273] += 1 * dqdT;          /* dwdot[CH4]/dT */
@@ -26383,30 +26509,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[13] += q; /* CH4 */
     wdot[23] += q; /* C2H3 */
     wdot[24] -= q; /* C2H4 */
-    dqdc[12] =  + k_f*sc[24];
-    dqdc[13] =  - k_r*sc[23];
-    dqdc[23] =  - k_r*sc[13];
-    dqdc[24] =  + k_f*sc[12];
     /* d()/d[CH3] */
-    J[444] += -1 * dqdc[12];      /* dwdot[CH3]/d[CH3] */
-    J[445] += 1 * dqdc[12];       /* dwdot[CH4]/d[CH3] */
-    J[455] += 1 * dqdc[12];       /* dwdot[C2H3]/d[CH3] */
-    J[456] += -1 * dqdc[12];      /* dwdot[C2H4]/d[CH3] */
+    dqdci =  + k_f*sc[24];
+    J[444] += -1 * dqdci;         /* dwdot[CH3]/d[CH3] */
+    J[445] += 1 * dqdci;          /* dwdot[CH4]/d[CH3] */
+    J[455] += 1 * dqdci;          /* dwdot[C2H3]/d[CH3] */
+    J[456] += -1 * dqdci;         /* dwdot[C2H4]/d[CH3] */
     /* d()/d[CH4] */
-    J[480] += -1 * dqdc[13];      /* dwdot[CH3]/d[CH4] */
-    J[481] += 1 * dqdc[13];       /* dwdot[CH4]/d[CH4] */
-    J[491] += 1 * dqdc[13];       /* dwdot[C2H3]/d[CH4] */
-    J[492] += -1 * dqdc[13];      /* dwdot[C2H4]/d[CH4] */
+    dqdci =  - k_r*sc[23];
+    J[480] += -1 * dqdci;         /* dwdot[CH3]/d[CH4] */
+    J[481] += 1 * dqdci;          /* dwdot[CH4]/d[CH4] */
+    J[491] += 1 * dqdci;          /* dwdot[C2H3]/d[CH4] */
+    J[492] += -1 * dqdci;         /* dwdot[C2H4]/d[CH4] */
     /* d()/d[C2H3] */
-    J[840] += -1 * dqdc[23];      /* dwdot[CH3]/d[C2H3] */
-    J[841] += 1 * dqdc[23];       /* dwdot[CH4]/d[C2H3] */
-    J[851] += 1 * dqdc[23];       /* dwdot[C2H3]/d[C2H3] */
-    J[852] += -1 * dqdc[23];      /* dwdot[C2H4]/d[C2H3] */
+    dqdci =  - k_r*sc[13];
+    J[840] += -1 * dqdci;         /* dwdot[CH3]/d[C2H3] */
+    J[841] += 1 * dqdci;          /* dwdot[CH4]/d[C2H3] */
+    J[851] += 1 * dqdci;          /* dwdot[C2H3]/d[C2H3] */
+    J[852] += -1 * dqdci;         /* dwdot[C2H4]/d[C2H3] */
     /* d()/d[C2H4] */
-    J[876] += -1 * dqdc[24];      /* dwdot[CH3]/d[C2H4] */
-    J[877] += 1 * dqdc[24];       /* dwdot[CH4]/d[C2H4] */
-    J[887] += 1 * dqdc[24];       /* dwdot[C2H3]/d[C2H4] */
-    J[888] += -1 * dqdc[24];      /* dwdot[C2H4]/d[C2H4] */
+    dqdci =  + k_f*sc[12];
+    J[876] += -1 * dqdci;         /* dwdot[CH3]/d[C2H4] */
+    J[877] += 1 * dqdci;          /* dwdot[CH4]/d[C2H4] */
+    J[887] += 1 * dqdci;          /* dwdot[C2H3]/d[C2H4] */
+    J[888] += -1 * dqdci;         /* dwdot[C2H4]/d[C2H4] */
     /* d()/dT */
     J[1272] += -1 * dqdT;         /* dwdot[CH3]/dT */
     J[1273] += 1 * dqdT;          /* dwdot[CH4]/dT */
@@ -26433,30 +26559,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[13] += q; /* CH4 */
     wdot[25] += q; /* C2H5 */
     wdot[26] -= q; /* C2H6 */
-    dqdc[12] =  + k_f*sc[26];
-    dqdc[13] =  - k_r*sc[25];
-    dqdc[25] =  - k_r*sc[13];
-    dqdc[26] =  + k_f*sc[12];
     /* d()/d[CH3] */
-    J[444] += -1 * dqdc[12];      /* dwdot[CH3]/d[CH3] */
-    J[445] += 1 * dqdc[12];       /* dwdot[CH4]/d[CH3] */
-    J[457] += 1 * dqdc[12];       /* dwdot[C2H5]/d[CH3] */
-    J[458] += -1 * dqdc[12];      /* dwdot[C2H6]/d[CH3] */
+    dqdci =  + k_f*sc[26];
+    J[444] += -1 * dqdci;         /* dwdot[CH3]/d[CH3] */
+    J[445] += 1 * dqdci;          /* dwdot[CH4]/d[CH3] */
+    J[457] += 1 * dqdci;          /* dwdot[C2H5]/d[CH3] */
+    J[458] += -1 * dqdci;         /* dwdot[C2H6]/d[CH3] */
     /* d()/d[CH4] */
-    J[480] += -1 * dqdc[13];      /* dwdot[CH3]/d[CH4] */
-    J[481] += 1 * dqdc[13];       /* dwdot[CH4]/d[CH4] */
-    J[493] += 1 * dqdc[13];       /* dwdot[C2H5]/d[CH4] */
-    J[494] += -1 * dqdc[13];      /* dwdot[C2H6]/d[CH4] */
+    dqdci =  - k_r*sc[25];
+    J[480] += -1 * dqdci;         /* dwdot[CH3]/d[CH4] */
+    J[481] += 1 * dqdci;          /* dwdot[CH4]/d[CH4] */
+    J[493] += 1 * dqdci;          /* dwdot[C2H5]/d[CH4] */
+    J[494] += -1 * dqdci;         /* dwdot[C2H6]/d[CH4] */
     /* d()/d[C2H5] */
-    J[912] += -1 * dqdc[25];      /* dwdot[CH3]/d[C2H5] */
-    J[913] += 1 * dqdc[25];       /* dwdot[CH4]/d[C2H5] */
-    J[925] += 1 * dqdc[25];       /* dwdot[C2H5]/d[C2H5] */
-    J[926] += -1 * dqdc[25];      /* dwdot[C2H6]/d[C2H5] */
+    dqdci =  - k_r*sc[13];
+    J[912] += -1 * dqdci;         /* dwdot[CH3]/d[C2H5] */
+    J[913] += 1 * dqdci;          /* dwdot[CH4]/d[C2H5] */
+    J[925] += 1 * dqdci;          /* dwdot[C2H5]/d[C2H5] */
+    J[926] += -1 * dqdci;         /* dwdot[C2H6]/d[C2H5] */
     /* d()/d[C2H6] */
-    J[948] += -1 * dqdc[26];      /* dwdot[CH3]/d[C2H6] */
-    J[949] += 1 * dqdc[26];       /* dwdot[CH4]/d[C2H6] */
-    J[961] += 1 * dqdc[26];       /* dwdot[C2H5]/d[C2H6] */
-    J[962] += -1 * dqdc[26];      /* dwdot[C2H6]/d[C2H6] */
+    dqdci =  + k_f*sc[12];
+    J[948] += -1 * dqdci;         /* dwdot[CH3]/d[C2H6] */
+    J[949] += 1 * dqdci;          /* dwdot[CH4]/d[C2H6] */
+    J[961] += 1 * dqdci;          /* dwdot[C2H5]/d[C2H6] */
+    J[962] += -1 * dqdci;         /* dwdot[C2H6]/d[C2H6] */
     /* d()/dT */
     J[1272] += -1 * dqdT;         /* dwdot[CH3]/dT */
     J[1273] += 1 * dqdT;          /* dwdot[CH4]/dT */
@@ -26482,26 +26608,26 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[1] += q; /* H */
     wdot[14] += q; /* CO */
     wdot[16] -= q; /* HCO */
-    dqdc[1] =  - k_r*sc[14]*sc[5];
-    dqdc[5] =  + k_f*sc[16] - k_r*sc[14]*sc[1];
-    dqdc[14] =  - k_r*sc[1]*sc[5];
-    dqdc[16] =  + k_f*sc[5];
     /* d()/d[H] */
-    J[37] += 1 * dqdc[1];         /* dwdot[H]/d[H] */
-    J[50] += 1 * dqdc[1];         /* dwdot[CO]/d[H] */
-    J[52] += -1 * dqdc[1];        /* dwdot[HCO]/d[H] */
+    dqdci =  - k_r*sc[14]*sc[5];
+    J[37] += 1 * dqdci;           /* dwdot[H]/d[H] */
+    J[50] += 1 * dqdci;           /* dwdot[CO]/d[H] */
+    J[52] += -1 * dqdci;          /* dwdot[HCO]/d[H] */
     /* d()/d[H2O] */
-    J[181] += 1 * dqdc[5];        /* dwdot[H]/d[H2O] */
-    J[194] += 1 * dqdc[5];        /* dwdot[CO]/d[H2O] */
-    J[196] += -1 * dqdc[5];       /* dwdot[HCO]/d[H2O] */
+    dqdci =  + k_f*sc[16] - k_r*sc[14]*sc[1];
+    J[181] += 1 * dqdci;          /* dwdot[H]/d[H2O] */
+    J[194] += 1 * dqdci;          /* dwdot[CO]/d[H2O] */
+    J[196] += -1 * dqdci;         /* dwdot[HCO]/d[H2O] */
     /* d()/d[CO] */
-    J[505] += 1 * dqdc[14];       /* dwdot[H]/d[CO] */
-    J[518] += 1 * dqdc[14];       /* dwdot[CO]/d[CO] */
-    J[520] += -1 * dqdc[14];      /* dwdot[HCO]/d[CO] */
+    dqdci =  - k_r*sc[1]*sc[5];
+    J[505] += 1 * dqdci;          /* dwdot[H]/d[CO] */
+    J[518] += 1 * dqdci;          /* dwdot[CO]/d[CO] */
+    J[520] += -1 * dqdci;         /* dwdot[HCO]/d[CO] */
     /* d()/d[HCO] */
-    J[577] += 1 * dqdc[16];       /* dwdot[H]/d[HCO] */
-    J[590] += 1 * dqdc[16];       /* dwdot[CO]/d[HCO] */
-    J[592] += -1 * dqdc[16];      /* dwdot[HCO]/d[HCO] */
+    dqdci =  + k_f*sc[5];
+    J[577] += 1 * dqdci;          /* dwdot[H]/d[HCO] */
+    J[590] += 1 * dqdci;          /* dwdot[CO]/d[HCO] */
+    J[592] += -1 * dqdci;         /* dwdot[HCO]/d[HCO] */
     /* d()/dT */
     J[1261] += 1 * dqdT;          /* dwdot[H]/dT */
     J[1274] += 1 * dqdT;          /* dwdot[CO]/dT */
@@ -26533,41 +26659,46 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     k_f *= alpha;
     k_r *= alpha;
     if (consP) {
-        dqdc[0] =  1*q_nocor;
-        dqdc[1] =  0.0 - k_r*sc[14];
-        dqdc[2] =  0.0;
-        dqdc[3] =  0.0;
-        dqdc[4] =  0.0;
-        dqdc[5] =  -1*q_nocor;
-        dqdc[6] =  0.0;
-        dqdc[7] =  0.0;
-        dqdc[8] =  0.0;
-        dqdc[9] =  0.0;
-        dqdc[10] =  0.0;
-        dqdc[11] =  0.0;
-        dqdc[12] =  0.0;
-        dqdc[13] =  1*q_nocor;
-        dqdc[14] =  0.5*q_nocor - k_r*sc[1];
-        dqdc[15] =  1*q_nocor;
-        dqdc[16] =  0.0 + k_f;
-        dqdc[17] =  0.0;
-        dqdc[18] =  0.0;
-        dqdc[19] =  0.0;
-        dqdc[20] =  0.0;
-        dqdc[21] =  0.0;
-        dqdc[22] =  0.0;
-        dqdc[23] =  0.0;
-        dqdc[24] =  0.0;
-        dqdc[25] =  0.0;
-        dqdc[26] =  2*q_nocor;
-        dqdc[27] =  0.0;
-        dqdc[28] =  0.0;
-        dqdc[29] =  0.0;
-        dqdc[30] =  0.0;
-        dqdc[31] =  0.0;
-        dqdc[32] =  0.0;
-        dqdc[33] =  0.0;
-        dqdc[34] =  0.0;
+        /* d()/d[H2] */
+        dqdci =  1*q_nocor;
+        J[1] += 1 * dqdci;            /* dwdot[H]/d[H2] */
+        J[14] += 1 * dqdci;           /* dwdot[CO]/d[H2] */
+        J[16] += -1 * dqdci;          /* dwdot[HCO]/d[H2] */
+        /* d()/d[H] */
+        dqdci =  - k_r*sc[14];
+        J[37] += 1 * dqdci;           /* dwdot[H]/d[H] */
+        J[50] += 1 * dqdci;           /* dwdot[CO]/d[H] */
+        J[52] += -1 * dqdci;          /* dwdot[HCO]/d[H] */
+        /* d()/d[H2O] */
+        dqdci =  -1*q_nocor;
+        J[181] += 1 * dqdci;          /* dwdot[H]/d[H2O] */
+        J[194] += 1 * dqdci;          /* dwdot[CO]/d[H2O] */
+        J[196] += -1 * dqdci;         /* dwdot[HCO]/d[H2O] */
+        /* d()/d[CH4] */
+        dqdci =  1*q_nocor;
+        J[469] += 1 * dqdci;          /* dwdot[H]/d[CH4] */
+        J[482] += 1 * dqdci;          /* dwdot[CO]/d[CH4] */
+        J[484] += -1 * dqdci;         /* dwdot[HCO]/d[CH4] */
+        /* d()/d[CO] */
+        dqdci =  0.5*q_nocor - k_r*sc[1];
+        J[505] += 1 * dqdci;          /* dwdot[H]/d[CO] */
+        J[518] += 1 * dqdci;          /* dwdot[CO]/d[CO] */
+        J[520] += -1 * dqdci;         /* dwdot[HCO]/d[CO] */
+        /* d()/d[CO2] */
+        dqdci =  1*q_nocor;
+        J[541] += 1 * dqdci;          /* dwdot[H]/d[CO2] */
+        J[554] += 1 * dqdci;          /* dwdot[CO]/d[CO2] */
+        J[556] += -1 * dqdci;         /* dwdot[HCO]/d[CO2] */
+        /* d()/d[HCO] */
+        dqdci =  + k_f;
+        J[577] += 1 * dqdci;          /* dwdot[H]/d[HCO] */
+        J[590] += 1 * dqdci;          /* dwdot[CO]/d[HCO] */
+        J[592] += -1 * dqdci;         /* dwdot[HCO]/d[HCO] */
+        /* d()/d[C2H6] */
+        dqdci =  2*q_nocor;
+        J[937] += 1 * dqdci;          /* dwdot[H]/d[C2H6] */
+        J[950] += 1 * dqdci;          /* dwdot[CO]/d[C2H6] */
+        J[952] += -1 * dqdci;         /* dwdot[HCO]/d[C2H6] */
     }
     else {
         dqdc[0] =  2*q_nocor;
@@ -26605,11 +26736,11 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
         dqdc[32] =  1*q_nocor;
         dqdc[33] =  1*q_nocor;
         dqdc[34] =  1*q_nocor;
-    }
-    for (int k=0; k<35; k++) {
-        J[36*k+1] += 1 * dqdc[k];
-        J[36*k+14] += 1 * dqdc[k];
-        J[36*k+16] += -1 * dqdc[k];
+        for (int k=0; k<35; k++) {
+            J[36*k+1] += 1 * dqdc[k];
+            J[36*k+14] += 1 * dqdc[k];
+            J[36*k+16] += -1 * dqdc[k];
+        }
     }
     J[1261] += 1 * dqdT; /* dwdot[H]/dT */
     J[1274] += 1 * dqdT; /* dwdot[CO]/dT */
@@ -26635,30 +26766,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[6] += q; /* HO2 */
     wdot[14] += q; /* CO */
     wdot[16] -= q; /* HCO */
-    dqdc[3] =  + k_f*sc[16];
-    dqdc[6] =  - k_r*sc[14];
-    dqdc[14] =  - k_r*sc[6];
-    dqdc[16] =  + k_f*sc[3];
     /* d()/d[O2] */
-    J[111] += -1 * dqdc[3];       /* dwdot[O2]/d[O2] */
-    J[114] += 1 * dqdc[3];        /* dwdot[HO2]/d[O2] */
-    J[122] += 1 * dqdc[3];        /* dwdot[CO]/d[O2] */
-    J[124] += -1 * dqdc[3];       /* dwdot[HCO]/d[O2] */
+    dqdci =  + k_f*sc[16];
+    J[111] += -1 * dqdci;         /* dwdot[O2]/d[O2] */
+    J[114] += 1 * dqdci;          /* dwdot[HO2]/d[O2] */
+    J[122] += 1 * dqdci;          /* dwdot[CO]/d[O2] */
+    J[124] += -1 * dqdci;         /* dwdot[HCO]/d[O2] */
     /* d()/d[HO2] */
-    J[219] += -1 * dqdc[6];       /* dwdot[O2]/d[HO2] */
-    J[222] += 1 * dqdc[6];        /* dwdot[HO2]/d[HO2] */
-    J[230] += 1 * dqdc[6];        /* dwdot[CO]/d[HO2] */
-    J[232] += -1 * dqdc[6];       /* dwdot[HCO]/d[HO2] */
+    dqdci =  - k_r*sc[14];
+    J[219] += -1 * dqdci;         /* dwdot[O2]/d[HO2] */
+    J[222] += 1 * dqdci;          /* dwdot[HO2]/d[HO2] */
+    J[230] += 1 * dqdci;          /* dwdot[CO]/d[HO2] */
+    J[232] += -1 * dqdci;         /* dwdot[HCO]/d[HO2] */
     /* d()/d[CO] */
-    J[507] += -1 * dqdc[14];      /* dwdot[O2]/d[CO] */
-    J[510] += 1 * dqdc[14];       /* dwdot[HO2]/d[CO] */
-    J[518] += 1 * dqdc[14];       /* dwdot[CO]/d[CO] */
-    J[520] += -1 * dqdc[14];      /* dwdot[HCO]/d[CO] */
+    dqdci =  - k_r*sc[6];
+    J[507] += -1 * dqdci;         /* dwdot[O2]/d[CO] */
+    J[510] += 1 * dqdci;          /* dwdot[HO2]/d[CO] */
+    J[518] += 1 * dqdci;          /* dwdot[CO]/d[CO] */
+    J[520] += -1 * dqdci;         /* dwdot[HCO]/d[CO] */
     /* d()/d[HCO] */
-    J[579] += -1 * dqdc[16];      /* dwdot[O2]/d[HCO] */
-    J[582] += 1 * dqdc[16];       /* dwdot[HO2]/d[HCO] */
-    J[590] += 1 * dqdc[16];       /* dwdot[CO]/d[HCO] */
-    J[592] += -1 * dqdc[16];      /* dwdot[HCO]/d[HCO] */
+    dqdci =  + k_f*sc[3];
+    J[579] += -1 * dqdci;         /* dwdot[O2]/d[HCO] */
+    J[582] += 1 * dqdci;          /* dwdot[HO2]/d[HCO] */
+    J[590] += 1 * dqdci;          /* dwdot[CO]/d[HCO] */
+    J[592] += -1 * dqdci;         /* dwdot[HCO]/d[HCO] */
     /* d()/dT */
     J[1263] += -1 * dqdT;         /* dwdot[O2]/dT */
     J[1266] += 1 * dqdT;          /* dwdot[HO2]/dT */
@@ -26685,30 +26816,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[6] += q; /* HO2 */
     wdot[17] += q; /* CH2O */
     wdot[18] -= q; /* CH2OH */
-    dqdc[3] =  + k_f*sc[18];
-    dqdc[6] =  - k_r*sc[17];
-    dqdc[17] =  - k_r*sc[6];
-    dqdc[18] =  + k_f*sc[3];
     /* d()/d[O2] */
-    J[111] += -1 * dqdc[3];       /* dwdot[O2]/d[O2] */
-    J[114] += 1 * dqdc[3];        /* dwdot[HO2]/d[O2] */
-    J[125] += 1 * dqdc[3];        /* dwdot[CH2O]/d[O2] */
-    J[126] += -1 * dqdc[3];       /* dwdot[CH2OH]/d[O2] */
+    dqdci =  + k_f*sc[18];
+    J[111] += -1 * dqdci;         /* dwdot[O2]/d[O2] */
+    J[114] += 1 * dqdci;          /* dwdot[HO2]/d[O2] */
+    J[125] += 1 * dqdci;          /* dwdot[CH2O]/d[O2] */
+    J[126] += -1 * dqdci;         /* dwdot[CH2OH]/d[O2] */
     /* d()/d[HO2] */
-    J[219] += -1 * dqdc[6];       /* dwdot[O2]/d[HO2] */
-    J[222] += 1 * dqdc[6];        /* dwdot[HO2]/d[HO2] */
-    J[233] += 1 * dqdc[6];        /* dwdot[CH2O]/d[HO2] */
-    J[234] += -1 * dqdc[6];       /* dwdot[CH2OH]/d[HO2] */
+    dqdci =  - k_r*sc[17];
+    J[219] += -1 * dqdci;         /* dwdot[O2]/d[HO2] */
+    J[222] += 1 * dqdci;          /* dwdot[HO2]/d[HO2] */
+    J[233] += 1 * dqdci;          /* dwdot[CH2O]/d[HO2] */
+    J[234] += -1 * dqdci;         /* dwdot[CH2OH]/d[HO2] */
     /* d()/d[CH2O] */
-    J[615] += -1 * dqdc[17];      /* dwdot[O2]/d[CH2O] */
-    J[618] += 1 * dqdc[17];       /* dwdot[HO2]/d[CH2O] */
-    J[629] += 1 * dqdc[17];       /* dwdot[CH2O]/d[CH2O] */
-    J[630] += -1 * dqdc[17];      /* dwdot[CH2OH]/d[CH2O] */
+    dqdci =  - k_r*sc[6];
+    J[615] += -1 * dqdci;         /* dwdot[O2]/d[CH2O] */
+    J[618] += 1 * dqdci;          /* dwdot[HO2]/d[CH2O] */
+    J[629] += 1 * dqdci;          /* dwdot[CH2O]/d[CH2O] */
+    J[630] += -1 * dqdci;         /* dwdot[CH2OH]/d[CH2O] */
     /* d()/d[CH2OH] */
-    J[651] += -1 * dqdc[18];      /* dwdot[O2]/d[CH2OH] */
-    J[654] += 1 * dqdc[18];       /* dwdot[HO2]/d[CH2OH] */
-    J[665] += 1 * dqdc[18];       /* dwdot[CH2O]/d[CH2OH] */
-    J[666] += -1 * dqdc[18];      /* dwdot[CH2OH]/d[CH2OH] */
+    dqdci =  + k_f*sc[3];
+    J[651] += -1 * dqdci;         /* dwdot[O2]/d[CH2OH] */
+    J[654] += 1 * dqdci;          /* dwdot[HO2]/d[CH2OH] */
+    J[665] += 1 * dqdci;          /* dwdot[CH2O]/d[CH2OH] */
+    J[666] += -1 * dqdci;         /* dwdot[CH2OH]/d[CH2OH] */
     /* d()/dT */
     J[1263] += -1 * dqdT;         /* dwdot[O2]/dT */
     J[1266] += 1 * dqdT;          /* dwdot[HO2]/dT */
@@ -26735,30 +26866,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[6] += q; /* HO2 */
     wdot[17] += q; /* CH2O */
     wdot[19] -= q; /* CH3O */
-    dqdc[3] =  + k_f*sc[19];
-    dqdc[6] =  - k_r*sc[17];
-    dqdc[17] =  - k_r*sc[6];
-    dqdc[19] =  + k_f*sc[3];
     /* d()/d[O2] */
-    J[111] += -1 * dqdc[3];       /* dwdot[O2]/d[O2] */
-    J[114] += 1 * dqdc[3];        /* dwdot[HO2]/d[O2] */
-    J[125] += 1 * dqdc[3];        /* dwdot[CH2O]/d[O2] */
-    J[127] += -1 * dqdc[3];       /* dwdot[CH3O]/d[O2] */
+    dqdci =  + k_f*sc[19];
+    J[111] += -1 * dqdci;         /* dwdot[O2]/d[O2] */
+    J[114] += 1 * dqdci;          /* dwdot[HO2]/d[O2] */
+    J[125] += 1 * dqdci;          /* dwdot[CH2O]/d[O2] */
+    J[127] += -1 * dqdci;         /* dwdot[CH3O]/d[O2] */
     /* d()/d[HO2] */
-    J[219] += -1 * dqdc[6];       /* dwdot[O2]/d[HO2] */
-    J[222] += 1 * dqdc[6];        /* dwdot[HO2]/d[HO2] */
-    J[233] += 1 * dqdc[6];        /* dwdot[CH2O]/d[HO2] */
-    J[235] += -1 * dqdc[6];       /* dwdot[CH3O]/d[HO2] */
+    dqdci =  - k_r*sc[17];
+    J[219] += -1 * dqdci;         /* dwdot[O2]/d[HO2] */
+    J[222] += 1 * dqdci;          /* dwdot[HO2]/d[HO2] */
+    J[233] += 1 * dqdci;          /* dwdot[CH2O]/d[HO2] */
+    J[235] += -1 * dqdci;         /* dwdot[CH3O]/d[HO2] */
     /* d()/d[CH2O] */
-    J[615] += -1 * dqdc[17];      /* dwdot[O2]/d[CH2O] */
-    J[618] += 1 * dqdc[17];       /* dwdot[HO2]/d[CH2O] */
-    J[629] += 1 * dqdc[17];       /* dwdot[CH2O]/d[CH2O] */
-    J[631] += -1 * dqdc[17];      /* dwdot[CH3O]/d[CH2O] */
+    dqdci =  - k_r*sc[6];
+    J[615] += -1 * dqdci;         /* dwdot[O2]/d[CH2O] */
+    J[618] += 1 * dqdci;          /* dwdot[HO2]/d[CH2O] */
+    J[629] += 1 * dqdci;          /* dwdot[CH2O]/d[CH2O] */
+    J[631] += -1 * dqdci;         /* dwdot[CH3O]/d[CH2O] */
     /* d()/d[CH3O] */
-    J[687] += -1 * dqdc[19];      /* dwdot[O2]/d[CH3O] */
-    J[690] += 1 * dqdc[19];       /* dwdot[HO2]/d[CH3O] */
-    J[701] += 1 * dqdc[19];       /* dwdot[CH2O]/d[CH3O] */
-    J[703] += -1 * dqdc[19];      /* dwdot[CH3O]/d[CH3O] */
+    dqdci =  + k_f*sc[3];
+    J[687] += -1 * dqdci;         /* dwdot[O2]/d[CH3O] */
+    J[690] += 1 * dqdci;          /* dwdot[HO2]/d[CH3O] */
+    J[701] += 1 * dqdci;          /* dwdot[CH2O]/d[CH3O] */
+    J[703] += -1 * dqdci;         /* dwdot[CH3O]/d[CH3O] */
     /* d()/dT */
     J[1263] += -1 * dqdT;         /* dwdot[O2]/dT */
     J[1266] += 1 * dqdT;          /* dwdot[HO2]/dT */
@@ -26785,30 +26916,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[14] += q; /* CO */
     wdot[16] += q; /* HCO */
     wdot[21] -= q; /* C2H */
-    dqdc[3] =  + k_f*sc[21];
-    dqdc[14] =  - k_r*sc[16];
-    dqdc[16] =  - k_r*sc[14];
-    dqdc[21] =  + k_f*sc[3];
     /* d()/d[O2] */
-    J[111] += -1 * dqdc[3];       /* dwdot[O2]/d[O2] */
-    J[122] += 1 * dqdc[3];        /* dwdot[CO]/d[O2] */
-    J[124] += 1 * dqdc[3];        /* dwdot[HCO]/d[O2] */
-    J[129] += -1 * dqdc[3];       /* dwdot[C2H]/d[O2] */
+    dqdci =  + k_f*sc[21];
+    J[111] += -1 * dqdci;         /* dwdot[O2]/d[O2] */
+    J[122] += 1 * dqdci;          /* dwdot[CO]/d[O2] */
+    J[124] += 1 * dqdci;          /* dwdot[HCO]/d[O2] */
+    J[129] += -1 * dqdci;         /* dwdot[C2H]/d[O2] */
     /* d()/d[CO] */
-    J[507] += -1 * dqdc[14];      /* dwdot[O2]/d[CO] */
-    J[518] += 1 * dqdc[14];       /* dwdot[CO]/d[CO] */
-    J[520] += 1 * dqdc[14];       /* dwdot[HCO]/d[CO] */
-    J[525] += -1 * dqdc[14];      /* dwdot[C2H]/d[CO] */
+    dqdci =  - k_r*sc[16];
+    J[507] += -1 * dqdci;         /* dwdot[O2]/d[CO] */
+    J[518] += 1 * dqdci;          /* dwdot[CO]/d[CO] */
+    J[520] += 1 * dqdci;          /* dwdot[HCO]/d[CO] */
+    J[525] += -1 * dqdci;         /* dwdot[C2H]/d[CO] */
     /* d()/d[HCO] */
-    J[579] += -1 * dqdc[16];      /* dwdot[O2]/d[HCO] */
-    J[590] += 1 * dqdc[16];       /* dwdot[CO]/d[HCO] */
-    J[592] += 1 * dqdc[16];       /* dwdot[HCO]/d[HCO] */
-    J[597] += -1 * dqdc[16];      /* dwdot[C2H]/d[HCO] */
+    dqdci =  - k_r*sc[14];
+    J[579] += -1 * dqdci;         /* dwdot[O2]/d[HCO] */
+    J[590] += 1 * dqdci;          /* dwdot[CO]/d[HCO] */
+    J[592] += 1 * dqdci;          /* dwdot[HCO]/d[HCO] */
+    J[597] += -1 * dqdci;         /* dwdot[C2H]/d[HCO] */
     /* d()/d[C2H] */
-    J[759] += -1 * dqdc[21];      /* dwdot[O2]/d[C2H] */
-    J[770] += 1 * dqdc[21];       /* dwdot[CO]/d[C2H] */
-    J[772] += 1 * dqdc[21];       /* dwdot[HCO]/d[C2H] */
-    J[777] += -1 * dqdc[21];      /* dwdot[C2H]/d[C2H] */
+    dqdci =  + k_f*sc[3];
+    J[759] += -1 * dqdci;         /* dwdot[O2]/d[C2H] */
+    J[770] += 1 * dqdci;          /* dwdot[CO]/d[C2H] */
+    J[772] += 1 * dqdci;          /* dwdot[HCO]/d[C2H] */
+    J[777] += -1 * dqdci;         /* dwdot[C2H]/d[C2H] */
     /* d()/dT */
     J[1263] += -1 * dqdT;         /* dwdot[O2]/dT */
     J[1274] += 1 * dqdT;          /* dwdot[CO]/dT */
@@ -26835,30 +26966,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[1] += q; /* H */
     wdot[21] -= q; /* C2H */
     wdot[22] += q; /* C2H2 */
-    dqdc[0] =  + k_f*sc[21];
-    dqdc[1] =  - k_r*sc[22];
-    dqdc[21] =  + k_f*sc[0];
-    dqdc[22] =  - k_r*sc[1];
     /* d()/d[H2] */
-    J[0] += -1 * dqdc[0];         /* dwdot[H2]/d[H2] */
-    J[1] += 1 * dqdc[0];          /* dwdot[H]/d[H2] */
-    J[21] += -1 * dqdc[0];        /* dwdot[C2H]/d[H2] */
-    J[22] += 1 * dqdc[0];         /* dwdot[C2H2]/d[H2] */
+    dqdci =  + k_f*sc[21];
+    J[0] += -1 * dqdci;           /* dwdot[H2]/d[H2] */
+    J[1] += 1 * dqdci;            /* dwdot[H]/d[H2] */
+    J[21] += -1 * dqdci;          /* dwdot[C2H]/d[H2] */
+    J[22] += 1 * dqdci;           /* dwdot[C2H2]/d[H2] */
     /* d()/d[H] */
-    J[36] += -1 * dqdc[1];        /* dwdot[H2]/d[H] */
-    J[37] += 1 * dqdc[1];         /* dwdot[H]/d[H] */
-    J[57] += -1 * dqdc[1];        /* dwdot[C2H]/d[H] */
-    J[58] += 1 * dqdc[1];         /* dwdot[C2H2]/d[H] */
+    dqdci =  - k_r*sc[22];
+    J[36] += -1 * dqdci;          /* dwdot[H2]/d[H] */
+    J[37] += 1 * dqdci;           /* dwdot[H]/d[H] */
+    J[57] += -1 * dqdci;          /* dwdot[C2H]/d[H] */
+    J[58] += 1 * dqdci;           /* dwdot[C2H2]/d[H] */
     /* d()/d[C2H] */
-    J[756] += -1 * dqdc[21];      /* dwdot[H2]/d[C2H] */
-    J[757] += 1 * dqdc[21];       /* dwdot[H]/d[C2H] */
-    J[777] += -1 * dqdc[21];      /* dwdot[C2H]/d[C2H] */
-    J[778] += 1 * dqdc[21];       /* dwdot[C2H2]/d[C2H] */
+    dqdci =  + k_f*sc[0];
+    J[756] += -1 * dqdci;         /* dwdot[H2]/d[C2H] */
+    J[757] += 1 * dqdci;          /* dwdot[H]/d[C2H] */
+    J[777] += -1 * dqdci;         /* dwdot[C2H]/d[C2H] */
+    J[778] += 1 * dqdci;          /* dwdot[C2H2]/d[C2H] */
     /* d()/d[C2H2] */
-    J[792] += -1 * dqdc[22];      /* dwdot[H2]/d[C2H2] */
-    J[793] += 1 * dqdc[22];       /* dwdot[H]/d[C2H2] */
-    J[813] += -1 * dqdc[22];      /* dwdot[C2H]/d[C2H2] */
-    J[814] += 1 * dqdc[22];       /* dwdot[C2H2]/d[C2H2] */
+    dqdci =  - k_r*sc[1];
+    J[792] += -1 * dqdci;         /* dwdot[H2]/d[C2H2] */
+    J[793] += 1 * dqdci;          /* dwdot[H]/d[C2H2] */
+    J[813] += -1 * dqdci;         /* dwdot[C2H]/d[C2H2] */
+    J[814] += 1 * dqdci;          /* dwdot[C2H2]/d[C2H2] */
     /* d()/dT */
     J[1260] += -1 * dqdT;         /* dwdot[H2]/dT */
     J[1261] += 1 * dqdT;          /* dwdot[H]/dT */
@@ -26885,30 +27016,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[16] += q; /* HCO */
     wdot[17] += q; /* CH2O */
     wdot[23] -= q; /* C2H3 */
-    dqdc[3] =  + k_f*sc[23];
-    dqdc[16] =  - k_r*sc[17];
-    dqdc[17] =  - k_r*sc[16];
-    dqdc[23] =  + k_f*sc[3];
     /* d()/d[O2] */
-    J[111] += -1 * dqdc[3];       /* dwdot[O2]/d[O2] */
-    J[124] += 1 * dqdc[3];        /* dwdot[HCO]/d[O2] */
-    J[125] += 1 * dqdc[3];        /* dwdot[CH2O]/d[O2] */
-    J[131] += -1 * dqdc[3];       /* dwdot[C2H3]/d[O2] */
+    dqdci =  + k_f*sc[23];
+    J[111] += -1 * dqdci;         /* dwdot[O2]/d[O2] */
+    J[124] += 1 * dqdci;          /* dwdot[HCO]/d[O2] */
+    J[125] += 1 * dqdci;          /* dwdot[CH2O]/d[O2] */
+    J[131] += -1 * dqdci;         /* dwdot[C2H3]/d[O2] */
     /* d()/d[HCO] */
-    J[579] += -1 * dqdc[16];      /* dwdot[O2]/d[HCO] */
-    J[592] += 1 * dqdc[16];       /* dwdot[HCO]/d[HCO] */
-    J[593] += 1 * dqdc[16];       /* dwdot[CH2O]/d[HCO] */
-    J[599] += -1 * dqdc[16];      /* dwdot[C2H3]/d[HCO] */
+    dqdci =  - k_r*sc[17];
+    J[579] += -1 * dqdci;         /* dwdot[O2]/d[HCO] */
+    J[592] += 1 * dqdci;          /* dwdot[HCO]/d[HCO] */
+    J[593] += 1 * dqdci;          /* dwdot[CH2O]/d[HCO] */
+    J[599] += -1 * dqdci;         /* dwdot[C2H3]/d[HCO] */
     /* d()/d[CH2O] */
-    J[615] += -1 * dqdc[17];      /* dwdot[O2]/d[CH2O] */
-    J[628] += 1 * dqdc[17];       /* dwdot[HCO]/d[CH2O] */
-    J[629] += 1 * dqdc[17];       /* dwdot[CH2O]/d[CH2O] */
-    J[635] += -1 * dqdc[17];      /* dwdot[C2H3]/d[CH2O] */
+    dqdci =  - k_r*sc[16];
+    J[615] += -1 * dqdci;         /* dwdot[O2]/d[CH2O] */
+    J[628] += 1 * dqdci;          /* dwdot[HCO]/d[CH2O] */
+    J[629] += 1 * dqdci;          /* dwdot[CH2O]/d[CH2O] */
+    J[635] += -1 * dqdci;         /* dwdot[C2H3]/d[CH2O] */
     /* d()/d[C2H3] */
-    J[831] += -1 * dqdc[23];      /* dwdot[O2]/d[C2H3] */
-    J[844] += 1 * dqdc[23];       /* dwdot[HCO]/d[C2H3] */
-    J[845] += 1 * dqdc[23];       /* dwdot[CH2O]/d[C2H3] */
-    J[851] += -1 * dqdc[23];      /* dwdot[C2H3]/d[C2H3] */
+    dqdci =  + k_f*sc[3];
+    J[831] += -1 * dqdci;         /* dwdot[O2]/d[C2H3] */
+    J[844] += 1 * dqdci;          /* dwdot[HCO]/d[C2H3] */
+    J[845] += 1 * dqdci;          /* dwdot[CH2O]/d[C2H3] */
+    J[851] += -1 * dqdci;         /* dwdot[C2H3]/d[C2H3] */
     /* d()/dT */
     J[1263] += -1 * dqdT;         /* dwdot[O2]/dT */
     J[1276] += 1 * dqdT;          /* dwdot[HCO]/dT */
@@ -26945,9 +27076,9 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     troe = 1.0 / (1.0 + troePr*troePr);
     F = pow(10.0, logFcent * troe);
     dlogFcentdT = log10e/Fcent*(Fcent1*-0.00555556 + Fcent2*-0.000966184 + Fcent3*5417*invT2);
-    dlogFdcn_fac = logFcent * troe*troe * troePr * troePr_den;
+    dlogFdcn_fac = 2.0 * logFcent * troe*troe * troePr * troePr_den;
     dlogFdc = -troe_n * dlogFdcn_fac * troePr_den;
-    dlogFdn = 2. * dlogFdcn_fac * troePr;
+    dlogFdn = dlogFdcn_fac * troePr;
     dlogFdlogPr = dlogFdc;
     dlogFdT = dlogFcentdT*(troe - 0.67*dlogFdc - 1.27*dlogFdn) + dlogFdlogPr * dlogPrdT;
     /* reverse */
@@ -26971,41 +27102,46 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     k_r *= Corr;
     dcdc_fac = q/alpha*(1.0/(Pr+1.0) + dlogFdlogPr);
     if (consP) {
-        dqdc[0] =  1*dcdc_fac - k_r*sc[22];
-        dqdc[1] =  0.0;
-        dqdc[2] =  0.0;
-        dqdc[3] =  0.0;
-        dqdc[4] =  0.0;
-        dqdc[5] =  5*dcdc_fac;
-        dqdc[6] =  0.0;
-        dqdc[7] =  0.0;
-        dqdc[8] =  0.0;
-        dqdc[9] =  0.0;
-        dqdc[10] =  0.0;
-        dqdc[11] =  0.0;
-        dqdc[12] =  0.0;
-        dqdc[13] =  1*dcdc_fac;
-        dqdc[14] =  0.5*dcdc_fac;
-        dqdc[15] =  1*dcdc_fac;
-        dqdc[16] =  0.0;
-        dqdc[17] =  0.0;
-        dqdc[18] =  0.0;
-        dqdc[19] =  0.0;
-        dqdc[20] =  0.0;
-        dqdc[21] =  0.0;
-        dqdc[22] =  0.0 - k_r*sc[0];
-        dqdc[23] =  0.0;
-        dqdc[24] =  0.0 + k_f;
-        dqdc[25] =  0.0;
-        dqdc[26] =  2*dcdc_fac;
-        dqdc[27] =  0.0;
-        dqdc[28] =  0.0;
-        dqdc[29] =  0.0;
-        dqdc[30] =  0.0;
-        dqdc[31] =  0.0;
-        dqdc[32] =  0.0;
-        dqdc[33] =  0.0;
-        dqdc[34] =  0.0;
+        /* d()/d[H2] */
+        dqdci =  1*dcdc_fac - k_r*sc[22];
+        J[0] += 1 * dqdci;            /* dwdot[H2]/d[H2] */
+        J[22] += 1 * dqdci;           /* dwdot[C2H2]/d[H2] */
+        J[24] += -1 * dqdci;          /* dwdot[C2H4]/d[H2] */
+        /* d()/d[H2O] */
+        dqdci =  5*dcdc_fac;
+        J[180] += 1 * dqdci;          /* dwdot[H2]/d[H2O] */
+        J[202] += 1 * dqdci;          /* dwdot[C2H2]/d[H2O] */
+        J[204] += -1 * dqdci;         /* dwdot[C2H4]/d[H2O] */
+        /* d()/d[CH4] */
+        dqdci =  1*dcdc_fac;
+        J[468] += 1 * dqdci;          /* dwdot[H2]/d[CH4] */
+        J[490] += 1 * dqdci;          /* dwdot[C2H2]/d[CH4] */
+        J[492] += -1 * dqdci;         /* dwdot[C2H4]/d[CH4] */
+        /* d()/d[CO] */
+        dqdci =  0.5*dcdc_fac;
+        J[504] += 1 * dqdci;          /* dwdot[H2]/d[CO] */
+        J[526] += 1 * dqdci;          /* dwdot[C2H2]/d[CO] */
+        J[528] += -1 * dqdci;         /* dwdot[C2H4]/d[CO] */
+        /* d()/d[CO2] */
+        dqdci =  1*dcdc_fac;
+        J[540] += 1 * dqdci;          /* dwdot[H2]/d[CO2] */
+        J[562] += 1 * dqdci;          /* dwdot[C2H2]/d[CO2] */
+        J[564] += -1 * dqdci;         /* dwdot[C2H4]/d[CO2] */
+        /* d()/d[C2H2] */
+        dqdci =  - k_r*sc[0];
+        J[792] += 1 * dqdci;          /* dwdot[H2]/d[C2H2] */
+        J[814] += 1 * dqdci;          /* dwdot[C2H2]/d[C2H2] */
+        J[816] += -1 * dqdci;         /* dwdot[C2H4]/d[C2H2] */
+        /* d()/d[C2H4] */
+        dqdci =  + k_f;
+        J[864] += 1 * dqdci;          /* dwdot[H2]/d[C2H4] */
+        J[886] += 1 * dqdci;          /* dwdot[C2H2]/d[C2H4] */
+        J[888] += -1 * dqdci;         /* dwdot[C2H4]/d[C2H4] */
+        /* d()/d[C2H6] */
+        dqdci =  2*dcdc_fac;
+        J[936] += 1 * dqdci;          /* dwdot[H2]/d[C2H6] */
+        J[958] += 1 * dqdci;          /* dwdot[C2H2]/d[C2H6] */
+        J[960] += -1 * dqdci;         /* dwdot[C2H4]/d[C2H6] */
     }
     else {
         dqdc[0] =  2*dcdc_fac - k_r*sc[22];
@@ -27043,11 +27179,11 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
         dqdc[32] =  1*dcdc_fac;
         dqdc[33] =  1*dcdc_fac;
         dqdc[34] =  1*dcdc_fac;
-    }
-    for (int k=0; k<35; k++) {
-        J[36*k+0] += 1 * dqdc[k];
-        J[36*k+22] += 1 * dqdc[k];
-        J[36*k+24] += -1 * dqdc[k];
+        for (int k=0; k<35; k++) {
+            J[36*k+0] += 1 * dqdc[k];
+            J[36*k+22] += 1 * dqdc[k];
+            J[36*k+24] += -1 * dqdc[k];
+        }
     }
     J[1260] += 1 * dqdT; /* dwdot[H2]/dT */
     J[1282] += 1 * dqdT; /* dwdot[C2H2]/dT */
@@ -27073,30 +27209,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[6] += q; /* HO2 */
     wdot[24] += q; /* C2H4 */
     wdot[25] -= q; /* C2H5 */
-    dqdc[3] =  + k_f*sc[25];
-    dqdc[6] =  - k_r*sc[24];
-    dqdc[24] =  - k_r*sc[6];
-    dqdc[25] =  + k_f*sc[3];
     /* d()/d[O2] */
-    J[111] += -1 * dqdc[3];       /* dwdot[O2]/d[O2] */
-    J[114] += 1 * dqdc[3];        /* dwdot[HO2]/d[O2] */
-    J[132] += 1 * dqdc[3];        /* dwdot[C2H4]/d[O2] */
-    J[133] += -1 * dqdc[3];       /* dwdot[C2H5]/d[O2] */
+    dqdci =  + k_f*sc[25];
+    J[111] += -1 * dqdci;         /* dwdot[O2]/d[O2] */
+    J[114] += 1 * dqdci;          /* dwdot[HO2]/d[O2] */
+    J[132] += 1 * dqdci;          /* dwdot[C2H4]/d[O2] */
+    J[133] += -1 * dqdci;         /* dwdot[C2H5]/d[O2] */
     /* d()/d[HO2] */
-    J[219] += -1 * dqdc[6];       /* dwdot[O2]/d[HO2] */
-    J[222] += 1 * dqdc[6];        /* dwdot[HO2]/d[HO2] */
-    J[240] += 1 * dqdc[6];        /* dwdot[C2H4]/d[HO2] */
-    J[241] += -1 * dqdc[6];       /* dwdot[C2H5]/d[HO2] */
+    dqdci =  - k_r*sc[24];
+    J[219] += -1 * dqdci;         /* dwdot[O2]/d[HO2] */
+    J[222] += 1 * dqdci;          /* dwdot[HO2]/d[HO2] */
+    J[240] += 1 * dqdci;          /* dwdot[C2H4]/d[HO2] */
+    J[241] += -1 * dqdci;         /* dwdot[C2H5]/d[HO2] */
     /* d()/d[C2H4] */
-    J[867] += -1 * dqdc[24];      /* dwdot[O2]/d[C2H4] */
-    J[870] += 1 * dqdc[24];       /* dwdot[HO2]/d[C2H4] */
-    J[888] += 1 * dqdc[24];       /* dwdot[C2H4]/d[C2H4] */
-    J[889] += -1 * dqdc[24];      /* dwdot[C2H5]/d[C2H4] */
+    dqdci =  - k_r*sc[6];
+    J[867] += -1 * dqdci;         /* dwdot[O2]/d[C2H4] */
+    J[870] += 1 * dqdci;          /* dwdot[HO2]/d[C2H4] */
+    J[888] += 1 * dqdci;          /* dwdot[C2H4]/d[C2H4] */
+    J[889] += -1 * dqdci;         /* dwdot[C2H5]/d[C2H4] */
     /* d()/d[C2H5] */
-    J[903] += -1 * dqdc[25];      /* dwdot[O2]/d[C2H5] */
-    J[906] += 1 * dqdc[25];       /* dwdot[HO2]/d[C2H5] */
-    J[924] += 1 * dqdc[25];       /* dwdot[C2H4]/d[C2H5] */
-    J[925] += -1 * dqdc[25];      /* dwdot[C2H5]/d[C2H5] */
+    dqdci =  + k_f*sc[3];
+    J[903] += -1 * dqdci;         /* dwdot[O2]/d[C2H5] */
+    J[906] += 1 * dqdci;          /* dwdot[HO2]/d[C2H5] */
+    J[924] += 1 * dqdci;          /* dwdot[C2H4]/d[C2H5] */
+    J[925] += -1 * dqdci;         /* dwdot[C2H5]/d[C2H5] */
     /* d()/dT */
     J[1263] += -1 * dqdT;         /* dwdot[O2]/dT */
     J[1266] += 1 * dqdT;          /* dwdot[HO2]/dT */
@@ -27123,30 +27259,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[4] += q; /* OH */
     wdot[14] += 2 * q; /* CO */
     wdot[27] -= q; /* HCCO */
-    dqdc[3] =  + k_f*sc[27];
-    dqdc[4] =  - k_r*sc[14]*sc[14];
-    dqdc[14] =  - k_r*2*sc[14]*sc[4];
-    dqdc[27] =  + k_f*sc[3];
     /* d()/d[O2] */
-    J[111] += -1 * dqdc[3];       /* dwdot[O2]/d[O2] */
-    J[112] += 1 * dqdc[3];        /* dwdot[OH]/d[O2] */
-    J[122] += 2 * dqdc[3];        /* dwdot[CO]/d[O2] */
-    J[135] += -1 * dqdc[3];       /* dwdot[HCCO]/d[O2] */
+    dqdci =  + k_f*sc[27];
+    J[111] += -1 * dqdci;         /* dwdot[O2]/d[O2] */
+    J[112] += 1 * dqdci;          /* dwdot[OH]/d[O2] */
+    J[122] += 2 * dqdci;          /* dwdot[CO]/d[O2] */
+    J[135] += -1 * dqdci;         /* dwdot[HCCO]/d[O2] */
     /* d()/d[OH] */
-    J[147] += -1 * dqdc[4];       /* dwdot[O2]/d[OH] */
-    J[148] += 1 * dqdc[4];        /* dwdot[OH]/d[OH] */
-    J[158] += 2 * dqdc[4];        /* dwdot[CO]/d[OH] */
-    J[171] += -1 * dqdc[4];       /* dwdot[HCCO]/d[OH] */
+    dqdci =  - k_r*sc[14]*sc[14];
+    J[147] += -1 * dqdci;         /* dwdot[O2]/d[OH] */
+    J[148] += 1 * dqdci;          /* dwdot[OH]/d[OH] */
+    J[158] += 2 * dqdci;          /* dwdot[CO]/d[OH] */
+    J[171] += -1 * dqdci;         /* dwdot[HCCO]/d[OH] */
     /* d()/d[CO] */
-    J[507] += -1 * dqdc[14];      /* dwdot[O2]/d[CO] */
-    J[508] += 1 * dqdc[14];       /* dwdot[OH]/d[CO] */
-    J[518] += 2 * dqdc[14];       /* dwdot[CO]/d[CO] */
-    J[531] += -1 * dqdc[14];      /* dwdot[HCCO]/d[CO] */
+    dqdci =  - k_r*2*sc[14]*sc[4];
+    J[507] += -1 * dqdci;         /* dwdot[O2]/d[CO] */
+    J[508] += 1 * dqdci;          /* dwdot[OH]/d[CO] */
+    J[518] += 2 * dqdci;          /* dwdot[CO]/d[CO] */
+    J[531] += -1 * dqdci;         /* dwdot[HCCO]/d[CO] */
     /* d()/d[HCCO] */
-    J[975] += -1 * dqdc[27];      /* dwdot[O2]/d[HCCO] */
-    J[976] += 1 * dqdc[27];       /* dwdot[OH]/d[HCCO] */
-    J[986] += 2 * dqdc[27];       /* dwdot[CO]/d[HCCO] */
-    J[999] += -1 * dqdc[27];      /* dwdot[HCCO]/d[HCCO] */
+    dqdci =  + k_f*sc[3];
+    J[975] += -1 * dqdci;         /* dwdot[O2]/d[HCCO] */
+    J[976] += 1 * dqdci;          /* dwdot[OH]/d[HCCO] */
+    J[986] += 2 * dqdci;          /* dwdot[CO]/d[HCCO] */
+    J[999] += -1 * dqdci;         /* dwdot[HCCO]/d[HCCO] */
     /* d()/dT */
     J[1263] += -1 * dqdT;         /* dwdot[O2]/dT */
     J[1264] += 1 * dqdT;          /* dwdot[OH]/dT */
@@ -27172,21 +27308,21 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[14] += 2 * q; /* CO */
     wdot[22] += q; /* C2H2 */
     wdot[27] -= 2 * q; /* HCCO */
-    dqdc[14] =  - k_r*sc[22]*2*sc[14];
-    dqdc[22] =  - k_r*sc[14]*sc[14];
-    dqdc[27] =  + k_f*2*sc[27];
     /* d()/d[CO] */
-    J[518] += 2 * dqdc[14];       /* dwdot[CO]/d[CO] */
-    J[526] += 1 * dqdc[14];       /* dwdot[C2H2]/d[CO] */
-    J[531] += -2 * dqdc[14];      /* dwdot[HCCO]/d[CO] */
+    dqdci =  - k_r*sc[22]*2*sc[14];
+    J[518] += 2 * dqdci;          /* dwdot[CO]/d[CO] */
+    J[526] += 1 * dqdci;          /* dwdot[C2H2]/d[CO] */
+    J[531] += -2 * dqdci;         /* dwdot[HCCO]/d[CO] */
     /* d()/d[C2H2] */
-    J[806] += 2 * dqdc[22];       /* dwdot[CO]/d[C2H2] */
-    J[814] += 1 * dqdc[22];       /* dwdot[C2H2]/d[C2H2] */
-    J[819] += -2 * dqdc[22];      /* dwdot[HCCO]/d[C2H2] */
+    dqdci =  - k_r*sc[14]*sc[14];
+    J[806] += 2 * dqdci;          /* dwdot[CO]/d[C2H2] */
+    J[814] += 1 * dqdci;          /* dwdot[C2H2]/d[C2H2] */
+    J[819] += -2 * dqdci;         /* dwdot[HCCO]/d[C2H2] */
     /* d()/d[HCCO] */
-    J[986] += 2 * dqdc[27];       /* dwdot[CO]/d[HCCO] */
-    J[994] += 1 * dqdc[27];       /* dwdot[C2H2]/d[HCCO] */
-    J[999] += -2 * dqdc[27];      /* dwdot[HCCO]/d[HCCO] */
+    dqdci =  + k_f*2*sc[27];
+    J[986] += 2 * dqdci;          /* dwdot[CO]/d[HCCO] */
+    J[994] += 1 * dqdci;          /* dwdot[C2H2]/d[HCCO] */
+    J[999] += -2 * dqdci;         /* dwdot[HCCO]/d[HCCO] */
     /* d()/dT */
     J[1274] += 2 * dqdT;          /* dwdot[CO]/dT */
     J[1282] += 1 * dqdT;          /* dwdot[C2H2]/dT */
@@ -27207,20 +27343,20 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[2] -= q; /* O */
     wdot[12] -= q; /* CH3 */
     wdot[14] += q; /* CO */
-    dqdc[2] =  + k_f*sc[12];
-    dqdc[12] =  + k_f*sc[2];
     /* d()/d[O] */
-    J[72] += 1 * dqdc[2];         /* dwdot[H2]/d[O] */
-    J[73] += 1 * dqdc[2];         /* dwdot[H]/d[O] */
-    J[74] += -1 * dqdc[2];        /* dwdot[O]/d[O] */
-    J[84] += -1 * dqdc[2];        /* dwdot[CH3]/d[O] */
-    J[86] += 1 * dqdc[2];         /* dwdot[CO]/d[O] */
+    dqdci =  + k_f*sc[12];
+    J[72] += 1 * dqdci;           /* dwdot[H2]/d[O] */
+    J[73] += 1 * dqdci;           /* dwdot[H]/d[O] */
+    J[74] += -1 * dqdci;          /* dwdot[O]/d[O] */
+    J[84] += -1 * dqdci;          /* dwdot[CH3]/d[O] */
+    J[86] += 1 * dqdci;           /* dwdot[CO]/d[O] */
     /* d()/d[CH3] */
-    J[432] += 1 * dqdc[12];       /* dwdot[H2]/d[CH3] */
-    J[433] += 1 * dqdc[12];       /* dwdot[H]/d[CH3] */
-    J[434] += -1 * dqdc[12];      /* dwdot[O]/d[CH3] */
-    J[444] += -1 * dqdc[12];      /* dwdot[CH3]/d[CH3] */
-    J[446] += 1 * dqdc[12];       /* dwdot[CO]/d[CH3] */
+    dqdci =  + k_f*sc[2];
+    J[432] += 1 * dqdci;          /* dwdot[H2]/d[CH3] */
+    J[433] += 1 * dqdci;          /* dwdot[H]/d[CH3] */
+    J[434] += -1 * dqdci;         /* dwdot[O]/d[CH3] */
+    J[444] += -1 * dqdci;         /* dwdot[CH3]/d[CH3] */
+    J[446] += 1 * dqdci;          /* dwdot[CO]/d[CH3] */
     /* d()/dT */
     J[1260] += 1 * dqdT;          /* dwdot[H2]/dT */
     J[1261] += 1 * dqdT;          /* dwdot[H]/dT */
@@ -27248,30 +27384,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[2] -= q; /* O */
     wdot[24] -= q; /* C2H4 */
     wdot[33] += q; /* CH2CHO */
-    dqdc[1] =  - k_r*sc[33];
-    dqdc[2] =  + k_f*sc[24];
-    dqdc[24] =  + k_f*sc[2];
-    dqdc[33] =  - k_r*sc[1];
     /* d()/d[H] */
-    J[37] += 1 * dqdc[1];         /* dwdot[H]/d[H] */
-    J[38] += -1 * dqdc[1];        /* dwdot[O]/d[H] */
-    J[60] += -1 * dqdc[1];        /* dwdot[C2H4]/d[H] */
-    J[69] += 1 * dqdc[1];         /* dwdot[CH2CHO]/d[H] */
+    dqdci =  - k_r*sc[33];
+    J[37] += 1 * dqdci;           /* dwdot[H]/d[H] */
+    J[38] += -1 * dqdci;          /* dwdot[O]/d[H] */
+    J[60] += -1 * dqdci;          /* dwdot[C2H4]/d[H] */
+    J[69] += 1 * dqdci;           /* dwdot[CH2CHO]/d[H] */
     /* d()/d[O] */
-    J[73] += 1 * dqdc[2];         /* dwdot[H]/d[O] */
-    J[74] += -1 * dqdc[2];        /* dwdot[O]/d[O] */
-    J[96] += -1 * dqdc[2];        /* dwdot[C2H4]/d[O] */
-    J[105] += 1 * dqdc[2];        /* dwdot[CH2CHO]/d[O] */
+    dqdci =  + k_f*sc[24];
+    J[73] += 1 * dqdci;           /* dwdot[H]/d[O] */
+    J[74] += -1 * dqdci;          /* dwdot[O]/d[O] */
+    J[96] += -1 * dqdci;          /* dwdot[C2H4]/d[O] */
+    J[105] += 1 * dqdci;          /* dwdot[CH2CHO]/d[O] */
     /* d()/d[C2H4] */
-    J[865] += 1 * dqdc[24];       /* dwdot[H]/d[C2H4] */
-    J[866] += -1 * dqdc[24];      /* dwdot[O]/d[C2H4] */
-    J[888] += -1 * dqdc[24];      /* dwdot[C2H4]/d[C2H4] */
-    J[897] += 1 * dqdc[24];       /* dwdot[CH2CHO]/d[C2H4] */
+    dqdci =  + k_f*sc[2];
+    J[865] += 1 * dqdci;          /* dwdot[H]/d[C2H4] */
+    J[866] += -1 * dqdci;         /* dwdot[O]/d[C2H4] */
+    J[888] += -1 * dqdci;         /* dwdot[C2H4]/d[C2H4] */
+    J[897] += 1 * dqdci;          /* dwdot[CH2CHO]/d[C2H4] */
     /* d()/d[CH2CHO] */
-    J[1189] += 1 * dqdc[33];      /* dwdot[H]/d[CH2CHO] */
-    J[1190] += -1 * dqdc[33];     /* dwdot[O]/d[CH2CHO] */
-    J[1212] += -1 * dqdc[33];     /* dwdot[C2H4]/d[CH2CHO] */
-    J[1221] += 1 * dqdc[33];      /* dwdot[CH2CHO]/d[CH2CHO] */
+    dqdci =  - k_r*sc[1];
+    J[1189] += 1 * dqdci;         /* dwdot[H]/d[CH2CHO] */
+    J[1190] += -1 * dqdci;        /* dwdot[O]/d[CH2CHO] */
+    J[1212] += -1 * dqdci;        /* dwdot[C2H4]/d[CH2CHO] */
+    J[1221] += 1 * dqdci;         /* dwdot[CH2CHO]/d[CH2CHO] */
     /* d()/dT */
     J[1261] += 1 * dqdT;          /* dwdot[H]/dT */
     J[1262] += -1 * dqdT;         /* dwdot[O]/dT */
@@ -27298,30 +27434,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[2] -= q; /* O */
     wdot[25] -= q; /* C2H5 */
     wdot[34] += q; /* CH3CHO */
-    dqdc[1] =  - k_r*sc[34];
-    dqdc[2] =  + k_f*sc[25];
-    dqdc[25] =  + k_f*sc[2];
-    dqdc[34] =  - k_r*sc[1];
     /* d()/d[H] */
-    J[37] += 1 * dqdc[1];         /* dwdot[H]/d[H] */
-    J[38] += -1 * dqdc[1];        /* dwdot[O]/d[H] */
-    J[61] += -1 * dqdc[1];        /* dwdot[C2H5]/d[H] */
-    J[70] += 1 * dqdc[1];         /* dwdot[CH3CHO]/d[H] */
+    dqdci =  - k_r*sc[34];
+    J[37] += 1 * dqdci;           /* dwdot[H]/d[H] */
+    J[38] += -1 * dqdci;          /* dwdot[O]/d[H] */
+    J[61] += -1 * dqdci;          /* dwdot[C2H5]/d[H] */
+    J[70] += 1 * dqdci;           /* dwdot[CH3CHO]/d[H] */
     /* d()/d[O] */
-    J[73] += 1 * dqdc[2];         /* dwdot[H]/d[O] */
-    J[74] += -1 * dqdc[2];        /* dwdot[O]/d[O] */
-    J[97] += -1 * dqdc[2];        /* dwdot[C2H5]/d[O] */
-    J[106] += 1 * dqdc[2];        /* dwdot[CH3CHO]/d[O] */
+    dqdci =  + k_f*sc[25];
+    J[73] += 1 * dqdci;           /* dwdot[H]/d[O] */
+    J[74] += -1 * dqdci;          /* dwdot[O]/d[O] */
+    J[97] += -1 * dqdci;          /* dwdot[C2H5]/d[O] */
+    J[106] += 1 * dqdci;          /* dwdot[CH3CHO]/d[O] */
     /* d()/d[C2H5] */
-    J[901] += 1 * dqdc[25];       /* dwdot[H]/d[C2H5] */
-    J[902] += -1 * dqdc[25];      /* dwdot[O]/d[C2H5] */
-    J[925] += -1 * dqdc[25];      /* dwdot[C2H5]/d[C2H5] */
-    J[934] += 1 * dqdc[25];       /* dwdot[CH3CHO]/d[C2H5] */
+    dqdci =  + k_f*sc[2];
+    J[901] += 1 * dqdci;          /* dwdot[H]/d[C2H5] */
+    J[902] += -1 * dqdci;         /* dwdot[O]/d[C2H5] */
+    J[925] += -1 * dqdci;         /* dwdot[C2H5]/d[C2H5] */
+    J[934] += 1 * dqdci;          /* dwdot[CH3CHO]/d[C2H5] */
     /* d()/d[CH3CHO] */
-    J[1225] += 1 * dqdc[34];      /* dwdot[H]/d[CH3CHO] */
-    J[1226] += -1 * dqdc[34];     /* dwdot[O]/d[CH3CHO] */
-    J[1249] += -1 * dqdc[34];     /* dwdot[C2H5]/d[CH3CHO] */
-    J[1258] += 1 * dqdc[34];      /* dwdot[CH3CHO]/d[CH3CHO] */
+    dqdci =  - k_r*sc[1];
+    J[1225] += 1 * dqdci;         /* dwdot[H]/d[CH3CHO] */
+    J[1226] += -1 * dqdci;        /* dwdot[O]/d[CH3CHO] */
+    J[1249] += -1 * dqdci;        /* dwdot[C2H5]/d[CH3CHO] */
+    J[1258] += 1 * dqdci;         /* dwdot[CH3CHO]/d[CH3CHO] */
     /* d()/dT */
     J[1261] += 1 * dqdT;          /* dwdot[H]/dT */
     J[1262] += -1 * dqdT;         /* dwdot[O]/dT */
@@ -27348,30 +27484,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[4] -= q; /* OH */
     wdot[5] += q; /* H2O */
     wdot[6] -= q; /* HO2 */
-    dqdc[3] =  - k_r*sc[5];
-    dqdc[4] =  + k_f*sc[6];
-    dqdc[5] =  - k_r*sc[3];
-    dqdc[6] =  + k_f*sc[4];
     /* d()/d[O2] */
-    J[111] += 1 * dqdc[3];        /* dwdot[O2]/d[O2] */
-    J[112] += -1 * dqdc[3];       /* dwdot[OH]/d[O2] */
-    J[113] += 1 * dqdc[3];        /* dwdot[H2O]/d[O2] */
-    J[114] += -1 * dqdc[3];       /* dwdot[HO2]/d[O2] */
+    dqdci =  - k_r*sc[5];
+    J[111] += 1 * dqdci;          /* dwdot[O2]/d[O2] */
+    J[112] += -1 * dqdci;         /* dwdot[OH]/d[O2] */
+    J[113] += 1 * dqdci;          /* dwdot[H2O]/d[O2] */
+    J[114] += -1 * dqdci;         /* dwdot[HO2]/d[O2] */
     /* d()/d[OH] */
-    J[147] += 1 * dqdc[4];        /* dwdot[O2]/d[OH] */
-    J[148] += -1 * dqdc[4];       /* dwdot[OH]/d[OH] */
-    J[149] += 1 * dqdc[4];        /* dwdot[H2O]/d[OH] */
-    J[150] += -1 * dqdc[4];       /* dwdot[HO2]/d[OH] */
+    dqdci =  + k_f*sc[6];
+    J[147] += 1 * dqdci;          /* dwdot[O2]/d[OH] */
+    J[148] += -1 * dqdci;         /* dwdot[OH]/d[OH] */
+    J[149] += 1 * dqdci;          /* dwdot[H2O]/d[OH] */
+    J[150] += -1 * dqdci;         /* dwdot[HO2]/d[OH] */
     /* d()/d[H2O] */
-    J[183] += 1 * dqdc[5];        /* dwdot[O2]/d[H2O] */
-    J[184] += -1 * dqdc[5];       /* dwdot[OH]/d[H2O] */
-    J[185] += 1 * dqdc[5];        /* dwdot[H2O]/d[H2O] */
-    J[186] += -1 * dqdc[5];       /* dwdot[HO2]/d[H2O] */
+    dqdci =  - k_r*sc[3];
+    J[183] += 1 * dqdci;          /* dwdot[O2]/d[H2O] */
+    J[184] += -1 * dqdci;         /* dwdot[OH]/d[H2O] */
+    J[185] += 1 * dqdci;          /* dwdot[H2O]/d[H2O] */
+    J[186] += -1 * dqdci;         /* dwdot[HO2]/d[H2O] */
     /* d()/d[HO2] */
-    J[219] += 1 * dqdc[6];        /* dwdot[O2]/d[HO2] */
-    J[220] += -1 * dqdc[6];       /* dwdot[OH]/d[HO2] */
-    J[221] += 1 * dqdc[6];        /* dwdot[H2O]/d[HO2] */
-    J[222] += -1 * dqdc[6];       /* dwdot[HO2]/d[HO2] */
+    dqdci =  + k_f*sc[4];
+    J[219] += 1 * dqdci;          /* dwdot[O2]/d[HO2] */
+    J[220] += -1 * dqdci;         /* dwdot[OH]/d[HO2] */
+    J[221] += 1 * dqdci;          /* dwdot[H2O]/d[HO2] */
+    J[222] += -1 * dqdci;         /* dwdot[HO2]/d[HO2] */
     /* d()/dT */
     J[1263] += 1 * dqdT;          /* dwdot[O2]/dT */
     J[1264] += -1 * dqdT;         /* dwdot[OH]/dT */
@@ -27392,18 +27528,18 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[4] -= q; /* OH */
     wdot[12] -= q; /* CH3 */
     wdot[17] += q; /* CH2O */
-    dqdc[4] =  + k_f*sc[12];
-    dqdc[12] =  + k_f*sc[4];
     /* d()/d[OH] */
-    J[144] += 1 * dqdc[4];        /* dwdot[H2]/d[OH] */
-    J[148] += -1 * dqdc[4];       /* dwdot[OH]/d[OH] */
-    J[156] += -1 * dqdc[4];       /* dwdot[CH3]/d[OH] */
-    J[161] += 1 * dqdc[4];        /* dwdot[CH2O]/d[OH] */
+    dqdci =  + k_f*sc[12];
+    J[144] += 1 * dqdci;          /* dwdot[H2]/d[OH] */
+    J[148] += -1 * dqdci;         /* dwdot[OH]/d[OH] */
+    J[156] += -1 * dqdci;         /* dwdot[CH3]/d[OH] */
+    J[161] += 1 * dqdci;          /* dwdot[CH2O]/d[OH] */
     /* d()/d[CH3] */
-    J[432] += 1 * dqdc[12];       /* dwdot[H2]/d[CH3] */
-    J[436] += -1 * dqdc[12];      /* dwdot[OH]/d[CH3] */
-    J[444] += -1 * dqdc[12];      /* dwdot[CH3]/d[CH3] */
-    J[449] += 1 * dqdc[12];       /* dwdot[CH2O]/d[CH3] */
+    dqdci =  + k_f*sc[4];
+    J[432] += 1 * dqdci;          /* dwdot[H2]/d[CH3] */
+    J[436] += -1 * dqdci;         /* dwdot[OH]/d[CH3] */
+    J[444] += -1 * dqdci;         /* dwdot[CH3]/d[CH3] */
+    J[449] += 1 * dqdci;          /* dwdot[CH2O]/d[CH3] */
     /* d()/dT */
     J[1260] += 1 * dqdT;          /* dwdot[H2]/dT */
     J[1264] += -1 * dqdT;         /* dwdot[OH]/dT */
@@ -27440,9 +27576,9 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     troe = 1.0 / (1.0 + troePr*troePr);
     F = pow(10.0, logFcent * troe);
     dlogFcentdT = log10e/Fcent*(Fcent1*-0.00819672 + Fcent2*-0.000394477 + Fcent3*9365*invT2);
-    dlogFdcn_fac = logFcent * troe*troe * troePr * troePr_den;
+    dlogFdcn_fac = 2.0 * logFcent * troe*troe * troePr * troePr_den;
     dlogFdc = -troe_n * dlogFdcn_fac * troePr_den;
-    dlogFdn = 2. * dlogFdcn_fac * troePr;
+    dlogFdn = dlogFdcn_fac * troePr;
     dlogFdlogPr = dlogFdc;
     dlogFdT = dlogFcentdT*(troe - 0.67*dlogFdc - 1.27*dlogFdn) + dlogFdlogPr * dlogPrdT;
     /* reverse */
@@ -27466,41 +27602,46 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     k_r *= Corr;
     dcdc_fac = q/alpha*(1.0/(Pr+1.0) + dlogFdlogPr);
     if (consP) {
-        dqdc[0] =  1*dcdc_fac + k_f*sc[9];
-        dqdc[1] =  0.0;
-        dqdc[2] =  0.0;
-        dqdc[3] =  0.0;
-        dqdc[4] =  0.0;
-        dqdc[5] =  5*dcdc_fac;
-        dqdc[6] =  0.0;
-        dqdc[7] =  0.0;
-        dqdc[8] =  0.0;
-        dqdc[9] =  0.0 + k_f*sc[0];
-        dqdc[10] =  0.0;
-        dqdc[11] =  0.0;
-        dqdc[12] =  0.0 - k_r;
-        dqdc[13] =  1*dcdc_fac;
-        dqdc[14] =  0.5*dcdc_fac;
-        dqdc[15] =  1*dcdc_fac;
-        dqdc[16] =  0.0;
-        dqdc[17] =  0.0;
-        dqdc[18] =  0.0;
-        dqdc[19] =  0.0;
-        dqdc[20] =  0.0;
-        dqdc[21] =  0.0;
-        dqdc[22] =  0.0;
-        dqdc[23] =  0.0;
-        dqdc[24] =  0.0;
-        dqdc[25] =  0.0;
-        dqdc[26] =  2*dcdc_fac;
-        dqdc[27] =  0.0;
-        dqdc[28] =  0.0;
-        dqdc[29] =  0.0;
-        dqdc[30] =  0.0;
-        dqdc[31] =  0.0;
-        dqdc[32] =  0.0;
-        dqdc[33] =  0.0;
-        dqdc[34] =  0.0;
+        /* d()/d[H2] */
+        dqdci =  1*dcdc_fac + k_f*sc[9];
+        J[0] += -1 * dqdci;           /* dwdot[H2]/d[H2] */
+        J[9] += -1 * dqdci;           /* dwdot[CH]/d[H2] */
+        J[12] += 1 * dqdci;           /* dwdot[CH3]/d[H2] */
+        /* d()/d[H2O] */
+        dqdci =  5*dcdc_fac;
+        J[180] += -1 * dqdci;         /* dwdot[H2]/d[H2O] */
+        J[189] += -1 * dqdci;         /* dwdot[CH]/d[H2O] */
+        J[192] += 1 * dqdci;          /* dwdot[CH3]/d[H2O] */
+        /* d()/d[CH] */
+        dqdci =  + k_f*sc[0];
+        J[324] += -1 * dqdci;         /* dwdot[H2]/d[CH] */
+        J[333] += -1 * dqdci;         /* dwdot[CH]/d[CH] */
+        J[336] += 1 * dqdci;          /* dwdot[CH3]/d[CH] */
+        /* d()/d[CH3] */
+        dqdci =  - k_r;
+        J[432] += -1 * dqdci;         /* dwdot[H2]/d[CH3] */
+        J[441] += -1 * dqdci;         /* dwdot[CH]/d[CH3] */
+        J[444] += 1 * dqdci;          /* dwdot[CH3]/d[CH3] */
+        /* d()/d[CH4] */
+        dqdci =  1*dcdc_fac;
+        J[468] += -1 * dqdci;         /* dwdot[H2]/d[CH4] */
+        J[477] += -1 * dqdci;         /* dwdot[CH]/d[CH4] */
+        J[480] += 1 * dqdci;          /* dwdot[CH3]/d[CH4] */
+        /* d()/d[CO] */
+        dqdci =  0.5*dcdc_fac;
+        J[504] += -1 * dqdci;         /* dwdot[H2]/d[CO] */
+        J[513] += -1 * dqdci;         /* dwdot[CH]/d[CO] */
+        J[516] += 1 * dqdci;          /* dwdot[CH3]/d[CO] */
+        /* d()/d[CO2] */
+        dqdci =  1*dcdc_fac;
+        J[540] += -1 * dqdci;         /* dwdot[H2]/d[CO2] */
+        J[549] += -1 * dqdci;         /* dwdot[CH]/d[CO2] */
+        J[552] += 1 * dqdci;          /* dwdot[CH3]/d[CO2] */
+        /* d()/d[C2H6] */
+        dqdci =  2*dcdc_fac;
+        J[936] += -1 * dqdci;         /* dwdot[H2]/d[C2H6] */
+        J[945] += -1 * dqdci;         /* dwdot[CH]/d[C2H6] */
+        J[948] += 1 * dqdci;          /* dwdot[CH3]/d[C2H6] */
     }
     else {
         dqdc[0] =  2*dcdc_fac + k_f*sc[9];
@@ -27538,11 +27679,11 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
         dqdc[32] =  1*dcdc_fac;
         dqdc[33] =  1*dcdc_fac;
         dqdc[34] =  1*dcdc_fac;
-    }
-    for (int k=0; k<35; k++) {
-        J[36*k+0] += -1 * dqdc[k];
-        J[36*k+9] += -1 * dqdc[k];
-        J[36*k+12] += 1 * dqdc[k];
+        for (int k=0; k<35; k++) {
+            J[36*k+0] += -1 * dqdc[k];
+            J[36*k+9] += -1 * dqdc[k];
+            J[36*k+12] += 1 * dqdc[k];
+        }
     }
     J[1260] += -1 * dqdT; /* dwdot[H2]/dT */
     J[1269] += -1 * dqdT; /* dwdot[CH]/dT */
@@ -27562,18 +27703,18 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[3] -= q; /* O2 */
     wdot[10] -= q; /* CH2 */
     wdot[15] += q; /* CO2 */
-    dqdc[3] =  + k_f*sc[10];
-    dqdc[10] =  + k_f*sc[3];
     /* d()/d[O2] */
-    J[109] += 2 * dqdc[3];        /* dwdot[H]/d[O2] */
-    J[111] += -1 * dqdc[3];       /* dwdot[O2]/d[O2] */
-    J[118] += -1 * dqdc[3];       /* dwdot[CH2]/d[O2] */
-    J[123] += 1 * dqdc[3];        /* dwdot[CO2]/d[O2] */
+    dqdci =  + k_f*sc[10];
+    J[109] += 2 * dqdci;          /* dwdot[H]/d[O2] */
+    J[111] += -1 * dqdci;         /* dwdot[O2]/d[O2] */
+    J[118] += -1 * dqdci;         /* dwdot[CH2]/d[O2] */
+    J[123] += 1 * dqdci;          /* dwdot[CO2]/d[O2] */
     /* d()/d[CH2] */
-    J[361] += 2 * dqdc[10];       /* dwdot[H]/d[CH2] */
-    J[363] += -1 * dqdc[10];      /* dwdot[O2]/d[CH2] */
-    J[370] += -1 * dqdc[10];      /* dwdot[CH2]/d[CH2] */
-    J[375] += 1 * dqdc[10];       /* dwdot[CO2]/d[CH2] */
+    dqdci =  + k_f*sc[3];
+    J[361] += 2 * dqdci;          /* dwdot[H]/d[CH2] */
+    J[363] += -1 * dqdci;         /* dwdot[O2]/d[CH2] */
+    J[370] += -1 * dqdci;         /* dwdot[CH2]/d[CH2] */
+    J[375] += 1 * dqdci;          /* dwdot[CO2]/d[CH2] */
     /* d()/dT */
     J[1261] += 2 * dqdT;          /* dwdot[H]/dT */
     J[1263] += -1 * dqdT;         /* dwdot[O2]/dT */
@@ -27600,30 +27741,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[3] -= q; /* O2 */
     wdot[10] -= q; /* CH2 */
     wdot[17] += q; /* CH2O */
-    dqdc[2] =  - k_r*sc[17];
-    dqdc[3] =  + k_f*sc[10];
-    dqdc[10] =  + k_f*sc[3];
-    dqdc[17] =  - k_r*sc[2];
     /* d()/d[O] */
-    J[74] += 1 * dqdc[2];         /* dwdot[O]/d[O] */
-    J[75] += -1 * dqdc[2];        /* dwdot[O2]/d[O] */
-    J[82] += -1 * dqdc[2];        /* dwdot[CH2]/d[O] */
-    J[89] += 1 * dqdc[2];         /* dwdot[CH2O]/d[O] */
+    dqdci =  - k_r*sc[17];
+    J[74] += 1 * dqdci;           /* dwdot[O]/d[O] */
+    J[75] += -1 * dqdci;          /* dwdot[O2]/d[O] */
+    J[82] += -1 * dqdci;          /* dwdot[CH2]/d[O] */
+    J[89] += 1 * dqdci;           /* dwdot[CH2O]/d[O] */
     /* d()/d[O2] */
-    J[110] += 1 * dqdc[3];        /* dwdot[O]/d[O2] */
-    J[111] += -1 * dqdc[3];       /* dwdot[O2]/d[O2] */
-    J[118] += -1 * dqdc[3];       /* dwdot[CH2]/d[O2] */
-    J[125] += 1 * dqdc[3];        /* dwdot[CH2O]/d[O2] */
+    dqdci =  + k_f*sc[10];
+    J[110] += 1 * dqdci;          /* dwdot[O]/d[O2] */
+    J[111] += -1 * dqdci;         /* dwdot[O2]/d[O2] */
+    J[118] += -1 * dqdci;         /* dwdot[CH2]/d[O2] */
+    J[125] += 1 * dqdci;          /* dwdot[CH2O]/d[O2] */
     /* d()/d[CH2] */
-    J[362] += 1 * dqdc[10];       /* dwdot[O]/d[CH2] */
-    J[363] += -1 * dqdc[10];      /* dwdot[O2]/d[CH2] */
-    J[370] += -1 * dqdc[10];      /* dwdot[CH2]/d[CH2] */
-    J[377] += 1 * dqdc[10];       /* dwdot[CH2O]/d[CH2] */
+    dqdci =  + k_f*sc[3];
+    J[362] += 1 * dqdci;          /* dwdot[O]/d[CH2] */
+    J[363] += -1 * dqdci;         /* dwdot[O2]/d[CH2] */
+    J[370] += -1 * dqdci;         /* dwdot[CH2]/d[CH2] */
+    J[377] += 1 * dqdci;          /* dwdot[CH2O]/d[CH2] */
     /* d()/d[CH2O] */
-    J[614] += 1 * dqdc[17];       /* dwdot[O]/d[CH2O] */
-    J[615] += -1 * dqdc[17];      /* dwdot[O2]/d[CH2O] */
-    J[622] += -1 * dqdc[17];      /* dwdot[CH2]/d[CH2O] */
-    J[629] += 1 * dqdc[17];       /* dwdot[CH2O]/d[CH2O] */
+    dqdci =  - k_r*sc[2];
+    J[614] += 1 * dqdci;          /* dwdot[O]/d[CH2O] */
+    J[615] += -1 * dqdci;         /* dwdot[O2]/d[CH2O] */
+    J[622] += -1 * dqdci;         /* dwdot[CH2]/d[CH2O] */
+    J[629] += 1 * dqdci;          /* dwdot[CH2O]/d[CH2O] */
     /* d()/dT */
     J[1262] += 1 * dqdT;          /* dwdot[O]/dT */
     J[1263] += -1 * dqdT;         /* dwdot[O2]/dT */
@@ -27643,11 +27784,11 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[1] += 2 * q; /* H */
     wdot[10] -= 2 * q; /* CH2 */
     wdot[22] += q; /* C2H2 */
-    dqdc[10] =  + k_f*2*sc[10];
     /* d()/d[CH2] */
-    J[361] += 2 * dqdc[10];       /* dwdot[H]/d[CH2] */
-    J[370] += -2 * dqdc[10];      /* dwdot[CH2]/d[CH2] */
-    J[382] += 1 * dqdc[10];       /* dwdot[C2H2]/d[CH2] */
+    dqdci =  + k_f*2*sc[10];
+    J[361] += 2 * dqdci;          /* dwdot[H]/d[CH2] */
+    J[370] += -2 * dqdci;         /* dwdot[CH2]/d[CH2] */
+    J[382] += 1 * dqdci;          /* dwdot[C2H2]/d[CH2] */
     /* d()/dT */
     J[1261] += 2 * dqdT;          /* dwdot[H]/dT */
     J[1270] += -2 * dqdT;         /* dwdot[CH2]/dT */
@@ -27667,18 +27808,18 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[5] -= q; /* H2O */
     wdot[11] -= q; /* CH2(S) */
     wdot[17] += q; /* CH2O */
-    dqdc[5] =  + k_f*sc[11];
-    dqdc[11] =  + k_f*sc[5];
     /* d()/d[H2O] */
-    J[180] += 1 * dqdc[5];        /* dwdot[H2]/d[H2O] */
-    J[185] += -1 * dqdc[5];       /* dwdot[H2O]/d[H2O] */
-    J[191] += -1 * dqdc[5];       /* dwdot[CH2(S)]/d[H2O] */
-    J[197] += 1 * dqdc[5];        /* dwdot[CH2O]/d[H2O] */
+    dqdci =  + k_f*sc[11];
+    J[180] += 1 * dqdci;          /* dwdot[H2]/d[H2O] */
+    J[185] += -1 * dqdci;         /* dwdot[H2O]/d[H2O] */
+    J[191] += -1 * dqdci;         /* dwdot[CH2(S)]/d[H2O] */
+    J[197] += 1 * dqdci;          /* dwdot[CH2O]/d[H2O] */
     /* d()/d[CH2(S)] */
-    J[396] += 1 * dqdc[11];       /* dwdot[H2]/d[CH2(S)] */
-    J[401] += -1 * dqdc[11];      /* dwdot[H2O]/d[CH2(S)] */
-    J[407] += -1 * dqdc[11];      /* dwdot[CH2(S)]/d[CH2(S)] */
-    J[413] += 1 * dqdc[11];       /* dwdot[CH2O]/d[CH2(S)] */
+    dqdci =  + k_f*sc[5];
+    J[396] += 1 * dqdci;          /* dwdot[H2]/d[CH2(S)] */
+    J[401] += -1 * dqdci;         /* dwdot[H2O]/d[CH2(S)] */
+    J[407] += -1 * dqdci;         /* dwdot[CH2(S)]/d[CH2(S)] */
+    J[413] += 1 * dqdci;          /* dwdot[CH2O]/d[CH2(S)] */
     /* d()/dT */
     J[1260] += 1 * dqdT;          /* dwdot[H2]/dT */
     J[1265] += -1 * dqdT;         /* dwdot[H2O]/dT */
@@ -27705,30 +27846,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[3] -= q; /* O2 */
     wdot[23] -= q; /* C2H3 */
     wdot[33] += q; /* CH2CHO */
-    dqdc[2] =  - k_r*sc[33];
-    dqdc[3] =  + k_f*sc[23];
-    dqdc[23] =  + k_f*sc[3];
-    dqdc[33] =  - k_r*sc[2];
     /* d()/d[O] */
-    J[74] += 1 * dqdc[2];         /* dwdot[O]/d[O] */
-    J[75] += -1 * dqdc[2];        /* dwdot[O2]/d[O] */
-    J[95] += -1 * dqdc[2];        /* dwdot[C2H3]/d[O] */
-    J[105] += 1 * dqdc[2];        /* dwdot[CH2CHO]/d[O] */
+    dqdci =  - k_r*sc[33];
+    J[74] += 1 * dqdci;           /* dwdot[O]/d[O] */
+    J[75] += -1 * dqdci;          /* dwdot[O2]/d[O] */
+    J[95] += -1 * dqdci;          /* dwdot[C2H3]/d[O] */
+    J[105] += 1 * dqdci;          /* dwdot[CH2CHO]/d[O] */
     /* d()/d[O2] */
-    J[110] += 1 * dqdc[3];        /* dwdot[O]/d[O2] */
-    J[111] += -1 * dqdc[3];       /* dwdot[O2]/d[O2] */
-    J[131] += -1 * dqdc[3];       /* dwdot[C2H3]/d[O2] */
-    J[141] += 1 * dqdc[3];        /* dwdot[CH2CHO]/d[O2] */
+    dqdci =  + k_f*sc[23];
+    J[110] += 1 * dqdci;          /* dwdot[O]/d[O2] */
+    J[111] += -1 * dqdci;         /* dwdot[O2]/d[O2] */
+    J[131] += -1 * dqdci;         /* dwdot[C2H3]/d[O2] */
+    J[141] += 1 * dqdci;          /* dwdot[CH2CHO]/d[O2] */
     /* d()/d[C2H3] */
-    J[830] += 1 * dqdc[23];       /* dwdot[O]/d[C2H3] */
-    J[831] += -1 * dqdc[23];      /* dwdot[O2]/d[C2H3] */
-    J[851] += -1 * dqdc[23];      /* dwdot[C2H3]/d[C2H3] */
-    J[861] += 1 * dqdc[23];       /* dwdot[CH2CHO]/d[C2H3] */
+    dqdci =  + k_f*sc[3];
+    J[830] += 1 * dqdci;          /* dwdot[O]/d[C2H3] */
+    J[831] += -1 * dqdci;         /* dwdot[O2]/d[C2H3] */
+    J[851] += -1 * dqdci;         /* dwdot[C2H3]/d[C2H3] */
+    J[861] += 1 * dqdci;          /* dwdot[CH2CHO]/d[C2H3] */
     /* d()/d[CH2CHO] */
-    J[1190] += 1 * dqdc[33];      /* dwdot[O]/d[CH2CHO] */
-    J[1191] += -1 * dqdc[33];     /* dwdot[O2]/d[CH2CHO] */
-    J[1211] += -1 * dqdc[33];     /* dwdot[C2H3]/d[CH2CHO] */
-    J[1221] += 1 * dqdc[33];      /* dwdot[CH2CHO]/d[CH2CHO] */
+    dqdci =  - k_r*sc[2];
+    J[1190] += 1 * dqdci;         /* dwdot[O]/d[CH2CHO] */
+    J[1191] += -1 * dqdci;        /* dwdot[O2]/d[CH2CHO] */
+    J[1211] += -1 * dqdci;        /* dwdot[C2H3]/d[CH2CHO] */
+    J[1221] += 1 * dqdci;         /* dwdot[CH2CHO]/d[CH2CHO] */
     /* d()/dT */
     J[1262] += 1 * dqdT;          /* dwdot[O]/dT */
     J[1263] += -1 * dqdT;         /* dwdot[O2]/dT */
@@ -27755,30 +27896,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[6] += q; /* HO2 */
     wdot[22] += q; /* C2H2 */
     wdot[23] -= q; /* C2H3 */
-    dqdc[3] =  + k_f*sc[23];
-    dqdc[6] =  - k_r*sc[22];
-    dqdc[22] =  - k_r*sc[6];
-    dqdc[23] =  + k_f*sc[3];
     /* d()/d[O2] */
-    J[111] += -1 * dqdc[3];       /* dwdot[O2]/d[O2] */
-    J[114] += 1 * dqdc[3];        /* dwdot[HO2]/d[O2] */
-    J[130] += 1 * dqdc[3];        /* dwdot[C2H2]/d[O2] */
-    J[131] += -1 * dqdc[3];       /* dwdot[C2H3]/d[O2] */
+    dqdci =  + k_f*sc[23];
+    J[111] += -1 * dqdci;         /* dwdot[O2]/d[O2] */
+    J[114] += 1 * dqdci;          /* dwdot[HO2]/d[O2] */
+    J[130] += 1 * dqdci;          /* dwdot[C2H2]/d[O2] */
+    J[131] += -1 * dqdci;         /* dwdot[C2H3]/d[O2] */
     /* d()/d[HO2] */
-    J[219] += -1 * dqdc[6];       /* dwdot[O2]/d[HO2] */
-    J[222] += 1 * dqdc[6];        /* dwdot[HO2]/d[HO2] */
-    J[238] += 1 * dqdc[6];        /* dwdot[C2H2]/d[HO2] */
-    J[239] += -1 * dqdc[6];       /* dwdot[C2H3]/d[HO2] */
+    dqdci =  - k_r*sc[22];
+    J[219] += -1 * dqdci;         /* dwdot[O2]/d[HO2] */
+    J[222] += 1 * dqdci;          /* dwdot[HO2]/d[HO2] */
+    J[238] += 1 * dqdci;          /* dwdot[C2H2]/d[HO2] */
+    J[239] += -1 * dqdci;         /* dwdot[C2H3]/d[HO2] */
     /* d()/d[C2H2] */
-    J[795] += -1 * dqdc[22];      /* dwdot[O2]/d[C2H2] */
-    J[798] += 1 * dqdc[22];       /* dwdot[HO2]/d[C2H2] */
-    J[814] += 1 * dqdc[22];       /* dwdot[C2H2]/d[C2H2] */
-    J[815] += -1 * dqdc[22];      /* dwdot[C2H3]/d[C2H2] */
+    dqdci =  - k_r*sc[6];
+    J[795] += -1 * dqdci;         /* dwdot[O2]/d[C2H2] */
+    J[798] += 1 * dqdci;          /* dwdot[HO2]/d[C2H2] */
+    J[814] += 1 * dqdci;          /* dwdot[C2H2]/d[C2H2] */
+    J[815] += -1 * dqdci;         /* dwdot[C2H3]/d[C2H2] */
     /* d()/d[C2H3] */
-    J[831] += -1 * dqdc[23];      /* dwdot[O2]/d[C2H3] */
-    J[834] += 1 * dqdc[23];       /* dwdot[HO2]/d[C2H3] */
-    J[850] += 1 * dqdc[23];       /* dwdot[C2H2]/d[C2H3] */
-    J[851] += -1 * dqdc[23];      /* dwdot[C2H3]/d[C2H3] */
+    dqdci =  + k_f*sc[3];
+    J[831] += -1 * dqdci;         /* dwdot[O2]/d[C2H3] */
+    J[834] += 1 * dqdci;          /* dwdot[HO2]/d[C2H3] */
+    J[850] += 1 * dqdci;          /* dwdot[C2H2]/d[C2H3] */
+    J[851] += -1 * dqdci;         /* dwdot[C2H3]/d[C2H3] */
     /* d()/dT */
     J[1263] += -1 * dqdT;         /* dwdot[O2]/dT */
     J[1266] += 1 * dqdT;          /* dwdot[HO2]/dT */
@@ -27805,30 +27946,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[4] += q; /* OH */
     wdot[33] += q; /* CH2CHO */
     wdot[34] -= q; /* CH3CHO */
-    dqdc[2] =  + k_f*sc[34];
-    dqdc[4] =  - k_r*sc[33];
-    dqdc[33] =  - k_r*sc[4];
-    dqdc[34] =  + k_f*sc[2];
     /* d()/d[O] */
-    J[74] += -1 * dqdc[2];        /* dwdot[O]/d[O] */
-    J[76] += 1 * dqdc[2];         /* dwdot[OH]/d[O] */
-    J[105] += 1 * dqdc[2];        /* dwdot[CH2CHO]/d[O] */
-    J[106] += -1 * dqdc[2];       /* dwdot[CH3CHO]/d[O] */
+    dqdci =  + k_f*sc[34];
+    J[74] += -1 * dqdci;          /* dwdot[O]/d[O] */
+    J[76] += 1 * dqdci;           /* dwdot[OH]/d[O] */
+    J[105] += 1 * dqdci;          /* dwdot[CH2CHO]/d[O] */
+    J[106] += -1 * dqdci;         /* dwdot[CH3CHO]/d[O] */
     /* d()/d[OH] */
-    J[146] += -1 * dqdc[4];       /* dwdot[O]/d[OH] */
-    J[148] += 1 * dqdc[4];        /* dwdot[OH]/d[OH] */
-    J[177] += 1 * dqdc[4];        /* dwdot[CH2CHO]/d[OH] */
-    J[178] += -1 * dqdc[4];       /* dwdot[CH3CHO]/d[OH] */
+    dqdci =  - k_r*sc[33];
+    J[146] += -1 * dqdci;         /* dwdot[O]/d[OH] */
+    J[148] += 1 * dqdci;          /* dwdot[OH]/d[OH] */
+    J[177] += 1 * dqdci;          /* dwdot[CH2CHO]/d[OH] */
+    J[178] += -1 * dqdci;         /* dwdot[CH3CHO]/d[OH] */
     /* d()/d[CH2CHO] */
-    J[1190] += -1 * dqdc[33];     /* dwdot[O]/d[CH2CHO] */
-    J[1192] += 1 * dqdc[33];      /* dwdot[OH]/d[CH2CHO] */
-    J[1221] += 1 * dqdc[33];      /* dwdot[CH2CHO]/d[CH2CHO] */
-    J[1222] += -1 * dqdc[33];     /* dwdot[CH3CHO]/d[CH2CHO] */
+    dqdci =  - k_r*sc[4];
+    J[1190] += -1 * dqdci;        /* dwdot[O]/d[CH2CHO] */
+    J[1192] += 1 * dqdci;         /* dwdot[OH]/d[CH2CHO] */
+    J[1221] += 1 * dqdci;         /* dwdot[CH2CHO]/d[CH2CHO] */
+    J[1222] += -1 * dqdci;        /* dwdot[CH3CHO]/d[CH2CHO] */
     /* d()/d[CH3CHO] */
-    J[1226] += -1 * dqdc[34];     /* dwdot[O]/d[CH3CHO] */
-    J[1228] += 1 * dqdc[34];      /* dwdot[OH]/d[CH3CHO] */
-    J[1257] += 1 * dqdc[34];      /* dwdot[CH2CHO]/d[CH3CHO] */
-    J[1258] += -1 * dqdc[34];     /* dwdot[CH3CHO]/d[CH3CHO] */
+    dqdci =  + k_f*sc[2];
+    J[1226] += -1 * dqdci;        /* dwdot[O]/d[CH3CHO] */
+    J[1228] += 1 * dqdci;         /* dwdot[OH]/d[CH3CHO] */
+    J[1257] += 1 * dqdci;         /* dwdot[CH2CHO]/d[CH3CHO] */
+    J[1258] += -1 * dqdci;        /* dwdot[CH3CHO]/d[CH3CHO] */
     /* d()/dT */
     J[1262] += -1 * dqdT;         /* dwdot[O]/dT */
     J[1264] += 1 * dqdT;          /* dwdot[OH]/dT */
@@ -27850,20 +27991,20 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[12] += q; /* CH3 */
     wdot[14] += q; /* CO */
     wdot[34] -= q; /* CH3CHO */
-    dqdc[2] =  + k_f*sc[34];
-    dqdc[34] =  + k_f*sc[2];
     /* d()/d[O] */
-    J[74] += -1 * dqdc[2];        /* dwdot[O]/d[O] */
-    J[76] += 1 * dqdc[2];         /* dwdot[OH]/d[O] */
-    J[84] += 1 * dqdc[2];         /* dwdot[CH3]/d[O] */
-    J[86] += 1 * dqdc[2];         /* dwdot[CO]/d[O] */
-    J[106] += -1 * dqdc[2];       /* dwdot[CH3CHO]/d[O] */
+    dqdci =  + k_f*sc[34];
+    J[74] += -1 * dqdci;          /* dwdot[O]/d[O] */
+    J[76] += 1 * dqdci;           /* dwdot[OH]/d[O] */
+    J[84] += 1 * dqdci;           /* dwdot[CH3]/d[O] */
+    J[86] += 1 * dqdci;           /* dwdot[CO]/d[O] */
+    J[106] += -1 * dqdci;         /* dwdot[CH3CHO]/d[O] */
     /* d()/d[CH3CHO] */
-    J[1226] += -1 * dqdc[34];     /* dwdot[O]/d[CH3CHO] */
-    J[1228] += 1 * dqdc[34];      /* dwdot[OH]/d[CH3CHO] */
-    J[1236] += 1 * dqdc[34];      /* dwdot[CH3]/d[CH3CHO] */
-    J[1238] += 1 * dqdc[34];      /* dwdot[CO]/d[CH3CHO] */
-    J[1258] += -1 * dqdc[34];     /* dwdot[CH3CHO]/d[CH3CHO] */
+    dqdci =  + k_f*sc[2];
+    J[1226] += -1 * dqdci;        /* dwdot[O]/d[CH3CHO] */
+    J[1228] += 1 * dqdci;         /* dwdot[OH]/d[CH3CHO] */
+    J[1236] += 1 * dqdci;         /* dwdot[CH3]/d[CH3CHO] */
+    J[1238] += 1 * dqdci;         /* dwdot[CO]/d[CH3CHO] */
+    J[1258] += -1 * dqdci;        /* dwdot[CH3CHO]/d[CH3CHO] */
     /* d()/dT */
     J[1262] += -1 * dqdT;         /* dwdot[O]/dT */
     J[1264] += 1 * dqdT;          /* dwdot[OH]/dT */
@@ -27886,20 +28027,20 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[12] += q; /* CH3 */
     wdot[14] += q; /* CO */
     wdot[34] -= q; /* CH3CHO */
-    dqdc[3] =  + k_f*sc[34];
-    dqdc[34] =  + k_f*sc[3];
     /* d()/d[O2] */
-    J[111] += -1 * dqdc[3];       /* dwdot[O2]/d[O2] */
-    J[114] += 1 * dqdc[3];        /* dwdot[HO2]/d[O2] */
-    J[120] += 1 * dqdc[3];        /* dwdot[CH3]/d[O2] */
-    J[122] += 1 * dqdc[3];        /* dwdot[CO]/d[O2] */
-    J[142] += -1 * dqdc[3];       /* dwdot[CH3CHO]/d[O2] */
+    dqdci =  + k_f*sc[34];
+    J[111] += -1 * dqdci;         /* dwdot[O2]/d[O2] */
+    J[114] += 1 * dqdci;          /* dwdot[HO2]/d[O2] */
+    J[120] += 1 * dqdci;          /* dwdot[CH3]/d[O2] */
+    J[122] += 1 * dqdci;          /* dwdot[CO]/d[O2] */
+    J[142] += -1 * dqdci;         /* dwdot[CH3CHO]/d[O2] */
     /* d()/d[CH3CHO] */
-    J[1227] += -1 * dqdc[34];     /* dwdot[O2]/d[CH3CHO] */
-    J[1230] += 1 * dqdc[34];      /* dwdot[HO2]/d[CH3CHO] */
-    J[1236] += 1 * dqdc[34];      /* dwdot[CH3]/d[CH3CHO] */
-    J[1238] += 1 * dqdc[34];      /* dwdot[CO]/d[CH3CHO] */
-    J[1258] += -1 * dqdc[34];     /* dwdot[CH3CHO]/d[CH3CHO] */
+    dqdci =  + k_f*sc[3];
+    J[1227] += -1 * dqdci;        /* dwdot[O2]/d[CH3CHO] */
+    J[1230] += 1 * dqdci;         /* dwdot[HO2]/d[CH3CHO] */
+    J[1236] += 1 * dqdci;         /* dwdot[CH3]/d[CH3CHO] */
+    J[1238] += 1 * dqdci;         /* dwdot[CO]/d[CH3CHO] */
+    J[1258] += -1 * dqdci;        /* dwdot[CH3CHO]/d[CH3CHO] */
     /* d()/dT */
     J[1263] += -1 * dqdT;         /* dwdot[O2]/dT */
     J[1266] += 1 * dqdT;          /* dwdot[HO2]/dT */
@@ -27927,30 +28068,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[1] -= q; /* H */
     wdot[33] += q; /* CH2CHO */
     wdot[34] -= q; /* CH3CHO */
-    dqdc[0] =  - k_r*sc[33];
-    dqdc[1] =  + k_f*sc[34];
-    dqdc[33] =  - k_r*sc[0];
-    dqdc[34] =  + k_f*sc[1];
     /* d()/d[H2] */
-    J[0] += 1 * dqdc[0];          /* dwdot[H2]/d[H2] */
-    J[1] += -1 * dqdc[0];         /* dwdot[H]/d[H2] */
-    J[33] += 1 * dqdc[0];         /* dwdot[CH2CHO]/d[H2] */
-    J[34] += -1 * dqdc[0];        /* dwdot[CH3CHO]/d[H2] */
+    dqdci =  - k_r*sc[33];
+    J[0] += 1 * dqdci;            /* dwdot[H2]/d[H2] */
+    J[1] += -1 * dqdci;           /* dwdot[H]/d[H2] */
+    J[33] += 1 * dqdci;           /* dwdot[CH2CHO]/d[H2] */
+    J[34] += -1 * dqdci;          /* dwdot[CH3CHO]/d[H2] */
     /* d()/d[H] */
-    J[36] += 1 * dqdc[1];         /* dwdot[H2]/d[H] */
-    J[37] += -1 * dqdc[1];        /* dwdot[H]/d[H] */
-    J[69] += 1 * dqdc[1];         /* dwdot[CH2CHO]/d[H] */
-    J[70] += -1 * dqdc[1];        /* dwdot[CH3CHO]/d[H] */
+    dqdci =  + k_f*sc[34];
+    J[36] += 1 * dqdci;           /* dwdot[H2]/d[H] */
+    J[37] += -1 * dqdci;          /* dwdot[H]/d[H] */
+    J[69] += 1 * dqdci;           /* dwdot[CH2CHO]/d[H] */
+    J[70] += -1 * dqdci;          /* dwdot[CH3CHO]/d[H] */
     /* d()/d[CH2CHO] */
-    J[1188] += 1 * dqdc[33];      /* dwdot[H2]/d[CH2CHO] */
-    J[1189] += -1 * dqdc[33];     /* dwdot[H]/d[CH2CHO] */
-    J[1221] += 1 * dqdc[33];      /* dwdot[CH2CHO]/d[CH2CHO] */
-    J[1222] += -1 * dqdc[33];     /* dwdot[CH3CHO]/d[CH2CHO] */
+    dqdci =  - k_r*sc[0];
+    J[1188] += 1 * dqdci;         /* dwdot[H2]/d[CH2CHO] */
+    J[1189] += -1 * dqdci;        /* dwdot[H]/d[CH2CHO] */
+    J[1221] += 1 * dqdci;         /* dwdot[CH2CHO]/d[CH2CHO] */
+    J[1222] += -1 * dqdci;        /* dwdot[CH3CHO]/d[CH2CHO] */
     /* d()/d[CH3CHO] */
-    J[1224] += 1 * dqdc[34];      /* dwdot[H2]/d[CH3CHO] */
-    J[1225] += -1 * dqdc[34];     /* dwdot[H]/d[CH3CHO] */
-    J[1257] += 1 * dqdc[34];      /* dwdot[CH2CHO]/d[CH3CHO] */
-    J[1258] += -1 * dqdc[34];     /* dwdot[CH3CHO]/d[CH3CHO] */
+    dqdci =  + k_f*sc[1];
+    J[1224] += 1 * dqdci;         /* dwdot[H2]/d[CH3CHO] */
+    J[1225] += -1 * dqdci;        /* dwdot[H]/d[CH3CHO] */
+    J[1257] += 1 * dqdci;         /* dwdot[CH2CHO]/d[CH3CHO] */
+    J[1258] += -1 * dqdci;        /* dwdot[CH3CHO]/d[CH3CHO] */
     /* d()/dT */
     J[1260] += 1 * dqdT;          /* dwdot[H2]/dT */
     J[1261] += -1 * dqdT;         /* dwdot[H]/dT */
@@ -27972,20 +28113,20 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[12] += q; /* CH3 */
     wdot[14] += q; /* CO */
     wdot[34] -= q; /* CH3CHO */
-    dqdc[1] =  + k_f*sc[34];
-    dqdc[34] =  + k_f*sc[1];
     /* d()/d[H] */
-    J[36] += 1 * dqdc[1];         /* dwdot[H2]/d[H] */
-    J[37] += -1 * dqdc[1];        /* dwdot[H]/d[H] */
-    J[48] += 1 * dqdc[1];         /* dwdot[CH3]/d[H] */
-    J[50] += 1 * dqdc[1];         /* dwdot[CO]/d[H] */
-    J[70] += -1 * dqdc[1];        /* dwdot[CH3CHO]/d[H] */
+    dqdci =  + k_f*sc[34];
+    J[36] += 1 * dqdci;           /* dwdot[H2]/d[H] */
+    J[37] += -1 * dqdci;          /* dwdot[H]/d[H] */
+    J[48] += 1 * dqdci;           /* dwdot[CH3]/d[H] */
+    J[50] += 1 * dqdci;           /* dwdot[CO]/d[H] */
+    J[70] += -1 * dqdci;          /* dwdot[CH3CHO]/d[H] */
     /* d()/d[CH3CHO] */
-    J[1224] += 1 * dqdc[34];      /* dwdot[H2]/d[CH3CHO] */
-    J[1225] += -1 * dqdc[34];     /* dwdot[H]/d[CH3CHO] */
-    J[1236] += 1 * dqdc[34];      /* dwdot[CH3]/d[CH3CHO] */
-    J[1238] += 1 * dqdc[34];      /* dwdot[CO]/d[CH3CHO] */
-    J[1258] += -1 * dqdc[34];     /* dwdot[CH3CHO]/d[CH3CHO] */
+    dqdci =  + k_f*sc[1];
+    J[1224] += 1 * dqdci;         /* dwdot[H2]/d[CH3CHO] */
+    J[1225] += -1 * dqdci;        /* dwdot[H]/d[CH3CHO] */
+    J[1236] += 1 * dqdci;         /* dwdot[CH3]/d[CH3CHO] */
+    J[1238] += 1 * dqdci;         /* dwdot[CO]/d[CH3CHO] */
+    J[1258] += -1 * dqdci;        /* dwdot[CH3CHO]/d[CH3CHO] */
     /* d()/dT */
     J[1260] += 1 * dqdT;          /* dwdot[H2]/dT */
     J[1261] += -1 * dqdT;         /* dwdot[H]/dT */
@@ -28008,20 +28149,20 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[12] += q; /* CH3 */
     wdot[14] += q; /* CO */
     wdot[34] -= q; /* CH3CHO */
-    dqdc[4] =  + k_f*sc[34];
-    dqdc[34] =  + k_f*sc[4];
     /* d()/d[OH] */
-    J[148] += -1 * dqdc[4];       /* dwdot[OH]/d[OH] */
-    J[149] += 1 * dqdc[4];        /* dwdot[H2O]/d[OH] */
-    J[156] += 1 * dqdc[4];        /* dwdot[CH3]/d[OH] */
-    J[158] += 1 * dqdc[4];        /* dwdot[CO]/d[OH] */
-    J[178] += -1 * dqdc[4];       /* dwdot[CH3CHO]/d[OH] */
+    dqdci =  + k_f*sc[34];
+    J[148] += -1 * dqdci;         /* dwdot[OH]/d[OH] */
+    J[149] += 1 * dqdci;          /* dwdot[H2O]/d[OH] */
+    J[156] += 1 * dqdci;          /* dwdot[CH3]/d[OH] */
+    J[158] += 1 * dqdci;          /* dwdot[CO]/d[OH] */
+    J[178] += -1 * dqdci;         /* dwdot[CH3CHO]/d[OH] */
     /* d()/d[CH3CHO] */
-    J[1228] += -1 * dqdc[34];     /* dwdot[OH]/d[CH3CHO] */
-    J[1229] += 1 * dqdc[34];      /* dwdot[H2O]/d[CH3CHO] */
-    J[1236] += 1 * dqdc[34];      /* dwdot[CH3]/d[CH3CHO] */
-    J[1238] += 1 * dqdc[34];      /* dwdot[CO]/d[CH3CHO] */
-    J[1258] += -1 * dqdc[34];     /* dwdot[CH3CHO]/d[CH3CHO] */
+    dqdci =  + k_f*sc[4];
+    J[1228] += -1 * dqdci;        /* dwdot[OH]/d[CH3CHO] */
+    J[1229] += 1 * dqdci;         /* dwdot[H2O]/d[CH3CHO] */
+    J[1236] += 1 * dqdci;         /* dwdot[CH3]/d[CH3CHO] */
+    J[1238] += 1 * dqdci;         /* dwdot[CO]/d[CH3CHO] */
+    J[1258] += -1 * dqdci;        /* dwdot[CH3CHO]/d[CH3CHO] */
     /* d()/dT */
     J[1264] += -1 * dqdT;         /* dwdot[OH]/dT */
     J[1265] += 1 * dqdT;          /* dwdot[H2O]/dT */
@@ -28044,20 +28185,20 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[12] += q; /* CH3 */
     wdot[14] += q; /* CO */
     wdot[34] -= q; /* CH3CHO */
-    dqdc[6] =  + k_f*sc[34];
-    dqdc[34] =  + k_f*sc[6];
     /* d()/d[HO2] */
-    J[222] += -1 * dqdc[6];       /* dwdot[HO2]/d[HO2] */
-    J[223] += 1 * dqdc[6];        /* dwdot[H2O2]/d[HO2] */
-    J[228] += 1 * dqdc[6];        /* dwdot[CH3]/d[HO2] */
-    J[230] += 1 * dqdc[6];        /* dwdot[CO]/d[HO2] */
-    J[250] += -1 * dqdc[6];       /* dwdot[CH3CHO]/d[HO2] */
+    dqdci =  + k_f*sc[34];
+    J[222] += -1 * dqdci;         /* dwdot[HO2]/d[HO2] */
+    J[223] += 1 * dqdci;          /* dwdot[H2O2]/d[HO2] */
+    J[228] += 1 * dqdci;          /* dwdot[CH3]/d[HO2] */
+    J[230] += 1 * dqdci;          /* dwdot[CO]/d[HO2] */
+    J[250] += -1 * dqdci;         /* dwdot[CH3CHO]/d[HO2] */
     /* d()/d[CH3CHO] */
-    J[1230] += -1 * dqdc[34];     /* dwdot[HO2]/d[CH3CHO] */
-    J[1231] += 1 * dqdc[34];      /* dwdot[H2O2]/d[CH3CHO] */
-    J[1236] += 1 * dqdc[34];      /* dwdot[CH3]/d[CH3CHO] */
-    J[1238] += 1 * dqdc[34];      /* dwdot[CO]/d[CH3CHO] */
-    J[1258] += -1 * dqdc[34];     /* dwdot[CH3CHO]/d[CH3CHO] */
+    dqdci =  + k_f*sc[6];
+    J[1230] += -1 * dqdci;        /* dwdot[HO2]/d[CH3CHO] */
+    J[1231] += 1 * dqdci;         /* dwdot[H2O2]/d[CH3CHO] */
+    J[1236] += 1 * dqdci;         /* dwdot[CH3]/d[CH3CHO] */
+    J[1238] += 1 * dqdci;         /* dwdot[CO]/d[CH3CHO] */
+    J[1258] += -1 * dqdci;        /* dwdot[CH3CHO]/d[CH3CHO] */
     /* d()/dT */
     J[1266] += -1 * dqdT;         /* dwdot[HO2]/dT */
     J[1267] += 1 * dqdT;          /* dwdot[H2O2]/dT */
@@ -28078,16 +28219,16 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[13] += q; /* CH4 */
     wdot[14] += q; /* CO */
     wdot[34] -= q; /* CH3CHO */
-    dqdc[12] =  + k_f*sc[34];
-    dqdc[34] =  + k_f*sc[12];
     /* d()/d[CH3] */
-    J[445] += 1 * dqdc[12];       /* dwdot[CH4]/d[CH3] */
-    J[446] += 1 * dqdc[12];       /* dwdot[CO]/d[CH3] */
-    J[466] += -1 * dqdc[12];      /* dwdot[CH3CHO]/d[CH3] */
+    dqdci =  + k_f*sc[34];
+    J[445] += 1 * dqdci;          /* dwdot[CH4]/d[CH3] */
+    J[446] += 1 * dqdci;          /* dwdot[CO]/d[CH3] */
+    J[466] += -1 * dqdci;         /* dwdot[CH3CHO]/d[CH3] */
     /* d()/d[CH3CHO] */
-    J[1237] += 1 * dqdc[34];      /* dwdot[CH4]/d[CH3CHO] */
-    J[1238] += 1 * dqdc[34];      /* dwdot[CO]/d[CH3CHO] */
-    J[1258] += -1 * dqdc[34];     /* dwdot[CH3CHO]/d[CH3CHO] */
+    dqdci =  + k_f*sc[12];
+    J[1237] += 1 * dqdci;         /* dwdot[CH4]/d[CH3CHO] */
+    J[1238] += 1 * dqdci;         /* dwdot[CO]/d[CH3CHO] */
+    J[1258] += -1 * dqdci;        /* dwdot[CH3CHO]/d[CH3CHO] */
     /* d()/dT */
     J[1273] += 1 * dqdT;          /* dwdot[CH4]/dT */
     J[1274] += 1 * dqdT;          /* dwdot[CO]/dT */
@@ -28123,9 +28264,9 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     troe = 1.0 / (1.0 + troePr*troePr);
     F = pow(10.0, logFcent * troe);
     dlogFcentdT = log10e/Fcent*(Fcent1*-0.00497512 + Fcent2*-0.000564016 + Fcent3*5333*invT2);
-    dlogFdcn_fac = logFcent * troe*troe * troePr * troePr_den;
+    dlogFdcn_fac = 2.0 * logFcent * troe*troe * troePr * troePr_den;
     dlogFdc = -troe_n * dlogFdcn_fac * troePr_den;
-    dlogFdn = 2. * dlogFdcn_fac * troePr;
+    dlogFdn = dlogFdcn_fac * troePr;
     dlogFdlogPr = dlogFdc;
     dlogFdT = dlogFcentdT*(troe - 0.67*dlogFdc - 1.27*dlogFdn) + dlogFdlogPr * dlogPrdT;
     /* reverse */
@@ -28149,41 +28290,51 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     k_r *= Corr;
     dcdc_fac = q/alpha*(1.0/(Pr+1.0) + dlogFdlogPr);
     if (consP) {
-        dqdc[0] =  1*dcdc_fac;
-        dqdc[1] =  0.0 + k_f*sc[28];
-        dqdc[2] =  0.0;
-        dqdc[3] =  0.0;
-        dqdc[4] =  0.0;
-        dqdc[5] =  5*dcdc_fac;
-        dqdc[6] =  0.0;
-        dqdc[7] =  0.0;
-        dqdc[8] =  0.0;
-        dqdc[9] =  0.0;
-        dqdc[10] =  0.0;
-        dqdc[11] =  0.0;
-        dqdc[12] =  0.0;
-        dqdc[13] =  1*dcdc_fac;
-        dqdc[14] =  0.5*dcdc_fac;
-        dqdc[15] =  1*dcdc_fac;
-        dqdc[16] =  0.0;
-        dqdc[17] =  0.0;
-        dqdc[18] =  0.0;
-        dqdc[19] =  0.0;
-        dqdc[20] =  0.0;
-        dqdc[21] =  0.0;
-        dqdc[22] =  0.0;
-        dqdc[23] =  0.0;
-        dqdc[24] =  0.0;
-        dqdc[25] =  0.0;
-        dqdc[26] =  2*dcdc_fac;
-        dqdc[27] =  0.0;
-        dqdc[28] =  0.0 + k_f*sc[1];
-        dqdc[29] =  0.0;
-        dqdc[30] =  0.0;
-        dqdc[31] =  0.0;
-        dqdc[32] =  0.0;
-        dqdc[33] =  0.0 - k_r;
-        dqdc[34] =  0.0;
+        /* d()/d[H2] */
+        dqdci =  1*dcdc_fac;
+        J[1] += -1 * dqdci;           /* dwdot[H]/d[H2] */
+        J[28] += -1 * dqdci;          /* dwdot[CH2CO]/d[H2] */
+        J[33] += 1 * dqdci;           /* dwdot[CH2CHO]/d[H2] */
+        /* d()/d[H] */
+        dqdci =  + k_f*sc[28];
+        J[37] += -1 * dqdci;          /* dwdot[H]/d[H] */
+        J[64] += -1 * dqdci;          /* dwdot[CH2CO]/d[H] */
+        J[69] += 1 * dqdci;           /* dwdot[CH2CHO]/d[H] */
+        /* d()/d[H2O] */
+        dqdci =  5*dcdc_fac;
+        J[181] += -1 * dqdci;         /* dwdot[H]/d[H2O] */
+        J[208] += -1 * dqdci;         /* dwdot[CH2CO]/d[H2O] */
+        J[213] += 1 * dqdci;          /* dwdot[CH2CHO]/d[H2O] */
+        /* d()/d[CH4] */
+        dqdci =  1*dcdc_fac;
+        J[469] += -1 * dqdci;         /* dwdot[H]/d[CH4] */
+        J[496] += -1 * dqdci;         /* dwdot[CH2CO]/d[CH4] */
+        J[501] += 1 * dqdci;          /* dwdot[CH2CHO]/d[CH4] */
+        /* d()/d[CO] */
+        dqdci =  0.5*dcdc_fac;
+        J[505] += -1 * dqdci;         /* dwdot[H]/d[CO] */
+        J[532] += -1 * dqdci;         /* dwdot[CH2CO]/d[CO] */
+        J[537] += 1 * dqdci;          /* dwdot[CH2CHO]/d[CO] */
+        /* d()/d[CO2] */
+        dqdci =  1*dcdc_fac;
+        J[541] += -1 * dqdci;         /* dwdot[H]/d[CO2] */
+        J[568] += -1 * dqdci;         /* dwdot[CH2CO]/d[CO2] */
+        J[573] += 1 * dqdci;          /* dwdot[CH2CHO]/d[CO2] */
+        /* d()/d[C2H6] */
+        dqdci =  2*dcdc_fac;
+        J[937] += -1 * dqdci;         /* dwdot[H]/d[C2H6] */
+        J[964] += -1 * dqdci;         /* dwdot[CH2CO]/d[C2H6] */
+        J[969] += 1 * dqdci;          /* dwdot[CH2CHO]/d[C2H6] */
+        /* d()/d[CH2CO] */
+        dqdci =  + k_f*sc[1];
+        J[1009] += -1 * dqdci;        /* dwdot[H]/d[CH2CO] */
+        J[1036] += -1 * dqdci;        /* dwdot[CH2CO]/d[CH2CO] */
+        J[1041] += 1 * dqdci;         /* dwdot[CH2CHO]/d[CH2CO] */
+        /* d()/d[CH2CHO] */
+        dqdci =  - k_r;
+        J[1189] += -1 * dqdci;        /* dwdot[H]/d[CH2CHO] */
+        J[1216] += -1 * dqdci;        /* dwdot[CH2CO]/d[CH2CHO] */
+        J[1221] += 1 * dqdci;         /* dwdot[CH2CHO]/d[CH2CHO] */
     }
     else {
         dqdc[0] =  2*dcdc_fac;
@@ -28221,11 +28372,11 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
         dqdc[32] =  1*dcdc_fac;
         dqdc[33] =  1*dcdc_fac - k_r;
         dqdc[34] =  1*dcdc_fac;
-    }
-    for (int k=0; k<35; k++) {
-        J[36*k+1] += -1 * dqdc[k];
-        J[36*k+28] += -1 * dqdc[k];
-        J[36*k+33] += 1 * dqdc[k];
+        for (int k=0; k<35; k++) {
+            J[36*k+1] += -1 * dqdc[k];
+            J[36*k+28] += -1 * dqdc[k];
+            J[36*k+33] += 1 * dqdc[k];
+        }
     }
     J[1261] += -1 * dqdT; /* dwdot[H]/dT */
     J[1288] += -1 * dqdT; /* dwdot[CH2CO]/dT */
@@ -28246,20 +28397,20 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[10] += q; /* CH2 */
     wdot[15] += q; /* CO2 */
     wdot[33] -= q; /* CH2CHO */
-    dqdc[2] =  + k_f*sc[33];
-    dqdc[33] =  + k_f*sc[2];
     /* d()/d[O] */
-    J[73] += 1 * dqdc[2];         /* dwdot[H]/d[O] */
-    J[74] += -1 * dqdc[2];        /* dwdot[O]/d[O] */
-    J[82] += 1 * dqdc[2];         /* dwdot[CH2]/d[O] */
-    J[87] += 1 * dqdc[2];         /* dwdot[CO2]/d[O] */
-    J[105] += -1 * dqdc[2];       /* dwdot[CH2CHO]/d[O] */
+    dqdci =  + k_f*sc[33];
+    J[73] += 1 * dqdci;           /* dwdot[H]/d[O] */
+    J[74] += -1 * dqdci;          /* dwdot[O]/d[O] */
+    J[82] += 1 * dqdci;           /* dwdot[CH2]/d[O] */
+    J[87] += 1 * dqdci;           /* dwdot[CO2]/d[O] */
+    J[105] += -1 * dqdci;         /* dwdot[CH2CHO]/d[O] */
     /* d()/d[CH2CHO] */
-    J[1189] += 1 * dqdc[33];      /* dwdot[H]/d[CH2CHO] */
-    J[1190] += -1 * dqdc[33];     /* dwdot[O]/d[CH2CHO] */
-    J[1198] += 1 * dqdc[33];      /* dwdot[CH2]/d[CH2CHO] */
-    J[1203] += 1 * dqdc[33];      /* dwdot[CO2]/d[CH2CHO] */
-    J[1221] += -1 * dqdc[33];     /* dwdot[CH2CHO]/d[CH2CHO] */
+    dqdci =  + k_f*sc[2];
+    J[1189] += 1 * dqdci;         /* dwdot[H]/d[CH2CHO] */
+    J[1190] += -1 * dqdci;        /* dwdot[O]/d[CH2CHO] */
+    J[1198] += 1 * dqdci;         /* dwdot[CH2]/d[CH2CHO] */
+    J[1203] += 1 * dqdci;         /* dwdot[CO2]/d[CH2CHO] */
+    J[1221] += -1 * dqdci;        /* dwdot[CH2CHO]/d[CH2CHO] */
     /* d()/dT */
     J[1261] += 1 * dqdT;          /* dwdot[H]/dT */
     J[1262] += -1 * dqdT;         /* dwdot[O]/dT */
@@ -28282,20 +28433,20 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[14] += q; /* CO */
     wdot[17] += q; /* CH2O */
     wdot[33] -= q; /* CH2CHO */
-    dqdc[3] =  + k_f*sc[33];
-    dqdc[33] =  + k_f*sc[3];
     /* d()/d[O2] */
-    J[111] += -1 * dqdc[3];       /* dwdot[O2]/d[O2] */
-    J[112] += 1 * dqdc[3];        /* dwdot[OH]/d[O2] */
-    J[122] += 1 * dqdc[3];        /* dwdot[CO]/d[O2] */
-    J[125] += 1 * dqdc[3];        /* dwdot[CH2O]/d[O2] */
-    J[141] += -1 * dqdc[3];       /* dwdot[CH2CHO]/d[O2] */
+    dqdci =  + k_f*sc[33];
+    J[111] += -1 * dqdci;         /* dwdot[O2]/d[O2] */
+    J[112] += 1 * dqdci;          /* dwdot[OH]/d[O2] */
+    J[122] += 1 * dqdci;          /* dwdot[CO]/d[O2] */
+    J[125] += 1 * dqdci;          /* dwdot[CH2O]/d[O2] */
+    J[141] += -1 * dqdci;         /* dwdot[CH2CHO]/d[O2] */
     /* d()/d[CH2CHO] */
-    J[1191] += -1 * dqdc[33];     /* dwdot[O2]/d[CH2CHO] */
-    J[1192] += 1 * dqdc[33];      /* dwdot[OH]/d[CH2CHO] */
-    J[1202] += 1 * dqdc[33];      /* dwdot[CO]/d[CH2CHO] */
-    J[1205] += 1 * dqdc[33];      /* dwdot[CH2O]/d[CH2CHO] */
-    J[1221] += -1 * dqdc[33];     /* dwdot[CH2CHO]/d[CH2CHO] */
+    dqdci =  + k_f*sc[3];
+    J[1191] += -1 * dqdci;        /* dwdot[O2]/d[CH2CHO] */
+    J[1192] += 1 * dqdci;         /* dwdot[OH]/d[CH2CHO] */
+    J[1202] += 1 * dqdci;         /* dwdot[CO]/d[CH2CHO] */
+    J[1205] += 1 * dqdci;         /* dwdot[CH2O]/d[CH2CHO] */
+    J[1221] += -1 * dqdci;        /* dwdot[CH2CHO]/d[CH2CHO] */
     /* d()/dT */
     J[1263] += -1 * dqdT;         /* dwdot[O2]/dT */
     J[1264] += 1 * dqdT;          /* dwdot[OH]/dT */
@@ -28317,18 +28468,18 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[4] += q; /* OH */
     wdot[16] += 2 * q; /* HCO */
     wdot[33] -= q; /* CH2CHO */
-    dqdc[3] =  + k_f*sc[33];
-    dqdc[33] =  + k_f*sc[3];
     /* d()/d[O2] */
-    J[111] += -1 * dqdc[3];       /* dwdot[O2]/d[O2] */
-    J[112] += 1 * dqdc[3];        /* dwdot[OH]/d[O2] */
-    J[124] += 2 * dqdc[3];        /* dwdot[HCO]/d[O2] */
-    J[141] += -1 * dqdc[3];       /* dwdot[CH2CHO]/d[O2] */
+    dqdci =  + k_f*sc[33];
+    J[111] += -1 * dqdci;         /* dwdot[O2]/d[O2] */
+    J[112] += 1 * dqdci;          /* dwdot[OH]/d[O2] */
+    J[124] += 2 * dqdci;          /* dwdot[HCO]/d[O2] */
+    J[141] += -1 * dqdci;         /* dwdot[CH2CHO]/d[O2] */
     /* d()/d[CH2CHO] */
-    J[1191] += -1 * dqdc[33];     /* dwdot[O2]/d[CH2CHO] */
-    J[1192] += 1 * dqdc[33];      /* dwdot[OH]/d[CH2CHO] */
-    J[1204] += 2 * dqdc[33];      /* dwdot[HCO]/d[CH2CHO] */
-    J[1221] += -1 * dqdc[33];     /* dwdot[CH2CHO]/d[CH2CHO] */
+    dqdci =  + k_f*sc[3];
+    J[1191] += -1 * dqdci;        /* dwdot[O2]/d[CH2CHO] */
+    J[1192] += 1 * dqdci;         /* dwdot[OH]/d[CH2CHO] */
+    J[1204] += 2 * dqdci;         /* dwdot[HCO]/d[CH2CHO] */
+    J[1221] += -1 * dqdci;        /* dwdot[CH2CHO]/d[CH2CHO] */
     /* d()/dT */
     J[1263] += -1 * dqdT;         /* dwdot[O2]/dT */
     J[1264] += 1 * dqdT;          /* dwdot[OH]/dT */
@@ -28355,30 +28506,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[12] += q; /* CH3 */
     wdot[16] += q; /* HCO */
     wdot[33] -= q; /* CH2CHO */
-    dqdc[1] =  + k_f*sc[33];
-    dqdc[12] =  - k_r*sc[16];
-    dqdc[16] =  - k_r*sc[12];
-    dqdc[33] =  + k_f*sc[1];
     /* d()/d[H] */
-    J[37] += -1 * dqdc[1];        /* dwdot[H]/d[H] */
-    J[48] += 1 * dqdc[1];         /* dwdot[CH3]/d[H] */
-    J[52] += 1 * dqdc[1];         /* dwdot[HCO]/d[H] */
-    J[69] += -1 * dqdc[1];        /* dwdot[CH2CHO]/d[H] */
+    dqdci =  + k_f*sc[33];
+    J[37] += -1 * dqdci;          /* dwdot[H]/d[H] */
+    J[48] += 1 * dqdci;           /* dwdot[CH3]/d[H] */
+    J[52] += 1 * dqdci;           /* dwdot[HCO]/d[H] */
+    J[69] += -1 * dqdci;          /* dwdot[CH2CHO]/d[H] */
     /* d()/d[CH3] */
-    J[433] += -1 * dqdc[12];      /* dwdot[H]/d[CH3] */
-    J[444] += 1 * dqdc[12];       /* dwdot[CH3]/d[CH3] */
-    J[448] += 1 * dqdc[12];       /* dwdot[HCO]/d[CH3] */
-    J[465] += -1 * dqdc[12];      /* dwdot[CH2CHO]/d[CH3] */
+    dqdci =  - k_r*sc[16];
+    J[433] += -1 * dqdci;         /* dwdot[H]/d[CH3] */
+    J[444] += 1 * dqdci;          /* dwdot[CH3]/d[CH3] */
+    J[448] += 1 * dqdci;          /* dwdot[HCO]/d[CH3] */
+    J[465] += -1 * dqdci;         /* dwdot[CH2CHO]/d[CH3] */
     /* d()/d[HCO] */
-    J[577] += -1 * dqdc[16];      /* dwdot[H]/d[HCO] */
-    J[588] += 1 * dqdc[16];       /* dwdot[CH3]/d[HCO] */
-    J[592] += 1 * dqdc[16];       /* dwdot[HCO]/d[HCO] */
-    J[609] += -1 * dqdc[16];      /* dwdot[CH2CHO]/d[HCO] */
+    dqdci =  - k_r*sc[12];
+    J[577] += -1 * dqdci;         /* dwdot[H]/d[HCO] */
+    J[588] += 1 * dqdci;          /* dwdot[CH3]/d[HCO] */
+    J[592] += 1 * dqdci;          /* dwdot[HCO]/d[HCO] */
+    J[609] += -1 * dqdci;         /* dwdot[CH2CHO]/d[HCO] */
     /* d()/d[CH2CHO] */
-    J[1189] += -1 * dqdc[33];     /* dwdot[H]/d[CH2CHO] */
-    J[1200] += 1 * dqdc[33];      /* dwdot[CH3]/d[CH2CHO] */
-    J[1204] += 1 * dqdc[33];      /* dwdot[HCO]/d[CH2CHO] */
-    J[1221] += -1 * dqdc[33];     /* dwdot[CH2CHO]/d[CH2CHO] */
+    dqdci =  + k_f*sc[1];
+    J[1189] += -1 * dqdci;        /* dwdot[H]/d[CH2CHO] */
+    J[1200] += 1 * dqdci;         /* dwdot[CH3]/d[CH2CHO] */
+    J[1204] += 1 * dqdci;         /* dwdot[HCO]/d[CH2CHO] */
+    J[1221] += -1 * dqdci;        /* dwdot[CH2CHO]/d[CH2CHO] */
     /* d()/dT */
     J[1261] += -1 * dqdT;         /* dwdot[H]/dT */
     J[1272] += 1 * dqdT;          /* dwdot[CH3]/dT */
@@ -28405,30 +28556,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[1] -= q; /* H */
     wdot[28] += q; /* CH2CO */
     wdot[33] -= q; /* CH2CHO */
-    dqdc[0] =  - k_r*sc[28];
-    dqdc[1] =  + k_f*sc[33];
-    dqdc[28] =  - k_r*sc[0];
-    dqdc[33] =  + k_f*sc[1];
     /* d()/d[H2] */
-    J[0] += 1 * dqdc[0];          /* dwdot[H2]/d[H2] */
-    J[1] += -1 * dqdc[0];         /* dwdot[H]/d[H2] */
-    J[28] += 1 * dqdc[0];         /* dwdot[CH2CO]/d[H2] */
-    J[33] += -1 * dqdc[0];        /* dwdot[CH2CHO]/d[H2] */
+    dqdci =  - k_r*sc[28];
+    J[0] += 1 * dqdci;            /* dwdot[H2]/d[H2] */
+    J[1] += -1 * dqdci;           /* dwdot[H]/d[H2] */
+    J[28] += 1 * dqdci;           /* dwdot[CH2CO]/d[H2] */
+    J[33] += -1 * dqdci;          /* dwdot[CH2CHO]/d[H2] */
     /* d()/d[H] */
-    J[36] += 1 * dqdc[1];         /* dwdot[H2]/d[H] */
-    J[37] += -1 * dqdc[1];        /* dwdot[H]/d[H] */
-    J[64] += 1 * dqdc[1];         /* dwdot[CH2CO]/d[H] */
-    J[69] += -1 * dqdc[1];        /* dwdot[CH2CHO]/d[H] */
+    dqdci =  + k_f*sc[33];
+    J[36] += 1 * dqdci;           /* dwdot[H2]/d[H] */
+    J[37] += -1 * dqdci;          /* dwdot[H]/d[H] */
+    J[64] += 1 * dqdci;           /* dwdot[CH2CO]/d[H] */
+    J[69] += -1 * dqdci;          /* dwdot[CH2CHO]/d[H] */
     /* d()/d[CH2CO] */
-    J[1008] += 1 * dqdc[28];      /* dwdot[H2]/d[CH2CO] */
-    J[1009] += -1 * dqdc[28];     /* dwdot[H]/d[CH2CO] */
-    J[1036] += 1 * dqdc[28];      /* dwdot[CH2CO]/d[CH2CO] */
-    J[1041] += -1 * dqdc[28];     /* dwdot[CH2CHO]/d[CH2CO] */
+    dqdci =  - k_r*sc[0];
+    J[1008] += 1 * dqdci;         /* dwdot[H2]/d[CH2CO] */
+    J[1009] += -1 * dqdci;        /* dwdot[H]/d[CH2CO] */
+    J[1036] += 1 * dqdci;         /* dwdot[CH2CO]/d[CH2CO] */
+    J[1041] += -1 * dqdci;        /* dwdot[CH2CHO]/d[CH2CO] */
     /* d()/d[CH2CHO] */
-    J[1188] += 1 * dqdc[33];      /* dwdot[H2]/d[CH2CHO] */
-    J[1189] += -1 * dqdc[33];     /* dwdot[H]/d[CH2CHO] */
-    J[1216] += 1 * dqdc[33];      /* dwdot[CH2CO]/d[CH2CHO] */
-    J[1221] += -1 * dqdc[33];     /* dwdot[CH2CHO]/d[CH2CHO] */
+    dqdci =  + k_f*sc[1];
+    J[1188] += 1 * dqdci;         /* dwdot[H2]/d[CH2CHO] */
+    J[1189] += -1 * dqdci;        /* dwdot[H]/d[CH2CHO] */
+    J[1216] += 1 * dqdci;         /* dwdot[CH2CO]/d[CH2CHO] */
+    J[1221] += -1 * dqdci;        /* dwdot[CH2CHO]/d[CH2CHO] */
     /* d()/dT */
     J[1260] += 1 * dqdT;          /* dwdot[H2]/dT */
     J[1261] += -1 * dqdT;         /* dwdot[H]/dT */
@@ -28455,30 +28606,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[5] += q; /* H2O */
     wdot[28] += q; /* CH2CO */
     wdot[33] -= q; /* CH2CHO */
-    dqdc[4] =  + k_f*sc[33];
-    dqdc[5] =  - k_r*sc[28];
-    dqdc[28] =  - k_r*sc[5];
-    dqdc[33] =  + k_f*sc[4];
     /* d()/d[OH] */
-    J[148] += -1 * dqdc[4];       /* dwdot[OH]/d[OH] */
-    J[149] += 1 * dqdc[4];        /* dwdot[H2O]/d[OH] */
-    J[172] += 1 * dqdc[4];        /* dwdot[CH2CO]/d[OH] */
-    J[177] += -1 * dqdc[4];       /* dwdot[CH2CHO]/d[OH] */
+    dqdci =  + k_f*sc[33];
+    J[148] += -1 * dqdci;         /* dwdot[OH]/d[OH] */
+    J[149] += 1 * dqdci;          /* dwdot[H2O]/d[OH] */
+    J[172] += 1 * dqdci;          /* dwdot[CH2CO]/d[OH] */
+    J[177] += -1 * dqdci;         /* dwdot[CH2CHO]/d[OH] */
     /* d()/d[H2O] */
-    J[184] += -1 * dqdc[5];       /* dwdot[OH]/d[H2O] */
-    J[185] += 1 * dqdc[5];        /* dwdot[H2O]/d[H2O] */
-    J[208] += 1 * dqdc[5];        /* dwdot[CH2CO]/d[H2O] */
-    J[213] += -1 * dqdc[5];       /* dwdot[CH2CHO]/d[H2O] */
+    dqdci =  - k_r*sc[28];
+    J[184] += -1 * dqdci;         /* dwdot[OH]/d[H2O] */
+    J[185] += 1 * dqdci;          /* dwdot[H2O]/d[H2O] */
+    J[208] += 1 * dqdci;          /* dwdot[CH2CO]/d[H2O] */
+    J[213] += -1 * dqdci;         /* dwdot[CH2CHO]/d[H2O] */
     /* d()/d[CH2CO] */
-    J[1012] += -1 * dqdc[28];     /* dwdot[OH]/d[CH2CO] */
-    J[1013] += 1 * dqdc[28];      /* dwdot[H2O]/d[CH2CO] */
-    J[1036] += 1 * dqdc[28];      /* dwdot[CH2CO]/d[CH2CO] */
-    J[1041] += -1 * dqdc[28];     /* dwdot[CH2CHO]/d[CH2CO] */
+    dqdci =  - k_r*sc[5];
+    J[1012] += -1 * dqdci;        /* dwdot[OH]/d[CH2CO] */
+    J[1013] += 1 * dqdci;         /* dwdot[H2O]/d[CH2CO] */
+    J[1036] += 1 * dqdci;         /* dwdot[CH2CO]/d[CH2CO] */
+    J[1041] += -1 * dqdci;        /* dwdot[CH2CHO]/d[CH2CO] */
     /* d()/d[CH2CHO] */
-    J[1192] += -1 * dqdc[33];     /* dwdot[OH]/d[CH2CHO] */
-    J[1193] += 1 * dqdc[33];      /* dwdot[H2O]/d[CH2CHO] */
-    J[1216] += 1 * dqdc[33];      /* dwdot[CH2CO]/d[CH2CHO] */
-    J[1221] += -1 * dqdc[33];     /* dwdot[CH2CHO]/d[CH2CHO] */
+    dqdci =  + k_f*sc[4];
+    J[1192] += -1 * dqdci;        /* dwdot[OH]/d[CH2CHO] */
+    J[1193] += 1 * dqdci;         /* dwdot[H2O]/d[CH2CHO] */
+    J[1216] += 1 * dqdci;         /* dwdot[CH2CO]/d[CH2CHO] */
+    J[1221] += -1 * dqdci;        /* dwdot[CH2CHO]/d[CH2CHO] */
     /* d()/dT */
     J[1264] += -1 * dqdT;         /* dwdot[OH]/dT */
     J[1265] += 1 * dqdT;          /* dwdot[H2O]/dT */
@@ -28505,30 +28656,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[16] += q; /* HCO */
     wdot[18] += q; /* CH2OH */
     wdot[33] -= q; /* CH2CHO */
-    dqdc[4] =  + k_f*sc[33];
-    dqdc[16] =  - k_r*sc[18];
-    dqdc[18] =  - k_r*sc[16];
-    dqdc[33] =  + k_f*sc[4];
     /* d()/d[OH] */
-    J[148] += -1 * dqdc[4];       /* dwdot[OH]/d[OH] */
-    J[160] += 1 * dqdc[4];        /* dwdot[HCO]/d[OH] */
-    J[162] += 1 * dqdc[4];        /* dwdot[CH2OH]/d[OH] */
-    J[177] += -1 * dqdc[4];       /* dwdot[CH2CHO]/d[OH] */
+    dqdci =  + k_f*sc[33];
+    J[148] += -1 * dqdci;         /* dwdot[OH]/d[OH] */
+    J[160] += 1 * dqdci;          /* dwdot[HCO]/d[OH] */
+    J[162] += 1 * dqdci;          /* dwdot[CH2OH]/d[OH] */
+    J[177] += -1 * dqdci;         /* dwdot[CH2CHO]/d[OH] */
     /* d()/d[HCO] */
-    J[580] += -1 * dqdc[16];      /* dwdot[OH]/d[HCO] */
-    J[592] += 1 * dqdc[16];       /* dwdot[HCO]/d[HCO] */
-    J[594] += 1 * dqdc[16];       /* dwdot[CH2OH]/d[HCO] */
-    J[609] += -1 * dqdc[16];      /* dwdot[CH2CHO]/d[HCO] */
+    dqdci =  - k_r*sc[18];
+    J[580] += -1 * dqdci;         /* dwdot[OH]/d[HCO] */
+    J[592] += 1 * dqdci;          /* dwdot[HCO]/d[HCO] */
+    J[594] += 1 * dqdci;          /* dwdot[CH2OH]/d[HCO] */
+    J[609] += -1 * dqdci;         /* dwdot[CH2CHO]/d[HCO] */
     /* d()/d[CH2OH] */
-    J[652] += -1 * dqdc[18];      /* dwdot[OH]/d[CH2OH] */
-    J[664] += 1 * dqdc[18];       /* dwdot[HCO]/d[CH2OH] */
-    J[666] += 1 * dqdc[18];       /* dwdot[CH2OH]/d[CH2OH] */
-    J[681] += -1 * dqdc[18];      /* dwdot[CH2CHO]/d[CH2OH] */
+    dqdci =  - k_r*sc[16];
+    J[652] += -1 * dqdci;         /* dwdot[OH]/d[CH2OH] */
+    J[664] += 1 * dqdci;          /* dwdot[HCO]/d[CH2OH] */
+    J[666] += 1 * dqdci;          /* dwdot[CH2OH]/d[CH2OH] */
+    J[681] += -1 * dqdci;         /* dwdot[CH2CHO]/d[CH2OH] */
     /* d()/d[CH2CHO] */
-    J[1192] += -1 * dqdc[33];     /* dwdot[OH]/d[CH2CHO] */
-    J[1204] += 1 * dqdc[33];      /* dwdot[HCO]/d[CH2CHO] */
-    J[1206] += 1 * dqdc[33];      /* dwdot[CH2OH]/d[CH2CHO] */
-    J[1221] += -1 * dqdc[33];     /* dwdot[CH2CHO]/d[CH2CHO] */
+    dqdci =  + k_f*sc[4];
+    J[1192] += -1 * dqdci;        /* dwdot[OH]/d[CH2CHO] */
+    J[1204] += 1 * dqdci;         /* dwdot[HCO]/d[CH2CHO] */
+    J[1206] += 1 * dqdci;         /* dwdot[CH2OH]/d[CH2CHO] */
+    J[1221] += -1 * dqdci;        /* dwdot[CH2CHO]/d[CH2CHO] */
     /* d()/dT */
     J[1264] += -1 * dqdT;         /* dwdot[OH]/dT */
     J[1276] += 1 * dqdT;          /* dwdot[HCO]/dT */
@@ -28565,9 +28716,9 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     troe = 1.0 / (1.0 + troePr*troePr);
     F = pow(10.0, logFcent * troe);
     dlogFcentdT = log10e/Fcent*(Fcent1*-0.00343643 + Fcent2*-0.000364697 + Fcent3*7748*invT2);
-    dlogFdcn_fac = logFcent * troe*troe * troePr * troePr_den;
+    dlogFdcn_fac = 2.0 * logFcent * troe*troe * troePr * troePr_den;
     dlogFdc = -troe_n * dlogFdcn_fac * troePr_den;
-    dlogFdn = 2. * dlogFdcn_fac * troePr;
+    dlogFdn = dlogFdcn_fac * troePr;
     dlogFdlogPr = dlogFdc;
     dlogFdT = dlogFcentdT*(troe - 0.67*dlogFdc - 1.27*dlogFdn) + dlogFdlogPr * dlogPrdT;
     /* reverse */
@@ -28591,41 +28742,51 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     k_r *= Corr;
     dcdc_fac = q/alpha*(1.0/(Pr+1.0) + dlogFdlogPr);
     if (consP) {
-        dqdc[0] =  1*dcdc_fac;
-        dqdc[1] =  0.0;
-        dqdc[2] =  0.0;
-        dqdc[3] =  0.0;
-        dqdc[4] =  0.0;
-        dqdc[5] =  5*dcdc_fac;
-        dqdc[6] =  0.0;
-        dqdc[7] =  0.0;
-        dqdc[8] =  0.0;
-        dqdc[9] =  0.0;
-        dqdc[10] =  0.0;
-        dqdc[11] =  0.0;
-        dqdc[12] =  0.0 + k_f*sc[25];
-        dqdc[13] =  1*dcdc_fac;
-        dqdc[14] =  0.5*dcdc_fac;
-        dqdc[15] =  1*dcdc_fac;
-        dqdc[16] =  0.0;
-        dqdc[17] =  0.0;
-        dqdc[18] =  0.0;
-        dqdc[19] =  0.0;
-        dqdc[20] =  0.0;
-        dqdc[21] =  0.0;
-        dqdc[22] =  0.0;
-        dqdc[23] =  0.0;
-        dqdc[24] =  0.0;
-        dqdc[25] =  0.0 + k_f*sc[12];
-        dqdc[26] =  2*dcdc_fac;
-        dqdc[27] =  0.0;
-        dqdc[28] =  0.0;
-        dqdc[29] =  0.0;
-        dqdc[30] =  0.0;
-        dqdc[31] =  0.0;
-        dqdc[32] =  0.0 - k_r;
-        dqdc[33] =  0.0;
-        dqdc[34] =  0.0;
+        /* d()/d[H2] */
+        dqdci =  1*dcdc_fac;
+        J[12] += -1 * dqdci;          /* dwdot[CH3]/d[H2] */
+        J[25] += -1 * dqdci;          /* dwdot[C2H5]/d[H2] */
+        J[32] += 1 * dqdci;           /* dwdot[C3H8]/d[H2] */
+        /* d()/d[H2O] */
+        dqdci =  5*dcdc_fac;
+        J[192] += -1 * dqdci;         /* dwdot[CH3]/d[H2O] */
+        J[205] += -1 * dqdci;         /* dwdot[C2H5]/d[H2O] */
+        J[212] += 1 * dqdci;          /* dwdot[C3H8]/d[H2O] */
+        /* d()/d[CH3] */
+        dqdci =  + k_f*sc[25];
+        J[444] += -1 * dqdci;         /* dwdot[CH3]/d[CH3] */
+        J[457] += -1 * dqdci;         /* dwdot[C2H5]/d[CH3] */
+        J[464] += 1 * dqdci;          /* dwdot[C3H8]/d[CH3] */
+        /* d()/d[CH4] */
+        dqdci =  1*dcdc_fac;
+        J[480] += -1 * dqdci;         /* dwdot[CH3]/d[CH4] */
+        J[493] += -1 * dqdci;         /* dwdot[C2H5]/d[CH4] */
+        J[500] += 1 * dqdci;          /* dwdot[C3H8]/d[CH4] */
+        /* d()/d[CO] */
+        dqdci =  0.5*dcdc_fac;
+        J[516] += -1 * dqdci;         /* dwdot[CH3]/d[CO] */
+        J[529] += -1 * dqdci;         /* dwdot[C2H5]/d[CO] */
+        J[536] += 1 * dqdci;          /* dwdot[C3H8]/d[CO] */
+        /* d()/d[CO2] */
+        dqdci =  1*dcdc_fac;
+        J[552] += -1 * dqdci;         /* dwdot[CH3]/d[CO2] */
+        J[565] += -1 * dqdci;         /* dwdot[C2H5]/d[CO2] */
+        J[572] += 1 * dqdci;          /* dwdot[C3H8]/d[CO2] */
+        /* d()/d[C2H5] */
+        dqdci =  + k_f*sc[12];
+        J[912] += -1 * dqdci;         /* dwdot[CH3]/d[C2H5] */
+        J[925] += -1 * dqdci;         /* dwdot[C2H5]/d[C2H5] */
+        J[932] += 1 * dqdci;          /* dwdot[C3H8]/d[C2H5] */
+        /* d()/d[C2H6] */
+        dqdci =  2*dcdc_fac;
+        J[948] += -1 * dqdci;         /* dwdot[CH3]/d[C2H6] */
+        J[961] += -1 * dqdci;         /* dwdot[C2H5]/d[C2H6] */
+        J[968] += 1 * dqdci;          /* dwdot[C3H8]/d[C2H6] */
+        /* d()/d[C3H8] */
+        dqdci =  - k_r;
+        J[1164] += -1 * dqdci;        /* dwdot[CH3]/d[C3H8] */
+        J[1177] += -1 * dqdci;        /* dwdot[C2H5]/d[C3H8] */
+        J[1184] += 1 * dqdci;         /* dwdot[C3H8]/d[C3H8] */
     }
     else {
         dqdc[0] =  2*dcdc_fac;
@@ -28663,11 +28824,11 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
         dqdc[32] =  1*dcdc_fac - k_r;
         dqdc[33] =  1*dcdc_fac;
         dqdc[34] =  1*dcdc_fac;
-    }
-    for (int k=0; k<35; k++) {
-        J[36*k+12] += -1 * dqdc[k];
-        J[36*k+25] += -1 * dqdc[k];
-        J[36*k+32] += 1 * dqdc[k];
+        for (int k=0; k<35; k++) {
+            J[36*k+12] += -1 * dqdc[k];
+            J[36*k+25] += -1 * dqdc[k];
+            J[36*k+32] += 1 * dqdc[k];
+        }
     }
     J[1272] += -1 * dqdT; /* dwdot[CH3]/dT */
     J[1285] += -1 * dqdT; /* dwdot[C2H5]/dT */
@@ -28693,30 +28854,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[4] += q; /* OH */
     wdot[31] += q; /* C3H7 */
     wdot[32] -= q; /* C3H8 */
-    dqdc[2] =  + k_f*sc[32];
-    dqdc[4] =  - k_r*sc[31];
-    dqdc[31] =  - k_r*sc[4];
-    dqdc[32] =  + k_f*sc[2];
     /* d()/d[O] */
-    J[74] += -1 * dqdc[2];        /* dwdot[O]/d[O] */
-    J[76] += 1 * dqdc[2];         /* dwdot[OH]/d[O] */
-    J[103] += 1 * dqdc[2];        /* dwdot[C3H7]/d[O] */
-    J[104] += -1 * dqdc[2];       /* dwdot[C3H8]/d[O] */
+    dqdci =  + k_f*sc[32];
+    J[74] += -1 * dqdci;          /* dwdot[O]/d[O] */
+    J[76] += 1 * dqdci;           /* dwdot[OH]/d[O] */
+    J[103] += 1 * dqdci;          /* dwdot[C3H7]/d[O] */
+    J[104] += -1 * dqdci;         /* dwdot[C3H8]/d[O] */
     /* d()/d[OH] */
-    J[146] += -1 * dqdc[4];       /* dwdot[O]/d[OH] */
-    J[148] += 1 * dqdc[4];        /* dwdot[OH]/d[OH] */
-    J[175] += 1 * dqdc[4];        /* dwdot[C3H7]/d[OH] */
-    J[176] += -1 * dqdc[4];       /* dwdot[C3H8]/d[OH] */
+    dqdci =  - k_r*sc[31];
+    J[146] += -1 * dqdci;         /* dwdot[O]/d[OH] */
+    J[148] += 1 * dqdci;          /* dwdot[OH]/d[OH] */
+    J[175] += 1 * dqdci;          /* dwdot[C3H7]/d[OH] */
+    J[176] += -1 * dqdci;         /* dwdot[C3H8]/d[OH] */
     /* d()/d[C3H7] */
-    J[1118] += -1 * dqdc[31];     /* dwdot[O]/d[C3H7] */
-    J[1120] += 1 * dqdc[31];      /* dwdot[OH]/d[C3H7] */
-    J[1147] += 1 * dqdc[31];      /* dwdot[C3H7]/d[C3H7] */
-    J[1148] += -1 * dqdc[31];     /* dwdot[C3H8]/d[C3H7] */
+    dqdci =  - k_r*sc[4];
+    J[1118] += -1 * dqdci;        /* dwdot[O]/d[C3H7] */
+    J[1120] += 1 * dqdci;         /* dwdot[OH]/d[C3H7] */
+    J[1147] += 1 * dqdci;         /* dwdot[C3H7]/d[C3H7] */
+    J[1148] += -1 * dqdci;        /* dwdot[C3H8]/d[C3H7] */
     /* d()/d[C3H8] */
-    J[1154] += -1 * dqdc[32];     /* dwdot[O]/d[C3H8] */
-    J[1156] += 1 * dqdc[32];      /* dwdot[OH]/d[C3H8] */
-    J[1183] += 1 * dqdc[32];      /* dwdot[C3H7]/d[C3H8] */
-    J[1184] += -1 * dqdc[32];     /* dwdot[C3H8]/d[C3H8] */
+    dqdci =  + k_f*sc[2];
+    J[1154] += -1 * dqdci;        /* dwdot[O]/d[C3H8] */
+    J[1156] += 1 * dqdci;         /* dwdot[OH]/d[C3H8] */
+    J[1183] += 1 * dqdci;         /* dwdot[C3H7]/d[C3H8] */
+    J[1184] += -1 * dqdci;        /* dwdot[C3H8]/d[C3H8] */
     /* d()/dT */
     J[1262] += -1 * dqdT;         /* dwdot[O]/dT */
     J[1264] += 1 * dqdT;          /* dwdot[OH]/dT */
@@ -28743,30 +28904,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[1] -= q; /* H */
     wdot[31] += q; /* C3H7 */
     wdot[32] -= q; /* C3H8 */
-    dqdc[0] =  - k_r*sc[31];
-    dqdc[1] =  + k_f*sc[32];
-    dqdc[31] =  - k_r*sc[0];
-    dqdc[32] =  + k_f*sc[1];
     /* d()/d[H2] */
-    J[0] += 1 * dqdc[0];          /* dwdot[H2]/d[H2] */
-    J[1] += -1 * dqdc[0];         /* dwdot[H]/d[H2] */
-    J[31] += 1 * dqdc[0];         /* dwdot[C3H7]/d[H2] */
-    J[32] += -1 * dqdc[0];        /* dwdot[C3H8]/d[H2] */
+    dqdci =  - k_r*sc[31];
+    J[0] += 1 * dqdci;            /* dwdot[H2]/d[H2] */
+    J[1] += -1 * dqdci;           /* dwdot[H]/d[H2] */
+    J[31] += 1 * dqdci;           /* dwdot[C3H7]/d[H2] */
+    J[32] += -1 * dqdci;          /* dwdot[C3H8]/d[H2] */
     /* d()/d[H] */
-    J[36] += 1 * dqdc[1];         /* dwdot[H2]/d[H] */
-    J[37] += -1 * dqdc[1];        /* dwdot[H]/d[H] */
-    J[67] += 1 * dqdc[1];         /* dwdot[C3H7]/d[H] */
-    J[68] += -1 * dqdc[1];        /* dwdot[C3H8]/d[H] */
+    dqdci =  + k_f*sc[32];
+    J[36] += 1 * dqdci;           /* dwdot[H2]/d[H] */
+    J[37] += -1 * dqdci;          /* dwdot[H]/d[H] */
+    J[67] += 1 * dqdci;           /* dwdot[C3H7]/d[H] */
+    J[68] += -1 * dqdci;          /* dwdot[C3H8]/d[H] */
     /* d()/d[C3H7] */
-    J[1116] += 1 * dqdc[31];      /* dwdot[H2]/d[C3H7] */
-    J[1117] += -1 * dqdc[31];     /* dwdot[H]/d[C3H7] */
-    J[1147] += 1 * dqdc[31];      /* dwdot[C3H7]/d[C3H7] */
-    J[1148] += -1 * dqdc[31];     /* dwdot[C3H8]/d[C3H7] */
+    dqdci =  - k_r*sc[0];
+    J[1116] += 1 * dqdci;         /* dwdot[H2]/d[C3H7] */
+    J[1117] += -1 * dqdci;        /* dwdot[H]/d[C3H7] */
+    J[1147] += 1 * dqdci;         /* dwdot[C3H7]/d[C3H7] */
+    J[1148] += -1 * dqdci;        /* dwdot[C3H8]/d[C3H7] */
     /* d()/d[C3H8] */
-    J[1152] += 1 * dqdc[32];      /* dwdot[H2]/d[C3H8] */
-    J[1153] += -1 * dqdc[32];     /* dwdot[H]/d[C3H8] */
-    J[1183] += 1 * dqdc[32];      /* dwdot[C3H7]/d[C3H8] */
-    J[1184] += -1 * dqdc[32];     /* dwdot[C3H8]/d[C3H8] */
+    dqdci =  + k_f*sc[1];
+    J[1152] += 1 * dqdci;         /* dwdot[H2]/d[C3H8] */
+    J[1153] += -1 * dqdci;        /* dwdot[H]/d[C3H8] */
+    J[1183] += 1 * dqdci;         /* dwdot[C3H7]/d[C3H8] */
+    J[1184] += -1 * dqdci;        /* dwdot[C3H8]/d[C3H8] */
     /* d()/dT */
     J[1260] += 1 * dqdT;          /* dwdot[H2]/dT */
     J[1261] += -1 * dqdT;         /* dwdot[H]/dT */
@@ -28793,30 +28954,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[5] += q; /* H2O */
     wdot[31] += q; /* C3H7 */
     wdot[32] -= q; /* C3H8 */
-    dqdc[4] =  + k_f*sc[32];
-    dqdc[5] =  - k_r*sc[31];
-    dqdc[31] =  - k_r*sc[5];
-    dqdc[32] =  + k_f*sc[4];
     /* d()/d[OH] */
-    J[148] += -1 * dqdc[4];       /* dwdot[OH]/d[OH] */
-    J[149] += 1 * dqdc[4];        /* dwdot[H2O]/d[OH] */
-    J[175] += 1 * dqdc[4];        /* dwdot[C3H7]/d[OH] */
-    J[176] += -1 * dqdc[4];       /* dwdot[C3H8]/d[OH] */
+    dqdci =  + k_f*sc[32];
+    J[148] += -1 * dqdci;         /* dwdot[OH]/d[OH] */
+    J[149] += 1 * dqdci;          /* dwdot[H2O]/d[OH] */
+    J[175] += 1 * dqdci;          /* dwdot[C3H7]/d[OH] */
+    J[176] += -1 * dqdci;         /* dwdot[C3H8]/d[OH] */
     /* d()/d[H2O] */
-    J[184] += -1 * dqdc[5];       /* dwdot[OH]/d[H2O] */
-    J[185] += 1 * dqdc[5];        /* dwdot[H2O]/d[H2O] */
-    J[211] += 1 * dqdc[5];        /* dwdot[C3H7]/d[H2O] */
-    J[212] += -1 * dqdc[5];       /* dwdot[C3H8]/d[H2O] */
+    dqdci =  - k_r*sc[31];
+    J[184] += -1 * dqdci;         /* dwdot[OH]/d[H2O] */
+    J[185] += 1 * dqdci;          /* dwdot[H2O]/d[H2O] */
+    J[211] += 1 * dqdci;          /* dwdot[C3H7]/d[H2O] */
+    J[212] += -1 * dqdci;         /* dwdot[C3H8]/d[H2O] */
     /* d()/d[C3H7] */
-    J[1120] += -1 * dqdc[31];     /* dwdot[OH]/d[C3H7] */
-    J[1121] += 1 * dqdc[31];      /* dwdot[H2O]/d[C3H7] */
-    J[1147] += 1 * dqdc[31];      /* dwdot[C3H7]/d[C3H7] */
-    J[1148] += -1 * dqdc[31];     /* dwdot[C3H8]/d[C3H7] */
+    dqdci =  - k_r*sc[5];
+    J[1120] += -1 * dqdci;        /* dwdot[OH]/d[C3H7] */
+    J[1121] += 1 * dqdci;         /* dwdot[H2O]/d[C3H7] */
+    J[1147] += 1 * dqdci;         /* dwdot[C3H7]/d[C3H7] */
+    J[1148] += -1 * dqdci;        /* dwdot[C3H8]/d[C3H7] */
     /* d()/d[C3H8] */
-    J[1156] += -1 * dqdc[32];     /* dwdot[OH]/d[C3H8] */
-    J[1157] += 1 * dqdc[32];      /* dwdot[H2O]/d[C3H8] */
-    J[1183] += 1 * dqdc[32];      /* dwdot[C3H7]/d[C3H8] */
-    J[1184] += -1 * dqdc[32];     /* dwdot[C3H8]/d[C3H8] */
+    dqdci =  + k_f*sc[4];
+    J[1156] += -1 * dqdci;        /* dwdot[OH]/d[C3H8] */
+    J[1157] += 1 * dqdci;         /* dwdot[H2O]/d[C3H8] */
+    J[1183] += 1 * dqdci;         /* dwdot[C3H7]/d[C3H8] */
+    J[1184] += -1 * dqdci;        /* dwdot[C3H8]/d[C3H8] */
     /* d()/dT */
     J[1264] += -1 * dqdT;         /* dwdot[OH]/dT */
     J[1265] += 1 * dqdT;          /* dwdot[H2O]/dT */
@@ -28843,30 +29004,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[7] -= q; /* H2O2 */
     wdot[31] -= q; /* C3H7 */
     wdot[32] += q; /* C3H8 */
-    dqdc[6] =  - k_r*sc[32];
-    dqdc[7] =  + k_f*sc[31];
-    dqdc[31] =  + k_f*sc[7];
-    dqdc[32] =  - k_r*sc[6];
     /* d()/d[HO2] */
-    J[222] += 1 * dqdc[6];        /* dwdot[HO2]/d[HO2] */
-    J[223] += -1 * dqdc[6];       /* dwdot[H2O2]/d[HO2] */
-    J[247] += -1 * dqdc[6];       /* dwdot[C3H7]/d[HO2] */
-    J[248] += 1 * dqdc[6];        /* dwdot[C3H8]/d[HO2] */
+    dqdci =  - k_r*sc[32];
+    J[222] += 1 * dqdci;          /* dwdot[HO2]/d[HO2] */
+    J[223] += -1 * dqdci;         /* dwdot[H2O2]/d[HO2] */
+    J[247] += -1 * dqdci;         /* dwdot[C3H7]/d[HO2] */
+    J[248] += 1 * dqdci;          /* dwdot[C3H8]/d[HO2] */
     /* d()/d[H2O2] */
-    J[258] += 1 * dqdc[7];        /* dwdot[HO2]/d[H2O2] */
-    J[259] += -1 * dqdc[7];       /* dwdot[H2O2]/d[H2O2] */
-    J[283] += -1 * dqdc[7];       /* dwdot[C3H7]/d[H2O2] */
-    J[284] += 1 * dqdc[7];        /* dwdot[C3H8]/d[H2O2] */
+    dqdci =  + k_f*sc[31];
+    J[258] += 1 * dqdci;          /* dwdot[HO2]/d[H2O2] */
+    J[259] += -1 * dqdci;         /* dwdot[H2O2]/d[H2O2] */
+    J[283] += -1 * dqdci;         /* dwdot[C3H7]/d[H2O2] */
+    J[284] += 1 * dqdci;          /* dwdot[C3H8]/d[H2O2] */
     /* d()/d[C3H7] */
-    J[1122] += 1 * dqdc[31];      /* dwdot[HO2]/d[C3H7] */
-    J[1123] += -1 * dqdc[31];     /* dwdot[H2O2]/d[C3H7] */
-    J[1147] += -1 * dqdc[31];     /* dwdot[C3H7]/d[C3H7] */
-    J[1148] += 1 * dqdc[31];      /* dwdot[C3H8]/d[C3H7] */
+    dqdci =  + k_f*sc[7];
+    J[1122] += 1 * dqdci;         /* dwdot[HO2]/d[C3H7] */
+    J[1123] += -1 * dqdci;        /* dwdot[H2O2]/d[C3H7] */
+    J[1147] += -1 * dqdci;        /* dwdot[C3H7]/d[C3H7] */
+    J[1148] += 1 * dqdci;         /* dwdot[C3H8]/d[C3H7] */
     /* d()/d[C3H8] */
-    J[1158] += 1 * dqdc[32];      /* dwdot[HO2]/d[C3H8] */
-    J[1159] += -1 * dqdc[32];     /* dwdot[H2O2]/d[C3H8] */
-    J[1183] += -1 * dqdc[32];     /* dwdot[C3H7]/d[C3H8] */
-    J[1184] += 1 * dqdc[32];      /* dwdot[C3H8]/d[C3H8] */
+    dqdci =  - k_r*sc[6];
+    J[1158] += 1 * dqdci;         /* dwdot[HO2]/d[C3H8] */
+    J[1159] += -1 * dqdci;        /* dwdot[H2O2]/d[C3H8] */
+    J[1183] += -1 * dqdci;        /* dwdot[C3H7]/d[C3H8] */
+    J[1184] += 1 * dqdci;         /* dwdot[C3H8]/d[C3H8] */
     /* d()/dT */
     J[1266] += 1 * dqdT;          /* dwdot[HO2]/dT */
     J[1267] += -1 * dqdT;         /* dwdot[H2O2]/dT */
@@ -28893,30 +29054,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[13] += q; /* CH4 */
     wdot[31] += q; /* C3H7 */
     wdot[32] -= q; /* C3H8 */
-    dqdc[12] =  + k_f*sc[32];
-    dqdc[13] =  - k_r*sc[31];
-    dqdc[31] =  - k_r*sc[13];
-    dqdc[32] =  + k_f*sc[12];
     /* d()/d[CH3] */
-    J[444] += -1 * dqdc[12];      /* dwdot[CH3]/d[CH3] */
-    J[445] += 1 * dqdc[12];       /* dwdot[CH4]/d[CH3] */
-    J[463] += 1 * dqdc[12];       /* dwdot[C3H7]/d[CH3] */
-    J[464] += -1 * dqdc[12];      /* dwdot[C3H8]/d[CH3] */
+    dqdci =  + k_f*sc[32];
+    J[444] += -1 * dqdci;         /* dwdot[CH3]/d[CH3] */
+    J[445] += 1 * dqdci;          /* dwdot[CH4]/d[CH3] */
+    J[463] += 1 * dqdci;          /* dwdot[C3H7]/d[CH3] */
+    J[464] += -1 * dqdci;         /* dwdot[C3H8]/d[CH3] */
     /* d()/d[CH4] */
-    J[480] += -1 * dqdc[13];      /* dwdot[CH3]/d[CH4] */
-    J[481] += 1 * dqdc[13];       /* dwdot[CH4]/d[CH4] */
-    J[499] += 1 * dqdc[13];       /* dwdot[C3H7]/d[CH4] */
-    J[500] += -1 * dqdc[13];      /* dwdot[C3H8]/d[CH4] */
+    dqdci =  - k_r*sc[31];
+    J[480] += -1 * dqdci;         /* dwdot[CH3]/d[CH4] */
+    J[481] += 1 * dqdci;          /* dwdot[CH4]/d[CH4] */
+    J[499] += 1 * dqdci;          /* dwdot[C3H7]/d[CH4] */
+    J[500] += -1 * dqdci;         /* dwdot[C3H8]/d[CH4] */
     /* d()/d[C3H7] */
-    J[1128] += -1 * dqdc[31];     /* dwdot[CH3]/d[C3H7] */
-    J[1129] += 1 * dqdc[31];      /* dwdot[CH4]/d[C3H7] */
-    J[1147] += 1 * dqdc[31];      /* dwdot[C3H7]/d[C3H7] */
-    J[1148] += -1 * dqdc[31];     /* dwdot[C3H8]/d[C3H7] */
+    dqdci =  - k_r*sc[13];
+    J[1128] += -1 * dqdci;        /* dwdot[CH3]/d[C3H7] */
+    J[1129] += 1 * dqdci;         /* dwdot[CH4]/d[C3H7] */
+    J[1147] += 1 * dqdci;         /* dwdot[C3H7]/d[C3H7] */
+    J[1148] += -1 * dqdci;        /* dwdot[C3H8]/d[C3H7] */
     /* d()/d[C3H8] */
-    J[1164] += -1 * dqdc[32];     /* dwdot[CH3]/d[C3H8] */
-    J[1165] += 1 * dqdc[32];      /* dwdot[CH4]/d[C3H8] */
-    J[1183] += 1 * dqdc[32];      /* dwdot[C3H7]/d[C3H8] */
-    J[1184] += -1 * dqdc[32];     /* dwdot[C3H8]/d[C3H8] */
+    dqdci =  + k_f*sc[12];
+    J[1164] += -1 * dqdci;        /* dwdot[CH3]/d[C3H8] */
+    J[1165] += 1 * dqdci;         /* dwdot[CH4]/d[C3H8] */
+    J[1183] += 1 * dqdci;         /* dwdot[C3H7]/d[C3H8] */
+    J[1184] += -1 * dqdci;        /* dwdot[C3H8]/d[C3H8] */
     /* d()/dT */
     J[1272] += -1 * dqdT;         /* dwdot[CH3]/dT */
     J[1273] += 1 * dqdT;          /* dwdot[CH4]/dT */
@@ -28953,9 +29114,9 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     troe = 1.0 / (1.0 + troePr*troePr);
     F = pow(10.0, logFcent * troe);
     dlogFcentdT = log10e/Fcent*(Fcent1*-0.00361011 + Fcent2*-0.000114312 + Fcent3*7891*invT2);
-    dlogFdcn_fac = logFcent * troe*troe * troePr * troePr_den;
+    dlogFdcn_fac = 2.0 * logFcent * troe*troe * troePr * troePr_den;
     dlogFdc = -troe_n * dlogFdcn_fac * troePr_den;
-    dlogFdn = 2. * dlogFdcn_fac * troePr;
+    dlogFdn = dlogFdcn_fac * troePr;
     dlogFdlogPr = dlogFdc;
     dlogFdT = dlogFcentdT*(troe - 0.67*dlogFdc - 1.27*dlogFdn) + dlogFdlogPr * dlogPrdT;
     /* reverse */
@@ -28979,41 +29140,51 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     k_r *= Corr;
     dcdc_fac = q/alpha*(1.0/(Pr+1.0) + dlogFdlogPr);
     if (consP) {
-        dqdc[0] =  1*dcdc_fac;
-        dqdc[1] =  0.0;
-        dqdc[2] =  0.0;
-        dqdc[3] =  0.0;
-        dqdc[4] =  0.0;
-        dqdc[5] =  5*dcdc_fac;
-        dqdc[6] =  0.0;
-        dqdc[7] =  0.0;
-        dqdc[8] =  0.0;
-        dqdc[9] =  0.0;
-        dqdc[10] =  0.0;
-        dqdc[11] =  0.0;
-        dqdc[12] =  0.0 + k_f*sc[24];
-        dqdc[13] =  1*dcdc_fac;
-        dqdc[14] =  0.5*dcdc_fac;
-        dqdc[15] =  1*dcdc_fac;
-        dqdc[16] =  0.0;
-        dqdc[17] =  0.0;
-        dqdc[18] =  0.0;
-        dqdc[19] =  0.0;
-        dqdc[20] =  0.0;
-        dqdc[21] =  0.0;
-        dqdc[22] =  0.0;
-        dqdc[23] =  0.0;
-        dqdc[24] =  0.0 + k_f*sc[12];
-        dqdc[25] =  0.0;
-        dqdc[26] =  2*dcdc_fac;
-        dqdc[27] =  0.0;
-        dqdc[28] =  0.0;
-        dqdc[29] =  0.0;
-        dqdc[30] =  0.0;
-        dqdc[31] =  0.0 - k_r;
-        dqdc[32] =  0.0;
-        dqdc[33] =  0.0;
-        dqdc[34] =  0.0;
+        /* d()/d[H2] */
+        dqdci =  1*dcdc_fac;
+        J[12] += -1 * dqdci;          /* dwdot[CH3]/d[H2] */
+        J[24] += -1 * dqdci;          /* dwdot[C2H4]/d[H2] */
+        J[31] += 1 * dqdci;           /* dwdot[C3H7]/d[H2] */
+        /* d()/d[H2O] */
+        dqdci =  5*dcdc_fac;
+        J[192] += -1 * dqdci;         /* dwdot[CH3]/d[H2O] */
+        J[204] += -1 * dqdci;         /* dwdot[C2H4]/d[H2O] */
+        J[211] += 1 * dqdci;          /* dwdot[C3H7]/d[H2O] */
+        /* d()/d[CH3] */
+        dqdci =  + k_f*sc[24];
+        J[444] += -1 * dqdci;         /* dwdot[CH3]/d[CH3] */
+        J[456] += -1 * dqdci;         /* dwdot[C2H4]/d[CH3] */
+        J[463] += 1 * dqdci;          /* dwdot[C3H7]/d[CH3] */
+        /* d()/d[CH4] */
+        dqdci =  1*dcdc_fac;
+        J[480] += -1 * dqdci;         /* dwdot[CH3]/d[CH4] */
+        J[492] += -1 * dqdci;         /* dwdot[C2H4]/d[CH4] */
+        J[499] += 1 * dqdci;          /* dwdot[C3H7]/d[CH4] */
+        /* d()/d[CO] */
+        dqdci =  0.5*dcdc_fac;
+        J[516] += -1 * dqdci;         /* dwdot[CH3]/d[CO] */
+        J[528] += -1 * dqdci;         /* dwdot[C2H4]/d[CO] */
+        J[535] += 1 * dqdci;          /* dwdot[C3H7]/d[CO] */
+        /* d()/d[CO2] */
+        dqdci =  1*dcdc_fac;
+        J[552] += -1 * dqdci;         /* dwdot[CH3]/d[CO2] */
+        J[564] += -1 * dqdci;         /* dwdot[C2H4]/d[CO2] */
+        J[571] += 1 * dqdci;          /* dwdot[C3H7]/d[CO2] */
+        /* d()/d[C2H4] */
+        dqdci =  + k_f*sc[12];
+        J[876] += -1 * dqdci;         /* dwdot[CH3]/d[C2H4] */
+        J[888] += -1 * dqdci;         /* dwdot[C2H4]/d[C2H4] */
+        J[895] += 1 * dqdci;          /* dwdot[C3H7]/d[C2H4] */
+        /* d()/d[C2H6] */
+        dqdci =  2*dcdc_fac;
+        J[948] += -1 * dqdci;         /* dwdot[CH3]/d[C2H6] */
+        J[960] += -1 * dqdci;         /* dwdot[C2H4]/d[C2H6] */
+        J[967] += 1 * dqdci;          /* dwdot[C3H7]/d[C2H6] */
+        /* d()/d[C3H7] */
+        dqdci =  - k_r;
+        J[1128] += -1 * dqdci;        /* dwdot[CH3]/d[C3H7] */
+        J[1140] += -1 * dqdci;        /* dwdot[C2H4]/d[C3H7] */
+        J[1147] += 1 * dqdci;         /* dwdot[C3H7]/d[C3H7] */
     }
     else {
         dqdc[0] =  2*dcdc_fac;
@@ -29051,11 +29222,11 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
         dqdc[32] =  1*dcdc_fac;
         dqdc[33] =  1*dcdc_fac;
         dqdc[34] =  1*dcdc_fac;
-    }
-    for (int k=0; k<35; k++) {
-        J[36*k+12] += -1 * dqdc[k];
-        J[36*k+24] += -1 * dqdc[k];
-        J[36*k+31] += 1 * dqdc[k];
+        for (int k=0; k<35; k++) {
+            J[36*k+12] += -1 * dqdc[k];
+            J[36*k+24] += -1 * dqdc[k];
+            J[36*k+31] += 1 * dqdc[k];
+        }
     }
     J[1272] += -1 * dqdT; /* dwdot[CH3]/dT */
     J[1284] += -1 * dqdT; /* dwdot[C2H4]/dT */
@@ -29081,30 +29252,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[17] += q; /* CH2O */
     wdot[25] += q; /* C2H5 */
     wdot[31] -= q; /* C3H7 */
-    dqdc[2] =  + k_f*sc[31];
-    dqdc[17] =  - k_r*sc[25];
-    dqdc[25] =  - k_r*sc[17];
-    dqdc[31] =  + k_f*sc[2];
     /* d()/d[O] */
-    J[74] += -1 * dqdc[2];        /* dwdot[O]/d[O] */
-    J[89] += 1 * dqdc[2];         /* dwdot[CH2O]/d[O] */
-    J[97] += 1 * dqdc[2];         /* dwdot[C2H5]/d[O] */
-    J[103] += -1 * dqdc[2];       /* dwdot[C3H7]/d[O] */
+    dqdci =  + k_f*sc[31];
+    J[74] += -1 * dqdci;          /* dwdot[O]/d[O] */
+    J[89] += 1 * dqdci;           /* dwdot[CH2O]/d[O] */
+    J[97] += 1 * dqdci;           /* dwdot[C2H5]/d[O] */
+    J[103] += -1 * dqdci;         /* dwdot[C3H7]/d[O] */
     /* d()/d[CH2O] */
-    J[614] += -1 * dqdc[17];      /* dwdot[O]/d[CH2O] */
-    J[629] += 1 * dqdc[17];       /* dwdot[CH2O]/d[CH2O] */
-    J[637] += 1 * dqdc[17];       /* dwdot[C2H5]/d[CH2O] */
-    J[643] += -1 * dqdc[17];      /* dwdot[C3H7]/d[CH2O] */
+    dqdci =  - k_r*sc[25];
+    J[614] += -1 * dqdci;         /* dwdot[O]/d[CH2O] */
+    J[629] += 1 * dqdci;          /* dwdot[CH2O]/d[CH2O] */
+    J[637] += 1 * dqdci;          /* dwdot[C2H5]/d[CH2O] */
+    J[643] += -1 * dqdci;         /* dwdot[C3H7]/d[CH2O] */
     /* d()/d[C2H5] */
-    J[902] += -1 * dqdc[25];      /* dwdot[O]/d[C2H5] */
-    J[917] += 1 * dqdc[25];       /* dwdot[CH2O]/d[C2H5] */
-    J[925] += 1 * dqdc[25];       /* dwdot[C2H5]/d[C2H5] */
-    J[931] += -1 * dqdc[25];      /* dwdot[C3H7]/d[C2H5] */
+    dqdci =  - k_r*sc[17];
+    J[902] += -1 * dqdci;         /* dwdot[O]/d[C2H5] */
+    J[917] += 1 * dqdci;          /* dwdot[CH2O]/d[C2H5] */
+    J[925] += 1 * dqdci;          /* dwdot[C2H5]/d[C2H5] */
+    J[931] += -1 * dqdci;         /* dwdot[C3H7]/d[C2H5] */
     /* d()/d[C3H7] */
-    J[1118] += -1 * dqdc[31];     /* dwdot[O]/d[C3H7] */
-    J[1133] += 1 * dqdc[31];      /* dwdot[CH2O]/d[C3H7] */
-    J[1141] += 1 * dqdc[31];      /* dwdot[C2H5]/d[C3H7] */
-    J[1147] += -1 * dqdc[31];     /* dwdot[C3H7]/d[C3H7] */
+    dqdci =  + k_f*sc[2];
+    J[1118] += -1 * dqdci;        /* dwdot[O]/d[C3H7] */
+    J[1133] += 1 * dqdci;         /* dwdot[CH2O]/d[C3H7] */
+    J[1141] += 1 * dqdci;         /* dwdot[C2H5]/d[C3H7] */
+    J[1147] += -1 * dqdci;        /* dwdot[C3H7]/d[C3H7] */
     /* d()/dT */
     J[1262] += -1 * dqdT;         /* dwdot[O]/dT */
     J[1277] += 1 * dqdT;          /* dwdot[CH2O]/dT */
@@ -29141,9 +29312,9 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     troe = 1.0 / (1.0 + troePr*troePr);
     F = pow(10.0, logFcent * troe);
     dlogFcentdT = log10e/Fcent*(Fcent1*-0.00271003 + Fcent2*-0.000304414 + Fcent3*6667*invT2);
-    dlogFdcn_fac = logFcent * troe*troe * troePr * troePr_den;
+    dlogFdcn_fac = 2.0 * logFcent * troe*troe * troePr * troePr_den;
     dlogFdc = -troe_n * dlogFdcn_fac * troePr_den;
-    dlogFdn = 2. * dlogFdcn_fac * troePr;
+    dlogFdn = dlogFdcn_fac * troePr;
     dlogFdlogPr = dlogFdc;
     dlogFdT = dlogFcentdT*(troe - 0.67*dlogFdc - 1.27*dlogFdn) + dlogFdlogPr * dlogPrdT;
     /* reverse */
@@ -29167,41 +29338,51 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     k_r *= Corr;
     dcdc_fac = q/alpha*(1.0/(Pr+1.0) + dlogFdlogPr);
     if (consP) {
-        dqdc[0] =  1*dcdc_fac;
-        dqdc[1] =  0.0 + k_f*sc[31];
-        dqdc[2] =  0.0;
-        dqdc[3] =  0.0;
-        dqdc[4] =  0.0;
-        dqdc[5] =  5*dcdc_fac;
-        dqdc[6] =  0.0;
-        dqdc[7] =  0.0;
-        dqdc[8] =  0.0;
-        dqdc[9] =  0.0;
-        dqdc[10] =  0.0;
-        dqdc[11] =  0.0;
-        dqdc[12] =  0.0;
-        dqdc[13] =  1*dcdc_fac;
-        dqdc[14] =  0.5*dcdc_fac;
-        dqdc[15] =  1*dcdc_fac;
-        dqdc[16] =  0.0;
-        dqdc[17] =  0.0;
-        dqdc[18] =  0.0;
-        dqdc[19] =  0.0;
-        dqdc[20] =  0.0;
-        dqdc[21] =  0.0;
-        dqdc[22] =  0.0;
-        dqdc[23] =  0.0;
-        dqdc[24] =  0.0;
-        dqdc[25] =  0.0;
-        dqdc[26] =  2*dcdc_fac;
-        dqdc[27] =  0.0;
-        dqdc[28] =  0.0;
-        dqdc[29] =  0.0;
-        dqdc[30] =  0.0;
-        dqdc[31] =  0.0 + k_f*sc[1];
-        dqdc[32] =  0.0 - k_r;
-        dqdc[33] =  0.0;
-        dqdc[34] =  0.0;
+        /* d()/d[H2] */
+        dqdci =  1*dcdc_fac;
+        J[1] += -1 * dqdci;           /* dwdot[H]/d[H2] */
+        J[31] += -1 * dqdci;          /* dwdot[C3H7]/d[H2] */
+        J[32] += 1 * dqdci;           /* dwdot[C3H8]/d[H2] */
+        /* d()/d[H] */
+        dqdci =  + k_f*sc[31];
+        J[37] += -1 * dqdci;          /* dwdot[H]/d[H] */
+        J[67] += -1 * dqdci;          /* dwdot[C3H7]/d[H] */
+        J[68] += 1 * dqdci;           /* dwdot[C3H8]/d[H] */
+        /* d()/d[H2O] */
+        dqdci =  5*dcdc_fac;
+        J[181] += -1 * dqdci;         /* dwdot[H]/d[H2O] */
+        J[211] += -1 * dqdci;         /* dwdot[C3H7]/d[H2O] */
+        J[212] += 1 * dqdci;          /* dwdot[C3H8]/d[H2O] */
+        /* d()/d[CH4] */
+        dqdci =  1*dcdc_fac;
+        J[469] += -1 * dqdci;         /* dwdot[H]/d[CH4] */
+        J[499] += -1 * dqdci;         /* dwdot[C3H7]/d[CH4] */
+        J[500] += 1 * dqdci;          /* dwdot[C3H8]/d[CH4] */
+        /* d()/d[CO] */
+        dqdci =  0.5*dcdc_fac;
+        J[505] += -1 * dqdci;         /* dwdot[H]/d[CO] */
+        J[535] += -1 * dqdci;         /* dwdot[C3H7]/d[CO] */
+        J[536] += 1 * dqdci;          /* dwdot[C3H8]/d[CO] */
+        /* d()/d[CO2] */
+        dqdci =  1*dcdc_fac;
+        J[541] += -1 * dqdci;         /* dwdot[H]/d[CO2] */
+        J[571] += -1 * dqdci;         /* dwdot[C3H7]/d[CO2] */
+        J[572] += 1 * dqdci;          /* dwdot[C3H8]/d[CO2] */
+        /* d()/d[C2H6] */
+        dqdci =  2*dcdc_fac;
+        J[937] += -1 * dqdci;         /* dwdot[H]/d[C2H6] */
+        J[967] += -1 * dqdci;         /* dwdot[C3H7]/d[C2H6] */
+        J[968] += 1 * dqdci;          /* dwdot[C3H8]/d[C2H6] */
+        /* d()/d[C3H7] */
+        dqdci =  + k_f*sc[1];
+        J[1117] += -1 * dqdci;        /* dwdot[H]/d[C3H7] */
+        J[1147] += -1 * dqdci;        /* dwdot[C3H7]/d[C3H7] */
+        J[1148] += 1 * dqdci;         /* dwdot[C3H8]/d[C3H7] */
+        /* d()/d[C3H8] */
+        dqdci =  - k_r;
+        J[1153] += -1 * dqdci;        /* dwdot[H]/d[C3H8] */
+        J[1183] += -1 * dqdci;        /* dwdot[C3H7]/d[C3H8] */
+        J[1184] += 1 * dqdci;         /* dwdot[C3H8]/d[C3H8] */
     }
     else {
         dqdc[0] =  2*dcdc_fac;
@@ -29239,11 +29420,11 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
         dqdc[32] =  1*dcdc_fac - k_r;
         dqdc[33] =  1*dcdc_fac;
         dqdc[34] =  1*dcdc_fac;
-    }
-    for (int k=0; k<35; k++) {
-        J[36*k+1] += -1 * dqdc[k];
-        J[36*k+31] += -1 * dqdc[k];
-        J[36*k+32] += 1 * dqdc[k];
+        for (int k=0; k<35; k++) {
+            J[36*k+1] += -1 * dqdc[k];
+            J[36*k+31] += -1 * dqdc[k];
+            J[36*k+32] += 1 * dqdc[k];
+        }
     }
     J[1261] += -1 * dqdT; /* dwdot[H]/dT */
     J[1291] += -1 * dqdT; /* dwdot[C3H7]/dT */
@@ -29269,30 +29450,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[12] += q; /* CH3 */
     wdot[25] += q; /* C2H5 */
     wdot[31] -= q; /* C3H7 */
-    dqdc[1] =  + k_f*sc[31];
-    dqdc[12] =  - k_r*sc[25];
-    dqdc[25] =  - k_r*sc[12];
-    dqdc[31] =  + k_f*sc[1];
     /* d()/d[H] */
-    J[37] += -1 * dqdc[1];        /* dwdot[H]/d[H] */
-    J[48] += 1 * dqdc[1];         /* dwdot[CH3]/d[H] */
-    J[61] += 1 * dqdc[1];         /* dwdot[C2H5]/d[H] */
-    J[67] += -1 * dqdc[1];        /* dwdot[C3H7]/d[H] */
+    dqdci =  + k_f*sc[31];
+    J[37] += -1 * dqdci;          /* dwdot[H]/d[H] */
+    J[48] += 1 * dqdci;           /* dwdot[CH3]/d[H] */
+    J[61] += 1 * dqdci;           /* dwdot[C2H5]/d[H] */
+    J[67] += -1 * dqdci;          /* dwdot[C3H7]/d[H] */
     /* d()/d[CH3] */
-    J[433] += -1 * dqdc[12];      /* dwdot[H]/d[CH3] */
-    J[444] += 1 * dqdc[12];       /* dwdot[CH3]/d[CH3] */
-    J[457] += 1 * dqdc[12];       /* dwdot[C2H5]/d[CH3] */
-    J[463] += -1 * dqdc[12];      /* dwdot[C3H7]/d[CH3] */
+    dqdci =  - k_r*sc[25];
+    J[433] += -1 * dqdci;         /* dwdot[H]/d[CH3] */
+    J[444] += 1 * dqdci;          /* dwdot[CH3]/d[CH3] */
+    J[457] += 1 * dqdci;          /* dwdot[C2H5]/d[CH3] */
+    J[463] += -1 * dqdci;         /* dwdot[C3H7]/d[CH3] */
     /* d()/d[C2H5] */
-    J[901] += -1 * dqdc[25];      /* dwdot[H]/d[C2H5] */
-    J[912] += 1 * dqdc[25];       /* dwdot[CH3]/d[C2H5] */
-    J[925] += 1 * dqdc[25];       /* dwdot[C2H5]/d[C2H5] */
-    J[931] += -1 * dqdc[25];      /* dwdot[C3H7]/d[C2H5] */
+    dqdci =  - k_r*sc[12];
+    J[901] += -1 * dqdci;         /* dwdot[H]/d[C2H5] */
+    J[912] += 1 * dqdci;          /* dwdot[CH3]/d[C2H5] */
+    J[925] += 1 * dqdci;          /* dwdot[C2H5]/d[C2H5] */
+    J[931] += -1 * dqdci;         /* dwdot[C3H7]/d[C2H5] */
     /* d()/d[C3H7] */
-    J[1117] += -1 * dqdc[31];     /* dwdot[H]/d[C3H7] */
-    J[1128] += 1 * dqdc[31];      /* dwdot[CH3]/d[C3H7] */
-    J[1141] += 1 * dqdc[31];      /* dwdot[C2H5]/d[C3H7] */
-    J[1147] += -1 * dqdc[31];     /* dwdot[C3H7]/d[C3H7] */
+    dqdci =  + k_f*sc[1];
+    J[1117] += -1 * dqdci;        /* dwdot[H]/d[C3H7] */
+    J[1128] += 1 * dqdci;         /* dwdot[CH3]/d[C3H7] */
+    J[1141] += 1 * dqdci;         /* dwdot[C2H5]/d[C3H7] */
+    J[1147] += -1 * dqdci;        /* dwdot[C3H7]/d[C3H7] */
     /* d()/dT */
     J[1261] += -1 * dqdT;         /* dwdot[H]/dT */
     J[1272] += 1 * dqdT;          /* dwdot[CH3]/dT */
@@ -29319,30 +29500,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[18] += q; /* CH2OH */
     wdot[25] += q; /* C2H5 */
     wdot[31] -= q; /* C3H7 */
-    dqdc[4] =  + k_f*sc[31];
-    dqdc[18] =  - k_r*sc[25];
-    dqdc[25] =  - k_r*sc[18];
-    dqdc[31] =  + k_f*sc[4];
     /* d()/d[OH] */
-    J[148] += -1 * dqdc[4];       /* dwdot[OH]/d[OH] */
-    J[162] += 1 * dqdc[4];        /* dwdot[CH2OH]/d[OH] */
-    J[169] += 1 * dqdc[4];        /* dwdot[C2H5]/d[OH] */
-    J[175] += -1 * dqdc[4];       /* dwdot[C3H7]/d[OH] */
+    dqdci =  + k_f*sc[31];
+    J[148] += -1 * dqdci;         /* dwdot[OH]/d[OH] */
+    J[162] += 1 * dqdci;          /* dwdot[CH2OH]/d[OH] */
+    J[169] += 1 * dqdci;          /* dwdot[C2H5]/d[OH] */
+    J[175] += -1 * dqdci;         /* dwdot[C3H7]/d[OH] */
     /* d()/d[CH2OH] */
-    J[652] += -1 * dqdc[18];      /* dwdot[OH]/d[CH2OH] */
-    J[666] += 1 * dqdc[18];       /* dwdot[CH2OH]/d[CH2OH] */
-    J[673] += 1 * dqdc[18];       /* dwdot[C2H5]/d[CH2OH] */
-    J[679] += -1 * dqdc[18];      /* dwdot[C3H7]/d[CH2OH] */
+    dqdci =  - k_r*sc[25];
+    J[652] += -1 * dqdci;         /* dwdot[OH]/d[CH2OH] */
+    J[666] += 1 * dqdci;          /* dwdot[CH2OH]/d[CH2OH] */
+    J[673] += 1 * dqdci;          /* dwdot[C2H5]/d[CH2OH] */
+    J[679] += -1 * dqdci;         /* dwdot[C3H7]/d[CH2OH] */
     /* d()/d[C2H5] */
-    J[904] += -1 * dqdc[25];      /* dwdot[OH]/d[C2H5] */
-    J[918] += 1 * dqdc[25];       /* dwdot[CH2OH]/d[C2H5] */
-    J[925] += 1 * dqdc[25];       /* dwdot[C2H5]/d[C2H5] */
-    J[931] += -1 * dqdc[25];      /* dwdot[C3H7]/d[C2H5] */
+    dqdci =  - k_r*sc[18];
+    J[904] += -1 * dqdci;         /* dwdot[OH]/d[C2H5] */
+    J[918] += 1 * dqdci;          /* dwdot[CH2OH]/d[C2H5] */
+    J[925] += 1 * dqdci;          /* dwdot[C2H5]/d[C2H5] */
+    J[931] += -1 * dqdci;         /* dwdot[C3H7]/d[C2H5] */
     /* d()/d[C3H7] */
-    J[1120] += -1 * dqdc[31];     /* dwdot[OH]/d[C3H7] */
-    J[1134] += 1 * dqdc[31];      /* dwdot[CH2OH]/d[C3H7] */
-    J[1141] += 1 * dqdc[31];      /* dwdot[C2H5]/d[C3H7] */
-    J[1147] += -1 * dqdc[31];     /* dwdot[C3H7]/d[C3H7] */
+    dqdci =  + k_f*sc[4];
+    J[1120] += -1 * dqdci;        /* dwdot[OH]/d[C3H7] */
+    J[1134] += 1 * dqdci;         /* dwdot[CH2OH]/d[C3H7] */
+    J[1141] += 1 * dqdci;         /* dwdot[C2H5]/d[C3H7] */
+    J[1147] += -1 * dqdci;        /* dwdot[C3H7]/d[C3H7] */
     /* d()/dT */
     J[1264] += -1 * dqdT;         /* dwdot[OH]/dT */
     J[1278] += 1 * dqdT;          /* dwdot[CH2OH]/dT */
@@ -29369,30 +29550,30 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[6] -= q; /* HO2 */
     wdot[31] -= q; /* C3H7 */
     wdot[32] += q; /* C3H8 */
-    dqdc[3] =  - k_r*sc[32];
-    dqdc[6] =  + k_f*sc[31];
-    dqdc[31] =  + k_f*sc[6];
-    dqdc[32] =  - k_r*sc[3];
     /* d()/d[O2] */
-    J[111] += 1 * dqdc[3];        /* dwdot[O2]/d[O2] */
-    J[114] += -1 * dqdc[3];       /* dwdot[HO2]/d[O2] */
-    J[139] += -1 * dqdc[3];       /* dwdot[C3H7]/d[O2] */
-    J[140] += 1 * dqdc[3];        /* dwdot[C3H8]/d[O2] */
+    dqdci =  - k_r*sc[32];
+    J[111] += 1 * dqdci;          /* dwdot[O2]/d[O2] */
+    J[114] += -1 * dqdci;         /* dwdot[HO2]/d[O2] */
+    J[139] += -1 * dqdci;         /* dwdot[C3H7]/d[O2] */
+    J[140] += 1 * dqdci;          /* dwdot[C3H8]/d[O2] */
     /* d()/d[HO2] */
-    J[219] += 1 * dqdc[6];        /* dwdot[O2]/d[HO2] */
-    J[222] += -1 * dqdc[6];       /* dwdot[HO2]/d[HO2] */
-    J[247] += -1 * dqdc[6];       /* dwdot[C3H7]/d[HO2] */
-    J[248] += 1 * dqdc[6];        /* dwdot[C3H8]/d[HO2] */
+    dqdci =  + k_f*sc[31];
+    J[219] += 1 * dqdci;          /* dwdot[O2]/d[HO2] */
+    J[222] += -1 * dqdci;         /* dwdot[HO2]/d[HO2] */
+    J[247] += -1 * dqdci;         /* dwdot[C3H7]/d[HO2] */
+    J[248] += 1 * dqdci;          /* dwdot[C3H8]/d[HO2] */
     /* d()/d[C3H7] */
-    J[1119] += 1 * dqdc[31];      /* dwdot[O2]/d[C3H7] */
-    J[1122] += -1 * dqdc[31];     /* dwdot[HO2]/d[C3H7] */
-    J[1147] += -1 * dqdc[31];     /* dwdot[C3H7]/d[C3H7] */
-    J[1148] += 1 * dqdc[31];      /* dwdot[C3H8]/d[C3H7] */
+    dqdci =  + k_f*sc[6];
+    J[1119] += 1 * dqdci;         /* dwdot[O2]/d[C3H7] */
+    J[1122] += -1 * dqdci;        /* dwdot[HO2]/d[C3H7] */
+    J[1147] += -1 * dqdci;        /* dwdot[C3H7]/d[C3H7] */
+    J[1148] += 1 * dqdci;         /* dwdot[C3H8]/d[C3H7] */
     /* d()/d[C3H8] */
-    J[1155] += 1 * dqdc[32];      /* dwdot[O2]/d[C3H8] */
-    J[1158] += -1 * dqdc[32];     /* dwdot[HO2]/d[C3H8] */
-    J[1183] += -1 * dqdc[32];     /* dwdot[C3H7]/d[C3H8] */
-    J[1184] += 1 * dqdc[32];      /* dwdot[C3H8]/d[C3H8] */
+    dqdci =  - k_r*sc[3];
+    J[1155] += 1 * dqdci;         /* dwdot[O2]/d[C3H8] */
+    J[1158] += -1 * dqdci;        /* dwdot[HO2]/d[C3H8] */
+    J[1183] += -1 * dqdci;        /* dwdot[C3H7]/d[C3H8] */
+    J[1184] += 1 * dqdci;         /* dwdot[C3H8]/d[C3H8] */
     /* d()/dT */
     J[1263] += 1 * dqdT;          /* dwdot[O2]/dT */
     J[1266] += -1 * dqdT;         /* dwdot[HO2]/dT */
@@ -29414,20 +29595,20 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[17] += q; /* CH2O */
     wdot[25] += q; /* C2H5 */
     wdot[31] -= q; /* C3H7 */
-    dqdc[6] =  + k_f*sc[31];
-    dqdc[31] =  + k_f*sc[6];
     /* d()/d[HO2] */
-    J[220] += 1 * dqdc[6];        /* dwdot[OH]/d[HO2] */
-    J[222] += -1 * dqdc[6];       /* dwdot[HO2]/d[HO2] */
-    J[233] += 1 * dqdc[6];        /* dwdot[CH2O]/d[HO2] */
-    J[241] += 1 * dqdc[6];        /* dwdot[C2H5]/d[HO2] */
-    J[247] += -1 * dqdc[6];       /* dwdot[C3H7]/d[HO2] */
+    dqdci =  + k_f*sc[31];
+    J[220] += 1 * dqdci;          /* dwdot[OH]/d[HO2] */
+    J[222] += -1 * dqdci;         /* dwdot[HO2]/d[HO2] */
+    J[233] += 1 * dqdci;          /* dwdot[CH2O]/d[HO2] */
+    J[241] += 1 * dqdci;          /* dwdot[C2H5]/d[HO2] */
+    J[247] += -1 * dqdci;         /* dwdot[C3H7]/d[HO2] */
     /* d()/d[C3H7] */
-    J[1120] += 1 * dqdc[31];      /* dwdot[OH]/d[C3H7] */
-    J[1122] += -1 * dqdc[31];     /* dwdot[HO2]/d[C3H7] */
-    J[1133] += 1 * dqdc[31];      /* dwdot[CH2O]/d[C3H7] */
-    J[1141] += 1 * dqdc[31];      /* dwdot[C2H5]/d[C3H7] */
-    J[1147] += -1 * dqdc[31];     /* dwdot[C3H7]/d[C3H7] */
+    dqdci =  + k_f*sc[6];
+    J[1120] += 1 * dqdci;         /* dwdot[OH]/d[C3H7] */
+    J[1122] += -1 * dqdci;        /* dwdot[HO2]/d[C3H7] */
+    J[1133] += 1 * dqdci;         /* dwdot[CH2O]/d[C3H7] */
+    J[1141] += 1 * dqdci;         /* dwdot[C2H5]/d[C3H7] */
+    J[1147] += -1 * dqdci;        /* dwdot[C3H7]/d[C3H7] */
     /* d()/dT */
     J[1264] += 1 * dqdT;          /* dwdot[OH]/dT */
     J[1266] += -1 * dqdT;         /* dwdot[HO2]/dT */
@@ -29454,21 +29635,21 @@ void aJacobian(double * restrict J, double * restrict sc, double T, int consP)
     wdot[12] -= q; /* CH3 */
     wdot[25] += 2 * q; /* C2H5 */
     wdot[31] -= q; /* C3H7 */
-    dqdc[12] =  + k_f*sc[31];
-    dqdc[25] =  - k_r*2*sc[25];
-    dqdc[31] =  + k_f*sc[12];
     /* d()/d[CH3] */
-    J[444] += -1 * dqdc[12];      /* dwdot[CH3]/d[CH3] */
-    J[457] += 2 * dqdc[12];       /* dwdot[C2H5]/d[CH3] */
-    J[463] += -1 * dqdc[12];      /* dwdot[C3H7]/d[CH3] */
+    dqdci =  + k_f*sc[31];
+    J[444] += -1 * dqdci;         /* dwdot[CH3]/d[CH3] */
+    J[457] += 2 * dqdci;          /* dwdot[C2H5]/d[CH3] */
+    J[463] += -1 * dqdci;         /* dwdot[C3H7]/d[CH3] */
     /* d()/d[C2H5] */
-    J[912] += -1 * dqdc[25];      /* dwdot[CH3]/d[C2H5] */
-    J[925] += 2 * dqdc[25];       /* dwdot[C2H5]/d[C2H5] */
-    J[931] += -1 * dqdc[25];      /* dwdot[C3H7]/d[C2H5] */
+    dqdci =  - k_r*2*sc[25];
+    J[912] += -1 * dqdci;         /* dwdot[CH3]/d[C2H5] */
+    J[925] += 2 * dqdci;          /* dwdot[C2H5]/d[C2H5] */
+    J[931] += -1 * dqdci;         /* dwdot[C3H7]/d[C2H5] */
     /* d()/d[C3H7] */
-    J[1128] += -1 * dqdc[31];     /* dwdot[CH3]/d[C3H7] */
-    J[1141] += 2 * dqdc[31];      /* dwdot[C2H5]/d[C3H7] */
-    J[1147] += -1 * dqdc[31];     /* dwdot[C3H7]/d[C3H7] */
+    dqdci =  + k_f*sc[12];
+    J[1128] += -1 * dqdci;        /* dwdot[CH3]/d[C3H7] */
+    J[1141] += 2 * dqdci;         /* dwdot[C2H5]/d[C3H7] */
+    J[1147] += -1 * dqdci;        /* dwdot[C3H7]/d[C3H7] */
     /* d()/dT */
     J[1272] += -1 * dqdT;         /* dwdot[CH3]/dT */
     J[1285] += 2 * dqdT;          /* dwdot[C2H5]/dT */

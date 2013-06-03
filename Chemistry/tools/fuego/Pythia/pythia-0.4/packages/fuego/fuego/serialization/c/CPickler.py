@@ -4358,7 +4358,7 @@ class CPickler(CMill):
 
         self._write('double phi_f, k_f, k_r, phi_r, Kc, q, q_nocor, Corr, alpha;') 
         self._write('double dlnkfdT, dlnk0dT, dlnKcdT, dkrdT, dqdT;')
-        self._write('double dcdc_fac, dqdc[%d];' % (nSpecies))
+        self._write('double dqdci, dcdc_fac, dqdc[%d];' % (nSpecies))
         self._write('double Pr, fPr, F, k_0, logPr;') 
         self._write('double logFcent, troe_c, troe_n, troePr_den, troePr, troe;')
         self._write('double Fcent1, Fcent2, Fcent3, Fcent;')
@@ -4514,6 +4514,9 @@ class CPickler(CMill):
         sorted_products = sorted(pro_dict.values()) 
 
         if not reaction.reversible:
+            if isPD or has_alpha:
+                print 'FIXME: inreversible reaction in _ajac_reaction may not work'
+                self._write('/* FIXME: inreversible reaction in _ajac_reaction may not work*/')
             for k in range(nSpecies):
                 if k in sorted_reactants and k in sorted_products:
                     print 'FIXME: inreversible reaction in _ajac_reaction may not work'
@@ -4597,9 +4600,9 @@ class CPickler(CMill):
                 dlogFcentdT += ');'
                 self._write(dlogFcentdT)
 
-                self._write("dlogFdcn_fac = logFcent * troe*troe * troePr * troePr_den;")
+                self._write("dlogFdcn_fac = 2.0 * logFcent * troe*troe * troePr * troePr_den;")
                 self._write('dlogFdc = -troe_n * dlogFdcn_fac * troePr_den;')
-                self._write('dlogFdn = 2. * dlogFdcn_fac * troePr;')
+                self._write('dlogFdn = dlogFdcn_fac * troePr;')
                 self._write('dlogFdlogPr = dlogFdc;')
                 self._write('dlogFdT = dlogFcentdT*(troe - 0.67*dlogFdc - 1.27*dlogFdn) + dlogFdlogPr * dlogPrdT;')
             else:
@@ -4697,6 +4700,8 @@ class CPickler(CMill):
             self._write('k_f *= alpha;')
             if reaction.reversible:
                 self._write('k_r *= alpha;')
+            else:
+                self._write('k_r = 0.0;')
 
         if isPD:
             self._write('dcdc_fac = q/alpha*(1.0/(Pr+1.0) + dlogFdlogPr);')
@@ -4727,16 +4732,22 @@ class CPickler(CMill):
             for k in range(nSpecies):
                 dqdc_s = ''
                 dcdc = self._Denhancement(mechanism,reaction,k,True)
-                if dcdc == 0.0:
-                    dqdc_s += ' 0.0'
-                else:
+                if dcdc != 0.0:
                     if isPD:
                         dqdc_s +=' %g*dcdc_fac'%dcdc
                     elif has_alpha:
                         dqdc_s +=' %g*q_nocor'%dcdc
                 dqdc_s = dqdc_simple(dqdc_s,k)
                 if dqdc_s:
-                    self._write('dqdc[%d] = %s;' % (k,dqdc_s))
+                    symb_k = self.species[k].symbol
+                    self._write('/* d()/d[%s] */' % symb_k)
+                    self._write('dqdci = %s;' % (dqdc_s))
+                    #
+                    for m in sorted(all_dict.keys()):
+                        if all_dict[m][1] != 0:
+                            s1 = 'J[%d] += %g * dqdci;' % (k*(nSpecies+1)+m, all_dict[m][1])
+                            s2 = '/* dwdot[%s]/d[%s] */' % (all_dict[m][0], symb_k)
+                            self._write(s1.ljust(30) + s2)
 
             self._outdent()
             self._write('}')
@@ -4757,13 +4768,13 @@ class CPickler(CMill):
                 if dqdc_s:
                     self._write('dqdc[%d] = %s;' % (k,dqdc_s))
 
-            self._outdent()
-            self._write('}')
-
             self._write('for (int k=0; k<%d; k++) {' % nSpecies)
             self._indent()
             for m in sorted(all_dict.keys()):
                 self._write('J[%d*k+%d] += %g * dqdc[k];' % ((nSpecies+1), m, all_dict[m][1]))
+            self._outdent()
+            self._write('}')
+
             self._outdent()
             self._write('}')
 
@@ -4776,16 +4787,14 @@ class CPickler(CMill):
             for k in range(nSpecies):
                 dqdc_s = dqdc_simple('',k)
                 if dqdc_s:
-                    self._write('dqdc[%d] = %s;' % (k,dqdc_s))
-
-            for k in sorted(all_dict.keys()):
-                if reaction.reversible or k in rea_dict:
                     self._write('/* d()/d[%s] */' % all_dict[k][0])
-                    for m in sorted(all_dict.keys()):
-                        if all_dict[m][1] != 0:
-                            s1 = 'J[%d] += %g * dqdc[%d];' % (k*(nSpecies+1)+m, all_dict[m][1], k)
-                            s2 = '/* dwdot[%s]/d[%s] */' % (all_dict[m][0], all_dict[k][0])
-                            self._write(s1.ljust(30) + s2)
+                    self._write('dqdci = %s;' % (dqdc_s))
+                    if reaction.reversible or k in rea_dict:
+                        for m in sorted(all_dict.keys()):
+                            if all_dict[m][1] != 0:
+                                s1 = 'J[%d] += %g * dqdci;' % (k*(nSpecies+1)+m, all_dict[m][1])
+                                s2 = '/* dwdot[%s]/d[%s] */' % (all_dict[m][0], all_dict[k][0])
+                                self._write(s1.ljust(30) + s2)
             self._write('/* d()/dT */')
             for m in sorted(all_dict.keys()):
                 if all_dict[m][1] != 0:
