@@ -19,12 +19,12 @@ c     Quantities passed in
       real*8 RWRK,rho,T
       integer IWRK,i,n
 
-      real*8 spec_flux_lo(0:nfine-1,Nspec)
-      real*8 spec_flux_hi(0:nfine-1,Nspec)
+      real*8 gamma_lo(0:nfine-1,Nspec)
+      real*8 gamma_hi(0:nfine-1,Nspec)
 
       call get_temp_visc_terms(scal,beta,diff(:,Temp),dx,lo,hi)
       call get_spec_visc_terms(scal,beta,diff(:,FirstSpec:),
-     $                         spec_flux_lo,spec_flux_hi,dx,lo,hi)
+     $                         gamma_lo,gamma_hi,dx,lo,hi)
 
       do i=lo,hi
          rho = scal(i,Density)

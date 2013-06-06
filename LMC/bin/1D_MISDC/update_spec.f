@@ -16,11 +16,11 @@
       real*8  visc_term
       integer i,n,is
       
-      real*8 spec_flux_lo(0:nfine-1,Nspec)
-      real*8 spec_flux_hi(0:nfine-1,Nspec)
+      real*8 gamma_lo(0:nfine-1,Nspec)
+      real*8 gamma_hi(0:nfine-1,Nspec)
 
       call get_spec_visc_terms(scal_old,beta,visc,
-     $                         spec_flux_lo,spec_flux_hi,dx,lo,hi)
+     $                         gamma_lo,gamma_hi,dx,lo,hi)
       do i=lo,hi
          do n=1,Nspec
             is = FirstSpec + n - 1

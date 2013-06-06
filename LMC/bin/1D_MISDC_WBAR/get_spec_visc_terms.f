@@ -1,13 +1,13 @@
-      subroutine get_spec_visc_terms(scal,beta,visc,spec_flux_lo,
-     &                               spec_flux_hi,dx,lo,hi)
+      subroutine get_spec_visc_terms(scal,beta,visc,gamma_lo,
+     &                               gamma_hi,dx,lo,hi)
 
       implicit none
       include 'spec.h'
       real*8         scal(-2:nfine+1,nscal)
       real*8         beta(-1:nfine  ,nscal)
       real*8         visc(-1:nfine  ,Nspec)
-      real*8 spec_flux_lo( 0:nfine-1,Nspec)
-      real*8 spec_flux_hi( 0:nfine-1,Nspec)
+      real*8 gamma_lo( 0:nfine-1,Nspec)
+      real*8 gamma_hi( 0:nfine-1,Nspec)
       real*8 dx
       integer lo,hi
       
@@ -39,18 +39,18 @@
                beta_hi = 0.5d0*(beta(i,is) + beta(i+1,is))
             endif
 
-            spec_flux_hi(i,n) = beta_hi*(Y(i+1,n) - Y(i  ,n)) 
-            spec_flux_lo(i,n) = beta_lo*(Y(i  ,n) - Y(i-1,n)) 
+            gamma_hi(i,n) = beta_hi*(Y(i+1,n) - Y(i  ,n)) 
+            gamma_lo(i,n) = beta_lo*(Y(i  ,n) - Y(i-1,n)) 
  
-            visc(i,n) = (spec_flux_hi(i,n)-spec_flux_lo(i,n))*dxsqinv
+            visc(i,n) = (gamma_hi(i,n)-gamma_lo(i,n))*dxsqinv
 
             if (LeEQ1 .eq. 0) then
 
 c              need to correct fluxes so they add to zero on each face
 c              build up the sum of species fluxes on lo and hi faces
 c              this will be "rho * V_c"
-               sum_lo = sum_lo + spec_flux_lo(i,n)
-               sum_hi = sum_hi + spec_flux_hi(i,n)
+               sum_lo = sum_lo + gamma_lo(i,n)
+               sum_hi = sum_hi + gamma_hi(i,n)
                
 c              build up the sum of rho*Y_m
 c              this will be the density
@@ -71,12 +71,12 @@ c              compute rho*Y_m on each face
                RhoYe_hi = .5d0*(scal(i,is)+scal(i+1,is))
 
 c              set flux = flux - (rho*V_c)*(rho*Y_m)/rho
-               spec_flux_lo(i,n) = spec_flux_lo(i,n) 
+               gamma_lo(i,n) = gamma_lo(i,n) 
      $              - sum_lo*RhoYe_lo/sumRhoY_lo
-               spec_flux_hi(i,n) = spec_flux_hi(i,n) 
+               gamma_hi(i,n) = gamma_hi(i,n) 
      $              - sum_hi*RhoYe_hi/sumRhoY_hi
                
-               visc(i,n) = (spec_flux_hi(i,n)-spec_flux_lo(i,n))*dxsqinv
+               visc(i,n) = (gamma_hi(i,n)-gamma_lo(i,n))*dxsqinv
             end do
          end if
 

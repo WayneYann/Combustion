@@ -37,7 +37,7 @@
 
 
       subroutine get_diffdiff_terms(scal_for_coeff,scal_for_grad,
-     $                              spec_flux_lo,spec_flux_hi,
+     $                              gamma_lo,gamma_hi,
      $                              beta,diffdiff,dx,lo,hi)
 
       implicit none
@@ -45,8 +45,8 @@
 
       real*8 scal_for_coeff(-2:nfine+1,nscal)
       real*8 scal_for_grad (-2:nfine+1,nscal)
-      real*8 spec_flux_lo  ( 0:nfine-1,Nspec)
-      real*8 spec_flux_hi  ( 0:nfine-1,Nspec)
+      real*8 gamma_lo  ( 0:nfine-1,Nspec)
+      real*8 gamma_hi  ( 0:nfine-1,Nspec)
       real*8 beta          (-1:nfine  ,nscal)
       real*8 diffdiff      (-1:nfine)
       real*8 dx
@@ -90,9 +90,9 @@ c     set face fluxes to -lambda/cp * grad Y_m
             flux_hi(n) = beta_hi*(Y(n,i+1) - Y(n  ,i))
 
 c     set face fluxes to h_m * (rho D_m - lambda/cp) grad Y_m
-            flux_lo(n) = (flux_lo(n) + spec_flux_lo(i,n))*
+            flux_lo(n) = (flux_lo(n) + gamma_lo(i,n))*
      $           (hm(n,i-1)+hm(n,i))/2.d0
-            flux_hi(n) = (flux_hi(n) + spec_flux_hi(i,n))*
+            flux_hi(n) = (flux_hi(n) + gamma_hi(i,n))*
      $           (hm(n,i+1)+hm(n,i))/2.d0
  
 c     differential diffusion is divergence of face fluxes

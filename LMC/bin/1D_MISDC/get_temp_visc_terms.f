@@ -8,7 +8,7 @@
       integer lo,hi
 
 c     Compute Div(lambda.Grad(T)) + rho.D.Grad(Hi).Grad(Yi)
-      call rhoDgradHgradY(scal,beta,visc,dx,lo,hi)
+      call gamma_dot_gradh(scal,beta,visc,dx,lo,hi)
 
 c     Add Div( lambda Grad(T) )
       call addDivLambdaGradT(scal,beta,visc,dx,lo,hi)
@@ -47,7 +47,7 @@ c     Add Div( lambda Grad(T) )
 
       end
 
-      subroutine rhoDgradHgradY(scal,beta,visc,dx,lo,hi)
+      subroutine gamma_dot_gradh(scal,beta,visc,dx,lo,hi)
       implicit none
       include 'spec.h'
       real*8 scal(-2:nfine+1,nscal)
@@ -58,13 +58,13 @@ c     Add Div( lambda Grad(T) )
       
       integer i,n,is,IWRK
       real*8 beta_lo,beta_hi
-      real*8 rdgydgh_lo,rdgydgh_hi
+      real*8 gamma_dot_gradh_lo,gamma_dot_gradh_hi
       real*8 dxsqinv,RWRK,rho,dv
       real*8 hm(Nspec,-1:nfine)
       real*8 Y(Nspec,-1:nfine)
 
-      real*8 spec_flux_lo(0:nfine-1,Nspec)
-      real*8 spec_flux_hi(0:nfine-1,Nspec)
+      real*8 gamma_lo(0:nfine-1,Nspec)
+      real*8 gamma_hi(0:nfine-1,Nspec)
 
       real*8 sum_lo,sum_hi
       real*8 sumRhoY_lo,sumRhoY_hi
@@ -103,16 +103,16 @@ c     Compute differences
                beta_hi = 0.5d0*(beta(i,is) + beta(i+1,is))
             endif
 
-            spec_flux_lo(i,n) = beta_lo*(Y(n,i)-Y(n,i-1))
-            spec_flux_hi(i,n) = beta_hi*(Y(n,i+1)-Y(n,i))
+            gamma_lo(i,n) = beta_lo*(Y(n,i)-Y(n,i-1))
+            gamma_hi(i,n) = beta_hi*(Y(n,i+1)-Y(n,i))
 
             if (LeEQ1 .eq. 0) then
 
 c              need to correct fluxes so they add to zero on each face
 c              build up the sum of species fluxes on lo and hi faces
 c              this will be "rho * V_c"
-               sum_lo = sum_lo + spec_flux_lo(i,n)
-               sum_hi = sum_hi + spec_flux_hi(i,n)
+               sum_lo = sum_lo + gamma_lo(i,n)
+               sum_hi = sum_hi + gamma_hi(i,n)
                
 c              build up the sum of rho*Y_m
 c              this will be the density
@@ -133,19 +133,19 @@ c              compute rho*Y_m on each face
                RhoYe_hi = .5d0*(scal(i,is)+scal(i+1,is))
 
 c              set flux = flux - (rho*V_c)*(rho*Y_m)/rho
-               spec_flux_lo(i,n) = spec_flux_lo(i,n) 
+               gamma_lo(i,n) = gamma_lo(i,n) 
      $              - sum_lo*RhoYe_lo/sumRhoY_lo
-               spec_flux_hi(i,n) = spec_flux_hi(i,n) 
+               gamma_hi(i,n) = gamma_hi(i,n) 
      $              - sum_hi*RhoYe_hi/sumRhoY_hi
 
             end do
          end if
 
          do n=1,Nspec
-            rdgydgh_lo = spec_flux_lo(i,n)*(hm(n,i)-hm(n,i-1))
-            rdgydgh_hi = spec_flux_hi(i,n)*(hm(n,i+1)-hm(n,i))
+            gamma_dot_gradh_lo = gamma_lo(i,n)*(hm(n,i)-hm(n,i-1))
+            gamma_dot_gradh_hi = gamma_hi(i,n)*(hm(n,i+1)-hm(n,i))
 
-            dv = dv + (rdgydgh_hi + rdgydgh_lo)*0.5d0
+            dv = dv + (gamma_dot_gradh_hi + gamma_dot_gradh_lo)*0.5d0
          enddo
          
          visc(i) = dv*dxsqinv

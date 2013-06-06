@@ -44,7 +44,7 @@ C this fn sets ghost cells
 c*************************************************************************
 c     Add rho.D.Grad(Y).Grad(H)  at time n+1
 c*************************************************************************      
-      call rhoDgradHgradY(scal_new,beta_new,visc,dx,lo,hi)
+      call gamma_dot_gradh(scal_new,beta_new,visc,dx,lo,hi)
       do i=lo,hi
          Rhs(i) = Rhs(i) + dt*be_cn_theta*visc(i) 
       enddo

@@ -79,8 +79,8 @@ c     cell-centered, no ghost cells
       real*8      vel_Rhs(0:nlevs-1, 0:nfine-1)
       real*8     aofs_old(0:nlevs-1, 0:nfine-1,nscal)
       real*8     aofs_new(0:nlevs-1, 0:nfine-1,nscal)
-      real*8 spec_flux_lo(0:nlevs-1, 0:nfine-1,Nspec)
-      real*8 spec_flux_hi(0:nlevs-1, 0:nfine-1,Nspec)
+      real*8 gamma_lo(0:nlevs-1, 0:nfine-1,Nspec)
+      real*8 gamma_hi(0:nlevs-1, 0:nfine-1,Nspec)
       real*8    const_src(0:nlevs-1, 0:nfine-1,nscal)
       real*8  lin_src_old(0:nlevs-1, 0:nfine-1,nscal)
       real*8  lin_src_new(0:nlevs-1, 0:nfine-1,nscal)
@@ -153,7 +153,7 @@ c     compute conservatively corrected div gamma_m
 c     also save gamma_m for computing diffdiff terms later
       call get_spec_visc_terms(scal_old(0,:,:),beta_old(0,:,:),
      &                         diff_old(0,:,FirstSpec:),
-     &                         spec_flux_lo(0,:,:),spec_flux_hi(0,:,:),
+     &                         gamma_lo(0,:,:),gamma_hi(0,:,:),
      &                         dx(0),lo(0),hi(0))
 
 c     compute div lambda/cp grad h (no differential diffusion)
@@ -162,13 +162,13 @@ c     compute div lambda/cp grad h (no differential diffusion)
 
 c     calculate differential diffusion "diffdiff" terms, i.e.,
 c     sum_m div [ h_m (rho D_m - lambda/cp) grad Y_m ]
-c     we pass in conservative gamma_m via spec_flux
+c     we pass in conservative gamma_m via gamma
 c     we take lambda / cp from beta
 c     we compute h_m using T from the first argument
 c     we compute grad Y_m using Y_m from the second argument
       call get_diffdiff_terms(scal_old(0,:,:),scal_old(0,:,:),
-     $                        spec_flux_lo(0,:,:),
-     $                        spec_flux_hi(0,:,:),beta_old(0,:,:),
+     $                        gamma_lo(0,:,:),
+     $                        gamma_hi(0,:,:),beta_old(0,:,:),
      $                        diffdiff_old(0,:),dx(0),lo(0),hi(0))
 
 c     If .true., use I_R in predictor is instantaneous value at t^n
@@ -218,8 +218,8 @@ c     compute a conservative div gamma_m
 c     save gamma_m for differential diffusion computation
             call get_spec_visc_terms(scal_new(0,:,:),beta_new(0,:,:),
      &                               diff_new(0,:,FirstSpec:),
-     &                               spec_flux_lo(0,:,:),
-     &                               spec_flux_hi(0,:,:),
+     &                               gamma_lo(0,:,:),
+     &                               gamma_hi(0,:,:),
      &                               dx(0),lo(0),hi(0))
 c     compute div lambda/cp grad h (no differential diffusion)
             call get_rhoh_visc_terms(scal_new(0,:,:),beta_new(0,:,:),
@@ -227,13 +227,13 @@ c     compute div lambda/cp grad h (no differential diffusion)
 
 c     calculate differential diffusion "diffdiff" terms, i.e.,
 c     sum_m div [ h_m (rho D_m - lambda/cp) grad Y_m ]
-c     we pass in conservative gamma_m via spec_flux
+c     we pass in conservative gamma_m via gamma
 c     we take lambda / cp from beta
 c     we compute h_m using T from the first argument
 c     we compute grad Y_m using Y_m from the second argument
             call get_diffdiff_terms(scal_new(0,:,:),scal_new(0,:,:),
-     $                              spec_flux_lo(0,:,:),
-     $                              spec_flux_hi(0,:,:),beta_new(0,:,:),
+     $                              gamma_lo(0,:,:),
+     $                              gamma_hi(0,:,:),beta_new(0,:,:),
      $                              diffdiff_new(0,:),dx(0),lo(0),hi(0))
 
 c     instantaneous omegadot for divu calc
@@ -322,8 +322,8 @@ c     compute conservatively corrected div gamma_m
 c     also save gamma_m for computing diffdiff terms later
          call get_spec_visc_terms(scal_new(0,:,:),beta_new(0,:,:),
      &                            diff_hat(0,:,FirstSpec:),
-     &                            spec_flux_lo(0,:,:),
-     &                            spec_flux_hi(0,:,:),
+     &                            gamma_lo(0,:,:),
+     &                            gamma_hi(0,:,:),
      &                            dx(0),lo(0),hi(0))
 
 c     add differential diffusion to forcing for enthalpy solve in equation (49)
