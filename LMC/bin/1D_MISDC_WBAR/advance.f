@@ -860,6 +860,16 @@ c     differential diffusion will be added later
                dRhs(0,i,0) = dt(0)*(
      &              + 0.5d0*(diff_old(0,i,RhoH) - diff_new(0,i,RhoH)))
             enddo
+
+c     AJN FIXME
+c     need to add dt*div(beta_for_Wbar^(k) grad Wbar^(k)) to dRhs
+c     also need to save the fluxes themselves
+
+
+
+
+
+c     update rhoY_m with advection terms and set up RHS for correction solve
             call update_spec(scal_old(0,:,:),scal_new(0,:,:),aofs(0,:,:),
      &                       alpha(0,:),beta_old(0,:,:),
      &                       dRhs(0,0:,1:),Rhs(0,0:,FirstSpec:),
@@ -887,13 +897,21 @@ c     extract div gamma^n
 
             else
 
+c     AJN FIXME
+c     diff_hat needs to hold conservatively corrected version of div gamma_m
+c     where gamma_m = beta_for_y^(k) grad \tilde Y_{m,AD}^(k+1) + beta_for_Wbar^(k) grad Wbar^(k)
+c     fluxes from beta_for_Wbar grad Wbar^(k) are already available
+
+
+
+
+
 c     compute conservatively corrected div gamma_m 
-c     also save gamma_m for computing diffdiff terms later
-               call get_spec_visc_terms(scal_new(0,:,:),beta_new(0,:,:),
-     &                                  diff_hat(0,:,FirstSpec:),
-     &                                  gamma_lo(0,:,:),
-     &                                  gamma_hi(0,:,:),
-     &                                  dx(0),lo(0),hi(0))
+c               call get_spec_visc_terms(scal_new(0,:,:),beta_new(0,:,:),
+c     &                                  diff_hat(0,:,FirstSpec:),
+c     &                                  gamma_lo(0,:,:),
+c     &                                  gamma_hi(0,:,:),
+c     &                                  dx(0),lo(0),hi(0))
 
 c     add differential diffusion to forcing for enthalpy solve in equation (49)
                do i=lo(0),hi(0)
