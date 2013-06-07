@@ -122,7 +122,7 @@ c              compute div(gamma)
       integer lo,hi
       
       integer i,n,is,IWRK
-      real*8 beta_lo,beta_hi,RWRK
+      real*8 beta_for_Wbar_lo,beta_for_Wbar_hi,RWRK
       real*8 dxsqinv
       real*8 Y(-1:nfine,Nspec)
       real*8 Wbar(-2:nfine+1)
@@ -148,16 +148,16 @@ c     convert Y to Wbar
 
 c     compute beta on edges
             if (coef_avg_harm.eq.1) then
-               beta_lo = 2.d0 / (1.d0/beta_for_Wbar(i,is)+1.d0/beta_for_Wbar(i-1,is))
-               beta_hi = 2.d0 / (1.d0/beta_for_Wbar(i,is)+1.d0/beta_for_Wbar(i+1,is))
+               beta_for_Wbar_lo = 2.d0 / (1.d0/beta_for_Wbar(i,is)+1.d0/beta_for_Wbar(i-1,is))
+               beta_for_Wbar_hi = 2.d0 / (1.d0/beta_for_Wbar(i,is)+1.d0/beta_for_Wbar(i+1,is))
             else
-               beta_lo = 0.5d0*(beta_for_Wbar(i,is) + beta_for_Wbar(i-1,is))
-               beta_hi = 0.5d0*(beta_for_Wbar(i,is) + beta_for_Wbar(i+1,is))
+               beta_for_Wbar_lo = 0.5d0*(beta_for_Wbar(i,is) + beta_for_Wbar(i-1,is))
+               beta_for_Wbar_hi = 0.5d0*(beta_for_Wbar(i,is) + beta_for_Wbar(i+1,is))
             endif
 
 c     compute gamma
-            gamma_Wbar_hi(i,n) = beta_hi*(Wbar(i+1) - Wbar(i  )) 
-            gamma_Wbar_lo(i,n) = beta_lo*(Wbar(i  ) - Wbar(i-1)) 
+            gamma_Wbar_hi(i,n) = beta_for_Wbar_hi*(Wbar(i+1) - Wbar(i  )) 
+            gamma_Wbar_lo(i,n) = beta_for_Wbar_lo*(Wbar(i  ) - Wbar(i-1)) 
  
 c     compute div(gamma).
 c     no need to conservatively correct these
@@ -191,7 +191,7 @@ c     conservatively correct this, then set visc = (1/dxsq)*div(gamma_m)
       integer lo,hi
       
       integer i,n,is,IWRK
-      real*8 beta_lo,beta_hi,RWRK
+      real*8 beta_for_Y_lo,beta_for_Y_hi,RWRK
       real*8 dxsqinv
       real*8 Y(-1:nfine,Nspec), sum_gamma_lo, sum_gamma_hi, sumRhoX_lo, sumRhoX_hi
       real*8 RhoXe_lo, RhoXe_hi
@@ -231,16 +231,16 @@ c     compute rho*X
 
 c     compute beta on edges
             if (coef_avg_harm.eq.1) then
-               beta_lo = 2.d0 / (1.d0/beta_for_Y(i,is)+1.d0/beta_for_Y(i-1,is))
-               beta_hi = 2.d0 / (1.d0/beta_for_Y(i,is)+1.d0/beta_for_Y(i+1,is))
+               beta_for_Y_lo = 2.d0 / (1.d0/beta_for_Y(i,is)+1.d0/beta_for_Y(i-1,is))
+               beta_for_Y_hi = 2.d0 / (1.d0/beta_for_Y(i,is)+1.d0/beta_for_Y(i+1,is))
             else
-               beta_lo = 0.5d0*(beta_for_Y(i,is) + beta_for_Y(i-1,is))
-               beta_hi = 0.5d0*(beta_for_Y(i,is) + beta_for_Y(i+1,is))
+               beta_for_Y_lo = 0.5d0*(beta_for_Y(i,is) + beta_for_Y(i-1,is))
+               beta_for_Y_hi = 0.5d0*(beta_for_Y(i,is) + beta_for_Y(i+1,is))
             endif
 
 c     compute gamma
-            gamma_hi(i,n) = beta_hi*(Y(i+1,n) - Y(i  ,n)) 
-            gamma_lo(i,n) = beta_lo*(Y(i  ,n) - Y(i-1,n))  
+            gamma_hi(i,n) = beta_for_Y_hi*(Y(i+1,n) - Y(i  ,n)) 
+            gamma_lo(i,n) = beta_for_Y_lo*(Y(i  ,n) - Y(i-1,n))  
 
             gamma_hi(i,n) = gamma_hi(i,n) + gamma_Wbar_hi(i,n)
             gamma_lo(i,n) = gamma_lo(i,n) + gamma_Wbar_lo(i,n)

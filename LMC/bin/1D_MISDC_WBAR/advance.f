@@ -863,7 +863,7 @@ c     differential diffusion will be added later
      &              + 0.5d0*(diff_old(0,i,RhoH) - diff_new(0,i,RhoH)))
             enddo
 
-c     need to add dt*div(beta_for_Wbar^(k) grad Wbar^(k)) to dRhs
+c     compute div(beta_for_Wbar^(k) grad Wbar^(k))
 c     also need to save the fluxes themselves
             call get_spec_visc_terms_Wbar(scal_new(0,:,:),beta_for_Wbar_new(0,:,:),
      &                                    diff_tmp(0,:,FirstSpec:),
@@ -871,6 +871,7 @@ c     also need to save the fluxes themselves
      &                                    gamma_Wbar_hi(0,:,:),
      &                                    dx(0),lo(0),hi(0))
 
+c     add dt*div(beta_for_Wbar^(k) grad Wbar^(k)) to dRhs
             do i=lo(0),hi(0)
                do n=1,Nspec
                   is = FirstSpec + n - 1
@@ -906,10 +907,9 @@ c     extract div gamma^n
 
             else
 
-c     AJN FIXME
-c     diff_hat needs to hold conservatively corrected version of div gamma_m
+c     compute conservatively corrected version of div gamma_m
 c     where gamma_m = beta_for_y^(k) grad \tilde Y_{m,AD}^(k+1) + beta_for_Wbar^(k) grad Wbar^(k)
-c     fluxes from beta_for_Wbar grad Wbar^(k) are already available
+c     fluxes from beta_for_Wbar^(k) grad Wbar^(k) are already available
                call get_spec_visc_terms_Y_and_Wbar(scal_new(0,:,:),beta_for_Y_new(0,:,:),
      &                                             diff_hat(0,:,FirstSpec:),
      &                                             gamma_Wbar_lo(0,:,:),
