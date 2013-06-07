@@ -8,7 +8,7 @@ ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
       subroutine advance(vel_old,vel_new,scal_old,scal_new,
      $                   I_R,press_old,press_new,
      $                   divu_old,divu_new,dSdt,beta_old,beta_new,
-     $                   beta_for_X_old,beta_for_X_new,
+     $                   beta_for_Y_old,beta_for_Y_new,
      $                   beta_for_Wbar_old,beta_for_Wbar_new,
      $                   dx,dt,lo,hi,bc,delta_chi,istep)
 
@@ -38,8 +38,8 @@ c     cell-centered, 1 ghost cell
       real*8        I_R(0:nlevs-1,-1:nfine  ,0:Nspec)
       real*8   beta_old(0:nlevs-1,-1:nfine  ,nscal)
       real*8   beta_new(0:nlevs-1,-1:nfine  ,nscal)
-      real*8   beta_for_X_old(0:nlevs-1,-1:nfine  ,nscal)
-      real*8   beta_for_X_new(0:nlevs-1,-1:nfine  ,nscal)
+      real*8   beta_for_Y_old(0:nlevs-1,-1:nfine  ,nscal)
+      real*8   beta_for_Y_new(0:nlevs-1,-1:nfine  ,nscal)
       real*8   beta_for_Wbar_old(0:nlevs-1,-1:nfine  ,nscal)
       real*8   beta_for_Wbar_new(0:nlevs-1,-1:nfine  ,nscal)
       real*8   divu_old(0:nlevs-1,-1:nfine)
@@ -212,7 +212,7 @@ c        rho D_m     (for species)
 c        lambda / cp (for enthalpy)
 c        lambda      (for temperature)
          call calc_diffusivities(scal_old(0,:,:),beta_old(0,:,:),
-     &                           beta_for_X_old(0,:,:),
+     &                           beta_for_Y_old(0,:,:),
      &                           beta_for_Wbar_old(0,:,:),
      &                           mu_dummy(0,:),lo(0),hi(0))
 
@@ -298,7 +298,7 @@ c        rho D_m     (for species)
 c        lambda / cp (for enthalpy)
 c        lambda      (for temperature)
          call calc_diffusivities(scal_new(0,:,:),beta_new(0,:,:),
-     &                           beta_for_X_new(0,:,:),
+     &                           beta_for_Y_new(0,:,:),
      &                           beta_for_Wbar_new(0,:,:),
      &                           mu_dummy(0,:),lo(0),hi(0))
 
@@ -353,7 +353,7 @@ c        rho D_m     (for species)
 c        lambda / cp (for enthalpy)
 c        lambda      (for temperature)
          call calc_diffusivities(scal_new(0,:,:),beta_new(0,:,:),
-     &                           beta_for_X_new(0,:,:),
+     &                           beta_for_Y_new(0,:,:),
      &                           beta_for_Wbar_new(0,:,:),
      &                           mu_dummy(0,:),lo(0),hi(0))
 
@@ -404,7 +404,7 @@ c        rho D_m     (for species)
 c        lambda / cp (for enthalpy)
 c        lambda      (for temperature)
          call calc_diffusivities(scal_new(0,:,:),beta_new(0,:,:),
-     &                           beta_for_X_new(0,:,:),
+     &                           beta_for_Y_new(0,:,:),
      &                           beta_for_Wbar_new(0,:,:),
      &                           mu_dummy(0,:),lo(0),hi(0))
 
@@ -522,7 +522,7 @@ c        rho D_m     (for species)
 c        lambda / cp (for enthalpy)
 c        lambda      (for temperature)
          call calc_diffusivities(scal_old(0,:,:),beta_old(0,:,:),
-     &                           beta_for_X_old(0,:,:),
+     &                           beta_for_Y_old(0,:,:),
      &                           beta_for_Wbar_old(0,:,:),
      &                           mu_old(0,:),lo(0),hi(0))
 
@@ -737,7 +737,7 @@ c        rho D_m     (for species)
 c        lambda / cp (for enthalpy)
 c        lambda      (for temperature)
             call calc_diffusivities(scal_new(0,:,:),beta_new(0,:,:),
-     &                              beta_for_X_new(0,:,:),
+     &                              beta_for_Y_new(0,:,:),
      &                              beta_for_Wbar_new(0,:,:),
      &                              mu_dummy(0,:),lo(0),hi(0))
 c     compute a conservative div gamma_m
@@ -986,7 +986,7 @@ c        rho D_m     (for species)
 c        lambda / cp (for enthalpy)
 c        lambda      (for temperature)       
       call calc_diffusivities(scal_new(0,:,:),beta_new(0,:,:),
-     &                        beta_for_X_new(0,:,:),
+     &                        beta_for_Y_new(0,:,:),
      &                        beta_for_Wbar_new(0,:,:),
      &                        mu_new(0,:),lo(0),hi(0))
 

@@ -89,7 +89,7 @@ c     set face fluxes to -lambda/cp * grad Y_m
             flux_lo(n) = beta_lo*(Y(n  ,i) - Y(n,i-1))
             flux_hi(n) = beta_hi*(Y(n,i+1) - Y(n  ,i))
 
-c     set face fluxes to h_m * (rho D_m - lambda/cp) grad Y_m
+c     set face fluxes to h_m * (Gamma_m - lambda/cp grad Y_m)
             flux_lo(n) = (flux_lo(n) + gamma_lo(i,n))*
      $           (hm(n,i-1)+hm(n,i))/2.d0
             flux_hi(n) = (flux_hi(n) + gamma_hi(i,n))*

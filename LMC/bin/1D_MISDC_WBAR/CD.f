@@ -9,13 +9,13 @@ c     Initialize some values
       data iCH4 / -1 /
       end
 
-      subroutine calc_diffusivities(scal, beta, beta_for_X, 
+      subroutine calc_diffusivities(scal, beta, beta_for_Y, 
      &                              beta_for_Wbar, mu, lo, hi)
       implicit none
       include 'spec.h'
       double precision scal(-2:nfine+1,nscal)
       double precision          beta(-1:nfine  ,nscal)
-      double precision    beta_for_X(-1:nfine  ,nscal)
+      double precision    beta_for_Y(-1:nfine  ,nscal)
       double precision beta_for_Wbar(-1:nfine  ,nscal)
       double precision   mu(-1:nfine)
       integer lo, hi
@@ -64,8 +64,8 @@ c           compute flux diffusion coefficients
             CALL EGSV1(Pcgs,Tt,Y,Wavg,EGRWRK,Dt)
 
             do n=1,Nspec
-               beta         (i,FirstSpec+n-1) = rho*Wavg*invmwt(n)*Dt(n)
-               beta_for_X   (i,FirstSpec+n-1) = rho*Dt(n)
+               beta         (i,FirstSpec+n-1) = rho*Dt(n)
+               beta_for_Y   (i,FirstSpec+n-1) = rho*Wavg*invmwt(n)*Dt(n)
                beta_for_Wbar(i,FirstSpec+n-1) = rho*Y(n)*invmwt(n)*Dt(n)
             end do
 
