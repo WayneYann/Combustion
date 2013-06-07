@@ -869,7 +869,7 @@ c     Solve C-N system in equation (47) for \tilde{Y}_{m,AD}^{(k+1)}
             rho_flag = 2
             do n=1,Nspec
                is = FirstSpec + n - 1
-               call cn_solve(scal_new(0,:,:),alpha(0,:),beta_new(0,:,:),
+               call cn_solve(scal_new(0,:,:),alpha(0,:),beta_for_Y_new(0,:,:),
      $                       Rhs(0,:,is),dx(0),dt(0),is,be_cn_theta,
      $                       rho_flag,.false.,lo(0),hi(0),bc(0,:))
             enddo
