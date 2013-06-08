@@ -1,31 +1,17 @@
-
-! This module stores the runtime parameters.  
-! These parameter are initialized in set_method_params().
-
 module meth_params_module
 
   implicit none
 
-  double precision, save :: difmag        ! used only in consup to weight the divu contributin
-  integer         , save :: iorder        ! used only in uslope and uflaten
+  integer, parameter     :: NGROW = 3  ! fifth-order WENO
 
-  integer, parameter     :: NHYP = 4
-  integer, parameter     :: NDIF = 1
+  ! conserved variables
+  integer         , save :: NVAR, NSPEC
+  integer         , save :: URHO, UMX, UMY, UMZ, UEDEN, UFS
 
-  ! NTHERM: number of thermodynamic variables
-  integer         , save :: NTHERM, NVAR
-  integer         , save :: URHO, UMX, UMY, UMZ, UEDEN, UEINT, UTEMP, UFA, UFS
-
-  ! QTHERM: number of primitive variables
-  integer         , save :: QTHERM, QVAR
-  integer         , save :: QRHO, QU, QV, QW, QPRES, QREINT, QTEMP
-  integer         , save :: QFA, QFS
-
-  integer         , save :: nadv
+  ! primitive variables
+  integer         , save :: QVAR
+  integer         , save :: QRHO, QU, QV, QW, QPRES, QREINT, QTEMP, QFS
 
   double precision, save :: small_dens, small_temp, small_pres  
-
-  integer         , save :: ppm_type
-  integer         , save :: normalize_species
 
 end module meth_params_module
