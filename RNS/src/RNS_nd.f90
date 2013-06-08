@@ -111,8 +111,8 @@
 
         call eos_init(small_dens=small_dens_in, small_temp=small_temp_in)
 
-        call eos_get_small_dens(small_dens)
-        call eos_get_small_temp(small_temp)
+!        call eos_get_small_dens(small_dens)
+!        call eos_get_small_temp(small_temp)
 
         ppm_type              = ppm_type_in
         normalize_species     = normalize_species_in

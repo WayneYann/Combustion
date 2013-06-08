@@ -1,5 +1,6 @@
-CEXE_headers += CNS.H
-CEXE_sources += main.cpp CNS.cpp CNSBld.cpp CNS_error.cpp CNS_setup.cpp CNS_advance.cpp 
+CEXE_headers += RNS.H
+CEXE_sources += main.cpp RNS.cpp RNSBld.cpp RNS_error.cpp RNS_setup.cpp \
+                RNS_io.cpp RNS_advance.cpp 
 
-FEXE_headers += CNS_F.H Derive_F.H
-f90EXE_sources += meth_params.f90 prob_params.f90 eos.f90 CNS_nd.f90
+FEXE_headers += RNS_F.H Derive_F.H
+f90EXE_sources += meth_params.f90 prob_params.f90 RNS_nd.f90

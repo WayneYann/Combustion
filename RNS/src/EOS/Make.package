@@ -1,0 +1,6 @@
+
+ifeq (${CHEMISTRY_MODEL}, NULL)
+  f90EXE_sources += eos_null.f90
+else
+  f90EXE_sources += eos.f90
+endif

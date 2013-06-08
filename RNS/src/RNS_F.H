@@ -12,34 +12,28 @@ BL_FORT_PROC_DECL(GET_METHOD_PARAMS,get_method_params)
     (const int* nHYP);
 
 BL_FORT_PROC_DECL(SET_METHOD_PARAMS,set_method_params)
-    (const int& dm,
-     const int& Density, const int& Xmom, 
-     const int& Eden,    const int& Eint, 
-     const int& Temp     , const int& FirstAdv, 
-     const int& FirstSpec, const int& NumAdv, 
-     const Real& small_dens, const Real& small_temp,
-     const Real& small_pres, const int& ppm_type, 
-     const int& normalize_species);
+    (const int& dm, const int& Density, const int& Xmom, 
+     const int& Eden, const int& FirstSpec, const Real& small_dens, 
+     const Real& small_temp, const Real& small_pres);
 
 BL_FORT_PROC_DECL(SET_PROBLEM_PARAMS,set_problem_params)
     (const int& dm,
      const int* physbc_lo, const int* physbc_hi,
      const Real* phys_lo, const Real* phys_hi,
      const int& Outflow_value, 
-     const int& Symmetry_value, const int& coord_type,
-     const Real& gravx, const Real& gravy, const Real& gravz);
+     const int& Symmetry_value, const int& coord_type);
 
-BL_FORT_PROC_DECL(RNS_INITDATA,cns_initdata)
+BL_FORT_PROC_DECL(RNS_INITDATA,rns_initdata)
     (const int& level, const Real& time, 
      const int* lo, const int* hi,
      const int& num_state,
      BL_FORT_FAB_ARG(state),
      const Real dx[], const Real xlo[], const Real xhi[]);
 
-BL_FORT_PROC_DECL(RNS_ENFORCE_CONSISTENT_E,cns_enforce_consistent_e)
+BL_FORT_PROC_DECL(RNS_ENFORCE_CONSISTENT_E,rns_enforce_consistent_e)
     (const int* lo, const int* hi, BL_FORT_FAB_ARG(state));
 
-BL_FORT_PROC_DECL(RNS_DENERROR,cns_denerror)
+BL_FORT_PROC_DECL(RNS_DENERROR,rns_denerror)
     (int* tag, ARLIM_P(tag_lo), ARLIM_P(tag_hi),
      const int* tagval, const int* clearval,
      BL_FORT_FAB_ARG(den),
@@ -49,7 +43,7 @@ BL_FORT_PROC_DECL(RNS_DENERROR,cns_denerror)
      const Real dx[], const Real xlo[], const Real problo[],
      const Real* time, const int* level);
 
-BL_FORT_PROC_DECL(RNS_VELERROR,cns_velerror)
+BL_FORT_PROC_DECL(RNS_VELERROR,rns_velerror)
     (int* tag, ARLIM_P(tag_lo), ARLIM_P(tag_hi),
      const int* tagval, const int* clearval,
      BL_FORT_FAB_ARG(vel),
@@ -59,7 +53,7 @@ BL_FORT_PROC_DECL(RNS_VELERROR,cns_velerror)
      const Real dx[], const Real xlo[], const Real problo[],
      const Real* time, const int* level);
 
-BL_FORT_PROC_DECL(RNS_VORTERROR,cns_vorterror)
+BL_FORT_PROC_DECL(RNS_VORTERROR,rns_vorterror)
     (int* tag, ARLIM_P(tag_lo), ARLIM_P(tag_hi),
      const int* tagval, const int* clearval,
      BL_FORT_FAB_ARG(vel),
@@ -69,7 +63,7 @@ BL_FORT_PROC_DECL(RNS_VORTERROR,cns_vorterror)
      const Real dx[], const Real xlo[], const Real problo[],
      const Real* time, const int* level);
 
-BL_FORT_PROC_DECL(RNS_TEMPERROR,cns_temperror)
+BL_FORT_PROC_DECL(RNS_TEMPERROR,rns_temperror)
     (int* tag, ARLIM_P(tag_lo), ARLIM_P(tag_hi),
      const int* tagval, const int* clearval,
      BL_FORT_FAB_ARG(temp),
@@ -79,7 +73,7 @@ BL_FORT_PROC_DECL(RNS_TEMPERROR,cns_temperror)
      const Real dx[], const Real xlo[], const Real problo[],
      const Real* time, const int* level);
 
-BL_FORT_PROC_DECL(RNS_PRESSERROR,cns_presserror)
+BL_FORT_PROC_DECL(RNS_PRESSERROR,rns_presserror)
     (int* tag, ARLIM_P(tag_lo), ARLIM_P(tag_hi),
      const int* tagval, const int* clearval,
      BL_FORT_FAB_ARG(press),
@@ -89,7 +83,7 @@ BL_FORT_PROC_DECL(RNS_PRESSERROR,cns_presserror)
      const Real dx[], const Real xlo[], const Real problo[],
      const Real* time, const int* level);
 
-BL_FORT_PROC_DECL(RNS_MFRACERROR,cns_mfracerror)
+BL_FORT_PROC_DECL(RNS_MFRACERROR,rns_mfracerror)
     (int* tag, ARLIM_P(tag_lo), ARLIM_P(tag_hi),
      const int* tagval, const int* clearval,
      BL_FORT_FAB_ARG(press),
@@ -99,7 +93,7 @@ BL_FORT_PROC_DECL(RNS_MFRACERROR,cns_mfracerror)
      const Real dx[], const Real xlo[], const Real problo[],
      const Real* time, const int* level);
 
-BL_FORT_PROC_DECL(RNS_ENTERROR,cns_enterror)
+BL_FORT_PROC_DECL(RNS_ENTERROR,rns_enterror)
     (int* tag, ARLIM_P(tag_lo), ARLIM_P(tag_hi),
      const int* tagval, const int* clearval,
      BL_FORT_FAB_ARG(den),
@@ -109,7 +103,7 @@ BL_FORT_PROC_DECL(RNS_ENTERROR,cns_enterror)
      const Real dx[], const Real xlo[], const Real problo[],
      const Real* time, const int* level);
 
-BL_FORT_PROC_DECL(RNS_STATE_ERROR,cns_state_error)
+BL_FORT_PROC_DECL(RNS_STATE_ERROR,rns_state_error)
     (int* tag, ARLIM_P(tag_lo), ARLIM_P(tag_hi),
      const int* tagval, const int* clearval,
      BL_FORT_FAB_ARG(state),
@@ -119,24 +113,24 @@ BL_FORT_PROC_DECL(RNS_STATE_ERROR,cns_state_error)
      const Real dx[], const Real xlo[], const Real problo[],
      const Real* time, const int* level);
 
-BL_FORT_PROC_DECL(RNS_HYPFILL,cns_hypfill)
+BL_FORT_PROC_DECL(RNS_HYPFILL,rns_hypfill)
     (BL_FORT_FAB_ARG(state),
      const int dlo[], const int dhi[],
      const Real dx[], const Real glo[], 
      const Real* time, const int bc[]);
 
-BL_FORT_PROC_DECL(RNS_DENFILL,cns_denfill)
+BL_FORT_PROC_DECL(RNS_DENFILL,rns_denfill)
     (BL_FORT_FAB_ARG(state),
      const int dlo[], const int dhi[],
      const Real dx[], const Real glo[], 
      const Real* time, const int bc[]);
 
-BL_FORT_PROC_DECL(RNS_ESTDT,cns_estdt)
+BL_FORT_PROC_DECL(RNS_ESTDT,rns_estdt)
     (const BL_FORT_FAB_ARG(state),
      const int lo[], const int hi[],
      const Real dx[], Real* dt);
 
-BL_FORT_PROC_DECL(RNS_UMDRV,cns_umdrv)
+BL_FORT_PROC_DECL(RNS_UMDRV,rns_umdrv)
     (const int    lo[], const int    hi[],
      BL_FORT_FAB_ARG(state),
      BL_FORT_FAB_ARG(stateout),
@@ -162,7 +156,7 @@ BL_FORT_PROC_DECL(CA_CORRGSRC,ca_corrgsrc)
      BL_FORT_FAB_ARG(S_new),
      const Real& dt);
 
-BL_FORT_PROC_DECL(RNS_RESET_INTERNAL_ENERGY,cns_reset_internal_energy)
+BL_FORT_PROC_DECL(RNS_RESET_INTERNAL_ENERGY,rns_reset_internal_energy)
     (BL_FORT_FAB_ARG(S_new), 
      const int lo[], const int hi[], 
      const int& verbose);
@@ -177,20 +171,20 @@ BL_FORT_PROC_DECL(CA_SYNCGSRC,ca_syncgsrc)
      const Real& dt);
 
 #if (BL_SPACEDIM == 3)
-BL_FORT_PROC_DECL(RNS_SUMMASS,cns_summass)
+BL_FORT_PROC_DECL(RNS_SUMMASS,rns_summass)
     (BL_FORT_FAB_ARG(rho), const int lo[], const int hi[],
      const Real dx[], Real* mass);
 #else
-BL_FORT_PROC_DECL(RNS_SUMMASS,cns_summass)
+BL_FORT_PROC_DECL(RNS_SUMMASS,rns_summass)
     (BL_FORT_FAB_ARG(rho), const int lo[], const int hi[],
      const Real dx[], Real* mass,
      const Real* r, const int& rlo, const int& rhi);
 #endif
 
-BL_FORT_PROC_DECL(RNS_ENFORCE_NONNEGATIVE_SPECIES,cns_enforce_nonnegative_species)
+BL_FORT_PROC_DECL(RNS_ENFORCE_NONNEGATIVE_SPECIES,rns_enforce_nonnegative_species)
     (BL_FORT_FAB_ARG(S_new), const int lo[], const int hi[]);
 
-BL_FORT_PROC_DECL(RNS_AVGDOWN,cns_avgdown)
+BL_FORT_PROC_DECL(RNS_AVGDOWN,rns_avgdown)
     (BL_FORT_FAB_ARG(crse_fab), const int& nc,
      const BL_FORT_FAB_ARG(crse_vol),
      const BL_FORT_FAB_ARG(fine_fab),
@@ -204,7 +198,7 @@ BL_FORT_PROC_DECL(CA_REACT_STATE,ca_react_state)
      const BL_FORT_FAB_ARG(ReactionTerms),
      const Real& time, const Real& dt_react);
 
-BL_FORT_PROC_DECL(RNS_COMPUTE_TEMP,cns_compute_temp)
+BL_FORT_PROC_DECL(RNS_COMPUTE_TEMP,rns_compute_temp)
     (const int lo[], const int hi[],
      const BL_FORT_FAB_ARG(state));
 

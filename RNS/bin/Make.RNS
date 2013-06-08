@@ -3,7 +3,7 @@ EBASE = RNS
 
 include $(BOXLIB_HOME)/Tools/C_mk/Make.defs
 
-Bdirs 	:= src src/Src_$(DIM)d
+Bdirs 	:= src src/Src_$(DIM)d src/EOS
 
 Bpack	+= $(foreach dir, $(Bdirs), $(TOP)/$(dir)/Make.package)
 Blocs	+= $(foreach dir, $(Bdirs), $(TOP)/$(dir))
@@ -13,32 +13,30 @@ Pdirs 	:= C_BaseLib C_AMRLib C_BoundaryLib
 Bpack	+= $(foreach dir, $(Pdirs), $(BOXLIB_HOME)/Src/$(dir)/Make.package)
 Blocs	+= $(foreach dir, $(Pdirs), $(BOXLIB_HOME)/Src/$(dir))
 
-ifneq (${CHEMISTRY_MODEL}, NULL)
-  Bpack	+= ../../../Chemistry/src_f90/Make.package
-  Blocs	+= ../../../Chemistry/src_f90
+Bpack	+= ../../../Chemistry/src_f90/Make.package
+Blocs	+= ../../../Chemistry/src_f90
 
-  MECHDIR = ../../../Chemistry/data
-  ifeq (${CHEMISTRY_MODEL}, CHEMH)
-    cEXE_sources += chem-H.c
-    vpath %.f $(VPATH_LOCATIONS) ${MECHDIR}/chem-H/PMFs
-    vpath %.c $(VPATH_LOCATIONS) ${MECHDIR}/chem-H
-  else ifeq (${CHEMISTRY_MODEL}, LIDRYER)
-    cEXE_sources += LiDryer.c
-    vpath %.f $(VPATH_LOCATIONS) ${MECHDIR}/LiDryer/PMFs
-    vpath %.c $(VPATH_LOCATIONS) ${MECHDIR}/LiDryer
-  else ifeq ($(CHEMISTRY_MODEL),DRM19)
-    cEXE_sources += drm19.c
-    vpath %.f $(VPATH_LOCATIONS) ${MECHDIR}/gri/PMFs
-    vpath %.c $(VPATH_LOCATIONS) ${MECHDIR}/gri
-  else ifeq ($(CHEMISTRY_MODEL),GRI30)
-    cEXE_sources += grimech30.c
-    vpath %.f $(VPATH_LOCATIONS) ${MECHDIR}/gri/PMFs
-    vpath %.c $(VPATH_LOCATIONS) ${MECHDIR}/gri
-  else ifeq (${CHEMISTRY_MODEL}, LUDME)
-    CHEM_MECHFILE = LuDME.c
-    VPATH_LOCATIONS += ${MECHDIR}/data/Lu/PMFs
-    VPATH_LOCATIONS += ${MECHDIR}/data/Lu
-  endif
+MECHDIR = ../../../Chemistry/data
+ifeq (${CHEMISTRY_MODEL}, CHEMH)
+  cEXE_sources += chem-H.c
+  vpath %.f $(VPATH_LOCATIONS) ${MECHDIR}/chem-H/PMFs
+  vpath %.c $(VPATH_LOCATIONS) ${MECHDIR}/chem-H
+else ifeq (${CHEMISTRY_MODEL}, LIDRYER)
+  cEXE_sources += LiDryer.c
+  vpath %.f $(VPATH_LOCATIONS) ${MECHDIR}/LiDryer/PMFs
+  vpath %.c $(VPATH_LOCATIONS) ${MECHDIR}/LiDryer
+else ifeq ($(CHEMISTRY_MODEL),DRM19)
+  cEXE_sources += drm19.c
+  vpath %.f $(VPATH_LOCATIONS) ${MECHDIR}/gri/PMFs
+  vpath %.c $(VPATH_LOCATIONS) ${MECHDIR}/gri
+else ifeq ($(CHEMISTRY_MODEL),GRI30)
+  cEXE_sources += grimech30.c
+  vpath %.f $(VPATH_LOCATIONS) ${MECHDIR}/gri/PMFs
+  vpath %.c $(VPATH_LOCATIONS) ${MECHDIR}/gri
+else ifeq (${CHEMISTRY_MODEL}, LUDME)
+  CHEM_MECHFILE = LuDME.c
+  VPATH_LOCATIONS += ${MECHDIR}/data/Lu/PMFs
+  VPATH_LOCATIONS += ${MECHDIR}/data/Lu
 endif
 
 include $(Bpack)

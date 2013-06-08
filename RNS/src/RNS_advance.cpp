@@ -128,11 +128,6 @@ RNS::advance_hydro (Real time,
 	area[i].copy(levelArea[i][mfiindex]);
       }
             
-#if (BL_SPACEDIM <=2)
-      dloga.resize(bx_g);
-      dloga.copy(dLogArea[0][mfiindex]);
-#endif
-
       // Allocate fabs for fluxes.
       Box bx_g1(BoxLib::grow(bx,1));
       for (int i = 0; i < BL_SPACEDIM ; i++) {
@@ -146,21 +141,21 @@ RNS::advance_hydro (Real time,
       int is_finest_level = 0;
       if (level == finest_level) is_finest_level = 1;
 
-      BL_FORT_PROC_CALL(RNS_UMDRV,cns_umdrv)
-	(bx.loVect(), bx.hiVect(),
-	 BL_TO_FORTRAN(state), BL_TO_FORTRAN(stateout),
-	 dx, &dt,
-	 D_DECL(BL_TO_FORTRAN(flux[0]), 
-		BL_TO_FORTRAN(flux[1]), 
-		BL_TO_FORTRAN(flux[2])), 
-	 D_DECL(BL_TO_FORTRAN(area[0]), 
-		BL_TO_FORTRAN(area[1]), 
-		BL_TO_FORTRAN(area[2])), 
-#if (BL_SPACEDIM < 3) 
-	 BL_TO_FORTRAN(dloga), 
-#endif
-	 BL_TO_FORTRAN(grid_volume), 
-	 &cflLoc,verbose);
+//       BL_FORT_PROC_CALL(RNS_UMDRV,rns_umdrv)
+// 	(bx.loVect(), bx.hiVect(),
+// 	 BL_TO_FORTRAN(state), BL_TO_FORTRAN(stateout),
+// 	 dx, &dt,
+// 	 D_DECL(BL_TO_FORTRAN(flux[0]), 
+// 		BL_TO_FORTRAN(flux[1]), 
+// 		BL_TO_FORTRAN(flux[2])), 
+// 	 D_DECL(BL_TO_FORTRAN(area[0]), 
+// 		BL_TO_FORTRAN(area[1]), 
+// 		BL_TO_FORTRAN(area[2])), 
+// #if (BL_SPACEDIM < 3) 
+// 	 BL_TO_FORTRAN(dloga), 
+// #endif
+// 	 BL_TO_FORTRAN(grid_volume), 
+// 	 &cflLoc,verbose);
 
       if (do_reflux) {
 	if (fine) {
@@ -206,8 +201,6 @@ RNS::advance_hydro (Real time,
             }
         }
     }
-
-    reset_internal_energy(S_new);
 
     return dt_new;
 }

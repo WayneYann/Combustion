@@ -1,1 +1,4 @@
-#
+
+f90EXE_sources += RNS_F.f90
+
+

@@ -24,17 +24,17 @@ end subroutine PROBINIT
 ! :::              right hand corner of grid.  (does not include
 ! :::		   ghost region).
 ! ::: -----------------------------------------------------------
-subroutine cns_initdata(level,time,lo,hi,nscal, &
+subroutine rns_initdata(level,time,lo,hi,nscal, &
      state,state_l1,state_h1,delta,xlo,xhi)
 
-end subroutine cns_initdata
+end subroutine rns_initdata
 
 
 ! ::: 
 ! ::: -----------------------------------------------------------
 ! :::
 
-     subroutine ca_hypfill(adv,adv_l1,adv_h1, &
+     subroutine rns_hypfill(adv,adv_l1,adv_h1, &
                            domlo,domhi,delta,xlo,time,bc)
 
      use meth_params_module, only : NVAR
@@ -70,13 +70,13 @@ end subroutine cns_initdata
 
      end do
 
-     end subroutine ca_hypfill
+     end subroutine rns_hypfill
 
 ! ::: 
 ! ::: -----------------------------------------------------------
 ! :::
 
-      subroutine ca_denfill(adv,adv_l1,adv_h1,domlo,domhi,delta,xlo,time,bc)
+      subroutine rns_denfill(adv,adv_l1,adv_h1,domlo,domhi,delta,xlo,time,bc)
 
       implicit none
       include 'bc_types.fi'
@@ -106,4 +106,4 @@ end subroutine cns_initdata
          stop
       end if
 
-      end subroutine ca_denfill
+      end subroutine rns_denfill
