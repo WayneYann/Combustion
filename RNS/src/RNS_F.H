@@ -13,8 +13,10 @@ BL_FORT_PROC_DECL(GET_METHOD_PARAMS,get_method_params)
 
 BL_FORT_PROC_DECL(SET_METHOD_PARAMS,set_method_params)
     (const int& dm, const int& Density, const int& Xmom, 
-     const int& Eden, const int& FirstSpec, const int& NUM_STATE, const int& NumSpec,
-     const Real& small_dens, const Real& small_temp, const Real& small_pres);
+     const int& Eden, const int& Temp, const int& FirstSpec, 
+     const int& NUM_STATE, const int& NumSpec,
+     const Real& small_dens, const Real& small_temp, const Real& small_pres,
+     const Real& gamma);
 
 BL_FORT_PROC_DECL(SET_PROBLEM_PARAMS,set_problem_params)
     (const int& dm,

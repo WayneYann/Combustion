@@ -52,6 +52,7 @@ int          RNS::Xmom          = -1;
 int          RNS::Ymom          = -1;
 int          RNS::Zmom          = -1;
 int          RNS::Eden          = -1;
+int          RNS::Temp          = -1;
 
 ChemDriver*  RNS::chemSolve     = 0;
 int          RNS::NumSpec       = 0;
@@ -61,6 +62,7 @@ int          RNS::LastSpec      = -1;
 Real         RNS::small_dens    = -1.e200;
 Real         RNS::small_temp    = -1.e200;
 Real         RNS::small_pres    = -1.e200;
+Real         RNS::gamma         = 5./3.;
 
 int          RNS::allow_untagging = 0;
 int          RNS::do_special_tagging = 0;
@@ -99,6 +101,7 @@ RNS::read_params ()
   pp.query("small_dens",small_dens);
   pp.query("small_temp",small_temp);
   pp.query("small_pres",small_pres);
+  pp.query("gamma",gamma);
 
   // Get boundary conditions
   Array<int> lo_bc(BL_SPACEDIM), hi_bc(BL_SPACEDIM);
@@ -221,13 +224,13 @@ RNS::buildMetrics ()
     }
 }
 
-void
-RNS::setTimeLevel (Real time,
-		   Real dt_old,
-		   Real dt_new)
-{
-  AmrLevel::setTimeLevel(time,dt_old,dt_new);
-}
+// void
+// RNS::setTimeLevel (Real time,
+// 		   Real dt_old,
+// 		   Real dt_new)
+// {
+//   AmrLevel::setTimeLevel(time,dt_old,dt_new);
+// }
 
 void
 RNS::initData ()

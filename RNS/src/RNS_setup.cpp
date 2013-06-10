@@ -122,6 +122,7 @@ RNS::variableSetUp ()
   Zmom = cnt++;
 #endif
   Eden = cnt++;
+  Temp = cnt++;
 
   NumSpec = chemSolve->numSpecies();
   if (NumSpec > 0) {
@@ -140,8 +141,8 @@ RNS::variableSetUp ()
   int dm = BL_SPACEDIM;
 
   BL_FORT_PROC_CALL(SET_METHOD_PARAMS, set_method_params)
-    (dm, Density, Xmom, Eden, FirstSpec, NUM_STATE, NumSpec, 
-     small_dens, small_temp, small_pres);
+    (dm, Density, Xmom, Eden, Temp, FirstSpec, NUM_STATE, NumSpec, 
+     small_dens, small_temp, small_pres, gamma);
   
   Real run_stop = ParallelDescriptor::second() - run_strt;
   
@@ -167,7 +168,7 @@ RNS::variableSetUp ()
   
   store_in_checkpoint = true;
   desc_lst.addDescriptor(State_Type,IndexType::TheCellType(),
-			 StateDescriptor::Point,1,NUM_STATE,
+			 StateDescriptor::Point,0,NUM_STATE,
 			 interp,state_data_extrap,store_in_checkpoint);
 
   Array<BCRec>       bcs(NUM_STATE);
@@ -184,6 +185,7 @@ RNS::variableSetUp ()
   cnt++; set_z_vel_bc(bc,phys_bc);  bcs[cnt] = bc; name[cnt] = "zmom";
 #endif
   cnt++; set_scalar_bc(bc,phys_bc); bcs[cnt] = bc; name[cnt] = "rho_E";
+  cnt++; set_scalar_bc(bc,phys_bc); bcs[cnt] = bc; name[cnt] = "Temp";
 
   // Get the species names from the chemdriver.
   if (NumSpec > 0) {

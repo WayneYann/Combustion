@@ -90,12 +90,6 @@ public:
   //
   MultiFab& Volume ();
   //
-  //Set time levels of state data.
-  //
-  virtual void setTimeLevel (Real time,
-			     Real dt_old,
-			     Real dt_new);
-  //
   //Initialize data on this level from another RNS (during regrid).
   //
   virtual void init (AmrLevel& old);
@@ -203,9 +197,9 @@ public:
   
   void set_special_tagging_flag (Real time);
 
-  static int       NUM_STATE;
-  static int       Density, Xmom, Ymom, Zmom, Eden;
-  static int       FirstSpec, LastSpec, NumSpec;
+  static int NUM_STATE;
+  static int Density, Xmom, Ymom, Zmom, Eden, Temp;
+  static int FirstSpec, LastSpec, NumSpec;
 
 protected:
 
@@ -255,7 +249,8 @@ protected:
   static Real      small_dens;
   static Real      small_temp;
   static Real      small_pres;
-  
+  static Real      gamma;
+
   bool             FillPatchedOldState_ok;
 
   static class ChemDriver* chemSolve;
