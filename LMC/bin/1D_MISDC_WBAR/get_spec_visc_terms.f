@@ -126,6 +126,8 @@ c              compute div(gamma)
       real*8 dxsqinv
       real*8 Y(-1:nfine,Nspec)
       real*8 Wbar(-2:nfine+1)
+      real*8 sum_gamma_lo, sum_gamma_hi, sumRhoY_lo, sumRhoY_hi
+      real*8 RhoYe_lo, RhoYe_hi
 
       dxsqinv = 1.d0/(dx*dx)
 
@@ -142,6 +144,11 @@ c     convert Y to Wbar
       enddo
 
       do i=lo,hi
+
+         sum_gamma_lo = 0.d0
+         sum_gamma_hi = 0.d0
+         sumRhoY_lo = 0.d0
+         sumRhoY_hi = 0.d0
 
          do n=1,Nspec
             is = FirstSpec + n - 1
@@ -164,7 +171,43 @@ c     no need to conservatively correct these
 c     we will correct beta grad X after the species diffusion solve
             visc(i,n) = (gamma_Wbar_hi(i,n)-gamma_Wbar_lo(i,n))*dxsqinv
 
+            if (LeEQ1 .eq. 0) then
+
+c              need to correct fluxes so they add to zero on each face
+c              build up the sum of species fluxes on lo and hi faces
+c              this will be "rho * V_c"
+               sum_gamma_lo = sum_gamma_lo + gamma_Wbar_lo(i,n)
+               sum_gamma_hi = sum_gamma_hi + gamma_Wbar_hi(i,n)
+               
+c              build up the sum of rho*X_m
+c              this will be the density
+               sumRhoY_lo = sumRhoY_lo+0.5d0*(scal(i-1,is)+scal(i,is))
+               sumRhoY_hi = sumRhoY_hi+0.5d0*(scal(i,is)+scal(i+1,is))
+               
+            end if
+
          enddo
+
+         if (LeEQ1 .eq. 0) then
+c           correct the fluxes so they add up to zero before computing visc
+            do n=1,Nspec
+               is = FirstSpec + n - 1
+
+c              compute rho*X_m on each face
+               RhoYe_lo = .5d0*(scal(i-1,is)+scal(i,is))
+               RhoYe_hi = .5d0*(scal(i,is)+scal(i+1,is))
+
+c              set flux = flux - (rho*V_c)*(rho*Y_m)/rho
+               gamma_Wbar_lo(i,n) = gamma_Wbar_lo(i,n) 
+     $              - sum_gamma_lo*RhoYe_lo/sumRhoY_lo
+               gamma_Wbar_hi(i,n) = gamma_Wbar_hi(i,n) 
+     $              - sum_gamma_hi*RhoYe_hi/sumRhoY_hi
+
+c              compute div(gamma)
+               visc(i,n) = (gamma_Wbar_hi(i,n)-gamma_Wbar_lo(i,n))*dxsqinv
+
+            end do
+         end if
 
       end do
 
@@ -174,7 +217,7 @@ c     we will correct beta grad X after the species diffusion solve
       subroutine get_spec_visc_terms_Y_and_Wbar(scal,beta_for_Y,visc,
      &                                          gamma_Wbar_lo,
      &                                          gamma_Wbar_hi,
-     &     dx,lo,hi)
+     &                                          dx,lo,hi)
 
 c     compute 
 c     gamma_m = beta_for_y grad Y + gamma_Wbar
