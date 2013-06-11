@@ -151,8 +151,8 @@ contains
     ! advance (pass control to sdclib)
     !
     call build(bpt_sdc_prep, "sdc_prep")
-    call sdc_srset_set_q0(sdc%srset, mfptr(U))
-    call sdc_srset_spread(sdc%srset, 0.0d0)
+    call sdc_sweeper_set_q0(imex2sweeper(sdc%imex), mfptr(U))
+    call sdc_sweeper_spread(imex2sweeper(sdc%imex), 0.0d0)
     call destroy(bpt_sdc_prep)
 
     if (sdc%tol_residual > 0.d0) then
@@ -164,12 +164,12 @@ contains
 
     call build(bpt_sdc_iter, "sdc_iter")
     do k = 1, sdc%iters
-       call sdc_srset_integrate(sdc%srset, dt)
-       call sdc_srset_sweep(sdc%srset, 0.0d0, dt)
+       call sdc_imex_integrate(sdc%imex, dt)
+       call sdc_imex_sweep(sdc%imex, 0.0d0, dt, 0)
 
        ! check residual
        if (sdc%tol_residual > 0.d0) then
-          call sdc_srset_residual(sdc%srset, dt, mfptr(R))
+          call sdc_sweeper_residual(imex2sweeper(sdc%imex), dt, mfptr(R))
           call parallel_reduce(res1, norm_l2(R), MPI_MAX)
 
           if (parallel_IOProcessor()) then
@@ -190,7 +190,7 @@ contains
     end do
     call destroy(bpt_sdc_iter)
 
-    call sdc_srset_get_qend(sdc%srset, mfptr(U))    
+    call sdc_sweeper_get_qend(imex2sweeper(sdc%imex), mfptr(U))    
 
     call reset_density(U)
     call impose_hard_bc(U)
@@ -311,8 +311,8 @@ contains
     !
     ! advance
     !
-    call sdc_mrset_set_q0(sdc%mrset, mfptr(U))
-    call sdc_mrset_spread(sdc%mrset, 0.0d0)
+    call sdc_sweeper_set_q0(mrex2sweeper(sdc%mrex), mfptr(U))
+    call sdc_mrex_spread(sdc%mrex, 0.0d0)
     call destroy(bpt_sdc_prep)
 
     if (sdc%tol_residual > 0.d0) then
@@ -324,13 +324,12 @@ contains
 
     call build(bpt_sdc_iter, "sdc_iter")
     do k = 1, sdc%iters
-       call sdc_mrset_integrate(sdc%mrset, dt);
-       call sdc_mrset_reset_location(sdc%mrset);
-       call sdc_mrset_sweep(sdc%mrset, 0, 0.0d0, dt);
+       call sdc_mrex_integrate(sdc%mrex, dt);
+       call sdc_mrex_sweep(sdc%mrex, 0.0d0, dt, 0);
 
        ! check residual
        if (sdc%tol_residual > 0.d0) then
-          call sdc_mrset_residual(sdc%mrset, dt, mfptr(R))
+          call sdc_sweeper_residual(mrex2sweeper(sdc%mrex), dt, mfptr(R))
           call parallel_reduce(res1, norm_l2(R), MPI_MAX)
 
           if (parallel_IOProcessor()) then
@@ -350,7 +349,7 @@ contains
        end if
     end do
 
-    call sdc_mrset_get_qend(sdc%mrset, mfptr(U))
+    call sdc_sweeper_get_qend(mrex2sweeper(sdc%mrex), mfptr(U))
 
     call reset_density(U)
     call impose_hard_bc(U)

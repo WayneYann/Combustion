@@ -19,9 +19,9 @@ module sdcquad_module
      type(sdc_encap_t), pointer :: encap
 
      type(sdc_nset_t), pointer  :: nset_adr, nset_ad, nset_r
-     type(sdc_exp_t), pointer   :: exp_adr, exp_ad, exp_r
-     type(sdc_mrset_t), pointer :: mrset
-     type(sdc_srset_t), pointer :: srset
+     type(sdc_mrex_t), pointer  :: mrex
+     type(sdc_imex_t), pointer  :: imex
+     type(ctx_t),      pointer  :: ctx
   end type sdc_t
 
 contains
@@ -40,14 +40,14 @@ contains
 
     sdc%single_rate = .true.
     sdc%multi_rate  = .false.
+    sdc%ctx => ctx
 
-    allocate(sdc%mfencap, sdc%encap, sdc%nset_adr, sdc%exp_adr, sdc%srset)
+    allocate(sdc%mfencap, sdc%encap, sdc%nset_adr, sdc%imex)
 
     call sdc_multifab_build(sdc%encap, c_loc(sdc%mfencap), err)
-    call sdc_nset_build(sdc%nset_adr, nnodes, qtype, "ADR", err)
-    call sdc_exp_build(sdc%exp_adr, feval, "ADR", err)
-    call sdc_hook_add(sdc%exp_adr%hooks, SDC_HOOK_POST_STEP, post, err)
-    call sdc_srset_build(sdc%srset, sdc%nset_adr, c_loc(sdc%exp_adr), sdc%encap, c_loc(ctx), "ADR", err)
+    call sdc_nset_build(sdc%nset_adr, nnodes, qtype, 0, "ADR", err)
+    call sdc_imex_build(sdc%imex, sdc%nset_adr, feval, c_null_ptr, c_null_ptr, "ADR", err)
+    call sdc_hook_add(sdc%imex%hooks, SDC_HOOK_POST_STEP, post, err)
 
   end subroutine sdc_build_single_rate
 
@@ -67,32 +67,33 @@ contains
 
     sdc%single_rate = .false.
     sdc%multi_rate  = .true.
+    sdc%ctx => ctx
 
-    allocate(sdc%mfencap, sdc%encap, sdc%nset_ad, sdc%nset_r, sdc%exp_ad, sdc%exp_r, sdc%mrset)
+    allocate(sdc%mfencap, sdc%encap, sdc%nset_ad, sdc%nset_r, sdc%mrex)
 
     call sdc_multifab_build(sdc%encap, c_loc(sdc%mfencap), err)
-    call sdc_nset_build(sdc%nset_ad, nnodes(1), qtype, "AD" // c_null_char, err)
-    call sdc_nset_build(sdc%nset_r, nnodes(2), qtype, "R" // c_null_char, err)
-    call sdc_exp_build(sdc%exp_ad, f1eval, "AD" // c_null_char, err)
-    call sdc_exp_build(sdc%exp_r, f2eval, "R" // c_null_char, err)
+    call sdc_nset_build(sdc%nset_ad, nnodes(1), qtype, 0, "AD" // c_null_char, err)
+    call sdc_nset_build(sdc%nset_r, nnodes(2), qtype, 0, "R" // c_null_char, err)
+    call sdc_mrex_build(sdc%mrex, 2, "ADR" // c_null_char, err)
+    call sdc_mrex_add_nset(sdc%mrex, sdc%nset_ad, f1eval, sdc%encap, c_loc(ctx), 0, err)
 
-    call sdc_mrset_build(sdc%mrset, 2, "ADR" // c_null_char, err)
-    call sdc_mrset_add_nset(sdc%mrset, sdc%nset_ad, c_loc(sdc%exp_ad), sdc%encap, c_loc(ctx), 0, err)
-
-    call sdc_hook_add(sdc%mrset%hooks, SDC_HOOK_PRE_UPDATE, post, err)
+    call sdc_hook_add(sdc%mrex%hooks, SDC_HOOK_POST_STEP, post, err)
 
     select case(sdc_multirate_type)
     case ("local")
-       call sdc_mrset_add_nset(sdc%mrset, sdc%nset_r, c_loc(sdc%exp_r), sdc%encap, c_loc(ctx), SDC_MR_LOCAL, err)
+       call sdc_mrex_add_nset(sdc%mrex, sdc%nset_r, f2eval, sdc%encap, &
+            c_loc(ctx), SDC_MR_LOCAL, err)
     case ("global")
-       call sdc_mrset_add_nset(sdc%mrset, sdc%nset_r, c_loc(sdc%exp_r), sdc%encap, c_loc(ctx), SDC_MR_GLOBAL, err)
+       call sdc_mrex_add_nset(sdc%mrex, sdc%nset_r, f2eval, sdc%encap, &
+            c_loc(ctx), SDC_MR_GLOBAL, err)
        if (err .ne. 0) then
           call sdc_nset_print(sdc%nset_ad, 2)
           call sdc_nset_print(sdc%nset_r, 2)
           stop "NODES DO NOT NEST PROPERLY"
        end if
     case ("repeated")
-       call sdc_mrset_add_nset(sdc%mrset, sdc%nset_r, c_loc(sdc%exp_r), sdc%encap, c_loc(ctx), SDC_MR_REPEATED, err)
+       call sdc_mrex_add_nset(sdc%mrex, sdc%nset_r, f2eval, sdc%encap, &
+            c_loc(ctx), SDC_MR_REPEATED, err)
     case default
        stop "UNKNOWN MULTIRATE TYPE: should be one of 'local', 'global', or 'repeated'"
     end select
@@ -127,10 +128,10 @@ contains
     call sdc_set_layout(sdc, la, nc, ng)
 
     if (sdc%single_rate) then
-       call sdc_srset_setup(sdc%srset, err)
+       call sdc_imex_setup(sdc%imex, sdc%encap, c_loc(sdc%ctx), err)
     else 
-       call sdc_mrset_setup(sdc%mrset, err)
-       ! call sdc_mrset_print(sdc%mrset, 2)
+       call sdc_mrex_setup(sdc%mrex, err)
+       ! call sdc_mrex_print(sdc%mrex, 2)
     end if
     
     if (err .ne. 0) then
@@ -146,19 +147,16 @@ contains
     type(sdc_t), intent(inout) :: sdc
 
     if (sdc%single_rate) then
-       call sdc_srset_destroy(sdc%srset)
+       call sdc_imex_destroy(sdc%imex)
        call sdc_nset_destroy(sdc%nset_adr)
-       call sdc_exp_destroy(sdc%exp_adr)
-       deallocate(sdc%exp_adr, sdc%nset_adr, sdc%srset)
+       deallocate(sdc%nset_adr, sdc%imex)
     end if
 
     if (sdc%multi_rate) then
-       call sdc_mrset_destroy(sdc%mrset)
+       call sdc_mrex_destroy(sdc%mrex)
        call sdc_nset_destroy(sdc%nset_ad)
        call sdc_nset_destroy(sdc%nset_r)
-       call sdc_exp_destroy(sdc%exp_ad)
-       call sdc_exp_destroy(sdc%exp_r)
-       deallocate(sdc%exp_ad, sdc%exp_r, sdc%nset_ad, sdc%nset_r, sdc%mrset)
+       deallocate(sdc%nset_ad, sdc%nset_r, sdc%mrex)
     end if
 
     call sdc_multifab_destroy(sdc%encap)

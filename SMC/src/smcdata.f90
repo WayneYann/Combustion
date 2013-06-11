@@ -29,13 +29,14 @@ contains
 
     type(layout), intent(in) :: la
     type(sdc_t),  intent(inout) :: sdc
+    integer :: err
 
     if (advance_method .eq. 1) then ! RK
        call multifab_build(Uprime, la, ncons, 0)
        call multifab_build(Unew,   la, ncons, stencil_ng)
     else
        if (sdc%single_rate) then
-          call sdc_srset_allocate(sdc%srset)
+          call sdc_sweeper_allocate(imex2sweeper(sdc%imex), err)
        end if
        if (sdc%multi_rate) then
           print *, 'MRSET ALLOCATE NOT IMPLEMENTED YET'
@@ -64,7 +65,7 @@ contains
        call destroy(Uprime)
     else 
        if (sdc%single_rate) then
-          call sdc_srset_deallocate(sdc%srset)
+          call sdc_sweeper_deallocate(imex2sweeper(sdc%imex))
        end if
        if (sdc%multi_rate) then
           print *, 'MRSET ALLOCATE NOT IMPLEMENTED YET'
