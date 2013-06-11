@@ -473,19 +473,6 @@ c     update species with conservative diffusion fluxes using equation (61)
             end do
             call set_bc_s(scal_new(0,:,:),lo(0),hi(0),bc(0,:))
 
-         end if
-
-c     compute transport coefficients
-c        rho D_m     (for species)
-c        lambda / cp (for enthalpy)
-c        lambda      (for temperature)
-         call calc_diffusivities(scal_new(0,:,:),beta_new(0,:,:),
-     &                           beta_for_Y_new(0,:,:),
-     &                           beta_for_Wbar_new(0,:,:),
-     &                           mu_dummy(0,:),lo(0),hi(0))
-
-         if (LeEQ1 .eq. 0) then
-
 c     calculate differential diffusion "diffdiff" terms, i.e.,
 c     sum_m div [ h_m (Gamma_m - lambda/cp grad Y_m) ]
 c     we pass in conservative gamma_m via gamma
