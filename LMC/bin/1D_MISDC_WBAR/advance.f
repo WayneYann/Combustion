@@ -319,7 +319,7 @@ c     update rhoY_m with advection terms and set up RHS for equation (57) C-N so
             dRhs(0,i,0) = 0.0d0
             do n=1,Nspec
                is = FirstSpec + n - 1
-               dRhs(0,i,n) = dt(0)*diff_tmp(0,i,is)
+               dRhs(0,i,n) = 0.5d0*dt(0)*diff_tmp(0,i,is)
             enddo
          enddo
          call update_spec(scal_old(0,:,:),scal_new(0,:,:),aofs(0,:,:),
@@ -434,7 +434,8 @@ c     update rhoY_m with advection terms and set up RHS for equation (60) C-N so
          do i=lo(0),hi(0)
             dRhs(0,i,0) = 0.0d0
             do n=1,Nspec
-               dRhs(0,i,n) = dt(0)*diff_tmp(0,i,is)
+               is = FirstSpec + n - 1
+               dRhs(0,i,n) = 0.5d0*dt(0)*diff_tmp(0,i,is)
             enddo
          enddo
          call update_spec(scal_old(0,:,:),scal_new(0,:,:),aofs(0,:,:),
