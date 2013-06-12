@@ -306,11 +306,20 @@ c        lambda      (for temperature)
 
          print *,'... do predictor for species'
 
+c     compute div(beta_for_Wbar^(k) grad Wbar^(k))
+c     also need to save the fluxes themselves
+            call get_spec_visc_terms_Wbar(scal_new(0,:,:),beta_for_Wbar_new(0,:,:),
+     &                                    diff_tmp(0,:,FirstSpec:),
+     &                                    gamma_Wbar_lo(0,:,:),
+     &                                    gamma_Wbar_hi(0,:,:),
+     &                                    dx(0),lo(0),hi(0))
+
 c     update rhoY_m with advection terms and set up RHS for equation (57) C-N solve
          do i=lo(0),hi(0)
             dRhs(0,i,0) = 0.0d0
             do n=1,Nspec
-               dRhs(0,i,n) = 0.d0
+               is = FirstSpec + n - 1
+               dRhs(0,i,n) = dt(0)*diff_tmp(0,i,is)
             enddo
          enddo
          call update_spec(scal_old(0,:,:),scal_new(0,:,:),aofs(0,:,:),
@@ -322,20 +331,21 @@ c     Solve C-N system in equation (57) for \tilde{Y}_{m,pred}^{<2>}
          rho_flag = 2
          do n=1,Nspec
             is = FirstSpec + n - 1
-            call cn_solve(scal_new(0,:,:),alpha(0,:),beta_new(0,:,:),
+            call cn_solve(scal_new(0,:,:),alpha(0,:),beta_for_Y_new(0,:,:),
      $                    Rhs(0,:,is),dx(0),dt(0),is,be_cn_theta,
      $                    rho_flag,.false.,lo(0),hi(0),bc(0,:))
          enddo
       
          if (LeEQ1 .eq. 0) then
 
-c     compute conservatively corrected div gamma_m 
-c     also save gamma_m for computing diffdiff terms later
-            call get_spec_visc_terms(scal_new(0,:,:),beta_new(0,:,:),
-     &                               diff_tmp(0,:,FirstSpec:),
-     &                               gamma_lo(0,:,:),
-     &                               gamma_hi(0,:,:),
-     &                               dx(0),lo(0),hi(0))
+c     compute conservatively corrected version of div gamma_m
+c     where gamma_m = beta_for_y^(k) grad \tilde Y_{m,AD}^(k+1) + beta_for_Wbar^(k) grad Wbar^(k)
+c     fluxes from beta_for_Wbar^(k) grad Wbar^(k) are already available
+            call get_spec_visc_terms_Y_and_Wbar(scal_new(0,:,:),beta_for_Y_new(0,:,:),
+     &                                          diff_tmp(0,:,FirstSpec:),
+     &                                          gamma_Wbar_lo(0,:,:),
+     &                                          gamma_Wbar_hi(0,:,:),
+     &                                          dx(0),lo(0),hi(0))
 
 c     update species with conservative diffusion fluxes using equation (58)
             do i=lo(0),hi(0)
@@ -412,11 +422,19 @@ c        lambda      (for temperature)
 
          print *,'... do corrector for species'
 
+c     compute div(beta_for_Wbar^(k) grad Wbar^(k))
+c     also need to save the fluxes themselves
+            call get_spec_visc_terms_Wbar(scal_new(0,:,:),beta_for_Wbar_new(0,:,:),
+     &                                    diff_tmp(0,:,FirstSpec:),
+     &                                    gamma_Wbar_lo(0,:,:),
+     &                                    gamma_Wbar_hi(0,:,:),
+     &                                    dx(0),lo(0),hi(0))
+
 c     update rhoY_m with advection terms and set up RHS for equation (60) C-N solve
          do i=lo(0),hi(0)
             dRhs(0,i,0) = 0.0d0
             do n=1,Nspec
-               dRhs(0,i,n) = 0.d0
+               dRhs(0,i,n) = dt(0)*diff_tmp(0,i,is)
             enddo
          enddo
          call update_spec(scal_old(0,:,:),scal_new(0,:,:),aofs(0,:,:),
@@ -428,20 +446,21 @@ c     Solve C-N system in equation (60) for \tilde{Y}_m^{<2>}
          rho_flag = 2
          do n=1,Nspec
             is = FirstSpec + n - 1
-            call cn_solve(scal_new(0,:,:),alpha(0,:),beta_new(0,:,:),
+            call cn_solve(scal_new(0,:,:),alpha(0,:),beta_for_Y_new(0,:,:),
      $                    Rhs(0,:,is),dx(0),dt(0),is,be_cn_theta,
      $                    rho_flag,.false.,lo(0),hi(0),bc(0,:))
          enddo
 
          if (LeEQ1 .eq. 0) then
 
-c     compute conservatively corrected div gamma_m 
-c     also save gamma_m for computing diffdiff terms later
-            call get_spec_visc_terms(scal_new(0,:,:),beta_new(0,:,:),
-     &                               diff_tmp(0,:,FirstSpec:),
-     &                               gamma_lo(0,:,:),
-     &                               gamma_hi(0,:,:),
-     &                               dx(0),lo(0),hi(0))
+c     compute conservatively corrected version of div gamma_m
+c     where gamma_m = beta_for_y^(k) grad \tilde Y_{m,AD}^(k+1) + beta_for_Wbar^(k) grad Wbar^(k)
+c     fluxes from beta_for_Wbar^(k) grad Wbar^(k) are already available
+            call get_spec_visc_terms_Y_and_Wbar(scal_new(0,:,:),beta_for_Y_new(0,:,:),
+     &                                          diff_tmp(0,:,FirstSpec:),
+     &                                          gamma_Wbar_lo(0,:,:),
+     &                                          gamma_Wbar_hi(0,:,:),
+     &                                          dx(0),lo(0),hi(0))
 
 c     update species with conservative diffusion fluxes using equation (61)
             do i=lo(0),hi(0)
