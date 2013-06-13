@@ -77,6 +77,7 @@ c     cell-centered, 1 ghost cell
 c     cell-centered, no ghost cells
       real*8      rhohalf(0:nlevs-1, 0:nfine-1)
       real*8        alpha(0:nlevs-1, 0:nfine-1)
+      real*8       rho_cp(0:nlevs-1, 0:nfine-1)
       real*8      vel_Rhs(0:nlevs-1, 0:nfine-1)
       real*8         aofs(0:nlevs-1, 0:nfine-1,nscal)
       real*8 gamma_lo(0:nlevs-1, 0:nfine-1,Nspec)
@@ -513,6 +514,11 @@ c        lambda      (for temperature)
 c     compute diffusion terms at time n
          print *,'... creating the diffusive terms with old data'
 
+c     compute div lambda grad T + gamma_m dot grad h_m, where
+c     gamma_m has been conservatively corrected
+c     AJN FIXME - get rid of diffdiff part, create new subroutine
+         call get_temp_visc_terms(scal_old(0,:,:),beta_old(0,:,:),
+     &                            diff_old(0,:,Temp),dx(0),lo(0),hi(0))
 c     compute conservatively corrected div gamma_m 
 c     also save gamma_m for computing diffdiff terms later
          call get_spec_visc_terms(scal_old(0,:,:),beta_old(0,:,:),
@@ -530,6 +536,8 @@ c     we pass in conservative gamma_m via gamma
 c     we take lambda / cp from beta
 c     we compute h_m using T from the first argument
 c     we compute grad Y_m using Y_m from the second argument
+c     AJN fixme - put in temp formulation, create new subroutine
+c     convert forcing for rhoh godunov to temperature form
             call get_diffdiff_terms(scal_old(0,:,:),scal_old(0,:,:),
      $                              gamma_lo(0,:,:),
      $                              gamma_hi(0,:,:),beta_old(0,:,:),
@@ -722,6 +730,12 @@ c        lambda / cp (for enthalpy)
 c        lambda      (for temperature)
             call calc_diffusivities(scal_new(0,:,:),beta_new(0,:,:),
      &                              mu_dummy(0,:),lo(0),hi(0))
+
+c     compute div lambda grad T + gamma_m dot grad h_m, where
+c     gamma_m has been conservatively corrected
+c     AJN FIXME - get rid of diffdiff part, create new subroutine
+         call get_temp_visc_terms(scal_new(0,:,:),beta_new(0,:,:),
+     &                            diff_new(0,:,Temp),dx(0),lo(0),hi(0))
 c     compute a conservative div gamma_m
 c     save gamma_m for differential diffusion computation
             call get_spec_visc_terms(scal_new(0,:,:),beta_new(0,:,:),
@@ -740,6 +754,7 @@ c     we pass in conservative gamma_m via gamma
 c     we take lambda / cp from beta
 c     we compute h_m using T from the first argument
 c     we compute grad Y_m using Y_m from the second argument
+c     AJN fixme - put in temp formulation, create new subroutine
                call get_diffdiff_terms(scal_new(0,:,:),scal_new(0,:,:),
      $                                 gamma_lo(0,:,:),
      $                                 gamma_hi(0,:,:),beta_new(0,:,:),
@@ -837,10 +852,10 @@ c     includes deferred correction term for species
                   dRhs(0,i,n) = dt(0)*(I_R(0,i,n) 
      &                 + 0.5d0*(diff_old(0,i,is) - diff_new(0,i,is)))
                enddo
-c     includes deferred correction term for enthalpy
-c     differential diffusion will be added later
+c     includes deferred correction term for enthalpy in TEMPERATURE FORMULATION
+c     no need to add differential diffusion anymore!
                dRhs(0,i,0) = dt(0)*(
-     &              + 0.5d0*(diff_old(0,i,RhoH) - diff_new(0,i,RhoH)))
+     &              + 0.5d0*(diff_old(0,i,Temp) - diff_new(0,i,Temp)))
             enddo
             call update_spec(scal_old(0,:,:),scal_new(0,:,:),aofs(0,:,:),
      &                       alpha(0,:),beta_old(0,:,:),
@@ -884,6 +899,9 @@ c     add differential diffusion to forcing for enthalpy solve in equation (49)
                end do
 
             end if
+
+c     AJN FIXME
+c     need some kind of loop over l here
             
             print *,'... do correction diffusion solve for rhoh'
 
@@ -892,6 +910,16 @@ c     update rhoh with advection terms and set up RHS for equation (49) C-N solv
      &                       alpha(0,:),beta_old(0,:,:),
      &                       dRhs(0,:,0),Rhs(0,:,RhoH),dx(0),dt(0),
      &                       be_cn_theta,lo(0),hi(0),bc(0,:))
+
+c     AJN FIXME
+c     alpha holds rho^{(k+1)}
+c     need to set rho_cp = alpha*cp and pass this into cn_solve
+c     need to pass in initial guess of zero
+c     output is delta T, so rho_flag should probably be zero
+c     Need to modify Rhs by:
+c       - adding dt*div lambda_{AD}^{(k+1),l} grad T_{AD}^{(k+1),l}
+c       - subtracting rho^{(k+1)} h_{AD}^{(k+1),l}
+
 
 c     Solve C-N system in equation (49) for h_{AD}^{(k+1)}
             rho_flag = 2
