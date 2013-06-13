@@ -82,8 +82,13 @@ c        compute cell-centered h_m
             is = FirstSpec + n - 1
 
 c     compute -lambda/cp on faces
-            beta_lo = (-beta(i  ,RhoH)-beta(i-1,RhoH)) /2.d0
-            beta_hi = (-beta(i+1,RhoH)-beta(i  ,RhoH)) /2.d0
+            if (coef_avg_harm.eq.1) then
+               beta_lo = -2.d0 / (1.d0/beta(i,RhoH)+1.d0/beta(i-1,RhoH))
+               beta_hi = -2.d0 / (1.d0/beta(i,RhoH)+1.d0/beta(i+1,RhoH))
+            else
+               beta_lo = -(beta(i  ,RhoH)+beta(i-1,RhoH)) /2.d0
+               beta_hi = -(beta(i+1,RhoH)+beta(i  ,RhoH)) /2.d0
+            end if
 
 c     set face fluxes to -lambda/cp * grad Y_m
             flux_lo(n) = beta_lo*(Y(n  ,i) - Y(n,i-1))
