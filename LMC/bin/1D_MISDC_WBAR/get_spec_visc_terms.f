@@ -125,7 +125,7 @@ c              compute div(gamma)
       real*8 beta_for_Wbar_lo,beta_for_Wbar_hi,RWRK
       real*8 dxsqinv
       real*8 Y(-1:nfine,Nspec)
-      real*8 Wbar(-2:nfine+1)
+      real*8 Wbar(-1:nfine)
       real*8 sum_gamma_lo, sum_gamma_hi, sumRhoY_lo, sumRhoY_hi
       real*8 RhoYe_lo, RhoYe_hi
 
