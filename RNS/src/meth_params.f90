@@ -6,7 +6,7 @@ module meth_params_module
 
   ! conserved variables
   integer         , save :: NVAR, NSPEC
-  integer         , save :: URHO, UMX, UMY, UMZ, UEDEN, UFS
+  integer         , save :: URHO, UMX, UMY, UMZ, UEDEN, UTEMP, UFS
 
   ! primitive variables
   integer         , save :: QVAR

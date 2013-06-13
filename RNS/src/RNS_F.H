@@ -13,8 +13,10 @@ BL_FORT_PROC_DECL(GET_METHOD_PARAMS,get_method_params)
 
 BL_FORT_PROC_DECL(SET_METHOD_PARAMS,set_method_params)
     (const int& dm, const int& Density, const int& Xmom, 
-     const int& Eden, const int& FirstSpec, const int& NUM_STATE, const int& NumSpec,
-     const Real& small_dens, const Real& small_temp, const Real& small_pres);
+     const int& Eden, const int& Temp, const int& FirstSpec, 
+     const int& NUM_STATE, const int& NumSpec,
+     const Real& small_dens, const Real& small_temp, const Real& small_pres,
+     const Real& gamma);
 
 BL_FORT_PROC_DECL(SET_PROBLEM_PARAMS,set_problem_params)
     (const int& dm,
@@ -209,9 +211,6 @@ BL_FORT_PROC_DECL(CA_FILL_TEMP_COND,ca_fill_temp_cond)
             const BL_FORT_FAB_ARG(ycoeffs),
             const BL_FORT_FAB_ARG(zcoeffs)),
      const Real* dx);
-
-BL_FORT_PROC_DECL(RNS_SET_SPECIAL_TAGGING_FLAG,rns_set_special_tagging_flag)
-    (const Real& max_den, const int* flag);
 
 BL_FORT_PROC_DECL(CA_GET_RHOE,ca_get_rhoe)
   (const int lo[], const int hi[],

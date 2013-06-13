@@ -101,108 +101,112 @@ set_z_vel_bc(BCRec& bc, const BCRec& phys_bc)
 void
 RNS::variableSetUp ()
 {
-  BL_ASSERT(desc_lst.size() == 0);
+    BL_ASSERT(desc_lst.size() == 0);
 
-  if (chemSolve == 0) {
-    chemSolve = new ChemDriver();
-  }
-
-  // Get options, set phys_bc
-  read_params();
-  //
-  // Set number of state variables and pointers to components
-  //
-  int cnt = 0;
-  Density = cnt++;
-  Xmom = cnt++;
+    if (chemSolve == 0) 
+    {
+	chemSolve = new ChemDriver();
+    }
+    
+    // Get options, set phys_bc
+    read_params();
+    //
+    // Set number of state variables and pointers to components
+    //
+    int cnt = 0;
+    Density = cnt++;
+    Xmom = cnt++;
 #if (BL_SPACEDIM >= 2)
-  Ymom = cnt++;
+    Ymom = cnt++;
 #endif
 #if (BL_SPACEDIM == 3)
-  Zmom = cnt++;
+    Zmom = cnt++;
 #endif
-  Eden = cnt++;
-
-  NumSpec = chemSolve->numSpecies();
-  if (NumSpec > 0) {
-    FirstSpec = cnt++;
-    cnt += NumSpec - 2;
-    LastSpec = cnt++;
-  }
-
-  NUM_STATE = cnt;
-
-  // Define NUM_GROW from the f90 module.
-  BL_FORT_PROC_CALL(GET_METHOD_PARAMS, get_method_params)(&NUM_GROW);
-
-  const Real run_strt = ParallelDescriptor::second() ; 
-
-  int dm = BL_SPACEDIM;
-
-  BL_FORT_PROC_CALL(SET_METHOD_PARAMS, set_method_params)
-    (dm, Density, Xmom, Eden, FirstSpec, NUM_STATE, NumSpec, 
-     small_dens, small_temp, small_pres);
-  
-  Real run_stop = ParallelDescriptor::second() - run_strt;
-  
-  ParallelDescriptor::ReduceRealMax(run_stop,ParallelDescriptor::IOProcessorNumber());
-  
-  if (ParallelDescriptor::IOProcessor())
-    std::cout << "\nTime in set_method_params: " << run_stop << '\n' ;
-  
-  int coord_type = Geometry::Coord();
-  const Real* prob_lo   = Geometry::ProbLo();
-  const Real* prob_hi   = Geometry::ProbHi();
-  
-  BL_FORT_PROC_CALL(SET_PROBLEM_PARAMS, set_problem_params)
-    (dm,phys_bc.lo(),phys_bc.hi(),prob_lo,prob_hi,Outflow,Symmetry,coord_type);
-  
-  Interpolater* interp = &cell_cons_interp;
-  
-  // Note that the default is state_data_extrap = false, store_in_checkpoint = true
-  // We only need to put these explicitly if we want to do something different,
-  // like not store the state data in a checkpoint directory
-  bool state_data_extrap = false;
-  bool store_in_checkpoint;
-  
-  store_in_checkpoint = true;
-  desc_lst.addDescriptor(State_Type,IndexType::TheCellType(),
-			 StateDescriptor::Point,1,NUM_STATE,
-			 interp,state_data_extrap,store_in_checkpoint);
-
-  Array<BCRec>       bcs(NUM_STATE);
-  Array<std::string> name(NUM_STATE);
+    Eden = cnt++;
+    Temp = cnt++;
     
-  BCRec bc;
-  cnt = 0;
-  set_scalar_bc(bc,phys_bc); bcs[cnt] = bc; name[cnt] = "density";
-  cnt++; set_x_vel_bc(bc,phys_bc);  bcs[cnt] = bc; name[cnt] = "xmom";
+    NumSpec = chemSolve->numSpecies();
+    if (NumSpec > 0) 
+    {
+	FirstSpec = cnt++;
+	cnt += NumSpec - 2;
+	LastSpec = cnt++;
+    }
+    
+    NUM_STATE = cnt;
+    
+    // Define NUM_GROW from the f90 module.
+    BL_FORT_PROC_CALL(GET_METHOD_PARAMS, get_method_params)(&NUM_GROW);
+    
+    const Real run_strt = ParallelDescriptor::second() ; 
+    
+    int dm = BL_SPACEDIM;
+    
+    BL_FORT_PROC_CALL(SET_METHOD_PARAMS, set_method_params)
+	(dm, Density, Xmom, Eden, Temp, FirstSpec, NUM_STATE, NumSpec, 
+	 small_dens, small_temp, small_pres, gamma);
+    
+    Real run_stop = ParallelDescriptor::second() - run_strt;
+  
+    ParallelDescriptor::ReduceRealMax(run_stop,ParallelDescriptor::IOProcessorNumber());
+    
+    if (ParallelDescriptor::IOProcessor())
+	std::cout << "\nTime in set_method_params: " << run_stop << '\n' ;
+  
+    int coord_type = Geometry::Coord();
+    const Real* prob_lo   = Geometry::ProbLo();
+    const Real* prob_hi   = Geometry::ProbHi();
+    
+    BL_FORT_PROC_CALL(SET_PROBLEM_PARAMS, set_problem_params)
+	(dm,phys_bc.lo(),phys_bc.hi(),prob_lo,prob_hi,Outflow,Symmetry,coord_type);
+    
+    Interpolater* interp = &cell_cons_interp;
+    
+    // Note that the default is state_data_extrap = false, store_in_checkpoint = true
+    // We only need to put these explicitly if we want to do something different,
+    // like not store the state data in a checkpoint directory
+    bool state_data_extrap = false;
+    bool store_in_checkpoint;
+    
+    store_in_checkpoint = true;
+    desc_lst.addDescriptor(State_Type,IndexType::TheCellType(),
+			   StateDescriptor::Point,NUM_GROW,NUM_STATE,
+			   interp,state_data_extrap,store_in_checkpoint);
+    
+    Array<BCRec>       bcs(NUM_STATE);
+    Array<std::string> name(NUM_STATE);
+    
+    BCRec bc;
+    cnt = 0;
+    set_scalar_bc(bc,phys_bc); bcs[cnt] = bc; name[cnt] = "density";
+    cnt++; set_x_vel_bc(bc,phys_bc);  bcs[cnt] = bc; name[cnt] = "xmom";
 #if (BL_SPACEDIM >= 2)
-  cnt++; set_y_vel_bc(bc,phys_bc);  bcs[cnt] = bc; name[cnt] = "ymom";
+    cnt++; set_y_vel_bc(bc,phys_bc);  bcs[cnt] = bc; name[cnt] = "ymom";
 #endif
 #if (BL_SPACEDIM == 3)
-  cnt++; set_z_vel_bc(bc,phys_bc);  bcs[cnt] = bc; name[cnt] = "zmom";
+    cnt++; set_z_vel_bc(bc,phys_bc);  bcs[cnt] = bc; name[cnt] = "zmom";
 #endif
-  cnt++; set_scalar_bc(bc,phys_bc); bcs[cnt] = bc; name[cnt] = "rho_E";
-
-  // Get the species names from the chemdriver.
-  if (NumSpec > 0) {
-    const Array<std::string>& spec_names = chemSolve->speciesNames();
-
-    for (int i=0; i<NumSpec; i++)
-      {
-        cnt++; set_scalar_bc(bc,phys_bc); bcs[cnt] = bc;
-        name[cnt] = "rho.Y(" + spec_names[i] + ")";
-      }
+    cnt++; set_scalar_bc(bc,phys_bc); bcs[cnt] = bc; name[cnt] = "rho_E";
+    cnt++; set_scalar_bc(bc,phys_bc); bcs[cnt] = bc; name[cnt] = "Temp";
     
-    desc_lst.setComponent(State_Type,
-                          Density,
-                          name,
-                          bcs,
-                          BndryFunc(BL_FORT_PROC_CALL(RNS_DENFILL,rns_denfill),
-                                    BL_FORT_PROC_CALL(RNS_HYPFILL,rns_hypfill)));
-  }
-
+    // Get the species names from the chemdriver.
+    if (NumSpec > 0) {
+	const Array<std::string>& spec_names = chemSolve->speciesNames();
+	
+	for (int i=0; i<NumSpec; i++)
+	{
+	    cnt++; set_scalar_bc(bc,phys_bc); bcs[cnt] = bc;
+	    name[cnt] = "rho.Y(" + spec_names[i] + ")";
+	}
+	
+	desc_lst.setComponent(State_Type,
+			      Density,
+			      name,
+			      bcs,
+			      BndryFunc(BL_FORT_PROC_CALL(RNS_DENFILL,rns_denfill),
+					BL_FORT_PROC_CALL(RNS_HYPFILL,rns_hypfill)));
+    }
+    
 //   //
 //   // DEFINE DERIVED QUANTITIES
 //   //
@@ -336,8 +340,8 @@ RNS::variableSetUp ()
 // 		 BL_FORT_PROC_CALL(RNS_DERMAGMOM,rns_dermagmom),the_same_box);
 //   derive_lst.addComponent("magmom",desc_lst,State_Type,Xmom,BL_SPACEDIM);
   
-  //
-  // DEFINE ERROR ESTIMATION QUANTITIES
-  //
-  ErrorSetUp();
+    //
+    // DEFINE ERROR ESTIMATION QUANTITIES
+    //
+    ErrorSetUp();
 }

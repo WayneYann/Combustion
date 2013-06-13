@@ -35,6 +35,8 @@ static Real fixed_dt     = -1.0;
 static Real initial_dt   = -1.0;
 static Real dt_cutoff    = 0.0;
 
+int          RNS::use_sdc       = 1;
+
 bool         RNS::dump_old      = false;
 
 int          RNS::verbose       = 0;
@@ -52,6 +54,7 @@ int          RNS::Xmom          = -1;
 int          RNS::Ymom          = -1;
 int          RNS::Zmom          = -1;
 int          RNS::Eden          = -1;
+int          RNS::Temp          = -1;
 
 ChemDriver*  RNS::chemSolve     = 0;
 int          RNS::NumSpec       = 0;
@@ -61,115 +64,118 @@ int          RNS::LastSpec      = -1;
 Real         RNS::small_dens    = -1.e200;
 Real         RNS::small_temp    = -1.e200;
 Real         RNS::small_pres    = -1.e200;
+Real         RNS::gamma         = 5./3.;
 
 int          RNS::allow_untagging = 0;
-int          RNS::do_special_tagging = 0;
 
 void
 RNS::variableCleanUp () 
 {
-  desc_lst.clear();
-  delete chemSolve;
-  chemSolve = 0;
+    desc_lst.clear();
+    delete chemSolve;
+    chemSolve = 0;
 }
 
 void
 RNS::read_params ()
 {
-  static bool done = false;
+    static bool done = false;
 
-  if (done) return;
-
-  done = true;
-
-  ParmParse pp("rns");   
-
-  pp.query("v",verbose);
-  pp.get("init_shrink",init_shrink);
-  pp.get("cfl",cfl);
-  pp.query("change_max",change_max);
-  pp.query("fixed_dt",fixed_dt);
-  pp.query("initial_dt",initial_dt);
-  pp.query("do_reflux",do_reflux);
-  do_reflux = (do_reflux ? 1 : 0);
-  pp.get("dt_cutoff",dt_cutoff);
-
-  pp.query("dump_old",dump_old);
-
-  pp.query("small_dens",small_dens);
-  pp.query("small_temp",small_temp);
-  pp.query("small_pres",small_pres);
-
-  // Get boundary conditions
-  Array<int> lo_bc(BL_SPACEDIM), hi_bc(BL_SPACEDIM);
-  pp.getarr("lo_bc",lo_bc,0,BL_SPACEDIM);
-  pp.getarr("hi_bc",hi_bc,0,BL_SPACEDIM);
-  for (int i = 0; i < BL_SPACEDIM; i++) {
-    phys_bc.setLo(i,lo_bc[i]);
-    phys_bc.setHi(i,hi_bc[i]);
-  }
-
-  //
-  // Check phys_bc against possible periodic geometry
-  // if periodic, must have internal BC marked.
-  //
-  if (Geometry::isAnyPeriodic())
+    if (done) return;
+    
+    done = true;
+    
+    ParmParse pp("rns");   
+    
+    pp.query("use_sdc", use_sdc);
+    
+    pp.query("v",verbose);
+    pp.get("init_shrink",init_shrink);
+    pp.get("cfl",cfl);
+    pp.query("change_max",change_max);
+    pp.query("fixed_dt",fixed_dt);
+    pp.query("initial_dt",initial_dt);
+    pp.query("do_reflux",do_reflux);
+    do_reflux = (do_reflux ? 1 : 0);
+    pp.get("dt_cutoff",dt_cutoff);
+    
+    pp.query("dump_old",dump_old);
+    
+    pp.query("small_dens",small_dens);
+    pp.query("small_temp",small_temp);
+    pp.query("small_pres",small_pres);
+    pp.query("gamma",gamma);
+    
+    // Get boundary conditions
+    Array<int> lo_bc(BL_SPACEDIM), hi_bc(BL_SPACEDIM);
+    pp.getarr("lo_bc",lo_bc,0,BL_SPACEDIM);
+    pp.getarr("hi_bc",hi_bc,0,BL_SPACEDIM);
+    for (int i = 0; i < BL_SPACEDIM; i++) 
     {
-      //
-      // Do idiot check.  Periodic means interior in those directions.
-      //
-      for (int dir = 0; dir<BL_SPACEDIM; dir++)
+	phys_bc.setLo(i,lo_bc[i]);
+	phys_bc.setHi(i,hi_bc[i]);
+    }
+
+    //
+    // Check phys_bc against possible periodic geometry
+    // if periodic, must have internal BC marked.
+    //
+    if (Geometry::isAnyPeriodic())
+    {
+	//
+	// Do idiot check.  Periodic means interior in those directions.
+	//
+	for (int dir = 0; dir<BL_SPACEDIM; dir++)
         {
-	  if (Geometry::isPeriodic(dir))
+	    if (Geometry::isPeriodic(dir))
             {
-	      if (lo_bc[dir] != Interior)
+		if (lo_bc[dir] != Interior)
                 {
-		  std::cerr << "RNS::read_params:periodic in direction "
-			    << dir
-			    << " but low BC is not Interior\n";
-		  BoxLib::Error();
+		    std::cerr << "RNS::read_params:periodic in direction "
+			      << dir
+			      << " but low BC is not Interior\n";
+		    BoxLib::Error();
                 }
-	      if (hi_bc[dir] != Interior)
+		if (hi_bc[dir] != Interior)
                 {
-		  std::cerr << "RNS::read_params:periodic in direction "
-			    << dir
-			    << " but high BC is not Interior\n";
-		  BoxLib::Error();
+		    std::cerr << "RNS::read_params:periodic in direction "
+			      << dir
+			      << " but high BC is not Interior\n";
+		    BoxLib::Error();
                 }
             }
         }
     }
-  else
+    else
     {
-      //
-      // Do idiot check.  If not periodic, should be no interior.
-      //
-      for (int dir=0; dir<BL_SPACEDIM; dir++)
+	//
+	// Do idiot check.  If not periodic, should be no interior.
+	//
+	for (int dir=0; dir<BL_SPACEDIM; dir++)
         {
-	  if (lo_bc[dir] == Interior)
+	    if (lo_bc[dir] == Interior)
             {
-	      std::cerr << "RNS::read_params:interior bc in direction "
-			<< dir
-			<< " but not periodic\n";
-	      BoxLib::Error();
+		std::cerr << "RNS::read_params:interior bc in direction "
+			  << dir
+			  << " but not periodic\n";
+		BoxLib::Error();
             }
-	  if (hi_bc[dir] == Interior)
+	    if (hi_bc[dir] == Interior)
             {
-	      std::cerr << "RNS::read_params:interior bc in direction "
-			<< dir
-			<< " but not periodic\n";
-	      BoxLib::Error();
+		std::cerr << "RNS::read_params:interior bc in direction "
+			  << dir
+			  << " but not periodic\n";
+		BoxLib::Error();
             }
         }
     }
-  
-  pp.query("allow_untagging",allow_untagging);
-  pp.query("do_special_tagging",do_special_tagging);
+    
+    pp.query("allow_untagging",allow_untagging);
 }
 
 RNS::RNS ()
 {
-  flux_reg = 0;
+    flux_reg = 0;
 }
 
 RNS::RNS (Amr&            papa,
@@ -177,123 +183,115 @@ RNS::RNS (Amr&            papa,
 	  const Geometry& level_geom,
 	  const BoxArray& bl,
 	  Real            time)
-  :
-  AmrLevel(papa,lev,level_geom,bl,time) 
+    :
+    AmrLevel(papa,lev,level_geom,bl,time) 
 {
-  buildMetrics();
-  
-  flux_reg = 0;
-  if (level > 0 && do_reflux) {
-    flux_reg = new FluxRegister(grids,crse_ratio,level,NUM_STATE);
-  }
+    buildMetrics();
+    
+    flux_reg = 0;
+    if (level > 0 && do_reflux) 
+    {
+	flux_reg = new FluxRegister(grids,crse_ratio,level,NUM_STATE);
+    }
 }
 
 RNS::~RNS () 
 {
-  delete flux_reg;
+    delete flux_reg;
 }
 
 void
 RNS::buildMetrics ()
 {
-  if ( Geometry::IsSPHERICAL() || Geometry::IsRZ() ) {
-    BoxLib::Abort("We don't support curvilinear coordinate systems.");
-  }
+    if ( Geometry::IsSPHERICAL() || Geometry::IsRZ() ) 
+	BoxLib::Abort("We don't support curvilinear coordinate systems.");
 
-  //
-  // Build volume and face area arrays.
-  // volume is not PArrayManaged, must manually delete.
-  //
-  volume.clear();
-  //
-  // area is not PArrayManaged, must manually delete.
-  //
-  for (int dir = 0; dir < BL_SPACEDIM; dir++)
+    //
+    // Build volume and face area arrays.
+    // volume is not PArrayManaged, must manually delete.
+    //
+    volume.clear();
+    //
+    // area is not PArrayManaged, must manually delete.
+    //
+    for (int dir = 0; dir < BL_SPACEDIM; dir++)
     {
-      area[dir].clear();
+	area[dir].clear();
     }
-
-  geom.GetVolume(volume,grids,NUM_GROW);
-  
-  for (int dir = 0; dir < BL_SPACEDIM; dir++)
+    
+    geom.GetVolume(volume,grids,NUM_GROW);
+    
+    for (int dir = 0; dir < BL_SPACEDIM; dir++)
     {
-      geom.GetFaceArea(area[dir],grids,dir,NUM_GROW);
+	geom.GetFaceArea(area[dir],grids,dir,NUM_GROW);
     }
-}
-
-void
-RNS::setTimeLevel (Real time,
-		   Real dt_old,
-		   Real dt_new)
-{
-  AmrLevel::setTimeLevel(time,dt_old,dt_new);
 }
 
 void
 RNS::initData ()
 {
-  //
-  // Loop over grids, call FORTRAN function to init with data.
-  //
-  int ns          = NUM_STATE;
-  const Real* dx  = geom.CellSize();
-  MultiFab& S_new = get_new_data(State_Type);
-  Real cur_time   = state[State_Type].curTime();
-
-  // make sure dx = dy = dz -- that's all we guarantee to support
-  const Real SMALL = 1.e-13;
+    //
+    // Loop over grids, call FORTRAN function to init with data.
+    //
+    int ns          = NUM_STATE;
+    const Real* dx  = geom.CellSize();
+    MultiFab& S_new = get_new_data(State_Type);
+    Real cur_time   = state[State_Type].curTime();
+    
+    // make sure dx = dy = dz -- that's all we guarantee to support
+    const Real SMALL = 1.e-13;
 #if (BL_SPACEDIM == 2)
-  if (fabs(dx[0] - dx[1]) > SMALL*dx[0])
+    if (fabs(dx[0] - dx[1]) > SMALL*dx[0])
     {
-      BoxLib::Abort("We don't support dx != dy");
+	BoxLib::Abort("We don't support dx != dy");
     }
 #elif (BL_SPACEDIM == 3)
-  if ( (fabs(dx[0] - dx[1]) > SMALL*dx[0]) || (fabs(dx[0] - dx[2]) > SMALL*dx[0]) )
+    if ( (fabs(dx[0] - dx[1]) > SMALL*dx[0]) || (fabs(dx[0] - dx[2]) > SMALL*dx[0]) )
     {
-      BoxLib::Abort("We don't support dx != dy != dz");
+	BoxLib::Abort("We don't support dx != dy != dz");
     }
 #endif
+    
+    if (verbose && ParallelDescriptor::IOProcessor())
+	std::cout << "Initializing the data at level " << level << std::endl;
 
-  if (verbose && ParallelDescriptor::IOProcessor())
-    std::cout << "Initializing the data at level " << level << std::endl;
-
-  for (MFIter mfi(S_new); mfi.isValid(); ++mfi)
+    for (MFIter mfi(S_new); mfi.isValid(); ++mfi)
     {
-      RealBox    gridloc = RealBox(grids[mfi.index()],geom.CellSize(),geom.ProbLo());
-      const Box& box     = mfi.validbox();
-      const int* lo      = box.loVect();
-      const int* hi      = box.hiVect();
-      
-      BL_FORT_PROC_CALL(RNS_INITDATA,rns_initdata)
-	(level, cur_time, lo, hi, ns,
-	 BL_TO_FORTRAN(S_new[mfi]), dx,
-	 gridloc.lo(), gridloc.hi());
+	RealBox    gridloc = RealBox(grids[mfi.index()],geom.CellSize(),geom.ProbLo());
+	const Box& box     = mfi.validbox();
+	const int* lo      = box.loVect();
+	const int* hi      = box.hiVect();
+	
+	BL_FORT_PROC_CALL(RNS_INITDATA,rns_initdata)
+	    (level, cur_time, lo, hi, ns,
+	     BL_TO_FORTRAN(S_new[mfi]), dx,
+	     gridloc.lo(), gridloc.hi());
     }
-
-  if (verbose && ParallelDescriptor::IOProcessor())
-    std::cout << "Done initializing the level " << level << " data " << std::endl;
+    
+    if (verbose && ParallelDescriptor::IOProcessor())
+	std::cout << "Done initializing the level " << level << " data " << std::endl;
 }
 
 void
 RNS::init (AmrLevel &old)
 {
-  RNS* oldlev = (RNS*) &old;
-  //
-  // Create new grid data by fillpatching from old.
-  //
-  Real dt_new    = parent->dtLevel(level);
-  Real cur_time  = oldlev->state[State_Type].curTime();
-  Real prev_time = oldlev->state[State_Type].prevTime();
-  Real dt_old    = cur_time - prev_time;
-  setTimeLevel(cur_time,dt_old,dt_new);
-
-  MultiFab& S_new = get_new_data(State_Type);
-  
-  for (FillPatchIterator fpi(old,S_new,0,cur_time,State_Type,0,NUM_STATE);
-       fpi.isValid();
-       ++fpi)
+    RNS* oldlev = (RNS*) &old;
+    //
+    // Create new grid data by fillpatching from old.
+    //
+    Real dt_new    = parent->dtLevel(level);
+    Real cur_time  = oldlev->state[State_Type].curTime();
+    Real prev_time = oldlev->state[State_Type].prevTime();
+    Real dt_old    = cur_time - prev_time;
+    setTimeLevel(cur_time,dt_old,dt_new);
+    
+    MultiFab& S_new = get_new_data(State_Type);
+    
+    for (FillPatchIterator fpi(old,S_new,0,cur_time,State_Type,0,NUM_STATE);
+	 fpi.isValid();
+	 ++fpi)
     {
-      S_new[fpi].copy(fpi());
+	S_new[fpi].copy(fpi());
     }
 }
 
@@ -304,53 +302,53 @@ RNS::init (AmrLevel &old)
 void
 RNS::init ()
 {
-  Real dt        = parent->dtLevel(level);
-  Real cur_time  = getLevel(level-1).state[State_Type].curTime();
-  Real prev_time = getLevel(level-1).state[State_Type].prevTime();
-  
-  Real dt_old = (cur_time - prev_time)/(Real)parent->MaxRefRatio(level-1);
-
-  setTimeLevel(cur_time,dt_old,dt);
-  MultiFab& S_new = get_new_data(State_Type);
-  FillCoarsePatch(S_new, 0, cur_time, State_Type, 0, NUM_STATE);
+    Real dt        = parent->dtLevel(level);
+    Real cur_time  = getLevel(level-1).state[State_Type].curTime();
+    Real prev_time = getLevel(level-1).state[State_Type].prevTime();
+    
+    Real dt_old = (cur_time - prev_time)/(Real)parent->MaxRefRatio(level-1);
+    
+    setTimeLevel(cur_time,dt_old,dt);
+    MultiFab& S_new = get_new_data(State_Type);
+    FillCoarsePatch(S_new, 0, cur_time, State_Type, 0, NUM_STATE);
 }
 
 Real
 RNS::initialTimeStep ()
 {
-  Real dummy_dt = 0.0;
-  return (initial_dt > 0.0) ? initial_dt : init_shrink*estTimeStep(dummy_dt);
+    Real dummy_dt = 0.0;
+    return (initial_dt > 0.0) ? initial_dt : init_shrink*estTimeStep(dummy_dt);
 }
 
 Real
 RNS::estTimeStep (Real dt_old)
 {
-  if (fixed_dt > 0.0)
-    return fixed_dt;
-
-  // This is just a dummy value to start with 
-  Real estdt  = 1.0e+20;
-
-  const Real* dx    = geom.CellSize();
-  const MultiFab& stateMF = get_new_data(State_Type);
+    if (fixed_dt > 0.0)
+	return fixed_dt;
     
-  for (MFIter mfi(stateMF); mfi.isValid(); ++mfi)
+    // This is just a dummy value to start with 
+    Real estdt  = 1.0e+20;
+    
+    const Real* dx    = geom.CellSize();
+    const MultiFab& stateMF = get_new_data(State_Type);
+    
+    for (MFIter mfi(stateMF); mfi.isValid(); ++mfi)
     {
-      const Box& box = mfi.validbox();
-      Real dt = estdt;
-      BL_FORT_PROC_CALL(RNS_ESTDT,rns_estdt)
-	(BL_TO_FORTRAN(stateMF[mfi]),
-	 box.loVect(),box.hiVect(),dx,&dt);
+	const Box& box = mfi.validbox();
+	Real dt = estdt;
+	BL_FORT_PROC_CALL(RNS_ESTDT,rns_estdt)
+	    (BL_TO_FORTRAN(stateMF[mfi]),
+	     box.loVect(),box.hiVect(),dx,&dt);
 	
-      estdt = std::min(estdt,dt);
+	estdt = std::min(estdt,dt);
     }
-  ParallelDescriptor::ReduceRealMin(estdt);
-  estdt *= cfl;
-
-  if (verbose && ParallelDescriptor::IOProcessor())
-    cout << "RNS::estTimeStep at level " << level << ":  estdt = " << estdt << '\n';
-
-  return estdt;
+    ParallelDescriptor::ReduceRealMin(estdt);
+    estdt *= cfl;
+    
+    if (verbose && ParallelDescriptor::IOProcessor())
+	cout << "RNS::estTimeStep at level " << level << ":  estdt = " << estdt << '\n';
+    
+    return estdt;
 }
 
 void
@@ -363,79 +361,84 @@ RNS::computeNewDt (int                   finest_level,
 		   Real                  stop_time,
 		   int                   post_regrid_flag)
 {
-  //
-  // We are at the end of a coarse grid timecycle.
-  // Compute the timesteps for the next iteration.
-  //
-  if (level > 0)
-    return;
-  
-  int i;
-  
-  Real dt_0 = 1.0e+100;
-  int n_factor = 1;
-  for (i = 0; i <= finest_level; i++)
+    //
+    // We are at the end of a coarse grid timecycle.
+    // Compute the timesteps for the next iteration.
+    //
+    if (level > 0)
+	return;
+    
+    int i;
+    
+    Real dt_0 = 1.0e+100;
+    int n_factor = 1;
+    for (i = 0; i <= finest_level; i++)
     {
-      RNS& adv_level = getLevel(i);
-      dt_min[i] = adv_level.estTimeStep(dt_level[i]);
+	RNS& adv_level = getLevel(i);
+	dt_min[i] = adv_level.estTimeStep(dt_level[i]);
     }
-  
-  if (fixed_dt <= 0.0)
+    
+    if (fixed_dt <= 0.0)
     {
-      if (post_regrid_flag == 1) 
+	if (post_regrid_flag == 1) 
 	{
-          //
-          // Limit dt's by pre-regrid dt
-          //
-          for (i = 0; i <= finest_level; i++)
+	    //
+	    // Limit dt's by pre-regrid dt
+	    //
+	    for (i = 0; i <= finest_level; i++)
 	    {
-              dt_min[i] = std::min(dt_min[i],dt_level[i]);
+		dt_min[i] = std::min(dt_min[i],dt_level[i]);
 	    }
 	} 
-      else 
+	else 
 	{
-          //
-          // Limit dt's by change_max * old dt
-          //
-          for (i = 0; i <= finest_level; i++)
+	    //
+	    // Limit dt's by change_max * old dt
+	    //
+	    for (i = 0; i <= finest_level; i++)
 	    {
-	      if (verbose && ParallelDescriptor::IOProcessor())
-		if (dt_min[i] > change_max*dt_level[i])
-		  {
-                    cout << "RNS::computeNewDt : limiting dt at level " << i << std::endl;
-                    cout << " ... new dt computed: " << dt_min[i] << std::endl;
-                    cout << " ... but limiting to: " << change_max*dt_level[i] <<
-		      " = " << change_max << " * " << dt_level[i] << std::endl;
-		  }
-              dt_min[i] = std::min(dt_min[i],change_max*dt_level[i]);
+		if (verbose && ParallelDescriptor::IOProcessor())
+		{
+		    if (dt_min[i] > change_max*dt_level[i])
+		    {
+			cout << "RNS::computeNewDt : limiting dt at level " << i << std::endl;
+			cout << " ... new dt computed: " << dt_min[i] << std::endl;
+			cout << " ... but limiting to: " << change_max*dt_level[i] <<
+			    " = " << change_max << " * " << dt_level[i] << std::endl;
+		    }
+		}
+		dt_min[i] = std::min(dt_min[i],change_max*dt_level[i]);
 	    }
 	} 
     }
-
-  //
-  // Find the minimum over all levels
-  //
-  for (i = 0; i <= finest_level; i++)
+    
+    //
+    // Find the minimum over all levels
+    //
+    for (i = 0; i <= finest_level; i++)
     {
-      n_factor *= n_cycle[i];
-      dt_0 = std::min(dt_0,n_factor*dt_min[i]);
+	n_factor *= n_cycle[i];
+	dt_0 = std::min(dt_0,n_factor*dt_min[i]);
     }
-  
-  //
-  // Limit dt's by the value of stop_time.
-  //
-  const Real eps = 0.001*dt_0;
-  Real cur_time  = state[State_Type].curTime();
-  if (stop_time >= 0.0) {
-    if ((cur_time + dt_0) > (stop_time - eps))
-      dt_0 = stop_time - cur_time;
-  }
-  
-  n_factor = 1;
-  for (i = 0; i <= finest_level; i++)
+    
+    //
+    // Limit dt's by the value of stop_time.
+    //
+    const Real eps = 0.001*dt_0;
+    Real cur_time  = state[State_Type].curTime();
+    if (stop_time >= 0.0) 
     {
-      n_factor *= n_cycle[i];
-      dt_level[i] = dt_0/n_factor;
+	if ((cur_time + dt_0) > (stop_time - eps))
+	{
+	    dt_0 = stop_time - cur_time;
+	}
+    }
+    
+    n_factor = 1;
+    for (i = 0; i <= finest_level; i++)
+    {
+	n_factor *= n_cycle[i];
+	dt_level[i] = dt_0/n_factor;
     }
 }
 
@@ -447,78 +450,79 @@ RNS::computeInitialDt (int                   finest_level,
 		       Array<Real>&          dt_level,
 		       Real                  stop_time)
 {
-  //
-  // Grids have been constructed, compute dt for all levels.
-  //
-  if (level > 0)
-    return;
-  
-  int i;
-  
-  Real dt_0 = 1.0e+100;
-  int n_factor = 1;
-  for (i = 0; i <= finest_level; i++)
+    //
+    // Grids have been constructed, compute dt for all levels.
+    //
+    if (level > 0)
+	return;
+    
+    int i;
+    
+    Real dt_0 = 1.0e+100;
+    int n_factor = 1;
+    for (i = 0; i <= finest_level; i++)
     {
-      dt_level[i] = getLevel(i).initialTimeStep();
-      n_factor   *= n_cycle[i];
-      dt_0 = std::min(dt_0,n_factor*dt_level[i]);
+	dt_level[i] = getLevel(i).initialTimeStep();
+	n_factor   *= n_cycle[i];
+	dt_0 = std::min(dt_0,n_factor*dt_level[i]);
     }
-  
-  //
-  // Limit dt's by the value of stop_time.
-  //
-  const Real eps = 0.001*dt_0;
-  Real cur_time  = state[State_Type].curTime();
-  if (stop_time >= 0.0) {
-    if ((cur_time + dt_0) > (stop_time - eps))
-      dt_0 = stop_time - cur_time;
-  }
-  
-  n_factor = 1;
-  for (i = 0; i <= finest_level; i++)
+    
+    //
+    // Limit dt's by the value of stop_time.
+    //
+    const Real eps = 0.001*dt_0;
+    Real cur_time  = state[State_Type].curTime();
+    if (stop_time >= 0.0) 
     {
-      n_factor *= n_cycle[i];
-      dt_level[i] = dt_0/n_factor;
+	if ((cur_time + dt_0) > (stop_time - eps))
+	{
+	    dt_0 = stop_time - cur_time;
+	}
+    }
+    
+    n_factor = 1;
+    for (i = 0; i <= finest_level; i++)
+    {
+	n_factor *= n_cycle[i];
+	dt_level[i] = dt_0/n_factor;
     }
 }
 
 void
 RNS::post_timestep (int iteration)
 {
-  //
-  // Integration cycle on fine level grids is complete
-  // do post_timestep stuff here.
-  //
-  int finest_level = parent->finestLevel();
-  
-  if (do_reflux && level < finest_level) {    
+    //
+    // Integration cycle on fine level grids is complete
+    // do post_timestep stuff here.
+    //
+    int finest_level = parent->finestLevel();
+    
+    if (do_reflux && level < finest_level) 
+    {
+	reflux();
 
-    reflux();
+	avgDown();
 
-    avgDown();
-
-    MultiFab& S_new_crse = get_new_data(State_Type);
-    enforce_nonnegative_species(S_new_crse);
-
-  }
-  else if (level < finest_level) {
-    avgDown();
-  }
+	MultiFab& S_new_crse = get_new_data(State_Type);
+	enforce_nonnegative_species(S_new_crse);
+    }
+    else if (level < finest_level) 
+    {
+	avgDown();
+    }
 }
 
 void
 RNS::post_restart ()
 {
-  Real cur_time = state[State_Type].curTime();
-  set_special_tagging_flag(cur_time);
 }
 
 void
 RNS::postCoarseTimeStep (Real cumtime)
 {
-  //
-  // Only level 0 calls this routine.
-  //
+    //
+    // Only level 0 calls this routine.
+    //
 }
 
 void
@@ -530,128 +534,116 @@ RNS::post_regrid (int lbase,
 void
 RNS::post_init (Real stop_time)
 {
-  if (level > 0)
-    return;
-  //
-  // Average data down from finer levels
-  // so that conserved data is consistent between levels.
-  //
-  int finest_level = parent->finestLevel();
-  for (int k = finest_level-1; k>= 0; k--) {
-    getLevel(k).avgDown();
-  }
+    if (level > 0)
+	return;
+    //
+    // Average data down from finer levels
+    // so that conserved data is consistent between levels.
+    //
+    int finest_level = parent->finestLevel();
+    for (int k = finest_level-1; k>= 0; k--) 
+    {
+	getLevel(k).avgDown();
+    }
 }
 
 int
 RNS::okToContinue ()
 {
-  if (level > 0)
-    return 1;
-  
-  int test = (parent->dtLevel(0) < dt_cutoff) ? 0 : 1;
-  return test;
+    if (level > 0)
+	return 1;
+    
+    int test = (parent->dtLevel(0) < dt_cutoff) ? 0 : 1;
+    return test;
 }
 
 void
 RNS::reflux ()
 {
-  BL_ASSERT(level<parent->finestLevel());
-
-  const Real strt = ParallelDescriptor::second();
+    BL_ASSERT(level<parent->finestLevel());
   
-  getFluxReg(level+1).Reflux(get_new_data(State_Type),volume,1.0,0,0,NUM_STATE,geom);
-
-  if (verbose)
+    const Real strt = ParallelDescriptor::second();
+    
+    getFluxReg(level+1).Reflux(get_new_data(State_Type),volume,1.0,0,0,NUM_STATE,geom);
+    
+    if (verbose)
     {
-      const int IOProc = ParallelDescriptor::IOProcessorNumber();
-      Real      end    = ParallelDescriptor::second() - strt;
+	const int IOProc = ParallelDescriptor::IOProcessorNumber();
+	Real      end    = ParallelDescriptor::second() - strt;
+	
+	ParallelDescriptor::ReduceRealMax(end,IOProc);
       
-      ParallelDescriptor::ReduceRealMax(end,IOProc);
-      
-      if (ParallelDescriptor::IOProcessor())
-	std::cout << "RNS::reflux() at level " << level << " : time = " << end << std::endl;
+	if (ParallelDescriptor::IOProcessor())
+	    std::cout << "RNS::reflux() at level " << level << " : time = " << end << std::endl;
     }
 }
 
 void
 RNS::avgDown ()
 {
-  if (level == parent->finestLevel()) return;
-  avgDown(State_Type);
+    if (level == parent->finestLevel()) return;
+    avgDown(State_Type);
 }
 
 void
 RNS::enforce_nonnegative_species (MultiFab& S_new)
 {
-  if (NumSpec <= 0) return;
+    if (NumSpec <= 0) return;
   
-  for (MFIter mfi(S_new); mfi.isValid(); ++mfi)
+    for (MFIter mfi(S_new); mfi.isValid(); ++mfi)
     {
-      const Box bx = mfi.validbox();
-      BL_FORT_PROC_CALL(RNS_ENFORCE_NONNEGATIVE_SPECIES,rns_enforce_nonnegative_species)
-	(BL_TO_FORTRAN(S_new[mfi]),bx.loVect(),bx.hiVect());
+	const Box bx = mfi.validbox();
+	BL_FORT_PROC_CALL(RNS_ENFORCE_NONNEGATIVE_SPECIES,rns_enforce_nonnegative_species)
+	    (BL_TO_FORTRAN(S_new[mfi]),bx.loVect(),bx.hiVect());
     }
 }
 
 void
 RNS::avgDown (int state_indx)
 {
-  if (level == parent->finestLevel()) return;
-  
-  RNS& fine_lev = getLevel(level+1);
-  MultiFab&  S_crse   = get_new_data(state_indx);
-  MultiFab&  S_fine   = fine_lev.get_new_data(state_indx);
-  MultiFab&  fvolume  = fine_lev.volume;
-  const int  ncomp    = S_fine.nComp();
-  
-  BL_ASSERT(S_crse.boxArray() == volume.boxArray());
-  BL_ASSERT(fvolume.boxArray() == S_fine.boxArray());
-  //
-  // Coarsen() the fine stuff on processors owning the fine data.
-  //
-  BoxArray crse_S_fine_BA(S_fine.boxArray().size());
-  
-  for (int i = 0; i < S_fine.boxArray().size(); ++i)
+    if (level == parent->finestLevel()) return;
+    
+    RNS& fine_lev = getLevel(level+1);
+    MultiFab&  S_crse   = get_new_data(state_indx);
+    MultiFab&  S_fine   = fine_lev.get_new_data(state_indx);
+    MultiFab&  fvolume  = fine_lev.volume;
+    const int  ncomp    = S_fine.nComp();
+    
+    BL_ASSERT(S_crse.boxArray() == volume.boxArray());
+    BL_ASSERT(fvolume.boxArray() == S_fine.boxArray());
+    //
+    // Coarsen() the fine stuff on processors owning the fine data.
+    //
+    BoxArray crse_S_fine_BA(S_fine.boxArray().size());
+    
+    for (int i = 0; i < S_fine.boxArray().size(); ++i)
     {
-      crse_S_fine_BA.set(i,BoxLib::coarsen(S_fine.boxArray()[i],fine_ratio));
+	crse_S_fine_BA.set(i,BoxLib::coarsen(S_fine.boxArray()[i],fine_ratio));
     }
-  
-  MultiFab crse_S_fine(crse_S_fine_BA,ncomp,0);
-  MultiFab crse_fvolume(crse_S_fine_BA,1,0);
-  
-  crse_fvolume.copy(volume);
-  
-  for (MFIter mfi(S_fine); mfi.isValid(); ++mfi)
+    
+    MultiFab crse_S_fine(crse_S_fine_BA,ncomp,0);
+    MultiFab crse_fvolume(crse_S_fine_BA,1,0);
+    
+    crse_fvolume.copy(volume);
+    
+    for (MFIter mfi(S_fine); mfi.isValid(); ++mfi)
     {
-      const int        i        = mfi.index();
-      const Box&       ovlp     = crse_S_fine_BA[i];
-      FArrayBox&       crse_fab = crse_S_fine[i];
-      const FArrayBox& crse_vol = crse_fvolume[i];
-      const FArrayBox& fine_fab = S_fine[i];
-      const FArrayBox& fine_vol = fvolume[i];
-      
-      BL_FORT_PROC_CALL(RNS_AVGDOWN,rns_avgdown)
-	(BL_TO_FORTRAN(crse_fab), ncomp,
-	 BL_TO_FORTRAN(crse_vol),
-	 BL_TO_FORTRAN(fine_fab),
-	 BL_TO_FORTRAN(fine_vol),
-	 ovlp.loVect(),ovlp.hiVect(),fine_ratio.getVect());
+	const int        i        = mfi.index();
+	const Box&       ovlp     = crse_S_fine_BA[i];
+	FArrayBox&       crse_fab = crse_S_fine[i];
+	const FArrayBox& crse_vol = crse_fvolume[i];
+	const FArrayBox& fine_fab = S_fine[i];
+	const FArrayBox& fine_vol = fvolume[i];
+	
+	BL_FORT_PROC_CALL(RNS_AVGDOWN,rns_avgdown)
+	    (BL_TO_FORTRAN(crse_fab), ncomp,
+	     BL_TO_FORTRAN(crse_vol),
+	     BL_TO_FORTRAN(fine_fab),
+	     BL_TO_FORTRAN(fine_vol),
+	     ovlp.loVect(),ovlp.hiVect(),fine_ratio.getVect());
     }
-  
-  S_crse.copy(crse_S_fine);
-}
-
-void
-RNS::allocOldData ()
-{
-  for (int k = 0; k < NUM_STATE_TYPE; k++)
-    state[k].allocOldData();
-}
-
-void
-RNS::removeOldData()
-{
-  AmrLevel::removeOldData();
+    
+    S_crse.copy(crse_S_fine);
 }
 
 void
@@ -662,50 +654,52 @@ RNS::errorEst (TagBoxArray& tags,
 	       int          n_error_buf,
 	       int          ngrow)
 {
-  const int*  domain_lo = geom.Domain().loVect();
-  const int*  domain_hi = geom.Domain().hiVect();
-  const Real* dx        = geom.CellSize();
-  const Real* prob_lo   = geom.ProbLo();
-  Array<int>  itags;
-  
-  for (int j = 0; j < err_list.size(); j++)
+    const int*  domain_lo = geom.Domain().loVect();
+    const int*  domain_hi = geom.Domain().hiVect();
+    const Real* dx        = geom.CellSize();
+    const Real* prob_lo   = geom.ProbLo();
+    Array<int>  itags;
+    
+    for (int j = 0; j < err_list.size(); j++)
     {
-      MultiFab* mf = derive(err_list[j].name(), time, err_list[j].nGrow());
-      
-      BL_ASSERT(!(mf == 0));
-      
-      for (MFIter mfi(*mf); mfi.isValid(); ++mfi)
+	MultiFab* mf = derive(err_list[j].name(), time, err_list[j].nGrow());
+	
+	BL_ASSERT(!(mf == 0));
+	
+	for (MFIter mfi(*mf); mfi.isValid(); ++mfi)
         {
-	  int         idx     = mfi.index();
-	  RealBox     gridloc = RealBox(grids[idx],geom.CellSize(),geom.ProbLo());
-	  itags               = tags[idx].tags();
-	  int*        tptr    = itags.dataPtr();
-	  const int*  tlo     = tags[idx].box().loVect();
-	  const int*  thi     = tags[idx].box().hiVect();
-	  const int*  lo      = mfi.validbox().loVect();
-	  const int*  hi      = mfi.validbox().hiVect();
-	  const Real* xlo     = gridloc.lo();
-	  Real*       dat     = (*mf)[mfi].dataPtr();
-	  const int*  dlo     = (*mf)[mfi].box().loVect();
-	  const int*  dhi     = (*mf)[mfi].box().hiVect();
-	  const int   ncomp   = (*mf)[mfi].nComp();
-	  
-	  err_list[j].errFunc()(tptr, ARLIM(tlo), ARLIM(thi), &tagval,
-				&clearval, dat, ARLIM(dlo), ARLIM(dhi),
-				lo,hi, &ncomp, domain_lo, domain_hi,
-				dx, xlo, prob_lo, &time, &level);
-	  //
-	  // Don't forget to set the tags in the TagBox.
-	  //
-	  if (allow_untagging == 1) 
+	    int         idx     = mfi.index();
+	    RealBox     gridloc = RealBox(grids[idx],geom.CellSize(),geom.ProbLo());
+	    itags               = tags[idx].tags();
+	    int*        tptr    = itags.dataPtr();
+	    const int*  tlo     = tags[idx].box().loVect();
+	    const int*  thi     = tags[idx].box().hiVect();
+	    const int*  lo      = mfi.validbox().loVect();
+	    const int*  hi      = mfi.validbox().hiVect();
+	    const Real* xlo     = gridloc.lo();
+	    Real*       dat     = (*mf)[mfi].dataPtr();
+	    const int*  dlo     = (*mf)[mfi].box().loVect();
+	    const int*  dhi     = (*mf)[mfi].box().hiVect();
+	    const int   ncomp   = (*mf)[mfi].nComp();
+	    
+	    err_list[j].errFunc()(tptr, ARLIM(tlo), ARLIM(thi), &tagval,
+				  &clearval, dat, ARLIM(dlo), ARLIM(dhi),
+				  lo,hi, &ncomp, domain_lo, domain_hi,
+				  dx, xlo, prob_lo, &time, &level);
+	    //
+	    // Don't forget to set the tags in the TagBox.
+	    //
+	    if (allow_untagging == 1) 
             {
-	      tags[idx].tags_and_untags(itags);
-            } else {
-	    tags[idx].tags(itags);
-	  }
+		tags[idx].tags_and_untags(itags);
+            } 
+	    else 
+	    {
+		tags[idx].tags(itags);
+	    }
         }
-      
-      delete mf;
+	
+	delete mf;
     }
 }
 
@@ -714,7 +708,7 @@ RNS::derive (const std::string& name,
 	     Real           time,
 	     int            ngrow)
 {
-  return AmrLevel::derive(name,time,ngrow);
+    return AmrLevel::derive(name,time,ngrow);
 }
 
 void
@@ -723,53 +717,48 @@ RNS::derive (const std::string& name,
 	     MultiFab&      mf,
 	     int            dcomp)
 {
-  AmrLevel::derive(name,time,mf,dcomp);
+    AmrLevel::derive(name,time,mf,dcomp);
 }
 
 Real
 RNS::sumDerive (const std::string& name,
 		Real           time)
 {
-  Real sum     = 0.0;
-  MultiFab* mf = derive(name, time, 0);
-  
-  BL_ASSERT(!(mf == 0));
-  
-  BoxArray baf;
-  
-  if (level < parent->finestLevel())
+    Real sum     = 0.0;
+    MultiFab* mf = derive(name, time, 0);
+    
+    BL_ASSERT(!(mf == 0));
+    
+    BoxArray baf;
+    
+    if (level < parent->finestLevel())
     {
-      baf = parent->boxArray(level+1);
-      baf.coarsen(fine_ratio);
+	baf = parent->boxArray(level+1);
+	baf.coarsen(fine_ratio);
     }
-  
-  for (MFIter mfi(*mf); mfi.isValid(); ++mfi)
+    
+    for (MFIter mfi(*mf); mfi.isValid(); ++mfi)
     {
-      FArrayBox& fab = (*mf)[mfi];
-      
-      if (level < parent->finestLevel())
+	FArrayBox& fab = (*mf)[mfi];
+	
+	if (level < parent->finestLevel())
         {
-	  std::vector< std::pair<int,Box> > isects = baf.intersections(grids[mfi.index()]);
-	  
-	  for (int ii = 0; ii < isects.size(); ii++)
+	    std::vector< std::pair<int,Box> > isects = baf.intersections(grids[mfi.index()]);
+	    
+	    for (int ii = 0; ii < isects.size(); ii++)
             {
-	      fab.setVal(0,isects[ii].second,0);
+		fab.setVal(0,isects[ii].second,0);
             }
         }
       
-      sum += fab.sum(0);
+	sum += fab.sum(0);
     }
-  
-  delete mf;
-  
-  ParallelDescriptor::ReduceRealSum(sum);
-  
-  return sum;
+    
+    delete mf;
+    
+    ParallelDescriptor::ReduceRealSum(sum);
+    
+    return sum;
 }
 
-void
-RNS::set_special_tagging_flag(Real time)
-{
-   if (!do_special_tagging) return;
-}
 

@@ -12,8 +12,8 @@ end subroutine get_method_params
 ! ::: 
 ! ::: ----------------------------------------------------------------
 ! ::: 
-subroutine set_method_params(dm,Density,Xmom,Eden,FirstSpec,NUM_STATE, NumSpec, &
-     small_dens_in, small_temp_in, small_pres_in)
+subroutine set_method_params(dm,Density,Xmom,Eden,Temp,FirstSpec, &
+     NUM_STATE, NumSpec, small_dens_in, small_temp_in, small_pres_in, gamma_in)
 
   use meth_params_module
   use eos_module
@@ -21,9 +21,9 @@ subroutine set_method_params(dm,Density,Xmom,Eden,FirstSpec,NUM_STATE, NumSpec, 
   implicit none 
 
   integer, intent(in) :: dm
-  integer, intent(in) :: Density, Xmom, Eden, FirstSpec, NUM_STATE, NumSpec
-  double precision, intent(in) :: small_dens_in, small_temp_in, small_pres_in
-
+  integer, intent(in) :: Density, Xmom, Eden, Temp, FirstSpec, NUM_STATE, NumSpec
+  double precision, intent(in) :: small_dens_in, small_temp_in, small_pres_in, gamma_in
+  
   integer QLAST
 
   NVAR = NUM_STATE
@@ -35,6 +35,7 @@ subroutine set_method_params(dm,Density,Xmom,Eden,FirstSpec,NUM_STATE, NumSpec, 
   if (dm .ge. 2) UMY = UMX + 1
   if (dm .eq. 3) UMZ = UMY + 1
   UEDEN = Eden      + 1
+  UTEMP = Temp      + 1
   UFS   = FirstSpec + 1
 
   ! We use these to index into the state "Q"
@@ -70,10 +71,10 @@ subroutine set_method_params(dm,Density,Xmom,Eden,FirstSpec,NUM_STATE, NumSpec, 
      small_pres = 1.d-50
   end if
 
-  call eos_init(small_dens=small_dens_in, small_temp=small_temp_in)
+  call eos_init(small_dens=small_dens_in, small_temp=small_temp_in, gamma_in=gamma_in)
 
-!        call eos_get_small_dens(small_dens)
-!        call eos_get_small_temp(small_temp)
+  call eos_get_small_dens(small_dens)
+  call eos_get_small_temp(small_temp)
 
 end subroutine set_method_params
 
@@ -82,7 +83,7 @@ end subroutine set_method_params
 ! ::: 
 
 subroutine set_problem_params(dm,physbc_lo_in,physbc_hi_in, phys_prob_lo_in,   &
-     phys_prob_hi_in, Outflow_in,Symmetry_in,coord_type_in
+     phys_prob_hi_in, Outflow_in,Symmetry_in,coord_type_in)
 
   use prob_params_module
 
@@ -116,8 +117,9 @@ end subroutine set_problem_params
 ! ::: 
 ! ::: ----------------------------------------------------------------
 ! ::: 
-subroutine ca_set_special_tagging_flag(dummy,flag) 
+subroutine rns_set_special_tagging_flag(dummy,flag) 
   use probdata_module
+  implicit none
   double precision :: dummy 
   integer          :: flag
-end subroutine ca_set_special_tagging_flag
+end subroutine rns_set_special_tagging_flag

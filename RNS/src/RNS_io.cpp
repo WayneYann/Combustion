@@ -28,14 +28,15 @@ RNS::restart (Amr&     papa,
 	      istream& is,
 	      bool     bReadSpecial)
 {
-  AmrLevel::restart(papa,is,bReadSpecial);
+    AmrLevel::restart(papa,is,bReadSpecial);
 
-  buildMetrics();
-
-  BL_ASSERT(flux_reg == 0);
-  if (level > 0 && do_reflux) {
-    flux_reg = new FluxRegister(grids,crse_ratio,level,NUM_STATE);
-  }
+    buildMetrics();
+    
+    BL_ASSERT(flux_reg == 0);
+    if (level > 0 && do_reflux) 
+    {
+	flux_reg = new FluxRegister(grids,crse_ratio,level,NUM_STATE);
+    }
 }
 
 void
@@ -44,32 +45,32 @@ RNS::checkPoint(const std::string& dir,
 		VisMF::How     how,
 		bool dump_old_default)
 {
-  AmrLevel::checkPoint(dir, os, how, dump_old);
+    AmrLevel::checkPoint(dir, os, how, dump_old);
 }
 
 std::string
 RNS::thePlotFileType () const
 {
-  //
-  // Increment this whenever the writePlotFile() format changes.
-  //
-  static const std::string the_plot_file_type("HyperCLaw-V1.1");
-  
-  return the_plot_file_type;
+    //
+    // Increment this whenever the writePlotFile() format changes.
+    //
+    static const std::string the_plot_file_type("HyperCLaw-V1.1");
+    
+    return the_plot_file_type;
 }
 
 void
 RNS::setPlotVariables ()
 {
-  AmrLevel::setPlotVariables();
-
-  const Array<std::string>& names = chemSolve->speciesNames();
-
-  ParmParse pp("rns");
-
+    AmrLevel::setPlotVariables();
+    
+    const Array<std::string>& names = chemSolve->speciesNames();
+    
+    ParmParse pp("rns");
+    
     bool plot_rhoY,plot_massFrac,plot_moleFrac,plot_conc;
     plot_rhoY=plot_massFrac=plot_moleFrac=plot_conc = false;
-
+    
     if (pp.query("plot_massfrac",plot_massFrac))
     {
         if (plot_massFrac)
@@ -93,19 +94,27 @@ RNS::setPlotVariables ()
     if (pp.query("plot_molefrac",plot_moleFrac))
     {
         if (plot_moleFrac)
+	{
             parent->addDerivePlotVar("molefrac");
+	}
         else
+	{
             parent->deleteDerivePlotVar("molefrac");
+	}
     }
-
+    
     if (pp.query("plot_concentration",plot_conc))
     {
         if (plot_conc)
+	{
             parent->addDerivePlotVar("concentration");
+	}
         else
+	{
             parent->deleteDerivePlotVar("concentration");
+	}
     }
-
+    
     if (pp.query("plot_rhoY",plot_rhoY))
     {
         if (plot_rhoY)
@@ -161,10 +170,16 @@ RNS::writePlotFile (const std::string& dir,
     //
     std::vector<std::pair<int,int> > plot_var_map;
     for (int typ = 0; typ < desc_lst.size(); typ++)
+    {
         for (int comp = 0; comp < desc_lst[typ].nComp();comp++)
+	{
             if (parent->isStatePlotVar(desc_lst[typ].name(comp)) &&
                 desc_lst[typ].getType() == IndexType::TheCellType())
+	    {
                 plot_var_map.push_back(std::pair<int,int>(typ,comp));
+	    }
+	}
+    }
 
     int num_derive = 0;
     std::list<std::string> derive_names;
