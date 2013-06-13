@@ -212,9 +212,6 @@ BL_FORT_PROC_DECL(CA_FILL_TEMP_COND,ca_fill_temp_cond)
             const BL_FORT_FAB_ARG(zcoeffs)),
      const Real* dx);
 
-BL_FORT_PROC_DECL(RNS_SET_SPECIAL_TAGGING_FLAG,rns_set_special_tagging_flag)
-    (const Real& max_den, const int* flag);
-
 BL_FORT_PROC_DECL(CA_GET_RHOE,ca_get_rhoe)
   (const int lo[], const int hi[],
    const BL_FORT_FAB_ARG(rhoe),

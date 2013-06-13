@@ -94,17 +94,18 @@
         do i = lo(1), hi(1)
            rhoInv = 1.d0/u(i,URHO)
 
-         ux = u(i,UMX)*rhoInv
-         T  = u(i,UTEMP)
-
-         e = u(i,UEDEN)*rhoInv - 0.5d0*ux*ux
-
-         if (NSPEC > 0) then
-            xn = u(i,UFS:UFS+NSPEC-1)*rhoInv
-         end if
-
-         call eos_get_soundspeed(c,u(i,URHO),e,T,xn)
-
+           ux = u(i,UMX)*rhoInv
+           T  = u(i,UTEMP)
+           
+           e = u(i,UEDEN)*rhoInv - 0.5d0*ux*ux
+           
+           if (NSPEC > 0) then
+              xn = u(i,UFS:UFS+NSPEC-1)*rhoInv
+           end if
+           
+           call eos_get_soundspeed(c,u(i,URHO),e,T,xn)
+           
+           dt = min(dt, dx(1)/(c+1.d-50))
         end do
 
       end subroutine rns_estdt

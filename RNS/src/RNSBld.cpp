@@ -44,10 +44,10 @@ RNSBld::operator() ()
 
 AmrLevel*
 RNSBld::operator() (Amr&            papa,
-			 int             lev,
-			 const Geometry& level_geom,
-			 const BoxArray& ba,
-			 Real            time)
+		    int             lev,
+		    const Geometry& level_geom,
+		    const BoxArray& ba,
+		    Real            time)
 {
-  return new RNS(papa, lev, level_geom, ba, time);
+    return new RNS(papa, lev, level_geom, ba, time);
 }
