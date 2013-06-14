@@ -190,7 +190,8 @@ RNS::variableSetUp ()
     cnt++; set_scalar_bc(bc,phys_bc); bcs[cnt] = bc; name[cnt] = "Temp";
     
     // Get the species names from the chemdriver.
-    if (NumSpec > 0) {
+    if (NumSpec > 0) 
+    {
 	const Array<std::string>& spec_names = chemSolve->speciesNames();
 	
 	for (int i=0; i<NumSpec; i++)
@@ -198,14 +199,14 @@ RNS::variableSetUp ()
 	    cnt++; set_scalar_bc(bc,phys_bc); bcs[cnt] = bc;
 	    name[cnt] = "rho.Y(" + spec_names[i] + ")";
 	}
-	
-	desc_lst.setComponent(State_Type,
-			      Density,
-			      name,
-			      bcs,
-			      BndryFunc(BL_FORT_PROC_CALL(RNS_DENFILL,rns_denfill),
-					BL_FORT_PROC_CALL(RNS_HYPFILL,rns_hypfill)));
     }
+	
+    desc_lst.setComponent(State_Type,
+			  Density,
+			  name,
+			  bcs,
+			  BndryFunc(BL_FORT_PROC_CALL(RNS_DENFILL,rns_denfill),
+				    BL_FORT_PROC_CALL(RNS_HYPFILL,rns_hypfill)));
     
 //   //
 //   // DEFINE DERIVED QUANTITIES

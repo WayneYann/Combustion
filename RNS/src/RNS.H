@@ -108,18 +108,11 @@ public:
 			  Real dt,
 			  int  iteration,
 			  int  ncycle);
-    
-    void advance_sdc (Real time,
-		      Real dt,
-		      int  iteration,
-		      int  ncycle);
-    
-    void advance_rk (Real time,
-		     Real dt,
-		     int  iteration,
-		     int  ncycle);
-    
-    void dUdt(MultiFab& U, MultiFab& Uprime, Real time);
+
+    //
+    // Given U, compute Uprime (i.e., dUdt)
+    //
+    void dUdt(MultiFab& U, MultiFab& Uprime, Real time, bool do_fillpatch = true);
     //
     // Compute U1 = U2 + c Uprime.
     //
@@ -235,8 +228,6 @@ protected:
     //
     // Static data members.
     //
-    static int  use_sdc;
-    
     static bool      dump_old;
     static int       verbose;
     static Real      cfl;

@@ -1,6 +1,9 @@
 # ------------------  INPUTS TO MAIN PROGRAM  -------------------
-max_step = 2
+max_step  = 2
 stop_time = 0.2
+multi_level_sdc = 0 
+
+sdc.t_ratio = 2
 
 # PROBLEM SIZE & GEOMETRY
 geometry.is_periodic = 0 0 0

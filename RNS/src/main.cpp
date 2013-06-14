@@ -5,6 +5,7 @@
 #include <cstdio>
 #include <iostream>
 #include <iomanip>
+#include <cmath>
 
 #ifndef WIN32
 #include <unistd.h>
@@ -48,16 +49,24 @@ int main (int argc, char* argv[])
 
     Amr* amrptr = new Amr;
 
-    // ParmParse ppsdc("sdc");
-    // int nnodes;
-    //
-    // ppsdc.get("nnodes", nnodes);
-    // if (nnodes < 2)
-    //     BoxLib::Abort("sdc.nnodes must be greater than 1");
-    //
-    // matt: I assume we use Gauss Lobatto.  Here tnodes should hold the inner node times
-    //       normalized to (0,1)
-    Array<Real> tnodes(1,0.5);
+    int trat = 2;
+
+    ParmParse ppsdc("sdc");
+    ppsdc.query("t_ratio", trat);
+
+    int nnodes = trat - 1;
+
+    // SDC is going to provide tnodes in the future.
+    Array<Real> tnodes(nnodes);
+    if (nnodes == 1)
+    {
+	tnodes[0] = 0.5;
+    }
+    else if (nnodes == 2) // Gauss-Lobatto nodes
+    {
+	tnodes[0] = (1.0-1.0/sqrt(5.0))*0.5;
+	tnodes[1] = (1.0+1.0/sqrt(5.0))*0.5;
+    }
 
     amrptr->set_t_nodes(tnodes);
 

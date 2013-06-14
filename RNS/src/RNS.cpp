@@ -35,8 +35,6 @@ static Real fixed_dt     = -1.0;
 static Real initial_dt   = -1.0;
 static Real dt_cutoff    = 0.0;
 
-int          RNS::use_sdc       = 1;
-
 bool         RNS::dump_old      = false;
 
 int          RNS::verbose       = 0;
@@ -86,8 +84,6 @@ RNS::read_params ()
     done = true;
     
     ParmParse pp("rns");   
-    
-    pp.query("use_sdc", use_sdc);
     
     pp.query("v",verbose);
     pp.get("init_shrink",init_shrink);
