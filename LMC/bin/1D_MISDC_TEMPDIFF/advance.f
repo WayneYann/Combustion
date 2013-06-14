@@ -907,9 +907,6 @@ c     Shouldn't have to modify dRhs again.
                end do
 
             end if
-
-c     AJN FIXME
-c     need some kind of loop over l here
             
             print *,'... do correction diffusion solve for rhoh'
 
@@ -920,20 +917,55 @@ c     update rhoh with advection terms and set up RHS for equation (49) C-N solv
      &                       be_cn_theta,lo(0),hi(0),bc(0,:))
 
 c     AJN FIXME
+c     initialize guess for T_AD^{(k+1),0}
+
+
+c     AJN FIXME
+c     need some kind of loop over l here
+
+c     AJN FIXME
+c     compute (h,c_p,lambda)_AD^{(k+1),l} using (T,Y_m)_AD^{(k+1)}
+
+
+c     AJN FIXME
+c     build rhs for delta T solve
+c     Rhs already holds (rhoh)^n + dt*A + 
+c        (1/2) div (lambda^n grad T^n + lambda^(k) grad T^(k))
+c       +(1/2) div (h_m^n gamma_m^n + h_m^(k) gamma_m^(k)
+c
+c     make a copy of this, then
+c     need to subtract rho^(k+1) h_AD^{(k+1),l}
+c     need to add dt*div lambda_AD^{(k+1),l} grad T_AD^{(k+1),l}
+
+
+c     AJN FIXME
 c     alpha holds rho^{(k+1)}, need to set rho_cp = alpha*cp and pass this into cn_solve
 c     need to pass in initial guess for delta T to zero
 c     output is delta T, so rho_flag should probably be zero
-c     Need to modify Rhs by:
-c       - adding dt*div lambda_{AD}^{(k+1),l} grad T_{AD}^{(k+1),l}
-c       - subtracting rho^{(k+1)} h_{AD}^{(k+1),l}
 
 
-c     Solve C-N system in equation (49) for h_{AD}^{(k+1)}
+
+c     Solve C-N system for delta T
             rho_flag = 2
             call cn_solve(scal_new(0,:,:),alpha(0,:),beta_new(0,:,:),
      $                    Rhs(0,:,RhoH),dx(0),dt(0),RhoH,be_cn_theta,
      $                    rho_flag,.false.,lo(0),hi(0),bc(0,:))
             
+c     AJN FIXME
+c     update temperature
+            
+
+
+
+
+c     AJN FIXME
+c     end iterative loop
+
+
+
+
+c     AJN FIXME
+c     do this in alternate enthalpy formulation
 c     extract D for RhoH
             do i=lo(0),hi(0)
                diff_hat(0,i,RhoH) = (scal_new(0,i,RhoH)-scal_old(0,i,RhoH))/dt(0) 
@@ -943,6 +975,8 @@ c     extract D for RhoH
             print *,'... react with const sources'
 
 c     compute A+D source terms for reaction integration
+c     AJN FIXME
+c     do this in alternate enthalpy formulation for diff term
             do n = 1,nscal
                do i=lo(0),hi(0)
                   const_src(0,i,n) = aofs(0,i,n)

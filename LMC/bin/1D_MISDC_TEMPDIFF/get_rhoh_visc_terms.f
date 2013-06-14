@@ -57,22 +57,13 @@
       real*8 hm(Nspec,-1:nfine)
       real*8 flux_lo(Nspec),flux_hi(Nspec)
       real*8 Y(Nspec,-1:nfine)
-      real*8 beta_lo, beta_hi, rho
+      real*8 rho
 
       dxsqinv = 1.d0/(dx*dx)
 
       diffdiff = 0.d0
 
       do i=lo-1,hi+1
-         rho = 0.d0
-c        compute density
-         do n=1,Nspec
-            rho = rho + scal_for_grad(i,FirstSpec+n-1)
-         enddo
-c        compute Y = (rho*Y)/rho
-         do n=1,Nspec
-            Y(n,i) = scal_for_grad(i,FirstSpec+n-1)/rho
-         enddo
 c        compute cell-centered h_m
          call CKHMS(scal_for_coeff(i,Temp),IWRK,RWRK,hm(1,i))
       end do
@@ -81,24 +72,9 @@ c        compute cell-centered h_m
          do n=1,Nspec
             is = FirstSpec + n - 1
 
-c     compute -lambda/cp on faces
-            if (coef_avg_harm.eq.1) then
-               beta_lo = -2.d0 / (1.d0/beta(i,RhoH)+1.d0/beta(i-1,RhoH))
-               beta_hi = -2.d0 / (1.d0/beta(i,RhoH)+1.d0/beta(i+1,RhoH))
-            else
-               beta_lo = -(beta(i  ,RhoH)+beta(i-1,RhoH)) /2.d0
-               beta_hi = -(beta(i+1,RhoH)+beta(i  ,RhoH)) /2.d0
-            end if
-
-c     set face fluxes to -lambda/cp * grad Y_m
-            flux_lo(n) = beta_lo*(Y(n  ,i) - Y(n,i-1))
-            flux_hi(n) = beta_hi*(Y(n,i+1) - Y(n  ,i))
-
-c     set face fluxes to h_m * (rho D_m - lambda/cp) grad Y_m
-            flux_lo(n) = (flux_lo(n) + gamma_lo(i,n))*
-     $           (hm(n,i-1)+hm(n,i))/2.d0
-            flux_hi(n) = (flux_hi(n) + gamma_hi(i,n))*
-     $           (hm(n,i+1)+hm(n,i))/2.d0
+c     set face fluxes to h_m * gamma_m
+            flux_lo(n) = gamma_lo(i,n)*(hm(n,i-1)+hm(n,i))/2.d0
+            flux_hi(n) = gamma_hi(i,n)*(hm(n,i+1)+hm(n,i))/2.d0
  
 c     differential diffusion is divergence of face fluxes
             diffdiff(i) = diffdiff(i) + 
