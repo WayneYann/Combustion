@@ -514,11 +514,11 @@ c        lambda      (for temperature)
 c     compute diffusion terms at time n
          print *,'... creating the diffusive terms with old data'
 
-c     compute div lambda grad T + gamma_m dot grad h_m, where
-c     gamma_m has been conservatively corrected
-c     AJN FIXME - get rid of diffdiff part, create new subroutine
-         call get_temp_visc_terms(scal_old(0,:,:),beta_old(0,:,:),
-     &                            diff_old(0,:,Temp),dx(0),lo(0),hi(0))
+c     compute div lambda grad T
+c     the gamma_m h_m part will go in "diffdiff"
+         diff_old(0,:,Temp) = 0.d0
+         call addDivLambdaGradT(scal_old(0,:,:),beta_old(0,:,:),
+     &                          diff_old(0,:,Temp),dx(0),lo(0),hi(0))
 c     compute conservatively corrected div gamma_m 
 c     also save gamma_m for computing diffdiff terms later
          call get_spec_visc_terms(scal_old(0,:,:),beta_old(0,:,:),
@@ -530,14 +530,13 @@ c     compute div lambda/cp grad h (no differential diffusion)
      &                            diff_old(0,:,RhoH),dx(0),lo(0),hi(0))
 
          if (LeEQ1 .eq. 0) then
-c     calculate differential diffusion "diffdiff" terms, i.e.,
 c     sum_m div [ h_m (rho D_m - lambda/cp) grad Y_m ]
 c     we pass in conservative gamma_m via gamma
 c     we take lambda / cp from beta
 c     we compute h_m using T from the first argument
 c     we compute grad Y_m using Y_m from the second argument
-c     AJN fixme - put in temp formulation, create new subroutine
-c     convert forcing for rhoh godunov to temperature form
+c     for the alternate energy formulation, this function has been
+c     altered to not subtract the lambda/cp grad Y_m term.
             call get_diffdiff_terms(scal_old(0,:,:),scal_old(0,:,:),
      $                              gamma_lo(0,:,:),
      $                              gamma_hi(0,:,:),beta_old(0,:,:),
@@ -566,7 +565,10 @@ c     compute advective forcing term
                is = FirstSpec + n - 1
                tforce(0,i,is) = diff_old(0,i,is) + I_R(0,i,n)
             enddo
-            tforce(0,i,RhoH) = diff_old(0,i,RhoH) + diffdiff_old(0,i)
+c     this needs to be in alternate rhoh form now
+c     diff_old carries div lambda grad T
+c     diffdiff_old carries div h_m gamma_m
+            tforce(0,i,RhoH) = diff_old(0,i,Temp) + diffdiff_old(0,i)
          enddo
 
          if (fancy_predictor .eq. 1) then
@@ -731,11 +733,11 @@ c        lambda      (for temperature)
             call calc_diffusivities(scal_new(0,:,:),beta_new(0,:,:),
      &                              mu_dummy(0,:),lo(0),hi(0))
 
-c     compute div lambda grad T + gamma_m dot grad h_m, where
-c     gamma_m has been conservatively corrected
-c     AJN FIXME - get rid of diffdiff part, create new subroutine
-         call get_temp_visc_terms(scal_new(0,:,:),beta_new(0,:,:),
-     &                            diff_new(0,:,Temp),dx(0),lo(0),hi(0))
+c     compute div lambda grad T
+c     the gamma_m h_m part will go in "diffdiff"
+            diff_new(0,:,Temp) = 0.d0
+            call addDivLambdaGradT(scal_new(0,:,:),beta_new(0,:,:),
+     &                             diff_new(0,:,Temp),dx(0),lo(0),hi(0))
 c     compute a conservative div gamma_m
 c     save gamma_m for differential diffusion computation
             call get_spec_visc_terms(scal_new(0,:,:),beta_new(0,:,:),
@@ -754,7 +756,8 @@ c     we pass in conservative gamma_m via gamma
 c     we take lambda / cp from beta
 c     we compute h_m using T from the first argument
 c     we compute grad Y_m using Y_m from the second argument
-c     AJN fixme - put in temp formulation, create new subroutine
+c     for the alternate energy formulation, this function has been
+c     altered to not subtract the lambda/cp grad Y_m term.
                call get_diffdiff_terms(scal_new(0,:,:),scal_new(0,:,:),
      $                                 gamma_lo(0,:,:),
      $                                 gamma_hi(0,:,:),beta_new(0,:,:),
@@ -892,7 +895,12 @@ c     also save gamma_m for computing diffdiff terms later
      &                                  gamma_hi(0,:,:),
      &                                  dx(0),lo(0),hi(0))
 
-c     add differential diffusion to forcing for enthalpy solve in equation (49)
+c     add iteratively lagged, time-centered diffdiff term, where
+c     diffdiff = div h_m gamma_m
+c     dRhs for enthalpy now holds :
+c        (1/2) div (lambda^n grad T^n + lambda^(k) grad T^(k))
+c       +(1/2) div (h_m^n gamma_m^n + h_m^(k) gamma_m^(k)
+c     Shouldn't have to modify dRhs again.
                do i=lo(0),hi(0)
                   dRhs(0,i,0) = dRhs(0,i,0) 
      $                 + 0.5d0*dt(0)*(diffdiff_old(0,i) + diffdiff_new(0,i))
@@ -912,9 +920,8 @@ c     update rhoh with advection terms and set up RHS for equation (49) C-N solv
      &                       be_cn_theta,lo(0),hi(0),bc(0,:))
 
 c     AJN FIXME
-c     alpha holds rho^{(k+1)}
-c     need to set rho_cp = alpha*cp and pass this into cn_solve
-c     need to pass in initial guess of zero
+c     alpha holds rho^{(k+1)}, need to set rho_cp = alpha*cp and pass this into cn_solve
+c     need to pass in initial guess for delta T to zero
 c     output is delta T, so rho_flag should probably be zero
 c     Need to modify Rhs by:
 c       - adding dt*div lambda_{AD}^{(k+1),l} grad T_{AD}^{(k+1),l}
