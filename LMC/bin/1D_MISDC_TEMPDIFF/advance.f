@@ -647,6 +647,8 @@ c     we pass in conservative gamma_m via gamma
 c     we take lambda / cp from beta
 c     we compute h_m using T from the first argument
 c     we compute grad Y_m using Y_m from the second argument
+c     for the alternate energy formulation, this function has been
+c     altered to not subtract the lambda/cp grad Y_m term.
                call get_diffdiff_terms(scal_old(0,:,:),scal_new(0,:,:),
      $                                 gamma_lo(0,:,:),
      $                                 gamma_hi(0,:,:),beta_old(0,:,:),
@@ -930,7 +932,7 @@ c     put rho^{(k+1)}*h_AD^{(k+1),l} into scal_new
 c     put lambda_AD^{(k+1),l} into beta_new(Temp)
 c     put rho^{(k+1)}*cp_AD^{(k+1),l} into rho_cp
 
-c     compute h
+c     compute rho*h
                do i=lo(0),hi(0)
                   do n = 1,Nspec
                      Y(n) = scal_new(0,i,FirstSpec+n-1) / scal_new(0,i,Density)
@@ -953,41 +955,44 @@ c     Rhs(RhoH) already holds (rhoh)^n + dt*A +
 c        (1/2) div (lambda^n grad T^n - lambda^(k) grad T^(k))
 c       +(1/2) div (h_m^n gamma_m^n + h_m^(k) gamma_m^(k)
 c     make a copy of Rhs(RhoH)
-            Rhs_deltaT(:,:) = Rhs(:,:,RhoH)
+               Rhs_deltaT(:,:) = Rhs(:,:,RhoH)
 
 c     need to subtract rho^(k+1) h_AD^{(k+1),l} from Rhs_deltaT
-            do i=lo(0),hi(0)
-               Rhs_deltaT(0,i) = Rhs_deltaT(0,i) - scal_new(0,i,RhoH)
-            end do
+               do i=lo(0),hi(0)
+                  Rhs_deltaT(0,i) = Rhs_deltaT(0,i) - scal_new(0,i,RhoH)
+               end do
 
 c     need to add dt*div lambda_AD^{(k+1),l} grad T_AD^{(k+1),l} from Rhs_deltaT
-            diff_hat(:,:,Temp) = 0.d0
-            call addDivLambdaGradT(scal_new(0,:,:),beta_new(0,:,:),
-     $                             diff_hat(0,:,Temp),dx(0),lo(0),hi(0))
-            do i=lo(0),hi(0)
-               Rhs_deltaT(0,i) = Rhs_deltaT(0,i) + dt(0)*diff_hat(0,i,Temp)
-            end do
+               diff_hat(:,:,Temp) = 0.d0
+               call addDivLambdaGradT(scal_new(0,:,:),beta_new(0,:,:),
+     $                                diff_hat(0,:,Temp),dx(0),lo(0),hi(0))
+               do i=lo(0),hi(0)
+                  Rhs_deltaT(0,i) = Rhs_deltaT(0,i) + dt(0)*diff_hat(0,i,Temp)
+               end do
 
 c     Solve C-N system for delta T
-            deltaT = 0.d0
-            call cn_solve_deltaT(deltaT(0,:),rho_cp(0,:),
-     $                           beta_new(0,:,Temp),
-     $                           Rhs_deltaT(0,:),dx(0),dt(0),
-     $                           be_cn_theta,lo(0),hi(0),bc(0,:))
+               deltaT = 0.d0
+               call cn_solve_deltaT(deltaT(0,:),rho_cp(0,:),
+     $                              beta_new(0,:,Temp),
+     $                              Rhs_deltaT(0,:),dx(0),dt(0),
+     $                              be_cn_theta,lo(0),hi(0),bc(0,:))
             
 c     update temperature
 c     no need to update h here, since the source terms for VODE doesn't use it
-            do i=lo(0),hi(0)
-               scal_new(0,i,Temp) = scal_new(0,i,Temp) + deltaT(0,i)
-            end do
+               do i=lo(0),hi(0)
+                  scal_new(0,i,Temp) = scal_new(0,i,Temp) + deltaT(0,i)
+               end do
+
+               call set_bc_s(scal_new(0,:,:),lo(0),hi(0),bc(0,:))
 
 c     end loop over l
-         end do
+            end do
 
 c     do this in alternate enthalpy formulation
-c     extract D for RhoH
+c     put the A+D forcing for VODE in dRhs since it almost looks like what we want
             do i=lo(0),hi(0)
                dRhs(0,i,0) = dRhs(0,i,0) / dt(0)
+               dRhs(0,i,0) = dRhs(0,i,0) + aofs(0,i,RhoH)
             end do
 
             diff_hat(0,:,Temp) = 0.d0
