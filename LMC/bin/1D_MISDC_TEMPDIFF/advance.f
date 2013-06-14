@@ -97,7 +97,7 @@ c     nodal, no ghost cells
       real*8 Y(Nspec),WDOTK(Nspec),C(Nspec),RWRK
       real*8 cpmix,rhocp,vel_theta,be_cn_theta
       
-      integer i,is,misdc,n,rho_flag,IWRK
+      integer i,is,misdc,n,rho_flag,IWRK,l
 
 c     "diffdiff" means "differential diffusion", which corresponds to
 c     sum_m div [ h_m (rho D_m - lambda/cp) grad Y_m ]
@@ -900,8 +900,8 @@ c     also save gamma_m for computing diffdiff terms later
 c     add iteratively lagged, time-centered diffdiff term, where
 c     diffdiff = div h_m gamma_m
 c     dRhs for enthalpy now holds :
-c        (1/2) div (lambda^n grad T^n - lambda^(k) grad T^(k))
-c       +(1/2) div (h_m^n gamma_m^n + h_m^(k) gamma_m^(k)
+c        (dt/2) div (lambda^n grad T^n - lambda^(k) grad T^(k))
+c       +(dt/2) div (h_m^n gamma_m^n + h_m^(k) gamma_m^(k)
 c     Shouldn't have to modify dRhs again.
                do i=lo(0),hi(0)
                   dRhs(0,i,0) = dRhs(0,i,0) 
@@ -914,75 +914,95 @@ c     Shouldn't have to modify dRhs again.
 
 c     update rhoh with advection terms
 c     set Rhs(RhoH) to (rhoh)^n + dt*A + 
-c        (1/2) div (lambda^n grad T^n - lambda^(k) grad T^(k))
-c       +(1/2) div (h_m^n gamma_m^n + h_m^(k) gamma_m^(k)
+c        (dt/2) div (lambda^n grad T^n - lambda^(k) grad T^(k))
+c       +(dt/2) div (h_m^n gamma_m^n + h_m^(k) gamma_m^(k)
             call update_rhoh(scal_old(0,:,:),scal_new(0,:,:),aofs(0,:,:),
      &                       alpha(0,:),beta_old(0,:,:),
      &                       dRhs(0,:,0),Rhs(0,:,RhoH),dx(0),dt(0),
      &                       be_cn_theta,lo(0),hi(0),bc(0,:))
 
-c     AJN FIXME
-c     initialize guess for T_AD^{(k+1),0}, put it in scal_new
+c     scal_new(Temp) contains T^{(k)}.  This will be the initial guess.
 
+            do l=0,4
 
-c     AJN FIXME
-c     need some kind of loop over l=0,lmax-1 here
-
-c     AJN FIXME
 c     compute (h,c_p,lambda)_AD^{(k+1),l} using T_AD^{(k+1),l} and Y_AD^{(k+1)}
 c     put rho^{(k+1)}*h_AD^{(k+1),l} into scal_new
 c     put lambda_AD^{(k+1),l} into beta_new(Temp)
 c     put rho^{(k+1)}*cp_AD^{(k+1),l} into rho_cp
 
-c     AJN FIXME
+c     compute h
+               do i=lo(0),hi(0)
+                  do n = 1,Nspec
+                     Y(n) = scal_new(0,i,FirstSpec+n-1) / scal_new(0,i,Density)
+                  enddo
+                  CALL CKHBMS(scal_new(0,i,Temp),Y,IWRK,RWRK,scal_new(0,i,RhoH))
+                  scal_new(0,i,RhoH) = scal_new(0,i,RhoH)*scal_new(0,i,Density)
+               end do
+
+c     compute lambda and cp
+               call calc_lambda_cp(scal_new(0,:,:),beta_new(0,:,:),
+     &                             rho_cp(0,:),lo(0),hi(0))
+
+c     multiply cp by rho
+               do i=lo(0),hi(0)
+                  rho_cp(0,i) = rho_cp(0,i)*scal_new(0,i,Density)
+               end do
+
 c     build rhs for delta T solve
 c     Rhs(RhoH) already holds (rhoh)^n + dt*A + 
 c        (1/2) div (lambda^n grad T^n - lambda^(k) grad T^(k))
 c       +(1/2) div (h_m^n gamma_m^n + h_m^(k) gamma_m^(k)
-c     make a copy of Rhs(RhoH), then
-c     need to subtract rho^(k+1) h_AD^{(k+1),l}
-c     need to add dt*div lambda_AD^{(k+1),l} grad T_AD^{(k+1),l}
+c     make a copy of Rhs(RhoH)
             Rhs_deltaT(:,:) = Rhs(:,:,RhoH)
 
+c     need to subtract rho^(k+1) h_AD^{(k+1),l} from Rhs_deltaT
+            do i=lo(0),hi(0)
+               Rhs_deltaT(0,i) = Rhs_deltaT(0,i) - scal_new(0,i,RhoH)
+            end do
 
-
-
-c     initialize deltaT to zero
-            deltaT = 0.d0
+c     need to add dt*div lambda_AD^{(k+1),l} grad T_AD^{(k+1),l} from Rhs_deltaT
+            diff_hat(:,:,Temp) = 0.d0
+            call addDivLambdaGradT(scal_new(0,:,:),beta_new(0,:,:),
+     $                             diff_hat(0,:,Temp),dx(0),lo(0),hi(0))
+            do i=lo(0),hi(0)
+               Rhs_deltaT(0,i) = Rhs_deltaT(0,i) + dt(0)*diff_hat(0,i,Temp)
+            end do
 
 c     Solve C-N system for delta T
+            deltaT = 0.d0
             call cn_solve_deltaT(deltaT(0,:),rho_cp(0,:),
      $                           beta_new(0,:,Temp),
      $                           Rhs_deltaT(0,:),dx(0),dt(0),
      $                           be_cn_theta,lo(0),hi(0),bc(0,:))
             
-c     AJN FIXME
 c     update temperature
-            
+c     no need to update h here, since the source terms for VODE doesn't use it
+            do i=lo(0),hi(0)
+               scal_new(0,i,Temp) = scal_new(0,i,Temp) + deltaT(0,i)
+            end do
 
+c     end loop over l
+         end do
 
-
-
-c     AJN FIXME
-c     end loop l=0,lmax-1
-
-
-
-
-c     AJN FIXME
 c     do this in alternate enthalpy formulation
 c     extract D for RhoH
             do i=lo(0),hi(0)
-               diff_hat(0,i,RhoH) = (scal_new(0,i,RhoH)-scal_old(0,i,RhoH))/dt(0) 
-     $              - aofs(0,i,RhoH) - dRhs(0,i,0)/dt(0)
-            enddo
+               dRhs(0,i,0) = dRhs(0,i,0) / dt(0)
+            end do
+
+            diff_hat(0,:,Temp) = 0.d0
+            call addDivLambdaGradT(scal_new(0,:,:),beta_new(0,:,:),
+     $                             diff_hat(0,:,Temp),dx(0),lo(0),hi(0))
+
+            do i=lo(0),hi(0)
+               dRhs(0,i,0) = dRhs(0,i,0) + diff_hat(0,i,Temp)
+            end do
             
             print *,'... react with const sources'
 
 c     compute A+D source terms for reaction integration
-c     AJN FIXME
 c     do this in alternate enthalpy formulation for diff term
-            do n = 1,nscal
+            do n = FirstSpec,LastSpec
                do i=lo(0),hi(0)
                   const_src(0,i,n) = aofs(0,i,n)
      $                 + 0.5d0*(diff_old(0,i,n)+diff_new(0,i,n))
@@ -991,11 +1011,11 @@ c     do this in alternate enthalpy formulation for diff term
                   lin_src_new(0,i,n) = 0.d0
                enddo
             enddo
-c     add differential diffusion
             do i=lo(0),hi(0)
-               const_src(0,i,RhoH) = const_src(0,i,RhoH)
-     $              + 0.5d0*(diffdiff_old(0,i)+diffdiff_new(0,i))
-            end do
+               const_src(0,i,RhoH) = dRhs(0,i,0)
+               lin_src_old(0,i,RhoH) = 0.d0
+               lin_src_new(0,i,RhoH) = 0.d0
+               enddo
 
 c     solve equations (50), (51) and (52)
             call strang_chem(scal_old(0,:,:),scal_new(0,:,:),
