@@ -93,6 +93,78 @@ c     dirichlet at coarse-fine interface
       
       end
 
+
+      subroutine cn_solve_deltaT(deltaT,alpha,beta_cc,Rhs,dx,dt,
+     $                           be_cn_theta,lo,hi,bc)
+      implicit none
+      include 'spec.h'
+
+      real*8   deltaT( 0:nfine-1)
+      real*8    alpha( 0:nfine-1)
+      real*8  beta_cc(-1:nfine  )
+      real*8      Rhs( 0:nfine-1)
+      real*8 dx
+      real*8 dt
+      real*8 be_cn_theta
+      integer lo,hi,bc(2)
+      
+      integer i
+      real*8 a(nfine),b(nfine),c(nfine)
+      real*8 r(nfine),u(nfine),gam(nfine)
+      real*8 fac
+      real*8 beta(0:nfine)
+      integer n_solve
+
+      if (coef_avg_harm.eq.1) then
+         do i=lo,hi+1
+            beta(i) = 2.0d0 / (1.d0/beta_cc(i)+1.d0/beta_cc(i-1))
+         enddo
+      else
+         do i=lo,hi+1
+            beta(i) = 0.5d0*(beta_cc(i) + beta_cc(i-1))
+         enddo
+      endif
+
+      fac = be_cn_theta * dt / (dx*dx)
+
+      do i=lo,hi
+
+         u(i+1) = 0.d0
+         r(i+1) = Rhs(i)
+         a(i+1) = -fac*beta(i  )
+         c(i+1) = -fac*beta(i+1)
+         b(i+1) = alpha(i) - (a(i+1)+c(i+1))
+
+         if (i .eq. lo .and. bc(1) .eq. 1) then
+c     dirichlet inflow, deltaT=0
+            a(i+1) = 0.d0
+         else if (i .eq. lo .and. bc(1) .eq. 0) then
+c     dirichlet at coarse-fine interface
+            print*,'Need to write C-F cn_solve stencil'
+            stop            
+         else if (i .eq. hi .and. bc(2) .eq. 2) then
+c     neumann outflow uses phi(hi) = phi(hi-1)
+            c(i+1) = 0.d0
+            b(i+1) = alpha(i) - (a(i+1)+c(i+1))
+         else if (i .eq. hi .and. bc(2) .eq. 0) then
+c     dirichlet at coarse-fine interface
+            print*,'Need to write C-F cn_solve stencil'
+            stop            
+         end if
+
+      enddo
+
+      n_solve = hi-lo+1
+
+      call tridiag(a,b,c,r,u,gam,n_solve)
+      
+      do i=lo,hi
+         deltaT(i) = u(i+1)
+      enddo
+      
+      end
+
+
 c *************************************************************************
 c ** TRIDIAG **
 c ** Do a tridiagonal solve 

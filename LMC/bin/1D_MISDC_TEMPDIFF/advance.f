@@ -40,8 +40,9 @@ c     cell-centered, 1 ghost cell
       real*8   divu_new(0:nlevs-1,-1:nfine)
 
 c     cell-centered, no ghost cells
-      real*8       dSdt(0:nlevs-1, 0:nfine-1)
-      real*8  delta_chi(0:nlevs-1, 0:nfine-1)
+      real*8       dSdt(0:nlevs-1,0:nfine-1)
+      real*8  delta_chi(0:nlevs-1,0:nfine-1)
+      real*8     deltaT(0:nlevs-1,0:nfine-1)
 
 c     nodal, 1 ghost cell
       real*8  press_old(0:nlevs-1,-1:nfine+1)
@@ -87,6 +88,7 @@ c     cell-centered, no ghost cells
       real*8  lin_src_new(0:nlevs-1, 0:nfine-1,nscal)
       real*8          Rhs(0:nlevs-1, 0:nfine-1,nscal)
       real*8         dRhs(0:nlevs-1, 0:nfine-1,0:Nspec)
+      real*8   Rhs_deltaT(0:nlevs-1, 0:nfine-1)
 
 c     nodal, no ghost cells
       real*8       macvel(0:nlevs-1, 0:nfine  )
@@ -855,7 +857,7 @@ c     includes deferred correction term for species
                   dRhs(0,i,n) = dt(0)*(I_R(0,i,n) 
      &                 + 0.5d0*(diff_old(0,i,is) - diff_new(0,i,is)))
                enddo
-c     includes deferred correction term for enthalpy in TEMPERATURE FORMULATION
+c     includes deferred correction term for alternate enthalpy formulation
 c     no need to add differential diffusion anymore!
                dRhs(0,i,0) = dt(0)*(
      &              + 0.5d0*(diff_old(0,i,Temp) - diff_new(0,i,Temp)))
@@ -898,7 +900,7 @@ c     also save gamma_m for computing diffdiff terms later
 c     add iteratively lagged, time-centered diffdiff term, where
 c     diffdiff = div h_m gamma_m
 c     dRhs for enthalpy now holds :
-c        (1/2) div (lambda^n grad T^n + lambda^(k) grad T^(k))
+c        (1/2) div (lambda^n grad T^n - lambda^(k) grad T^(k))
 c       +(1/2) div (h_m^n gamma_m^n + h_m^(k) gamma_m^(k)
 c     Shouldn't have to modify dRhs again.
                do i=lo(0),hi(0)
@@ -910,46 +912,49 @@ c     Shouldn't have to modify dRhs again.
             
             print *,'... do correction diffusion solve for rhoh'
 
-c     update rhoh with advection terms and set up RHS for equation (49) C-N solve
+c     update rhoh with advection terms
+c     set Rhs(RhoH) to (rhoh)^n + dt*A + 
+c        (1/2) div (lambda^n grad T^n - lambda^(k) grad T^(k))
+c       +(1/2) div (h_m^n gamma_m^n + h_m^(k) gamma_m^(k)
             call update_rhoh(scal_old(0,:,:),scal_new(0,:,:),aofs(0,:,:),
      &                       alpha(0,:),beta_old(0,:,:),
      &                       dRhs(0,:,0),Rhs(0,:,RhoH),dx(0),dt(0),
      &                       be_cn_theta,lo(0),hi(0),bc(0,:))
 
 c     AJN FIXME
-c     initialize guess for T_AD^{(k+1),0}
+c     initialize guess for T_AD^{(k+1),0}, put it in scal_new
 
 
 c     AJN FIXME
-c     need some kind of loop over l here
+c     need some kind of loop over l=0,lmax-1 here
 
 c     AJN FIXME
-c     compute (h,c_p,lambda)_AD^{(k+1),l} using (T,Y_m)_AD^{(k+1)}
-
+c     compute (h,c_p,lambda)_AD^{(k+1),l} using T_AD^{(k+1),l} and Y_AD^{(k+1)}
+c     put rho^{(k+1)}*h_AD^{(k+1),l} into scal_new
+c     put lambda_AD^{(k+1),l} into beta_new(Temp)
+c     put rho^{(k+1)}*cp_AD^{(k+1),l} into rho_cp
 
 c     AJN FIXME
 c     build rhs for delta T solve
-c     Rhs already holds (rhoh)^n + dt*A + 
-c        (1/2) div (lambda^n grad T^n + lambda^(k) grad T^(k))
+c     Rhs(RhoH) already holds (rhoh)^n + dt*A + 
+c        (1/2) div (lambda^n grad T^n - lambda^(k) grad T^(k))
 c       +(1/2) div (h_m^n gamma_m^n + h_m^(k) gamma_m^(k)
-c
-c     make a copy of this, then
+c     make a copy of Rhs(RhoH), then
 c     need to subtract rho^(k+1) h_AD^{(k+1),l}
 c     need to add dt*div lambda_AD^{(k+1),l} grad T_AD^{(k+1),l}
+            Rhs_deltaT(:,:) = Rhs(:,:,RhoH)
 
 
-c     AJN FIXME
-c     alpha holds rho^{(k+1)}, need to set rho_cp = alpha*cp and pass this into cn_solve
-c     need to pass in initial guess for delta T to zero
-c     output is delta T, so rho_flag should probably be zero
 
 
+c     initialize deltaT to zero
+            deltaT = 0.d0
 
 c     Solve C-N system for delta T
-            rho_flag = 2
-            call cn_solve(scal_new(0,:,:),alpha(0,:),beta_new(0,:,:),
-     $                    Rhs(0,:,RhoH),dx(0),dt(0),RhoH,be_cn_theta,
-     $                    rho_flag,.false.,lo(0),hi(0),bc(0,:))
+            call cn_solve_deltaT(deltaT(0,:),rho_cp(0,:),
+     $                           beta_new(0,:,Temp),
+     $                           Rhs_deltaT(0,:),dx(0),dt(0),
+     $                           be_cn_theta,lo(0),hi(0),bc(0,:))
             
 c     AJN FIXME
 c     update temperature
@@ -959,7 +964,7 @@ c     update temperature
 
 
 c     AJN FIXME
-c     end iterative loop
+c     end loop l=0,lmax-1
 
 
 
