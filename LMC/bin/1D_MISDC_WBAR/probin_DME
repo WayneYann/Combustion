@@ -1,31 +1,26 @@
 &fortin
   nx = 256
   nsteps = 80
-  plot_int = 80
+  plot_int = 1
   chk_int = 1000
-  fixed_dt = 1.e-10
+  fixed_dt = 0.25e-5
   stop_time = 1.e4
   problo = 0.
-  probhi = 1.2
   probhi = 0.4
   chkfile = 'null'
   init_shrink = 0.1
-  flame_offset = -2.4
   flame_offset = -1.4
   dpdt_factor = 1.0
-  initial_S_type = 1
-  recompute_S = 0
-  fancy_predictor = 1
+  initial_S_type = 0
+  recompute_S = 1
+  fancy_predictor = 0
   Patm = 1.0
-  Patm = 40.0
   do_initial_projection = 1
   num_divu_iters = 3
   num_init_iters = 2
-  misdc_iterMAX = 1
+  misdc_iterMAX = 2
   use_strang = .false.
   lim_rxns = 0
   V_in = 0.
-  V_in = 1.e30
   LeEQ1 = 0
-  tranfile = 'tran.asc.chem-H'
 /
