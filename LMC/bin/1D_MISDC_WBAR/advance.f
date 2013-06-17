@@ -102,7 +102,7 @@ c     nodal, no ghost cells
       real*8 Y(Nspec),WDOTK(Nspec),C(Nspec),RWRK
       real*8 cpmix,rhocp,vel_theta,be_cn_theta
       
-      integer i,is,misdc,n,rho_flag,IWRK
+      integer i,is,misdc,n,rho_flag,IWRK,l
 
 c     "diffdiff" means "differential diffusion", which corresponds to
 c     sum_m div [ h_m (rho D_m - lambda/cp) grad Y_m ]
@@ -883,36 +883,50 @@ c     differential diffusion will be added later
      &              + 0.5d0*(diff_old(0,i,RhoH) - diff_new(0,i,RhoH)))
             enddo
 
-c     compute div(beta_for_Wbar^(k) grad Wbar^(k))
-c     also need to save the fluxes themselves
-            call get_spec_visc_terms_Wbar(scal_new(0,:,:),beta_for_Wbar_new(0,:,:),
-     &                                    diff_tmp(0,:,FirstSpec:),
-     &                                    gamma_Wbar_lo(0,:,:),
-     &                                    gamma_Wbar_hi(0,:,:),
-     &                                    dx(0),lo(0),hi(0))
+c     new iterative Wbar procedure
+            do l=0,1
 
-c     add dt*div(beta_for_Wbar^(k) grad Wbar^(k)) to dRhs
-            do i=lo(0),hi(0)
-               do n=1,Nspec
-                  is = FirstSpec + n - 1
-                  dRhs(0,i,n) = dRhs(0,i,n) + dt(0)*diff_tmp(0,i,is)
+c     compute div(beta_for_Wbar^(k) grad Wbar^(k),l)
+c     also need to save the fluxes themselves
+               call get_spec_visc_terms_Wbar(scal_new(0,:,:),beta_for_Wbar_new(0,:,:),
+     &                                       diff_tmp(0,:,FirstSpec:),
+     &                                       gamma_Wbar_lo(0,:,:),
+     &                                       gamma_Wbar_hi(0,:,:),
+     &                                       dx(0),lo(0),hi(0))
+
+c     add dt*div(beta_for_Wbar^(k) grad Wbar^(k),l) to dRhs
+               do i=lo(0),hi(0)
+                  do n=1,Nspec
+                     is = FirstSpec + n - 1
+                     dRhs(0,i,n) = dRhs(0,i,n) + dt(0)*diff_tmp(0,i,is)
+                  end do
                end do
-            end do
 
 c     update rhoY_m with advection terms and set up RHS for correction solve
-            call update_spec(scal_old(0,:,:),scal_new(0,:,:),aofs(0,:,:),
-     &                       alpha(0,:),beta_old(0,:,:),
-     &                       dRhs(0,0:,1:),Rhs(0,0:,FirstSpec:),
-     &                       dx(0),dt(0),be_cn_theta,lo(0),hi(0),bc(0,:))
+               call update_spec(scal_old(0,:,:),scal_new(0,:,:),aofs(0,:,:),
+     &                          alpha(0,:),beta_old(0,:,:),
+     &                          dRhs(0,0:,1:),Rhs(0,0:,FirstSpec:),
+     &                          dx(0),dt(0),be_cn_theta,lo(0),hi(0),bc(0,:))
 
-c     Solve C-N system in equation (47) for \tilde{Y}_{m,AD}^{(k+1)}
-            rho_flag = 2
-            do n=1,Nspec
-               is = FirstSpec + n - 1
-               call cn_solve(scal_new(0,:,:),alpha(0,:),beta_for_Y_new(0,:,:),
-     $                       Rhs(0,:,is),dx(0),dt(0),is,be_cn_theta,
-     $                       rho_flag,.false.,lo(0),hi(0),bc(0,:))
-            enddo
+c     Solve C-N system
+               rho_flag = 2
+               do n=1,Nspec
+                  is = FirstSpec + n - 1
+                  call cn_solve(scal_new(0,:,:),alpha(0,:),beta_for_Y_new(0,:,:),
+     $                          Rhs(0,:,is),dx(0),dt(0),is,be_cn_theta,
+     $                          rho_flag,.false.,lo(0),hi(0),bc(0,:))
+               enddo
+
+c     subtract off Wbar piece - will add it back in over next l iterate
+               do i=lo(0),hi(0)
+                  do n=1,Nspec
+                     is = FirstSpec + n - 1
+                     dRhs(0,i,n) = dRhs(0,i,n) - dt(0)*diff_tmp(0,i,is)
+                  end do
+               end do
+
+c     end loop over l
+            end do
             
             if (LeEQ1 .eq. 1) then
 
