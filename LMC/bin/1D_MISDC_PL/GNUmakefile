@@ -29,7 +29,7 @@ else
 endif
 
 ifeq ($(REACTION_MECHANISM),GRI30)
-  mech_source += ../../../Chemistry/data/gri/Trash/FROM_LMC/gri30.c
+  mech_source += ../../../Chemistry/data/gri/grimech30.c
 endif
 ifeq ($(REACTION_MECHANISM),CHEMH)
   mech_source += ../../../Chemistry/data/chem-H/chem-H.c
