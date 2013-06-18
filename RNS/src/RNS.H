@@ -117,7 +117,10 @@ public:
     // Compute U1 = U2 + c Uprime.
     //
     void update_rk(MultiFab& U1, const MultiFab& U2, Real c, const MultiFab& Uprime);
-
+    //
+    // renormalize mass fractions and compute temperature
+    //
+    void post_update(MultiFab& U);
     //
     //Estimate time step.
     //
@@ -206,8 +209,6 @@ protected:
     FluxRegister& getFluxReg (int lev);
     
     void reflux ();
-    
-    void enforce_nonnegative_species (MultiFab& S_new);
     
     void avgDown ();
     

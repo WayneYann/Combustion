@@ -42,6 +42,56 @@ subroutine rns_dudt (lo, hi, &
 
 end subroutine rns_dudt
 
+! :::
+! ::: ------------------------------------------------------------------
+! :::
+
+subroutine rns_compute_temp(lo,hi,U,U_l1,U_h1)
+  use meth_params_module, only : NVAR, URHO, UMX, UEDEN, UTEMP, UFS, NSPEC
+  use eos_module, only : eos_given_ReY
+  implicit none
+  
+  integer, intent(in) :: lo(1), hi(1)
+  integer, intent(in) ::  U_l1,  U_h1
+  double precision, intent(inout) :: U( U_l1: U_h1,NVAR)
+
+  integer :: i
+  double precision :: gamc, p, c, rho, rhoInv, e, v, Y(NSPEC)
+
+  do i=lo(1),hi(1)
+
+     rho  = U(i,URHO)
+     rhoInv = 1.0d0/rho
+
+     v  = U(i,UMX)*rhoInv
+     
+     e  = U(i,UEDEN)*rhoInv - 0.5d0*v*v
+
+     if (NSPEC > 0) then
+        Y = U(i,UFS:UFS+NSPEC-1)*rhoInv
+     end if
+
+     call eos_given_ReY(gamc,p,c, U(i,UTEMP), rho, e, Y)
+
+  end do
+end subroutine rns_compute_temp
+
+! :::
+! ::: ------------------------------------------------------------------
+! :::
+
+subroutine rns_enforce_consistent_Y(lo,hi,U,U_l1,U_h1)
+  use meth_params_module, only : NVAR, URHO, UFS, NSPEC
+  implicit none
+  
+  integer, intent(in) :: lo(1), hi(1)
+  integer, intent(in) ::  U_l1,  U_h1
+  double precision, intent(inout) :: U( U_l1: U_h1,NVAR)
+  print *, 'rns_enforce_consistent_Y not implemented'
+  stop
+end subroutine rns_enforce_consistent_Y
+
+
 
 ! :: ----------------------------------------------------------
 ! :: Volume-weight average the fine grid data onto the coarse
@@ -115,16 +165,8 @@ end subroutine rns_dudt
 ! ::: ------------------------------------------------------------------
 ! :::
 
-      subroutine rns_enforce_nonnegative_species(uout,uout_l1,uout_h1,lo,hi)
-
-      end subroutine rns_enforce_nonnegative_species
-
-! :::
-! ::: ------------------------------------------------------------------
-! :::
-
       subroutine rns_estdt(u,u_l1,u_h1,lo,hi,dx,dt)
-        use eos_module
+        use eos_module, only : eos_get_c
         use meth_params_module, only : NVAR, URHO, UMX, UEDEN, UTEMP, UFS, NSPEC
         implicit none
 
@@ -134,7 +176,7 @@ end subroutine rns_dudt
         double precision dx(1), dt
 
         integer :: i
-        double precision :: rhoInv, ux, T, e, p, c, g, xn(NSPEC)
+        double precision :: rhoInv, ux, T, e, p, c, g, Y(NSPEC)
 
         do i = lo(1), hi(1)
            rhoInv = 1.d0/u(i,URHO)
@@ -145,10 +187,10 @@ end subroutine rns_dudt
            e = u(i,UEDEN)*rhoInv - 0.5d0*ux*ux
            
            if (NSPEC > 0) then
-              xn = u(i,UFS:UFS+NSPEC-1)*rhoInv
+              Y = u(i,UFS:UFS+NSPEC-1)*rhoInv
            end if
            
-           call eos_get_pcg(p,c,g,u(i,URHO),e,T,xn)
+           call eos_get_c(c,u(i,URHO),T,Y)
            
            dt = min(dt, dx(1)/(c+1.d-50))
         end do

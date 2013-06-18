@@ -29,13 +29,25 @@ RNS::advance (Real time,
 
     dUdt(Uold, Uprime, time);
     update_rk(Umid, Uold, 0.5*dt, Uprime); // Umid = Uold + 0.5*dt*Uprime
-    // reset species mass fraction here
+    post_update(Umid);
 
     bool doFillpatch = (level == 0) ? false : true; // no valid mid data on level 0
     dUdt(Umid, Uprime, time+0.5*dt, doFillpatch);
     update_rk(Unew, Uold, dt, Uprime); // Unew = Uold + dt*Uprime
-    // reset species mass fraction here
+    post_update(Unew);
 
+    if (Unew.contains_nan(0,NUM_STATE,0))
+    {
+	for (int i=0; i<NUM_STATE; i++)
+	{
+	    if (Unew.contains_nan(i, 1, 0))
+	    {
+		std::cout << "RNS::advance: Testing component i for NaNs: " << i << std::endl;
+                BoxLib::Abort("RNS::advance: Has NaNs in this component.");
+	    }
+	}
+    }
+    
     return dt;
 }
 
@@ -92,4 +104,26 @@ RNS::update_rk(MultiFab& U1, const MultiFab& U2, Real c, const MultiFab& Uprime)
     MultiFab::Copy(U1, Uprime, 0, 0, NUM_STATE, 0);
     U1.mult(c);
     U1.plus(U2, 0, NUM_STATE, 0);
+}
+
+
+void
+RNS::post_update(MultiFab& U)
+{
+    for (MFIter mfi(U); mfi.isValid(); ++mfi)
+    {
+	const int   i = mfi.index();
+	const Box& bx = mfi.validbox();
+        const int* lo = bx.loVect();
+        const int* hi = bx.hiVect();
+
+	if (NumSpec > 0) 
+	{
+//	    BL_FORT_PROC_CALL(RNS_ENFORCE_CONSISTENT_Y, rns_enforce_consistent_y)
+//		(lo, hi, BL_TO_FORTRAN(U[i]));
+	}
+
+	BL_FORT_PROC_CALL(RNS_COMPUTE_TEMP, rns_compute_temp)
+	    (lo, hi, BL_TO_FORTRAN(U[i]));	
+    }
 }

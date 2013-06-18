@@ -2,12 +2,18 @@ module eos_module
 
   implicit none
 
+  double precision, parameter :: Ru = 8.31451d+07
+  double precision, parameter :: mu = 28.97d0
+  double precision, parameter :: R_mu = Ru/mu
+
   double precision, save, public :: gamma_const = 5.d0/3.d0
 
   double precision, save, private :: smalld = 1.d-50
   double precision, save, private :: smallt = 1.d-50
   double precision, save, private :: smallp = 1.d-50
   double precision, save, private :: smallc = 1.d-50
+
+  double precision, save, private :: cv = Ru/(mu*(2.d0/3.d0))
 
   logical, save, private :: initialized = .false.
 
@@ -35,6 +41,7 @@ contains
  
     if (present(gamma_in)) then
        gamma_const = gamma_in
+       cv = Ru/(mu*(gamma_const-1.d0))
     end if
 
     initialized = .true.
@@ -58,13 +65,46 @@ contains
   end subroutine eos_get_small_dens
 
 
-  subroutine eos_get_pcg(p,c,g,rho,e,T,xn)
-    double precision, intent(out) :: p,c,g
-    double precision, intent(in) :: rho, e, T, xn(0)
-    p = (gamma_const - 1.0) * rho * e
+  subroutine eos_get_c(c,rho,T,Y,pt_index)
+    double precision, intent(out) :: c
+    double precision, intent(in) :: rho, T, Y(0)
+    integer, optional, intent(in) :: pt_index(:)
+    double precision :: p
+    p = rho*Ru*T/mu
+    p = max(p, smallp)
+    c = sqrt(gamma_const*p/rho)
+  end subroutine eos_get_c
+
+
+  subroutine eos_get_T(T, e, Y, pt_index)
+    double precision, intent(out) :: T
+    double precision, intent(in ) :: e, Y(0)
+    integer, optional, intent(in) :: pt_index(:)
+    T = e/cv
+  end subroutine eos_get_T
+
+
+  subroutine eos_given_RTY(e, p, c, g, rho, T, Y, pt_index)
+    double precision, intent(out) :: e, p, c, g
+    double precision, intent(in ) :: rho, T, Y(0)
+    integer, optional, intent(in) :: pt_index(:)
+    e = cv*T
+    p = rho*R_mu*T
     p = max(p, smallp)
     c = sqrt(gamma_const*p/rho)
     g = gamma_const
-  end subroutine eos_get_pcg
+  end subroutine eos_given_RTY
+
+
+  subroutine eos_given_ReY(g, p, c, T, rho, e, Y, pt_index)
+    double precision, intent(out) :: g, p, c, T
+    double precision, intent(in ) :: rho, e, Y(0)
+    integer, optional, intent(in) :: pt_index(:)
+    T = e/cv
+    p = rho*R_mu*T
+    p = max(p, smallp)
+    c = sqrt(gamma_const*p/rho)
+    g = gamma_const
+  end subroutine eos_given_ReY
 
 end module eos_module

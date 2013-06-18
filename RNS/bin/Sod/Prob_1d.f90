@@ -77,6 +77,7 @@ end subroutine PROBINIT
 subroutine rns_initdata(level,time,lo,hi,nscal, &
      state,state_l1,state_h1,delta,xlo,xhi)
 
+  use eos_module, only : eos_get_T
   use probdata_module
   use meth_params_module, only : NVAR, URHO, UMX, UEDEN, UTEMP
 
@@ -88,7 +89,7 @@ subroutine rns_initdata(level,time,lo,hi,nscal, &
   double precision time, delta(1)
   double precision xlo(1), xhi(1)
   
-  double precision xcen
+  double precision xcen, T, e, Y(0)
   integer i
   
   do i = lo(1), hi(1)
@@ -98,13 +99,16 @@ subroutine rns_initdata(level,time,lo,hi,nscal, &
         state(i,URHO ) = rho_l
         state(i,UMX  ) = rho_l*u_l
         state(i,UEDEN) = rhoe_l + 0.5*rho_l*u_l*u_l
+        e = rhoe_l/rho_l
      else
         state(i,URHO ) = rho_r
         state(i,UMX  ) = rho_r*u_r
         state(i,UEDEN) = rhoe_r + 0.5*rho_r*u_r*u_r
+        e = rhoe_r/rho_r
      endif
 
-     state(i,UTEMP) = 0.d0
+     call eos_get_T(T, e, Y)
+     state(i,UTEMP) = T
   enddo
 
 end subroutine rns_initdata

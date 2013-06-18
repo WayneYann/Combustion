@@ -1,3 +1,5 @@
+// This file needs cleanup
+
 #ifndef _RNS_F_H_
 #define _RNS_F_H_
 #include <BLFort.H>
@@ -7,6 +9,14 @@ BL_FORT_PROC_DECL(RNS_DUDT,rns_dudt)
      const BL_FORT_FAB_ARG(U),
      BL_FORT_FAB_ARG(dUdt),
      const Real dx[]);
+
+BL_FORT_PROC_DECL(RNS_COMPUTE_TEMP,rns_compute_temp)
+    (const int lo[], const int hi[],
+     BL_FORT_FAB_ARG(U));
+
+BL_FORT_PROC_DECL(RNS_ENFORCE_CONSISTENT_Y,rns_enforce_consistent_y)
+    (const int lo[], const int hi[],
+     BL_FORT_FAB_ARG(U));
 
 BL_FORT_PROC_DECL(FILCC,filcc)
                 (const Real * q, ARLIM_P(q_lo), ARLIM_P(q_hi),
@@ -205,10 +215,6 @@ BL_FORT_PROC_DECL(CA_REACT_STATE,ca_react_state)
      const BL_FORT_FAB_ARG(Snew),
      const BL_FORT_FAB_ARG(ReactionTerms),
      const Real& time, const Real& dt_react);
-
-BL_FORT_PROC_DECL(RNS_COMPUTE_TEMP,rns_compute_temp)
-    (const int lo[], const int hi[],
-     const BL_FORT_FAB_ARG(state));
 
 BL_FORT_PROC_DECL(CA_FILL_TEMP_COND,ca_fill_temp_cond)
     (const int lo[], const int hi[],

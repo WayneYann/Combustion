@@ -12,7 +12,7 @@ contains
 
   ! L and R in UL and UR are relative to face
   subroutine reconstruct(lo, hi, U, Ulo, Uhi, UL, UR)
-    use eos_module, only : eos_get_pcg
+    use eos_module, only : eos_given_RTY
     integer, intent(in) :: lo(1), hi(1), Ulo(1), Uhi(1)
     double precision, intent(in ) ::  U(Ulo(1):Uhi(1)  ,NVAR)
     double precision, intent(out) :: UL( lo(1): hi(1)+1,NVAR)
@@ -22,30 +22,22 @@ contains
     double precision :: r1(3), r2(3), r3(3)  ! right-eigenvector
     double precision :: l1(3), l2(3), l3(3)  !  left-eigenvector
     double precision :: b1, b2
-    double precision :: rho, mx, rhoE
-    double precision :: v, rhoInv, p, c, gamc, T, e, ek, H, xn(NSPEC)
+    double precision :: v, rhoInv, p, c, gamc, e, ek, H, Y(NSPEC)
     double precision :: charv(-2:2,3), vp(3), vm(3)  ! characteristic variables
 
     do i = lo(1)-1, hi(1)+1
 
-       rho  = U(i,URHO)
-       mx   = U(i,UMX)
-       rhoE = U(i,UEDEN)
-
-       rhoInv = 1.0d0/rho
-       v      = mx*rhoInv
-       T      = U(i,UTEMP)
-
-       ek = 0.5d0*v*v
-       e  = rhoE*rhoInv - ek
+       rhoInv = 1.0d0/U(i,URHO)
+       v      = U(i,UMX)*rhoInv
+       ek     = 0.5d0*v*v
 
        if (NSPEC > 0) then
-          xn = u(i,UFS:UFS+NSPEC-1)*rhoInv
+          Y = U(i,UFS:UFS+NSPEC-1)*rhoInv
        end if
 
-       call eos_get_pcg(p,c,gamc,rho,e,T,xn)
+       call eos_given_RTY(e,p,c,gamc,U(i,URHO),U(i,UTEMP),Y)
 
-       H = (rhoE + p) * rhoInv
+       H = e + p*rhoInv + ek
 
        r1(1) = 1.0d0
        r1(2) = v - c
@@ -70,7 +62,7 @@ contains
        l2(2) = -0.5d0*(b1*v - 1.0d0/c)
        l2(3) =  0.5d0*b1
 
-       l3(1) = 1.d0-b1
+       l3(1) = 1.d0-b2
        l3(2) = b1*v
        l3(3) = -b1
 
@@ -88,7 +80,7 @@ contains
           UL(i+1,URHO ) = vp(1)*r1(1) + vp(2)*r2(1) + vp(3)*r3(1)
           UL(i+1,UMX  ) = vp(1)*r1(2) + vp(2)*r2(2) + vp(3)*r3(2)
           UL(i+1,UEDEN) = vp(1)*r1(3) + vp(2)*r2(3) + vp(3)*r3(3)
-          UL(i+1,UTEMP) = 0.d0
+          UL(i+1,UTEMP) = U(i,UTEMP)
           if (NSPEC .gt. 0) then
              print *, 'reconstruct: nspec > 0'
              stop
@@ -99,7 +91,7 @@ contains
           UR(i,URHO ) = vm(1)*r1(1) + vm(2)*r2(1) + vm(3)*r3(1)
           UR(i,UMX  ) = vm(1)*r1(2) + vm(2)*r2(2) + vm(3)*r3(2)
           UR(i,UEDEN) = vm(1)*r1(3) + vm(2)*r2(3) + vm(3)*r3(3)
-          UR(i,UTEMP) = 0.d0
+          UR(i,UTEMP) = U(i,UTEMP)
        end if
 
     end do

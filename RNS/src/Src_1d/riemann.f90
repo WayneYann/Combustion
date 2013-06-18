@@ -17,35 +17,47 @@ contains
     double precision, intent(out) :: fx(lo(1):hi(1)+1,NVAR)
 
     integer :: i, n
-    double precision, allocatable :: fl(:,:), fr(:,:), alpha_plus(:), alpha_mins(:)
+    double precision, allocatable :: fl(:,:),fr(:,:),alpha_plus(:),alpha_mins(:),alpha_pm(:)
 
     allocate(fl(lo(1):hi(1)+1,NVAR))
     allocate(fr(lo(1):hi(1)+1,NVAR))
     allocate(alpha_plus(lo(1):hi(1)+1))
     allocate(alpha_mins(lo(1):hi(1)+1))
+    allocate(alpha_pm  (lo(1):hi(1)+1))
 
     do i = lo(1), hi(1)+1
        alpha_plus(i) = 0.d0
        alpha_mins(i) = 0.d0
     end do
-       
+
     call compute_flux_and_alpha(lo, hi, UL, fl, alpha_plus, alpha_mins)
     call compute_flux_and_alpha(lo, hi, UR, fr, alpha_plus, alpha_mins)
 
-    do n=1,NVAR
-       do i = lo(1), hi(1)+1
-          fx(i,n) = (alpha_plus(i) * fl(i,n) + alpha_mins(i) * fr(i,n) &
-               - alpha_plus(i) * alpha_mins(i) * (UR(i,n) - UL(i,n)))  &
-               / (alpha_plus(i) + alpha_mins(i))
-       end do
+    do i = lo(1), hi(1)+1
+       alpha_pm(i) = alpha_plus(i) * alpha_mins(i) / (alpha_plus(i) + alpha_mins(i))
+       alpha_plus(i) = alpha_plus(i) / (alpha_plus(i) + alpha_mins(i))
+       alpha_mins(i) = 1.d0 - alpha_plus(i)
     end do
 
-    deallocate(fl,fr,alpha_plus,alpha_mins)
+    do n=1,NVAR
+       if (n.eq.UTEMP) then
+          do i = lo(1), hi(1)+1
+             fx(i,n) = 0.d0
+          end do
+       else
+          do i = lo(1), hi(1)+1
+             fx(i,n) = alpha_plus(i) * fl(i,n) + alpha_mins(i) * fr(i,n) &
+                  - alpha_pm(i) * (UR(i,n) - UL(i,n))
+          end do
+       end if
+    end do
+
+    deallocate(fl,fr,alpha_plus,alpha_mins,alpha_pm)
   end subroutine riemann
 
 
   subroutine compute_flux_and_alpha(lo, hi, U, F, ap, am)
-    use eos_module, only : eos_get_pcg
+    use eos_module, only : eos_given_ReY
     integer, intent(in) :: lo(1), hi(1)
     double precision, intent(in   ) ::  U(lo(1):hi(1)+1,NVAR)
     double precision, intent(out  ) ::  F(lo(1):hi(1)+1,NVAR)
@@ -54,7 +66,7 @@ contains
 
     integer :: i, n
     double precision :: rho, mx, rhoE
-    double precision :: v, rhoInv, p, c, gamc, T, e, ek, H, xn(NSPEC)
+    double precision :: v, rhoInv, p, c, gamc, T, e, ek, H, Y(NSPEC)
 
     do i=lo(1),hi(1)+1
 
@@ -70,12 +82,12 @@ contains
        e  = rhoE*rhoInv - ek
 
        if (NSPEC > 0) then
-          xn = u(i,UFS:UFS+NSPEC-1)*rhoInv
+          Y = U(i,UFS:UFS+NSPEC-1)*rhoInv
        end if
 
-       call eos_get_pcg(p,c,gamc,rho,e,T,xn)
+       call eos_given_ReY(gamc,p,c,T,rho,e,Y)
 
-       ap(i) = max(ap(i), v+c)
+       ap(i) = max(ap(i), c+v)
        am(i) = max(am(i), c-v)
 
        F(i,URHO ) = mx
@@ -83,7 +95,7 @@ contains
        F(i,UEDEN) = (rhoE + p) * v
        F(i,UTEMP) = 0.d0
 
-       if (NSPEC .gt. 0) then
+       if (NSPEC > 0) then
           do n=1,NSPEC
              F(i,UFS+n-1) = U(i,UFS+n-1)*v
           end do

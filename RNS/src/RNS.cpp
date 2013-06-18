@@ -500,7 +500,7 @@ RNS::post_timestep (int iteration)
 	avgDown();
 
 	MultiFab& S_new_crse = get_new_data(State_Type);
-	enforce_nonnegative_species(S_new_crse);
+	post_update(S_new_crse);
     }
     else if (level < finest_level) 
     {
@@ -579,19 +579,6 @@ RNS::avgDown ()
 {
     if (level == parent->finestLevel()) return;
     avgDown(State_Type);
-}
-
-void
-RNS::enforce_nonnegative_species (MultiFab& S_new)
-{
-    if (NumSpec <= 0) return;
-  
-    for (MFIter mfi(S_new); mfi.isValid(); ++mfi)
-    {
-	const Box bx = mfi.validbox();
-	BL_FORT_PROC_CALL(RNS_ENFORCE_NONNEGATIVE_SPECIES,rns_enforce_nonnegative_species)
-	    (BL_TO_FORTRAN(S_new[mfi]),bx.loVect(),bx.hiVect());
-    }
 }
 
 void
