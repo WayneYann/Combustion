@@ -192,7 +192,7 @@ end subroutine rns_enforce_consistent_Y
            
            call eos_get_c(c,u(i,URHO),T,Y)
            
-           dt = min(dt, dx(1)/(c+1.d-50))
+           dt = min(dt, dx(1)/(abs(ux)+c+1.d-50))
         end do
 
       end subroutine rns_estdt
