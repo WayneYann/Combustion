@@ -1,3 +1,48 @@
+
+subroutine rns_dudt (lo, hi, &
+     U, U_l1, U_h1, &
+     dUdt, Ut_l1, Ut_h1, &
+     dx)
+  use meth_params_module, only : NVAR, URHO, UMX, UEDEN, UTEMP, UFS, NSPEC
+  use weno_module, only : reconstruct
+  use riemann_module, only : riemann
+  implicit none
+
+  integer, intent(in) :: lo(1), hi(1)
+  integer, intent(in) ::  U_l1,  U_h1
+  integer, intent(in) :: Ut_l1, Ut_h1
+  double precision, intent(in)    ::    U( U_l1: U_h1,NVAR)
+  double precision, intent(inout) :: dUdt(Ut_l1:Ut_h1,NVAR)
+  double precision, intent(in) :: dx(1)
+
+  integer :: Ulo(1), Uhi(1), i, n
+  double precision :: dxinv(1)
+  double precision, allocatable :: UL(:,:), UR(:,:), fx(:,:)
+
+  dxinv(1) = 1.d0/dx(1)
+
+  Ulo(1) = U_l1
+  Uhi(1) = U_h1
+
+  allocate(UL(lo(1):hi(1)+1,NVAR))
+  allocate(UR(lo(1):hi(1)+1,NVAR))
+  allocate(fx(lo(1):hi(1)+1,NVAR))
+
+  call reconstruct(lo, hi, U, Ulo, Uhi, UL, UR)
+
+  call riemann(lo, hi, UL, UR, fx)
+
+  do n=1, NVAR
+     do i=lo(1),hi(1)
+        dUdt(i,n) = dxinv(1) * (fx(i,n) - fx(i+1,n))
+     end do
+  end do
+
+  deallocate(UL,UR,fx)
+
+end subroutine rns_dudt
+
+
 ! :: ----------------------------------------------------------
 ! :: Volume-weight average the fine grid data onto the coarse
 ! :: grid.  Overlap is given in coarse grid coordinates.
@@ -89,7 +134,7 @@
         double precision dx(1), dt
 
         integer :: i
-        double precision :: rhoInv, ux, T, e, c, xn(NSPEC)
+        double precision :: rhoInv, ux, T, e, p, c, g, xn(NSPEC)
 
         do i = lo(1), hi(1)
            rhoInv = 1.d0/u(i,URHO)
@@ -103,7 +148,7 @@
               xn = u(i,UFS:UFS+NSPEC-1)*rhoInv
            end if
            
-           call eos_get_soundspeed(c,u(i,URHO),e,T,xn)
+           call eos_get_pcg(p,c,g,u(i,URHO),e,T,xn)
            
            dt = min(dt, dx(1)/(c+1.d-50))
         end do

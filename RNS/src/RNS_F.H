@@ -2,6 +2,12 @@
 #define _RNS_F_H_
 #include <BLFort.H>
 
+BL_FORT_PROC_DECL(RNS_DUDT,rns_dudt)
+    (const int lo[], const int hi[],
+     const BL_FORT_FAB_ARG(U),
+     BL_FORT_FAB_ARG(dUdt),
+     const Real dx[]);
+
 BL_FORT_PROC_DECL(FILCC,filcc)
                 (const Real * q, ARLIM_P(q_lo), ARLIM_P(q_hi),
                  const int * domlo, const int * domhi,

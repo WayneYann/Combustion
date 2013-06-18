@@ -67,8 +67,20 @@ RNS::dUdt(MultiFab& U, MultiFab& Uprime, Real time, bool do_fillpatch)
 	}
     }
 
-    // for testing
-    Uprime.setVal(0.0);
+    
+    const Real *dx = geom.CellSize();
+
+    for (MFIter mfi(Uprime); mfi.isValid(); ++mfi)
+    {
+	int i = mfi.index();
+	const Box& bx = mfi.validbox();
+
+	BL_FORT_PROC_CALL(RNS_DUDT,rns_dudt)
+	    (bx.loVect(), bx.hiVect(),
+	     BL_TO_FORTRAN(U[i]),
+	     BL_TO_FORTRAN(Uprime[i]),
+	     dx);
+    }
 }
 
 

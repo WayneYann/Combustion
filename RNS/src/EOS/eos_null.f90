@@ -58,15 +58,13 @@ contains
   end subroutine eos_get_small_dens
 
 
-  subroutine eos_get_soundspeed(c,rho,e,T,xn)
-    double precision, intent(out) :: c
+  subroutine eos_get_pcg(p,c,g,rho,e,T,xn)
+    double precision, intent(out) :: p,c,g
     double precision, intent(in) :: rho, e, T, xn(0)
-
-    double precision :: p
-
     p = (gamma_const - 1.0) * rho * e
     p = max(p, smallp)
     c = sqrt(gamma_const*p/rho)
-  end subroutine eos_get_soundspeed
+    g = gamma_const
+  end subroutine eos_get_pcg
 
 end module eos_module

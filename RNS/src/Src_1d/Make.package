@@ -1,4 +1,3 @@
 
-f90EXE_sources += RNS_F.f90
-
+f90EXE_sources += RNS_F.f90 weno.f90 riemann.f90
 
