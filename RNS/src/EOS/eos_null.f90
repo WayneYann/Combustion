@@ -67,7 +67,7 @@ contains
 
   subroutine eos_get_c(c,rho,T,Y,pt_index)
     double precision, intent(out) :: c
-    double precision, intent(in) :: rho, T, Y(0)
+    double precision, intent(in) :: rho, T, Y(1)
     integer, optional, intent(in) :: pt_index(:)
     double precision :: p
     p = rho*Ru*T/mu
@@ -78,33 +78,35 @@ contains
 
   subroutine eos_get_T(T, e, Y, pt_index)
     double precision, intent(out) :: T
-    double precision, intent(in ) :: e, Y(0)
+    double precision, intent(in ) :: e, Y(1)
     integer, optional, intent(in) :: pt_index(:)
     T = e/cv
   end subroutine eos_get_T
 
 
-  subroutine eos_given_RTY(e, p, c, g, rho, T, Y, pt_index)
-    double precision, intent(out) :: e, p, c, g
-    double precision, intent(in ) :: rho, T, Y(0)
+  subroutine eos_given_RTY(e, p, c, dpdr, dpde, rho, T, Y, pt_index)
+    double precision, intent(out) :: e, p, c, dpdr(1), dpde
+    double precision, intent(in ) :: rho, T, Y(1)
     integer, optional, intent(in) :: pt_index(:)
     e = cv*T
     p = rho*R_mu*T
     p = max(p, smallp)
     c = sqrt(gamma_const*p/rho)
-    g = gamma_const
+    dpdr(1) = (gamma_const-1.d0)*e
+    dpde    = (gamma_const-1.d0)*rho
   end subroutine eos_given_RTY
 
 
-  subroutine eos_given_ReY(g, p, c, T, rho, e, Y, pt_index)
-    double precision, intent(out) :: g, p, c, T
-    double precision, intent(in ) :: rho, e, Y(0)
+  subroutine eos_given_ReY(p, c, T, dpdr, dpde, rho, e, Y, pt_index)
+    double precision, intent(out) :: p, c, T, dpdr(1), dpde
+    double precision, intent(in ) :: rho, e, Y(1)
     integer, optional, intent(in) :: pt_index(:)
     T = e/cv
     p = rho*R_mu*T
     p = max(p, smallp)
     c = sqrt(gamma_const*p/rho)
-    g = gamma_const
+    dpdr(1) = (gamma_const-1.d0)*e
+    dpde    = (gamma_const-1.d0)*rho
   end subroutine eos_given_ReY
 
 end module eos_module

@@ -9,33 +9,33 @@ class ChemDriver
 {
 public:
 
-  ChemDriver ();	  
+    ChemDriver ();	  
 
-  ~ChemDriver ();
-
-  //
-  // Species info.
-  //
-  int numSpecies () const;
-  int numElements () const;
-  const Array<std::string>& speciesNames () const;
-  const Array<std::string>& elementNames () const;
-
+    ~ChemDriver ();
+    
+    //
+    // Species info.
+    //
+    int numSpecies () const;
+    int numElements () const;
+    const Array<std::string>& speciesNames () const;
+    const Array<std::string>& elementNames () const;
+    
 private:
 
-  void initOnce ();
-
-  Array<std::string> mSpeciesNames;
-  Array<std::string> mElementNames;
-
-  std::string decodeStringFromFortran(const int* coded, int length);
+    void initOnce ();
+    
+    Array<std::string> mSpeciesNames;
+    Array<std::string> mElementNames;
+    
+    std::string decodeStringFromFortran(const int* coded, int length);
 };
 
 inline
 int
 ChemDriver::numSpecies () const
 {
-  return mSpeciesNames.size();
+    return mSpeciesNames.size();
 }
 
 inline

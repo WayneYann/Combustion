@@ -48,7 +48,7 @@ end subroutine rns_dudt
 
 subroutine rns_compute_temp(lo,hi,U,U_l1,U_h1)
   use meth_params_module, only : NVAR, URHO, UMX, UEDEN, UTEMP, UFS, NSPEC
-  use eos_module, only : eos_given_ReY
+  use eos_module, only : eos_get_T
   implicit none
   
   integer, intent(in) :: lo(1), hi(1)
@@ -56,23 +56,17 @@ subroutine rns_compute_temp(lo,hi,U,U_l1,U_h1)
   double precision, intent(inout) :: U( U_l1: U_h1,NVAR)
 
   integer :: i
-  double precision :: gamc, p, c, rho, rhoInv, e, v, Y(NSPEC)
+  double precision :: rhoInv, e, v, Y(NSPEC)
 
   do i=lo(1),hi(1)
+     rhoInv = 1.0d0/U(i,URHO)
 
-     rho  = U(i,URHO)
-     rhoInv = 1.0d0/rho
-
-     v  = U(i,UMX)*rhoInv
-     
+     v  = U(i,UMX)*rhoInv     
      e  = U(i,UEDEN)*rhoInv - 0.5d0*v*v
 
-     if (NSPEC > 0) then
-        Y = U(i,UFS:UFS+NSPEC-1)*rhoInv
-     end if
+     Y = U(i,UFS:UFS+NSPEC-1)*rhoInv
 
-     call eos_given_ReY(gamc,p,c, U(i,UTEMP), rho, e, Y)
-
+     call eos_get_T(U(i,UTEMP), e, Y)
   end do
 end subroutine rns_compute_temp
 

@@ -79,7 +79,7 @@ subroutine rns_initdata(level,time,lo,hi,nscal, &
 
   use eos_module, only : eos_get_T
   use probdata_module
-  use meth_params_module, only : NVAR, URHO, UMX, UEDEN, UTEMP
+  use meth_params_module, only : NVAR, URHO, UMX, UEDEN, UTEMP, UFS
 
   implicit none
   integer level, nscal
@@ -89,7 +89,7 @@ subroutine rns_initdata(level,time,lo,hi,nscal, &
   double precision time, delta(1)
   double precision xlo(1), xhi(1)
   
-  double precision xcen, T, e, Y(0)
+  double precision xcen, T, e, Y(1)
   integer i
   
   do i = lo(1), hi(1)
@@ -107,8 +107,10 @@ subroutine rns_initdata(level,time,lo,hi,nscal, &
         e = rhoe_r/rho_r
      endif
 
+     Y(1) = 1.d0
      call eos_get_T(T, e, Y)
      state(i,UTEMP) = T
+     state(i,UFS  ) = state(i,URHO) * Y(1)
   enddo
 
 end subroutine rns_initdata

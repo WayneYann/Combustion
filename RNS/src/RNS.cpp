@@ -55,7 +55,7 @@ int          RNS::Eden          = -1;
 int          RNS::Temp          = -1;
 
 ChemDriver*  RNS::chemSolve     = 0;
-int          RNS::NumSpec       = 0;
+int          RNS::NumSpec       = 1;
 int          RNS::FirstSpec     = -1;
 int          RNS::LastSpec      = -1;
 

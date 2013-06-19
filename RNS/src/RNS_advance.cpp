@@ -117,11 +117,8 @@ RNS::post_update(MultiFab& U)
         const int* lo = bx.loVect();
         const int* hi = bx.hiVect();
 
-	if (NumSpec > 0) 
-	{
 //	    BL_FORT_PROC_CALL(RNS_ENFORCE_CONSISTENT_Y, rns_enforce_consistent_y)
 //		(lo, hi, BL_TO_FORTRAN(U[i]));
-	}
 
 	BL_FORT_PROC_CALL(RNS_COMPUTE_TEMP, rns_compute_temp)
 	    (lo, hi, BL_TO_FORTRAN(U[i]));	

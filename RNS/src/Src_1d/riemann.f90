@@ -66,7 +66,7 @@ contains
 
     integer :: i, n
     double precision :: rho, mx, rhoE
-    double precision :: v, rhoInv, p, c, gamc, T, e, ek, H, Y(NSPEC)
+    double precision :: v, rhoInv, p, c, dpdr(NSPEC), dpde, T, e, ek, H, Y(NSPEC)
 
     do i=lo(1),hi(1)+1
 
@@ -81,11 +81,9 @@ contains
        ek = 0.5d0*v*v
        e  = rhoE*rhoInv - ek
 
-       if (NSPEC > 0) then
-          Y = U(i,UFS:UFS+NSPEC-1)*rhoInv
-       end if
+       Y = U(i,UFS:UFS+NSPEC-1)*rhoInv
 
-       call eos_given_ReY(gamc,p,c,T,rho,e,Y)
+       call eos_given_ReY(p,c,T,dpdr,dpde,rho,e,Y)
 
        ap(i) = max(ap(i), c+v)
        am(i) = max(am(i), c-v)
@@ -94,12 +92,9 @@ contains
        F(i,UMX  ) = mx*v + p 
        F(i,UEDEN) = (rhoE + p) * v
        F(i,UTEMP) = 0.d0
-
-       if (NSPEC > 0) then
-          do n=1,NSPEC
-             F(i,UFS+n-1) = U(i,UFS+n-1)*v
-          end do
-       end if
+       do n=1,NSPEC
+          F(i,UFS+n-1) = U(i,UFS+n-1)*v
+       end do
     end do
   end subroutine compute_flux_and_alpha
 

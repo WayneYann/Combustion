@@ -126,12 +126,9 @@ RNS::variableSetUp ()
     Temp = cnt++;
     
     NumSpec = chemSolve->numSpecies();
-    if (NumSpec > 0) 
-    {
-	FirstSpec = cnt++;
-	cnt += NumSpec - 2;
-	LastSpec = cnt++;
-    }
+    FirstSpec = cnt++;
+    cnt += NumSpec - 2;
+    LastSpec = cnt++;
     
     NUM_STATE = cnt;
     
@@ -190,15 +187,11 @@ RNS::variableSetUp ()
     cnt++; set_scalar_bc(bc,phys_bc); bcs[cnt] = bc; name[cnt] = "Temp";
     
     // Get the species names from the chemdriver.
-    if (NumSpec > 0) 
+    const Array<std::string>& spec_names = chemSolve->speciesNames();
+    for (int i=0; i<NumSpec; i++)
     {
-	const Array<std::string>& spec_names = chemSolve->speciesNames();
-	
-	for (int i=0; i<NumSpec; i++)
-	{
-	    cnt++; set_scalar_bc(bc,phys_bc); bcs[cnt] = bc;
-	    name[cnt] = "rho.Y(" + spec_names[i] + ")";
-	}
+	cnt++; set_scalar_bc(bc,phys_bc); bcs[cnt] = bc;
+	name[cnt] = "rho.Y(" + spec_names[i] + ")";
     }
 	
     desc_lst.setComponent(State_Type,
