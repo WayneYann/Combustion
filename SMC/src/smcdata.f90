@@ -36,7 +36,7 @@ contains
        call multifab_build(Unew,   la, ncons, stencil_ng)
     else
        if (sdc%single_rate) then
-          call sdc_sweeper_allocate(imex2sweeper(sdc%imex), err)
+          call sdc_imex_allocate(sdc%imex, err)
        end if
        if (sdc%multi_rate) then
           print *, 'MRSET ALLOCATE NOT IMPLEMENTED YET'
@@ -65,7 +65,7 @@ contains
        call destroy(Uprime)
     else 
        if (sdc%single_rate) then
-          call sdc_sweeper_deallocate(imex2sweeper(sdc%imex))
+          call sdc_imex_deallocate(sdc%imex)
        end if
        if (sdc%multi_rate) then
           print *, 'MRSET ALLOCATE NOT IMPLEMENTED YET'

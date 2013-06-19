@@ -152,7 +152,7 @@ contains
     !
     call build(bpt_sdc_prep, "sdc_prep")
     call sdc_sweeper_set_q0(imex2sweeper(sdc%imex), mfptr(U))
-    call sdc_sweeper_spread(imex2sweeper(sdc%imex), 0.0d0)
+    call sdc_imex_spread(sdc%imex, 0.0d0)
     call destroy(bpt_sdc_prep)
 
     if (sdc%tol_residual > 0.d0) then
@@ -164,12 +164,12 @@ contains
 
     call build(bpt_sdc_iter, "sdc_iter")
     do k = 1, sdc%iters
-       call sdc_imex_integrate(sdc%imex, dt)
+       call sdc_imex_integrate_predictor(sdc%imex, dt)
        call sdc_imex_sweep(sdc%imex, 0.0d0, dt, 0)
 
        ! check residual
        if (sdc%tol_residual > 0.d0) then
-          call sdc_sweeper_residual(imex2sweeper(sdc%imex), dt, mfptr(R))
+          call sdc_imex_residual(sdc%imex, dt, mfptr(R))
           call parallel_reduce(res1, norm_l2(R), MPI_MAX)
 
           if (parallel_IOProcessor()) then
@@ -329,7 +329,7 @@ contains
 
        ! check residual
        if (sdc%tol_residual > 0.d0) then
-          call sdc_sweeper_residual(mrex2sweeper(sdc%mrex), dt, mfptr(R))
+          call sdc_mrex_residual(sdc%mrex, dt, mfptr(R))
           call parallel_reduce(res1, norm_l2(R), MPI_MAX)
 
           if (parallel_IOProcessor()) then
