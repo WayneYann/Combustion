@@ -23,7 +23,7 @@ rns.lo_bc       =  2   2   2
 rns.hi_bc       =  2   2   2
 
 # TIME STEP CONTROL
-rns.cfl            = 0.5     # cfl number for hyperbolic system
+rns.cfl            = 0.6     # cfl number for hyperbolic system
 rns.init_shrink    = 0.1     # scale back initial timestep
 rns.change_max     = 1.05    # scale back initial timestep
 rns.dt_cutoff      = 5.e-20  # level 0 timestep below which we halt
