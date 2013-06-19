@@ -23,12 +23,14 @@ void
 ChemDriver::initOnce ()
 {
     mSpeciesNames.clear();
-    mSpeciesNames.resize(1);
+    mSpeciesNames.resize(2);
     mSpeciesNames[0] = "X";
+    mSpeciesNames[1] = "Y";
 
     mElementNames.clear();
-    mElementNames.resize(1);
+    mElementNames.resize(2);
     mElementNames[0] = "X";
+    mElementNames[1] = "Y";
 }
 
 

@@ -1,6 +1,6 @@
 module weno_module
 
-  use meth_params_module, only : NVAR, URHO, UMX, UEDEN, UTEMP, UFS, NSPEC
+  use meth_params_module, only : NVAR, URHO, UMX, UEDEN, UTEMP, UFS, NSPEC, NCHARV, CFS
 
   implicit none
 
@@ -18,12 +18,13 @@ contains
     double precision, intent(out) :: UL( lo(1): hi(1)+1,NVAR)
     double precision, intent(out) :: UR( lo(1): hi(1)+1,NVAR)
 
+    integer,parameter :: dm = 1
+
     integer :: i, ii, ivar, m, n
-    double precision :: egv(NSPEC+2,NSPEC+2)
+    double precision :: egv(NCHARV,NCHARV)
     double precision :: gt, b, d(NSPEC)
     double precision :: rho, v, rhoInv, p, c, T, dpdr(NSPEC), dpde, e, ek, H, Y(NSPEC)
-    double precision :: charv(-2:2,NSPEC+2), vp(NSPEC+2), vm(NSPEC+2) ! characteristic variables
-
+    double precision :: charv(-2:2,NCHARV), vp(NCHARV), vm(NCHARV) ! characteristic variables
     do n=1,NVAR
        do i=lo(1), hi(1)+1
           UL(i,n) = 0.d0
@@ -64,35 +65,35 @@ contains
        egv(1,1) = -0.5d0*(1.d0/c + b*v)
        egv(2,1) = 0.5d0*b
        do n=1,nspec
-          egv(2+n,1) = 0.5d0*(v/c + d(n))
+          egv(CFS+n-1,1) = 0.5d0*(v/c + d(n))
        end do
 
        egv(1,2) = 0.5d0*(1.d0/c - b*v)
        egv(2,2) = 0.5d0*b
        do n=1,nspec
-          egv(2+n,2) = 0.5d0*(-v/c + d(n))
+          egv(CFS+n-1,2) = 0.5d0*(-v/c + d(n))
        end do
 
        do m=1,nspec
-          egv(1,2+m) = Y(m)*b*v
-          egv(2,2+m) = -Y(m)*b
+          egv(1,CFS+m-1) = Y(m)*b*v
+          egv(2,CFS+m-1) = -Y(m)*b
           do n=1,nspec
-             egv(2+n,2+m) = -Y(n)*d(n)
+             egv(CFS+n-1,CFS+m-1) = -Y(n)*d(n)
           end do
-          egv(2+m,2+m) = egv(2+m,2+m) + 1.d0
+          egv(CFS+m-1,CFS+m-1) = egv(CFS+m-1,CFS+m-1) + 1.d0
        end do
 
        ! convert conserved variables to characteristic variables
-       do n=1,nspec+2
+       do n=1,NCHARV
           do ii=-2,2
              charv(ii,n) = egv(1,n)*U(i+ii,UMX) + egv(2,n)*U(i+ii,UEDEN)
              do m=1,nspec
-                charv(ii,n) = charv(ii,n) + egv(2+m,n)*U(i+ii,UFS+m-1)
+                charv(ii,n) = charv(ii,n) + egv(CFS+m-1,n)*U(i+ii,UFS+m-1)
              end do
           end do
        end do
 
-       do ivar=1,3
+       do ivar=1,NCHARV
           call weno5(charv(:,ivar), vp(ivar), vm(ivar))
        end do
 
@@ -100,30 +101,30 @@ contains
        egv(1,1) = v - c
        egv(2,1) = H - v*c
        do n=1,nspec
-          egv(2+n,1) = Y(n)
+          egv(CFS+n-1,1) = Y(n)
        end do
 
        egv(1,2) = v + c
        egv(2,2) = H + v*c
        do n=1,nspec
-          egv(2+n,2) = Y(n)
+          egv(CFS+n-1,2) = Y(n)
        end do
 
        do n=1,nspec
-          egv(1,2+n) = v
-          egv(2,2+n) = e + ek - dpdr(n)/gt
+          egv(1,CFS+n-1) = v
+          egv(2,CFS+n-1) = e + ek - dpdr(n)/gt
           do m=1,nspec
-             egv(2+m,2+n) = 0.d0
+             egv(CFS+m-1,CFS+n-1) = 0.d0
           end do
-          egv(2+n,2+n) = 1.d0
+          egv(CFS+n-1,CFS+n-1) = 1.d0
        end do
 
        if (i .ne. hi(1)+1) then
-          do n=1,nspec+2
+          do n=1,NCHARV
              UL(i+1,UMX  ) = UL(i+1,UMX  ) + vp(n)*egv(1,n)
              UL(i+1,UEDEN) = UL(i+1,UEDEN) + vp(n)*egv(2,n)
              do m=1,nspec
-                UL(i+1,UFS+m-1) = UL(i+1,UFS+m-1) + vp(n)*egv(2+m,n)
+                UL(i+1,UFS+m-1) = UL(i+1,UFS+m-1) + vp(n)*egv(CFS+m-1,n)
              end do
           end do
           do m=1,nspec
@@ -133,11 +134,11 @@ contains
        end if
 
        if (i .ne. lo(1)-1) then
-          do n=1,nspec+2
+          do n=1,NCHARV
              UR(i,UMX  ) = UR(i,UMX  ) + vm(n)*egv(1,n)
              UR(i,UEDEN) = UR(i,UEDEN) + vm(n)*egv(2,n)
              do m=1,nspec
-                UR(i,UFS+m-1) = UR(i,UFS+m-1) + vm(n)*egv(2+m,n)
+                UR(i,UFS+m-1) = UR(i,UFS+m-1) + vm(n)*egv(CFS+m-1,n)
              end do
           end do
           do m=1,nspec

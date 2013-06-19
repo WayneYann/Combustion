@@ -26,6 +26,10 @@ subroutine set_method_params(dm,Density,Xmom,Eden,Temp,FirstSpec, &
   
   integer QLAST
 
+  ndim = dm
+  NCHARV = 1 + dm + NumSpec ! momentum + energy + rhoY
+  CFS = dm + 2
+
   NVAR = NUM_STATE
   NSPEC = NumSpec
 

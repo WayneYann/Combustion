@@ -4,6 +4,10 @@ module meth_params_module
 
   integer, parameter     :: NGROW = 3  ! fifth-order WENO
 
+  integer, save :: ndim   ! spatial dimension
+  integer, save :: NCHARV ! number of characteristic variables
+  integer, save :: CFS
+
   ! conserved variables
   integer         , save :: NVAR, NSPEC
   integer         , save :: URHO, UMX, UMY, UMZ, UEDEN, UTEMP, UFS
