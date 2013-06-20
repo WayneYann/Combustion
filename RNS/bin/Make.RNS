@@ -25,11 +25,11 @@ else ifeq (${CHEMISTRY_MODEL}, LIDRYER)
   cEXE_sources += LiDryer.c
   vpath %.f $(VPATH_LOCATIONS) ${MECHDIR}/LiDryer/PMFs
   vpath %.c $(VPATH_LOCATIONS) ${MECHDIR}/LiDryer
-else ifeq ($(CHEMISTRY_MODEL),DRM19)
+else ifeq ($(CHEMISTRY_MODEL), DRM19)
   cEXE_sources += drm19.c
   vpath %.f $(VPATH_LOCATIONS) ${MECHDIR}/gri/PMFs
   vpath %.c $(VPATH_LOCATIONS) ${MECHDIR}/gri
-else ifeq ($(CHEMISTRY_MODEL),GRI30)
+else ifeq ($(CHEMISTRY_MODEL), GRI30)
   cEXE_sources += grimech30.c
   vpath %.f $(VPATH_LOCATIONS) ${MECHDIR}/gri/PMFs
   vpath %.c $(VPATH_LOCATIONS) ${MECHDIR}/gri
@@ -37,6 +37,8 @@ else ifeq (${CHEMISTRY_MODEL}, LUDME)
   CHEM_MECHFILE = LuDME.c
   VPATH_LOCATIONS += ${MECHDIR}/data/Lu/PMFs
   VPATH_LOCATIONS += ${MECHDIR}/data/Lu
+else ifneq (${CHEMISTRY_MODEL}, NULL)
+  $(error "Unknown CHEMISTRY_MODEL: $(CHEMISTRY_MODEL)")
 endif
 
 include $(Bpack)

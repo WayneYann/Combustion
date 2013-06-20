@@ -2,7 +2,6 @@
 subroutine PROBINIT (init,name,namlen,problo,probhi)
 
   use probdata_module
-  use eos_module, only : gamma_const
   implicit none
 
   integer init, namlen
@@ -11,7 +10,7 @@ subroutine PROBINIT (init,name,namlen,problo,probhi)
 
   integer untin,i
 
-  namelist /fortin/ p_l, u_l, rho_l, p_r, u_r, rho_r
+  namelist /fortin/ prob_type, pertmag, rfire
 
 !
 !     Build "probin" filename -- the name of file containing fortin namelist.
@@ -30,14 +29,11 @@ subroutine PROBINIT (init,name,namlen,problo,probhi)
   end do
          
 ! set namelist defaults
+  prob_type = 1
 
-  p_l = 1.0               ! left pressure (erg/cc)
-  u_l = 0.0               ! left velocity (cm/s)
-  rho_l = 1.0             ! left density (g/cc)
-
-  p_r = 0.1               ! right pressure (erg/cc)
-  u_r = 0.0               ! right velocity (cm/s)
-  rho_r = 0.125           ! right density (g/cc)
+! problem type 1
+  pertmag = 0.d0
+  rfire   = 0.15d0
 
 !     Read namelists
   untin = 9
@@ -45,11 +41,7 @@ subroutine PROBINIT (init,name,namlen,problo,probhi)
   read(untin,fortin)
   close(unit=untin)
 
-  center(1) = 0.5d0*(problo(1)+probhi(1))
-
-!     compute the internal energy (erg/cc) for the left and right state
-  rhoe_l = p_l/(gamma_const - 1.d0)
-  rhoe_r = p_r/(gamma_const - 1.d0)
+  center(1) = 0.5d0*(problo(1) + probhi(1))
 
 end subroutine PROBINIT
 
@@ -80,6 +72,7 @@ subroutine rns_initdata(level,time,lo,hi,nscal, &
   use eos_module, only : eos_get_T
   use probdata_module
   use meth_params_module, only : NVAR, URHO, UMX, UEDEN, UTEMP, UFS, NSPEC
+  use chemistry_module, only : Patm, nspecies
 
   implicit none
   integer level, nscal
@@ -89,37 +82,48 @@ subroutine rns_initdata(level,time,lo,hi,nscal, &
   double precision time, delta(1)
   double precision xlo(1), xhi(1)
   
-  double precision xcen, T, e, Y(NSPEC)
-  integer i
-  
+  integer :: i, n, iwrk
+  double precision :: xcen, r, rfront
+  double precision :: pmf_vals(NSPEC+3), Xt(nspec), Yt(nspec)
+  double precision :: rhot, et, Pt, Tt, u1t, rwrk
+
+  if (nspecies .ne. NSPEC) then
+     write(6,*)"nspecies, nspec ", nspecies, NSPEC
+     stop
+  end if
+
   do i = lo(1), hi(1)
      xcen = xlo(1) + delta(1)*(float(i-lo(1)) + 0.5d0)
-            
-     if (xcen <= center(1)) then
-        state(i,URHO ) = rho_l
-        state(i,UMX  ) = rho_l*u_l
-        state(i,UEDEN) = rhoe_l + 0.5*rho_l*u_l*u_l
-        e = rhoe_l/rho_l
 
-        Y(1) = 6.d0/7.d0
-        Y(2) = 1.d0/7.d0
-        call eos_get_T(T, e, Y)
-        state(i,UTEMP) = T
-        state(i,UFS:UFS+1) = state(i,URHO) * Y
+     r = abs(xcen-center(1))
+     rfront = rfire - xcen + 3.011d0 ! 3.011d0 is roughly the sufrace of fire for pmf.
 
-     else
-        state(i,URHO ) = rho_r
-        state(i,UMX  ) = rho_r*u_r
-        state(i,UEDEN) = rhoe_r + 0.5*rho_r*u_r*u_r
-        e = rhoe_r/rho_r
+     call pmf(rfront,rfront,pmf_vals,n)
+     
+     if (n .ne. nspec+3) then
+        write(6,*)"n, nspec ", n, nspec
+        stop
+     end if
 
-        Y(1) = 1.d0/7.d0
-        Y(2) = 6.d0/7.d0
-        call eos_get_T(T, e, Y)
-        state(i,UTEMP) = T
-        state(i,UFS:UFS+1) = state(i,URHO) * Y
-     endif
-  enddo
+     Xt = pmf_vals(4:)
+
+     Pt  = patm
+     Tt  = pmf_vals(1)
+     u1t = 0.d0
+     
+     call ckxty (Xt, iwrk, rwrk, Yt)
+     call ckrhoy(Pt,Tt,Yt,iwrk,rwrk,rhot)
+     call ckubms(Tt,Yt,iwrk,rwrk,et)
+
+     state(i,URHO ) = rhot
+     state(i,UMX  ) = rhot*u1t
+     state(i,UEDEN) = rhot*(et + 0.5d0*u1t**2)
+     state(i,UTEMP) = Tt
+
+     do n=1,nspec
+        state(i,UFS+n-1) = Yt(n)*rhot
+     end do
+  end do
 
 end subroutine rns_initdata
 

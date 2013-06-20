@@ -16,7 +16,7 @@ FCOMP	   = gfortran
 USE_MPI    = FALSE
 USE_OMP    = FALSE
 
-CHEMISTRY_MODEL = NULL
+CHEMISTRY_MODEL = LIDRYER
 
 Bpack   := ./Make.package
 Blocs   := .
