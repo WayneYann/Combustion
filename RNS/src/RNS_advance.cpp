@@ -100,10 +100,14 @@ RNS::dUdt(MultiFab& U, MultiFab& Uprime, Real time, bool do_fillpatch)
 void 
 RNS::update_rk(MultiFab& U1, const MultiFab& U2, Real c, const MultiFab& Uprime)
 {
-    // not meant for performance
-    MultiFab::Copy(U1, Uprime, 0, 0, NUM_STATE, 0);
-    U1.mult(c);
-    U1.plus(U2, 0, NUM_STATE, 0);
+    for (MFIter mfi(U1); mfi.isValid(); ++mfi)
+    {
+	const int   i = mfi.index();
+	const Box& bx = mfi.validbox();
+	
+	U1[i].copy(U2[i], bx);
+	U1[i].saxpy(c, Uprime[i]);
+    }
 }
 
 
@@ -117,8 +121,8 @@ RNS::post_update(MultiFab& U)
         const int* lo = bx.loVect();
         const int* hi = bx.hiVect();
 
-//	    BL_FORT_PROC_CALL(RNS_ENFORCE_CONSISTENT_Y, rns_enforce_consistent_y)
-//		(lo, hi, BL_TO_FORTRAN(U[i]));
+	BL_FORT_PROC_CALL(RNS_ENFORCE_CONSISTENT_Y, rns_enforce_consistent_y)
+	    (lo, hi, BL_TO_FORTRAN(U[i]));
 
 	BL_FORT_PROC_CALL(RNS_COMPUTE_TEMP, rns_compute_temp)
 	    (lo, hi, BL_TO_FORTRAN(U[i]));	

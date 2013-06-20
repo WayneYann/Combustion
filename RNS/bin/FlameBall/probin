@@ -3,7 +3,7 @@
   prob_type = 1
 
   ! for problem type 1
-  pertmag = 0.00d0
-  rfire   = 0.15d0
-
+  pertmag =  0.00d0
+  rfire   =  0.15d0
+  uinit   = -3.00d4
 /

@@ -81,8 +81,86 @@ subroutine rns_enforce_consistent_Y(lo,hi,U,U_l1,U_h1)
   integer, intent(in) :: lo(1), hi(1)
   integer, intent(in) ::  U_l1,  U_h1
   double precision, intent(inout) :: U( U_l1: U_h1,NVAR)
-  print *, 'rns_enforce_consistent_Y not implemented'
-  stop
+
+  ! Local variables
+  integer          :: i,n
+  integer          :: int_dom_spec
+  logical          :: any_negative
+  double precision :: dom_spec,x,rhoInv
+
+  double precision, parameter :: eps = -1.d-16
+
+  do i = lo(1),hi(1)
+
+     any_negative = .false.
+
+     rhoInv = 1.d0/U(i,URHO)
+
+     ! First deal with tiny undershoots by just setting them to zero
+     do n = UFS, UFS+nspec-1
+        if (U(i,n) .lt. 0.d0) then
+           x = U(i,n) * rhoInv
+           if (x .gt. eps) then
+              U(i,n) = 0.d0
+           else
+              any_negative = .true.
+           end if
+        end if
+     end do
+
+     ! We know there are one or more undershoots needing correction 
+     if (any_negative) then
+
+        ! Find the dominant species
+        dom_spec = 0.d0
+        int_dom_spec = 0
+        do n = UFS,UFS+nspec-1
+           if (U(i,n) .gt. dom_spec) then
+              dom_spec = U(i,n)
+              int_dom_spec = n
+           end if
+        end do
+
+        ! Now take care of undershoots greater in magnitude than 1e-16.
+        do n = UFS, UFS+nspec-1
+           
+           if (U(i,n) .lt. 0.d0) then
+              
+              x = U(i,n)/U(i,URHO)
+              
+              ! Here we only print the bigger negative values
+              if (x .lt. -1.d-2) then
+                 print *,'Correcting negative species   ',n
+                 print *,'   at cell (i)                ',i
+                 print *,'Negative (rho*X) is           ',U(i,n)
+                 print *,'Negative      X  is           ',x
+                 print *,'Filling from dominant species ',int_dom_spec
+                 print *,'  which had X =               ',&
+                      U(i,int_dom_spec) / U(i,URHO)
+              end if
+
+              ! Take enough from the dominant species to fill the negative one.
+              U(i,int_dom_spec) = U(i,int_dom_spec) + U(i,n)
+   
+              ! Test that we didn't make the dominant species negative
+              if (U(i,int_dom_spec) .lt. 0.d0) then 
+                 print *,' Just made dominant species negative ',int_dom_spec,' at ',i
+                 print *,'We were fixing species ',n,' which had value ',x
+                 print *,'Dominant species became ',U(i,int_dom_spec) / U(i,URHO)
+                 call bl_error("Error:: CNSReact_2d.f90 :: ca_enforce_nonnegative_species")
+              end if
+
+              ! Now set the negative species to zero
+              U(i,n) = 0.d0
+
+           end if
+
+        end do
+
+     end if
+     
+  end do
+
 end subroutine rns_enforce_consistent_Y
 
 

@@ -10,7 +10,7 @@ subroutine PROBINIT (init,name,namlen,problo,probhi)
 
   integer untin,i
 
-  namelist /fortin/ prob_type, pertmag, rfire
+  namelist /fortin/ prob_type, pertmag, rfire, uinit, vinit, winit
 
 !
 !     Build "probin" filename -- the name of file containing fortin namelist.
@@ -34,6 +34,9 @@ subroutine PROBINIT (init,name,namlen,problo,probhi)
 ! problem type 1
   pertmag = 0.d0
   rfire   = 0.15d0
+  uinit   = 0.d0
+  vinit   = 0.d0
+  winit   = 0.d0
 
 !     Read namelists
   untin = 9
@@ -110,7 +113,7 @@ subroutine rns_initdata(level,time,lo,hi,nscal, &
 
      Pt  = patm
      Tt  = pmf_vals(1)
-     u1t = 0.d0
+     u1t = uinit
      
      call ckxty (Xt, iwrk, rwrk, Yt)
      call ckrhoy(Pt,Tt,Yt,iwrk,rwrk,rhot)

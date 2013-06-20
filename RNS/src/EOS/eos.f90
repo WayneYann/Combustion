@@ -80,7 +80,7 @@ contains
     if (ierr .ne. 0) then
        print *, 'EOS: get_T failed, T, e, Y = ', T, e, Y
        call flush(6)
-       stop
+       call bl_error("Error: eos_get_T")
     end if
     T = max(T, smallt)
   end subroutine eos_get_T
@@ -171,7 +171,7 @@ contains
     if (ierr .ne. 0) then
        print *, 'EOS: get_T failed, T, e, Y = ', T, e, Y
        call flush(6)
-       stop
+       call bl_error("Error: eos_given_ReY")
     end if
     T = max(T, smallt)
     
