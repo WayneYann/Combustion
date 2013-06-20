@@ -245,6 +245,8 @@ protected:
     static Real      small_temp;
     static Real      small_pres;
     static Real      gamma;
+
+    static Real      Treference;
     
     static class ChemDriver* chemSolve;
 };    

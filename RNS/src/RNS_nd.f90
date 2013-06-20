@@ -13,7 +13,8 @@ end subroutine get_method_params
 ! ::: ----------------------------------------------------------------
 ! ::: 
 subroutine set_method_params(dm,Density,Xmom,Eden,Temp,FirstSpec, &
-     NUM_STATE, NumSpec, small_dens_in, small_temp_in, small_pres_in, gamma_in)
+     NUM_STATE, NumSpec, small_dens_in, small_temp_in, small_pres_in, &
+     gamma_in, Tref_in)
 
   use meth_params_module
   use eos_module
@@ -22,7 +23,8 @@ subroutine set_method_params(dm,Density,Xmom,Eden,Temp,FirstSpec, &
 
   integer, intent(in) :: dm
   integer, intent(in) :: Density, Xmom, Eden, Temp, FirstSpec, NUM_STATE, NumSpec
-  double precision, intent(in) :: small_dens_in, small_temp_in, small_pres_in, gamma_in
+  double precision, intent(in) :: small_dens_in, small_temp_in, small_pres_in, &
+       gamma_in, Tref_in
   
   integer QLAST
 
@@ -75,7 +77,8 @@ subroutine set_method_params(dm,Density,Xmom,Eden,Temp,FirstSpec, &
      small_pres = 1.d-50
   end if
 
-  call eos_init(small_dens=small_dens_in, small_temp=small_temp_in, gamma_in=gamma_in)
+  call eos_init(small_dens=small_dens_in, small_temp=small_temp_in, &
+       gamma_in=gamma_in, Tref_in=Tref_in)
 
   call eos_get_small_dens(small_dens)
   call eos_get_small_temp(small_temp)

@@ -72,7 +72,7 @@ end subroutine PROBINIT
 subroutine rns_initdata(level,time,lo,hi,nscal, &
      state,state_l1,state_h1,delta,xlo,xhi)
 
-  use eos_module, only : eos_get_T
+  use eos_module, only : eos_given_PTY
   use probdata_module
   use meth_params_module, only : NVAR, URHO, UMX, UEDEN, UTEMP, UFS, NSPEC
   use chemistry_module, only : Patm, nspecies
@@ -115,9 +115,7 @@ subroutine rns_initdata(level,time,lo,hi,nscal, &
      Tt  = pmf_vals(1)
      u1t = uinit
      
-     call ckxty (Xt, iwrk, rwrk, Yt)
-     call ckrhoy(Pt,Tt,Yt,iwrk,rwrk,rhot)
-     call ckubms(Tt,Yt,iwrk,rwrk,et)
+     call eos_given_PTY(rhot, et, Yt, Pt, Tt, Xt)
 
      state(i,URHO ) = rhot
      state(i,UMX  ) = rhot*u1t

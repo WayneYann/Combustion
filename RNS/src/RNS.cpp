@@ -62,7 +62,9 @@ int          RNS::LastSpec      = -1;
 Real         RNS::small_dens    = -1.e200;
 Real         RNS::small_temp    = -1.e200;
 Real         RNS::small_pres    = -1.e200;
-Real         RNS::gamma         = 5./3.;
+Real         RNS::gamma         = 1.4;
+
+Real         RNS::Treference    = 298.0; 
 
 int          RNS::allow_untagging = 0;
 
@@ -101,6 +103,8 @@ RNS::read_params ()
     pp.query("small_temp",small_temp);
     pp.query("small_pres",small_pres);
     pp.query("gamma",gamma);
+
+    pp.query("Treference",Treference);
     
     // Get boundary conditions
     Array<int> lo_bc(BL_SPACEDIM), hi_bc(BL_SPACEDIM);

@@ -12,6 +12,8 @@ geometry.prob_lo     =  -0.5d0  -0.5d0  -0.5d0
 geometry.prob_hi     =   0.5d0   0.5d0   0.5d0
 amr.n_cell           =   128     128     128
 
+rns.Treference = 298.0
+
 # >>>>>>>>>>>>>  BC FLAGS <<<<<<<<<<<<<<<<
 # 0 = Interior           3 = Symmetry
 # 1 = Inflow             4 = SlipWall

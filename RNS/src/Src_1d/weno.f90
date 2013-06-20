@@ -12,7 +12,7 @@ contains
 
   ! L and R in UL and UR are relative to face
   subroutine reconstruct(lo, hi, U, Ulo, Uhi, UL, UR)
-    use eos_module, only : eos_given_ReY
+    use eos_module, only : eos_given_ReY, eos_get_eref
     integer, intent(in) :: lo(1), hi(1), Ulo(1), Uhi(1)
     double precision, intent(in ) ::  U(Ulo(1):Uhi(1)  ,NVAR)
     double precision, intent(out) :: UL( lo(1): hi(1)+1,NVAR)
@@ -25,6 +25,8 @@ contains
     double precision :: gt, b, d(NSPEC)
     double precision :: rho, v, rhoInv, p, c, T, dpdr(NSPEC), dpde, e, ek, H, Y(NSPEC)
     double precision :: charv(-2:2,NCHARV), vp(NCHARV), vm(NCHARV) ! characteristic variables
+    double precision :: eref, rhoEnew(-2:2), Yref(NSPEC)
+
     do n=1,NVAR
        do i=lo(1), hi(1)+1
           UL(i,n) = 0.d0
@@ -52,6 +54,9 @@ contains
        T = U(i,UTEMP)
 
        call eos_given_ReY(p,c,T,dpdr,dpde,rho,e,Y)
+
+       eref = eos_get_eref(Y)
+       e = e - eref
 
        H = e + p*rhoInv + ek
 
@@ -84,9 +89,18 @@ contains
        end do
 
        ! convert conserved variables to characteristic variables
+       do ii=-2,2
+          rhoinV = 1.d0 / U(i+ii,URHO)
+          do n=1,nspec
+             Yref(n) = U(i+ii,UFS+n-1) * rhoInv
+          end do
+          eref = eos_get_eref(Yref)
+          rhoEnew(ii) = U(i+ii,UEDEN) - U(i+ii,URHO) * eref
+       end do
+
        do n=1,NCHARV
           do ii=-2,2
-             charv(ii,n) = egv(1,n)*U(i+ii,UMX) + egv(2,n)*U(i+ii,UEDEN)
+             charv(ii,n) = egv(1,n)*U(i+ii,UMX) + egv(2,n)*rhoEnew(ii)
              do m=1,nspec
                 charv(ii,n) = charv(ii,n) + egv(CFS+m-1,n)*U(i+ii,UFS+m-1)
              end do
@@ -133,6 +147,13 @@ contains
           end do
 
           UL(i+1,UTEMP) = U(i,UTEMP)
+
+          rhoInv = 1.d0/UL(i+1,URHO)
+          do n=1,nspec
+             Yref(n) = UL(i+1,UFS+n-1) * rhoInv
+          end do
+          eref = eos_get_eref(Yref)
+          UL(i+1,UEDEN) = UL(i+1,UEDEN) + UL(i+1,URHO) * eref
        end if
 
        if (i .ne. lo(1)-1) then
@@ -149,6 +170,13 @@ contains
           end do
 
           UR(i,UTEMP) = U(i,UTEMP)
+
+          rhoInv = 1.d0/UR(i,URHO)
+          do n=1,nspec
+             Yref(n) = UR(i,UFS+n-1) * rhoInv
+          end do
+          eref = eos_get_eref(Yref)
+          UR(i,UEDEN) = UR(i,UEDEN) + UR(i,URHO) * eref
        end if
 
     end do

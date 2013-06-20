@@ -4,6 +4,9 @@ module eos_module
 
   implicit none
 
+  double precision, save, public :: Tref = 298.d0
+  double precision, allocatable, save, public :: eref(:)
+
   double precision, save, private :: smalld = 1.d-50
   double precision, save, private :: smallt = 1.d-50
   double precision, save, private :: smallp = 1.d-50
@@ -13,10 +16,14 @@ module eos_module
 
 contains
 
-  subroutine eos_init(small_temp, small_dens, gamma_in)
+  subroutine eos_init(small_temp, small_dens, gamma_in, Tref_in)
     double precision, intent(in), optional :: small_temp
     double precision, intent(in), optional :: small_dens
     double precision, intent(in), optional :: gamma_in
+    double precision, intent(in), optional :: Tref_in
+    
+    integer :: n, iwrk
+    double precision :: Y(nspecies), rwrk
 
     if (present(small_temp)) then
        if (small_temp > 0.d0) then
@@ -30,18 +37,35 @@ contains
        end if
     endif
 
+    if (present(Tref_in)) then
+       Tref = Tref_in
+    endif
+
+    allocate(eref(nspecies))
+
+    if (Tref .gt. 0.0) then
+       do n=1,nspecies
+          Y = 0.d0
+          Y(n) = 1.d0
+          call ckubms(Tref,Y,iwrk,rwrk,eref(n))
+       end do
+    else
+       eref = 0.d0
+    end if
+
     initialized = .true.
     
   end subroutine eos_init
 
-  subroutine eos_get_small_temp(small_temp_out)
 
+  subroutine eos_get_small_temp(small_temp_out)
+    
     double precision, intent(out) :: small_temp_out
-    
+ 
     small_temp_out = smallt
-    
+ 
   end subroutine eos_get_small_temp
-  
+ 
   subroutine eos_get_small_dens(small_dens_out)
     
     double precision, intent(out) :: small_dens_out
@@ -74,6 +98,7 @@ contains
     double precision, intent(out) :: T
     double precision, intent(in) :: e, Y(nspecies)
     integer, optional, intent(in) :: pt_index(:)
+
     integer :: iwrk, ierr
     double precision :: rwrk
     call get_T_given_eY(e, Y, iwrk, rwrk, T, ierr)
@@ -164,10 +189,11 @@ contains
     double precision, intent(in   ) :: rho, e, Y(nspecies)
     integer, optional, intent(in  ) :: pt_index(:)
 
-    integer :: n, iwrk, ierr
+    integer :: iwrk, ierr
     double precision :: rwrk, Cv, G, X(nspecies)
 
     call get_T_given_eY(e, Y, iwrk, rwrk, T, ierr)
+
     if (ierr .ne. 0) then
        print *, 'EOS: get_T failed, T, e, Y = ', T, e, Y
        call flush(6)
@@ -188,5 +214,24 @@ contains
     dpde = (G-1.d0)*rho
 
   end subroutine eos_given_ReY
+
+
+  subroutine eos_given_PTY(rho, e, Y, P, T, X, pt_index)
+    double precision, intent(  out) :: rho, e, Y(nspecies)
+    double precision, intent(in   ) :: P, T, X(nspecies)
+    integer, optional, intent(in  ) :: pt_index(:)
+    integer :: iwrk
+    double precision :: rwrk
+    call ckxty (X, iwrk, rwrk, Y)
+    call ckrhoy(P,T,Y,iwrk,rwrk,rho)
+    call ckubms(T   ,Y,iwrk,rwrk,e)
+  end subroutine eos_given_PTY
+
+
+  pure function eos_get_eref(Y) result(r)
+    double precision, intent(in) :: Y(nspecies)
+    double precision :: r
+    r = dot_product(eref, Y)
+  end function eos_get_eref
 
 end module eos_module 

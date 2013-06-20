@@ -141,7 +141,7 @@ RNS::variableSetUp ()
     
     BL_FORT_PROC_CALL(SET_METHOD_PARAMS, set_method_params)
 	(dm, Density, Xmom, Eden, Temp, FirstSpec, NUM_STATE, NumSpec, 
-	 small_dens, small_temp, small_pres, gamma);
+	 small_dens, small_temp, small_pres, gamma, Treference);
     
     Real run_stop = ParallelDescriptor::second() - run_strt;
   

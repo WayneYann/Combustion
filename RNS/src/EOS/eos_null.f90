@@ -19,13 +19,14 @@ module eos_module
 
 contains
 
-  subroutine eos_init(small_temp, small_dens, gamma_in)
+  subroutine eos_init(small_temp, small_dens, gamma_in, Tref_in)
 
     implicit none
  
     double precision, intent(in), optional :: small_temp
     double precision, intent(in), optional :: small_dens
     double precision, intent(in), optional :: gamma_in
+    double precision, intent(in), optional :: Tref_in
     
     if (present(small_temp)) then
        if (small_temp > 0.d0) then
@@ -110,5 +111,12 @@ contains
     dpdr(2) = (gamma_const-1.d0)*e
     dpde    = (gamma_const-1.d0)*rho
   end subroutine eos_given_ReY
+
+
+  pure function eos_get_eref(Y) result(r)
+    double precision, intent(in) :: Y(2)
+    double precision :: r
+    r = 0.d0
+  end function eos_get_eref
 
 end module eos_module
