@@ -101,11 +101,11 @@ subroutine rns_initdata(level,time,lo,hi,nscal, &
         state(i,UEDEN) = rhoe_l + 0.5*rho_l*u_l*u_l
         e = rhoe_l/rho_l
 
-     Y(1) = 1.d0/7.d0
-     Y(2) = 6.d0/7.d0
-     call eos_get_T(T, e, Y)
-     state(i,UTEMP) = T
-     state(i,UFS:UFS+1) = state(i,URHO) * Y
+        Y(1) = 1.d0  !6.d0/7.d0
+        Y(2) = 0.d0 !1.d0/7.d0
+        call eos_get_T(T, e, Y)
+        state(i,UTEMP) = T
+        state(i,UFS:UFS+1) = state(i,URHO) * Y
 
      else
         state(i,URHO ) = rho_r
@@ -113,11 +113,11 @@ subroutine rns_initdata(level,time,lo,hi,nscal, &
         state(i,UEDEN) = rhoe_r + 0.5*rho_r*u_r*u_r
         e = rhoe_r/rho_r
 
-     Y(1) = 6.d0/7.d0
-     Y(2) = 1.d0/7.d0
-     call eos_get_T(T, e, Y)
-     state(i,UTEMP) = T
-     state(i,UFS:UFS+1) = state(i,URHO) * Y
+        Y(1) = 1.d0 !1.d0/7.d0
+        Y(2) = 0.d0 !6.d0/7.d0
+        call eos_get_T(T, e, Y)
+        state(i,UTEMP) = T
+        state(i,UFS:UFS+1) = state(i,URHO) * Y
      endif
   enddo
 

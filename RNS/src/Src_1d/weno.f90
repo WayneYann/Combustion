@@ -78,7 +78,7 @@ contains
           egv(1,CFS+m-1) = Y(m)*b*v
           egv(2,CFS+m-1) = -Y(m)*b
           do n=1,nspec
-             egv(CFS+n-1,CFS+m-1) = -Y(n)*d(n)
+             egv(CFS+n-1,CFS+m-1) = -Y(m)*d(n)
           end do
           egv(CFS+m-1,CFS+m-1) = egv(CFS+m-1,CFS+m-1) + 1.d0
        end do
@@ -127,9 +127,11 @@ contains
                 UL(i+1,UFS+m-1) = UL(i+1,UFS+m-1) + vp(n)*egv(CFS+m-1,n)
              end do
           end do
+
           do m=1,nspec
              UL(i+1,URHO) = UL(i+1,URHO) + UL(i+1,UFS+m-1)
           end do
+
           UL(i+1,UTEMP) = U(i,UTEMP)
        end if
 
@@ -141,9 +143,11 @@ contains
                 UR(i,UFS+m-1) = UR(i,UFS+m-1) + vm(n)*egv(CFS+m-1,n)
              end do
           end do
+
           do m=1,nspec
              UR(i,URHO) = UR(i,URHO) + UR(i,UFS+m-1)
           end do
+
           UR(i,UTEMP) = U(i,UTEMP)
        end if
 

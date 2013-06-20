@@ -170,7 +170,7 @@ end subroutine rns_enforce_consistent_Y
         double precision dx(1), dt
 
         integer :: i
-        double precision :: rhoInv, ux, T, e, p, c, g, Y(NSPEC)
+        double precision :: rhoInv, ux, T, e, c, Y(NSPEC)
 
         do i = lo(1), hi(1)
            rhoInv = 1.d0/u(i,URHO)
