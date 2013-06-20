@@ -93,10 +93,11 @@ subroutine rns_initdata(level,time,lo,hi,nscal, &
   end if
 
   do i = lo(1), hi(1)
+
      xcen = xlo(1) + delta(1)*(float(i-lo(1)) + 0.5d0)
 
      r = abs(xcen-center(1))
-     rfront = rfire - xcen + 3.011d0 ! 3.011d0 is roughly the sufrace of fire for pmf.
+     rfront = rfire - r + 3.011d0 ! 3.011d0 is roughly the sufrace of fire for pmf.
 
      call pmf(rfront,rfront,pmf_vals,n)
      
@@ -123,6 +124,7 @@ subroutine rns_initdata(level,time,lo,hi,nscal, &
      do n=1,nspec
         state(i,UFS+n-1) = Yt(n)*rhot
      end do
+
   end do
 
 end subroutine rns_initdata
