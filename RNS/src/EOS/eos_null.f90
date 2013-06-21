@@ -2,6 +2,9 @@ module eos_module
 
   implicit none
 
+  double precision, save, private :: Tref = 0.d0
+  double precision, save, private :: eref(2)
+
   double precision, parameter :: Ru = 8.31451d+07
   double precision, parameter :: mu = 28.97d0
   double precision, parameter :: R_mu = Ru/mu
@@ -43,6 +46,17 @@ contains
     if (present(gamma_in)) then
        gamma_const = gamma_in
        cv = Ru/(mu*(gamma_const-1.d0))
+    end if
+
+    if (present(Tref_in)) then
+       Tref = Tref_in
+    endif
+
+    if (Tref .gt. 0.0) then
+       eref(1) = cv * Tref * 0.27
+       eref(2) = cv * Tref * (1.0 - 0.27)
+    else
+       eref = 0.d0
     end if
 
     initialized = .true.
@@ -116,7 +130,7 @@ contains
   pure function eos_get_eref(Y) result(r)
     double precision, intent(in) :: Y(2)
     double precision :: r
-    r = 0.d0
+    r = eref(1)*Y(1) + eref(2)*Y(2)
   end function eos_get_eref
 
 end module eos_module

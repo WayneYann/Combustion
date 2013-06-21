@@ -4,8 +4,8 @@ module eos_module
 
   implicit none
 
-  double precision, save, public :: Tref = 298.d0
-  double precision, allocatable, save, public :: eref(:)
+  double precision, save, private :: Tref = 298.d0
+  double precision, allocatable, save, private :: eref(:)
 
   double precision, save, private :: smalld = 1.d-50
   double precision, save, private :: smallt = 1.d-50
