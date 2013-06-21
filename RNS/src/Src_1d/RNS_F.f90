@@ -2,10 +2,11 @@
 subroutine rns_dudt (lo, hi, &
      U, U_l1, U_h1, &
      dUdt, Ut_l1, Ut_h1, &
-     dx)
-  use meth_params_module, only : NVAR, URHO, UMX, UEDEN, UTEMP, UFS, NSPEC
+     dx, dt)
+  use meth_params_module, only : NVAR
   use weno_module, only : reconstruct
   use riemann_module, only : riemann
+  use chemterm_module, only : chemterm
   implicit none
 
   integer, intent(in) :: lo(1), hi(1)
@@ -13,9 +14,9 @@ subroutine rns_dudt (lo, hi, &
   integer, intent(in) :: Ut_l1, Ut_h1
   double precision, intent(in)    ::    U( U_l1: U_h1,NVAR)
   double precision, intent(inout) :: dUdt(Ut_l1:Ut_h1,NVAR)
-  double precision, intent(in) :: dx(1)
+  double precision, intent(in) :: dx(1), dt
 
-  integer :: Ulo(1), Uhi(1), i, n
+  integer :: Ulo(1), Uhi(1), Utlo(1), Uthi(1), i, n
   double precision :: dxinv(1)
   double precision, allocatable :: UL(:,:), UR(:,:), fx(:,:)
 
@@ -23,6 +24,9 @@ subroutine rns_dudt (lo, hi, &
 
   Ulo(1) = U_l1
   Uhi(1) = U_h1
+
+  Utlo(1) = Ut_l1
+  Uthi(1) = Ut_h1
 
   allocate(UL(lo(1):hi(1)+1,NVAR))
   allocate(UR(lo(1):hi(1)+1,NVAR))
@@ -37,6 +41,8 @@ subroutine rns_dudt (lo, hi, &
         dUdt(i,n) = dxinv(1) * (fx(i,n) - fx(i+1,n))
      end do
   end do
+
+  call chemterm(lo, hi, U, Ulo, Uhi, dUdt, Utlo, Uthi, dt)
 
   deallocate(UL,UR,fx)
 

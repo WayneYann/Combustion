@@ -112,7 +112,7 @@ public:
     //
     // Given U, compute Uprime (i.e., dUdt)
     //
-    void dUdt(MultiFab& U, MultiFab& Uprime, Real time, bool do_fillpatch = true);
+    void dUdt(MultiFab& U, MultiFab& Uprime, Real time, Real dt, bool do_fillpatch = true);
     //
     // Compute U1 = U2 + c Uprime.
     //

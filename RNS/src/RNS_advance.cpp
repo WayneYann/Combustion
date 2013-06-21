@@ -27,12 +27,12 @@ RNS::advance (Real time,
     MultiFab& Uold = get_old_data(State_Type);
     MultiFab& Umid = get_mid_data(State_Type, 0);
 
-    dUdt(Uold, Uprime, time);
+    dUdt(Uold, Uprime, time, 0.5*dt);
     update_rk(Umid, Uold, 0.5*dt, Uprime); // Umid = Uold + 0.5*dt*Uprime
     post_update(Umid);
 
     bool doFillpatch = (level == 0) ? false : true; // no valid mid data on level 0
-    dUdt(Umid, Uprime, time+0.5*dt, doFillpatch);
+    dUdt(Umid, Uprime, time+0.5*dt, dt, doFillpatch);
     update_rk(Unew, Uold, dt, Uprime); // Unew = Uold + dt*Uprime
     post_update(Unew);
 
@@ -53,7 +53,7 @@ RNS::advance (Real time,
 
 // xxxxx need to add flux register for AMR
 void
-RNS::dUdt(MultiFab& U, MultiFab& Uprime, Real time, bool do_fillpatch)
+RNS::dUdt(MultiFab& U, MultiFab& Uprime, Real time, Real dt, bool do_fillpatch)
 {
 
     if (do_fillpatch)
@@ -91,7 +91,7 @@ RNS::dUdt(MultiFab& U, MultiFab& Uprime, Real time, bool do_fillpatch)
 	    (bx.loVect(), bx.hiVect(),
 	     BL_TO_FORTRAN(U[i]),
 	     BL_TO_FORTRAN(Uprime[i]),
-	     dx);
+	     dx, dt);
     }
 }
 

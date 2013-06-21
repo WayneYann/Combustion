@@ -72,7 +72,7 @@ ChemDriver::initOnce ()
     BL_ASSERT(atol > 0);
     BL_ASSERT(itol == 1 || itol == 2);
     
-    int neq = nspec; 
+    int neq = nspec+1; 
     BL_FORT_PROC_CALL(CD_INITVODE, cd_initvode)
 	(neq, itol, rtol, atol);  
 }

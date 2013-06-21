@@ -66,7 +66,7 @@ contains
 
     integer :: i, n
     double precision :: rho, mx, rhoE
-    double precision :: v, rhoInv, p, c, dpdr(NSPEC), dpde, T, e, ek, H, Y(NSPEC)
+    double precision :: v, rhoInv, p, c, dpdr(NSPEC), dpde, T, e, ek, Y(NSPEC)
 
     do i=lo(1),hi(1)+1
 

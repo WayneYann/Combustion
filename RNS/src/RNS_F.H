@@ -8,7 +8,7 @@ BL_FORT_PROC_DECL(RNS_DUDT,rns_dudt)
     (const int lo[], const int hi[],
      const BL_FORT_FAB_ARG(U),
      BL_FORT_FAB_ARG(dUdt),
-     const Real dx[]);
+     const Real dx[], const Real& dt);
 
 BL_FORT_PROC_DECL(RNS_COMPUTE_TEMP,rns_compute_temp)
     (const int lo[], const int hi[],
