@@ -2,10 +2,10 @@ module vode_module
 
   implicit none
 
-  integer, save :: itol, neq
+  integer, save :: verbose, itol, neq, order, use_ajac
   double precision, save :: rtol, atol
 
-  integer, parameter :: MF_NOSTIFF = 10, MF_NUMERICAL_JAC = 22
+  integer, save :: MF
 
   double precision, allocatable, save :: voderwork(:), voderpar(:)
   integer, allocatable, save :: vodeiwork(:), vodeipar(:)
@@ -23,7 +23,20 @@ contains
 
     neq = neq_in
 
-    lvoderwork = max(22 + 9*NEQ + 2*NEQ**2, 20+16*NEQ)
+    if (use_ajac .eq. 0) then
+
+       lvoderwork = max(22 + 9*NEQ + 2*NEQ**2, 20+16*NEQ)
+
+       MF = -21
+       
+    else
+
+       lvoderwork = max(22 + 9*NEQ +   NEQ**2, 20+16*NEQ)
+
+       MF = 22
+
+    end if
+
     lvodeiwork = 30 + NEQ
 
     !$omp parallel
@@ -32,6 +45,7 @@ contains
 
     voderwork = 0.d0
     vodeiwork = 0
+    vodeiwork(5) = order
 
     allocate(voderpar(2))
     allocate(vodeipar(1))

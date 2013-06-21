@@ -12,17 +12,14 @@ module chemterm_module
 
 contains
 
-  subroutine chemterm(lo, hi, U, Ulo, Uhi, dUdt, Utlo, Uthi, dt)
-    integer, intent(in) :: lo(1), hi(1), Ulo(1), Uhi(1), Utlo(1), Uthi(1)
-    double precision, intent(in   ) ::    U( Ulo(1): Uhi(1),NVAR)
-    double precision, intent(inout) :: dUdt(Utlo(1):Uthi(1),NVAR)
+  subroutine chemterm(lo, hi, U, Ulo, Uhi, dt)
+    integer, intent(in) :: lo(1), hi(1), Ulo(1), Uhi(1)
+    double precision, intent(inout) :: U(Ulo(1):Uhi(1),NVAR)
     double precision, intent(in) :: dt
 
-    integer :: i, n, iwrk
-    double precision :: rho, rhoinv, ei, rwrk, dtinv
-    double precision :: YT(nspec+1), YTout(nspec+1)
-
-    dtinv = 1.d0/dt
+    integer :: i
+    double precision :: rho, rhoinv, ei
+    double precision :: YT(nspec+1)
 
     do i=lo(1),hi(1)
 
@@ -34,13 +31,9 @@ contains
 
        call eos_get_T(YT(nspec+1), ei, YT(1:nspec))
        
-       call burn(rho, YT, YTout, dt)
+       call burn(rho, YT, dt)
 
-       do n=1,nspec
-          dUdt(i,UFS+n-1) = dUdt(i,UFS+n-1) + rho*(YTout(n) - YT(n)) * dtinv
-       end do
-
-       dUdt(i,UTEMP) = dUdt(i,UTEMP) + (YTout(nspec+1) - YT(nspec+1)) * dtinv
+       U(i,UFS:UFS+nspec-1) = rho * YT(1:nspec)
 
     end do
 

@@ -20,6 +20,8 @@ public:
     int numElements () const;
     const Array<std::string>& speciesNames () const;
     const Array<std::string>& elementNames () const;
+
+    bool isNull;
     
 private:
 

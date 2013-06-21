@@ -12,7 +12,8 @@ BL_FORT_PROC_DECL(CD_GETSPECNAME, cd_getspecname)
    (const int& ispec, int& lname, int* spec_name);
 
 BL_FORT_PROC_DECL(CD_INITVODE, cd_initvode)
-   (const int& neq, const int& itol, const Real& rtol, const Real& atol);
+   (const int& neq, const int& itol, const Real& rtol, const Real& atol,
+    const int& order, const int& use_ajac, const int& verbose);
 BL_FORT_PROC_DECL(CD_CLOSEVODE, cd_closevode)();
 
 #endif

@@ -68,7 +68,10 @@ int main (int argc, char* argv[])
 	tnodes[1] = (1.0+1.0/sqrt(5.0))*0.5;
     }
 
-    amrptr->set_t_nodes(tnodes);
+    if (nnodes > 0)
+    {
+	amrptr->set_t_nodes(tnodes);
+    }
 
     amrptr->init(strt_time,stop_time);
 

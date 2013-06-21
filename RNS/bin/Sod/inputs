@@ -2,8 +2,9 @@
 max_step  = 2000
 stop_time = 0.2
 
+# for RK2
 amr.multi_level_sdc = 0 
-sdc.t_ratio = 2
+sdc.t_ratio = 1
 
 # PROBLEM SIZE & GEOMETRY
 geometry.is_periodic = 0 0 0

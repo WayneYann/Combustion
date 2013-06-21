@@ -12,6 +12,8 @@ namespace
 
 ChemDriver::ChemDriver ()
 {
+    isNull = false;
+
     if (!initialized) 
     {
 	initOnce();
@@ -62,11 +64,18 @@ ChemDriver::initOnce ()
     int  itol = 1;
     Real rtol = 1.e-10;
     Real atol = 1.e-10;
+    int  order = 100;  // vode will reduce it to a lower value
+    int  use_ajac = 1; // use analytic Jacobian
+    int  verbose = 0;
 
     ParmParse pp("vode");
     pp.query("itol", itol);
     pp.query("rtol", rtol);
     pp.query("atol", atol);
+    pp.query("order", order);
+    pp.query("use_ajac", use_ajac);
+    pp.query("v", verbose);
+    pp.query("verbose", verbose);
     
     BL_ASSERT(rtol > 0);
     BL_ASSERT(atol > 0);
@@ -74,7 +83,7 @@ ChemDriver::initOnce ()
     
     int neq = nspec+1; 
     BL_FORT_PROC_CALL(CD_INITVODE, cd_initvode)
-	(neq, itol, rtol, atol);  
+	(neq, itol, rtol, atol, order, use_ajac, verbose); 
 }
 
 

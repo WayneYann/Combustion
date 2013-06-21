@@ -110,9 +110,13 @@ public:
 			  int  ncycle);
 
     //
+    // fill boundary 
+    //
+    void fill_boundary(MultiFab& U, Real time, bool do_fillpatch);
+    //
     // Given U, compute Uprime (i.e., dUdt)
     //
-    void dUdt(MultiFab& U, MultiFab& Uprime, Real time, Real dt, bool do_fillpatch = true);
+    void dUdt(MultiFab& U, MultiFab& Uprime, Real time, bool do_fillpatch = true);
     //
     // Compute U1 = U2 + c Uprime.
     //
@@ -121,6 +125,10 @@ public:
     // renormalize mass fractions and compute temperature
     //
     void post_update(MultiFab& U);
+    //
+    // do chemistry
+    //
+    void advance_chemistry(MultiFab& U, Real dt);
     //
     //Estimate time step.
     //
