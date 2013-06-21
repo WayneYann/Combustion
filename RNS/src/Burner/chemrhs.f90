@@ -7,26 +7,26 @@ subroutine f_rhs(n, t, y, ydot, rpar, ipar)
   double precision, intent(out) :: ydot(n)
 
   integer :: iwrk, i
-  double precision :: rwrk, Temp, rho, cp, h(nspecies), Tdot, rYdot, rhoInv
+  double precision :: rwrk, Temp, rho, cv, u(nspecies), Tdot, rYdot, rhoInv
 
   rho = rpar(1)
   Temp = y(n)
 
-  call ckwyr(rho, y(n), y, iwrk, rwrk, ydot)
+  call ckwyr(rho, Temp, y, iwrk, rwrk, ydot)
 
-  call ckcpbs(Temp, y, iwrk, rwrk, cp)
+  call ckcvbs(Temp, y, iwrk, rwrk, cv)
 
-  call ckhms(Temp, iwrk, rwrk, h)
+  call ckums(Temp, iwrk, rwrk, u)
 
   rhoInv = 1.d0/rho
   Tdot = 0.d0
   do i=1,nspecies
      rYdot = ydot(i) * molecular_weight(i)
-     Tdot = Tdot + h(i)* rYdot
+     Tdot = Tdot + u(i)* rYdot
      ydot(i) = rYdot * rhoInv
   end do
 
-  ydot(n) = -Tdot/(rho*cp)
+  ydot(n) = -Tdot/(rho*cv)
 
 end subroutine f_rhs
 
