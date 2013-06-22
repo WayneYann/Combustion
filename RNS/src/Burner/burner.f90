@@ -1,7 +1,7 @@
 module burner_module
 
   use chemistry_module, only : nspecies, spec_names
-  use vode_module, only : verbose, itol, rtol, atol, MF, &
+  use vode_module, only : verbose, itol, rtol, atol, vode_MF=>MF, &
        voderwork, vodeiwork, lvoderwork, lvodeiwork, voderpar, vodeipar
 
   implicit none
@@ -16,11 +16,11 @@ contains
     double precision, intent(in   ) :: rho, dt
     double precision, intent(inout) :: YT(nspecies+1)
 
-    external jac, f_rhs, dvode
+    external f_jac, f_rhs, dvode
     
     ! vode stuff
     integer, parameter :: itask=1, iopt=1
-    integer :: istate, ifail
+    integer :: MF, istate, ifail
 
     double precision :: time
 
@@ -29,9 +29,10 @@ contains
     istate = 1
     time = 0.d0
 
+    MF = vode_MF  ! vode might change its sign!
     call dvode(f_rhs, nspecies+1, YT, time, dt, itol, rtol, atol, itask, &
          istate, iopt, voderwork, lvoderwork, vodeiwork, lvodeiwork, &
-         jac, MF, voderpar, vodeipar)
+         f_jac, MF, voderpar, vodeipar)
 
     if (verbose .ge. 1) then
        write(6,*) '......dvode done:'

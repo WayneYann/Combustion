@@ -112,11 +112,11 @@ public:
     //
     // fill boundary 
     //
-    void fill_boundary(MultiFab& U, Real time, bool do_fillpatch);
+    void fill_boundary(MultiFab& U, Real time, int do_fillpatch);
     //
     // Given U, compute Uprime (i.e., dUdt)
     //
-    void dUdt(MultiFab& U, MultiFab& Uprime, Real time, bool do_fillpatch = true);
+    void dUdt(MultiFab& U, MultiFab& Uprime, Real time, int do_fillpatch = 1);
     //
     // Compute U1 = U2 + c Uprime.
     //

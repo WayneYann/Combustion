@@ -23,11 +23,12 @@ contains
 
     do i=lo(1),hi(1)
 
-       rho = u(i,URHO)
+       rho = U(i,URHO)
        rhoinv = 1.d0/rho
 
-       ei = rhoinv*( u(i,UEDEN) - 0.5d0*rhoinv*u(i,UMX)**2 )
-       YT(1:nspec)  = u(i,UFS:UFS+nspec-1) * rhoinv
+       ei = rhoinv*( U(i,UEDEN) - 0.5d0*rhoinv*U(i,UMX)**2 )
+       YT(1:nspec) = U(i,UFS:UFS+nspec-1) * rhoinv
+       YT(nspec+1) = U(i,UTEMP)
 
        call eos_get_T(YT(nspec+1), ei, YT(1:nspec))
        

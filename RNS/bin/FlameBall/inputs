@@ -13,10 +13,13 @@ geometry.prob_lo     =  -0.5d0  -0.5d0  -0.5d0
 geometry.prob_hi     =   0.5d0   0.5d0   0.5d0
 amr.n_cell           =   128     128     128
 
-vode.rtol     = 1.e-10
-vode.atol     = 1.e-10
-vode.order    = 5
-vode.use_ajac = 0
+vode.rtol      = 1.e-10
+vode.atol      = 1.e-10
+vode.order     = 5
+vode.use_ajac  = 1
+vode.save_ajac = 1
+vode.stiff     = 1
+vode.verbose   = 0
 
 rns.Treference = 298.0
 

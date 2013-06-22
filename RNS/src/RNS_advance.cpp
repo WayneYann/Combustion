@@ -23,16 +23,16 @@ RNS::advance (Real time,
     MultiFab& Unew = get_new_data(State_Type);
     MultiFab& Uold = get_old_data(State_Type);
 
-    bool doFillpatch;
+    int doFillpatch;
 
     if (level == 0)
     {
-	doFillpatch = false;
+	doFillpatch = 0;
 	MultiFab::Copy(Unew, Uold, 0, 0, NUM_STATE, 0);
     }
     else
     {
-	doFillpatch = true;
+	doFillpatch = 1;
     }
     fill_boundary(Unew, time, doFillpatch);
     
@@ -41,13 +41,13 @@ RNS::advance (Real time,
     post_update(Unew);
 
     // Step 1 of RK2
-    doFillpatch = false;
+    doFillpatch = 0;
     dUdt(Unew, Uprime, time, doFillpatch);
     update_rk(Unew, Uold, 0.5*dt, Uprime); // Unew = Uold + 0.5*dt*Uprime
     post_update(Unew);
 
     // Step 2 of RK2
-    doFillpatch = (level == 0) ? false : true;
+    doFillpatch = (level == 0) ? 0 : 1;
     dUdt(Unew, Uprime, time+0.5*dt, doFillpatch);
     update_rk(Unew, Uold, dt, Uprime); // Unew = Uold + dt*Uprime
     post_update(Unew);
@@ -73,7 +73,7 @@ RNS::advance (Real time,
 
 
 void
-RNS::fill_boundary(MultiFab& U, Real time, bool do_fillpatch)
+RNS::fill_boundary(MultiFab& U, Real time, int do_fillpatch)
 {
     if (do_fillpatch)
     {
@@ -102,7 +102,7 @@ RNS::fill_boundary(MultiFab& U, Real time, bool do_fillpatch)
 
 // xxxxx need to add flux register for AMR
 void
-RNS::dUdt(MultiFab& U, MultiFab& Uprime, Real time, bool do_fillpatch)
+RNS::dUdt(MultiFab& U, MultiFab& Uprime, Real time, int do_fillpatch)
 {
     fill_boundary(U, time, do_fillpatch);
     

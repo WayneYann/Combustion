@@ -66,6 +66,8 @@ ChemDriver::initOnce ()
     Real atol = 1.e-10;
     int  order = 100;  // vode will reduce it to a lower value
     int  use_ajac = 1; // use analytic Jacobian
+    int  save_ajac = 1; // reuse analytic Jacobian
+    int  stiff = 1;
     int  verbose = 0;
 
     ParmParse pp("vode");
@@ -74,6 +76,8 @@ ChemDriver::initOnce ()
     pp.query("atol", atol);
     pp.query("order", order);
     pp.query("use_ajac", use_ajac);
+    pp.query("save_ajac", save_ajac);
+    pp.query("stiff", stiff);
     pp.query("v", verbose);
     pp.query("verbose", verbose);
     
@@ -83,7 +87,7 @@ ChemDriver::initOnce ()
     
     int neq = nspec+1; 
     BL_FORT_PROC_CALL(CD_INITVODE, cd_initvode)
-	(neq, itol, rtol, atol, order, use_ajac, verbose); 
+	(neq, itol, rtol, atol, order, use_ajac, save_ajac, stiff, verbose); 
 }
 
 

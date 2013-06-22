@@ -31,18 +31,29 @@ subroutine f_rhs(n, t, y, ydot, rpar, ipar)
 end subroutine f_rhs
 
 
-subroutine jac(neq, t, y, ml, mu, pd, nrpd, rpar, ipar)
-
+subroutine f_jac(neq, time, y, ml, mu, pd, nrpd, rpar, ipar)
+  implicit none
   integer :: neq
   integer :: ml, mu, nrpd
 
   double precision :: y(neq)
-  double precision :: pd(neq,neq)
+  double precision :: pd(nrpd,neq)
 
-  double precision :: rpar
-  integer :: ipar
+  double precision :: rpar(*)
+  integer :: ipar(*)
 
-  double precision :: t
+  double precision :: time
+
+  ! local variables
+  integer :: iwrk
+  double precision :: rwrk, rho, T, C(neq-1)
+  integer, parameter :: consP = 0
+
+  rho = rpar(1)
+  T = y(neq)
+
+  call ckytcr(rho, T, y, iwrk, rwrk, C)
+  call DWDOT(PD, C, T, consP)
 
   return
-end subroutine jac
+end subroutine f_jac
