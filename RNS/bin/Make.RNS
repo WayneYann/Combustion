@@ -3,11 +3,7 @@ EBASE = RNS
 
 include $(BOXLIB_HOME)/Tools/C_mk/Make.defs
 
-Bdirs 	:= src src/Src_$(DIM)d src/EOS
-
-ifneq (${CHEMISTRY_MODEL}, NULL)
-  Bdirs += src/Burner
-endif
+Bdirs 	:= src src/Src_$(DIM)d src/EOS src/Burner
 
 Bpack	+= $(foreach dir, $(Bdirs), $(TOP)/$(dir)/Make.package)
 Blocs	+= $(foreach dir, $(Bdirs), $(TOP)/$(dir))

@@ -4,8 +4,6 @@
 
 namespace
 {
-    isNull = true;
-
     bool initialized = false;
     
     void ChemDriver_Finalize() { initialized = false; }
@@ -13,6 +11,8 @@ namespace
 
 ChemDriver::ChemDriver ()
 {
+    isNull = true;
+
     if (!initialized) 
     {
 	initOnce();

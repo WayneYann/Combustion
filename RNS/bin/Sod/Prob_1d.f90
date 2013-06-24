@@ -92,7 +92,7 @@ subroutine rns_initdata(level,time,lo,hi,nscal, &
   double precision xcen, T, e, Y(NSPEC)
   integer i
   
-  do i = lo(1), hi(1)
+  do i = state_l1, state_h1
      xcen = xlo(1) + delta(1)*(float(i-lo(1)) + 0.5d0)
             
      if (xcen <= center(1)) then
