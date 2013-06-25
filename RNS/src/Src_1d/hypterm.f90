@@ -1,7 +1,7 @@
 module hypterm_module
 
   use meth_params_module, only : NVAR
-  use weno_module, only : reconstruct
+  use reconstruct_module, only : reconstruct
   use riemann_module, only : riemann
 
   implicit none
