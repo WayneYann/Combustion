@@ -1,6 +1,6 @@
 # ------------------  INPUTS TO MAIN PROGRAM  -------------------
 max_step  = 10000
-stop_time = 0.01
+stop_time = 1.e-4
 
 # for RK2
 amr.multi_level_sdc = 0 

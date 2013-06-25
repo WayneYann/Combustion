@@ -4,8 +4,8 @@ subroutine rns_dudt (lo, hi, &
      dUdt, Ut_l1, Ut_h1, &
      dx)
   use meth_params_module, only : NVAR
-  use weno_module, only : reconstruct
-  use riemann_module, only : riemann
+  use hypterm_module, only : hypterm
+  use difterm_module, only : difterm
   implicit none
 
   integer, intent(in) :: lo(1), hi(1)
@@ -17,28 +17,26 @@ subroutine rns_dudt (lo, hi, &
 
   integer :: Ulo(1), Uhi(1), i, n
   double precision :: dxinv(1)
-  double precision, allocatable :: UL(:,:), UR(:,:), fx(:,:)
-
+  double precision, allocatable :: fhyp(:,:), fdif(:,:)
+  
   dxinv(1) = 1.d0/dx(1)
-
+  
   Ulo(1) = U_l1
   Uhi(1) = U_h1
 
-  allocate(UL(lo(1):hi(1)+1,NVAR))
-  allocate(UR(lo(1):hi(1)+1,NVAR))
-  allocate(fx(lo(1):hi(1)+1,NVAR))
-
-  call reconstruct(lo, hi, U, Ulo, Uhi, UL, UR)
-
-  call riemann(lo, hi, UL, UR, fx)
-
+  allocate(fhyp(lo(1):hi(1)+1,NVAR))
+  allocate(fdif(lo(1):hi(1)+1,NVAR))
+  
+  call hypterm(lo,hi,U,Ulo,Uhi,fhyp)
+  call difterm(lo,hi,U,Ulo,Uhi,fdif)
+  
   do n=1, NVAR
      do i=lo(1),hi(1)
-        dUdt(i,n) = dxinv(1) * (fx(i,n) - fx(i+1,n))
+        dUdt(i,n) = dxinv(1) * ((fhyp(i,n) - fhyp(i+1,n)) + (fdif(i,n) - fdif(i+1,n)))
      end do
   end do
-
-  deallocate(UL,UR,fx)
+  
+  deallocate(fhyp,fdif)
 
 end subroutine rns_dudt
 
@@ -106,7 +104,7 @@ subroutine rns_enforce_consistent_Y(lo,hi,U,U_l1,U_h1)
   integer          :: i,n
   integer          :: int_dom_spec
   logical          :: any_negative
-  double precision :: dom_spec,x,rhoInv
+  double precision :: dom_spec,x,rhoInv, sumrY, fac
 
   double precision, parameter :: eps = -1.d-16
 
@@ -115,6 +113,8 @@ subroutine rns_enforce_consistent_Y(lo,hi,U,U_l1,U_h1)
      any_negative = .false.
 
      rhoInv = 1.d0/U(i,URHO)
+
+     sumrY = 0.d0
 
      ! First deal with tiny undershoots by just setting them to zero
      do n = UFS, UFS+nspec-1
@@ -126,6 +126,13 @@ subroutine rns_enforce_consistent_Y(lo,hi,U,U_l1,U_h1)
               any_negative = .true.
            end if
         end if
+
+        sumrY = sumrY + U(i,n)
+     end do
+
+     fac = U(i,URHO)/sumrY
+     do n = UFS, UFS+nspec-1
+        U(i,n) = U(i,n)*fac
      end do
 
      ! We know there are one or more undershoots needing correction 
