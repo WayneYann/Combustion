@@ -4,9 +4,17 @@ module weno_module
 
   implicit none
 
+  ! coefficients for converting cell averages to two Gauss point values
+  double precision, dimension(-2:2), parameter :: cg1 = &
+       (/ -(1.d0+70.d0*sqrt(3.d0))/4320.d0, (4.d0+500.d0*sqrt(3.d0))/4320.d0, &
+       4314.d0/4320.d0, (4.d0-500.d0*sqrt(3.d0))/4320.d0, (-1.d0+70.d0*sqrt(3.d0))/4320.d0 /)
+  double precision, dimension(-2:2), parameter :: cg2 = &
+       (/ (-1.d0+70.d0*sqrt(3.d0))/4320.d0, (4.d0-500.d0*sqrt(3.d0))/4320.d0, &
+       4314.d0/4320.d0, (4.d0+500.d0*sqrt(3.d0))/4320.d0, -(1.d0+70.d0*sqrt(3.d0))/4320.d0 /)
+
   private
 
-  public reconstruct
+  public reconstruct, cellavg2gausspt_1d
 
 contains
 
@@ -223,5 +231,18 @@ contains
 
     return
   end subroutine weno5
+
+  subroutine cellavg2gausspt_1d(u, ulo, uhi, u1, u2, lo, hi)
+    integer, intent(in) :: ulo, uhi, lo, hi
+    double precision, intent(in) :: u(ulo:uhi)
+    double precision, intent(out) :: u1(lo:hi), u2(lo:hi)
+
+    integer :: i
+
+    do i=lo,hi
+       u1(i) = cg1(-2)*u(i-2) + cg1(-1)*u(i-1) + cg1(0)*u(i) + cg1(1)*u(i+1) + cg1(2)*u(i+2)
+       u2(i) = cg2(-2)*u(i-2) + cg2(-1)*u(i-1) + cg2(0)*u(i) + cg2(1)*u(i+1) + cg2(2)*u(i+2)
+    end do
+  end subroutine cellavg2gausspt_1d
 
 end module weno_module
