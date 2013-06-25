@@ -38,38 +38,33 @@ subroutine set_method_params(dm,Density,Xmom,Eden,Temp,FirstSpec, &
   ! We use these to index into the state "U"
   URHO  = Density   + 1
   UMX   = Xmom      + 1
-  if (dm .ge. 2) UMY = UMX + 1
-  if (dm .eq. 3) UMZ = UMY + 1
+  if (dm .ge. 2) then
+     UMY = UMX + 1
+  else
+     UMY = 0
+  end if
+  if (dm .eq. 3) then
+     UMZ = UMY + 1
+  else
+     UMZ = 0
+  end if
   UEDEN = Eden      + 1
   UTEMP = Temp      + 1
   UFS   = FirstSpec + 1
 
   ! We use these to index into the state "Q"
-  QRHO  = 1
-  QU    = 2
-  QLAST = 2
+  QRHO  = URHO
+  QU    = UMX
+  QV    = UMY
+  QW    = UMZ
+  QPRES = UEDEN
+  QTEMP = UTEMP
+  QFY   = UFS
+  QFX   = UFS +   NumSpec
+  QFH   = UFS + 2*NumSpec
 
-  if (dm .ge. 2) then
-     QV    = 3
-     QLAST = 3
-  end if
-  
-  if (dm .eq. 3) then
-     QW    = 4
-     QLAST = 4
-  end if
-
-  QPRES   = QLAST + 1
-  QREINT  = QLAST + 2
-  QTEMP   = QLAST + 3
-
-  if (NumSpec .gt. 0) then
-     QFS     = QLAST + 4
-  else
-     QFS     = 0
-  end if
-
-  QVAR = QTEMP + NumSpec
+  QCVAR = QTEMP + 2*NumSpec
+  QFVAR = QTEMP + 3*NumSpec
 
   if (small_pres_in > 0.d0) then
      small_pres = small_pres_in
