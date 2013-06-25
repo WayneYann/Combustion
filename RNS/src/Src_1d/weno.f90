@@ -16,7 +16,7 @@ module weno_module
 
   private
 
-  public :: weno5, cellavg2gausspt_1d
+  public :: weno5, cellavg2gausspt_1d, cellavg2face_1d
 
 contains
 
@@ -72,5 +72,17 @@ contains
        u2(i) = cg2(-2)*u(i-2) + cg2(-1)*u(i-1) + cg2(0)*u(i) + cg2(1)*u(i+1) + cg2(2)*u(i+2)
     end do
   end subroutine cellavg2gausspt_1d
+
+  subroutine cellavg2face_1d(u, ulo, uhi, uf, lo, hi)
+    integer, intent(in) :: ulo, uhi, lo, hi
+    double precision, intent(in) :: u(ulo:uhi)
+    double precision, intent(out) :: uf(lo:hi)
+
+    integer :: i
+
+    do i=lo,hi
+       uf(i) = cc4(-2)*u(i-2) + cc4(-1)*u(i-1) + cc4(0)*u(i) + cc4(1)*u(i+1)
+    end do
+  end subroutine cellavg2face_1d
 
 end module weno_module

@@ -2,7 +2,8 @@ module meth_params_module
 
   implicit none
 
-  integer, parameter     :: NGROW = 3  ! fifth-order WENO
+  ! fifth-order WENO needs 3 ghost cells
+  integer, parameter :: NGROW = 3  
 
   integer, save :: ndim   ! spatial dimension
   integer, save :: NCHARV ! number of characteristic variables
