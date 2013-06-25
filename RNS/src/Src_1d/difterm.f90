@@ -52,10 +52,11 @@ contains
     do n=1,NVAR
        call cellavg2face_1d(U(:,n), Ulo(1), Uhi(1), Qf(:,n), Qflo(1), Qfhi(1))
     end do
-
+    !
+    call ctoprim(Qf, Qflo, Qfhi, QFVAR)
 
     ! transport coefficients on face
-!    call get_transport_properties(Qflo(1), Qfhi(1), Qf, mu, xi, lam, Ddiag)
+    call get_transport_properties(Qf, Qflo, Qfhi, QFVAR, mu, xi, lam, Ddiag)
 
     flx = 0.d0
 
