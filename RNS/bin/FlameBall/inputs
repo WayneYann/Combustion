@@ -21,6 +21,8 @@ vode.save_ajac = 1
 vode.stiff     = 1
 vode.verbose   = 0
 
+eglib.use_bulk_visc = 1
+
 rns.Treference = 298.0
 
 # >>>>>>>>>>>>>  BC FLAGS <<<<<<<<<<<<<<<<

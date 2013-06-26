@@ -17,4 +17,8 @@ BL_FORT_PROC_DECL(CD_INITVODE, cd_initvode)
     const int& stiff, const int& verbose);
 BL_FORT_PROC_DECL(CD_CLOSEVODE, cd_closevode)();
 
+BL_FORT_PROC_DECL(CD_INITEGLIB, cd_initeglib)
+   (const int& use_bulk_visc);
+BL_FORT_PROC_DECL(CD_CLOSEEGLIB, cd_closeeglib)();
+
 #endif

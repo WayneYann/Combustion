@@ -26,8 +26,6 @@ subroutine set_method_params(dm,Density,Xmom,Eden,Temp,FirstSpec, &
   double precision, intent(in) :: small_dens_in, small_temp_in, small_pres_in, &
        gamma_in, Tref_in
   
-  integer QLAST
-
   ndim = dm
   NCHARV = 1 + dm + NumSpec ! momentum + energy + rhoY
   CFS = dm + 2

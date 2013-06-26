@@ -1,12 +1,9 @@
 module transport_properties
 
   use meth_params_module
-  use eglib_module
+  use egz_module
 
   implicit none
-
-  ! eglib parameters
-  integer, save :: ITLS=-1, IFLAG=-1
 
   private
 
@@ -16,48 +13,66 @@ contains
 
   subroutine get_transport_properties(Q, lo, hi, QVAR, mu, xi, lam, Ddiag)
     integer, intent(in) :: lo(3), hi(3), QVAR
-    double precision, intent(in) ::      Q(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),QVAR)
+    double precision, intent(in ) ::     Q(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),QVAR)
     double precision, intent(out) ::    mu(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3))
     double precision, intent(out) ::    xi(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3))
     double precision, intent(out) ::   lam(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3))
     double precision, intent(out) :: Ddiag(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),NSPEC)
 
-    integer :: i, j, k
-    double precision :: rho, Tt, Xt(nspec), Yt(nspec), Cpt(nspec)
+    integer :: iwrk, i, j, k, n, np
+    double precision :: rwrk, Cpt(nspec)
+    double precision, allocatable :: L1Z(:), L2Z(:), DZ(:,:), XZ(:,:), CPZ(:,:)
+
+    np = hi(1)-lo(1)+1
+
+    allocate(L1Z(lo(1):hi(1)))
+    allocate(L2Z(lo(1):hi(1)))
     
-    logical, save :: first_call = .true.
+    allocate(DZ (lo(1):hi(1),nspec))
+    allocate(XZ (lo(1):hi(1),nspec))
+    allocate(CPZ(lo(1):hi(1),nspec))
 
-    if (first_call) then
-       first_call = .false.
-!       if (use_bulk_viscosity) then
-       if (.true.) then
-          ITLS  = 1 
-          IFLAG = 5
-       else
-          ITLS  = 1
-          IFLAG = 3
-       end if
-    end if
+    call egzini(np)
 
-    call eglib_init(nspec, 1, ITLS, IFLAG)
+    do    k = lo(3),hi(3)
+       do j = lo(2),hi(2)
 
-    do       k = lo(3),hi(3)
-       do    j = lo(2),hi(2)
-          do i = lo(1),hi(1)
-
-             ! rhoInv = 1.0d0/U(i,URHO)
-             ! vx = U(i,UMX)*rhoInv 
-             ! et = U(i,UEDEN)*rhoInv - 0.5d0*vx*vx
-             
-             ! Yt = U(i,UFS:UFS+NSPEC-1)*rhoInv
-             ! !       call eos_get_T(U(i,UTEMP), e, Y)
-             
-             
-             ! call egspar(Tt, Xt, Yt, Cpt, egwork, egiwork)
-
+          do n=1,nspec
+             do i=lo(1),hi(1)
+                XZ(i,n) = Q(i,j,k,QFX+n-1)
+             end do
           end do
+          
+          if (iflag > 3) then
+             do i=lo(1),hi(1)
+                call ckcpms(Q(i,j,k,QTEMP), iwrk, rwrk, Cpt)
+                CPZ(i,:) = Cpt
+             end do
+          else
+             CPZ = 0.d0
+          end if
+
+          call egzpar(Q(lo(1):hi(1),j,k,QTEMP), XZ, CPZ)
+          
+          call egze3(Q(lo(1):hi(1),j,k,QTEMP), mu(lo(1):hi(1),j,k))
+
+          CALL egzk3(Q(lo(1):hi(1),j,k,QTEMP), xi(lo(1):hi(1),j,k))
+
+          call egzl1( 1.d0, XZ, L1Z)
+          call egzl1(-1.d0, XZ, L2Z)
+          lam(lo(1):hi(1),j,k) = 0.5d0*(L1Z+L2Z)
+
+          call EGZVR1(Q(lo(1):hi(1),j,k,QTEMP), DZ)
+          do n=1,nspec
+             do i=lo(1),hi(1)
+                Ddiag(i,j,k,n) = DZ(i,n)
+             end do
+          end do
+
        end do
     end do
+
+    deallocate(L1Z, L2Z, DZ, XZ, CPZ)
 
   end subroutine get_transport_properties
 

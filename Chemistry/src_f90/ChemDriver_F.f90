@@ -1,6 +1,5 @@
 subroutine cd_initchem(len_en, len_sn, ne, ns)
   use chemistry_module
-  use vode_module
   implicit none
   integer, intent(out) :: len_en, len_sn, ne, ns
   call chemistry_init()
@@ -13,11 +12,8 @@ end subroutine cd_initchem
 
 subroutine cd_closechem()
   use chemistry_module
-  use eglib_module
-  use vode_module
   implicit none
   call chemistry_close()
-  call eglib_close()
 end subroutine cd_closechem
 
 
@@ -78,3 +74,19 @@ subroutine cd_closevode()
   use vode_module, only : vode_close
   call vode_close()
 end subroutine cd_closevode
+
+
+subroutine cd_initeglib(use_bulk_visc_in)
+  use egz_module
+  implicit none
+  integer, intent(in) :: use_bulk_visc_in
+  call egz_init(use_bulk_visc_in)
+end subroutine cd_initeglib
+
+
+subroutine cd_closeeglib()
+  use egz_module
+  implicit none
+  call egz_close()
+end subroutine cd_closeeglib
+
