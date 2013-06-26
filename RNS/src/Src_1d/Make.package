@@ -3,7 +3,11 @@ f90EXE_sources += RNS_F.f90
 
 f90EXE_sources += hypterm.f90 reconstruct.f90 riemann.f90 weno.f90 
 
-f90EXE_sources += difterm.f90 convert.f90 
+ifeq (${CHEMISTRY_MODEL}, NULL)
+  f90EXE_sources += difterm_null.f90
+else
+  f90EXE_sources += difterm.f90 convert.f90 
+endif
 
 f90EXE_sources += chemterm.f90
 

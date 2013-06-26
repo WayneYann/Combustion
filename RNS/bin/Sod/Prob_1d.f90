@@ -93,7 +93,7 @@ subroutine rns_initdata(level,time,lo,hi,nscal, &
   integer i
   
   do i = state_l1, state_h1
-     xcen = xlo(1) + delta(1)*(float(i-lo(1)) + 0.5d0)
+     xcen = xlo(1) + delta(1)*(dble(i-lo(1)) + 0.5d0)
             
      if (xcen <= center(1)) then
         state(i,URHO ) = rho_l

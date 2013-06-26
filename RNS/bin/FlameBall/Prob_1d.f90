@@ -97,7 +97,7 @@ subroutine rns_initdata(level,time,lo,hi,nscal, &
 
   do i = state_l1, state_h1
 
-     xcen = xlo(1) + delta(1)*(float(i-lo(1)) + 0.5d0)
+     xcen = xlo(1) + delta(1)*(dble(i-lo(1)) + 0.5d0)
 
      r = abs(xcen-center(1))
      rfront = rfire - r + 3.011d0 ! 3.011d0 is roughly the sufrace of fire for pmf.
