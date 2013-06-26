@@ -28,7 +28,7 @@ subroutine rns_dudt (lo, hi, &
   allocate(fdif(lo(1):hi(1)+1,NVAR))
   
   call hypterm(lo,hi,U,Ulo,Uhi,fhyp)
-  call difterm(lo,hi,U,Ulo,Uhi,fdif)
+  call difterm(lo,hi,U,Ulo,Uhi,fdif, dxinv)
   
   do n=1, NVAR
      do i=lo(1),hi(1)
