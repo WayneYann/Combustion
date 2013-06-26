@@ -88,6 +88,7 @@ contains
     double precision, parameter :: fourThirds = 4.d0/3.d0
 
     flx(:,URHO) = 0.d0
+    flx(:,UTEMP) = 0.d0
 
     do i = Qflo(1), Qfhi(1)
 
