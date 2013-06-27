@@ -8,44 +8,8 @@ subroutine PROBINIT (init,name,namlen,problo,probhi)
   integer name(namlen)
   double precision problo(2), probhi(2)
 
-  integer untin,i
-
-  namelist /fortin/ prob_type, pertmag, rfire, uinit, vinit, winit
-
-!
-!     Build "probin" filename -- the name of file containing fortin namelist.
-!     
-  integer maxlen
-  parameter (maxlen=256)
-  character probin*(maxlen)
-  
-  if (namlen .gt. maxlen) then
-     write(6,*) 'probin file name too long'
-     stop
-  end if
-  
-  do i = 1, namlen
-     probin(i:i) = char(name(i))
-  end do
-         
-! set namelist defaults
-  prob_type = 1
-
-! problem type 1
-  pertmag = 0.d0
-  rfire   = 0.15d0
-  uinit   = 0.d0
-  vinit   = 0.d0
-  winit   = 0.d0
-
-!     Read namelists
-  untin = 9
-  open(untin,file=probin(1:namlen),form='formatted',status='old')
-  read(untin,fortin)
-  close(unit=untin)
-
-  center(1) = 0.5d0*(problo(1) + probhi(1))
-  center(2) = 0.5d0*(problo(2) + probhi(2))
+  xshock0_hi = xshock0_lo + (probhi(2)-problo(2))/tan(thetashock)
+  vshock_x = vshock/sin(thetashock)
 
 end subroutine PROBINIT
 
@@ -74,7 +38,7 @@ subroutine rns_initdata(level,time,lo,hi,nscal, &
      state,state_l1,state_l2,state_h1,state_h2, &
      delta,xlo,xhi)
 
-  use eos_module, only : eos_given_PTY
+  use eos_module, only : gamma_const
   use probdata_module
   use meth_params_module, only : NVAR, URHO, UMX, UMY, UEDEN, UTEMP, UFS, NSPEC
   use chemistry_module, only : Patm, nspecies
@@ -88,51 +52,56 @@ subroutine rns_initdata(level,time,lo,hi,nscal, &
   double precision state(state_l1:state_h1,state_l2:state_h2,NVAR)
   
   ! local variables
-  integer :: i, j, n, iwrk
-  double precision :: xcen, ycen, r, rfront
-  double precision :: pmf_vals(NSPEC+3), Xt(nspec), Yt(nspec)
-  double precision :: rhot, et, Pt, Tt, u1t, u2t, rwrk
+  integer :: i, j
+  double precision :: xcen, ycen, ei0, ei1
 
-  if (nspecies .ne. NSPEC) then
-     write(6,*)"nspecies, nspec ", nspecies, NSPEC
+  logical, save :: first_call = .true.
+
+  if (first_call) then
+
+     first_call = .false.
+
+     ei0 = p0/((gamma_const-1.d0)*rho0)
+     ei1 = p1/((gamma_const-1.d0)*rho1)
+
+     allocate(state0(NVAR))
+     allocate(state1(NVAR))
+
+     state0(URHO)  = rho0
+     state0(UMX)   =  rho0*v0*sin(thetashock)
+     state0(UMY)   = -rho0*v0*cos(thetashock)
+     state0(UEDEN) = rho0*(ei0 + 0.5d0*v0**2)
+     state0(UTEMP) = 0.d0
+     state0(UFS)   = 0.25d0 * rho0
+     state0(UFS+1) = 0.75d0 * rho0
+
+     state1(URHO)  = rho1
+     state1(UMX)   =  rho1*v1*sin(thetashock)
+     state1(UMY)   = -rho1*v1*cos(thetashock)
+     state1(UEDEN) = rho1*(ei1 + 0.5d0*v1**2)
+     state1(UTEMP) = 0.d0
+     state1(UFS)   = 0.75d0 * rho1
+     state1(UFS+1) = 0.25d0 * rho1
+
+  end if
+
+  if (NSPEC.ne. 2) then
+     write(6,*)"nspec .ne. 2", NSPEC
      stop
   end if
 
   do j = lo(2), hi(2)
      ycen = xlo(2) + delta(2)*(dble(j-lo(2)) + 0.5d0)
 
-
      do i = state_l1, state_h1
         xcen = xlo(1) + delta(1)*(dble(i-lo(1)) + 0.5d0)
 
-        r = sqrt((xcen-center(1))**2 + (ycen-center(2))**2)
-        rfront = rfire - r + 3.011d0 ! 3.011d0 is roughly the sufrace of fire for pmf.
-
-        call pmf(rfront,rfront,pmf_vals,n)
-     
-        if (n .ne. nspec+3) then
-           write(6,*)"n, nspec ", n, nspec
-           stop
+        if (ycen .gt. tan(thetashock)*(xcen-xshock0_lo)) then
+           state(i,j,:) = state1
+        else
+           state(i,j,:) = state0
         end if
-        
-        Xt = pmf_vals(4:)
 
-        Pt  = patm
-        Tt  = pmf_vals(1)
-        u1t = uinit
-        u2t = vinit
-     
-        call eos_given_PTY(rhot, et, Yt, Pt, Tt, Xt)
-
-        state(i,j,URHO ) = rhot
-        state(i,j,UMX  ) = rhot*u1t
-        state(i,j,UMY  ) = rhot*u2t
-        state(i,j,UEDEN) = rhot*(et + 0.5d0*(u1t**2+u2t**2))
-        state(i,j,UTEMP) = Tt
-
-        do n=1,nspec
-           state(i,j,UFS+n-1) = Yt(n)*rhot
-        end do
      end do
   end do
 
@@ -145,6 +114,7 @@ end subroutine rns_initdata
                            domlo,domhi,delta,xlo,time,bc)
  
      use meth_params_module, only : NVAR
+     use probdata_module
 
      implicit none
      include 'bc_types.fi'
@@ -154,43 +124,63 @@ end subroutine rns_initdata
      double precision delta(2), xlo(2), time
      double precision adv(adv_l1:adv_h1,adv_l2:adv_h2,NVAR)
 
-     integer n
+     integer i, j, n
+     double precision :: xcen, xshock
 
-      do n = 1,NVAR
-         call filcc(adv(adv_l1,adv_l2,n), &
-              adv_l1,adv_l2,adv_h1,adv_h2, &
-              domlo,domhi,delta,xlo,bc(1,1,n))
-      enddo
-
-      do n = 1,NVAR
-
-!        XLO
-         if ( bc(1,1,n).eq.EXT_DIR .and. adv_l1.lt.domlo(1)) then
-            print *,'SHOULD NEVER GET HERE bc(1,1,n) .eq. EXT_DIR) '
-            stop
-         end if
-
-!        XHI
-         if ( bc(1,2,n).eq.EXT_DIR .and. adv_l1.lt.domlo(1)) then
-            print *,'SHOULD NEVER GET HERE bc(1,2,n) .eq. EXT_DIR) '
-            stop
-         end if
-
-!        YLO
-         if ( bc(2,1,n).eq.EXT_DIR .and. adv_l2.lt.domlo(2)) then
-            print *,'SHOULD NEVER GET HERE bc(2,1,n) .eq. EXT_DIR) '
-            stop
-         end if
-
-!        YHI
-         if ( bc(2,2,n).eq.EXT_DIR .and. adv_l2.lt.domlo(2)) then
-            print *,'SHOULD NEVER GET HERE bc(2,2,n) .eq. EXT_DIR) '
-            stop
-         end if
-
-      end do
-
-      end subroutine rns_hypfill
+     do n = 1,NVAR
+        call filcc(adv(adv_l1,adv_l2,n), &
+             adv_l1,adv_l2,adv_h1,adv_h2, &
+             domlo,domhi,delta,xlo,bc(1,1,n))
+     enddo
+     
+     ! XLO
+     if (adv_l1.lt.domlo(1)) then
+        if (bc(1,1,1).eq.EXT_DIR) then
+           do n=1,NVAR
+              do j = adv_l2,adv_h2  ! fill the corners too
+                 do i = adv_l1, domlo(1)-1
+                    adv(i,j,n) = state1(n)
+                 end do
+              end do
+           end do
+        else
+           print *,'SHOULD NEVER GET HERE bc(1,1,1) .ne. EXT_DIR) '
+           stop
+        end if
+     end if
+     
+     ! YLO
+     if (adv_l2 .lt. domlo(2)) then
+        do n=1,NVAR
+           do j = adv_l2, domlo(2)-1
+              do i = adv_l1, adv_h1
+                 xcen = delta(1)*(i + 0.5d0)
+                 if (xcen < xshock0_lo) then
+                    adv(i,j,n) = state1(n)
+                 end if
+              end do
+           end do
+        end do
+     end if
+     
+     ! YHI
+     if (adv_h2 .gt. domhi(2)) then
+        xshock = xshock0_hi + vshock_x*time
+        do n=1,NVAR
+           do j = domhi(2)+1, adv_h2
+              do i = adv_l1, adv_h1
+                 xcen = delta(1)*(i + 0.5d0)
+                 if (xcen < xshock) then
+                    adv(i,j,n) = state1(n)
+                 else
+                    adv(i,j,n) = state0(n)
+                 end if
+              end do
+           end do
+        end do
+     end if
+     
+   end subroutine rns_hypfill
 
 ! ::: -----------------------------------------------------------
 
@@ -204,6 +194,9 @@ end subroutine rns_initdata
       integer domlo(2), domhi(2)
       double precision delta(2), xlo(2), time
       double precision adv(adv_l1:adv_h1,adv_l2:adv_h2)
+
+      print *, 'rns_denfill: SHOULD NEVER GET HERE'
+      stop
 
 !     Note: this function should not be needed, technically, but is provided
 !     to filpatch because there are many times in the algorithm when just

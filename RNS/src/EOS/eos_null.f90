@@ -53,8 +53,8 @@ contains
     endif
 
     if (Tref .gt. 0.0) then
-       eref(1) = cv * Tref * 0.27
-       eref(2) = cv * Tref * (1.0 - 0.27)
+       eref(1) = cv * Tref * 0.25
+       eref(2) = cv * Tref * 0.75
     else
        eref = 0.d0
     end if

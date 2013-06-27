@@ -334,6 +334,7 @@ end subroutine rns_enforce_consistent_Y
         integer :: i, j
         double precision :: rhoInv, vx, vy, T, e, c, Y(NSPEC)
 
+        do j = lo(2), hi(2)
         do i = lo(1), hi(1)
            rhoInv = 1.d0/u(i,j,URHO)
 
@@ -350,6 +351,7 @@ end subroutine rns_enforce_consistent_Y
            call eos_get_c(c,u(i,j,URHO),T,Y)
            
            dt = min(dt, dx(1)/(abs(vx)+c+1.d-50), dx(2)/(abs(vy)+c+1.d-50))
+        end do
         end do
 
       end subroutine rns_estdt
