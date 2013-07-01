@@ -15,7 +15,7 @@ contains
   ! UG1 and UG2 are at two Gauss points
   subroutine reconstruct(lo, hi, U, Ulo, Uhi, UL, UR, UG1, UG2, dir)
 
-    use weno_module, only : weno5_face, weno5_gauss
+    use weno_module, only : weno5
     use eos_module, only : eos_given_ReY, eos_get_eref
 
     integer, intent(in) :: lo, hi, Ulo, Uhi
@@ -168,15 +168,17 @@ contains
           end do
        end do
 
-       if (do_face) then
+       if (do_face .and. do_gauss) then
           do ivar=1,NCHARV
-             call weno5_face(charv(:,ivar), vp(ivar), vm(ivar))
+             call weno5(charv(:,ivar), vp(ivar), vm(ivar), vg1(ivar), vg2(ivar))
           end do
-       end if
-
-       if (do_gauss) then
+       else if (do_face) then
           do ivar=1,NCHARV
-             call weno5_gauss(charv(:,ivar), vg1(ivar), vg2(ivar))
+             call weno5(charv(:,ivar), vp=vp(ivar), vm=vm(ivar))
+          end do
+       else  ! do_gauss
+          do ivar=1,NCHARV
+             call weno5(charv(:,ivar), vg1=vg1(ivar), vg2=vg2(ivar))
           end do
        end if
 
