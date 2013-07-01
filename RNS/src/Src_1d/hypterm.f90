@@ -24,7 +24,7 @@ contains
 
     call reconstruct(lo(1), hi(1), U, Ulo(1), Uhi(1), UL=UL, UR=UR)
     
-    call riemann(lo, hi, UL, UR, flx)
+    call riemann(lo(1), hi(1), UL, UR, flx)
     
     deallocate(UL,UR)
 

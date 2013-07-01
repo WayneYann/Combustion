@@ -3,5 +3,5 @@ ifneq (${CHEMISTRY_MODEL}, NULL)
   f90EXE_sources += variables.f90 transport_properties.f90 derivative_stencil.f90
 endif
 
-f90EXE_sources += reconstruct.f90 weno.f90
+f90EXE_sources += reconstruct.f90 weno.f90 riemann.f90
 

@@ -277,7 +277,7 @@ contains
           UR(i,UEDEN) = UR(i,UEDEN) + UR(i,URHO) * eref
        end if
 
-       if (do_gauss) then
+       if (do_gauss .and. i.ne.lo-1 .and. i.ne. hi+1) then
 
           ! Gauss point 1
           do n=1,NCHARV

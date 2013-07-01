@@ -19,6 +19,7 @@ contains
     double precision, intent(out) :: fy( lo(1): hi(1)  , lo(2): hi(2)+1,NVAR)
 
     double precision, allocatable :: UL_y(:,:,:), UR_y(:,:,:), UG1_y(:,:,:), UG2_y(:,:,:)
+    double precision, allocatable :: UL(:,:), UR(:,:), flux(:,:)
     integer :: tlo(2), thi(2), i, j, n
 
     do n=1,NVAR
@@ -51,11 +52,35 @@ contains
             UL=UL_y(i,:,:), UR=UR_y(i,:,:), UG1=UG1_y(i,:,:), UG2=UG2_y(i,:,:), dir=2)
     end do
 
-    
+    allocate(UL  (lo(1):hi(1)+1,NVAR))
+    allocate(UR  (lo(1):hi(1)+1,NVAR))
+    allocate(flux(lo(1):hi(1)+1,NVAR))
 
-!    
-!    call riemann(lo, hi, UL, UR, flx)
+    ! flux in x-direction for two Gauss points in y-direction
+    do j=lo(2),hi(2)
+       call reconstruct(lo(1),hi(1), UG1_y(:,j,:), tlo(1), thi(1), &
+            UL=UL, UR=UR, dir=1)
+       call riemann(lo(1), hi(1), UL, UR, flux, dir=1)
+       do n=1,NVAR
+          do i=lo(1),hi(1)+1
+             fx(i,j,n) = fx(i,j,n) + 0.5d0*flux(i,n)
+          end do
+       end do
+
+       call reconstruct(lo(1),hi(1), UG2_y(:,j,:), tlo(1), thi(1), &
+            UL=UL, UR=UR, dir=1)
+       call riemann(lo(1), hi(1), UL, UR, flux, dir=1)
+       do n=1,NVAR
+          do i=lo(1),hi(1)+1
+             fx(i,j,n) = fx(i,j,n) + 0.5d0*flux(i,n)
+          end do
+       end do
+    end do
+
+    deallocate(UL,UR, flux)
     
+    ! flux in y-direction
+
     deallocate(UL_y,UR_y, UG1_y, UG2_y)
 
   end subroutine hypterm
