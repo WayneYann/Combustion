@@ -23,8 +23,8 @@ rns.Treference = 0.0
 # 1 = Inflow             4 = SlipWall
 # 2 = Outflow            5 = NoSlipWall
 # >>>>>>>>>>>>>  BC FLAGS <<<<<<<<<<<<<<<<
-rns.lo_bc       =  1   1   0
-rns.hi_bc       =  2   3   0
+rns.lo_bc       =  1   3   0
+rns.hi_bc       =  2   1   0
 
 # TIME STEP CONTROL
 rns.cfl            = 0.5     # cfl number for hyperbolic system
