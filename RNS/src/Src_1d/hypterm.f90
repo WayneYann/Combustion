@@ -22,7 +22,7 @@ contains
     allocate(UL(lo(1):hi(1)+1,NVAR))
     allocate(UR(lo(1):hi(1)+1,NVAR))
 
-    call reconstruct(lo, hi, U, Ulo, Uhi, UL, UR)
+    call reconstruct(lo(1), hi(1), U, Ulo(1), Uhi(1), UL=UL, UR=UR)
     
     call riemann(lo, hi, UL, UR, flx)
     

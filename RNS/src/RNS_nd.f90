@@ -27,8 +27,12 @@ subroutine set_method_params(dm,Density,Xmom,Eden,Temp,FirstSpec, &
        gamma_in, Tref_in
   
   ndim = dm
-  NCHARV = 1 + dm + NumSpec ! momentum + energy + rhoY
-  CFS = dm + 2
+
+!  NCHARV = dm + 1 + NumSpec ! momentum + energy + rhoY
+!  CFS = dm + 2
+! We always do characteristic decomposition in 3D
+  NCHARV = 3 + 1 + NumSpec ! momentum + energy + rhoY
+  CFS = 3 + 2
 
   NVAR = NUM_STATE
   NSPEC = NumSpec

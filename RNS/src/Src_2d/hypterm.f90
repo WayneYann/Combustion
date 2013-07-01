@@ -12,21 +12,51 @@ module hypterm_module
 
 contains
 
-  subroutine hypterm(lo,hi,U,Ulo,Uhi,flx)
-    integer, intent(in) :: lo(1), hi(1), Ulo(1), Uhi(1)
-    double precision, intent(in ) ::   U(Ulo(1):Uhi(1)  ,NVAR)
-    double precision, intent(out) :: flx( lo(1): hi(1)+1,NVAR)
+  subroutine hypterm(lo,hi,U,Ulo,Uhi,fx,fy)
+    integer, intent(in) :: lo(2), hi(2), Ulo(2), Uhi(2)
+    double precision, intent(in ) ::  U(Ulo(1):Uhi(1)  ,Ulo(2):Uhi(2)  ,NVAR)
+    double precision, intent(out) :: fx( lo(1): hi(1)+1, lo(2): hi(2)  ,NVAR)
+    double precision, intent(out) :: fy( lo(1): hi(1)  , lo(2): hi(2)+1,NVAR)
 
-    double precision, allocatable :: UL(:,:), UR(:,:)
+    double precision, allocatable :: UL_y(:,:,:), UR_y(:,:,:), UG1_y(:,:,:), UG2_y(:,:,:)
+    integer :: tlo(2), thi(2), i, j, n
 
-    allocate(UL(lo(1):hi(1)+1,NVAR))
-    allocate(UR(lo(1):hi(1)+1,NVAR))
+    do n=1,NVAR
+       do j=lo(2), hi(2)
+          do i=lo(1), hi(1)+1
+             fx(i,j,n) = 0.d0
+          end do
+       end do
 
-    call reconstruct(lo, hi, U, Ulo, Uhi, UL, UR)
+       do j=lo(2), hi(2)+1
+          do i=lo(1), hi(1)
+             fy(i,j,n) = 0.d0
+          end do
+       end do
+    end do
+
+    tlo(1) = lo(1)-3
+    tlo(2) = lo(2)
+    thi(1) = hi(1)+3
+    thi(2) = hi(2)
+    allocate( UL_y(tlo(1):thi(1),tlo(2):thi(2)+1,NVAR))
+    allocate( UR_y(tlo(1):thi(1),tlo(2):thi(2)+1,NVAR))
+    allocate(UG1_y(tlo(1):thi(1),tlo(2):thi(2)  ,NVAR))
+    allocate(UG2_y(tlo(1):thi(1),tlo(2):thi(2)  ,NVAR))
+
+    ! Given cell averages, reconstruct in y-direction
+    ! Note that they are still averges in x-direction
+    do i=tlo(1),thi(1)
+       call reconstruct(tlo(2),thi(2), U(i,:,:), Ulo(2), Uhi(2), &
+            UL=UL_y(i,:,:), UR=UR_y(i,:,:), UG1=UG1_y(i,:,:), UG2=UG2_y(i,:,:), dir=2)
+    end do
+
     
-    call riemann(lo, hi, UL, UR, flx)
+
+!    
+!    call riemann(lo, hi, UL, UR, flx)
     
-    deallocate(UL,UR)
+    deallocate(UL_y,UR_y, UG1_y, UG2_y)
 
   end subroutine hypterm
 

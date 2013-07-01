@@ -17,29 +17,33 @@ subroutine rns_dudt (lo, hi, &
 
   integer :: Ulo(2), Uhi(2), i, j, n
   double precision :: dxinv(2)
-  double precision, allocatable :: fhyp(:,:), fdif(:,:)
+  double precision, allocatable :: fx(:,:,:), fy(:,:,:)
 
-  dUdt = 0.d0
-  return
+  dxinv(1) = 1.d0/dx(1)
+  dxinv(2) = 1.d0/dx(2)
   
-  ! dxinv(1) = 1.d0/dx(1)
-  
-  ! Ulo(1) = U_l1
-  ! Uhi(1) = U_h1
+  Ulo(1) = U_l1
+  Ulo(2) = U_l2
+  Uhi(1) = U_h1
+  Uhi(2) = U_h2
 
-  ! allocate(fhyp(lo(1):hi(1)+1,NVAR))
-  ! allocate(fdif(lo(1):hi(1)+1,NVAR))
-  
-  ! call hypterm(lo,hi,U,Ulo,Uhi,fhyp)
-  ! call difterm(lo,hi,U,Ulo,Uhi,fdif, dxinv)
-  
-  ! do n=1, NVAR
-  !    do i=lo(1),hi(1)
-  !       dUdt(i,n) = dxinv(1) * ((fhyp(i,n) - fhyp(i+1,n)) + (fdif(i,n) - fdif(i+1,n)))
-  !    end do
-  ! end do
-  
-  ! deallocate(fhyp,fdif)
+  allocate(fx(lo(1):hi(1)+1,lo(2):hi(2)  ,NVAR))
+  allocate(fy(lo(1):hi(1)  ,lo(2):hi(2)+1,NVAR))
+
+  call hypterm(lo,hi,U,Ulo,Uhi,fx,fy)
+
+  do n=1, NVAR
+     do j=lo(2),hi(2)
+        do i=lo(1),hi(1)
+           dUdt(i,j,n) = dxinv(1)*(fx(i,j,n)-fx(i+1,j,n)) &
+                +        dxinv(1)*(fy(i,j,n)-fy(i,j+1,n))
+        end do
+     end do
+  end do
+
+!xxxxx  call difterm(lo,hi,U,Ulo,Uhi,fx,fy,dxinv)
+
+  deallocate(fx, fy)
 
 end subroutine rns_dudt
 
