@@ -362,7 +362,7 @@ end subroutine rns_enforce_consistent_Y
            end if
            
            call eos_get_c(c,u(i,j,URHO),T,Y)
-           
+
            dt = min(dt, dx(1)/(abs(vx)+c+1.d-50), dx(2)/(abs(vy)+c+1.d-50))
         end do
         end do

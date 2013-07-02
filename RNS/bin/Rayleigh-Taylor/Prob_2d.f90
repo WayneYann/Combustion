@@ -69,10 +69,9 @@ subroutine rns_initdata(level,time,lo,hi,nscal, &
      state,state_l1,state_l2,state_h1,state_h2, &
      delta,xlo,xhi)
 
-  use eos_module, only : gamma_const
+  use eos_module, only : gamma_const, eos_get_T
   use probdata_module
   use meth_params_module, only : NVAR, URHO, UMX, UMY, UEDEN, UTEMP, UFS, NSPEC
-  use chemistry_module, only : Patm, nspecies
 
   implicit none
 
@@ -84,7 +83,7 @@ subroutine rns_initdata(level,time,lo,hi,nscal, &
   
   ! local variables
   integer :: i, j
-  double precision :: x,y,ei,pres,presmid,pertheight
+  double precision :: xcen,ycen,ei,pres,presmid,pertheight, Y(2)
   double precision, parameter :: ZERO=0.d0, HALF=0.5d0, &
        PI = 3.141592653589793238462643383279502884197d0
 
@@ -97,39 +96,44 @@ subroutine rns_initdata(level,time,lo,hi,nscal, &
         
   state(:,:,UMX)   = ZERO
   state(:,:,UMY)   = ZERO
-  state(:,:,UTEMP) = ZERO
 
   do j = state_l2, state_h2
-     y = (j+HALF)*delta(2)
+     ycen = (j+HALF)*delta(2)
 
      do i = state_l1, state_h1
 
-        if (y .lt. center(2)) then
-           pres = p0_base - rho_1*y
+        if (ycen .lt. center(2)) then
+           pres = p0_base - rho_1*ycen
            state(i,j,UEDEN) = pres / (gamma_const - 1.0d0)
         else
-           pres = presmid - rho_2*(y-center(2))
+           pres = presmid - rho_2*(ycen-center(2))
            state(i,j,UEDEN) = pres / (gamma_const - 1.0d0)
         end if
 
      end do
   end do
 
-  do j = lo(2), hi(2)
-     y = (j+HALF)*delta(2)
+  do j = state_l2, state_h2
+     ycen = (j+HALF)*delta(2)
 
-     do i = lo(1), hi(1)
-        x = (i+HALF)*delta(1)
+     do i = state_l1, state_h1
+        xcen = (i+HALF)*delta(1)
 
         ! we explicitly make the perturbation symmetric here
         ! -- this prevents the RT from bending.
-        pertheight = 0.01d0*HALF*(cos(2.0d0*PI*x/L_x) + &
-                                  cos(2.0d0*PI*(L_x-x)/L_x)) + 0.5d0
+        pertheight = 0.01d0*HALF*(cos(2.0d0*PI*xcen/L_x) + &
+                                  cos(2.0d0*PI*(L_x-xcen)/L_x)) + 0.5d0
         state(i,j,URHO) = rho_1 + ((rho_2-rho_1)/2.0d0)* &
-             (1+tanh((y-pertheight)/0.005d0))
+             (1+tanh((ycen-pertheight)/0.005d0))
 
-        state(i,j,UFS) = (rho_2 - state(i,j,URHO)) / (rho_2-rho_1) * state(i,j,URHO)
-        state(i,j,UFS+1) = state(i,j,URHO) - state(i,j,UFS)
+        Y(1) = (rho_2 - state(i,j,URHO)) / (rho_2-rho_1)
+        Y(2) = 1.d0 - Y(1)
+        ei = state(i,j,UEDEN) / state(i,j,URHO)
+        state(i,j,UTEMP) = ZERO
+        call eos_get_T(state(i,j,UTEMP), ei, Y)
+
+        state(i,j,UFS  ) = state(i,j,URHO) * Y(1)
+        state(i,j,UFS+1) = state(i,j,URHO) * Y(2)
         
      enddo
   enddo
