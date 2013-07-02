@@ -98,7 +98,7 @@ subroutine rns_initdata(level,time,lo,hi,nscal, &
      stop
   end if
 
-  do j = lo(2), hi(2)
+  do j = state_l2, state_h2
      ycen = xlo(2) + delta(2)*(dble(j-lo(2)) + 0.5d0)
 
 

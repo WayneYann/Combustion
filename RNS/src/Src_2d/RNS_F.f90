@@ -36,7 +36,7 @@ subroutine rns_dudt (lo, hi, &
      do j=lo(2),hi(2)
         do i=lo(1),hi(1)
            dUdt(i,j,n) = dxinv(1)*(fx(i,j,n)-fx(i+1,j,n)) &
-                +        dxinv(1)*(fy(i,j,n)-fy(i,j+1,n))
+                +        dxinv(2)*(fy(i,j,n)-fy(i,j+1,n))
         end do
      end do
   end do
