@@ -108,7 +108,14 @@ public:
 			  Real dt,
 			  int  iteration,
 			  int  ncycle);
-
+    //
+    // do chemistry
+    //
+    void advance_chemistry(MultiFab& U, Real dt);
+    // 
+    // do advection and diffusion
+    //
+    void advance_AD(const MultiFab& Uold, MultiFab& Unew, Real time, Real dt);
     //
     // fill boundary 
     //
@@ -122,13 +129,14 @@ public:
     //
     void update_rk(MultiFab& U1, const MultiFab& U2, Real c, const MultiFab& Uprime);
     //
+    // Compute U = a Ua + b Ub + c Uprime.
+    //
+    void update_rk(MultiFab& U, Real a, const MultiFab& Ua, Real b, const MultiFab& Ub,
+		   Real c, const MultiFab& Uprime);
+    //
     // renormalize mass fractions and compute temperature
     //
     void post_update(MultiFab& U);
-    //
-    // do chemistry
-    //
-    void advance_chemistry(MultiFab& U, Real dt);
     //
     //Estimate time step.
     //
@@ -255,6 +263,8 @@ protected:
     static Real      gamma;
 
     static Real      Treference;
+
+    static int       RK_order;
     
     static class ChemDriver* chemSolve;
 };    
