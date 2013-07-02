@@ -19,4 +19,6 @@ module meth_params_module
 
   double precision, save :: small_dens, small_temp, small_pres  
 
+  double precision, save :: gravity
+
 end module meth_params_module

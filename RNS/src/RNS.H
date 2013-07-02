@@ -262,6 +262,7 @@ protected:
     static Real      small_pres;
     static Real      gamma;
 
+    static Real      gravity;
     static Real      Treference;
 
     static int       RK_order;

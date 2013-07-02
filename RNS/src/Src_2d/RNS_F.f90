@@ -3,7 +3,7 @@ subroutine rns_dudt (lo, hi, &
      U, U_l1, U_l2, U_h1, U_h2, &
      dUdt, Ut_l1, Ut_l2, Ut_h1, Ut_h2, &
      dx)
-  use meth_params_module, only : NVAR
+  use meth_params_module, only : NVAR, gravity, URHO, UMY, UEDEN
   use hypterm_module, only : hypterm
   use difterm_module, only : difterm
   implicit none
@@ -44,6 +44,15 @@ subroutine rns_dudt (lo, hi, &
 !xxxxx  call difterm(lo,hi,U,Ulo,Uhi,fx,fy,dxinv)
 
   deallocate(fx, fy)
+
+  if (gravity .ne. 0.d0) then
+     do j=lo(2),hi(2)
+        do i=lo(1),hi(1)
+           dUdt(i,j,UMY  ) = dUdt(i,j,UMY  ) + U(i,j,URHO)*gravity
+           dUdt(i,j,UEDEN) = dUdt(i,j,UEDEN) + U(i,j,UMY )*gravity
+        end do
+     end do
+  end if
 
 end subroutine rns_dudt
 
