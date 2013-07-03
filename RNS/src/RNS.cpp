@@ -64,7 +64,10 @@ Real         RNS::small_temp    = -1.e200;
 Real         RNS::small_pres    = -1.e200;
 Real         RNS::gamma         = 1.4;
 
+Real         RNS::gravity       = 0.0;
 Real         RNS::Treference    = 298.0; 
+
+int          RNS::RK_order      = 2;
 
 int          RNS::allow_untagging = 0;
 
@@ -104,8 +107,11 @@ RNS::read_params ()
     pp.query("small_pres",small_pres);
     pp.query("gamma",gamma);
 
+    pp.query("gravity", gravity);
     pp.query("Treference",Treference);
     
+    pp.query("RK_order",RK_order);
+
     // Get boundary conditions
     Array<int> lo_bc(BL_SPACEDIM), hi_bc(BL_SPACEDIM);
     pp.getarr("lo_bc",lo_bc,0,BL_SPACEDIM);

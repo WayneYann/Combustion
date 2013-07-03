@@ -1,0 +1,8 @@
+&fortin
+
+  frac    = 0.5d0
+  rho_1   = 1.0d0
+  rho_2   = 2.0d0
+  p0_base = 5.0d0
+
+/

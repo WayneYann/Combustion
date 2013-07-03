@@ -3,7 +3,7 @@ subroutine rns_dudt (lo, hi, &
      U, U_l1, U_l2, U_h1, U_h2, &
      dUdt, Ut_l1, Ut_l2, Ut_h1, Ut_h2, &
      dx)
-  use meth_params_module, only : NVAR
+  use meth_params_module, only : NVAR, gravity, URHO, UMY, UEDEN
   use hypterm_module, only : hypterm
   use difterm_module, only : difterm
   implicit none
@@ -36,7 +36,7 @@ subroutine rns_dudt (lo, hi, &
      do j=lo(2),hi(2)
         do i=lo(1),hi(1)
            dUdt(i,j,n) = dxinv(1)*(fx(i,j,n)-fx(i+1,j,n)) &
-                +        dxinv(1)*(fy(i,j,n)-fy(i,j+1,n))
+                +        dxinv(2)*(fy(i,j,n)-fy(i,j+1,n))
         end do
      end do
   end do
@@ -44,6 +44,15 @@ subroutine rns_dudt (lo, hi, &
 !xxxxx  call difterm(lo,hi,U,Ulo,Uhi,fx,fy,dxinv)
 
   deallocate(fx, fy)
+
+  if (gravity .ne. 0.d0) then
+     do j=lo(2),hi(2)
+        do i=lo(1),hi(1)
+           dUdt(i,j,UMY  ) = dUdt(i,j,UMY  ) + U(i,j,URHO)*gravity
+           dUdt(i,j,UEDEN) = dUdt(i,j,UEDEN) + U(i,j,UMY )*gravity
+        end do
+     end do
+  end if
 
 end subroutine rns_dudt
 
@@ -170,12 +179,12 @@ subroutine rns_enforce_consistent_Y(lo,hi,U,U_l1,U_l2,U_h1,U_h2)
               
               ! Here we only print the bigger negative values
               if (x .lt. -1.d-2) then
-                 print *,'Correcting negative species   ',n
+                 print *,'Correcting negative species   ',n-UFS+1
                  print *,'   at cell (i)                ',i
-                 print *,'Negative (rho*X) is           ',U(i,j,n)
-                 print *,'Negative      X  is           ',x
-                 print *,'Filling from dominant species ',int_dom_spec
-                 print *,'  which had X =               ',&
+                 print *,'Negative (rho*Y) is           ',U(i,j,n)
+                 print *,'Negative      Y  is           ',x
+                 print *,'Filling from dominant species ',int_dom_spec-UFS+1
+                 print *,'  which had Y =               ',&
                       U(i,j,int_dom_spec) / U(i,j,URHO)
               end if
 
@@ -184,8 +193,8 @@ subroutine rns_enforce_consistent_Y(lo,hi,U,U_l1,U_l2,U_h1,U_h2)
    
               ! Test that we didn't make the dominant species negative
               if (U(i,j,int_dom_spec) .lt. 0.d0) then 
-                 print *,' Just made dominant species negative ',int_dom_spec,' at ',i
-                 print *,'We were fixing species ',n,' which had value ',x
+                 print *,' Just made dominant species negative ',int_dom_spec-UFS+1,' at ',i
+                 print *,'We were fixing species ',n-UFS+1,' which had value ',x
                  print *,'Dominant species became ',U(i,j,int_dom_spec) / U(i,j,URHO)
                  call bl_error("Error:: CNSReact_2d.f90 :: ca_enforce_nonnegative_species")
               end if
@@ -353,7 +362,7 @@ end subroutine rns_enforce_consistent_Y
            end if
            
            call eos_get_c(c,u(i,j,URHO),T,Y)
-           
+
            dt = min(dt, dx(1)/(abs(vx)+c+1.d-50), dx(2)/(abs(vy)+c+1.d-50))
         end do
         end do

@@ -13,14 +13,15 @@ contains
 
   ! L and R in UL and UR are relative to face
   ! UG1 and UG2 are at two Gauss points
-  subroutine reconstruct(lo, hi, U, Ulo, Uhi, UL, UR, UG1, UG2, dir)
+  subroutine reconstruct(lo, hi, U, Ulo, Uhi, UL, UR, UG1, UG2, U0, dir)
 
     use weno_module, only : weno5
     use eos_module, only : eos_given_ReY, eos_get_eref
 
     integer, intent(in) :: lo, hi, Ulo, Uhi
     integer, intent(in), optional :: dir
-    double precision, intent(in ) :: U  (Ulo:Uhi,NVAR)
+    double precision, intent(in),target           :: U (Ulo:Uhi,NVAR)
+    double precision, intent(in),target, optional :: U0(Ulo:Uhi,NVAR)
     double precision, dimension(lo:hi+1,NVAR), intent(out), optional :: UL, UR
     double precision, dimension(lo:hi  ,NVAR), intent(out), optional :: UG1, UG2
 
@@ -33,6 +34,13 @@ contains
     double precision, dimension(NCHARV) :: vp, vm, vg1, vg2
     double precision :: eref, rhoEnew(-2:2), Yref(NSPEC)
     logical :: do_gauss, do_face
+    double precision, pointer :: Ubase(:,:)
+
+    if (present(U0)) then
+       Ubase => U0
+    else
+       Ubase => U
+    end if
 
     if (present(dir)) then
        idir = dir
@@ -71,23 +79,23 @@ contains
        
        rho = 0.d0
        do n=1,nspec
-          Y(n) = U(i,UFS+n-1)
+          Y(n) = Ubase(i,UFS+n-1)
           rho = rho + Y(n)
        end do
-
+       
        rhoInv = 1.d0/rho
-
+       
        do n=1,nspec
           Y(n) = Y(n) * rhoInv
        end do
-
-       vel(1) = vflag(1) * U(i,ivel(1))*rhoInv
-       vel(2) = vflag(2) * U(i,ivel(2))*rhoInv
-       vel(3) = vflag(3) * U(i,ivel(3))*rhoInv
+       
+       vel(1) = vflag(1) * Ubase(i,ivel(1))*rhoInv
+       vel(2) = vflag(2) * Ubase(i,ivel(2))*rhoInv
+       vel(3) = vflag(3) * Ubase(i,ivel(3))*rhoInv
 
        ek = 0.5d0*(vel(1)**2 + vel(2)**2 + vel(3)**2)
-       e = U(i,UEDEN)*rhoInV - ek
-       T = U(i,UTEMP)
+       e = Ubase(i,UEDEN)*rhoInV - ek
+       T = Ubase(i,UTEMP)
 
        call eos_given_ReY(p,c,T,dpdr,dpde,rho,e,Y)
 

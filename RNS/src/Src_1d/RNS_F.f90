@@ -3,7 +3,7 @@ subroutine rns_dudt (lo, hi, &
      U, U_l1, U_h1, &
      dUdt, Ut_l1, Ut_h1, &
      dx)
-  use meth_params_module, only : NVAR
+  use meth_params_module, only : NVAR, gravity, URHO, UMX, UEDEN
   use hypterm_module, only : hypterm
   use difterm_module, only : difterm
   implicit none
@@ -37,6 +37,13 @@ subroutine rns_dudt (lo, hi, &
   end do
   
   deallocate(fhyp,fdif)
+
+  if (gravity .ne. 0.d0) then
+     do i=lo(1),hi(1)
+        dUdt(i,UMX  ) = dUdt(i,UMX  ) + U(i,URHO)*gravity
+        dUdt(i,UEDEN) = dUdt(i,UEDEN) + U(i,UMX )*gravity
+     end do
+  end if
 
 end subroutine rns_dudt
 
@@ -157,12 +164,12 @@ subroutine rns_enforce_consistent_Y(lo,hi,U,U_l1,U_h1)
               
               ! Here we only print the bigger negative values
               if (x .lt. -1.d-2) then
-                 print *,'Correcting negative species   ',n
+                 print *,'Correcting negative species   ',n-UFS+1
                  print *,'   at cell (i)                ',i
-                 print *,'Negative (rho*X) is           ',U(i,n)
-                 print *,'Negative      X  is           ',x
-                 print *,'Filling from dominant species ',int_dom_spec
-                 print *,'  which had X =               ',&
+                 print *,'Negative (rho*Y) is           ',U(i,n)
+                 print *,'Negative      Y  is           ',x
+                 print *,'Filling from dominant species ',int_dom_spec-UFS+1
+                 print *,'  which had Y =               ',&
                       U(i,int_dom_spec) / U(i,URHO)
               end if
 
@@ -171,8 +178,8 @@ subroutine rns_enforce_consistent_Y(lo,hi,U,U_l1,U_h1)
    
               ! Test that we didn't make the dominant species negative
               if (U(i,int_dom_spec) .lt. 0.d0) then 
-                 print *,' Just made dominant species negative ',int_dom_spec,' at ',i
-                 print *,'We were fixing species ',n,' which had value ',x
+                 print *,' Just made dominant species negative ',int_dom_spec+UFS-1,' at ',i
+                 print *,'We were fixing species ',n-UFS+1,' which had value ',x
                  print *,'Dominant species became ',U(i,int_dom_spec) / U(i,URHO)
                  call bl_error("Error:: CNSReact_2d.f90 :: ca_enforce_nonnegative_species")
               end if

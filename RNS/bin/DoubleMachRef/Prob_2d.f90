@@ -38,10 +38,9 @@ subroutine rns_initdata(level,time,lo,hi,nscal, &
      state,state_l1,state_l2,state_h1,state_h2, &
      delta,xlo,xhi)
 
-  use eos_module, only : gamma_const
+  use eos_module, only : gamma_const, eos_get_T
   use probdata_module
   use meth_params_module, only : NVAR, URHO, UMX, UMY, UEDEN, UTEMP, UFS, NSPEC
-  use chemistry_module, only : Patm, nspecies
 
   implicit none
 
@@ -53,7 +52,7 @@ subroutine rns_initdata(level,time,lo,hi,nscal, &
   
   ! local variables
   integer :: i, j
-  double precision :: xcen, ycen, ei0, ei1
+  double precision :: xcen, ycen, ei0, ei1, Y(2)
 
   logical, save :: first_call = .true.
 
@@ -72,16 +71,22 @@ subroutine rns_initdata(level,time,lo,hi,nscal, &
      state0(UMY)   = -rho0*v0*cos(thetashock)
      state0(UEDEN) = rho0*(ei0 + 0.5d0*v0**2)
      state0(UTEMP) = 0.d0
-     state0(UFS)   = 0.25d0 * rho0
-     state0(UFS+1) = 0.75d0 * rho0
+     Y(1) = 0.25d0
+     Y(2) = 0.75d0
+     call eos_get_T(state0(UTEMP), ei0, Y)
+     state0(UFS)   = Y(1) * rho0
+     state0(UFS+1) = Y(2) * rho0
 
      state1(URHO)  = rho1
      state1(UMX)   =  rho1*v1*sin(thetashock)
      state1(UMY)   = -rho1*v1*cos(thetashock)
      state1(UEDEN) = rho1*(ei1 + 0.5d0*v1**2)
      state1(UTEMP) = 0.d0
-     state1(UFS)   = 0.75d0 * rho1
-     state1(UFS+1) = 0.25d0 * rho1
+     Y(1) = 0.75d0
+     Y(2) = 0.25d0
+     call eos_get_T(state1(UTEMP), ei1, Y)
+     state1(UFS)   = Y(1) * rho1
+     state1(UFS+1) = Y(2) * rho1
 
   end if
 
@@ -90,7 +95,7 @@ subroutine rns_initdata(level,time,lo,hi,nscal, &
      stop
   end if
 
-  do j = lo(2), hi(2)
+  do j = state_l2, state_h2
      ycen = xlo(2) + delta(2)*(dble(j-lo(2)) + 0.5d0)
 
      do i = state_l1, state_h1

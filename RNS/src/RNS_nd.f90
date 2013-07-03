@@ -14,7 +14,7 @@ end subroutine get_method_params
 ! ::: 
 subroutine set_method_params(dm,Density,Xmom,Eden,Temp,FirstSpec, &
      NUM_STATE, NumSpec, small_dens_in, small_temp_in, small_pres_in, &
-     gamma_in, Tref_in)
+     gamma_in, grav_in, Tref_in)
 
   use meth_params_module
   use eos_module
@@ -24,7 +24,7 @@ subroutine set_method_params(dm,Density,Xmom,Eden,Temp,FirstSpec, &
   integer, intent(in) :: dm
   integer, intent(in) :: Density, Xmom, Eden, Temp, FirstSpec, NUM_STATE, NumSpec
   double precision, intent(in) :: small_dens_in, small_temp_in, small_pres_in, &
-       gamma_in, Tref_in
+       gamma_in, grav_in, Tref_in
   
   ndim = dm
 
@@ -79,6 +79,8 @@ subroutine set_method_params(dm,Density,Xmom,Eden,Temp,FirstSpec, &
 
   call eos_get_small_dens(small_dens)
   call eos_get_small_temp(small_temp)
+
+  gravity = grav_in
 
 end subroutine set_method_params
 
