@@ -2,6 +2,7 @@
 subroutine rns_dudt (lo, hi, &
      U, U_l1, U_h1, &
      dUdt, Ut_l1, Ut_h1, &
+     flux, f_l1, f_h1, &
      dx)
   use meth_params_module, only : NVAR, gravity, URHO, UMX, UEDEN
   use hypterm_module, only : hypterm
@@ -11,32 +12,40 @@ subroutine rns_dudt (lo, hi, &
   integer, intent(in) :: lo(1), hi(1)
   integer, intent(in) ::  U_l1,  U_h1
   integer, intent(in) :: Ut_l1, Ut_h1
+  integer, intent(in) ::  f_l1,  f_h1
   double precision, intent(in)    ::    U( U_l1: U_h1,NVAR)
   double precision, intent(inout) :: dUdt(Ut_l1:Ut_h1,NVAR)
+  double precision, intent(  out) :: flux( f_l1: f_h1,NVAR)
   double precision, intent(in) :: dx(1)
 
   integer :: Ulo(1), Uhi(1), i, n
   double precision :: dxinv(1)
-  double precision, allocatable :: fhyp(:,:), fdif(:,:)
+  double precision, allocatable :: fdif(:,:)
   
   dxinv(1) = 1.d0/dx(1)
   
   Ulo(1) = U_l1
   Uhi(1) = U_h1
 
-  allocate(fhyp(lo(1):hi(1)+1,NVAR))
   allocate(fdif(lo(1):hi(1)+1,NVAR))
   
-  call hypterm(lo,hi,U,Ulo,Uhi,fhyp)
+  if (f_l1.ne.lo(1) .or. f_h1.ne.hi(1)+1) then
+     print *, 'flux has wrong size!'
+     stop
+  end if
+
+  call hypterm(lo,hi,U,Ulo,Uhi,flux)
   call difterm(lo,hi,U,Ulo,Uhi,fdif, dxinv)
   
   do n=1, NVAR
+     flux(lo(1),n) = flux(lo(1),n) + fdif(lo(1),n)
      do i=lo(1),hi(1)
-        dUdt(i,n) = dxinv(1) * ((fhyp(i,n) - fhyp(i+1,n)) + (fdif(i,n) - fdif(i+1,n)))
+        flux(i+1,n) = flux(i+1,n) + fdif(i+1,n)
+        dUdt(i,n) = dxinv(1) * (flux(i,n) - flux(i+1,n))
      end do
   end do
   
-  deallocate(fhyp,fdif)
+  deallocate(fdif)
 
   if (gravity .ne. 0.d0) then
      do i=lo(1),hi(1)

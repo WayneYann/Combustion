@@ -225,11 +225,11 @@ RNS::buildMetrics ()
 	area[dir].clear();
     }
     
-    geom.GetVolume(volume,grids,NUM_GROW);
+    geom.GetVolume(volume,grids,0);
     
     for (int dir = 0; dir < BL_SPACEDIM; dir++)
     {
-	geom.GetFaceArea(area[dir],grids,dir,NUM_GROW);
+	geom.GetFaceArea(area[dir],grids,dir,0);
     }
 }
 

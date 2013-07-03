@@ -123,7 +123,8 @@ public:
     //
     // Given U, compute Uprime (i.e., dUdt)
     //
-    void dUdt(MultiFab& U, MultiFab& Uprime, Real time, int do_fillpatch = 1);
+    void dUdt(MultiFab& U, MultiFab& Uprime, Real time, int do_fillpatch = 1, 
+	      FluxRegister* fine=0, FluxRegister* current=0);
     //
     // Compute U1 = U2 + c Uprime.
     //

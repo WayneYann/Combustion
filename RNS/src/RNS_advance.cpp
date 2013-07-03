@@ -89,8 +89,21 @@ RNS::fill_boundary(MultiFab& U, Real time, int do_fillpatch)
 
 // xxxxx need to add flux register for AMR
 void
-RNS::dUdt(MultiFab& U, MultiFab& Uprime, Real time, int do_fillpatch)
+RNS::dUdt(MultiFab& U, MultiFab& Uprime, Real time, int do_fillpatch, 
+	  FluxRegister* fine, FluxRegister* current)
 {
+    FArrayBox  flux[BL_SPACEDIM];
+    MultiFab fluxes[BL_SPACEDIM];
+    if (do_reflux && fine) 
+    {
+	for (int idim = 0; idim < BL_SPACEDIM; idim++) 
+	{
+	    BoxArray ba = U.boxArray();
+	    ba.surroundingNodes(idim);
+	    fluxes[idim].define(ba, NUM_STATE, 0, Fab_allocate);
+	}
+    }
+
     fill_boundary(U, time, do_fillpatch);
     
     const Real *dx = geom.CellSize();
@@ -100,11 +113,46 @@ RNS::dUdt(MultiFab& U, MultiFab& Uprime, Real time, int do_fillpatch)
 	int i = mfi.index();
 	const Box& bx = mfi.validbox();
 
+	for (int idim = 0; idim < BL_SPACEDIM ; idim++) 
+	{
+	    flux[idim].resize(BoxLib::surroundingNodes(bx,idim),NUM_STATE);
+	}
+
 	BL_FORT_PROC_CALL(RNS_DUDT,rns_dudt)
 	    (bx.loVect(), bx.hiVect(),
 	     BL_TO_FORTRAN(U[i]),
 	     BL_TO_FORTRAN(Uprime[i]),
+	     D_DECL(BL_TO_FORTRAN(flux[0]), 
+		    BL_TO_FORTRAN(flux[1]), 
+		    BL_TO_FORTRAN(flux[2])), 
 	     dx);
+
+	if (do_reflux) 
+	{
+	    if (fine) 
+	    {
+		for (int idim = 0; idim < BL_SPACEDIM ; idim++) 
+		{
+		    fluxes[idim][i].copy(flux[idim]);
+		}
+	    }
+
+	    if (current) 
+	    {
+		for (int idim = 0; idim < BL_SPACEDIM ; idim++) 
+		{
+		    current->FineAdd(flux[idim],area[idim][i],idim,i,0,0,NUM_STATE,1.0);
+		}
+	    }
+	}
+    }
+
+    if (do_reflux && fine) 
+    {
+	for (int idim = 0; idim < BL_SPACEDIM ; idim++) 
+	{
+	    fine->CrseInit(fluxes[idim],area[idim],idim,0,0,NUM_STATE);
+	}
     }
 }
 
@@ -189,6 +237,22 @@ RNS::advance_AD(const MultiFab& Uold, MultiFab& Unew, Real time, Real dt)
 
     if (RK_order == 2)
     {
+	int finest_level = parent->finestLevel();
+	
+	//
+	// Get pointers to Flux registers, or set pointer to zero if not there.
+	//
+	FluxRegister *fine    = 0;
+	FluxRegister *current = 0;
+        
+	if (do_reflux && level < finest_level) {
+	    fine = &getFluxReg(level+1);
+	    fine->setVal(0.0);
+	}
+	if (do_reflux && level > 0) {
+	    current = &getFluxReg(level);
+	}
+	
 	// Step 1 of RK2
 	doFillpatch = 0;
 	dUdt(Unew, Uprime, time, doFillpatch);
@@ -197,7 +261,7 @@ RNS::advance_AD(const MultiFab& Uold, MultiFab& Unew, Real time, Real dt)
 	
 	// Step 2 of RK2
 	doFillpatch = (level == 0) ? 0 : 1;
-	dUdt(Unew, Uprime, time+0.5*dt, doFillpatch);
+	dUdt(Unew, Uprime, time+0.5*dt, doFillpatch, fine, current);
 	update_rk(Unew, Uold, dt, Uprime); // Unew = Uold + dt*Uprime
 	post_update(Unew);
     }

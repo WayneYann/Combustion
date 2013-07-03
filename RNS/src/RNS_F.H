@@ -8,6 +8,9 @@ BL_FORT_PROC_DECL(RNS_DUDT,rns_dudt)
     (const int lo[], const int hi[],
      const BL_FORT_FAB_ARG(U),
      BL_FORT_FAB_ARG(dUdt),
+     D_DECL(BL_FORT_FAB_ARG(xflux),
+	    BL_FORT_FAB_ARG(yflux),
+	    BL_FORT_FAB_ARG(zflux)),
      const Real dx[]);
 
 BL_FORT_PROC_DECL(RNS_ADVCHEM, rns_advchem)
