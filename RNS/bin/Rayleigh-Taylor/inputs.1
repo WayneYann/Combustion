@@ -1,22 +1,23 @@
 # ------------------  INPUTS TO MAIN PROGRAM  -------------------
 max_step  = 1000000
-stop_time = 2.5
+stop_time = 12.75
 
 # for RK
 amr.multi_level_sdc = 0 
 sdc.t_ratio         = 1
-rns.RK_order        = 2   # 3 works with amr.max_level=0 only
+rns.RK_order        = 3   # 3 works with amr.max_level=0 only
 
 # PROBLEM SIZE & GEOMETRY
 geometry.is_periodic = 1 0 0
 geometry.coord_sys   = 0  # 0 => cart, 1 => RZ  2=>spherical
-geometry.prob_lo     =   0.0d0   0.0d0   0.0d0
-geometry.prob_hi     =   0.5d0   1.0d0   1.0d0
-amr.n_cell           =   256     512     1
+geometry.prob_lo     =  -0.25d0   -0.75d0   0.0d0
+geometry.prob_hi     =   0.25d0    0.75d0   1.0d0
+amr.n_cell           =   128       384      1
+#amr.n_cell           =   256       768      1
 
-rns.gravity    = -1.0
-rns.gamma      = 1.4
-rns.Treference = 0.0
+rns.gravity    = -0.1
+rns.gamma      =  1.4
+rns.Treference =  0.0
 
 # >>>>>>>>>>>>>  BC FLAGS <<<<<<<<<<<<<<<<
 # 0 = Interior           3 = Symmetry
@@ -57,4 +58,4 @@ amr.plot_int          = 100     # number of timesteps between plotfiles
 amr.derive_plot_vars = ALL
 
 #PROBIN FILENAME
-amr.probin_file = probin
+amr.probin_file = probin.1

@@ -10,12 +10,12 @@ module riemann_module
 
 contains
 
-  subroutine riemann(lo, hi, UL, UR, fx, dir)
+  subroutine riemann(lo, hi, UL, UR, flx, dir)
     integer, intent(in) :: lo, hi
     integer, intent(in), optional :: dir
-    double precision, intent(in ) :: UL(lo:hi+1,NVAR)
-    double precision, intent(in ) :: UR(lo:hi+1,NVAR)
-    double precision, intent(out) :: fx(lo:hi+1,NVAR)
+    double precision, intent(in ) ::  UL(lo:hi+1,NVAR)
+    double precision, intent(in ) ::  UR(lo:hi+1,NVAR)
+    double precision, intent(out) :: flx(lo:hi+1,NVAR)
 
     integer :: i, n
     double precision, allocatable :: fl(:,:),fr(:,:),alpha_plus(:),alpha_mins(:),alpha_pm(:)
@@ -43,11 +43,11 @@ contains
     do n=1,NVAR
        if (n.eq.UTEMP) then
           do i = lo, hi+1
-             fx(i,n) = 0.d0
+             flx(i,n) = 0.d0
           end do
        else
           do i = lo, hi+1
-             fx(i,n) = alpha_plus(i) * fl(i,n) + alpha_mins(i) * fr(i,n) &
+             flx(i,n) = alpha_plus(i) * fl(i,n) + alpha_mins(i) * fr(i,n) &
                   - alpha_pm(i) * (UR(i,n) - UL(i,n))
           end do
        end if

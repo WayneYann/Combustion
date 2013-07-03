@@ -1,5 +1,7 @@
 module probdata_module
 
+  integer, save :: prob_type
+
   double precision , save :: frac
 
   double precision , save :: center(3)

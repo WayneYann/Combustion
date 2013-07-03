@@ -10,7 +10,7 @@ subroutine PROBINIT (init,name,namlen,problo,probhi)
 
   integer untin,i
 
-  namelist /fortin/ frac, rho_1, rho_2, p0_base
+  namelist /fortin/ prob_type, frac, rho_1, rho_2, p0_base
 
   ! Build "probin" filename -- the name of file containing fortin namelist.
   integer, parameter :: maxlen = 256
@@ -25,6 +25,7 @@ subroutine PROBINIT (init,name,namlen,problo,probhi)
   end do
   
   ! set namelist defaults here
+  prob_type = 0
   frac = 0.5d0
   rho_1 = 1.0d0
   rho_2 = 2.0d0
@@ -82,8 +83,9 @@ subroutine rns_initdata(level,time,lo,hi,nscal, &
   double precision state(state_l1:state_h1,state_l2:state_h2,NVAR)
   
   ! local variables
-  integer :: i, j
+  integer :: i, j, ncell_x
   double precision :: xcen,ycen,ei,pres,presmid,pertheight, Y(2)
+  double precision :: vx, vy, ek
   double precision, parameter :: ZERO=0.d0, HALF=0.5d0, &
        PI = 3.141592653589793238462643383279502884197d0
 
@@ -92,51 +94,105 @@ subroutine rns_initdata(level,time,lo,hi,nscal, &
      stop
   end if
 
-  presmid  = p0_base - rho_1*center(2)
-        
-  state(:,:,UMX)   = ZERO
-  state(:,:,UMY)   = ZERO
+  if (prob_type .eq. 0) then
 
-  do j = state_l2, state_h2
-     ycen = (j+HALF)*delta(2)
+     ncell_x = nint(L_x/delta(1))
 
-     do i = state_l1, state_h1
+     presmid  = p0_base - rho_1*center(2)
 
-        if (ycen .lt. center(2)) then
-           pres = p0_base - rho_1*ycen
-           state(i,j,UEDEN) = pres / (gamma_const - 1.0d0)
-        else
-           pres = presmid - rho_2*(ycen-center(2))
-           state(i,j,UEDEN) = pres / (gamma_const - 1.0d0)
-        end if
+     state(:,:,UMX)   = ZERO
+     state(:,:,UMY)   = ZERO
 
+     do j = state_l2, state_h2
+        ycen = (j+HALF)*delta(2)
+
+        do i = state_l1, state_h1
+
+           if (ycen .lt. center(2)) then
+              pres = p0_base - rho_1*ycen
+              state(i,j,UEDEN) = pres / (gamma_const - 1.0d0)
+           else
+              pres = presmid - rho_2*(ycen-center(2))
+              state(i,j,UEDEN) = pres / (gamma_const - 1.0d0)
+           end if
+
+        end do
      end do
-  end do
 
-  do j = state_l2, state_h2
-     ycen = (j+HALF)*delta(2)
+     do j = state_l2, state_h2
+        ycen = (j+HALF)*delta(2)
 
-     do i = state_l1, state_h1
-        xcen = (i+HALF)*delta(1)
+        do i = state_l1, state_h1
 
-        ! we explicitly make the perturbation symmetric here
-        ! -- this prevents the RT from bending.
-        pertheight = 0.01d0*HALF*(cos(2.0d0*PI*xcen/L_x) + &
-                                  cos(2.0d0*PI*(L_x-xcen)/L_x)) + 0.5d0
-        state(i,j,URHO) = rho_1 + ((rho_2-rho_1)/2.0d0)* &
-             (1+tanh((ycen-pertheight)/0.005d0))
+           if (i .lt. ncell_x/2) then
+              xcen = (i+HALF)*delta(1)
+           else
+              xcen = ((ncell_x-i-1)+HALF)*delta(1)
+           end if
 
-        Y(1) = (rho_2 - state(i,j,URHO)) / (rho_2-rho_1)
-        Y(2) = 1.d0 - Y(1)
-        ei = state(i,j,UEDEN) / state(i,j,URHO)
-        state(i,j,UTEMP) = ZERO
-        call eos_get_T(state(i,j,UTEMP), ei, Y)
+           ! we explicitly make the perturbation symmetric here
+           ! -- this prevents the RT from bending.
+           pertheight = 0.01d0*HALF*(cos(2.0d0*PI*xcen/L_x) + &
+                cos(2.0d0*PI*(L_x-xcen)/L_x)) + 0.5d0
+           state(i,j,URHO) = rho_1 + ((rho_2-rho_1)/2.0d0)* &
+                (1+tanh((ycen-pertheight)/0.005d0))
 
-        state(i,j,UFS  ) = state(i,j,URHO) * Y(1)
-        state(i,j,UFS+1) = state(i,j,URHO) * Y(2)
-        
+           Y(1) = (rho_2 - state(i,j,URHO)) / (rho_2-rho_1)
+           Y(2) = 1.d0 - Y(1)
+           ei = state(i,j,UEDEN) / state(i,j,URHO)
+           state(i,j,UTEMP) = ZERO
+           call eos_get_T(state(i,j,UTEMP), ei, Y)
+
+           state(i,j,UFS  ) = state(i,j,URHO) * Y(1)
+           state(i,j,UFS+1) = state(i,j,URHO) * Y(2)
+
+        enddo
      enddo
-  enddo
+
+  else if (prob_type .eq. 1) then
+
+     do j = state_l2, state_h2
+        ycen = xlo(2) + (dble(j-lo(2))+HALF)*delta(2)
+
+        do i = state_l1, state_h1
+           xcen = xlo(1) + (dble(i-lo(1))+HALF)*delta(1)
+
+           if (ycen .lt. 0.d0) then
+              state(i,j,URHO) = rho_1
+              pres = P0_base - 0.1d0*rho_1*ycen
+              Y(1) = 1.0d0
+              Y(2) = 0.0d0
+           else
+              state(i,j,URHO) = rho_2
+              pres = P0_base - 0.1d0*rho_2*ycen
+              Y(1) = 1.0d0
+              Y(2) = 0.0d0
+           end if
+
+           ei = pres / ((gamma_const - 1.d0) * state(i,j,URHO))
+           vx = 0.d0
+           vy = 0.01d0*(1.d0+cos(4.d0*PI*xcen))*(1.d0+cos(3.d0*PI*ycen))/4.d0
+           ek = 0.5d0*(vx**2 + vy**2)
+
+           state(i,j,UMX  ) = state(i,j,URHO) * vx
+           state(i,j,UMY  ) = state(i,j,URHO) * vy
+           state(i,j,UEDEN) = state(i,j,URHO) * (ei+ek)
+
+           state(i,j,UTEMP) = ZERO
+           call eos_get_T(state(i,j,UTEMP), ei, Y)
+
+           state(i,j,UFS  ) = state(i,j,URHO) * Y(1)
+           state(i,j,UFS+1) = state(i,j,URHO) * Y(2)
+
+        end do
+     end do
+
+  else
+
+     write(6,*)"Unknown prob_type", prob_type
+     stop
+
+  end if
 
 end subroutine rns_initdata
 
