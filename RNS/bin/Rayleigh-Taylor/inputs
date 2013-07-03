@@ -5,7 +5,7 @@ stop_time = 2.5
 # for RK
 amr.multi_level_sdc = 0 
 sdc.t_ratio         = 1
-rns.RK_order        = 2   # 3 works with amr.max_level=0 only
+rns.RK_order        = 3   # 3 works with amr.max_level=0 only
 
 # PROBLEM SIZE & GEOMETRY
 geometry.is_periodic = 1 0 0
@@ -15,8 +15,8 @@ geometry.prob_hi     =   0.5d0   1.0d0   1.0d0
 amr.n_cell           =   256     512     1
 
 rns.gravity    = -1.0
-rns.gamma      = 1.4
-rns.Treference = 0.0
+rns.gamma      =  1.6666666666666667
+rns.Treference =  0.0
 
 # >>>>>>>>>>>>>  BC FLAGS <<<<<<<<<<<<<<<<
 # 0 = Interior           3 = Symmetry
