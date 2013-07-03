@@ -70,6 +70,7 @@ contains
             UL=UGyL, UR=UGyR,  &
             U0=U0,  &
             dir=1)
+
        call riemann(lo(1), hi(1), UGyL, UGyR, flux, dir=1)
        do n=1,NVAR
           do i=lo(1),hi(1)+1
@@ -81,6 +82,7 @@ contains
             UL=UGyL, UR=UGyR,  &
             U0=U0,  &
             dir=1)
+
        call riemann(lo(1), hi(1), UGyL, UGyR, flux, dir=1)
        do n=1,NVAR
           do i=lo(1),hi(1)+1
@@ -89,7 +91,7 @@ contains
        end do
     end do
 
-    deallocate(UGyL,UGyR, flux, U0)
+    deallocate(UGyL, UGyR, flux, U0)
     deallocate(UG1y, UG2y)
 
     ! flux in y-direction
@@ -102,13 +104,14 @@ contains
 
     ! reconstruct in x-direction for states on y-faces
     do j=lo(2), hi(2)+1
-       U0 = U(lo(1)-3:hi(1)+3,j,:)
 
+       U0 = U(lo(1)-3:hi(1)+3,j-1,:)
        call reconstruct(lo(1),hi(1), ULy(:,j,:), lo(1)-3, hi(1)+3, &
             UG1=ULyG1(:,j,:), UG2=ULyG2(:,j,:),  &
             U0=U0,  &
             dir=1)
 
+       U0 = U(lo(1)-3:hi(1)+3,j  ,:)
        call reconstruct(lo(1),hi(1), URy(:,j,:), lo(1)-3, hi(1)+3, &
             UG1=URyG1(:,j,:), UG2=URyG2(:,j,:),  &
             U0=U0,  &
@@ -117,6 +120,7 @@ contains
 
     ! flux in y-direction for two Gauss points in x-direction
     do i=lo(1), hi(1)
+
        call riemann(lo(2), hi(2), ULyG1(i,:,:), URyG1(i,:,:), flux, dir=2)
        do n=1,NVAR
           do j=lo(2),hi(2)+1

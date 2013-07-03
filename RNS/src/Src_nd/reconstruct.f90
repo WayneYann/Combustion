@@ -75,6 +75,7 @@ contains
 
     call set_vel(idir, ivel, vflag)
 
+
     do i = lo-iextra, hi+iextra
        
        rho = 0.d0
@@ -263,7 +264,7 @@ contains
        if (do_face .and. i.ne.lo-1) then
           do n=1,NCHARV
              UR(i,ivel(1)) = UR(i,ivel(1)) + vm(n)*egv(1,n)*vflag(1)
-             UR(i,ivel(2)) = UR(i,ivel(3)) + vm(n)*egv(2,n)*vflag(2)
+             UR(i,ivel(2)) = UR(i,ivel(2)) + vm(n)*egv(2,n)*vflag(2)
              UR(i,ivel(3)) = UR(i,ivel(3)) + vm(n)*egv(3,n)*vflag(3)
              UR(i,UEDEN  ) = UR(i,UEDEN  ) + vm(n)*egv(4,n)
              do m=1,nspec
