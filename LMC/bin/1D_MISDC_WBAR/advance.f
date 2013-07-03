@@ -104,6 +104,9 @@ c     nodal, no ghost cells
       
       integer i,is,misdc,n,rho_flag,IWRK,l
 
+      diffdiff_old = 0.d0
+      diffdiff_new = 0.d0
+
 c     "diffdiff" means "differential diffusion", which corresponds to
 c     sum_m div [ h_m (rho D_m - lambda/cp) grad Y_m ]
 c     in equation (3)
@@ -927,19 +930,6 @@ c     subtract off Wbar piece - will add it back in over next l iterate
 
 c     end loop over l
             end do
-            
-            if (LeEQ1 .eq. 1) then
-
-c     extract div gamma^n
-               do i=lo(0),hi(0)
-                  do n=1,Nspec
-                     is = FirstSpec + n - 1
-                     diff_hat(0,i,is) = (scal_new(0,i,is)-scal_old(0,i,is))/dt(0) 
-     $                    - aofs(0,i,is) - dRhs(0,i,n)/dt(0)
-                  enddo
-               enddo
-
-            else
 
 c     compute conservatively corrected version of div gamma_m
 c     where gamma_m = beta_for_y^(k) grad \tilde Y_{m,AD}^(k+1) + beta_for_Wbar^(k) grad Wbar^(k)
@@ -955,8 +945,6 @@ c     add differential diffusion to forcing for enthalpy solve in equation (49)
                   dRhs(0,i,0) = dRhs(0,i,0) 
      $                 + 0.5d0*dt(0)*(diffdiff_old(0,i) + diffdiff_new(0,i))
                end do
-
-            end if
             
             print *,'... do correction diffusion solve for rhoh'
 

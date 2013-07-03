@@ -91,13 +91,37 @@ c     Kanuary, Combustion Phenomena (Wiley, New York) 1982:  mu [g/(cm.s)] = 10 
 c     For Le=1, rho.D = lambda/cp = mu/Pr  (in general, Le = Sc/Pr)
             rho = 0.d0
             do n=1,Nspec
-               beta(i,FirstSpec+n-1) = mu(i) / Sc
                rho = rho + scal(i,FirstSpec+n-1)
             enddo
             
             do n=1,Nspec
                Y(n) = scal(i,FirstSpec+n-1) / rho
             enddo
+           
+c           given y[species]: maxx fractions
+c           returns mean molecular weight (gm/mole)
+            CALL CKMMWY(Y,IWRK,RWRK,Wavg)
+
+c           returns the specific heats at constant pressure
+c           in mass units
+            CALL CKCPMS(Tt,IWRK,RWRK,CPMS)
+
+c           convert y[species] (mass fracs) to x[species] (mole fracs)
+            CALL CKYTX(Y,IWRK,RWRK,X)
+
+c           initialize the thermomolecular parameters that are needed in order
+c           to evaluate the transport linear systems
+            CALL EGSPAR(Tt,X,Y,CPMS,EGRWRK,EGIWRK)
+
+c           compute flux diffusion coefficients
+            CALL EGSV1(Pcgs,Tt,Y,Wavg,EGRWRK,Dt)
+
+            do n=1,Nspec
+               beta(i,FirstSpec+n-1) = mu(i) / (Sc * Wavg * invmwt(n))
+               beta_for_Y(i,FirstSpec+n-1) = mu(i) / Sc
+               beta_for_Wbar(i,FirstSpec+n-1) = mu(i) * Y(n) / (Sc * Wavg)
+            end do
+
 c           Returns the mean specific heat at CP
             CALL CKCPBS(scal(i,Temp),Y,IWRK,RWRK,CPMIX)
             beta(i,RhoH) = mu(i) / Pr
