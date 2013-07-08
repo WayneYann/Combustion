@@ -2,10 +2,6 @@
 #include "RNS.H"
 #include "RNS_F.H"
 
-using std::string;
-
-typedef StateDescriptor::BndryFunc BndryFunc;
-
 void
 RNS::ErrorSetUp ()
 {
@@ -22,23 +18,34 @@ RNS::ErrorSetUp ()
 //  err_list.add("lap_var",1,ErrorRec::Special,
 //		 BL_FORT_PROC_CALL(RNS_SPECIAL_ERROR,rns_special_error));
 
-//    err_list.add("density",1,ErrorRec::Special,
-//		 BL_FORT_PROC_CALL(RNS_DENERROR,rns_denerror));
-//  err_list.add("Temp",1,ErrorRec::Special,
-//		 BL_FORT_PROC_CALL(RNS_TEMPERROR,rns_temperror));
-//    err_list.add("pressure",1,ErrorRec::Special,
-//		 BL_FORT_PROC_CALL(RNS_PRESSERROR,rns_presserror));
-//    err_list.add("x_velocity",1,ErrorRec::Special,
-//                   BL_FORT_PROC_CALL(RNS_VELERROR,rns_velerror));
+#if 0
+    if (do_density_ref)
+    {
+	err_list.add("density",1,ErrorRec::Special,
+		     BL_FORT_PROC_CALL(RNS_DENERROR,rns_denerror));
+    }
+    if (do_temperature_ref)
+    {
+	err_list.add("Temp",1,ErrorRec::Special,
+		     BL_FORT_PROC_CALL(RNS_TEMPERROR,rns_temperror));
+    }
+    if (do_pressure_ref)
+    {
+	err_list.add("pressure",1,ErrorRec::Special,
+		     BL_FORT_PROC_CALL(RNS_PRESSERROR,rns_presserror));
+    }
+    if (do_velocity_ref)
+    {
+	err_list.add("x_velocity",1,ErrorRec::Special,
+		     BL_FORT_PROC_CALL(RNS_VELERROR,rns_velerror));
 #if (BL_SPACEDIM >= 2)
-  //    err_list.add("y_velocity",1,ErrorRec::Special,
-  //                   BL_FORT_PROC_CALL(RNS_VELERROR,rns_velerror));
+	err_list.add("y_velocity",1,ErrorRec::Special,
+		     BL_FORT_PROC_CALL(RNS_VELERROR,rns_velerror));
 #endif
 #if (BL_SPACEDIM == 3)
-  //    err_list.add("z_velocity",1,ErrorRec::Special,
-  //                   BL_FORT_PROC_CALL(RNS_VELERROR,rns_velerror));
+	err_list.add("z_velocity",1,ErrorRec::Special,
+		     BL_FORT_PROC_CALL(RNS_VELERROR,rns_velerror));
 #endif
-
-//   err_list.add("entropy",1,ErrorRec::Special,
-//		 BL_FORT_PROC_CALL(RNS_ENTERROR,rns_enterror));
+    }
+#endif
 }

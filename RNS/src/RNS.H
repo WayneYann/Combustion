@@ -252,12 +252,16 @@ protected:
     static Real      init_shrink;
     static Real      change_max;
     static int       do_reflux;
-    static ErrorList err_list;
     static BCRec     phys_bc;
     static int       NUM_GROW;
     
+    static ErrorList err_list;
     static int       allow_untagging;
-    
+    static int       do_density_ref;
+    static int       do_temperature_ref;
+    static int       do_pressure_ref;
+    static int       do_velocity_ref;
+
     static Real      small_dens;
     static Real      small_temp;
     static Real      small_pres;

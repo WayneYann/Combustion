@@ -56,9 +56,6 @@ BL_FORT_PROC_DECL(RNS_INITDATA,rns_initdata)
      BL_FORT_FAB_ARG(state),
      const Real dx[], const Real xlo[], const Real xhi[]);
 
-BL_FORT_PROC_DECL(RNS_ENFORCE_CONSISTENT_E,rns_enforce_consistent_e)
-    (const int* lo, const int* hi, BL_FORT_FAB_ARG(state));
-
 BL_FORT_PROC_DECL(RNS_DENERROR,rns_denerror)
     (int* tag, ARLIM_P(tag_lo), ARLIM_P(tag_hi),
      const int* tagval, const int* clearval,
@@ -109,36 +106,6 @@ BL_FORT_PROC_DECL(RNS_PRESSERROR,rns_presserror)
      const Real dx[], const Real xlo[], const Real problo[],
      const Real* time, const int* level);
 
-BL_FORT_PROC_DECL(RNS_MFRACERROR,rns_mfracerror)
-    (int* tag, ARLIM_P(tag_lo), ARLIM_P(tag_hi),
-     const int* tagval, const int* clearval,
-     BL_FORT_FAB_ARG(press),
-     const int lo[], const int hi[],
-     const int* ncomp,
-     const int domlo[], const int domhi[],
-     const Real dx[], const Real xlo[], const Real problo[],
-     const Real* time, const int* level);
-
-BL_FORT_PROC_DECL(RNS_ENTERROR,rns_enterror)
-    (int* tag, ARLIM_P(tag_lo), ARLIM_P(tag_hi),
-     const int* tagval, const int* clearval,
-     BL_FORT_FAB_ARG(den),
-     const int lo[], const int hi[],
-     const int* ncomp,
-     const int domlo[], const int domhi[],
-     const Real dx[], const Real xlo[], const Real problo[],
-     const Real* time, const int* level);
-
-BL_FORT_PROC_DECL(RNS_STATE_ERROR,rns_state_error)
-    (int* tag, ARLIM_P(tag_lo), ARLIM_P(tag_hi),
-     const int* tagval, const int* clearval,
-     BL_FORT_FAB_ARG(state),
-     const int lo[], const int hi[],
-     const int* ncomp,
-     const int domlo[], const int domhi[],
-     const Real dx[], const Real xlo[], const Real problo[],
-     const Real* time, const int* level);
-
 BL_FORT_PROC_DECL(RNS_HYPFILL,rns_hypfill)
     (BL_FORT_FAB_ARG(state),
      const int dlo[], const int dhi[],
@@ -156,109 +123,11 @@ BL_FORT_PROC_DECL(RNS_ESTDT,rns_estdt)
      const int lo[], const int hi[],
      const Real dx[], Real* dt);
 
-BL_FORT_PROC_DECL(RNS_UMDRV,rns_umdrv)
-    (const int    lo[], const int    hi[],
-     BL_FORT_FAB_ARG(state),
-     BL_FORT_FAB_ARG(stateout),
-     const Real dx[], const Real* dt,
-     D_DECL(const BL_FORT_FAB_ARG(xflux),
-            const BL_FORT_FAB_ARG(yflux),
-            const BL_FORT_FAB_ARG(zflux)),
-     D_DECL(const BL_FORT_FAB_ARG(xarea),
-            const BL_FORT_FAB_ARG(yarea),
-            const BL_FORT_FAB_ARG(zarea)),
-#if (BL_SPACEDIM < 3)
-     const BL_FORT_FAB_ARG(dloga),
-#endif
-     const BL_FORT_FAB_ARG(volume),
-     const Real* cflLoc,
-     const int& verbose);
-
-BL_FORT_PROC_DECL(CA_CORRGSRC,ca_corrgsrc)
-    (const int lo[], const int hi[],
-     const BL_FORT_FAB_ARG(grav_src_old),
-     const BL_FORT_FAB_ARG(grad_phi_cc),
-     const BL_FORT_FAB_ARG(S_old),
-     BL_FORT_FAB_ARG(S_new),
-     const Real& dt);
-
-BL_FORT_PROC_DECL(RNS_RESET_INTERNAL_ENERGY,rns_reset_internal_energy)
-    (BL_FORT_FAB_ARG(S_new), 
-     const int lo[], const int hi[], 
-     const int& verbose);
-
-BL_FORT_PROC_DECL(CA_SYNCGSRC,ca_syncgsrc)
-    (const int lo[], const int hi[],
-     const BL_FORT_FAB_ARG(gPhi),
-     const BL_FORT_FAB_ARG(gdPhi),
-     const BL_FORT_FAB_ARG(S),
-     const BL_FORT_FAB_ARG(dS),
-     BL_FORT_FAB_ARG(src),
-     const Real& dt);
-
-#if (BL_SPACEDIM == 3)
-BL_FORT_PROC_DECL(RNS_SUMMASS,rns_summass)
-    (BL_FORT_FAB_ARG(rho), const int lo[], const int hi[],
-     const Real dx[], Real* mass);
-#else
-BL_FORT_PROC_DECL(RNS_SUMMASS,rns_summass)
-    (BL_FORT_FAB_ARG(rho), const int lo[], const int hi[],
-     const Real dx[], Real* mass,
-     const Real* r, const int& rlo, const int& rhi);
-#endif
-
-BL_FORT_PROC_DECL(RNS_ENFORCE_NONNEGATIVE_SPECIES,rns_enforce_nonnegative_species)
-    (BL_FORT_FAB_ARG(S_new), const int lo[], const int hi[]);
-
 BL_FORT_PROC_DECL(RNS_AVGDOWN,rns_avgdown)
     (BL_FORT_FAB_ARG(crse_fab), const int& nc,
      const BL_FORT_FAB_ARG(crse_vol),
      const BL_FORT_FAB_ARG(fine_fab),
      const BL_FORT_FAB_ARG(fine_vol),
      const int ovlo[], const int ovhi[], const int rat[]);
-
-BL_FORT_PROC_DECL(CA_REACT_STATE,ca_react_state)
-    (const int* lo, const int* hi,
-     const BL_FORT_FAB_ARG(Sold),
-     const BL_FORT_FAB_ARG(Snew),
-     const BL_FORT_FAB_ARG(ReactionTerms),
-     const Real& time, const Real& dt_react);
-
-BL_FORT_PROC_DECL(CA_FILL_TEMP_COND,ca_fill_temp_cond)
-    (const int lo[], const int hi[],
-     const BL_FORT_FAB_ARG(state),
-     D_DECL(const BL_FORT_FAB_ARG(xcoeffs),
-            const BL_FORT_FAB_ARG(ycoeffs),
-            const BL_FORT_FAB_ARG(zcoeffs)),
-     const Real* dx);
-
-BL_FORT_PROC_DECL(CA_GET_RHOE,ca_get_rhoe)
-  (const int lo[], const int hi[],
-   const BL_FORT_FAB_ARG(rhoe),
-   const BL_FORT_FAB_ARG(temp),
-   const BL_FORT_FAB_ARG(ye),
-   const BL_FORT_FAB_ARG(state));
-
-#if (BL_SPACEDIM > 1)
-BL_FORT_PROC_DECL(CA_COMPUTE_AVGSTATE,ca_compute_avgstate)
-    (const int lo[], const int hi[], 
-     const Real* dx, const Real* dr, const int* nc,
-     const BL_FORT_FAB_ARG(S  ), const Real* avgden,
-     const BL_FORT_FAB_ARG(Vol), const Real* avgvol,
-     const Real* problo, const int* numpts_1d);
-#endif
-
-BL_FORT_PROC_DECL(CA_APPLY_METRIC,ca_apply_metric)
-    (const int* lo, const int* hi,
-     BL_FORT_FAB_ARG(cc),
-     D_DECL(const BL_FORT_FAB_ARG(xedge),
-            const BL_FORT_FAB_ARG(yedge),
-            const BL_FORT_FAB_ARG(zedge)), 
-            const Real* dx, const int* coord_type);
-
-BL_FORT_PROC_DECL(CA_UNWEIGHT_CC,ca_unweight_cc)
-    (const int* lo, const int* hi,
-     BL_FORT_FAB_ARG(cc),
-     const Real* dx, const int* coord_type);
 
 #endif

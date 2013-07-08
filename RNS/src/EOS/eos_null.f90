@@ -99,6 +99,15 @@ contains
   end subroutine eos_get_T
 
 
+  subroutine eos_get_p(p, rho, T, Y, pt_index)
+    double precision, intent(out) :: p
+    double precision, intent(in) :: rho, T, Y(2)
+    integer, optional, intent(in) :: pt_index(:)
+    p = rho*Ru*T/mu
+    p = max(p,smallp)
+  end subroutine eos_get_p
+
+
   subroutine eos_given_RTY(e, p, c, dpdr, dpde, rho, T, Y, pt_index)
     double precision, intent(out) :: e, p, c, dpdr(2), dpde
     double precision, intent(in ) :: rho, T, Y(2)
@@ -132,5 +141,13 @@ contains
     double precision :: r
     r = eref(1)*Y(1) + eref(2)*Y(2)
   end function eos_get_eref
+
+
+  subroutine eos_YtoX(Y, X, pt_index)
+    double precision, intent(in ) :: Y(2)
+    double precision, intent(out) :: X(2)
+    integer, optional, intent(in  ) :: pt_index(:)
+    X = Y
+  end subroutine eos_YtoX
 
 end module eos_module

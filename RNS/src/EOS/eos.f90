@@ -111,18 +111,18 @@ contains
   end subroutine eos_get_T
 
 
-  ! subroutine eos_get_p(p, rho, T, Y, pt_index)
-  !   double precision, intent(out) :: p
-  !   double precision, intent(in) :: rho, T, Y(nspecies)
-  !   integer, optional, intent(in) :: pt_index(:)
+  subroutine eos_get_p(p, rho, T, Y, pt_index)
+    double precision, intent(out) :: p
+    double precision, intent(in) :: rho, T, Y(nspecies)
+    integer, optional, intent(in) :: pt_index(:)
 
-  !   integer :: iwrk
-  !   double precision :: rwrk
+    integer :: iwrk
+    double precision :: rwrk
 
-  !   call ckpy(rho, T, Y, iwrk, rwrk, p)
-  !   p = max(p,smallp)
+    call ckpy(rho, T, Y, iwrk, rwrk, p)
+    p = max(p,smallp)
 
-  ! end subroutine eos_get_p
+  end subroutine eos_get_p
 
 
   ! subroutine eos_get_TP(T, P, rho, e, Y, pt_index)
@@ -233,5 +233,15 @@ contains
     double precision :: r
     r = dot_product(eref, Y)
   end function eos_get_eref
+
+
+  subroutine eos_YtoX(Y, X, pt_index)
+    double precision, intent(in ) :: Y(nspecies)
+    double precision, intent(out) :: X(nspecies)
+    integer, optional, intent(in  ) :: pt_index(:)
+    integer :: iwrk
+    double precision :: rwrk
+    call ckytx (Y, iwrk, rwrk, X)
+  end subroutine eos_YtoX
 
 end module eos_module 

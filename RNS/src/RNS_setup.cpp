@@ -201,139 +201,97 @@ RNS::variableSetUp ()
 			  BndryFunc(BL_FORT_PROC_CALL(RNS_DENFILL,rns_denfill),
 				    BL_FORT_PROC_CALL(RNS_HYPFILL,rns_hypfill)));
     
-//   //
-//   // DEFINE DERIVED QUANTITIES
-//   //
-//   // Pressure
-//   //
-//   derive_lst.add("pressure",IndexType::TheCellType(),1,
-// 		 BL_FORT_PROC_CALL(RNS_DERPRES,rns_derpres),the_same_box);
-//   derive_lst.addComponent("pressure",desc_lst,State_Type,Density,NUM_STATE);
+    //
+    // DEFINE DERIVED QUANTITIES
+    //
+    // Pressure
+    //
+    derive_lst.add("pressure",IndexType::TheCellType(),1,
+		   BL_FORT_PROC_CALL(RNS_DERPRES,rns_derpres),the_same_box);
+    derive_lst.addComponent("pressure",desc_lst,State_Type,Density,NUM_STATE);
   
-//   //
-//   // Kinetic energy
-//   //
-//   derive_lst.add("kineng",IndexType::TheCellType(),1,
-// 		 BL_FORT_PROC_CALL(RNS_DERKINENG,rns_derkineng),the_same_box);
-//   derive_lst.addComponent("kineng",desc_lst,State_Type,Density,1);
-//   derive_lst.addComponent("kineng",desc_lst,State_Type,Xmom,BL_SPACEDIM);
+    //
+    // Sound speed (c)
+    //
+    derive_lst.add("soundspeed",IndexType::TheCellType(),1,
+		   BL_FORT_PROC_CALL(RNS_DERSOUNDSPEED,rns_dersoundspeed),the_same_box);
+    derive_lst.addComponent("soundspeed",desc_lst,State_Type,Density,NUM_STATE);
+    
+    //
+    // Mach number(M)
+    //
+    derive_lst.add("MachNumber",IndexType::TheCellType(),1,
+		   BL_FORT_PROC_CALL(RNS_DERMACHNUMBER,rns_dermachnumber),the_same_box);
+    derive_lst.addComponent("MachNumber",desc_lst,State_Type,Density,NUM_STATE);
+    
+#if (BL_SPACEDIM > 1)
+    //
+    // Vorticity
+    //
+    derive_lst.add("magvort",IndexType::TheCellType(),1,
+		   BL_FORT_PROC_CALL(RNS_DERMAGVORT,rns_dermagvort),grow_box_by_one);
+    // Here we exploit the fact that Xmom = Density + 1
+    //   in order to use the correct interpolation.
+    if (Xmom != Density+1)
+	BoxLib::Error("We are assuming Xmom = Density + 1 in RNS_setup.cpp");
+    derive_lst.addComponent("magvort",desc_lst,State_Type,Density,BL_SPACEDIM+1);
+#endif
   
-//   //
-//   // Sound speed (c)
-//   //
-//   derive_lst.add("soundspeed",IndexType::TheCellType(),1,
-// 		 BL_FORT_PROC_CALL(RNS_DERSOUNDSPEED,rns_dersoundspeed),the_same_box);
-//   derive_lst.addComponent("soundspeed",desc_lst,State_Type,Density,NUM_STATE);
+    //
+    // Div(u)
+    //
+    derive_lst.add("divu",IndexType::TheCellType(),1,
+		   BL_FORT_PROC_CALL(RNS_DERDIVU,rns_derdivu),grow_box_by_one);
+    derive_lst.addComponent("divu",desc_lst,State_Type,Density,1);
+    derive_lst.addComponent("divu",desc_lst,State_Type,Xmom,BL_SPACEDIM);
+    
+    //
+    // Species mass fractions.
+    //
+    for (int i = 0; i < NumSpec; i++)
+    {
+	const std::string name = "Y("+spec_names[i]+")";
+	derive_lst.add(name,IndexType::TheCellType(),1,
+		       BL_FORT_PROC_CALL(RNS_DERSPEC,rns_derspec),the_same_box);
+	derive_lst.addComponent(name,desc_lst,State_Type,Density,1);
+	derive_lst.addComponent(name,desc_lst,State_Type,FirstSpec + i,1);
+    }
+
+    //
+    // Species mole fractions
+    //
+    Array<std::string> var_names_molefrac(NumSpec);
+    for (int i = 0; i < NumSpec; i++)
+    {
+	var_names_molefrac[i] = "X("+spec_names[i]+")";
+    }
+    derive_lst.add("molefrac",IndexType::TheCellType(),NumSpec, var_names_molefrac,
+		   BL_FORT_PROC_CALL(RNS_DERMOLEFRAC,rns_dermolefrac),the_same_box);
+    derive_lst.addComponent("molefrac",desc_lst,State_Type,Density,1);
+    derive_lst.addComponent("molefrac",desc_lst,State_Type,FirstSpec,NumSpec);
+    
+    //
+    // Velocities
+    //
+    derive_lst.add("x_velocity",IndexType::TheCellType(),1,
+		   BL_FORT_PROC_CALL(RNS_DERVEL,rns_dervel),the_same_box);
+    derive_lst.addComponent("x_velocity",desc_lst,State_Type,Density,1);
+    derive_lst.addComponent("x_velocity",desc_lst,State_Type,Xmom,1);
   
-//   //
-//   // Mach number(M)
-//   //
-//   derive_lst.add("MachNumber",IndexType::TheCellType(),1,
-// 		 BL_FORT_PROC_CALL(RNS_DERMACHNUMBER,rns_dermachnumber),the_same_box);
-//   derive_lst.addComponent("MachNumber",desc_lst,State_Type,Density,NUM_STATE);
-  
-// #if (BL_SPACEDIM > 1)
-//   //
-//   // Vorticity
-//   //
-//   derive_lst.add("magvort",IndexType::TheCellType(),1,
-// 		 BL_FORT_PROC_CALL(RNS_DERMAGVORT,rns_dermagvort),grow_box_by_one);
-//   // Here we exploit the fact that Xmom = Density + 1
-//   //   in order to use the correct interpolation.
-//   if (Xmom != Density+1)
-//     BoxLib::Error("We are assuming Xmom = Density + 1 in RNS_setup.cpp");
-//   derive_lst.addComponent("magvort",desc_lst,State_Type,Density,BL_SPACEDIM+1);
-// #endif
-  
-//   //
-//   // Div(u)
-//   //
-//   derive_lst.add("divu",IndexType::TheCellType(),1,
-// 		 BL_FORT_PROC_CALL(RNS_DERDIVU,rns_derdivu),grow_box_by_one);
-//   derive_lst.addComponent("divu",desc_lst,State_Type,Density,1);
-//   derive_lst.addComponent("divu",desc_lst,State_Type,Xmom,BL_SPACEDIM);
-  
-//   //
-//   // Internal energy as derived from rho*E, part of the state
-//   //
-//   derive_lst.add("eint_E",IndexType::TheCellType(),1,
-// 		 BL_FORT_PROC_CALL(RNS_DEREINT1,rns_dereint1),the_same_box);
-//   derive_lst.addComponent("eint_E",desc_lst,State_Type,Density,NUM_STATE);
-  
-//   //
-//   // Internal energy as derived from rho*e, part of the state
-//   //
-//   derive_lst.add("eint_e",IndexType::TheCellType(),1,
-// 		 BL_FORT_PROC_CALL(RNS_DEREINT2,rns_dereint2),the_same_box);
-//   derive_lst.addComponent("eint_e",desc_lst,State_Type,Density,NUM_STATE);
-  
-//   //
-//   // Species mass fractions.
-//   //
-//   for (int i = 0; i < NumSpec; i++)
-//     {
-//       const std::string name = "Y("+spec_names[i]+")";
-//       derive_lst.add(name,IndexType::TheCellType(),1,
-// 		     BL_FORT_PROC_CALL(RNS_DERSPEC,rns_derspec),the_same_box);
-//       derive_lst.addComponent(name,desc_lst,State_Type,Density,1);
-//       derive_lst.addComponent(name,desc_lst,State_Type,FirstSpec + i,1);
-//     }
-//   //
-//   // Species mole fractions
-//   //
-//   Array<std::string> var_names_molefrac(NumSpec);
-//   for (int i = 0; i < NumSpec; i++)
-//     var_names_molefrac[i] = "X("+spec_names[i]+")";
-//   derive_lst.add("molefrac",IndexType::TheCellType(),NumSpec, var_names_molefrac,
-// 		 BL_FORT_PROC_CALL(RNS_DERMOLEFRAC,rns_dermolefrac),the_same_box);
-//   derive_lst.addComponent("molefrac",desc_lst,State_Type,Density,1);
-//   derive_lst.addComponent("molefrac",desc_lst,State_Type,FirstSpec,NumSpec);
-  
-//   //
-//   // Species concentrations
-//   //
-//   // Array<std::string> var_names_conc(NumSpec);
-//   // for (int i = 0; i < NumSpec; i++)
-//   //     var_names_conc[i] = "C("+spec_names[i]+")";
-//   // derive_lst.add("concentration",IndexType::TheCellType(),NumSpec, var_names_conc,
-//   //                BL_FORT_PROC_CALL(RNS_DERCONCENTRATION,rns_derconcentration),the_same_box);
-//   // derive_lst.addComponent("concentration",desc_lst,State_Type,Density,1);
-//   // derive_lst.addComponent("concentration",desc_lst,State_Type,Temp,1);
-//   // derive_lst.addComponent("concentration",desc_lst,State_Type,
-//   //                         FirstSpec,NumSpec);
-  
-//   //
-//   // Velocities
-//   //
-//   derive_lst.add("x_velocity",IndexType::TheCellType(),1,
-// 		 BL_FORT_PROC_CALL(RNS_DERVEL,rns_dervel),the_same_box);
-//   derive_lst.addComponent("x_velocity",desc_lst,State_Type,Density,1);
-//   derive_lst.addComponent("x_velocity",desc_lst,State_Type,Xmom,1);
-  
-// #if (BL_SPACEDIM >= 2)
-//   derive_lst.add("y_velocity",IndexType::TheCellType(),1,
-// 		 BL_FORT_PROC_CALL(RNS_DERVEL,rns_dervel),the_same_box);
-//   derive_lst.addComponent("y_velocity",desc_lst,State_Type,Density,1);
-//   derive_lst.addComponent("y_velocity",desc_lst,State_Type,Ymom,1);
-// #endif
-  
-// #if (BL_SPACEDIM == 3)
-//   derive_lst.add("z_velocity",IndexType::TheCellType(),1,
-// 		 BL_FORT_PROC_CALL(RNS_DERVEL,rns_dervel),the_same_box);
-//   derive_lst.addComponent("z_velocity",desc_lst,State_Type,Density,1);
-//   derive_lst.addComponent("z_velocity",desc_lst,State_Type,Zmom,1);
-// #endif
-  
-//   derive_lst.add("magvel",IndexType::TheCellType(),1,
-// 		 BL_FORT_PROC_CALL(RNS_DERMAGVEL,rns_dermagvel),the_same_box);
-//   derive_lst.addComponent("magvel",desc_lst,State_Type,Density,1);
-//   derive_lst.addComponent("magvel",desc_lst,State_Type,Xmom,BL_SPACEDIM);
-  
-  
-//   derive_lst.add("magmom",IndexType::TheCellType(),1,
-// 		 BL_FORT_PROC_CALL(RNS_DERMAGMOM,rns_dermagmom),the_same_box);
-//   derive_lst.addComponent("magmom",desc_lst,State_Type,Xmom,BL_SPACEDIM);
-  
+#if (BL_SPACEDIM >= 2)
+    derive_lst.add("y_velocity",IndexType::TheCellType(),1,
+		   BL_FORT_PROC_CALL(RNS_DERVEL,rns_dervel),the_same_box);
+    derive_lst.addComponent("y_velocity",desc_lst,State_Type,Density,1);
+    derive_lst.addComponent("y_velocity",desc_lst,State_Type,Ymom,1);
+#endif
+    
+#if (BL_SPACEDIM == 3)
+    derive_lst.add("z_velocity",IndexType::TheCellType(),1,
+		   BL_FORT_PROC_CALL(RNS_DERVEL,rns_dervel),the_same_box);
+    derive_lst.addComponent("z_velocity",desc_lst,State_Type,Density,1);
+    derive_lst.addComponent("z_velocity",desc_lst,State_Type,Zmom,1);
+#endif
+    
     //
     // DEFINE ERROR ESTIMATION QUANTITIES
     //

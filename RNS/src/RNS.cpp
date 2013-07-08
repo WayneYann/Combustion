@@ -41,7 +41,6 @@ int          RNS::verbose       = 0;
 Real         RNS::cfl           = 0.8;
 Real         RNS::init_shrink   = 1.0;
 Real         RNS::change_max    = 1.1;
-ErrorList    RNS::err_list;
 BCRec        RNS::phys_bc;
 int          RNS::NUM_STATE     = -1;
 int          RNS::do_reflux     = 1;
@@ -69,7 +68,12 @@ Real         RNS::Treference    = 298.0;
 
 int          RNS::RK_order      = 2;
 
-int          RNS::allow_untagging = 0;
+ErrorList    RNS::err_list;
+int          RNS::allow_untagging    = 0;
+int          RNS::do_density_ref     = 0;
+int          RNS::do_temperature_ref = 0;
+int          RNS::do_pressure_ref    = 0;
+int          RNS::do_velocity_ref    = 0;
 
 void
 RNS::variableCleanUp () 
@@ -176,7 +180,11 @@ RNS::read_params ()
         }
     }
     
-    pp.query("allow_untagging",allow_untagging);
+    pp.query("allow_untagging"   , allow_untagging);
+    pp.query("do_density_ref"    , do_density_ref);
+    pp.query("do_temperature_ref", do_temperature_ref);
+    pp.query("do_pressure_ref"   , do_pressure_ref);
+    pp.query("do_velocity_ref"   , do_velocity_ref);
 }
 
 RNS::RNS ()
