@@ -10,7 +10,8 @@ subroutine PROBINIT (init,name,namlen,problo,probhi)
 
   integer untin,i
 
-  namelist /fortin/ prob_type, frac, rho_1, rho_2, p0_base
+  namelist /fortin/ prob_type, frac, rho_1, rho_2, p0_base, &
+       dengrad, max_dengrad_lev
 
   ! Build "probin" filename -- the name of file containing fortin namelist.
   integer, parameter :: maxlen = 256
@@ -31,6 +32,9 @@ subroutine PROBINIT (init,name,namlen,problo,probhi)
   rho_2 = 2.0d0
   p0_base = 5.0d0
   
+  dengrad = 0.01
+  max_dengrad_lev = 5
+
   ! Read namelists
   untin = 9
   open(untin,file=probin(1:namlen),form='formatted',status='old')

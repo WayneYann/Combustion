@@ -5,4 +5,7 @@
   rho_2   = 2.0d0
   p0_base = 5.0d0
 
+  dengrad = 0.01
+  max_dengrad_lev = 5
+
 /
