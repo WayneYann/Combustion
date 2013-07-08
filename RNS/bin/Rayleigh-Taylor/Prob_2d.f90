@@ -264,14 +264,6 @@ subroutine rns_denfill(adv,adv_l1,adv_l2,adv_h1,adv_h2, &
   double precision delta(2), xlo(2), time
   double precision adv(adv_l1:adv_h1,adv_l2:adv_h2)
       
-  print *, 'rns_denfill: SHOULD NEVER GET HERE'
-  stop
-  
-  !     Note: this function should not be needed, technically, but is provided
-  !     to filpatch because there are many times in the algorithm when just
-  !     the density is needed.  We try to rig up the filling so that the same
-  !     function is called here and in hypfill where all the states are filled.
-  
   call filcc(adv,adv_l1,adv_l2,adv_h1,adv_h2,domlo,domhi,delta,xlo,bc)
   
   !     XLO
@@ -281,7 +273,7 @@ subroutine rns_denfill(adv,adv_l1,adv_l2,adv_h1,adv_h2, &
   end if
   
   !     XHI
-  if ( bc(1,2,1).eq.EXT_DIR .and. adv_l1.lt.domlo(1)) then
+  if ( bc(1,2,1).eq.EXT_DIR .and. adv_h1.gt.domhi(1)) then
      print *,'SHOULD NEVER GET HERE bc(1,2,1) .eq. EXT_DIR) '
      stop
   end if
@@ -293,7 +285,7 @@ subroutine rns_denfill(adv,adv_l1,adv_l2,adv_h1,adv_h2, &
   end if
   
   !     YHI
-  if ( bc(2,2,1).eq.EXT_DIR .and. adv_l2.lt.domlo(2)) then
+  if ( bc(2,2,1).eq.EXT_DIR .and. adv_h2.gt.domhi(2)) then
      print *,'SHOULD NEVER GET HERE bc(2,2,1) .eq. EXT_DIR) '
      stop
   end if

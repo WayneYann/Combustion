@@ -203,33 +203,28 @@ end subroutine rns_initdata
       print *, 'rns_denfill: SHOULD NEVER GET HERE'
       stop
 
-!     Note: this function should not be needed, technically, but is provided
-!     to filpatch because there are many times in the algorithm when just
-!     the density is needed.  We try to rig up the filling so that the same
-!     function is called here and in hypfill where all the states are filled.
-
       call filcc(adv,adv_l1,adv_l2,adv_h1,adv_h2,domlo,domhi,delta,xlo,bc)
 
-!     XLO
+      !     XLO
       if ( bc(1,1,1).eq.EXT_DIR .and. adv_l1.lt.domlo(1)) then
          print *,'SHOULD NEVER GET HERE bc(1,1,1) .eq. EXT_DIR) '
          stop
       end if
-
-!     XHI
-      if ( bc(1,2,1).eq.EXT_DIR .and. adv_l1.lt.domlo(1)) then
+      
+      !     XHI
+      if ( bc(1,2,1).eq.EXT_DIR .and. adv_h1.gt.domhi(1)) then
          print *,'SHOULD NEVER GET HERE bc(1,2,1) .eq. EXT_DIR) '
          stop
       end if
-
-!     YLO
+      
+      !     YLO
       if ( bc(2,1,1).eq.EXT_DIR .and. adv_l2.lt.domlo(2)) then
          print *,'SHOULD NEVER GET HERE bc(2,1,1) .eq. EXT_DIR) '
          stop
       end if
-
-!     YHI
-      if ( bc(2,2,1).eq.EXT_DIR .and. adv_l2.lt.domlo(2)) then
+      
+      !     YHI
+      if ( bc(2,2,1).eq.EXT_DIR .and. adv_h2.gt.domhi(2)) then
          print *,'SHOULD NEVER GET HERE bc(2,2,1) .eq. EXT_DIR) '
          stop
       end if
