@@ -103,9 +103,10 @@ contains
     allocate(U0(lo(1)-3:hi(1)+3,NVAR))
 
     ! reconstruct in x-direction for states on y-faces
+    U0 = U(lo(1)-3:hi(1)+3,lo(2)-1,:)
+    !
     do j=lo(2), hi(2)+1
 
-       U0 = U(lo(1)-3:hi(1)+3,j-1,:)
        call reconstruct(lo(1),hi(1), ULy(:,j,:), lo(1)-3, hi(1)+3, &
             UG1=ULyG1(:,j,:), UG2=ULyG2(:,j,:),  &
             U0=U0,  &
