@@ -124,7 +124,7 @@ public:
     // Given U, compute Uprime (i.e., dUdt)
     //
     void dUdt(MultiFab& U, MultiFab& Uprime, Real time, int do_fillpatch = 1, 
-	      FluxRegister* fine=0, FluxRegister* current=0);
+	      FluxRegister* fine=0, FluxRegister* current=0, Real dt=0.0);
     //
     // Compute U1 = U2 + c Uprime.
     //
@@ -261,6 +261,7 @@ protected:
     static int       do_temperature_ref;
     static int       do_pressure_ref;
     static int       do_velocity_ref;
+    static int       do_vorticity_ref;
 
     static Real      small_dens;
     static Real      small_temp;

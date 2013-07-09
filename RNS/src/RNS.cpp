@@ -74,6 +74,7 @@ int          RNS::do_density_ref     = 0;
 int          RNS::do_temperature_ref = 0;
 int          RNS::do_pressure_ref    = 0;
 int          RNS::do_velocity_ref    = 0;
+int          RNS::do_vorticity_ref   = 0;
 
 void
 RNS::variableCleanUp () 
@@ -185,6 +186,7 @@ RNS::read_params ()
     pp.query("do_temperature_ref", do_temperature_ref);
     pp.query("do_pressure_ref"   , do_pressure_ref);
     pp.query("do_velocity_ref"   , do_velocity_ref);
+    pp.query("do_vorticity_ref"  , do_vorticity_ref);
 }
 
 RNS::RNS ()

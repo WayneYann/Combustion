@@ -218,7 +218,6 @@ subroutine rns_hypfill(adv,adv_l1,adv_l2,adv_h1,adv_h2, &
   double precision adv(adv_l1:adv_h1,adv_l2:adv_h2,NVAR)
   
   integer i, j, n
-  double precision :: xcen, xshock
   
   do n = 1,NVAR
      call filcc(adv(adv_l1,adv_l2,n), &

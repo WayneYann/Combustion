@@ -90,7 +90,7 @@ RNS::fill_boundary(MultiFab& U, Real time, int do_fillpatch)
 // xxxxx need to add flux register for AMR
 void
 RNS::dUdt(MultiFab& U, MultiFab& Uprime, Real time, int do_fillpatch, 
-	  FluxRegister* fine, FluxRegister* current)
+	  FluxRegister* fine, FluxRegister* current, Real dt)
 {
     FArrayBox  flux[BL_SPACEDIM];
     MultiFab fluxes[BL_SPACEDIM];
@@ -141,7 +141,7 @@ RNS::dUdt(MultiFab& U, MultiFab& Uprime, Real time, int do_fillpatch,
 	    {
 		for (int idim = 0; idim < BL_SPACEDIM ; idim++) 
 		{
-		    current->FineAdd(flux[idim],area[idim][i],idim,i,0,0,NUM_STATE,1.0);
+		    current->FineAdd(flux[idim],area[idim][i],idim,i,0,0,NUM_STATE,dt);
 		}
 	    }
 	}
@@ -151,7 +151,7 @@ RNS::dUdt(MultiFab& U, MultiFab& Uprime, Real time, int do_fillpatch,
     {
 	for (int idim = 0; idim < BL_SPACEDIM ; idim++) 
 	{
-	    fine->CrseInit(fluxes[idim],area[idim],idim,0,0,NUM_STATE);
+	    fine->CrseInit(fluxes[idim],area[idim],idim,0,0,NUM_STATE,-dt);
 	}
     }
 }
@@ -261,7 +261,7 @@ RNS::advance_AD(const MultiFab& Uold, MultiFab& Unew, Real time, Real dt)
 	
 	// Step 2 of RK2
 	doFillpatch = (level == 0) ? 0 : 1;
-	dUdt(Unew, Uprime, time+0.5*dt, doFillpatch, fine, current);
+	dUdt(Unew, Uprime, time+0.5*dt, doFillpatch, fine, current, dt);
 	update_rk(Unew, Uold, dt, Uprime); // Unew = Uold + dt*Uprime
 	post_update(Unew);
     }

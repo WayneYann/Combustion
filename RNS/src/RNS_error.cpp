@@ -18,22 +18,24 @@ RNS::ErrorSetUp ()
 //  err_list.add("lap_var",1,ErrorRec::Special,
 //		 BL_FORT_PROC_CALL(RNS_SPECIAL_ERROR,rns_special_error));
 
-#if 0
     if (do_density_ref)
     {
 	err_list.add("density",1,ErrorRec::Special,
 		     BL_FORT_PROC_CALL(RNS_DENERROR,rns_denerror));
     }
+
     if (do_temperature_ref)
     {
 	err_list.add("Temp",1,ErrorRec::Special,
 		     BL_FORT_PROC_CALL(RNS_TEMPERROR,rns_temperror));
     }
+
     if (do_pressure_ref)
     {
 	err_list.add("pressure",1,ErrorRec::Special,
 		     BL_FORT_PROC_CALL(RNS_PRESSERROR,rns_presserror));
     }
+
     if (do_velocity_ref)
     {
 	err_list.add("x_velocity",1,ErrorRec::Special,
@@ -47,5 +49,13 @@ RNS::ErrorSetUp ()
 		     BL_FORT_PROC_CALL(RNS_VELERROR,rns_velerror));
 #endif
     }
+
+    if (do_vorticity_ref)
+    {
+#if (BL_SPACEDIM >= 2)
+	err_list.add("magvort",1,ErrorRec::Special,
+		     BL_FORT_PROC_CALL(RNS_VORTERROR,rns_vorterror));
 #endif
+    }
+
 }

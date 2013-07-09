@@ -5,18 +5,20 @@ stop_time = 2.5
 # for RK
 amr.multi_level_sdc = 0 
 sdc.t_ratio         = 1
-rns.RK_order        = 3   # 3 works with amr.max_level=0 only
+rns.RK_order        = 2   # 3 works with amr.max_level=0 only
 
 # PROBLEM SIZE & GEOMETRY
 geometry.is_periodic = 1 0 0
 geometry.coord_sys   = 0  # 0 => cart, 1 => RZ  2=>spherical
 geometry.prob_lo     =   0.0d0   0.0d0   0.0d0
 geometry.prob_hi     =   0.5d0   1.0d0   1.0d0
-amr.n_cell           =   256     512     1
+#amr.n_cell           =   256     512     1
+amr.n_cell           =   128     256     1
 
 rns.gravity    = -1.0
 rns.gamma      =  1.6666666666666667
 rns.Treference =  0.0
+rns.do_density_ref = 1
 
 # >>>>>>>>>>>>>  BC FLAGS <<<<<<<<<<<<<<<<
 # 0 = Interior           3 = Symmetry
@@ -38,7 +40,7 @@ amr.v              = 1       # verbosity in Amr.cpp
 amr.grid_log       = grdlog  # name of grid logging file
 
 # REFINEMENT / REGRIDDING 
-amr.max_level       = 0       # maximum level number allowed
+amr.max_level       = 1       # maximum level number allowed
 amr.ref_ratio       = 2 2 2 2 # refinement ratio
 amr.regrid_int      = 2 2 2 2 # how often to regrid
 amr.blocking_factor = 4       # block factor in grid generation
