@@ -59,7 +59,7 @@ amr.n_cell          = 96 96
 amr.n_cell          = 384 384
 amr.max_grid_size   = 32
 #amr.max_grid_size   = 256 64 64
-#amr.refine_grid_layout = 0
+amr.refine_grid_layout = 0
 amr.blocking_factor = 16
 max_step            = 1000
 
