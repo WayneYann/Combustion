@@ -56,7 +56,7 @@ cg.cg_solver=1
 geometry.prob_lo    = -0.00114 0.0
 geometry.prob_hi    =  0.00114 0.00228
 amr.n_cell          = 96 96
-#amr.n_cell          = 384 384
+amr.n_cell          = 384 384
 amr.max_grid_size   = 32
 #amr.max_grid_size   = 256 64 64
 #amr.refine_grid_layout = 0
@@ -78,7 +78,6 @@ ns.cfl              = 0.7
 
 amr.v=1
 amr.max_level        = 0
-#amr.max_level        = 3
 amr.ref_ratio       = 2 2 2 2 # refinement ratio
 amr.regrid_int      = 2       # how often to regrid
 amr.n_error_buf     = 4 4 4 4 # number of buffer cells in error est
