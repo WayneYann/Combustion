@@ -15,6 +15,10 @@ using std::ostream;
 enum StateType { State_Type = 0,
                  NUM_STATE_TYPE };
 
+enum RNSFillType { use_FillPatchIterator = 0, 
+		   use_FillCoarsePatch, 
+		   use_FillBoundary }; 
+
 class RNS
     :
     public AmrLevel
@@ -119,11 +123,11 @@ public:
     //
     // fill boundary 
     //
-    void fill_boundary(MultiFab& U, Real time, int do_fillpatch);
+    void fill_boundary(MultiFab& U, Real time, RNSFillType type);
     //
     // Given U, compute Uprime (i.e., dUdt)
     //
-    void dUdt(MultiFab& U, MultiFab& Uprime, Real time, int do_fillpatch = 1, 
+    void dUdt(MultiFab& U, MultiFab& Uprime, Real time, RNSFillType fill_boundary_type, 
 	      FluxRegister* fine=0, FluxRegister* current=0, Real dt=0.0);
     //
     // Compute U1 = U2 + c Uprime.
