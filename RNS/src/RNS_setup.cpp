@@ -131,17 +131,28 @@ RNS::variableSetUp ()
     LastSpec = cnt++;
     
     NUM_STATE = cnt;
-    
+
+    int nriemann = NUM_RIEMANN_TYPE;
+    int nriemann_F;
+
     // Define NUM_GROW from the f90 module.
-    BL_FORT_PROC_CALL(GET_METHOD_PARAMS, get_method_params)(&NUM_GROW);
+    BL_FORT_PROC_CALL(GET_METHOD_PARAMS, get_method_params)(&NUM_GROW, &nriemann_F);
     
+    if (nriemann_F != nriemann)
+    {
+	BoxLib::Abort("Something is wrong with RiemannType");
+    }
+
     const Real run_strt = ParallelDescriptor::second() ; 
     
     int dm = BL_SPACEDIM;
     
+    int riemann = Riemann;
+
     BL_FORT_PROC_CALL(SET_METHOD_PARAMS, set_method_params)
 	(dm, Density, Xmom, Eden, Temp, FirstSpec, NUM_STATE, NumSpec, 
-	 small_dens, small_temp, small_pres, gamma, gravity, Treference);
+	 small_dens, small_temp, small_pres, gamma, gravity, Treference,
+	 riemann);
     
     Real run_stop = ParallelDescriptor::second() - run_strt;
   

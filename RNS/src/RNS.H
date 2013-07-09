@@ -219,7 +219,7 @@ public:
     static int NUM_STATE;
     static int Density, Xmom, Ymom, Zmom, Eden, Temp;
     static int FirstSpec, LastSpec, NumSpec;
-    
+
 protected:
 
     static void read_params ();
@@ -276,7 +276,13 @@ protected:
     static Real      Treference;
 
     static int       RK_order;
+
+    enum RiemannType { HLL = 0,
+		       JBB,
+		       NUM_RIEMANN_TYPE };
     
+    static RiemannType Riemann;
+        
     static class ChemDriver* chemSolve;
 };    
 

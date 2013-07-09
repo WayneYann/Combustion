@@ -2,11 +2,12 @@
 ! ::: ----------------------------------------------------------------
 ! ::: 
 ! Passing data from f90 back to C++
-subroutine get_method_params(ngrow_c)
+subroutine get_method_params(ngrow_c, nriemann_c)
   use meth_params_module
   implicit none 
-  integer, intent(out) :: ngrow_c
+  integer, intent(out) :: ngrow_c, nriemann_c
   ngrow_c = NGROW
+  nriemann_c = nriemann
 end subroutine get_method_params
 
 ! ::: 
@@ -14,7 +15,7 @@ end subroutine get_method_params
 ! ::: 
 subroutine set_method_params(dm,Density,Xmom,Eden,Temp,FirstSpec, &
      NUM_STATE, NumSpec, small_dens_in, small_temp_in, small_pres_in, &
-     gamma_in, grav_in, Tref_in)
+     gamma_in, grav_in, Tref_in, riemann_in)
 
   use meth_params_module
   use eos_module
@@ -22,7 +23,8 @@ subroutine set_method_params(dm,Density,Xmom,Eden,Temp,FirstSpec, &
   implicit none 
 
   integer, intent(in) :: dm
-  integer, intent(in) :: Density, Xmom, Eden, Temp, FirstSpec, NUM_STATE, NumSpec
+  integer, intent(in) :: Density, Xmom, Eden, Temp, FirstSpec, NUM_STATE, NumSpec, &
+       riemann_in
   double precision, intent(in) :: small_dens_in, small_temp_in, small_pres_in, &
        gamma_in, grav_in, Tref_in
   
@@ -81,6 +83,8 @@ subroutine set_method_params(dm,Density,Xmom,Eden,Temp,FirstSpec, &
   call eos_get_small_temp(small_temp)
 
   gravity = grav_in
+
+  riemann_solver = riemann_in
 
 end subroutine set_method_params
 

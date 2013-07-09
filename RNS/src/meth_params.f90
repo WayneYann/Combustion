@@ -5,6 +5,12 @@ module meth_params_module
   ! fifth-order WENO needs 3 ghost cells
   integer, parameter :: NGROW = 3  
 
+  ! Riemann solvers
+  integer, save :: riemann_solver
+  integer, parameter :: HLL_solver = 0
+  integer, parameter :: JBB_solver = 1
+  integer, parameter :: nriemann   = 2
+
   integer, save :: ndim   ! spatial dimension
   integer, save :: NCHARV ! number of characteristic variables
   integer, save :: CFS    ! first species in characteristic variables

@@ -68,6 +68,8 @@ Real         RNS::Treference    = 298.0;
 
 int          RNS::RK_order      = 2;
 
+RNS::RiemannType RNS::Riemann   = RNS::JBB;
+
 ErrorList    RNS::err_list;
 int          RNS::allow_untagging    = 0;
 int          RNS::do_density_ref     = 0;
@@ -116,6 +118,12 @@ RNS::read_params ()
     pp.query("Treference",Treference);
     
     pp.query("RK_order",RK_order);
+
+    {
+	int riemann = RNS::Riemann;
+	pp.query("Riemann", riemann);
+	Riemann = static_cast<RiemannType>(riemann);
+    }
 
     // Get boundary conditions
     Array<int> lo_bc(BL_SPACEDIM), hi_bc(BL_SPACEDIM);
