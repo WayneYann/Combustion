@@ -20,7 +20,6 @@ ns.zeroBndryVisc=1
 
 proj.proj_2 = 1
 ns.num_divu_iters = 3
-ns.num_divu_iters = 0
 
 ns.consumptionName = CH3OCH3
 ht.plot_heat_release=1
