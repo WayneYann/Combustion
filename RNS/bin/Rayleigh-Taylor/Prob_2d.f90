@@ -10,7 +10,7 @@ subroutine PROBINIT (init,name,namlen,problo,probhi)
 
   integer untin,i
 
-  namelist /fortin/ prob_type, frac, rho_1, rho_2, p0_base, &
+  namelist /fortin/ prob_type, frac, rho_1, rho_2, p0_base, pertmag, &
        dengrad, max_dengrad_lev
 
   ! Build "probin" filename -- the name of file containing fortin namelist.
@@ -31,6 +31,7 @@ subroutine PROBINIT (init,name,namlen,problo,probhi)
   rho_1 = 1.0d0
   rho_2 = 2.0d0
   p0_base = 5.0d0
+  pertmag = 0.0d0
   
   dengrad = 0.01
   max_dengrad_lev = 5
@@ -93,6 +94,21 @@ subroutine rns_initdata(level,time,lo,hi,nscal, &
   double precision, parameter :: ZERO=0.d0, HALF=0.5d0, &
        PI = 3.141592653589793238462643383279502884197d0
 
+  double precision :: r 
+  integer :: nseed
+  integer, allocatable :: seed(:)
+  logical, save :: first_call = .true.
+
+  if (first_call) then
+     call random_seed(SIZE=nseed)
+     allocate(seed(nseed))
+     call random_seed(GET=seed)
+     seed = seed + lo(1) + lo(2) + hi(1) + hi(2)
+     call random_seed(PUT=seed)
+     deallocate(seed)
+     first_call = .false.
+  end if
+
   if (NSPEC.ne. 2) then
      write(6,*)"nspec .ne. 2", NSPEC
      stop
@@ -138,6 +154,12 @@ subroutine rns_initdata(level,time,lo,hi,nscal, &
            ! -- this prevents the RT from bending.
            pertheight = 0.01d0*HALF*(cos(2.0d0*PI*xcen/L_x) + &
                 cos(2.0d0*PI*(L_x-xcen)/L_x)) + 0.5d0
+
+           if (pertmag .gt. 0.0d0) then
+              call random_number(r)
+              pertheight = pertheight * (1.d0 + r*1.d-10)
+           end if
+
            state(i,j,URHO) = rho_1 + ((rho_2-rho_1)/2.0d0)* &
                 (1+tanh((ycen-pertheight)/0.005d0))
 

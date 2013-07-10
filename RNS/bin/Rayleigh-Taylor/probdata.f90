@@ -10,6 +10,7 @@ module probdata_module
   double precision, save :: rho_1, rho_2
   double precision, save :: p0_base
   double precision, save :: L_x
+  double precision, save :: pertmag
 
 
   ! These determine the refinement criteria
