@@ -97,7 +97,7 @@ contains
 
 
   subroutine eos_get_T(T, e, Y, pt_index)
-    double precision, intent(out) :: T
+    double precision, intent(inout) :: T
     double precision, intent(in) :: e, Y(nspecies)
     integer, optional, intent(in) :: pt_index(:)
 
