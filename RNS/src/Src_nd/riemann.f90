@@ -191,7 +191,6 @@ contains
        Yl    = UL(i,UFS:UFS+nspec-1) * rinvl
        rel   = retl - 0.5d0*rl*(vl(1)**2+vl(2)**2+vl(3)**2)
        el    = rel * rinvl       
-       pti = i
        call eos_given_ReY(pl, cl, gamcl, Tl, dpdr, dpde, rl, el, Yl)
 
        rr    = max(UR(i,URHO), smalld)
