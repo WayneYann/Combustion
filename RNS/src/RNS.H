@@ -279,6 +279,7 @@ protected:
 
     enum RiemannType { HLL = 0,
 		       JBB,
+		       HLLC,
 		       NUM_RIEMANN_TYPE };
     
     static RiemannType Riemann;

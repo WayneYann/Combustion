@@ -1,7 +1,7 @@
 module riemann_module
 
   use meth_params_module, only : ndim, NVAR, URHO, UMX, UMY, UMZ, UEDEN, UTEMP, UFS, NSPEC, &
-       riemann_solver, HLL_solver, JBB_solver
+       riemann_solver, HLL_solver, JBB_solver, HLLC_solver
 
   implicit none
 
@@ -23,6 +23,8 @@ contains
           call riemann_HLL(lo, hi, UL, UR, flx, dir)
        case (JBB_solver)
           call riemann_JBB(lo, hi, UL, UR, flx, dir)
+       case (HLLC_solver)
+          call riemann_HLLC(lo, hi, UL, UR, flx, dir)
        case default
           print *, 'unknown riemann solver'
           stop
@@ -147,7 +149,7 @@ contains
 
 
   subroutine riemann_JBB(lo, hi, UL, UR, flx, dir)
-    use prob_params_module, only : physbc_lo,Symmetry
+!    use prob_params_module, only : physbc_lo,Symmetry
     use eos_module, only : smalld, smallp, eos_given_ReY
     integer, intent(in) :: lo, hi
     integer, intent(in), optional :: dir
@@ -168,7 +170,6 @@ contains
     double precision :: sgnm, spout, spin, ushock, scr, frac
     
     double precision, parameter :: small  = 1.d-8
-    double precision, parameter :: difmag = 0.1d0
 
     if (present(dir)) then
        idir = dir
@@ -286,7 +287,7 @@ contains
        pgdnv = max(pgdnv,smallp)
        
        ! Enforce that fluxes through a symmetry plane are hard zero.
-       if (i .eq.0 .and. physbc_lo(idir) .eq. Symmetry) vgdnv(1) = 0.d0
+!       if (i .eq.0 .and. physbc_lo(idir) .eq. Symmetry) vgdnv(1) = 0.d0
 
        flx(i,URHO) = rgdnv*vgdnv(1)
 
@@ -317,6 +318,146 @@ contains
     end do
 
   end subroutine riemann_JBB
+
+
+  subroutine riemann_HLLC(lo, hi, UL, UR, flx, dir)
+!    use prob_params_module, only : physbc_lo,Symmetry
+    use eos_module, only : smalld, smallp, eos_given_ReY
+    integer, intent(in) :: lo, hi
+    integer, intent(in), optional :: dir
+    double precision, intent(in ) ::  UL(lo:hi+1,NVAR)
+    double precision, intent(in ) ::  UR(lo:hi+1,NVAR)
+    double precision, intent(out) :: flx(lo:hi+1,NVAR)
+
+    integer :: i, n, idir, ivel(3), idim
+    double precision :: vflag(3), dpdr(NSPEC), dpde
+    double precision :: rl, retl, Tl, Yl(NSPEC), vl(3), el, pl, rel, rinvl
+    double precision :: rr, retr, Tr, Yr(NSPEC), vr(3), er, pr, rer, rinvr
+    double precision :: cl, gamcl, Smul, Sl
+    double precision :: cr, gamcr, Smur, Sr
+    double precision :: Sstar, rstar, vstar(3), etstar
+
+    if (present(dir)) then
+       idir = dir
+    else
+       idir = 1
+    end if
+
+    call set_vel(idir, ivel, vflag)
+
+    do i=lo,hi+1
+       
+       rl    = max(UL(i,URHO), smalld)
+       rinvl = 1.d0/rl
+       vl(1) = UL(i,ivel(1)) * vflag(1) * rinvl
+       vl(2) = UL(i,ivel(2)) * vflag(2) * rinvl
+       vl(3) = UL(i,ivel(3)) * vflag(3) * rinvl
+       retl  = UL(i,UEDEN)
+       Yl    = UL(i,UFS:UFS+nspec-1) * rinvl
+       rel   = retl - 0.5d0*rl*(vl(1)**2+vl(2)**2+vl(3)**2)
+       el    = rel * rinvl       
+       call eos_given_ReY(pl, cl, gamcl, Tl, dpdr, dpde, rl, el, Yl)
+
+       rr    = max(UR(i,URHO), smalld)
+       rinvr = 1.d0/rr
+       vr(1) = UR(i,ivel(1)) * vflag(1) * rinvr
+       vr(2) = UR(i,ivel(2)) * vflag(2) * rinvr
+       vr(3) = UR(i,ivel(3)) * vflag(3) * rinvr
+       retr  = UR(i,UEDEN)
+       Yr    = UR(i,UFS:UFS+nspec-1) * rinvr
+       rer   = retr - 0.5d0*rr*(vr(1)**2+vr(2)**2+vr(3)**2)
+       er    = rer * rinvr       
+       call eos_given_ReY(pr, cr, gamcr, Tr, dpdr, dpde, rr, er, Yr)
+
+       ! wave speed estimates
+       Sl = min(vl(1)-cl, vr(1)-cr)
+       Sr = max(vl(1)+cl, vr(1)+cr)
+       Smul = Sl - vl(1)
+       Smur = Sr - vr(1)
+       Sstar = (pr-pl+rl*vl(1)*Smul-rr*vr(1)*Smur)/(rl*Smul-rr*Smur)
+
+       ! HLLC flux
+       if (Sl .ge. 0.d0) then
+
+          flx(i,URHO) = rl*vl(1)
+
+          do idim=1,ndim
+             flx(i,ivel(idim)) = flx(i,URHO)*vl(idim)
+          end do
+          flx(i,ivel(1)) = flx(i,ivel(1)) + pl
+
+          flx(i,UEDEN) = vl(1)*(retl + pl)
+          flx(i,UTEMP) = 0.d0
+
+          do n=1,NSPEC
+             flx(i,UFS+n-1) = flx(i,URHO) * Yl(n)
+          end do
+
+       else if (Sr .le. 0.d0) then
+
+          flx(i,URHO) = rr*vr(1)
+
+          do idim=1,ndim
+             flx(i,ivel(idim)) = flx(i,URHO)*vr(idim)
+          end do
+          flx(i,ivel(1)) = flx(i,ivel(1)) + pr
+
+          flx(i,UEDEN) = vr(1)*(retr + pr)
+          flx(i,UTEMP) = 0.d0
+
+          do n=1,NSPEC
+             flx(i,UFS+n-1) = flx(i,URHO) * Yr(n)
+          end do
+
+       else if (Sstar .ge. 0.d0) then
+
+          rstar = rl*Smul/(Sl-Sstar)
+          vstar(1) = Sstar
+          vstar(2) = vl(2)
+          vstar(3) = vl(3)
+          etstar = retl*rinvl+(Sstar-vl(1))*(Sstar+pl/(rl*Smul))
+
+          flx(i,URHO) = rl*vl(1) + Sl*(rstar-rl)
+
+          do idim=1,ndim
+             flx(i,ivel(idim)) = rl*vl(1)*vl(idim) + Sl*(rstar*vstar(idim)-rl*vl(idim))
+          end do
+          flx(i,ivel(1)) = flx(i,ivel(1)) + pl
+
+          flx(i,UEDEN) = vl(1)*(retl + pl) + Sl*(rstar*etstar-retl)
+          flx(i,UTEMP) = 0.d0
+
+          do n=1,NSPEC
+             flx(i,UFS+n-1) = flx(i,URHO) * Yl(n)
+          end do
+
+       else
+
+          rstar = rr*Smur/(Sr-Sstar)
+          vstar(1) = Sstar
+          vstar(2) = vr(2)
+          vstar(3) = vr(3)
+          etstar = retr*rinvr+(Sstar-vr(1))*(Sstar+pr/(rr*Smur))
+
+          flx(i,URHO) = rr*vr(1) + Sr*(rstar-rr)
+
+          do idim=1,ndim
+             flx(i,ivel(idim)) = rr*vr(1)*vr(idim) + Sr*(rstar*vstar(idim)-rr*vr(idim))
+          end do
+          flx(i,ivel(1)) = flx(i,ivel(1)) + pr
+
+          flx(i,UEDEN) = vr(1)*(retr + pr) + Sr*(rstar*etstar-retr)
+          flx(i,UTEMP) = 0.d0
+
+          do n=1,NSPEC
+             flx(i,UFS+n-1) = flx(i,URHO) * Yr(n)
+          end do
+
+       end if
+
+    end do
+
+  end subroutine riemann_HLLC
 
 
   subroutine set_vel(idir, ivel, vflag)

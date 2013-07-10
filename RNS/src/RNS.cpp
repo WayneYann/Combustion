@@ -130,6 +130,10 @@ RNS::read_params ()
     {
 	difmag = 0.1;
     }
+    else
+    {
+	difmag = -1.0;
+    }
     pp.query("difmag", difmag);
 
     // Get boundary conditions
