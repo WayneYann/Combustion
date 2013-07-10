@@ -1,6 +1,6 @@
 module hypterm_module
 
-  use meth_params_module, only : NVAR
+  use meth_params_module, only : NVAR, URHO, UMX, UMY, UTEMP, difmag
   use reconstruct_module, only : reconstruct
   use riemann_module, only : riemann
 
@@ -12,8 +12,9 @@ module hypterm_module
 
 contains
 
-  subroutine hypterm(lo,hi,U,Ulo,Uhi,fx,fy)
+  subroutine hypterm(lo,hi,U,Ulo,Uhi,fx,fy,dx)
     integer, intent(in) :: lo(2), hi(2), Ulo(2), Uhi(2)
+    double precision, intent(in) :: dx(2)
     double precision, intent(in ) ::  U(Ulo(1):Uhi(1)  ,Ulo(2):Uhi(2)  ,NVAR)
     double precision, intent(out) :: fx( lo(1): hi(1)+1, lo(2): hi(2)  ,NVAR)
     double precision, intent(out) :: fy( lo(1): hi(1)  , lo(2): hi(2)+1,NVAR)
@@ -24,6 +25,9 @@ contains
     double precision, allocatable :: URyG1(:,:,:), URyG2(:,:,:)
     double precision, allocatable :: U0(:,:)
     integer :: tlo(2), thi(2), i, j, n
+
+    double precision, allocatable :: divv(:,:), vx(:,:), vy(:,:)
+    double precision :: rhoInv, dvdx, dvdy, div1, dxinv(2)
 
     do n=1,NVAR
        do j=lo(2), hi(2)
@@ -138,6 +142,57 @@ contains
     end do
 
     deallocate(ULy,URy, URyG1, ULyG2, ULyG1, URyG2, flux, U0)
+
+    if (difmag .gt. 0.0d0) then
+
+       dxinv = 1.d0/dx
+
+       allocate(vx  (lo(1)-1:hi(1)+1,lo(2)-1:hi(2)+1))
+       allocate(vy  (lo(1)-1:hi(1)+1,lo(2)-1:hi(2)+1))
+       allocate(divv(lo(1)  :hi(1)+1,lo(2)  :hi(2)+1))
+
+       do    j=lo(2)-1,hi(2)+1
+          do i=lo(1)-1,hi(1)+1
+             rhoInv = 1.d0/U(i,j,URHO)
+             vx(i,j) = U(i,j,UMX)*rhoInv
+             vy(i,j) = U(i,j,UMY)*rhoInv
+          end do
+       end do
+
+       do    j=lo(2),hi(2)+1
+          do i=lo(1),hi(1)+1
+             
+             dvdx = 0.5d0*(vx(i,j)-vx(i-1,j)+vx(i,j-1)-vx(i-1,j-1))*dxinv(1)
+             dvdy = 0.5d0*(vy(i,j)-vy(i,j-1)+vy(i-1,j)-vy(i-1,j-1))*dxinv(2)
+             divv(i,j) = dvdx + dvdy
+
+          end do
+       end do
+
+       do n=1,NVAR
+          if (n.ne.UTEMP) then
+
+             do   j = lo(2),hi(2)
+               do i = lo(1),hi(1)+1
+                  div1 = .5d0*(divv(i,j) + divv(i,j+1))
+                  div1 = difmag*min(0.d0,div1)
+                  fx(i,j,n) = fx(i,j,n) + dx(1)*div1*(U(i,j,n) - U(i-1,j,n))
+               enddo
+            enddo
+
+            do    j = lo(2),hi(2)+1
+               do i = lo(1),hi(1)
+                  div1 = .5d0*(divv(i,j) + divv(i+1,j))
+                  div1 = difmag*min(0.d0,div1)
+                  fy(i,j,n) = fy(i,j,n) + dx(2)*div1*(U(i,j,n) - U(i,j-1,n))
+               enddo
+            enddo
+
+          end if
+       end do
+
+       deallocate(vx,vy,divv)
+    end if
 
   end subroutine hypterm
 

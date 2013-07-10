@@ -151,7 +151,7 @@ contains
     ! advance (pass control to sdclib)
     !
     call build(bpt_sdc_prep, "sdc_prep")
-    call sdc_sweeper_set_q0(imex2sweeper(sdc%imex), mfptr(U))
+    call sdc_imex_set_q0(sdc%imex, mfptr(U))
     call sdc_imex_spread(sdc%imex, 0.0d0)
     call destroy(bpt_sdc_prep)
 
@@ -164,7 +164,6 @@ contains
 
     call build(bpt_sdc_iter, "sdc_iter")
     do k = 1, sdc%iters
-       call sdc_imex_integrate_predictor(sdc%imex, dt)
        call sdc_imex_sweep(sdc%imex, 0.0d0, dt, 0)
 
        ! check residual
@@ -190,7 +189,7 @@ contains
     end do
     call destroy(bpt_sdc_iter)
 
-    call sdc_sweeper_get_qend(imex2sweeper(sdc%imex), mfptr(U))    
+    call sdc_imex_get_qend(sdc%imex, mfptr(U))    
 
     call reset_density(U)
     call impose_hard_bc(U)
@@ -311,7 +310,7 @@ contains
     !
     ! advance
     !
-    call sdc_sweeper_set_q0(mrex2sweeper(sdc%mrex), mfptr(U))
+    call sdc_mrex_set_q0(sdc%mrex, mfptr(U))
     call sdc_mrex_spread(sdc%mrex, 0.0d0)
     call destroy(bpt_sdc_prep)
 
@@ -324,7 +323,6 @@ contains
 
     call build(bpt_sdc_iter, "sdc_iter")
     do k = 1, sdc%iters
-       call sdc_mrex_integrate(sdc%mrex, dt);
        call sdc_mrex_sweep(sdc%mrex, 0.0d0, dt, 0);
 
        ! check residual
@@ -349,7 +347,7 @@ contains
        end if
     end do
 
-    call sdc_sweeper_get_qend(mrex2sweeper(sdc%mrex), mfptr(U))
+    call sdc_mrex_get_qend(sdc%mrex, mfptr(U))
 
     call reset_density(U)
     call impose_hard_bc(U)

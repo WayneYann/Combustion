@@ -5,16 +5,16 @@ module eos_module
   double precision, save, private :: Tref = 0.d0
   double precision, save, private :: eref(2)
 
-  double precision, parameter :: Ru = 8.31451d+07
-  double precision, parameter :: mu = 28.97d0
-  double precision, parameter :: R_mu = Ru/mu
+  double precision, parameter, private :: Ru = 8.31451d+07
+  double precision, parameter, private :: mu = 28.97d0
+  double precision, parameter, private :: R_mu = Ru/mu
 
   double precision, save, public :: gamma_const = 1.4d0
 
-  double precision, save, private :: smalld = 1.d-50
-  double precision, save, private :: smallt = 1.d-50
-  double precision, save, private :: smallp = 1.d-50
-  double precision, save, private :: smallc = 1.d-50
+  double precision, save, public :: smalld = 1.d-50
+  double precision, save, public :: smallt = 1.d-50
+  double precision, save, public :: smallp = 1.d-50
+  double precision, save, public :: smallc = 1.d-50
 
   double precision, save, private :: cv = Ru/(mu*0.4d0)
 
@@ -122,14 +122,15 @@ contains
   end subroutine eos_given_RTY
 
 
-  subroutine eos_given_ReY(p, c, T, dpdr, dpde, rho, e, Y, pt_index)
-    double precision, intent(out) :: p, c, T, dpdr(2), dpde
+  subroutine eos_given_ReY(p, c, G, T, dpdr, dpde, rho, e, Y, pt_index)
+    double precision, intent(out) :: p, c, G, T, dpdr(2), dpde
     double precision, intent(in ) :: rho, e, Y(2)
     integer, optional, intent(in) :: pt_index(:)
     T = e/cv
     p = rho*R_mu*T
     p = max(p, smallp)
     c = sqrt(gamma_const*p/rho)
+    G = gamma_const
     dpdr(1) = (gamma_const-1.d0)*e
     dpdr(2) = (gamma_const-1.d0)*e
     dpde    = (gamma_const-1.d0)*rho

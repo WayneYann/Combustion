@@ -14,7 +14,8 @@ geometry.prob_lo     =   0.0
 geometry.prob_hi     =   1.0
 amr.n_cell           =   128
 
-rns.gamma = 1.4
+rns.Riemann    = 0     # 0: HLL,  1: JBB
+rns.gamma      = 1.4
 rns.Treference = 0.0
 
 # >>>>>>>>>>>>>  BC FLAGS <<<<<<<<<<<<<<<<

@@ -28,7 +28,7 @@ contains
     integer :: i, ii, ivar, m, n, ivel(3), idir, iextra
     double precision :: egv(NCHARV,NCHARV)
     double precision :: gt, b, d(NSPEC)
-    double precision :: rho, rhoInv, p, c, T, dpdr(NSPEC), dpde, e, ek, H, Y(NSPEC)
+    double precision :: rho, rhoInv, p, c, gamc, T, dpdr(NSPEC), dpde, e, ek, H, Y(NSPEC)
     double precision :: vel(3), vflag(3)
     double precision :: charv(-2:2,NCHARV) ! characteristic variables
     double precision, dimension(NCHARV) :: vp, vm, vg1, vg2
@@ -98,7 +98,7 @@ contains
        e = Ubase(i,UEDEN)*rhoInV - ek
        T = Ubase(i,UTEMP)
 
-       call eos_given_ReY(p,c,T,dpdr,dpde,rho,e,Y)
+       call eos_given_ReY(p,c,gamc,T,dpdr,dpde,rho,e,Y)
 
        eref = eos_get_eref(Y)
        e = e - eref

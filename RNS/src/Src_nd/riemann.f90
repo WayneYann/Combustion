@@ -1,6 +1,7 @@
 module riemann_module
 
-  use meth_params_module, only : ndim, NVAR, URHO, UMX, UMY, UMZ, UEDEN, UTEMP, UFS, NSPEC
+  use meth_params_module, only : ndim, NVAR, URHO, UMX, UMY, UMZ, UEDEN, UTEMP, UFS, NSPEC, &
+       riemann_solver, HLL_solver, JBB_solver
 
   implicit none
 
@@ -11,6 +12,25 @@ module riemann_module
 contains
 
   subroutine riemann(lo, hi, UL, UR, flx, dir)
+    integer, intent(in) :: lo, hi
+    integer, intent(in), optional :: dir
+    double precision, intent(in ) ::  UL(lo:hi+1,NVAR)
+    double precision, intent(in ) ::  UR(lo:hi+1,NVAR)
+    double precision, intent(out) :: flx(lo:hi+1,NVAR)
+
+    select case (riemann_solver)
+       case (HLL_solver)
+          call riemann_HLL(lo, hi, UL, UR, flx, dir)
+       case (JBB_solver)
+          call riemann_JBB(lo, hi, UL, UR, flx, dir)
+       case default
+          print *, 'unknown riemann solver'
+          stop
+       end select
+
+  end subroutine riemann
+
+  subroutine riemann_HLL(lo, hi, UL, UR, flx, dir)
     integer, intent(in) :: lo, hi
     integer, intent(in), optional :: dir
     double precision, intent(in ) ::  UL(lo:hi+1,NVAR)
@@ -54,7 +74,7 @@ contains
     end do
 
     deallocate(fl,fr,alpha_plus,alpha_mins,alpha_pm)
-  end subroutine riemann
+  end subroutine riemann_HLL
 
 
   subroutine compute_flux_and_alpha(lo, hi, U, F, ap, am, dir)
@@ -68,7 +88,7 @@ contains
 
     integer :: i, n, idir
     double precision :: rho, m(3), rhoE, v(3), vn
-    double precision :: rhoInv, p, c, dpdr(NSPEC), dpde, T, e, ek, Y(NSPEC)
+    double precision :: rhoInv, p, c, gamc, dpdr(NSPEC), dpde, T, e, ek, Y(NSPEC)
 
     if (present(dir)) then
        idir = dir
@@ -101,7 +121,7 @@ contains
 
        Y = U(i,UFS:UFS+NSPEC-1)*rhoInv
 
-       call eos_given_ReY(p,c,T,dpdr,dpde,rho,e,Y)
+       call eos_given_ReY(p,c,gamc,T,dpdr,dpde,rho,e,Y)
 
        vn = v(idir)
 
@@ -124,5 +144,224 @@ contains
        end do
     end do
   end subroutine compute_flux_and_alpha
+
+
+  subroutine riemann_JBB(lo, hi, UL, UR, flx, dir)
+    use prob_params_module, only : physbc_lo,Symmetry
+    use eos_module, only : smalld, smallp, eos_given_ReY
+    integer, intent(in) :: lo, hi
+    integer, intent(in), optional :: dir
+    double precision, intent(in ) ::  UL(lo:hi+1,NVAR)
+    double precision, intent(in ) ::  UR(lo:hi+1,NVAR)
+    double precision, intent(out) :: flx(lo:hi+1,NVAR)
+
+    integer :: i, n, idir, ivel(3), idim
+    double precision :: vflag(3), dpdr(NSPEC), dpde
+    double precision :: rgdnv,regdnv, pgdnv, vgdnv(3), ekgdnv
+    double precision :: rl, retl, Tl, Yl(NSPEC), vl(3), el, pl, rel, rinvl
+    double precision :: rr, retr, Tr, Yr(NSPEC), vr(3), er, pr, rer, rinvr
+    double precision :: wl, cl, gamcl
+    double precision :: wr, cr, gamcr
+    double precision :: csmall, wsmall 
+    double precision :: rstar, cstar, estar, pstar, ustar
+    double precision :: ro, uo, po, reo, gamco, co, entho
+    double precision :: sgnm, spout, spin, ushock, scr, frac
+    
+    double precision, parameter :: small  = 1.d-8
+    double precision, parameter :: difmag = 0.1d0
+
+    if (present(dir)) then
+       idir = dir
+    else
+       idir = 1
+    end if
+
+    call set_vel(idir, ivel, vflag)
+
+    do i=lo,hi+1
+       
+       rl    = max(UL(i,URHO), smalld)
+       rinvl = 1.d0/rl
+       vl(1) = UL(i,ivel(1)) * vflag(1) * rinvl
+       vl(2) = UL(i,ivel(2)) * vflag(2) * rinvl
+       vl(3) = UL(i,ivel(3)) * vflag(3) * rinvl
+       retl  = UL(i,UEDEN)
+       Yl    = UL(i,UFS:UFS+nspec-1) * rinvl
+       rel   = retl - 0.5d0*rl*(vl(1)**2+vl(2)**2+vl(3)**2)
+       el    = rel * rinvl       
+       call eos_given_ReY(pl, cl, gamcl, Tl, dpdr, dpde, rl, el, Yl)
+
+       rr    = max(UR(i,URHO), smalld)
+       rinvr = 1.d0/rr
+       vr(1) = UR(i,ivel(1)) * vflag(1) * rinvr
+       vr(2) = UR(i,ivel(2)) * vflag(2) * rinvr
+       vr(3) = UR(i,ivel(3)) * vflag(3) * rinvr
+       retr  = UR(i,UEDEN)
+       Yr    = UR(i,UFS:UFS+nspec-1) * rinvr
+       rer   = retr - 0.5d0*rr*(vr(1)**2+vr(2)**2+vr(3)**2)
+       er    = rer * rinvr       
+       call eos_given_ReY(pr, cr, gamcr, Tr, dpdr, dpde, rr, er, Yr)
+
+       csmall = max(small, small*cl, small*cr)
+       wsmall = smalld*csmall
+       wl = max(wsmall, cl*rl)
+       wr = max(wsmall, cr*rr)
+
+       pstar = ((wr*pl + wl*pr) + wl*wr*(vl(1) - vr(1)))/(wl + wr)
+       ustar = ((wl*vl(1) + wr*vr(1)) + (pl - pr))/(wl + wr)
+       pstar = max(pstar,smallp)
+
+       if (ustar .gt. 0.d0) then
+          ro = rl
+          uo = vl(1)
+          po = pl
+          reo = rel
+          gamco = gamcl
+       else if (ustar .lt. 0.d0) then
+          ro = rr
+          uo = vr(1)
+          po = pr
+          reo = rer
+          gamco = gamcr
+       else
+          ro = 0.5d0*(rl+rr)
+          uo = 0.5d0*(vl(1)+vr(1))
+          po = 0.5d0*(pl+pr)
+          reo = 0.5d0*(rel+rer)
+          gamco = 0.5d0*(gamcl+gamcr)
+       endif
+       ro = max(smalld,ro)
+       
+       co = sqrt(abs(gamco*po/ro))
+       co = max(csmall,co)
+       entho = (reo/ro + po/ro)/co**2
+       rstar = ro + (pstar - po)/co**2
+       rstar = max(smalld,rstar)
+       estar = reo + (pstar - po)*entho
+       cstar = sqrt(abs(gamco*pstar/rstar))
+       cstar = max(cstar,csmall)
+
+       sgnm = sign(1.d0,ustar)
+       spout = co - sgnm*uo
+       spin = cstar - sgnm*ustar
+       ushock = 0.5d0*(spin + spout)
+       if (pstar-po .ge. 0.d0) then
+          spin = ushock
+          spout = ushock
+       endif
+       if (spout-spin .eq. 0.d0) then
+          scr = small*0.5d0*(cl+cr)
+       else
+          scr = spout-spin
+       endif
+       frac = (1.d0 + (spout + spin)/scr)*0.5d0
+       frac = max(0.d0,min(1.d0,frac))
+
+       if (ustar .gt. 0.d0) then
+          vgdnv(2:3) = vl(2:3)
+       else if (ustar .lt. 0.d0) then
+          vgdnv(2:3) = vr(2:3)
+       else
+          vgdnv(2:3) = 0.5d0*(vl(2:3)+vr(2:3))
+       endif
+       rgdnv = frac*rstar + (1.d0 - frac)*ro
+
+       vgdnv(1) = frac*ustar + (1.d0 - frac)*uo
+       pgdnv    = frac*pstar + (1.d0 - frac)*po
+
+       regdnv = frac*estar + (1.d0 - frac)*reo
+       if (spout .lt. 0.d0) then
+          rgdnv    = ro
+          vgdnv(1) = uo
+          pgdnv    = po
+          regdnv   = reo
+       endif
+       if (spin .ge. 0.d0) then
+          rgdnv    = rstar
+          vgdnv(1) = ustar
+          pgdnv    = pstar
+          regdnv   = estar
+       endif
+
+       pgdnv = max(pgdnv,smallp)
+       
+       ! Enforce that fluxes through a symmetry plane are hard zero.
+       if (i .eq.0 .and. physbc_lo(idir) .eq. Symmetry) vgdnv(1) = 0.d0
+
+       flx(i,URHO) = rgdnv*vgdnv(1)
+
+       ekgdnv = 0.d0
+       do idim=1,ndim
+          flx(i,ivel(idim)) = flx(i,URHO)*vgdnv(idim)
+          ekgdnv = ekgdnv + 0.5d0*vgdnv(idim)**2
+       end do
+       flx(i,ivel(1)) = flx(i,ivel(1)) + pgdnv
+
+       flx(i,UEDEN) = vgdnv(1)*(regdnv + rgdnv*ekgdnv + pgdnv)
+       flx(i,UTEMP) = 0.d0
+
+       if (ustar .gt. 0.d0) then
+          do n=1,NSPEC
+             flx(i,UFS+n-1) = flx(i,URHO) * Yl(n)
+          end do
+       else if (ustar .lt. 0.d0) then
+          do n=1,NSPEC
+             flx(i,UFS+n-1) = flx(i,URHO) * Yr(n)
+          end do
+       else 
+          do n=1,NSPEC
+             flx(i,UFS+n-1) = flx(i,URHO) * 0.5d0*(Yl(n)+Yr(n))
+          end do
+       end if
+
+    end do
+
+  end subroutine riemann_JBB
+
+
+  subroutine set_vel(idir, ivel, vflag)
+    integer, intent(in) :: idir
+    integer, intent(out) :: ivel(3)
+    double precision, intent(out) :: vflag(3)
+    if (ndim .eq. 1) then
+       vflag(1) = 1.d0
+       vflag(2) = 0.d0
+       vflag(3) = 0.d0
+       ivel(1) = UMX
+       ivel(2) = UMX
+       ivel(3) = UMX
+    else if (ndim .eq. 2) then
+       vflag(1) = 1.d0
+       vflag(2) = 1.d0
+       vflag(3) = 0.d0   
+       if (idir .eq. 1) then
+          ivel(1) = UMX
+          ivel(2) = UMY
+          ivel(3) = UMX
+       else
+          ivel(1) = UMY
+          ivel(2) = UMX
+          ivel(3) = UMX
+       end if
+    else
+       vflag(1) = 1.d0
+       vflag(2) = 1.d0
+       vflag(3) = 1.d0 
+       if (idir .eq. 1) then
+          ivel(1) = UMX
+          ivel(2) = UMY
+          ivel(3) = UMZ
+       else if (idir .eq. 2) then
+          ivel(1) = UMY
+          ivel(2) = UMZ
+          ivel(3) = UMX
+       else
+          ivel(1) = UMZ
+          ivel(2) = UMX
+          ivel(3) = UMY
+       end if
+    end if
+  end subroutine set_vel
+
 
 end module riemann_module

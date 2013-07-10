@@ -34,7 +34,7 @@ subroutine rns_dudt (lo, hi, &
      stop
   end if
 
-  call hypterm(lo,hi,U,Ulo,Uhi,flux)
+  call hypterm(lo,hi,U,Ulo,Uhi,flux, dx)
   call difterm(lo,hi,U,Ulo,Uhi,fdif, dxinv)
   
   do n=1, NVAR

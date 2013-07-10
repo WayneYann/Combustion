@@ -45,8 +45,8 @@ contains
     allocate(sdc%mfencap, sdc%encap, sdc%nset_adr, sdc%imex)
 
     call sdc_multifab_build(sdc%encap, c_loc(sdc%mfencap), err)
-    call sdc_nset_build(sdc%nset_adr, nnodes, qtype, 0, "ADR", err)
-    call sdc_imex_build(sdc%imex, sdc%nset_adr, feval, c_null_ptr, c_null_ptr, "ADR", err)
+    call sdc_nset_build(sdc%nset_adr, nnodes, qtype, 0, err)
+    call sdc_imex_build(sdc%imex, sdc%nset_adr, feval, c_null_ptr, c_null_ptr, err)
     call sdc_hooks_add(sdc%imex%hooks, SDC_HOOK_POST_STEP, post, err)
 
   end subroutine sdc_build_single_rate
@@ -72,9 +72,9 @@ contains
     allocate(sdc%mfencap, sdc%encap, sdc%nset_ad, sdc%nset_r, sdc%mrex)
 
     call sdc_multifab_build(sdc%encap, c_loc(sdc%mfencap), err)
-    call sdc_nset_build(sdc%nset_ad, nnodes(1), qtype, 0, "AD" // c_null_char, err)
-    call sdc_nset_build(sdc%nset_r, nnodes(2), qtype, 0, "R" // c_null_char, err)
-    call sdc_mrex_build(sdc%mrex, 2, "ADR" // c_null_char, err)
+    call sdc_nset_build(sdc%nset_ad, nnodes(1), qtype, 0, err)
+    call sdc_nset_build(sdc%nset_r, nnodes(2), qtype, 0, err)
+    call sdc_mrex_build(sdc%mrex, 2, err)
     call sdc_mrex_add_nset(sdc%mrex, sdc%nset_ad, f1eval, sdc%encap, c_loc(ctx), 0, err)
 
     call sdc_hooks_add(sdc%mrex%hooks, SDC_HOOK_POST_STEP, post, err)

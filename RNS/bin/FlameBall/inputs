@@ -24,6 +24,7 @@ vode.verbose   = 0
 
 eglib.use_bulk_visc = 1
 
+rns.Riemann    = 0     # 0: HLL,  1: JBB
 rns.Treference = 298.0
 
 # >>>>>>>>>>>>>  BC FLAGS <<<<<<<<<<<<<<<<

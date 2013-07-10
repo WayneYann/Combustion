@@ -7,12 +7,14 @@ module eos_module
   double precision, save, private :: Tref = 298.d0
   double precision, allocatable, save, private :: eref(:)
 
-  double precision, save, private :: smalld = 1.d-50
-  double precision, save, private :: smallt = 1.d-50
-  double precision, save, private :: smallp = 1.d-50
-  double precision, save, private :: smallc = 1.d-50
+  double precision, save, public :: smalld = 1.d-50
+  double precision, save, public :: smallt = 1.d-50
+  double precision, save, public :: smallp = 1.d-50
+  double precision, save, public :: smallc = 1.d-50
 
   logical, save, private :: initialized = .false.
+
+  private :: nspecies, Ru, inv_mwt
 
 contains
 
@@ -184,13 +186,13 @@ contains
   end subroutine eos_given_RTY
 
 
-  subroutine eos_given_ReY(P, C, T, dpdr, dpde, rho, e, Y, pt_index)
-    double precision, intent(  out) :: P, C, T, dpdr(nspecies), dpde
+  subroutine eos_given_ReY(P, C, G, T, dpdr, dpde, rho, e, Y, pt_index)
+    double precision, intent(  out) :: P, C, G, T, dpdr(nspecies), dpde
     double precision, intent(in   ) :: rho, e, Y(nspecies)
     integer, optional, intent(in  ) :: pt_index(:)
 
     integer :: iwrk, ierr
-    double precision :: rwrk, Cv, G, X(nspecies)
+    double precision :: rwrk, Cv, X(nspecies)
 
     call get_T_given_eY(e, Y, iwrk, rwrk, T, ierr)
 
