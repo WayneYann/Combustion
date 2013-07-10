@@ -167,7 +167,8 @@ contains
     double precision :: ro, uo, po, reo, gamco, co, entho
     double precision :: sgnm, spout, spin, ushock, scr, frac
     
-    double precision, parameter:: small = 1.d-8
+    double precision, parameter :: small  = 1.d-8
+    double precision, parameter :: difmag = 0.1d0
 
     if (present(dir)) then
        idir = dir

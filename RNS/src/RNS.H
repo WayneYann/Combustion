@@ -282,6 +282,7 @@ protected:
 		       NUM_RIEMANN_TYPE };
     
     static RiemannType Riemann;
+    static Real        difmag; // for JBB Riemann solver
         
     static class ChemDriver* chemSolve;
 };    

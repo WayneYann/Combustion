@@ -11,6 +11,8 @@ module meth_params_module
   integer, parameter :: JBB_solver = 1
   integer, parameter :: nriemann   = 2
 
+  double precision, save :: difmag
+  
   integer, save :: ndim   ! spatial dimension
   integer, save :: NCHARV ! number of characteristic variables
   integer, save :: CFS    ! first species in characteristic variables
