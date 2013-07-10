@@ -187,7 +187,8 @@ contains
 
 
   subroutine eos_given_ReY(P, C, G, T, dpdr, dpde, rho, e, Y, pt_index)
-    double precision, intent(  out) :: P, C, G, T, dpdr(nspecies), dpde
+    double precision, intent(  out) :: P, C, G, dpdr(nspecies), dpde
+    double precision, intent(inout) :: T
     double precision, intent(in   ) :: rho, e, Y(nspecies)
     integer, optional, intent(in  ) :: pt_index(:)
 

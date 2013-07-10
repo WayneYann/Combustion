@@ -186,10 +186,12 @@ contains
        vl(1) = UL(i,ivel(1)) * vflag(1) * rinvl
        vl(2) = UL(i,ivel(2)) * vflag(2) * rinvl
        vl(3) = UL(i,ivel(3)) * vflag(3) * rinvl
+       Tl    = UL(i,UTEMP)
        retl  = UL(i,UEDEN)
        Yl    = UL(i,UFS:UFS+nspec-1) * rinvl
        rel   = retl - 0.5d0*rl*(vl(1)**2+vl(2)**2+vl(3)**2)
        el    = rel * rinvl       
+       pti = i
        call eos_given_ReY(pl, cl, gamcl, Tl, dpdr, dpde, rl, el, Yl)
 
        rr    = max(UR(i,URHO), smalld)
@@ -197,6 +199,7 @@ contains
        vr(1) = UR(i,ivel(1)) * vflag(1) * rinvr
        vr(2) = UR(i,ivel(2)) * vflag(2) * rinvr
        vr(3) = UR(i,ivel(3)) * vflag(3) * rinvr
+       Tr    = UR(i,UTEMP)
        retr  = UR(i,UEDEN)
        Yr    = UR(i,UFS:UFS+nspec-1) * rinvr
        rer   = retr - 0.5d0*rr*(vr(1)**2+vr(2)**2+vr(3)**2)
@@ -285,7 +288,7 @@ contains
        endif
 
        pgdnv = max(pgdnv,smallp)
-       
+
        ! Enforce that fluxes through a symmetry plane are hard zero.
 !       if (i .eq.0 .and. physbc_lo(idir) .eq. Symmetry) vgdnv(1) = 0.d0
 
@@ -352,6 +355,7 @@ contains
        vl(1) = UL(i,ivel(1)) * vflag(1) * rinvl
        vl(2) = UL(i,ivel(2)) * vflag(2) * rinvl
        vl(3) = UL(i,ivel(3)) * vflag(3) * rinvl
+       Tl    = UL(i,UTEMP)
        retl  = UL(i,UEDEN)
        Yl    = UL(i,UFS:UFS+nspec-1) * rinvl
        rel   = retl - 0.5d0*rl*(vl(1)**2+vl(2)**2+vl(3)**2)
@@ -363,6 +367,7 @@ contains
        vr(1) = UR(i,ivel(1)) * vflag(1) * rinvr
        vr(2) = UR(i,ivel(2)) * vflag(2) * rinvr
        vr(3) = UR(i,ivel(3)) * vflag(3) * rinvr
+       Tr    = UR(i,UTEMP)
        retr  = UR(i,UEDEN)
        Yr    = UR(i,UFS:UFS+nspec-1) * rinvr
        rer   = retr - 0.5d0*rr*(vr(1)**2+vr(2)**2+vr(3)**2)
