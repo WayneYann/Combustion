@@ -6803,11 +6803,8 @@ void GET_T_GIVEN_EY(double * restrict  e, double * restrict  y, int * iwrk, doub
 #elif defined(BL_FORT_USE_UNDERSCORE)
 #define egtransetLENIMC egtransetlenimc_
 #endif
-void egtransetLENIMC(int* LENIMC)
-{
-  *LENIMC =           38;
-}
-
+void egtransetLENIMC(int* LENIMC) {
+  *LENIMC =           38;}
 #if defined(BL_FORT_USE_UPPERCASE)
 #define egtransetLENRMC EGTRANSETLENRMC
 #elif defined(BL_FORT_USE_LOWERCASE)
@@ -6815,11 +6812,8 @@ void egtransetLENIMC(int* LENIMC)
 #elif defined(BL_FORT_USE_UNDERSCORE)
 #define egtransetLENRMC egtransetlenrmc_
 #endif
-void egtransetLENRMC(int* LENRMC)
-{
-  *LENRMC =         1854;
-}
-
+void egtransetLENRMC(int* LENRMC) {
+  *LENRMC =         1854;}
 #if defined(BL_FORT_USE_UPPERCASE)
 #define egtransetNO EGTRANSETNO
 #elif defined(BL_FORT_USE_LOWERCASE)
@@ -6827,11 +6821,8 @@ void egtransetLENRMC(int* LENRMC)
 #elif defined(BL_FORT_USE_UNDERSCORE)
 #define egtransetNO egtransetno_
 #endif
-void egtransetNO(int* NO)
-{
-  *NO =            4;
-}
-
+void egtransetNO(int* NO) {
+  *NO =            4;}
 #if defined(BL_FORT_USE_UPPERCASE)
 #define egtransetKK EGTRANSETKK
 #elif defined(BL_FORT_USE_LOWERCASE)
@@ -6839,11 +6830,8 @@ void egtransetNO(int* NO)
 #elif defined(BL_FORT_USE_UNDERSCORE)
 #define egtransetKK egtransetkk_
 #endif
-void egtransetKK(int* KK)
-{
-  *KK =            9;
-}
-
+void egtransetKK(int* KK) {
+  *KK =            9;}
 #if defined(BL_FORT_USE_UPPERCASE)
 #define egtransetNLITE EGTRANSETNLITE
 #elif defined(BL_FORT_USE_LOWERCASE)
@@ -6851,11 +6839,8 @@ void egtransetKK(int* KK)
 #elif defined(BL_FORT_USE_UNDERSCORE)
 #define egtransetNLITE egtransetnlite_
 #endif
-void egtransetNLITE(int* NLITE)
-{
-  *NLITE =            2;
-}
-
+void egtransetNLITE(int* NLITE) {
+  *NLITE =            2;}
 #if defined(BL_FORT_USE_UPPERCASE)
 #define egtransetPATM EGTRANSETPATM
 #elif defined(BL_FORT_USE_LOWERCASE)
@@ -6863,11 +6848,8 @@ void egtransetNLITE(int* NLITE)
 #elif defined(BL_FORT_USE_UNDERSCORE)
 #define egtransetPATM egtransetpatm_
 #endif
-void egtransetPATM(double* PATM)
-{
-  *PATM =   0.1013250000000000E+07;
-}
-
+void egtransetPATM(double* PATM) {
+  *PATM =   0.1013250000000000E+07;}
 #if defined(BL_FORT_USE_UPPERCASE)
 #define egtransetWT EGTRANSETWT
 #elif defined(BL_FORT_USE_LOWERCASE)
@@ -6875,8 +6857,7 @@ void egtransetPATM(double* PATM)
 #elif defined(BL_FORT_USE_UNDERSCORE)
 #define egtransetWT egtransetwt_
 #endif
-void egtransetWT(double* WT)
-{
+void egtransetWT(double* WT) {
   WT[           0] =   0.2015939950942993E+01;
   WT[           1] =   0.3199880027770996E+02;
   WT[           2] =   0.1801534008979797E+02;
@@ -6886,8 +6867,7 @@ void egtransetWT(double* WT)
   WT[           6] =   0.3300677025318146E+02;
   WT[           7] =   0.3401474022865295E+02;
   WT[           8] =   0.2801339912414551E+02;
-}
-
+};
 #if defined(BL_FORT_USE_UPPERCASE)
 #define egtransetEPS EGTRANSETEPS
 #elif defined(BL_FORT_USE_LOWERCASE)
@@ -6895,8 +6875,7 @@ void egtransetWT(double* WT)
 #elif defined(BL_FORT_USE_UNDERSCORE)
 #define egtransetEPS egtranseteps_
 #endif
-void egtransetEPS(double* EPS)
-{
+void egtransetEPS(double* EPS) {
   EPS[           0] =   0.3800000000000000E+02;
   EPS[           1] =   0.1074000000000000E+03;
   EPS[           2] =   0.5724000000000000E+03;
@@ -6906,8 +6885,7 @@ void egtransetEPS(double* EPS)
   EPS[           6] =   0.1074000000000000E+03;
   EPS[           7] =   0.1074000000000000E+03;
   EPS[           8] =   0.9753000000000000E+02;
-}
-
+};
 #if defined(BL_FORT_USE_UPPERCASE)
 #define egtransetSIG EGTRANSETSIG
 #elif defined(BL_FORT_USE_LOWERCASE)
@@ -6915,8 +6893,7 @@ void egtransetEPS(double* EPS)
 #elif defined(BL_FORT_USE_UNDERSCORE)
 #define egtransetSIG egtransetsig_
 #endif
-void egtransetSIG(double* SIG)
-{
+void egtransetSIG(double* SIG) {
   SIG[           0] =   0.2920000000000000E+01;
   SIG[           1] =   0.3458000000000000E+01;
   SIG[           2] =   0.2605000000000000E+01;
@@ -6926,8 +6903,7 @@ void egtransetSIG(double* SIG)
   SIG[           6] =   0.3458000000000000E+01;
   SIG[           7] =   0.3458000000000000E+01;
   SIG[           8] =   0.3621000000000000E+01;
-}
-
+};
 #if defined(BL_FORT_USE_UPPERCASE)
 #define egtransetDIP EGTRANSETDIP
 #elif defined(BL_FORT_USE_LOWERCASE)
@@ -6935,8 +6911,7 @@ void egtransetSIG(double* SIG)
 #elif defined(BL_FORT_USE_UNDERSCORE)
 #define egtransetDIP egtransetdip_
 #endif
-void egtransetDIP(double* DIP)
-{
+void egtransetDIP(double* DIP) {
   DIP[           0] =   0.0000000000000000E+00;
   DIP[           1] =   0.0000000000000000E+00;
   DIP[           2] =   0.1844000000000000E+01;
@@ -6946,8 +6921,7 @@ void egtransetDIP(double* DIP)
   DIP[           6] =   0.0000000000000000E+00;
   DIP[           7] =   0.0000000000000000E+00;
   DIP[           8] =   0.0000000000000000E+00;
-}
-
+};
 #if defined(BL_FORT_USE_UPPERCASE)
 #define egtransetPOL EGTRANSETPOL
 #elif defined(BL_FORT_USE_LOWERCASE)
@@ -6955,8 +6929,7 @@ void egtransetDIP(double* DIP)
 #elif defined(BL_FORT_USE_UNDERSCORE)
 #define egtransetPOL egtransetpol_
 #endif
-void egtransetPOL(double* POL)
-{
+void egtransetPOL(double* POL) {
   POL[           0] =   0.7900000000000000E+00;
   POL[           1] =   0.1600000000000000E+01;
   POL[           2] =   0.0000000000000000E+00;
@@ -6966,8 +6939,7 @@ void egtransetPOL(double* POL)
   POL[           6] =   0.0000000000000000E+00;
   POL[           7] =   0.0000000000000000E+00;
   POL[           8] =   0.1760000000000000E+01;
-}
-
+};
 #if defined(BL_FORT_USE_UPPERCASE)
 #define egtransetZROT EGTRANSETZROT
 #elif defined(BL_FORT_USE_LOWERCASE)
@@ -6975,8 +6947,7 @@ void egtransetPOL(double* POL)
 #elif defined(BL_FORT_USE_UNDERSCORE)
 #define egtransetZROT egtransetzrot_
 #endif
-void egtransetZROT(double* ZROT)
-{
+void egtransetZROT(double* ZROT) {
   ZROT[           0] =   0.2800000000000000E+03;
   ZROT[           1] =   0.3800000000000000E+01;
   ZROT[           2] =   0.4000000000000000E+01;
@@ -6986,8 +6957,7 @@ void egtransetZROT(double* ZROT)
   ZROT[           6] =   0.1000000000000000E+01;
   ZROT[           7] =   0.3800000000000000E+01;
   ZROT[           8] =   0.4000000000000000E+01;
-}
-
+};
 #if defined(BL_FORT_USE_UPPERCASE)
 #define egtransetNLIN EGTRANSETNLIN
 #elif defined(BL_FORT_USE_LOWERCASE)
@@ -6995,8 +6965,7 @@ void egtransetZROT(double* ZROT)
 #elif defined(BL_FORT_USE_UNDERSCORE)
 #define egtransetNLIN egtransetnlin_
 #endif
-void egtransetNLIN(int* NLIN)
-{
+void egtransetNLIN(int* NLIN) {
   NLIN[           0] =            1;
   NLIN[           1] =            1;
   NLIN[           2] =            2;
@@ -7006,8 +6975,7 @@ void egtransetNLIN(int* NLIN)
   NLIN[           6] =            2;
   NLIN[           7] =            2;
   NLIN[           8] =            1;
-}
-
+};
 #if defined(BL_FORT_USE_UPPERCASE)
 #define egtransetCOFLAM EGTRANSETCOFLAM
 #elif defined(BL_FORT_USE_LOWERCASE)
@@ -7015,8 +6983,7 @@ void egtransetNLIN(int* NLIN)
 #elif defined(BL_FORT_USE_UNDERSCORE)
 #define egtransetCOFLAM egtransetcoflam_
 #endif
-void egtransetCOFLAM(double* COFLAM)
-{
+void egtransetCOFLAM(double* COFLAM) {
   COFLAM[           0] =   0.1109466217088744E+02;
   COFLAM[           1] =  -0.1314982879973400E+01;
   COFLAM[           2] =   0.2434842345478272E+00;
@@ -7053,8 +7020,7 @@ void egtransetCOFLAM(double* COFLAM)
   COFLAM[          33] =  -0.2911524559760463E+01;
   COFLAM[          34] =   0.5546581827235442E+00;
   COFLAM[          35] =  -0.2750103005663747E-01;
-}
-
+};
 #if defined(BL_FORT_USE_UPPERCASE)
 #define egtransetCOFETA EGTRANSETCOFETA
 #elif defined(BL_FORT_USE_LOWERCASE)
@@ -7062,8 +7028,7 @@ void egtransetCOFLAM(double* COFLAM)
 #elif defined(BL_FORT_USE_UNDERSCORE)
 #define egtransetCOFETA egtransetcofeta_
 #endif
-void egtransetCOFETA(double* COFETA)
-{
+void egtransetCOFETA(double* COFETA) {
   COFETA[           0] =  -0.1376710086380533E+02;
   COFETA[           1] =   0.9708665581008417E+00;
   COFETA[           2] =  -0.4534923959308444E-01;
@@ -7100,8 +7065,7 @@ void egtransetCOFETA(double* COFETA)
   COFETA[          33] =   0.2251740453876138E+01;
   COFETA[          34] =  -0.2138340893699383E+00;
   COFETA[          35] =   0.9477823154448534E-02;
-}
-
+};
 #if defined(BL_FORT_USE_UPPERCASE)
 #define egtransetCOFD EGTRANSETCOFD
 #elif defined(BL_FORT_USE_LOWERCASE)
@@ -7109,8 +7073,7 @@ void egtransetCOFETA(double* COFETA)
 #elif defined(BL_FORT_USE_UNDERSCORE)
 #define egtransetCOFD egtransetcofd_
 #endif
-void egtransetCOFD(double* COFD)
-{
+void egtransetCOFD(double* COFD) {
   COFD[           0] =  -0.1023073719095340E+02;
   COFD[           1] =   0.2153598714195162E+01;
   COFD[           2] =  -0.6969019063693850E-01;
@@ -7435,9 +7398,16 @@ void egtransetCOFD(double* COFD)
   COFD[         321] =   0.3348053449783496E+01;
   COFD[         322] =  -0.2233657260417595E+00;
   COFD[         323] =   0.9817787279109837E-02;
-}
+};
+
+
+
 
 #if 0
+
+
+
+
 \\
 \\
 \\  This is the mechanism file
@@ -7470,8 +7440,8 @@ void egtransetCOFD(double* COFD)
 ! 
 ! HOW TO REFERENCE THIS MECHANISM:
 !
-! Li, J., Zhao, Z., Kazakov, A., and Dryer, F.L. An Updated Comprehensive Kinetic Model
-! of Hydrogen Combustion, Int. J. Chem. Kinet. 2004 (in press).
+! Li, J., Zhao, Z., Kazakov, A., and Dryer, F.L. "An Updated Comprehensive Kinetic Model
+! of Hydrogen Combustion", Int. J. Chem. Kinet. 2004 (in press).
 !
 !
 ! HOW TO CONTACT THE AUTHORS:
@@ -7489,7 +7459,7 @@ void egtransetCOFD(double* COFD)
 !**********************************************************************************************
 ! Development notes:
 !
-!The following H2/O2 mechanism is based on Mueller et als (Int.J.Chem.Kinet.1999,31:113)
+!The following H2/O2 mechanism is based on Mueller et al's (Int.J.Chem.Kinet.1999,31:113)
 !Changes:
 !
 !1.update the standard heat of formation of OH at 0K to 8.85kcal/mol (Ruscic et al, 
@@ -7502,7 +7472,7 @@ void egtransetCOFD(double* COFD)
 !  O2, N2, AR, HE, H2O as proposed by Michael et al (J. Phys. Chem. A, 2002,106:5297).
 !  The third-body efficiency of H2, O2, and H2O are taken as the average value over 
 !  the temperature range of 300-3000K. 
-!  The Fc in Troes form with N2 and AR/HE as bath gas are different, so the fall-off 
+!  The Fc in Troe's form with N2 and AR/HE as bath gas are different, so the fall-off 
 !  kinetics is expressed in two sets, for N2 and AR/HE, respectively.
 ! 
 !4.for all other recombination reactions, assume the third-body efficiency of HE is
