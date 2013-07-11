@@ -5878,7 +5878,7 @@ HeatTransfer::advance (Real time,
         // Form heat release
         (*auxDiag["HEATRELEASE"])[mfi].setVal(0.);
         for (int j=0; j<R.nComp(); ++j) {
-          (*auxDiag["HEATRELEASE"])[mfi].plus(enthi,j,0,1);
+          (*auxDiag["HEATRELEASE"])[mfi].minus(enthi,j,0,1);
         }
       }
     }
