@@ -150,16 +150,15 @@ subroutine rns_initdata(level,time,lo,hi,nscal, &
               xcen = ((ncell_x-i-1)+HALF)*delta(1)
            end if
 
+           if (pertmag .gt. 0.0d0) then
+              call random_number(r)
+              xcen = xcen + pertmag*(r-0.5d0)*delta(1)
+           end if
+
            ! we explicitly make the perturbation symmetric here
            ! -- this prevents the RT from bending.
            pertheight = 0.01d0*HALF*(cos(2.0d0*PI*xcen/L_x) + &
                 cos(2.0d0*PI*(L_x-xcen)/L_x)) + 0.5d0
-
-           if (pertmag .gt. 0.0d0) then
-              call random_number(r)
-              pertheight = pertheight * (1.d0 + r*1.d-10)
-           end if
-
            state(i,j,URHO) = rho_1 + ((rho_2-rho_1)/2.0d0)* &
                 (1+tanh((ycen-pertheight)/0.005d0))
 
