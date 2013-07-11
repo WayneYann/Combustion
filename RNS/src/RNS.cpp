@@ -131,7 +131,7 @@ RNS::read_params ()
     {
 	difmag = 0.1;
     }
-    else if (Riemann = HLLC)
+    else if (Riemann == HLLC)
     {
 	difmag = 0.1;
     }

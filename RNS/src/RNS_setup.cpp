@@ -147,7 +147,7 @@ RNS::variableSetUp ()
     
     int dm = BL_SPACEDIM;
     
-    int riemann = Riemann;
+    int riemann = RNS::Riemann;
 
     BL_FORT_PROC_CALL(SET_METHOD_PARAMS, set_method_params)
 	(dm, Density, Xmom, Eden, Temp, FirstSpec, NUM_STATE, NumSpec, 

@@ -1,5 +1,8 @@
 module probdata_module
 
+  integer, save :: prob_type
+  double precision, save :: xsep
+
   ! Sod variables
   double precision, save ::  p_l, u_l, rho_l, p_r, u_r, rho_r, rhoe_l, rhoe_r
 

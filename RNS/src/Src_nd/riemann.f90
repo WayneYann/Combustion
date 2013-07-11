@@ -19,16 +19,16 @@ contains
     double precision, intent(out) :: flx(lo:hi+1,NVAR)
 
     select case (riemann_solver)
-       case (HLL_solver)
-          call riemann_HLL(lo, hi, UL, UR, flx, dir)
-       case (JBB_solver)
-          call riemann_JBB(lo, hi, UL, UR, flx, dir)
-       case (HLLC_solver)
-          call riemann_HLLC(lo, hi, UL, UR, flx, dir)
-       case default
-          print *, 'unknown riemann solver'
-          stop
-       end select
+    case (HLL_solver)
+       call riemann_HLL(lo, hi, UL, UR, flx, dir)
+    case (JBB_solver)
+       call riemann_JBB(lo, hi, UL, UR, flx, dir)
+    case (HLLC_solver)
+       call riemann_HLLC(lo, hi, UL, UR, flx, dir)
+    case default
+       print *, 'unknown riemann solver'
+       stop
+    end select
 
   end subroutine riemann
 
