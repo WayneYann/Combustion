@@ -77,7 +77,7 @@ subroutine PROBINIT (init,name,namlen,problo,probhi)
         xsep  = 0.5d0
      case (30)    ! case 3a
         rho_l = 1.d0
-        u_l   = -19.5975d0
+        u_l   = -19.59745d0
         p_l   = 1000.d0
         rho_r = 1.d0
         u_r   = -19.59745d0
