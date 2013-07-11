@@ -126,7 +126,12 @@ RNS::read_params ()
 	Riemann = static_cast<RiemannType>(riemann);
     }
 
+    // some Riemann solvers need artificial viscosity to suppress odd-even decouping
     if (Riemann == JBB)
+    {
+	difmag = 0.1;
+    }
+    else if (Riemann = HLLC)
     {
 	difmag = 0.1;
     }
