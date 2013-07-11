@@ -100,7 +100,7 @@ subroutine rns_initdata(level,time,lo,hi,nscal, &
      xcen = xlo(1) + delta(1)*(dble(i-lo(1)) + 0.5d0)
 
      r = abs(xcen-center(1))
-     rfront = rfire - r + 3.011d0 ! 3.011d0 is roughly the sufrace of fire for pmf.
+     rfront = rfire - r + 3.011d0 ! 3.011d0 is roughly the surface of fire for pmf.
 
      call pmf(rfront,rfront,pmf_vals,n)
      
