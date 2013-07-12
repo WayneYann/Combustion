@@ -209,9 +209,34 @@ RNS::variableSetUp ()
 			  Density,
 			  name,
 			  bcs,
-			  BndryFunc(BL_FORT_PROC_CALL(RNS_DENFILL,rns_denfill),
-				    BL_FORT_PROC_CALL(RNS_HYPFILL,rns_hypfill)));
-    
+			  BndryFunc(BL_FORT_PROC_CALL(RNS_REGFILL,rns_regfill),
+				    BL_FORT_PROC_CALL(RNS_GRPFILL,rns_grpfill)));
+
+    desc_lst.resetComponentBCs(State_Type,
+			       Density,
+			       bcs[Density],
+			       BndryFunc(BL_FORT_PROC_CALL(RNS_DENFILL,rns_denfill),
+					 BL_FORT_PROC_CALL(RNS_GRPFILL,rns_grpfill)));
+    desc_lst.resetComponentBCs(State_Type,
+			       Xmom,
+			       bcs[Xmom],
+			       BndryFunc(BL_FORT_PROC_CALL(RNS_MXFILL,rns_mxfill),
+					 BL_FORT_PROC_CALL(RNS_GRPFILL,rns_grpfill)));
+#if (BL_SPACEDIM >= 2)
+    desc_lst.resetComponentBCs(State_Type,
+			       Ymom,
+			       bcs[Ymom],
+			       BndryFunc(BL_FORT_PROC_CALL(RNS_MYFILL,rns_myfill),
+					 BL_FORT_PROC_CALL(RNS_GRPFILL,rns_grpfill)));
+#endif
+#if (BL_SPACEDIM == 3)
+    desc_lst.resetComponentBCs(State_Type,
+			       Zmom,
+			       bcs[Zmom],
+			       BndryFunc(BL_FORT_PROC_CALL(RNS_MZFILL,rns_mzfill),
+					 BL_FORT_PROC_CALL(RNS_GRPFILL,rns_grpfill)));
+#endif
+			           
     //
     // DEFINE DERIVED QUANTITIES
     //

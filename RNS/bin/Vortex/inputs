@@ -1,11 +1,11 @@
 # ------------------  INPUTS TO MAIN PROGRAM  -------------------
 max_step  = 10000
-stop_time = 6.d-5
+stop_time = 4.e-5
 
 # for RK
 amr.multi_level_sdc = 0 
 sdc.t_ratio         = 1
-rns.RK_order        = 2   # 3 works with amr.max_level=0 only
+rns.RK_order        = 3   # 3 works with amr.max_level=0 only
 
 # PROBLEM SIZE & GEOMETRY
 geometry.is_periodic = 0  0  0
@@ -64,8 +64,7 @@ amr.plot_files_output = 1
 amr.plot_file         = plt     # root name of plotfile
 amr.plot_int          = 100     # number of timesteps between plotfiles
 #amr.derive_plot_vars = ALL
-#amr.derive_plot_vars =  pressure soundspeed MachNumber magvort divu x_velocity y_velocity 
-amr.derive_plot_vars =  pressure soundspeed MachNumber x_velocity y_velocity 
+amr.derive_plot_vars =  pressure soundspeed MachNumber magvort divu x_velocity y_velocity 
 
 #PROBIN FILENAME
 amr.probin_file = probin
