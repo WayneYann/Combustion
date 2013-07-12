@@ -88,10 +88,12 @@ subroutine rns_initdata(level,time,lo,hi,nscal, &
   double precision state(state_l1:state_h1,state_l2:state_h2,NVAR)
   
   ! local variables
-  integer :: i, j, n, iwrk
-  double precision :: xcen, ycen, r, rfront
+  integer :: i, j, n, ii, jj
+  double precision :: xcen, ycen, xg, yg, r, rfront
   double precision :: pmf_vals(NSPEC+3), Xt(nspec), Yt(nspec)
-  double precision :: rhot, et, Pt, Tt, u1t, u2t, rwrk
+  double precision :: rhot, et, Pt, Tt, u1t, u2t
+
+  double precision, parameter :: gp(2) = (/ -1.d0/sqrt(3.d0), 1.d0/sqrt(3.d0) /)
 
   if (nspecies .ne. NSPEC) then
      write(6,*)"nspecies, nspec ", nspecies, NSPEC
@@ -105,34 +107,44 @@ subroutine rns_initdata(level,time,lo,hi,nscal, &
      do i = state_l1, state_h1
         xcen = xlo(1) + delta(1)*(dble(i-lo(1)) + 0.5d0)
 
-        r = sqrt((xcen-center(1))**2 + (ycen-center(2))**2)
-        rfront = rfire - r + 3.011d0 ! 3.011d0 is roughly the surface of fire for pmf.
+        state(i,j,:) = 0.d0
 
-        call pmf(rfront,rfront,pmf_vals,n)
-     
-        if (n .ne. nspec+3) then
-           write(6,*)"n, nspec ", n, nspec
-           stop
-        end if
-        
-        Xt = pmf_vals(4:)
+        do jj = 1, 2
+           yg = ycen + 0.5d0*delta(2)*gp(jj)
+           do ii = 1, 2
+              xg = xcen + 0.5d0*delta(1)*gp(ii)
 
-        Pt  = patm
-        Tt  = pmf_vals(1)
-        u1t = uinit
-        u2t = vinit
-     
-        call eos_given_PTY(rhot, et, Yt, Pt, Tt, Xt)
+              r = sqrt((xg-center(1))**2 + (yg-center(2))**2)
+              rfront = rfire - r + 3.011d0 ! 3.011d0 is roughly the surface of fire for pmf.
 
-        state(i,j,URHO ) = rhot
-        state(i,j,UMX  ) = rhot*u1t
-        state(i,j,UMY  ) = rhot*u2t
-        state(i,j,UEDEN) = rhot*(et + 0.5d0*(u1t**2+u2t**2))
-        state(i,j,UTEMP) = Tt
+              call pmf(rfront,rfront,pmf_vals,n)
+              
+              if (n .ne. nspec+3) then
+                 write(6,*)"n, nspec ", n, nspec
+                 stop
+              end if
+              
+              Xt = pmf_vals(4:)
+              
+              Pt  = patm
+              Tt  = pmf_vals(1)
+              u1t = uinit
+              u2t = vinit
+              
+              call eos_given_PTY(rhot, et, Yt, Pt, Tt, Xt)
 
-        do n=1,nspec
-           state(i,j,UFS+n-1) = Yt(n)*rhot
+              state(i,j,URHO ) = state(i,j,URHO ) + 0.25d0*rhot
+              state(i,j,UMX  ) = state(i,j,UMX  ) + 0.25d0*rhot*u1t
+              state(i,j,UMY  ) = state(i,j,UMY  ) + 0.25d0*rhot*u2t
+              state(i,j,UEDEN) = state(i,j,UEDEN) + 0.25d0*rhot*(et + 0.5d0*(u1t**2+u2t**2))
+              state(i,j,UTEMP) = state(i,j,UTEMP) + 0.25d0*Tt
+              do n=1, NSPEC
+                 state(i,j,UFS+n-1) = state(i,j,UFS+n-1) + 0.25d0*rhot*Yt(n)
+              end do
+
+           end do
         end do
+
      end do
   end do
 

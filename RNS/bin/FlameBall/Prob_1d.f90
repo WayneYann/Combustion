@@ -85,10 +85,10 @@ subroutine rns_initdata(level,time,lo,hi,nscal, &
   double precision time, delta(1)
   double precision xlo(1), xhi(1)
   
-  integer :: i, n, iwrk
+  integer :: i, n
   double precision :: xcen, r, rfront
   double precision :: pmf_vals(NSPEC+3), Xt(nspec), Yt(nspec)
-  double precision :: rhot, et, Pt, Tt, u1t, rwrk
+  double precision :: rhot, et, Pt, Tt, u1t
 
   if (nspecies .ne. NSPEC) then
      write(6,*)"nspecies, nspec ", nspecies, NSPEC

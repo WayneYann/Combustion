@@ -126,9 +126,7 @@ subroutine rns_initdata(level,time,lo,hi,nscal, &
      do i = state_l1, state_h1
         xcen = xlo(1) + delta(1)*(dble(i-lo(1)) + 0.5d0)
         
-        do n=1,NVAR
-           state(i,j,n) = 0.d0
-        end do
+        state(i,j,:) = 0.d0
         
         do jj = 1, 2
            yg = ycen + 0.5d0*delta(2)*gp(jj)
