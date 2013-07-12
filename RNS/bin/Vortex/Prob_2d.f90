@@ -94,86 +94,86 @@ subroutine rns_initdata(level,time,lo,hi,nscal, &
      write(6,*)"nspecies, nspec ", nspecies, NSPEC
      stop
   end if
+  
+  call pmf(-1.d0,-1.d0,pmf_vals,n)
 
+  if (n .ne. nspec+3) then
+     write(6,*)"n, nspec ", n, nspec
+     stop
+  end if
+  
+  Tt = pmf_vals(1)
+
+  do n = 1,nspecies
+     Xt(n) = pmf_vals(3+n)
+  end do
+  CALL CKXTY (Xt, IWRK, RWRK, Yt)
+  CALL CKRHOY(patm,Tt,Yt,IWRK,RWRK,rhot)
+  ! we now have rho
+  
+  call CKCVBL(Tt, Xt, iwrk, rwrk, Cv)
+  Cp = Cv + Ru
+  gamma = Cp / Cv
+  cs = sqrt(gamma*patm/rhot)
+  
+  uinfty = Minfty*cs
+  Rc = Rvortex*Lx
+  Cc = Cvortex*cs*Lx
+    
   do j = state_l2, state_h2
      ycen = xlo(2) + delta(2)*(dble(j-lo(2)) + 0.5d0)
-
+     
      do i = state_l1, state_h1
         xcen = xlo(1) + delta(1)*(dble(i-lo(1)) + 0.5d0)
-
+        
         do n=1,NVAR
            state(i,j,n) = 0.d0
         end do
-
+        
         do jj = 1, 2
            yg = ycen + 0.5d0*delta(2)*gp(jj)
            do ii = 1, 2
               xg = xcen + 0.5d0*delta(1)*gp(ii)
-
-              call pmf(-1.d0,-1.d0,pmf_vals,n)
-
-              if (n .ne. nspec+3) then
-                 write(6,*)"n, nspec ", n, nspec
-                 stop
+              
+              exptmp = exp(-(xg**2+yg**2)/(2.d0*Rc**2))
+              
+              u1t = uinfty - Cc*exptmp*yg/Rc**2
+              u2t = Cc*exptmp*xg/Rc**2
+              
+              Pt = patm - rhot*(Cc/Rc)**2*exptmp
+              
+              call CKMMWX(Xt, iwrk, rwrk, Wbar)
+              Tt = Pt*Wbar / (rhot*Ru)
+              
+              call CKUBMS(Tt,Yt,IWRK,RWRK,et)
+              
+              state(i,j,URHO ) = state(i,j,URHO ) + 0.25d0*rhot
+              state(i,j,UMX  ) = state(i,j,UMX  ) + 0.25d0*rhot*u1t
+              state(i,j,UMY  ) = state(i,j,UMY  ) + 0.25d0*rhot*u2t
+              state(i,j,UEDEN) = state(i,j,UEDEN) + 0.25d0*rhot*(et + 0.5d0*(u1t**2+u2t**2))
+              state(i,j,UTEMP) = state(i,j,UTEMP) + 0.25d0*Tt
+              do n=1, NSPEC
+                 state(i,j,UFS+n-1) = state(i,j,UFS+n-1) + 0.25d0*rhot*Yt(n)
+              end do
+              
+              if (.not. sinftysaved) then
+                 Tt = pmf_vals(1)
+                 call CKUBMS(Tt,Yt,IWRK,RWRK,et)
+                 
+                 allocate(stateinfty(NVAR))
+                 
+                 stateinfty(URHO ) = rhot
+                 stateinfty(UMX  ) = rhot*uinfty
+                 stateinfty(UMY  ) = 0.d0
+                 stateinfty(UEDEN) = rhot*(et + 0.5d0*uinfty**2)
+                 stateinfty(UTEMP) = Tt
+                 do n=1,NSPEC
+                    stateinfty(UFS+n-1) = rhot*Yt(n)
+                 end do
+                 
+                 sinftysaved = .true.
               end if
-
-              Tt = pmf_vals(1)
-
-              do n = 1,nspecies
-                Xt(n) = pmf_vals(3+n)
-             end do
-             CALL CKXTY (Xt, IWRK, RWRK, Yt)
-             CALL CKRHOY(patm,Tt,Yt,IWRK,RWRK,rhot)
-             ! we now have rho
-
-             call CKCVBL(Tt, Xt, iwrk, rwrk, Cv)
-             Cp = Cv + Ru
-             gamma = Cp / Cv
-             cs = sqrt(gamma*patm/rhot)
-
-             uinfty = Minfty*cs
-             Rc = Rvortex*Lx
-             Cc = Cvortex*cs*Lx
-
-             exptmp = exp(-(xg**2+yg**2)/(2.d0*Rc**2))
-
-             u1t = uinfty - Cc*exptmp*yg/Rc**2
-             u2t = Cc*exptmp*xg/Rc**2
-
-             Pt = patm - rhot*(Cc/Rc)**2*exptmp
-
-             call CKMMWX(Xt, iwrk, rwrk, Wbar)
-             Tt = Pt*Wbar / (rhot*Ru)
-
-             call CKUBMS(Tt,Yt,IWRK,RWRK,et)
-
-             state(i,j,URHO ) = state(i,j,URHO ) + 0.25d0*rhot
-             state(i,j,UMX  ) = state(i,j,UMX  ) + 0.25d0*rhot*u1t
-             state(i,j,UMY  ) = state(i,j,UMY  ) + 0.25d0*rhot*u2t
-             state(i,j,UEDEN) = state(i,j,UEDEN) + 0.25d0*rhot*(et + 0.5d0*(u1t**2+u2t**2))
-             state(i,j,UTEMP) = state(i,j,UTEMP) + 0.25d0*Tt
-             do n=1, NSPEC
-                state(i,j,UFS+n-1) = state(i,j,UFS+n-1) + 0.25d0*rhot*Yt(n)
-             end do
-
-             if (.not. sinftysaved) then
-                Tt = pmf_vals(1)
-                call CKUBMS(Tt,Yt,IWRK,RWRK,et)
-
-                allocate(stateinfty(NVAR))
-
-                stateinfty(URHO ) = rhot
-                stateinfty(UMX  ) = rhot*uinfty
-                stateinfty(UMY  ) = 0.d0
-                stateinfty(UEDEN) = rhot*(et + 0.5d0*uinfty**2)
-                stateinfty(UTEMP) = Tt
-                do n=1,NSPEC
-                   stateinfty(UFS+n-1) = Yt(n)
-                end do
-
-                sinftysaved = .true.
-             end if
-
+              
            end do
         end do
 

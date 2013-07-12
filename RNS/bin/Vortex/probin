@@ -1,7 +1,6 @@
 &fortin
 
-!  Minfty  = 0.05d0
-  Minfty  = 0.0d0
+  Minfty  = 0.05d0
   Rvortex = 0.1d0
   Cvortex = -0.0025d0
 
