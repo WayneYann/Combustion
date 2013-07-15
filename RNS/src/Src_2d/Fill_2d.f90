@@ -12,8 +12,7 @@ subroutine rns_grpfill(adv,adv_l1,adv_l2,adv_h1,adv_h2, &
   double precision delta(2), xlo(2), time
   double precision adv(adv_l1:adv_h1,adv_l2:adv_h2,NVAR)
   
-  integer i, j, n
-  double precision :: xcen, xshock
+  integer n
   
   do n = 1,NVAR
      call filcc(adv(adv_l1,adv_l2,n), &
