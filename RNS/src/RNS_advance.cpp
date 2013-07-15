@@ -20,12 +20,12 @@ RNS::advance (Real time,
     MultiFab& Unew = get_new_data(State_Type);
     MultiFab& Uold = get_old_data(State_Type);
 
-    RNSFillType fill_boundary_type;
+    int fill_boundary_type;
 
     if (level == 0)
     {
-	fill_boundary_type = use_FillBoundary;
 	MultiFab::Copy(Unew, Uold, 0, 0, NUM_STATE, 0);
+	fill_boundary_type = use_FillBoundary;
     }
     else
     {
@@ -33,14 +33,27 @@ RNS::advance (Real time,
     }
     fill_boundary(Unew, time, fill_boundary_type);
     
-    // do half-dt chemistry
-    advance_chemistry(Unew, 0.5*dt);
+    if (! chemSolve->isNull)
+    {
+	// do half-dt chemistry
+	advance_chemistry(Unew, 0.5*dt);
+
+	// After chemistry, fill ghosts cells with the post-chemistry state of current level
+	fill_boundary(Unew, time, use_FillBoundary);
+    }
 
     // Advance Advection & Diffusion
     advance_AD(Uold, Unew, time, dt); 
 
-    // do another half-dt chemistry
-    advance_chemistry(Unew, 0.5*dt);
+    if (! chemSolve->isNull)
+    {
+	// fill boundary for chemistry
+	fill_boundary_type = (level == 0) ? use_FillBoundary : use_FillCoarsePatch;
+	fill_boundary(Unew, time+dt, fill_boundary_type);
+	
+	// do another half-dt chemistry
+	advance_chemistry(Unew, 0.5*dt);
+    }
     
     if (Unew.contains_nan(0,NUM_STATE,0))
     {
@@ -59,74 +72,75 @@ RNS::advance (Real time,
 
 
 void
-RNS::fill_boundary(MultiFab& U, Real time, RNSFillType type)
+RNS::fill_boundary(MultiFab& U, Real time, int type)
 {
     BL_ASSERT( level > 0 || type == use_FillBoundary );
 
     switch (type)
     {
-    case use_FillPatchIterator:
-
-	for (FillPatchIterator fpi(*this, U, NUM_GROW, time, State_Type, 0, NUM_STATE); 
-	     fpi.isValid(); ++fpi) 
-	{
-	    U[fpi].copy(fpi());
-	}
-
-	break;
-
-    case use_FillCoarsePatch:
-    {
-
-	const Box& domain_box = geom.Domain();
-	BoxArray grids_g(grids);
-	for (int ibox=0; ibox<grids_g.size(); ibox++)
-	{
-	    const Box b = BoxLib::grow(grids_g[ibox], NUM_GROW) & domain_box;
-	    grids_g.set(ibox, b);
-	}
-	
-	MultiFab Utmp(grids_g, NUM_STATE, 0);
-	FillCoarsePatch(Utmp, 0, time, State_Type, 0, NUM_STATE);
-
-	for (MFIter mfi(U); mfi.isValid(); ++mfi)
-	{
-	    int i = mfi.index();
-
-	    const Box& vbox = grids[i];
-	    const Box& gbox = Utmp[i].box();
-	    const BoxArray& ba = BoxLib::boxComplement(gbox, vbox);
-	    
-	    for (int ibox=0; ibox<ba.size(); ibox++)
+        case use_FillPatchIterator:
+	  
+	    for (FillPatchIterator fpi(*this, U, NUM_GROW, time, State_Type, 0, NUM_STATE); 
+		 fpi.isValid(); ++fpi) 
 	    {
-		U[i].copy(Utmp[i], ba[ibox]);
+		U[fpi].copy(fpi());
 	    }
-	}
-
-	// no break; so it will go to next case and call FillBoundary
-
-    }
-    case use_FillBoundary:
-
-	U.FillBoundary();
-	geom.FillPeriodicBoundary(U, true);
-	for (MFIter mfi(U); mfi.isValid(); ++mfi)
+	    
+	    break;
+	    
+        case use_FillCoarsePatch:
 	{
-	    setPhysBoundaryValues(U[mfi], 
-				  State_Type,
-				  time,
-				  0,
-				  0,
-				  NUM_STATE);
+	    
+	    const Box& domain_box = geom.Domain();
+	    BoxArray grids_g(grids);
+	    for (int ibox=0; ibox<grids_g.size(); ibox++)
+	    {
+		const Box b = BoxLib::grow(grids_g[ibox], NUM_GROW) & domain_box;
+		grids_g.set(ibox, b);
+	    }
+	    
+	    MultiFab Utmp(grids_g, NUM_STATE, 0);
+	    FillCoarsePatch(Utmp, 0, time, State_Type, 0, NUM_STATE);
+	    
+	    for (MFIter mfi(U); mfi.isValid(); ++mfi)
+	    {
+		int i = mfi.index();
+		
+		const Box& vbox = grids[i];
+		const Box& gbox = Utmp[i].box();
+		const BoxArray& ba = BoxLib::boxComplement(gbox, vbox);
+		
+		for (int ibox=0; ibox<ba.size(); ibox++)
+		{
+		    U[i].copy(Utmp[i], ba[ibox]);
+		}
+	    }
+
+	    // no break; so it will go to next case and call FillBoundary
+
 	}
 
-	break;
+        case use_FillBoundary:
+
+	    U.FillBoundary();
+	    geom.FillPeriodicBoundary(U, true);
+	    for (MFIter mfi(U); mfi.isValid(); ++mfi)
+	    {
+		setPhysBoundaryValues(U[mfi], 
+				      State_Type,
+				      time,
+				      0,
+				      0,
+				      NUM_STATE);
+	    }
+	    
+	    break;
     }
 }
 
 
 void
-RNS::dUdt(MultiFab& U, MultiFab& Uprime, Real time, RNSFillType fill_boundary_type, 
+RNS::dUdt(MultiFab& U, MultiFab& Uprime, Real time, int fill_boundary_type, 
 	  FluxRegister* fine, FluxRegister* current, Real dt)
 {
     FArrayBox  flux[BL_SPACEDIM];
@@ -141,7 +155,10 @@ RNS::dUdt(MultiFab& U, MultiFab& Uprime, Real time, RNSFillType fill_boundary_ty
 	}
     }
 
-    fill_boundary(U, time, fill_boundary_type);
+    if (fill_boundary_type)
+    {
+	fill_boundary(U, time, fill_boundary_type);
+    }
     
     const Real *dx = geom.CellSize();
 
@@ -247,18 +264,17 @@ RNS::post_update(MultiFab& U)
 void
 RNS::advance_chemistry(MultiFab& U, Real dt)
 {
-    if (! chemSolve->isNull)
+    BL_ASSERT( ! chemSolve->isNull );
+
+    for (MFIter mfi(U); mfi.isValid(); ++mfi)
     {
-	for (MFIter mfi(U); mfi.isValid(); ++mfi)
-	{
-	    const int   i = mfi.index();
-	    const Box& bx = mfi.validbox();
-	    const int* lo = bx.loVect();
-	    const int* hi = bx.hiVect();
-	    
-	    BL_FORT_PROC_CALL(RNS_ADVCHEM, rns_advchem)
-		(lo, hi, BL_TO_FORTRAN(U[i]), dt);
-	}
+	const int   i = mfi.index();
+	const Box& bx = mfi.validbox();
+	const int* lo = bx.loVect();
+	const int* hi = bx.hiVect();
+	
+	BL_FORT_PROC_CALL(RNS_ADVCHEM, rns_advchem)
+	    (lo, hi, BL_TO_FORTRAN(U[i]), dt);
     }
 
     post_update(U);
@@ -288,14 +304,13 @@ RNS::advance_AD(const MultiFab& Uold, MultiFab& Unew, Real time, Real dt)
 	    current = &getFluxReg(level);
 	}
 
-	RNSFillType fill_boundary_type = (level == 0) ? use_FillBoundary : use_FillCoarsePatch;
-	
 	// Step 1 of RK2
-	dUdt(Unew, Uprime, time, fill_boundary_type);
+	dUdt(Unew, Uprime, time, 0);
 	update_rk(Unew, Uold, 0.5*dt, Uprime); // Unew = Uold + 0.5*dt*Uprime
 	post_update(Unew);
 	
 	// Step 2 of RK2
+	int fill_boundary_type = (level == 0) ? use_FillBoundary : use_FillCoarsePatch;
 	dUdt(Unew, Uprime, time+0.5*dt, fill_boundary_type, fine, current, dt);
 	update_rk(Unew, Uold, dt, Uprime); // Unew = Uold + dt*Uprime
 	post_update(Unew);
@@ -304,11 +319,11 @@ RNS::advance_AD(const MultiFab& Uold, MultiFab& Unew, Real time, Real dt)
     {
 	BL_ASSERT(level==0);
 
-	RNSFillType fill_boundary_type = use_FillBoundary;
+	int fill_boundary_type = use_FillBoundary;
 	MultiFab Utmp(grids,NUM_STATE,NUM_GROW);
 
 	// Step 1 of RK3
-	dUdt(Unew, Uprime, time, fill_boundary_type);
+	dUdt(Unew, Uprime, time, 0);
 	update_rk(Unew, Uold, dt, Uprime);
 	post_update(Unew);	
 
