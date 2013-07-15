@@ -123,6 +123,7 @@ public:
     //
     void fill_boundary(MultiFab& U, Real time, int type);
     // choices for "type" in fill_boundary:
+    static const int no_fill               = 0;
     static const int use_FillPatchIterator = 1;
     static const int use_FillCoarsePatch   = 2;
     static const int use_FillBoundary      = 3;
