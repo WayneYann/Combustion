@@ -71,8 +71,7 @@ c     cell-centered, 1 ghost cell
       real*8 diffdiff_old(0:nlevs-1,-1:nfine)
       real*8 diffdiff_new(0:nlevs-1,-1:nfine)
       real*8 diffdiff_tmp(0:nlevs-1,-1:nfine)
-      real*8  divu_extrap(0:nlevs-1,-1:nfine)
-      real*8  divu_effect(0:nlevs-1,-1:nfine)
+      real*8    divu_half(0:nlevs-1,-1:nfine)
 
 c     cell-centered, no ghost cells
       real*8      rhohalf(0:nlevs-1, 0:nfine-1)
@@ -116,19 +115,18 @@ c     compute U^{ADV,*}
      $                     macvel(0,:),dx(0),dt(0),lo(0),hi(0),bc(0,:))
 
       if (initial_S_type .eq. 1) then
-c     extrapolate S^{n-1} and S^n to get S^{n+1/2}
+c     extrapolate S^{n-1} and S^n to get S^extrap = S^{n+1/2}
          do i=lo(0),hi(0)
-            divu_extrap(0,i) = divu_old(0,i) + 0.5d0*dt(0)*dSdt(0,i)
+            divu_half(0,i) = divu_old(0,i) + 0.5d0*dt(0)*dSdt(0,i)
          end do
       else
-c     set S^{n+1/2} to S^n
+c     set S^extrap to S^n
          do i=lo(0),hi(0)
-            divu_extrap(0,i) = divu_old(0,i)
+            divu_half(0,i) = divu_old(0,i)
          end do
       end if
 
-c     compute ptherm = p(rho,T,Y)
-c     this is needed for any dpdt-based correction scheme
+c     compute p(rho,T,Y)^n for the dpdt correction
       call compute_pthermo(scal_old(0,:,:),lo(0),hi(0),bc(0,:))
 
 c     reset delta_chi
@@ -139,34 +137,35 @@ c     delta_chi = delta_chi + (peos-p0)/(dt*peos) + (1/peos) u dot grad peos
      $              delta_chi(0,:),macvel(0,:),dx(0),dt(0),
      $              lo(0),hi(0),bc(0,:))
 
-c     S_hat^{n+1/2} = S^{n+1/2} + delta_chi
+c     S_hat^extrap = S^extrap + delta_chi
       do i=lo(0),hi(0)
-         divu_effect(0,i) = divu_extrap(0,i) + delta_chi(0,i)
+         divu_half(0,i) = divu_half(0,i) + delta_chi(0,i)
       end do
 
 c     mac projection
-c     macvel will now satisfy div(umac) = S_hat^{n+1/2}
+c     macvel will now satisfy div(umac) = S_hat^extrap
       call macproj(macvel(0,:),scal_old(0,:,Density),
-     &             divu_effect(0,:),dx,lo(0),hi(0),bc(0,:))
+     &             divu_half(0,:),dx,lo(0),hi(0),bc(0,:))
 
 ccccccccccccccccccccccccccccccccccccccccccc
 c     Step 2: Advance thermodynamic variables
 ccccccccccccccccccccccccccccccccccccccccccc
 
-c     compute transport coefficients
+c     compute transport coefficients at t^n
 c        rho D_m     (for species)
 c        lambda / cp (for enthalpy)
 c        lambda      (for temperature)
       call calc_diffusivities(scal_old(0,:,:),beta_old(0,:,:),
      &                        mu_old(0,:),lo(0),hi(0))
 
-c     compute diffusion terms at time n
+c     compute diffusion terms at t^n
       print *,'... creating the diffusive terms with old data'
 
 c     compute div lambda grad T
       diff_old(0,:,Temp) = 0.d0
       call addDivLambdaGradT(scal_old(0,:,:),beta_old(0,:,:),
      &                       diff_old(0,:,Temp),dx(0),lo(0),hi(0))
+
 c     compute conservatively corrected div gamma_m 
 c     also save Gamma_m for computing diffdiff = div h_m Gamma_m later
       call get_spec_visc_terms(scal_old(0,:,:),beta_old(0,:,:),
@@ -214,7 +213,7 @@ c     that have a backward Euler character
       do misdc = 1, misdc_iterMAX
          print *,'... doing SDC iter ',misdc
             
-         print *,'... compute lagged diff_new, D(U^{n+1,k-1})'
+         print *,'... compute lagged diff_new, D^{n+1,(k-1)}'
 
 c     compute transport coefficients
 c        rho D_m     (for species)
@@ -224,10 +223,10 @@ c        lambda      (for temperature)
      &                           mu_dummy(0,:),lo(0),hi(0))
 
 c     compute div lambda grad T
-c     the gamma_m h_m part will go in "diffdiff"
          diff_new(0,:,Temp) = 0.d0
          call addDivLambdaGradT(scal_new(0,:,:),beta_new(0,:,:),
      &                          diff_new(0,:,Temp),dx(0),lo(0),hi(0))
+
 c     compute a conservative div gamma_m
 c     save gamma_m for differential diffusion computation
          call get_spec_visc_terms(scal_new(0,:,:),beta_new(0,:,:),
@@ -270,7 +269,7 @@ c     divu
 
 c     time-centered divu
             do i=lo(0),hi(0)
-               divu_extrap(0,i) = 0.5d0*(divu_old(0,i) + divu_new(0,i))
+               divu_half(0,i) = 0.5d0*(divu_old(0,i) + divu_new(0,i))
             end do
 
 cccccccccccccccccccccccccccccccccccc
@@ -291,115 +290,116 @@ c     delta_chi = delta_chi + (peos-p0)/(dt*peos) + (1/peos) u dot grad peos
 
 c     S_hat^{n+1/2} = S^{n+1/2} + delta_chi
             do i=lo(0),hi(0)
-               divu_effect(0,i) = divu_extrap(0,i) + delta_chi(0,i)
+               divu_half(0,i) = divu_half(0,i) + delta_chi(0,i)
             end do
 
 c     macvel will now satisfy div(umac) = S_hat^{n+1/2}
             call macproj(macvel(0,:),scal_old(0,:,Density),
-     &                   divu_effect(0,:),dx,lo(0),hi(0),bc(0,:))
+     &                   divu_half(0,:),dx,lo(0),hi(0),bc(0,:))
 
          end if
 
          print *,'... computing A forcing term = D^n + I_R^{k-1}'
 
-c     compute advective forcing term
+c     advective forcing for species
+c     diff_old carries div Gamma_m
+c     I_R carries iteratively lagged or time-lagged reactions
          do i=lo(0),hi(0)
             do n = 1,Nspec
                is = FirstSpec + n - 1
                tforce(0,i,is) = diff_old(0,i,is) + I_R(0,i,n)
             enddo
-c     this needs to be in alternate rhoh form now
+c     advective forcing for enthalpy
 c     diff_old carries div lambda grad T
 c     diffdiff_old carries div h_m gamma_m
             tforce(0,i,RhoH) = diff_old(0,i,Temp) + diffdiff_old(0,i)
          enddo
             
 c     compute advective flux divergence
-            call scal_aofs(scal_old(0,:,:),macvel(0,:),aofs(0,:,:),
-     $                     divu_effect(0,:),tforce(0,:,:),dx(0),dt(0),
-     $                     lo(0),hi(0),bc(0,:))
+         call scal_aofs(scal_old(0,:,:),macvel(0,:),aofs(0,:,:),
+     $                  divu_half(0,:),tforce(0,:,:),dx(0),dt(0),
+     $                  lo(0),hi(0),bc(0,:))
 
 c     update density
-            print *,'... update rho'
-            call update_rho(scal_old(0,:,:),scal_new(0,:,:),aofs(0,:,:),
-     &                      dt(0),lo(0),hi(0),bc(0,:))
+         print *,'... update rho'
+         call update_rho(scal_old(0,:,:),scal_new(0,:,:),aofs(0,:,:),
+     &                   dt(0),lo(0),hi(0),bc(0,:))
 
-c     update rhoY_m with advection terms and set up RHS for equation (47) C-N solve
-            print *,'... do correction diffusion solve for species'
-            do i=lo(0),hi(0)
-               do n=1,Nspec
-                  is = FirstSpec + n - 1
-c     includes deferred correction term for species
-                  dRhs(0,i,n) = dt(0)*(I_R(0,i,n) 
-     &                 + 0.5d0*(diff_old(0,i,is) - diff_new(0,i,is)))
-               enddo
-c     includes deferred correction term for alternate enthalpy formulation
-c     no need to add differential diffusion anymore!
-               dRhs(0,i,0) = dt(0)*(
-     &              + 0.5d0*(diff_old(0,i,Temp) - diff_new(0,i,Temp)))
-            enddo
-            call update_spec(scal_old(0,:,:),scal_new(0,:,:),aofs(0,:,:),
-     &                       alpha(0,:),
-     &                       dRhs(0,0:,1:),Rhs(0,0:,FirstSpec:),
-     &                       dt(0),lo(0),hi(0),bc(0,:))
-
-c     Solve C-N system in equation (47) for \tilde{Y}_{m,AD}^{(k+1)}
-            rho_flag = 2
+c     compute deferrec correcion terms
+         do i=lo(0),hi(0)
             do n=1,Nspec
                is = FirstSpec + n - 1
-               call cn_solve(scal_new(0,:,:),alpha(0,:),beta_new(0,:,:),
-     $                       Rhs(0,:,is),dx(0),dt(0),is,be_cn_theta,
-     $                       rho_flag,.false.,lo(0),hi(0),bc(0,:))
+c     includes deferred correction term for species
+c     dRhs for species now holds dt*(I_R + (1/2) div Gamma_m^n + (1/2) div Gamma_m^{(k)}
+c     Shouldn't have to modify dRhs again
+               dRhs(0,i,n) = dt(0)*(I_R(0,i,n) 
+     &              + 0.5d0*(diff_old(0,i,is) - diff_new(0,i,is)))
             enddo
-            
-            if (LeEQ1 .eq. 1) then
-
-c     extract div gamma^n
-               do i=lo(0),hi(0)
-                  do n=1,Nspec
-                     is = FirstSpec + n - 1
-                     diff_hat(0,i,is) = (scal_new(0,i,is)-scal_old(0,i,is))/dt(0) 
-     $                    - aofs(0,i,is) - dRhs(0,i,n)/dt(0)
-                  enddo
-               enddo
-
-            else
-
-c     compute conservatively corrected div gamma_m 
-c     also save gamma_m for computing diffdiff terms later
-               call get_spec_visc_terms(scal_new(0,:,:),beta_new(0,:,:),
-     &                                  diff_hat(0,:,FirstSpec:),
-     &                                  gamma_lo(0,:,:),
-     &                                  gamma_hi(0,:,:),
-     &                                  dx(0),lo(0),hi(0))
-
-c     add iteratively lagged, time-centered diffdiff term, where
-c     diffdiff = div h_m gamma_m
+c     includes deferred correction term for alternate enthalpy formulation
+c     this is the lambda grad T part and the h_m Gamma_m part
 c     dRhs for enthalpy now holds :
 c        (dt/2) div (lambda^n grad T^n - lambda^(k) grad T^(k))
 c       +(dt/2) div (h_m^n gamma_m^n - h_m^(k) gamma_m^(k)
-c     Shouldn't have to modify dRhs again.
-               do i=lo(0),hi(0)
-                  dRhs(0,i,0) = dRhs(0,i,0) 
-     $                 + 0.5d0*dt(0)*(diffdiff_old(0,i) - diffdiff_new(0,i))
-               end do
+c     Shouldn't have to modify dRhs again
+            dRhs(0,i,0) = dt(0)*(
+     &           + 0.5d0*(diff_old(0,i,Temp) - diff_new(0,i,Temp))
+     &           + 0.5d0*(diffdiff_old(0,i) - diffdiff_new(0,i)))
+         enddo
 
-            end if
+c     update rhoY_m with advection terms and set up RHS for equation (47) C-N solve
+         call update_spec(scal_old(0,:,:),scal_new(0,:,:),aofs(0,:,:),
+     &                    alpha(0,:),
+     &                    dRhs(0,0:,1:),Rhs(0,0:,FirstSpec:),
+     &                    dt(0),lo(0),hi(0),bc(0,:))
+
+         print *,'... do correction diffusion solve for species'
+
+c     Solve C-N system in equation (47) for \tilde{Y}_{m,AD}^{(k+1)}
+         rho_flag = 2
+         do n=1,Nspec
+            is = FirstSpec + n - 1
+            call cn_solve(scal_new(0,:,:),alpha(0,:),beta_new(0,:,:),
+     $                    Rhs(0,:,is),dx(0),dt(0),is,be_cn_theta,
+     $                    rho_flag,.false.,lo(0),hi(0),bc(0,:))
+         enddo
             
-            print *,'... do correction diffusion solve for rhoh'
+         if (LeEQ1 .eq. 1) then
+
+c     extract div gamma^n
+            do i=lo(0),hi(0)
+               do n=1,Nspec
+                  is = FirstSpec + n - 1
+                  diff_hat(0,i,is) = (scal_new(0,i,is)-scal_old(0,i,is))/dt(0) 
+     $                 - aofs(0,i,is) - dRhs(0,i,n)/dt(0)
+               enddo
+            enddo
+
+         else
+
+c     compute conservatively corrected div gamma_m 
+c     also save gamma_m for computing diffdiff terms later
+            call get_spec_visc_terms(scal_new(0,:,:),beta_new(0,:,:),
+     &                               diff_hat(0,:,FirstSpec:),
+     &                               gamma_lo(0,:,:),
+     &                               gamma_hi(0,:,:),
+     &                               dx(0),lo(0),hi(0))
+
+         end if
+            
+         print *,'... do correction diffusion solve for rhoh'
 
 c     update rhoh with advection terms
 c     set Rhs(RhoH) to (rhoh)^n + dt*A + 
 c        (dt/2) div (lambda^n grad T^n - lambda^(k) grad T^(k))
 c       +(dt/2) div (h_m^n gamma_m^n - h_m^(k) gamma_m^(k)
-            call update_rhoh(scal_old(0,:,:),scal_new(0,:,:),aofs(0,:,:),
-     &                       alpha(0,:),
-     &                       dRhs(0,:,0),Rhs(0,:,RhoH),dt(0),
-     &                       lo(0),hi(0),bc(0,:))
+         call update_rhoh(scal_old(0,:,:),scal_new(0,:,:),aofs(0,:,:),
+     &                    alpha(0,:),
+     &                    dRhs(0,:,0),Rhs(0,:,RhoH),dt(0),
+     &                    lo(0),hi(0),bc(0,:))
 
 c     scal_new(Temp) contains T^{(k)}.  This will be the initial guess.
 
-            do l=0,4
+         do l=0,4
 
 c     compute (h,c_p,lambda)_AD^{(k+1),l} using T_AD^{(k+1),l} and Y_AD^{(k+1)}
 c     put rho^{(k+1)}*h_AD^{(k+1),l} into scal_new
@@ -407,89 +407,41 @@ c     put lambda_AD^{(k+1),l} into beta_new(Temp)
 c     put rho^{(k+1)}*cp_AD^{(k+1),l} into rho_cp
 
 c     compute rho*h
-               do i=lo(0),hi(0)
-                  do n = 1,Nspec
-                     Y(n) = scal_new(0,i,FirstSpec+n-1) / scal_new(0,i,Density)
-                  enddo
-                  CALL CKHBMS(scal_new(0,i,Temp),Y,IWRK,RWRK,scal_new(0,i,RhoH))
-                  scal_new(0,i,RhoH) = scal_new(0,i,RhoH)*scal_new(0,i,Density)
-               end do
+            do i=lo(0),hi(0)
+               do n = 1,Nspec
+                  Y(n) = scal_new(0,i,FirstSpec+n-1) / scal_new(0,i,Density)
+               enddo
+               CALL CKHBMS(scal_new(0,i,Temp),Y,IWRK,RWRK,scal_new(0,i,RhoH))
+               scal_new(0,i,RhoH) = scal_new(0,i,RhoH)*scal_new(0,i,Density)
+            end do
 
 c     compute lambda and cp
-               call calc_lambda_cp(scal_new(0,:,:),beta_new(0,:,:),
-     &                             rho_cp(0,:),lo(0),hi(0))
+            call calc_lambda_cp(scal_new(0,:,:),beta_new(0,:,:),
+     &                          rho_cp(0,:),lo(0),hi(0))
 
 c     multiply cp by rho
-               do i=lo(0),hi(0)
-                  rho_cp(0,i) = rho_cp(0,i)*scal_new(0,i,Density)
-               end do
+            do i=lo(0),hi(0)
+               rho_cp(0,i) = rho_cp(0,i)*scal_new(0,i,Density)
+            end do
 
 c     build rhs for delta T solve
 c     Rhs(RhoH) already holds (rhoh)^n + dt*A + 
 c        (1/2) div (lambda^n grad T^n - lambda^(k) grad T^(k))
 c       +(1/2) div (h_m^n gamma_m^n - h_m^(k) gamma_m^(k)
 c     make a copy of Rhs(RhoH)
-               Rhs_deltaT(:,:) = Rhs(:,:,RhoH)
+            Rhs_deltaT(:,:) = Rhs(:,:,RhoH)
 
 c     need to subtract rho^(k+1) h_AD^{(k+1),l} from Rhs_deltaT
-               do i=lo(0),hi(0)
-                  Rhs_deltaT(0,i) = Rhs_deltaT(0,i) - scal_new(0,i,RhoH)
-               end do
+            do i=lo(0),hi(0)
+               Rhs_deltaT(0,i) = Rhs_deltaT(0,i) - scal_new(0,i,RhoH)
+            end do
 
 c     need to add dt*div lambda_AD^{(k+1),l} grad T_AD^{(k+1),l} from Rhs_deltaT
-               diff_hat(:,:,Temp) = 0.d0
-               call addDivLambdaGradT(scal_new(0,:,:),beta_new(0,:,:),
-     $                                diff_hat(0,:,Temp),dx(0),lo(0),hi(0))
-               do i=lo(0),hi(0)
-                  Rhs_deltaT(0,i) = Rhs_deltaT(0,i) + dt(0)*diff_hat(0,i,Temp)
-               end do
-
-               if (LeEQ1 .eq. 0) then
-c     compute div h_m Gamma_m
-c     we pass in conservative gamma_m via gamma
-c     we compute h_m using T from the scalar argument
-                  call get_diffdiff_terms(scal_new(0,:,:),
-     $                                    gamma_lo(0,:,:),gamma_hi(0,:,:),
-     $                                    diffdiff_tmp(0,:),dx(0),lo(0),hi(0))
-               end if
-
-c     add dt*div h_m Gamma_m^{(k+1),l-1)}
-               do i=lo(0),hi(0)
-                  Rhs_deltaT(0,i) = Rhs_deltaT(0,i) + dt(0)*diffdiff_tmp(0,i)
-               end do
-
-
-c     Solve C-N system for delta T
-               deltaT = 0.d0
-               call cn_solve_deltaT(deltaT(0,:),rho_cp(0,:),
-     $                              beta_new(0,:,Temp),
-     $                              Rhs_deltaT(0,:),dx(0),dt(0),
-     $                              be_cn_theta,lo(0),hi(0),bc(0,:))
-            
-c     update temperature
-c     no need to update h here, since the source terms for VODE doesn't use it
-               do i=lo(0),hi(0)
-                  scal_new(0,i,Temp) = scal_new(0,i,Temp) + deltaT(0,i)
-               end do
-
-               call set_bc_s(scal_new(0,:,:),lo(0),hi(0),bc(0,:))
-
-c     end loop over l
-            end do
-
-c     do this in alternate enthalpy formulation
-c     put the A+D forcing for VODE in dRhs since it almost looks like what we want
-            do i=lo(0),hi(0)
-               dRhs(0,i,0) = dRhs(0,i,0) / dt(0)
-               dRhs(0,i,0) = dRhs(0,i,0) + aofs(0,i,RhoH)
-            end do
-
-            diff_hat(0,:,Temp) = 0.d0
+            diff_hat(:,:,Temp) = 0.d0
             call addDivLambdaGradT(scal_new(0,:,:),beta_new(0,:,:),
      $                             diff_hat(0,:,Temp),dx(0),lo(0),hi(0))
-
             do i=lo(0),hi(0)
-               dRhs(0,i,0) = dRhs(0,i,0) + diff_hat(0,i,Temp)
+               Rhs_deltaT(0,i) = Rhs_deltaT(0,i) + dt(0)*diff_hat(0,i,Temp)
             end do
 
             if (LeEQ1 .eq. 0) then
@@ -501,41 +453,87 @@ c     we compute h_m using T from the scalar argument
      $                                 diffdiff_tmp(0,:),dx(0),lo(0),hi(0))
             end if
 
+c     add dt*div h_m Gamma_m^{(k+1),l-1)}
             do i=lo(0),hi(0)
-               dRhs(0,i,0) = dRhs(0,i,0) + diffdiff_tmp(0,i)
+               Rhs_deltaT(0,i) = Rhs_deltaT(0,i) + dt(0)*diffdiff_tmp(0,i)
             end do
 
+c     Solve C-N system for delta T
+            deltaT = 0.d0
+            call cn_solve_deltaT(deltaT(0,:),rho_cp(0,:),
+     $                           beta_new(0,:,Temp),
+     $                           Rhs_deltaT(0,:),dx(0),dt(0),
+     $                           be_cn_theta,lo(0),hi(0),bc(0,:))
             
-            print *,'... react with const sources'
+c     update temperature
+c     no need to update h here, since the source terms for VODE doesn't use it
+            do i=lo(0),hi(0)
+               scal_new(0,i,Temp) = scal_new(0,i,Temp) + deltaT(0,i)
+            end do
+
+            call set_bc_s(scal_new(0,:,:),lo(0),hi(0),bc(0,:))
+               
+c     end loop over l
+         end do
+
+c     do this in alternate enthalpy formulation
+c     put the A+D forcing for VODE in dRhs since it almost looks like what we want
+         do i=lo(0),hi(0)
+            dRhs(0,i,0) = dRhs(0,i,0) / dt(0)
+            dRhs(0,i,0) = dRhs(0,i,0) + aofs(0,i,RhoH)
+         end do
+
+         diff_hat(0,:,Temp) = 0.d0
+         call addDivLambdaGradT(scal_new(0,:,:),beta_new(0,:,:),
+     $                          diff_hat(0,:,Temp),dx(0),lo(0),hi(0))
+
+         do i=lo(0),hi(0)
+            dRhs(0,i,0) = dRhs(0,i,0) + diff_hat(0,i,Temp)
+         end do
+
+         if (LeEQ1 .eq. 0) then
+c     compute div h_m Gamma_m
+c     we pass in conservative gamma_m via gamma
+c     we compute h_m using T from the scalar argument
+            call get_diffdiff_terms(scal_new(0,:,:),
+     $                              gamma_lo(0,:,:),gamma_hi(0,:,:),
+     $                              diffdiff_tmp(0,:),dx(0),lo(0),hi(0))
+         end if
+
+         do i=lo(0),hi(0)
+            dRhs(0,i,0) = dRhs(0,i,0) + diffdiff_tmp(0,i)
+         end do
+
+         print *,'... react with const sources'
 
 c     compute A+D source terms for reaction integration
 c     do this in alternate enthalpy formulation for diff term
-            do n = FirstSpec,LastSpec
-               do i=lo(0),hi(0)
-                  const_src(0,i,n) = aofs(0,i,n)
-     $                 + 0.5d0*(diff_old(0,i,n)+diff_new(0,i,n))
-     $                 + diff_hat(0,i,n) - diff_new(0,i,n)
-                  lin_src_old(0,i,n) = 0.d0
-                  lin_src_new(0,i,n) = 0.d0
-               enddo
-            enddo
+         do n = FirstSpec,LastSpec
             do i=lo(0),hi(0)
-               const_src(0,i,RhoH) = dRhs(0,i,0)
-               lin_src_old(0,i,RhoH) = 0.d0
-               lin_src_new(0,i,RhoH) = 0.d0
-               enddo
-
+               const_src(0,i,n) = aofs(0,i,n)
+     $              + 0.5d0*(diff_old(0,i,n)+diff_new(0,i,n))
+     $              + diff_hat(0,i,n) - diff_new(0,i,n)
+               lin_src_old(0,i,n) = 0.d0
+               lin_src_new(0,i,n) = 0.d0
+            enddo
+         enddo
+         do i=lo(0),hi(0)
+            const_src(0,i,RhoH) = dRhs(0,i,0)
+            lin_src_old(0,i,RhoH) = 0.d0
+            lin_src_new(0,i,RhoH) = 0.d0
+         enddo
+         
 c     solve equations (50), (51) and (52)
-            call strang_chem(scal_old(0,:,:),scal_new(0,:,:),
-     $                       const_src(0,:,:),lin_src_old(0,:,:),
-     $                       lin_src_new(0,:,:),
-     $                       I_R(0,:,:),dt(0),lo(0),hi(0),bc(0,:))
+         call strang_chem(scal_old(0,:,:),scal_new(0,:,:),
+     $                    const_src(0,:,:),lin_src_old(0,:,:),
+     $                    lin_src_new(0,:,:),
+     $                    I_R(0,:,:),dt(0),lo(0),hi(0),bc(0,:))
             
 C----------------------------------------------------------------
 c     End MISDC iterations
 C----------------------------------------------------------------
 
-         enddo
+      enddo
 
 C----------------------------------------------------------------
 c     Step 3: Advance the velocity
@@ -543,15 +541,15 @@ C----------------------------------------------------------------
 
 c     omegadot for divu_new computation is instantaneous
 c     value of omegadot at t^{n+1}
-         do i=lo(0),hi(0)
-            do n=1,Nspec
-               C(n) = scal_new(0,i,FirstSpec+n-1)*invmwt(n)
-            end do
-            call CKWC(scal_new(0,i,Temp),C,IWRK,RWRK,WDOTK)
-            do n=1,Nspec
-               I_R_divu(0,i,n) = WDOTK(n)*mwt(n)
-            end do
+      do i=lo(0),hi(0)
+         do n=1,Nspec
+            C(n) = scal_new(0,i,FirstSpec+n-1)*invmwt(n)
          end do
+         call CKWC(scal_new(0,i,Temp),C,IWRK,RWRK,WDOTK)
+         do n=1,Nspec
+            I_R_divu(0,i,n) = WDOTK(n)*mwt(n)
+         end do
+      end do
 
 c     compute transport coefficients
 c        rho D_m     (for species)
