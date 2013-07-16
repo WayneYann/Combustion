@@ -1,15 +1,12 @@
-      subroutine get_diffdiff_terms(scal_for_coeff,scal_for_grad,
-     $                              gamma_lo,gamma_hi,
-     $                              beta,diffdiff,dx,lo,hi)
+      subroutine get_diffdiff_terms(scal,gamma_lo,gamma_hi,
+     $                              diffdiff,dx,lo,hi)
 
       implicit none
       include 'spec.h'
 
-      real*8 scal_for_coeff(-2:nfine+1,nscal)
-      real*8 scal_for_grad (-2:nfine+1,nscal)
+      real*8 scal(-2:nfine+1,nscal)
       real*8 gamma_lo  ( 0:nfine-1,Nspec)
       real*8 gamma_hi  ( 0:nfine-1,Nspec)
-      real*8 beta          (-1:nfine  ,nscal)
       real*8 diffdiff      (-1:nfine)
       real*8 dx
       integer lo,hi
@@ -27,7 +24,7 @@
 
       do i=lo-1,hi+1
 c        compute cell-centered h_m
-         call CKHMS(scal_for_coeff(i,Temp),IWRK,RWRK,hm(1,i))
+         call CKHMS(scal(i,Temp),IWRK,RWRK,hm(1,i))
       end do
 
       do i=lo,hi

@@ -101,8 +101,7 @@ c     nodal, no ghost cells
       integer i,is,misdc,n,rho_flag,IWRK,l
 
 c     "diffdiff" means "differential diffusion", which corresponds to
-c     sum_m div [ h_m (rho D_m - lambda/cp) grad Y_m ]
-c     in equation (3)
+c     sum_m div h_m Gamma_m
       diffdiff_old(0,:) = 0.d0
       diffdiff_new(0,:) = 0.d0
 
@@ -165,37 +164,32 @@ c     compute transport coefficients
 c        rho D_m     (for species)
 c        lambda / cp (for enthalpy)
 c        lambda      (for temperature)
-         call calc_diffusivities(scal_old(0,:,:),beta_old(0,:,:),
-     &                           mu_old(0,:),lo(0),hi(0))
+      call calc_diffusivities(scal_old(0,:,:),beta_old(0,:,:),
+     &                        mu_old(0,:),lo(0),hi(0))
 
 c     compute diffusion terms at time n
-         print *,'... creating the diffusive terms with old data'
+      print *,'... creating the diffusive terms with old data'
 
 c     compute div lambda grad T
 c     the gamma_m h_m part will go in "diffdiff"
-         diff_old(0,:,Temp) = 0.d0
-         call addDivLambdaGradT(scal_old(0,:,:),beta_old(0,:,:),
-     &                          diff_old(0,:,Temp),dx(0),lo(0),hi(0))
+      diff_old(0,:,Temp) = 0.d0
+      call addDivLambdaGradT(scal_old(0,:,:),beta_old(0,:,:),
+     &                       diff_old(0,:,Temp),dx(0),lo(0),hi(0))
 c     compute conservatively corrected div gamma_m 
 c     also save gamma_m for computing diffdiff terms later
-         call get_spec_visc_terms(scal_old(0,:,:),beta_old(0,:,:),
-     &                            diff_old(0,:,FirstSpec:),
-     &                            gamma_lo(0,:,:),gamma_hi(0,:,:),
-     &                            dx(0),lo(0),hi(0))
+      call get_spec_visc_terms(scal_old(0,:,:),beta_old(0,:,:),
+     &                         diff_old(0,:,FirstSpec:),
+     &                         gamma_lo(0,:,:),gamma_hi(0,:,:),
+     &                         dx(0),lo(0),hi(0))
 
-         if (LeEQ1 .eq. 0) then
-c     sum_m div [ h_m (rho D_m - lambda/cp) grad Y_m ]
+      if (LeEQ1 .eq. 0) then
+c     compute div h_m Gamma_m
 c     we pass in conservative gamma_m via gamma
-c     we take lambda / cp from beta
-c     we compute h_m using T from the first argument
-c     we compute grad Y_m using Y_m from the second argument
-c     for the alternate energy formulation, this function has been
-c     altered to not subtract the lambda/cp grad Y_m term.
-            call get_diffdiff_terms(scal_old(0,:,:),scal_old(0,:,:),
-     $                              gamma_lo(0,:,:),
-     $                              gamma_hi(0,:,:),beta_old(0,:,:),
-     $                              diffdiff_old(0,:),dx(0),lo(0),hi(0))
-         end if
+c     we compute h_m using T from the scalar argument
+         call get_diffdiff_terms(scal_old(0,:,:),
+     $                           gamma_lo(0,:,:),gamma_hi(0,:,:),
+     $                           diffdiff_old(0,:),dx(0),lo(0),hi(0))
+      end if
 
 c     If .true., I_R is instantaneous value at t^n
 c     If .false., I_R is I_R^kmax from previous time step
@@ -262,17 +256,11 @@ c     save gamma_m for differential diffusion computation
      &                               dx(0),lo(0),hi(0))
 
             if (LeEQ1 .eq. 0) then
-c     calculate differential diffusion "diffdiff" terms, i.e.,
-c     sum_m div [ h_m (rho D_m - lambda/cp) grad Y_m ]
+c     compute div h_m Gamma_m
 c     we pass in conservative gamma_m via gamma
-c     we take lambda / cp from beta
-c     we compute h_m using T from the first argument
-c     we compute grad Y_m using Y_m from the second argument
-c     for the alternate energy formulation, this function has been
-c     altered to not subtract the lambda/cp grad Y_m term.
-               call get_diffdiff_terms(scal_new(0,:,:),scal_new(0,:,:),
-     $                                 gamma_lo(0,:,:),
-     $                                 gamma_hi(0,:,:),beta_new(0,:,:),
+c     we compute h_m using T from the scalar argument
+               call get_diffdiff_terms(scal_new(0,:,:),
+     $                                 gamma_lo(0,:,:),gamma_hi(0,:,:),
      $                                 diffdiff_new(0,:),dx(0),lo(0),hi(0))
             end if
 
@@ -371,9 +359,9 @@ c     no need to add differential diffusion anymore!
      &              + 0.5d0*(diff_old(0,i,Temp) - diff_new(0,i,Temp)))
             enddo
             call update_spec(scal_old(0,:,:),scal_new(0,:,:),aofs(0,:,:),
-     &                       alpha(0,:),beta_old(0,:,:),
+     &                       alpha(0,:),
      &                       dRhs(0,0:,1:),Rhs(0,0:,FirstSpec:),
-     &                       dx(0),dt(0),be_cn_theta,lo(0),hi(0),bc(0,:))
+     &                       dt(0),lo(0),hi(0),bc(0,:))
 
 c     Solve C-N system in equation (47) for \tilde{Y}_{m,AD}^{(k+1)}
             rho_flag = 2
@@ -476,12 +464,14 @@ c     need to add dt*div lambda_AD^{(k+1),l} grad T_AD^{(k+1),l} from Rhs_deltaT
                   Rhs_deltaT(0,i) = Rhs_deltaT(0,i) + dt(0)*diff_hat(0,i,Temp)
                end do
 
-
-
-               call get_diffdiff_terms(scal_new(0,:,:),scal_new(0,:,:),
-     $                                 gamma_lo(0,:,:),
-     $                                 gamma_hi(0,:,:),beta_new(0,:,:),
-     $                                 diffdiff_tmp(0,:),dx(0),lo(0),hi(0))
+               if (LeEQ1 .eq. 0) then
+c     compute div h_m Gamma_m
+c     we pass in conservative gamma_m via gamma
+c     we compute h_m using T from the scalar argument
+                  call get_diffdiff_terms(scal_new(0,:,:),
+     $                                    gamma_lo(0,:,:),gamma_hi(0,:,:),
+     $                                    diffdiff_tmp(0,:),dx(0),lo(0),hi(0))
+               end if
 
                do i=lo(0),hi(0)
                   Rhs_deltaT(0,i) = Rhs_deltaT(0,i) + dt(0)*diffdiff_tmp(0,i)
@@ -521,11 +511,14 @@ c     put the A+D forcing for VODE in dRhs since it almost looks like what we wa
                dRhs(0,i,0) = dRhs(0,i,0) + diff_hat(0,i,Temp)
             end do
 
-
-            call get_diffdiff_terms(scal_new(0,:,:),scal_new(0,:,:),
-     $                              gamma_lo(0,:,:),
-     $                              gamma_hi(0,:,:),beta_new(0,:,:),
-     $                              diffdiff_tmp(0,:),dx(0),lo(0),hi(0))
+            if (LeEQ1 .eq. 0) then
+c     compute div h_m Gamma_m
+c     we pass in conservative gamma_m via gamma
+c     we compute h_m using T from the scalar argument
+               call get_diffdiff_terms(scal_new(0,:,:),
+     $                                 gamma_lo(0,:,:),gamma_hi(0,:,:),
+     $                                 diffdiff_tmp(0,:),dx(0),lo(0),hi(0))
+            end if
 
             do i=lo(0),hi(0)
                dRhs(0,i,0) = dRhs(0,i,0) + diffdiff_tmp(0,i)

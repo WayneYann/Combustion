@@ -32,8 +32,7 @@ c     compute div lambda grad T
       call addDivLambdaGradT(scal,beta,diff(:,Temp),dx,lo,hi)
 
 c     compute div h_m Gamma_m
-      call get_diffdiff_terms(scal,scal,
-     $                        gamma_lo,gamma_hi,beta,
+      call get_diffdiff_terms(scal,gamma_lo,gamma_hi,
      $                        diffdiff,dx,lo,hi)
 
 c     combine div lambda grad T + div h_m Gamma_m
