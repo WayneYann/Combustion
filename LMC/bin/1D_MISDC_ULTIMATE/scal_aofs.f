@@ -36,12 +36,8 @@
       compute_comp(Density) = .false.
       compute_comp(RhoRT) = .false.
 
-      if (use_strang) then
-         ! predict everything else
-      else
-         ! no need to predict temperature
-         compute_comp(Temp) = .false.
-      end if
+!     no need to predict temperature
+      compute_comp(Temp) = .false.
 
       do n = 1,nscal
          if (compute_comp(n) ) then

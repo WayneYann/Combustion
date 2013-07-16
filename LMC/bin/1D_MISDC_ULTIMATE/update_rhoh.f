@@ -1,5 +1,5 @@
       subroutine update_rhoh(scal_old,scal_new,aofs,alpha,
-     &                       beta,dRhs,Rhs,dx,dt,be_cn_theta,lo,hi,bc)
+     &                       dRhs,Rhs,dt,lo,hi,bc)
       implicit none
       include 'spec.h'
       real*8 scal_old(-2:nfine+1,nscal)
@@ -12,17 +12,11 @@
       real*8 dx,dt,be_cn_theta
       integer lo,hi,bc(2)
 
-      real*8  visc(-1:nfine)
-      real*8  visc_term
       integer i
 
-      call get_rhoh_visc_terms(scal_old,beta,visc,dx,lo,hi)
-      
       do i=lo,hi
-         visc_term = dt*(1.d0 - be_cn_theta)*visc(i)
-         
          scal_new(i,RhoH) = scal_old(i,RhoH) + dt*aofs(i,RhoH)
-         Rhs(i) = dRhs(i) + scal_new(i,RhoH) + visc_term
+         Rhs(i) = dRhs(i) + scal_new(i,RhoH)
          alpha(i) = scal_new(i,Density)
       enddo
       

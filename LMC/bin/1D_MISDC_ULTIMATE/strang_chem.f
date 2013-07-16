@@ -29,34 +29,25 @@ c     Shut off diagnostics
       print *,'... chemistry'
 c     Evolve chem over grid
       do i=lo,hi
-         if (use_strang) then
-C           integrating Y_m's not rhoY_m
-            do n = 1,Nspec
-               RYold(n) = scal_old(i,FirstSpec+n-1)/scal_old(i,Density)
-            enddo
-            Told = scal_old(i,Temp)            
 
-         else 
-
-            rho_old = 0.d0
-            do n = 1,Nspec
-               RYold(n) = scal_old(i,FirstSpec+n-1)
-               rho_old = rho_old + RYold(n)
-            enddo
-            
-            Told = scal_old(i,RhoH)
+         rho_old = 0.d0
+         do n = 1,Nspec
+            RYold(n) = scal_old(i,FirstSpec+n-1)
+            rho_old = rho_old + RYold(n)
+         enddo
+         
+         Told = scal_old(i,RhoH)
 
 c     Set linear source terms in common for ode integrators access
-            do n = 1,Nspec
-               is = FirstSpec + n - 1
-               c_0(n) = const_src(i,is) + lin_src_old(i,is)
-               c_1(n) = (lin_src_new(i,is) - lin_src_old(i,is))/dt
-            enddo
-            c_0(0) = const_src(i,RhoH) + lin_src_old(i,RhoH)
-            c_1(0) = (lin_src_new(i,RhoH) - lin_src_old(i,RhoH))/dt
-            rhoh_INIT = scal_old(i,RhoH)
-            T_INIT = scal_old(i,Temp)
-         endif
+         do n = 1,Nspec
+            is = FirstSpec + n - 1
+            c_0(n) = const_src(i,is) + lin_src_old(i,is)
+            c_1(n) = (lin_src_new(i,is) - lin_src_old(i,is))/dt
+         enddo
+         c_0(0) = const_src(i,RhoH) + lin_src_old(i,RhoH)
+         c_1(0) = (lin_src_new(i,RhoH) - lin_src_old(i,RhoH))/dt
+         rhoh_INIT = scal_old(i,RhoH)
+         T_INIT = scal_old(i,Temp)
 
          call chemsolve(RYnew, Tnew, RYold, Told, FuncCount, dt,
      &                  diag, do_diag, ifail, i)
@@ -65,50 +56,35 @@ c     Set linear source terms in common for ode integrators access
             stop
          endif
 
-         if(use_strang) then
+         scal_new(i,Density) = 0.d0
+         do n = 1,Nspec
+            scal_new(i,Density) = scal_new(i,Density) + RYnew(n)
+         enddo
+         do n = 1,Nspec
+            scal_new(i,FirstSpec+n-1) = RYnew(n)
+            Y(n) = RYnew(n)/scal_new(i,Density)
+         enddo
 
-            do n = 1,Nspec
-               scal_new(i,FirstSpec+n-1) = RYnew(n)*scal_old(i,Density)
-            enddo
-            scal_new(i,Temp) = Tnew
-            do n = 1,Nspec
-               is = FirstSpec + n - 1
-               I_R(i,n) = (scal_new(i,is)-scal_old(i,is)) / dt
-            enddo
+         scal_new(i,RhoH) = Tnew
+         hmix = scal_new(i,RhoH) / scal_new(i,Density)
+         errMax = hmix_TYP*1.e-20
 
-         else
+         call FORT_TfromHYpt(scal_new(i,Temp),hmix,Y,
+     &        Nspec,errMax,NiterMAX,res,Niter)
 
-            scal_new(i,Density) = 0.d0
-            do n = 1,Nspec
-               scal_new(i,Density) = scal_new(i,Density) + RYnew(n)
-            enddo
-            do n = 1,Nspec
-               scal_new(i,FirstSpec+n-1) = RYnew(n)
-               Y(n) = RYnew(n)/scal_new(i,Density)
-            enddo
-
-            scal_new(i,RhoH) = Tnew
-            hmix = scal_new(i,RhoH) / scal_new(i,Density)
-            errMax = hmix_TYP*1.e-20
-
-            call FORT_TfromHYpt(scal_new(i,Temp),hmix,Y,
-     &                          Nspec,errMax,NiterMAX,res,Niter)
-
-            if (Niter.lt.0) then
-               print *,'strang_chem: H to T solve failed'
-               print *,'Niter=',Niter
-               stop
-            endif
-
-            do n = 1,Nspec
-               is = FirstSpec + n - 1
-               I_R(i,n) =
-     $              (scal_new(i,is)-scal_old(i,is)) / dt
-     $              - const_src(i,is)
-     $              - 0.5d0*(lin_src_old(i,is)+lin_src_new(i,is))
-            enddo
-
+         if (Niter.lt.0) then
+            print *,'strang_chem: H to T solve failed'
+            print *,'Niter=',Niter
+            stop
          endif
+
+         do n = 1,Nspec
+            is = FirstSpec + n - 1
+            I_R(i,n) =
+     $           (scal_new(i,is)-scal_old(i,is)) / dt
+     $           - const_src(i,is)
+     $           - 0.5d0*(lin_src_old(i,is)+lin_src_new(i,is))
+         enddo
 
          call set_bc_s(scal_new,lo,hi,bc)
 

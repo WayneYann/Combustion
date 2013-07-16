@@ -564,24 +564,6 @@ C                          Z(K) = rho*Y(K)
          stop
       endif
 
-      if( use_strang) then
-C
-C  Doing exactly what LMC does
-C
-         T = Z(0)
-C     this function computes rho (= Pressure/(R* Temp* sum(Y_m/W_m)))  
-         CALL CKRHOY(Pcgs,T,Z(1),IWRK,RWRK,RHO)
-C     calculate molar concentrations from mass fractions; result in RPAR(NC)
-         CALL CKYTCP(Pcgs, T, Z(1), IWRK, RWRK, C)
-         if (lim_rxns .gt. 0) then
-            do K=1,Nspec
-               C(K) = MAX(0.d0,C(K))
-            enddo
-         endif
-         call CKCPBS(T,Z(1),IWRK,RWRK,CPB)
-      
-      else
-
          RHO = 0.d0
          do K=1,Nspec
             RHO = RHO + Z(K)
@@ -609,33 +591,12 @@ C     calculate molar concentrations from mass fractions; result in RPAR(NC)
             stop
          endif
 
-      endif
-
-      if (use_strang) then
-
-         call CKHMS(T,IWRK,RWRK,HK)
-         call CKWC(T,C,IWRK,RWRK,WDOTK)
-         SUM = 0.d0
-         DO K = 1, Nspec
-            ZP(K) = WDOTK(K)*mwt(K) + c_0(K) + c_1(K)*TIME
-            SUM = SUM - HK(K)*ZP(K)
-         END DO
-         ZP(0) = (c_0(0) + c_1(0)*TIME + SUM) / (RHO*CPB)
-      else
-
          call CKWC(T,C,IWRK,RWRK,WDOTK)
          do k= 1, Nspec
             ZP(k) = WDOTK(k)*mwt(k) + c_0(k) + c_1(k)*TIME
          end do
          ZP(0) = c_0(0) + c_1(0)*TIME 
 
-      end if
-
-      if (use_strang) then
-         DO K = 1, Nspec
-            ZP(K) = ZP(K)/RHO
-         enddo         
-      endif  
       END
 
       subroutine vodeJ(NEQ, T, Y, ML, MU, PD, NRPD, RPAR, IPAR)
@@ -756,17 +717,6 @@ c     Always form Jacobian to start
          FIRST = .FALSE.
       end if
 
-      if (do_diag .eq. 1 .and. use_strang) then
-         FuncCount = 0
-         do n=1,Nspec
-            C(n) = Z(n)*invmwt(n)
-         enddo
-         CALL CKQC(Z(0),C,IWRK,RWRK,Q)
-         do n=1,Nreac
-            diag(n) = diag(n) + 0.5*dtloc*Q(n)
-         enddo
-      endif
-
       ifail = 0
       do node = 1,nsub
          if (node.lt.nsub) then
@@ -788,18 +738,7 @@ c     HACK
 
          TT1 = TT2
 
-         if (do_diag .eq. 1 .and. use_strang) then
-            do n=1,Nspec
-               C(n) = Z(n)*invmwt(n)
-            enddo
-            CALL CKQC(Z(0),C,IWRK,RWRK,Q)
-            do n=1,Nreac
-               diag(n) = diag(n) + weight*dtloc*Q(n)
-            enddo
-            FuncCount = FuncCount + DVIWRK(11)
-         else
-            FuncCount = DVIWRK(11)
-         endif
+         FuncCount = DVIWRK(11)
 
          if (ISTATE.LE.-1  .or.  verbose_vode .eq. 1) then
             write(6,*) '......dvode done:'

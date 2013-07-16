@@ -50,7 +50,7 @@ f_sources += lmc.f ${chem_sources} prob.f fill_ghost.f \
              get_rhoh_visc_terms.f project.f strang_chem.f \
              pre_mac_predict.f compute_pthermo.f add_dpdt.f \
              mac_proj.f scal_aofs.f mkslopes.f \
-             update_rho.f update_spec.f update_temp.f update_rhoh.f \
+             update_rho.f update_spec.f update_rhoh.f \
              rhoh_to_temp.f advance.f vel_edge_states.f update_vel.f \
              read_check.f write_check.f write_plt.f cn_solve.f ${pmf_source}
 
