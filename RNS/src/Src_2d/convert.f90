@@ -14,7 +14,6 @@ contains
     double precision, intent(out) :: uc(clo:chi)
     
     integer :: i
-    double precision :: uLap
     double precision, parameter :: b = -1.d0/24.d0, d = 13.d0/12.d0
 
     do i=clo,chi

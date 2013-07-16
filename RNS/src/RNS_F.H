@@ -107,13 +107,37 @@ BL_FORT_PROC_DECL(RNS_PRESSERROR,rns_presserror)
      const Real dx[], const Real xlo[], const Real problo[],
      const Real* time, const int* level);
 
-BL_FORT_PROC_DECL(RNS_HYPFILL,rns_hypfill)
+BL_FORT_PROC_DECL(RNS_GRPFILL,rns_grpfill)
+    (BL_FORT_FAB_ARG(state),
+     const int dlo[], const int dhi[],
+     const Real dx[], const Real glo[], 
+     const Real* time, const int bc[]);
+
+BL_FORT_PROC_DECL(RNS_REGFILL,rns_regfill)
     (BL_FORT_FAB_ARG(state),
      const int dlo[], const int dhi[],
      const Real dx[], const Real glo[], 
      const Real* time, const int bc[]);
 
 BL_FORT_PROC_DECL(RNS_DENFILL,rns_denfill)
+    (BL_FORT_FAB_ARG(state),
+     const int dlo[], const int dhi[],
+     const Real dx[], const Real glo[], 
+     const Real* time, const int bc[]);
+
+BL_FORT_PROC_DECL(RNS_MXFILL,rns_mxfill)
+    (BL_FORT_FAB_ARG(state),
+     const int dlo[], const int dhi[],
+     const Real dx[], const Real glo[], 
+     const Real* time, const int bc[]);
+
+BL_FORT_PROC_DECL(RNS_MYFILL,rns_myfill)
+    (BL_FORT_FAB_ARG(state),
+     const int dlo[], const int dhi[],
+     const Real dx[], const Real glo[], 
+     const Real* time, const int bc[]);
+
+BL_FORT_PROC_DECL(RNS_MZFILL,rns_mzfill)
     (BL_FORT_FAB_ARG(state),
      const int dlo[], const int dhi[],
      const Real dx[], const Real glo[], 

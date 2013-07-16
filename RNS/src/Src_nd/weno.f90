@@ -42,7 +42,7 @@ module weno_module
 
   private
 
-  public :: weno5, cellavg2gausspt_1d, cellavg2face_1d
+  public :: weno5, cellavg2gausspt_1d, cellavg2face_1d, cellavg2gausspt_2d
 
 contains
 
@@ -142,5 +142,32 @@ contains
        uf(i) = cc4(-2)*u(i-2) + cc4(-1)*u(i-1) + cc4(0)*u(i) + cc4(1)*u(i+1)
     end do
   end subroutine cellavg2face_1d
+
+
+  subroutine cellavg2gausspt_2d(u, ulo, uhi, ug, lo, hi)
+    integer, intent(in) :: lo(2), hi(2), ulo(2), uhi(2)
+    double precision, intent(in ) :: u (ulo(1):uhi(1),ulo(2):uhi(2))
+    double precision, intent(out) :: ug( lo(1): hi(1), lo(2): hi(2),4)
+
+    integer :: i, j, g, gg
+    double precision, allocatable :: ugy(:,:,:)
+    
+    allocate(ugy(lo(1)-2:hi(1)+2,lo(2):hi(2),2))
+
+    do i=lo(1)-2,hi(1)+2
+       call cellavg2gausspt_1d(u(i,:), ulo(2), uhi(2), ugy(i,:,1), ugy(i,:,2), lo(2), hi(2))
+    end do
+
+    do g=1,2
+       gg = 2*(g-1)
+       do j=lo(2),hi(2)
+          call cellavg2gausspt_1d(ugy(:,j,g), lo(1)-2, hi(1)+2, &
+               ug(:,j,gg+1), ug(:,j,gg+2), lo(1), hi(1))
+       end do
+    end do
+
+    deallocate(ugy)
+
+  end subroutine cellavg2gausspt_2d
 
 end module weno_module

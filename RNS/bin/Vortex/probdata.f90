@@ -1,17 +1,10 @@
 module probdata_module
 
-  integer, save :: prob_type
+  double precision, save :: Minfty, Rvortex, Cvortex
 
-  double precision, save :: frac
-
-  double precision, save :: center(3)
-
-  ! RT parameters
-  double precision, save :: rho_1, rho_2
-  double precision, save :: p0_base
-  double precision, save :: L_x
-  double precision, save :: pertmag
-
+  double precision, save :: Lx
+  double precision, allocatable, save :: stateinfty(:)
+  logical, save :: sinftysaved = .false.
 
   ! These determine the refinement criteria
   double precision, save :: denerr,   dengrad

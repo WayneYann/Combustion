@@ -6,4 +6,7 @@
   pertmag =  0.00d0
   rfire   =  0.15d0
   uinit   = -3.00d4
+  vinit   =  0.20d4
+  winit   =  0.30d4
+
 /

@@ -10,7 +10,7 @@ subroutine PROBINIT (init,name,namlen,problo,probhi)
 
   integer untin,i
 
-  namelist /fortin/ prob_type, pertmag, rfire, uinit, vinit, winit
+  namelist /fortin/ Minfty, Rvortex, Cvortex
 
 !
 !     Build "probin" filename -- the name of file containing fortin namelist.
@@ -29,23 +29,17 @@ subroutine PROBINIT (init,name,namlen,problo,probhi)
   end do
          
 ! set namelist defaults
-  prob_type = 1
-
-! problem type 1
-  pertmag = 0.d0
-  rfire   = 0.15d0
-  uinit   = 0.d0
-  vinit   = 0.d0
-  winit   = 0.d0
-
+  Minfty  = 0.05d0
+  Rvortex = 0.1d0
+  Cvortex = -0.0025d0
+  
 !     Read namelists
   untin = 9
   open(untin,file=probin(1:namlen),form='formatted',status='old')
   read(untin,fortin)
   close(unit=untin)
 
-  center(1) = 0.5d0*(problo(1) + probhi(1))
-  center(2) = 0.5d0*(problo(2) + probhi(2))
+  Lx = probhi(1) - problo(1)
 
 end subroutine PROBINIT
 
@@ -77,7 +71,7 @@ subroutine rns_initdata(level,time,lo,hi,nscal, &
   use eos_module, only : eos_given_PTY
   use probdata_module
   use meth_params_module, only : NVAR, URHO, UMX, UMY, UEDEN, UTEMP, UFS, NSPEC
-  use chemistry_module, only : Patm, nspecies
+  use chemistry_module, only : Patm, Ru, nspecies
 
   implicit none
 
@@ -88,10 +82,11 @@ subroutine rns_initdata(level,time,lo,hi,nscal, &
   double precision state(state_l1:state_h1,state_l2:state_h2,NVAR)
   
   ! local variables
-  integer :: i, j, n, ii, jj
-  double precision :: xcen, ycen, xg, yg, r, rfront
+  integer :: i, j, ii, jj, n, iwrk
+  double precision :: xcen, ycen, xg, yg
   double precision :: pmf_vals(NSPEC+3), Xt(nspec), Yt(nspec)
-  double precision :: rhot, et, Pt, Tt, u1t, u2t
+  double precision :: rhot, et, Pt, Tt, u1t, u2t, rwrk, Cv, Cp, gamma, cs, exptmp, &
+       Rc, Cc, uinfty, Wbar
 
   double precision, parameter :: gp(2) = (/ -1.d0/sqrt(3.d0), 1.d0/sqrt(3.d0) /)
 
@@ -99,40 +94,57 @@ subroutine rns_initdata(level,time,lo,hi,nscal, &
      write(6,*)"nspecies, nspec ", nspecies, NSPEC
      stop
   end if
+  
+  call pmf(-1.d0,-1.d0,pmf_vals,n)
 
+  if (n .ne. nspec+3) then
+     write(6,*)"n, nspec ", n, nspec
+     stop
+  end if
+  
+  Tt = pmf_vals(1)
+
+  do n = 1,nspecies
+     Xt(n) = pmf_vals(3+n)
+  end do
+  CALL CKXTY (Xt, IWRK, RWRK, Yt)
+  CALL CKRHOY(patm,Tt,Yt,IWRK,RWRK,rhot)
+  ! we now have rho
+  
+  call CKCVBL(Tt, Xt, iwrk, rwrk, Cv)
+  Cp = Cv + Ru
+  gamma = Cp / Cv
+  cs = sqrt(gamma*patm/rhot)
+  
+  uinfty = Minfty*cs
+  Rc = Rvortex*Lx
+  Cc = Cvortex*cs*Lx
+    
   do j = state_l2, state_h2
      ycen = xlo(2) + delta(2)*(dble(j-lo(2)) + 0.5d0)
-
-
+     
      do i = state_l1, state_h1
         xcen = xlo(1) + delta(1)*(dble(i-lo(1)) + 0.5d0)
-
+        
         state(i,j,:) = 0.d0
-
+        
         do jj = 1, 2
            yg = ycen + 0.5d0*delta(2)*gp(jj)
            do ii = 1, 2
               xg = xcen + 0.5d0*delta(1)*gp(ii)
-
-              r = sqrt((xg-center(1))**2 + (yg-center(2))**2)
-              rfront = rfire - r + 3.011d0 ! 3.011d0 is roughly the surface of fire for pmf.
-
-              call pmf(rfront,rfront,pmf_vals,n)
               
-              if (n .ne. nspec+3) then
-                 write(6,*)"n, nspec ", n, nspec
-                 stop
-              end if
+              exptmp = exp(-(xg**2+yg**2)/(2.d0*Rc**2))
               
-              Xt = pmf_vals(4:)
+              u1t = uinfty - Cc*exptmp*yg/Rc**2
+              u2t = Cc*exptmp*xg/Rc**2
               
-              Pt  = patm
-              Tt  = pmf_vals(1)
-              u1t = uinit
-              u2t = vinit
+              Pt = patm - rhot*(Cc/Rc)**2*exptmp
               
-              call eos_given_PTY(rhot, et, Yt, Pt, Tt, Xt)
-
+              call CKMMWX(Xt, iwrk, rwrk, Wbar)
+              Tt = Pt*Wbar / (rhot*Ru)
+              
+              call CKUBMS(Tt,Yt,IWRK,RWRK,et)
+              
               state(i,j,URHO ) = state(i,j,URHO ) + 0.25d0*rhot
               state(i,j,UMX  ) = state(i,j,UMX  ) + 0.25d0*rhot*u1t
               state(i,j,UMY  ) = state(i,j,UMY  ) + 0.25d0*rhot*u2t
@@ -141,7 +153,25 @@ subroutine rns_initdata(level,time,lo,hi,nscal, &
               do n=1, NSPEC
                  state(i,j,UFS+n-1) = state(i,j,UFS+n-1) + 0.25d0*rhot*Yt(n)
               end do
-
+              
+              if (.not. sinftysaved) then
+                 Tt = pmf_vals(1)
+                 call CKUBMS(Tt,Yt,IWRK,RWRK,et)
+                 
+                 allocate(stateinfty(NVAR))
+                 
+                 stateinfty(URHO ) = rhot
+                 stateinfty(UMX  ) = rhot*uinfty
+                 stateinfty(UMY  ) = 0.d0
+                 stateinfty(UEDEN) = rhot*(et + 0.5d0*uinfty**2)
+                 stateinfty(UTEMP) = Tt
+                 do n=1,NSPEC
+                    stateinfty(UFS+n-1) = rhot*Yt(n)
+                 end do
+                 
+                 sinftysaved = .true.
+              end if
+              
            end do
         end do
 
@@ -149,4 +179,5 @@ subroutine rns_initdata(level,time,lo,hi,nscal, &
   end do
 
 end subroutine rns_initdata
+
 

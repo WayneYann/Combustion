@@ -5,9 +5,9 @@
   rho_2   = 2.0d0
   p0_base = 5.0d0
 
-  pertmag = 0.0d0
+  pertmag = 1.d-2
 
-  dengrad = 0.01
+  dengrad = 0.001d0
   max_dengrad_lev = 5
 
 /

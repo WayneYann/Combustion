@@ -1,6 +1,8 @@
 # ------------------  INPUTS TO MAIN PROGRAM  -------------------
-max_step  = 10000
-stop_time = 1.e-4
+max_step  = 1000000
+stop_time = 0.038
+
+max_step = 30
 
 # for RK
 amr.multi_level_sdc = 0 
@@ -8,32 +10,23 @@ sdc.t_ratio         = 1
 rns.RK_order        = 3   # 3 works with amr.max_level=0 only
 
 # PROBLEM SIZE & GEOMETRY
-geometry.is_periodic = 1 1 1
+geometry.is_periodic = 0 1 0
 geometry.coord_sys   = 0  # 0 => cart, 1 => RZ  2=>spherical
-geometry.prob_lo     =  -0.5d0  -0.5d0  -0.5d0
-geometry.prob_hi     =   0.5d0   0.5d0   0.5d0
-amr.n_cell           =   128     128     128
+geometry.prob_lo     =   0.0d0   0.0d0      0.0d0
+geometry.prob_hi     =   1.0d0   0.05d0     1.0d0
+amr.n_cell           =   640     32         1
 
-vode.rtol      = 1.e-10
-vode.atol      = 1.e-10
-vode.order     = 5
-vode.use_ajac  = 1
-vode.save_ajac = 1
-vode.stiff     = 1
-vode.verbose   = 0
-
-eglib.use_bulk_visc = 1
-
-rns.Riemann    = 1     # 0: HLL,  1: JBB,  2: HLLC
-rns.Treference = 298.0
+rns.Riemann    =  2     # 0: HLL,  1: JBB,  2: HLLC
+rns.gamma      =  1.4
+rns.Treference =  0.0
 
 # >>>>>>>>>>>>>  BC FLAGS <<<<<<<<<<<<<<<<
 # 0 = Interior           3 = Symmetry
 # 1 = Inflow             4 = SlipWall
 # 2 = Outflow            5 = NoSlipWall
 # >>>>>>>>>>>>>  BC FLAGS <<<<<<<<<<<<<<<<
-rns.lo_bc       =  0   0   0
-rns.hi_bc       =  0   0   0
+rns.lo_bc       =  3   0   0
+rns.hi_bc       =  3   0   0
 
 # TIME STEP CONTROL
 rns.cfl            = 0.5     # cfl number for hyperbolic system
@@ -63,7 +56,8 @@ amr.check_int               = 100    # number of timesteps between checkpoints
 amr.plot_files_output = 1
 amr.plot_file         = plt     # root name of plotfile
 amr.plot_int          = 100     # number of timesteps between plotfiles
-amr.derive_plot_vars = ALL
+#amr.derive_plot_vars = ALL
+amr.derive_plot_vars = pressure soundspeed MachNumber magvort divu x_velocity y_velocity
 
 #PROBIN FILENAME
 amr.probin_file = probin

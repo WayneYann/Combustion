@@ -9,7 +9,8 @@ module meth_params_module
   integer, save :: riemann_solver
   integer, parameter :: HLL_solver = 0
   integer, parameter :: JBB_solver = 1
-  integer, parameter :: nriemann   = 2
+  integer, parameter :: HLLC_solver = 2
+  integer, parameter :: nriemann   = 3
 
   double precision, save :: difmag
   
