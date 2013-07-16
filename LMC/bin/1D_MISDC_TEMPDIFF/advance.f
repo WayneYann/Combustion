@@ -72,6 +72,7 @@ c     cell-centered, 1 ghost cell
       real*8       tforce(0:nlevs-1,-1:nfine,  nscal)
       real*8 diffdiff_old(0:nlevs-1,-1:nfine)
       real*8 diffdiff_new(0:nlevs-1,-1:nfine)
+      real*8 diffdiff_tmp(0:nlevs-1,-1:nfine)
       real*8  divu_extrap(0:nlevs-1,-1:nfine)
       real*8  divu_effect(0:nlevs-1,-1:nfine)
 
@@ -910,7 +911,7 @@ c       +(dt/2) div (h_m^n gamma_m^n + h_m^(k) gamma_m^(k)
 c     Shouldn't have to modify dRhs again.
                do i=lo(0),hi(0)
                   dRhs(0,i,0) = dRhs(0,i,0) 
-     $                 + 0.5d0*dt(0)*(diffdiff_old(0,i) + diffdiff_new(0,i))
+     $                 + 0.5d0*dt(0)*(diffdiff_old(0,i) - diffdiff_new(0,i))
                end do
 
             end if
@@ -973,6 +974,18 @@ c     need to add dt*div lambda_AD^{(k+1),l} grad T_AD^{(k+1),l} from Rhs_deltaT
                   Rhs_deltaT(0,i) = Rhs_deltaT(0,i) + dt(0)*diff_hat(0,i,Temp)
                end do
 
+
+
+               call get_diffdiff_terms(scal_new(0,:,:),scal_new(0,:,:),
+     $                                 gamma_lo(0,:,:),
+     $                                 gamma_hi(0,:,:),beta_new(0,:,:),
+     $                                 diffdiff_tmp(0,:),dx(0),lo(0),hi(0))
+
+               do i=lo(0),hi(0)
+                  Rhs_deltaT(0,i) = Rhs_deltaT(0,i) + dt(0)*diffdiff_tmp(0,i)
+               end do
+
+
 c     Solve C-N system for delta T
                deltaT = 0.d0
                call cn_solve_deltaT(deltaT(0,:),rho_cp(0,:),
@@ -1005,6 +1018,17 @@ c     put the A+D forcing for VODE in dRhs since it almost looks like what we wa
             do i=lo(0),hi(0)
                dRhs(0,i,0) = dRhs(0,i,0) + diff_hat(0,i,Temp)
             end do
+
+
+            call get_diffdiff_terms(scal_new(0,:,:),scal_new(0,:,:),
+     $                              gamma_lo(0,:,:),
+     $                              gamma_hi(0,:,:),beta_new(0,:,:),
+     $                              diffdiff_tmp(0,:),dx(0),lo(0),hi(0))
+
+            do i=lo(0),hi(0)
+               dRhs(0,i,0) = dRhs(0,i,0) + diffdiff_tmp(0,i)
+            end do
+
             
             print *,'... react with const sources'
 
