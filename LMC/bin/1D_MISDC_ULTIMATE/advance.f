@@ -64,11 +64,9 @@ c     cell-centered, 1 ghost cell
       real*8           gp(0:nlevs-1,-1:nfine)
       real*8         visc(0:nlevs-1,-1:nfine)
       real*8     I_R_divu(0:nlevs-1,-1:nfine,  0:Nspec)
-      real*8     I_R_temp(0:nlevs-1,-1:nfine,  0:Nspec)
       real*8     diff_old(0:nlevs-1,-1:nfine,  nscal)
       real*8     diff_new(0:nlevs-1,-1:nfine,  nscal)
       real*8     diff_hat(0:nlevs-1,-1:nfine,  nscal)
-      real*8     diff_tmp(0:nlevs-1,-1:nfine,  nscal)
       real*8       tforce(0:nlevs-1,-1:nfine,  nscal)
       real*8 diffdiff_old(0:nlevs-1,-1:nfine)
       real*8 diffdiff_new(0:nlevs-1,-1:nfine)
@@ -96,16 +94,11 @@ c     nodal, no ghost cells
       real*8      veledge(0:nlevs-1, 0:nfine  )
 
       real*8 Y(Nspec),WDOTK(Nspec),C(Nspec),RWRK
-      real*8 cpmix,rhocp,vel_theta,be_cn_theta
+      real*8 vel_theta,be_cn_theta
       
       integer i,is,misdc,n,rho_flag,IWRK,l
 
-c     "diffdiff" means "differential diffusion", which corresponds to
-c     sum_m div h_m Gamma_m
-      diffdiff_old(0,:) = 0.d0
-      diffdiff_new(0,:) = 0.d0
-
-      print *,'advance: at start of time step'
+      print *,'advance: at start of time step',istep
 
 ccccccccccccccccccccccccccccccccccccccccccc
 c     Step 1: Compute advection velocities
@@ -171,12 +164,11 @@ c     compute diffusion terms at time n
       print *,'... creating the diffusive terms with old data'
 
 c     compute div lambda grad T
-c     the gamma_m h_m part will go in "diffdiff"
       diff_old(0,:,Temp) = 0.d0
       call addDivLambdaGradT(scal_old(0,:,:),beta_old(0,:,:),
      &                       diff_old(0,:,Temp),dx(0),lo(0),hi(0))
 c     compute conservatively corrected div gamma_m 
-c     also save gamma_m for computing diffdiff terms later
+c     also save Gamma_m for computing diffdiff = div h_m Gamma_m later
       call get_spec_visc_terms(scal_old(0,:,:),beta_old(0,:,:),
      &                         diff_old(0,:,FirstSpec:),
      &                         gamma_lo(0,:,:),gamma_hi(0,:,:),
@@ -184,43 +176,32 @@ c     also save gamma_m for computing diffdiff terms later
 
       if (LeEQ1 .eq. 0) then
 c     compute div h_m Gamma_m
-c     we pass in conservative gamma_m via gamma
+c     we pass in conservative Gamma_m via gamma
 c     we compute h_m using T from the scalar argument
          call get_diffdiff_terms(scal_old(0,:,:),
      $                           gamma_lo(0,:,:),gamma_hi(0,:,:),
      $                           diffdiff_old(0,:),dx(0),lo(0),hi(0))
+      else
+         diffdiff_old = 0.d0
+         diffdiff_new = 0.d0
       end if
 
-c     If .true., I_R is instantaneous value at t^n
-c     If .false., I_R is I_R^kmax from previous time step
-         if (.true.) then
-            do i=lo(0),hi(0)
-               do n=1,Nspec
-                  C(n) = scal_old(0,i,FirstSpec+n-1)*invmwt(n)
-               end do
-               call CKWC(scal_old(0,i,Temp),C,IWRK,RWRK,WDOTK)
-               do n=1,Nspec
-                  I_R(0,i,n) = WDOTK(n)*mwt(n)
-               end do
-            end do
-         end if
-
-         print *,'... computing A forcing = D^n + I_R^{n-1,kmax}'
-
-c     compute advective forcing term
+c     If istep > 1, I_R is instantaneous value at t^n
+c     Otherwise,    I_R is I_R^kmax from previous pressure iteration
+      if (istep .gt. 1) then
          do i=lo(0),hi(0)
-            do n = 1,Nspec
-               is = FirstSpec + n - 1
-               tforce(0,i,is) = diff_old(0,i,is) + I_R(0,i,n)
-            enddo
-c     this needs to be in alternate rhoh form now
-c     diff_old carries div lambda grad T
-c     diffdiff_old carries div h_m gamma_m
-            tforce(0,i,RhoH) = diff_old(0,i,Temp) + diffdiff_old(0,i)
-         enddo
+            do n=1,Nspec
+               C(n) = scal_old(0,i,FirstSpec+n-1)*invmwt(n)
+            end do
+            call CKWC(scal_old(0,i,Temp),C,IWRK,RWRK,WDOTK)
+            do n=1,Nspec
+               I_R(0,i,n) = WDOTK(n)*mwt(n)
+            end do
+         end do
+      end if
 
 c     non-fancy predictor that simply sets scal_new = scal_old
-         scal_new(0,:,:) = scal_old(0,:,:)
+      scal_new = scal_old
 
 C----------------------------------------------------------------
 c     Begin MISDC iterations
@@ -228,99 +209,98 @@ C----------------------------------------------------------------
 
 c     diffusion solves in SDC iterations are iterative corrections
 c     that have a backward Euler character
-         be_cn_theta = 1.d0
+      be_cn_theta = 1.d0
 
-         do misdc = 1, misdc_iterMAX
-            print *,'... doing SDC iter ',misdc
+      do misdc = 1, misdc_iterMAX
+         print *,'... doing SDC iter ',misdc
             
-            print *,'... compute lagged diff_new, D(U^{n+1,k-1})'
+         print *,'... compute lagged diff_new, D(U^{n+1,k-1})'
 
 c     compute transport coefficients
 c        rho D_m     (for species)
 c        lambda / cp (for enthalpy)
 c        lambda      (for temperature)
-            call calc_diffusivities(scal_new(0,:,:),beta_new(0,:,:),
-     &                              mu_dummy(0,:),lo(0),hi(0))
+         call calc_diffusivities(scal_new(0,:,:),beta_new(0,:,:),
+     &                           mu_dummy(0,:),lo(0),hi(0))
 
 c     compute div lambda grad T
 c     the gamma_m h_m part will go in "diffdiff"
-            diff_new(0,:,Temp) = 0.d0
-            call addDivLambdaGradT(scal_new(0,:,:),beta_new(0,:,:),
-     &                             diff_new(0,:,Temp),dx(0),lo(0),hi(0))
+         diff_new(0,:,Temp) = 0.d0
+         call addDivLambdaGradT(scal_new(0,:,:),beta_new(0,:,:),
+     &                          diff_new(0,:,Temp),dx(0),lo(0),hi(0))
 c     compute a conservative div gamma_m
 c     save gamma_m for differential diffusion computation
-            call get_spec_visc_terms(scal_new(0,:,:),beta_new(0,:,:),
-     &                               diff_new(0,:,FirstSpec:),
-     &                               gamma_lo(0,:,:),
-     &                               gamma_hi(0,:,:),
-     &                               dx(0),lo(0),hi(0))
+         call get_spec_visc_terms(scal_new(0,:,:),beta_new(0,:,:),
+     &                            diff_new(0,:,FirstSpec:),
+     &                            gamma_lo(0,:,:),gamma_hi(0,:,:),
+     &                            dx(0),lo(0),hi(0))
 
-            if (LeEQ1 .eq. 0) then
+         if (LeEQ1 .eq. 0) then
 c     compute div h_m Gamma_m
 c     we pass in conservative gamma_m via gamma
 c     we compute h_m using T from the scalar argument
-               call get_diffdiff_terms(scal_new(0,:,:),
-     $                                 gamma_lo(0,:,:),gamma_hi(0,:,:),
-     $                                 diffdiff_new(0,:),dx(0),lo(0),hi(0))
-            end if
+            call get_diffdiff_terms(scal_new(0,:,:),
+     $                              gamma_lo(0,:,:),gamma_hi(0,:,:),
+     $                              diffdiff_new(0,:),dx(0),lo(0),hi(0))
+         end if
 
-            if (misdc .gt. 1) then
+         if (misdc .gt. 1) then
 
 cccccccccccccccccccccccccccccccccccc
 c     re-compute S^{n+1/2} by averaging old and new
 cccccccccccccccccccccccccccccccccccc
 
-               print *,'... recompute S^{n+1/2} by averaging'
-               print *,'    old and new'
+            print *,'... recompute S^{n+1/2} by averaging'
+            print *,'    old and new'
 
 c     instantaneous omegadot for divu calc
-               do i=lo(0),hi(0)
-                  do n=1,Nspec
-                     C(n) = scal_new(0,i,FirstSpec+n-1)*invmwt(n)
-                  end do
-                  call CKWC(scal_new(0,i,Temp),C,IWRK,RWRK,WDOTK)
-                  do n=1,Nspec
-                     I_R_divu(0,i,n) = WDOTK(n)*mwt(n)
-                  end do
+            do i=lo(0),hi(0)
+               do n=1,Nspec
+                  C(n) = scal_new(0,i,FirstSpec+n-1)*invmwt(n)
                end do
+               call CKWC(scal_new(0,i,Temp),C,IWRK,RWRK,WDOTK)
+               do n=1,Nspec
+                  I_R_divu(0,i,n) = WDOTK(n)*mwt(n)
+               end do
+            end do
 
 c     divu
-               call calc_divu(scal_new(0,:,:),beta_new(0,:,:),I_R_divu(0,:,:),
-     &              divu_new(0,:),dx(0),lo(0),hi(0))
+            call calc_divu(scal_new(0,:,:),beta_new(0,:,:),I_R_divu(0,:,:),
+     &                     divu_new(0,:),dx(0),lo(0),hi(0))
 
 c     time-centered divu
-               do i=lo(0),hi(0)
-                  divu_extrap(0,i) = 0.5d0*(divu_old(0,i) + divu_new(0,i))
-               end do
+            do i=lo(0),hi(0)
+               divu_extrap(0,i) = 0.5d0*(divu_old(0,i) + divu_new(0,i))
+            end do
 
 cccccccccccccccccccccccccccccccccccc
 c     update delta_chi and project
 cccccccccccccccccccccccccccccccccccc
 
-               print *,'... updating S^{n+1/2} and macvel'
-               print *,'    using fancy delta_chi'
+            print *,'... updating S^{n+1/2} and macvel'
+            print *,'    using fancy delta_chi'
 
 c     compute ptherm = p(rho,T,Y)
 c     this is needed for any dpdt-based correction scheme
-               call compute_pthermo(scal_new(0,:,:),lo(0),hi(0),bc(0,:))
-               
+            call compute_pthermo(scal_new(0,:,:),lo(0),hi(0),bc(0,:))
+            
 c     delta_chi = delta_chi + (peos-p0)/(dt*peos) + (1/peos) u dot grad peos
-               call add_dpdt(scal_new(0,:,:),scal_new(0,:,RhoRT),
-     $                       delta_chi(0,:),macvel(0,:),dx(0),dt(0),
-     $                       lo(0),hi(0),bc(0,:))
+            call add_dpdt(scal_new(0,:,:),scal_new(0,:,RhoRT),
+     $                    delta_chi(0,:),macvel(0,:),dx(0),dt(0),
+     $                    lo(0),hi(0),bc(0,:))
 
 c     S_hat^{n+1/2} = S^{n+1/2} + delta_chi
-               do i=lo(0),hi(0)
-                  divu_effect(0,i) = divu_extrap(0,i) + delta_chi(0,i)
-               end do
+            do i=lo(0),hi(0)
+               divu_effect(0,i) = divu_extrap(0,i) + delta_chi(0,i)
+            end do
 
 c     macvel will now satisfy div(umac) = S_hat^{n+1/2}
-               call macproj(macvel(0,:),scal_old(0,:,Density),
-     &                      divu_effect(0,:),dx,lo(0),hi(0),bc(0,:))
+            call macproj(macvel(0,:),scal_old(0,:,Density),
+     &                   divu_effect(0,:),dx,lo(0),hi(0),bc(0,:))
 
-            end if
+         end if
 
-            print *,'... computing A forcing term = D^n + I_R^{k-1}'
+         print *,'... computing A forcing term = D^n + I_R^{k-1}'
 
 c     compute advective forcing term
          do i=lo(0),hi(0)
@@ -397,7 +377,7 @@ c     add iteratively lagged, time-centered diffdiff term, where
 c     diffdiff = div h_m gamma_m
 c     dRhs for enthalpy now holds :
 c        (dt/2) div (lambda^n grad T^n - lambda^(k) grad T^(k))
-c       +(dt/2) div (h_m^n gamma_m^n + h_m^(k) gamma_m^(k)
+c       +(dt/2) div (h_m^n gamma_m^n - h_m^(k) gamma_m^(k)
 c     Shouldn't have to modify dRhs again.
                do i=lo(0),hi(0)
                   dRhs(0,i,0) = dRhs(0,i,0) 
@@ -411,7 +391,7 @@ c     Shouldn't have to modify dRhs again.
 c     update rhoh with advection terms
 c     set Rhs(RhoH) to (rhoh)^n + dt*A + 
 c        (dt/2) div (lambda^n grad T^n - lambda^(k) grad T^(k))
-c       +(dt/2) div (h_m^n gamma_m^n + h_m^(k) gamma_m^(k)
+c       +(dt/2) div (h_m^n gamma_m^n - h_m^(k) gamma_m^(k)
             call update_rhoh(scal_old(0,:,:),scal_new(0,:,:),aofs(0,:,:),
      &                       alpha(0,:),
      &                       dRhs(0,:,0),Rhs(0,:,RhoH),dt(0),
@@ -447,7 +427,7 @@ c     multiply cp by rho
 c     build rhs for delta T solve
 c     Rhs(RhoH) already holds (rhoh)^n + dt*A + 
 c        (1/2) div (lambda^n grad T^n - lambda^(k) grad T^(k))
-c       +(1/2) div (h_m^n gamma_m^n + h_m^(k) gamma_m^(k)
+c       +(1/2) div (h_m^n gamma_m^n - h_m^(k) gamma_m^(k)
 c     make a copy of Rhs(RhoH)
                Rhs_deltaT(:,:) = Rhs(:,:,RhoH)
 
@@ -473,6 +453,7 @@ c     we compute h_m using T from the scalar argument
      $                                    diffdiff_tmp(0,:),dx(0),lo(0),hi(0))
                end if
 
+c     add dt*div h_m Gamma_m^{(k+1),l-1)}
                do i=lo(0),hi(0)
                   Rhs_deltaT(0,i) = Rhs_deltaT(0,i) + dt(0)*diffdiff_tmp(0,i)
                end do
