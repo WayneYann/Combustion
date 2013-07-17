@@ -154,7 +154,7 @@ contains
     !
     call build(bpt_sdc_prep, "sdc_prep")
     call sdc_imex_set_q0(sdc%imex, mfptr(U))
-    call sdc_imex_spread(sdc%imex, 0.0d0)
+    call sdc_imex_spread(sdc%imex, time)
     call destroy(bpt_sdc_prep)
 
     if (sdc%tol_residual > 0.d0) then
@@ -166,7 +166,7 @@ contains
 
     call build(bpt_sdc_iter, "sdc_iter")
     do k = 1, sdc%iters
-       call sdc_imex_sweep(sdc%imex, 0.0d0, dt, 0)
+       call sdc_imex_sweep(sdc%imex, time, dt, 0)
 
        ! check residual
        if (sdc%tol_residual > 0.d0) then
@@ -207,7 +207,6 @@ contains
   ! SDCLib callbacks
   !
   subroutine srf1eval(Fptr, Uptr, t, ctxptr) bind(c)
-    use time_module, only : time
     type(c_ptr),    intent(in), value :: Fptr, Uptr, ctxptr
     real(c_double), intent(in), value :: t
 
@@ -221,7 +220,7 @@ contains
     ! t is in physical units
     ! print *, 'EVAL TIME', t
 
-    call dUdt(U, Uprime, time+t, ctx%dx)
+    call dUdt(U, Uprime, t, ctx%dx)
   end subroutine srf1eval
 
   subroutine srf1post(Uptr, stateptr, ctxptr) bind(c)
@@ -240,7 +239,7 @@ contains
     ! print *, "POST TIME", t
 
     call reset_density(U)
-    call impose_hard_bc(U,time)
+    call impose_hard_bc(U,t)
   end subroutine srf1post
 
   subroutine mrf1eval(Fptr, Uptr, t, ctxptr) bind(c)
@@ -329,7 +328,7 @@ contains
     ! advance
     !
     call sdc_mrex_set_q0(sdc%mrex, mfptr(U))
-    call sdc_mrex_spread(sdc%mrex, 0.0d0)
+    call sdc_mrex_spread(sdc%mrex, time)
     call destroy(bpt_sdc_prep)
 
     if (sdc%tol_residual > 0.d0) then
@@ -341,7 +340,7 @@ contains
 
     call build(bpt_sdc_iter, "sdc_iter")
     do k = 1, sdc%iters
-       call sdc_mrex_sweep(sdc%mrex, 0.0d0, dt, 0);
+       call sdc_mrex_sweep(sdc%mrex, time, dt, 0);
 
        ! check residual
        if (sdc%tol_residual > 0.d0) then
