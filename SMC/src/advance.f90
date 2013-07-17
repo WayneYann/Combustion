@@ -218,7 +218,8 @@ contains
     call c_f_pointer(ctxptr, ctx)
 
     ! t is in physical units
-    ! print *, 'EVAL TIME', t
+!    print *, 'srf1eval: EVAL TIME', t
+!    call flush(6)
 
     call dUdt(U, Uprime, t, ctx%dx)
   end subroutine srf1eval
@@ -236,14 +237,14 @@ contains
 
     ! t is in physical units
     t = state%t + state%dt
-    ! print *, "POST TIME", t
+!    print *, 'srf1post: POST TIME', t
+!    call flush(6)
 
     call reset_density(U)
     call impose_hard_bc(U,t)
   end subroutine srf1post
 
   subroutine mrf1eval(Fptr, Uptr, t, ctxptr) bind(c)
-    use time_module, only : time
     type(c_ptr),    intent(in), value :: Fptr, Uptr, ctxptr
     real(c_double), intent(in), value :: t
 
@@ -254,11 +255,13 @@ contains
     call c_f_pointer(Fptr, Uprime)
     call c_f_pointer(ctxptr, ctx)
 
-    call dUdt(U, Uprime, time+t, ctx%dx, include_r=.false.)
+!    print *, 'mrf1eval: EVAL TIME', t
+!    call flush(6)
+
+    call dUdt(U, Uprime, t, ctx%dx, include_r=.false.)
   end subroutine mrf1eval
 
   subroutine mrf2eval(Fptr, Uptr, t, ctxptr) bind(c)
-    use time_module, only : time
     type(c_ptr),    intent(in), value :: Fptr, Uptr, ctxptr
     real(c_double), intent(in), value :: t
 
@@ -269,7 +272,10 @@ contains
     call c_f_pointer(Fptr, Uprime)
     call c_f_pointer(ctxptr, ctx)
 
-    call dUdt(U, Uprime, time+t, ctx%dx, include_ad=.false.)
+!    print *, 'mrf2eval: EVAL TIME', t
+!    call flush(6)
+
+    call dUdt(U, Uprime, t, ctx%dx, include_ad=.false.)
   end subroutine mrf2eval
 
 
