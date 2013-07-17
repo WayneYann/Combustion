@@ -169,7 +169,7 @@ contains
        ! check residual
        if (sdc%tol_residual > 0.d0) then
           call sdc_imex_residual(sdc%imex, dt, mfptr(R))
-          call parallel_reduce(res1, norm_l2(R), MPI_MAX)
+          call parallel_reduce(res1, norm_l2(R), MPI_SUM)
 
           if (parallel_IOProcessor()) then
              if (res0 > 0.0d0) then
@@ -222,7 +222,16 @@ contains
     type(c_ptr), intent(in), value :: Uptr, Fptr, stateptr, ctxptr
 
     type(multifab), pointer :: U
+    type(sdc_state_t), pointer :: state
+    
+    real(dp_t) :: time
+
     call c_f_pointer(Uptr, U)
+    call c_f_pointer(stateptr, state)
+
+    time = state%t + state%dt
+
+    ! print *, "POST TIME", time    
 
     call reset_density(U)
     call impose_hard_bc(U)
@@ -328,7 +337,7 @@ contains
        ! check residual
        if (sdc%tol_residual > 0.d0) then
           call sdc_mrex_residual(sdc%mrex, dt, mfptr(R))
-          call parallel_reduce(res1, norm_l2(R), MPI_MAX)
+          call parallel_reduce(res1, norm_l2(R), MPI_SUM)
 
           if (parallel_IOProcessor()) then
              if (res0 > 0.0d0) then
