@@ -197,10 +197,11 @@ contains
   end subroutine nscbc_close
 
 
-  subroutine nscbc(Q, con, Fdif, rhs, t, dx)
+  subroutine nscbc(Q, con, Fdif, rhs, t, dx, include_r)
     type(multifab), intent(in   ) :: Q, con, Fdif
     type(multifab), intent(inout) :: rhs
     double precision, intent(in) :: t, dx(3)
+    logical, intent(in), optional :: include_r
 
     integer :: n, nb, ngq, ngc
     integer :: blo(Q%dim), bhi(Q%dim)
@@ -239,9 +240,9 @@ contains
           auxp => dataptr(aux_xlo%data,n)
 
           if (dm.eq.2) then
-             call compute_aux_2d(lo,hi,ngq,qp,auxp,alo,ahi,proc_Ma2_xlo)
+             call compute_aux_2d(lo,hi,ngq,qp,auxp,alo,ahi,proc_Ma2_xlo,include_r)
           else
-             call compute_aux_3d(lo,hi,ngq,qp,auxp,alo,ahi,proc_Ma2_xlo)
+             call compute_aux_3d(lo,hi,ngq,qp,auxp,alo,ahi,proc_Ma2_xlo,include_r)
           end if
        end if
 
@@ -252,9 +253,9 @@ contains
           auxp => dataptr(aux_xhi%data,n)
 
           if (dm.eq.2) then
-             call compute_aux_2d(lo,hi,ngq,qp,auxp,alo,ahi,proc_Ma2_xhi)
+             call compute_aux_2d(lo,hi,ngq,qp,auxp,alo,ahi,proc_Ma2_xhi,include_r)
           else
-             call compute_aux_3d(lo,hi,ngq,qp,auxp,alo,ahi,proc_Ma2_xhi)
+             call compute_aux_3d(lo,hi,ngq,qp,auxp,alo,ahi,proc_Ma2_xhi,include_r)
           end if
        end if
 
@@ -265,9 +266,9 @@ contains
           auxp => dataptr(aux_ylo%data,n)
 
           if (dm.eq.2) then
-             call compute_aux_2d(lo,hi,ngq,qp,auxp,alo,ahi,proc_Ma2_ylo)
+             call compute_aux_2d(lo,hi,ngq,qp,auxp,alo,ahi,proc_Ma2_ylo,include_r)
           else
-             call compute_aux_3d(lo,hi,ngq,qp,auxp,alo,ahi,proc_Ma2_ylo)
+             call compute_aux_3d(lo,hi,ngq,qp,auxp,alo,ahi,proc_Ma2_ylo,include_r)
           end if
        end if
 
@@ -278,9 +279,9 @@ contains
           auxp => dataptr(aux_yhi%data,n)
 
           if (dm.eq.2) then
-             call compute_aux_2d(lo,hi,ngq,qp,auxp,alo,ahi,proc_Ma2_yhi)
+             call compute_aux_2d(lo,hi,ngq,qp,auxp,alo,ahi,proc_Ma2_yhi,include_r)
           else
-             call compute_aux_3d(lo,hi,ngq,qp,auxp,alo,ahi,proc_Ma2_yhi)
+             call compute_aux_3d(lo,hi,ngq,qp,auxp,alo,ahi,proc_Ma2_yhi,include_r)
           end if
        end if
 
@@ -291,7 +292,7 @@ contains
              
              auxp => dataptr(aux_zlo%data,n)
              
-             call compute_aux_3d(lo,hi,ngq,qp,auxp,alo,ahi,proc_Ma2_zlo)
+             call compute_aux_3d(lo,hi,ngq,qp,auxp,alo,ahi,proc_Ma2_zlo,include_r)
           end if
           
           if (isValid(aux_zhi,n)) then
@@ -300,7 +301,7 @@ contains
              
              auxp => dataptr(aux_zhi%data,n)
              
-             call compute_aux_3d(lo,hi,ngq,qp,auxp,alo,ahi,proc_Ma2_zhi)
+             call compute_aux_3d(lo,hi,ngq,qp,auxp,alo,ahi,proc_Ma2_zhi,include_r)
           end if
        end if
 
@@ -353,8 +354,10 @@ contains
           else
              qinp => dataptr(qin_xlo%data,n)
              if (dm.eq.2) then
+                call update_inlet_xlo_2d(lo,hi,qinp(:,lo(1),:,1),t)
                 call inlet_xlo_2d(lo,hi,ngq,ngc,dx,qp,cp,fdp,rhp,auxp(:,lo(1),:,1),qinp(:,lo(1),:,1),dlo,dhi)
              else
+                call update_inlet_xlo_3d(lo,hi,qinp(:,lo(1),:,:),t)
                 call inlet_xlo_3d(lo,hi,ngq,ngc,dx,qp,cp,fdp,rhp,auxp(:,lo(1),:,:),qinp(:,lo(1),:,:),dlo,dhi)
              end if
           end if
@@ -436,16 +439,24 @@ contains
   end subroutine nscbc
 
 
-  subroutine compute_aux_2d(lo,hi,ng,Q,A,alo,ahi,mach2)
+  subroutine compute_aux_2d(lo,hi,ng,Q,A,alo,ahi,mach2,include_r)
     integer, intent(in) :: ng
     integer, dimension(2), intent(in) :: lo, hi, alo, ahi
     double precision, intent(in ) :: Q(  -ng+lo(1): hi(1)+ng,-ng+lo(2): hi(2)+ng,nprim)
     double precision, intent(out) :: A(naux,alo(1):ahi(1)   ,   alo(2):ahi(2)         )
     double precision, intent(inout) :: mach2
+    logical, intent(in), optional :: include_r
 
     integer :: i, j, iwrk
     double precision :: Tt, rwrk, cv, cp, gamma, Wbar, vel2, cs2
     double precision :: Yt(nspecies), wdot(nspecies)
+    logical :: comp_wdot
+
+    if (present(include_r)) then
+       comp_wdot = include_r
+    else
+       comp_wdot = .true.
+    end if
 
     !$omp parallel private(i,j,iwrk,Tt,rwrk,cv,cp,gamma,Wbar,vel2,cs2,Yt,wdot) &
     !$omp reduction(max:mach2)
@@ -472,8 +483,12 @@ contains
           A(icv   ,i,j) = cv
           A(ics   ,i,j) = sqrt(cs2)
 
-          call ckwyr(q(i,j,qrho), Tt, Yt, iwrk, rwrk, wdot)
-          A(iwdot1:,i,j) = wdot*molecular_weight
+          if (comp_wdot) then
+             call ckwyr(q(i,j,qrho), Tt, Yt, iwrk, rwrk, wdot)
+             A(iwdot1:,i,j) = wdot*molecular_weight
+          else
+             A(iwdot1:,i,j) = 0.d0
+          end if
 
        end do
     end do
@@ -482,16 +497,24 @@ contains
 
   end subroutine compute_aux_2d
 
-  subroutine compute_aux_3d(lo,hi,ng,Q,A,alo,ahi,mach2)
+  subroutine compute_aux_3d(lo,hi,ng,Q,A,alo,ahi,mach2,include_r)
     integer, intent(in) :: ng
     integer, dimension(3), intent(in) :: lo, hi, alo, ahi
     double precision, intent(in ) :: Q(  -ng+lo(1): hi(1)+ng,-ng+lo(2): hi(2)+ng,-ng+lo(3): hi(3)+ng,nprim)
     double precision, intent(out) :: A(naux,alo(1):ahi(1)   ,   alo(2):ahi(2)   ,   alo(3):ahi(3))
     double precision, intent(inout) :: mach2
+    logical, intent(in), optional :: include_r
 
     integer :: i, j, k, iwrk
     double precision :: Tt, rwrk, cv, cp, gamma, Wbar, vel2, cs2
     double precision :: Yt(nspecies), wdot(nspecies)
+    logical :: comp_wdot
+
+    if (present(include_r)) then
+       comp_wdot = include_r
+    else
+       comp_wdot = .true.
+    end if
 
     !$omp parallel private(i,j,k,iwrk,Tt,rwrk,cv,cp,gamma,Wbar,vel2,cs2,Yt,wdot) &
     !$omp reduction(max:mach2)
@@ -519,8 +542,12 @@ contains
              A(icv   ,i,j,k) = cv
              A(ics   ,i,j,k) = sqrt(cs2)
 
-             call ckwyr(q(i,j,k,qrho), Tt, Yt, iwrk, rwrk, wdot)
-             A(iwdot1:,i,j,k) = wdot*molecular_weight
+             if (comp_wdot) then
+                call ckwyr(q(i,j,k,qrho), Tt, Yt, iwrk, rwrk, wdot)
+                A(iwdot1:,i,j,k) = wdot*molecular_weight
+             else
+                A(iwdot1:,i,j,k) = 0.d0
+             end if
 
           end do
        end do
@@ -612,5 +639,7 @@ include 'hardbc.f90'
 include 'nscbc_x.f90'  
 include 'nscbc_y.f90'  
 include 'nscbc_z.f90'  
+include 'inlet_x_2d.f90'
+include 'inlet_x_3d.f90'
 
 end module nscbc_module

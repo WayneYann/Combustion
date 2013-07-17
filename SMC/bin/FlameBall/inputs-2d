@@ -8,8 +8,12 @@
  advance_method = 2        ! 1=RK3, 2=SDC
  stencil_type = "narrow"   ! narrow or S3D
 
+ sdc_nnodes = 5
+ sdc_iters  = 8
+ sdc_tol_residual = 1.0d-2
+
  stop_time = 3.d-3
- max_step  = 10000
+ max_step  = 1000
  restart = -1
 
  plot_int = 100
@@ -18,24 +22,26 @@
  cflfac = 0.1d0
  init_shrink = 0.5d0
 
- sdc_nnodes = 5
- sdc_iters  = 8
- sdc_tol_residual = 1.0d-2
-
  n_cellx = 128
  n_celly = 128
+ n_cellz = 4
  max_grid_size = 64
 
  prob_lo_x = -0.05d0
  prob_lo_y = -0.05d0
+ prob_lo_z = -0.0015625d0
  prob_hi_x =  0.05d0
  prob_hi_y =  0.05d0
+ prob_hi_z =  0.0015625d0
 
  xlo_boundary_type = "periodic"
  xhi_boundary_type = "periodic"
 
  ylo_boundary_type = "periodic"
  yhi_boundary_type = "periodic"
+
+ zlo_boundary_type = "periodic"
+ zhi_boundary_type = "periodic"
 
  prob_type = 4
 
