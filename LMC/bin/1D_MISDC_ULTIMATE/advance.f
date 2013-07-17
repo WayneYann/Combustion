@@ -60,10 +60,9 @@ c     local variables
 c     cell-centered, 1 ghost cell
       real*8       mu_old(0:nlevs-1,-1:nfine)
       real*8       mu_new(0:nlevs-1,-1:nfine)
-      real*8     mu_dummy(0:nlevs-1,-1:nfine)
       real*8           gp(0:nlevs-1,-1:nfine)
       real*8         visc(0:nlevs-1,-1:nfine)
-      real*8     I_R_divu(0:nlevs-1,-1:nfine,  0:Nspec)
+      real*8  I_R_instant(0:nlevs-1,-1:nfine,  0:Nspec)
       real*8     diff_old(0:nlevs-1,-1:nfine,  nscal)
       real*8     diff_new(0:nlevs-1,-1:nfine,  nscal)
       real*8     diff_hat(0:nlevs-1,-1:nfine,  nscal)
@@ -79,14 +78,13 @@ c     cell-centered, no ghost cells
       real*8       rho_cp(0:nlevs-1, 0:nfine-1)
       real*8      vel_Rhs(0:nlevs-1, 0:nfine-1)
       real*8         aofs(0:nlevs-1, 0:nfine-1,nscal)
-      real*8 gamma_lo(0:nlevs-1, 0:nfine-1,Nspec)
-      real*8 gamma_hi(0:nlevs-1, 0:nfine-1,Nspec)
+      real*8     gamma_lo(0:nlevs-1, 0:nfine-1,Nspec)
+      real*8     gamma_hi(0:nlevs-1, 0:nfine-1,Nspec)
       real*8    const_src(0:nlevs-1, 0:nfine-1,nscal)
       real*8  lin_src_old(0:nlevs-1, 0:nfine-1,nscal)
       real*8  lin_src_new(0:nlevs-1, 0:nfine-1,nscal)
       real*8          Rhs(0:nlevs-1, 0:nfine-1,nscal)
       real*8         dRhs(0:nlevs-1, 0:nfine-1,0:Nspec)
-      real*8   Rhs_deltaT(0:nlevs-1, 0:nfine-1)
 
 c     nodal, no ghost cells
       real*8       macvel(0:nlevs-1, 0:nfine  )
@@ -220,7 +218,7 @@ c        rho D_m     (for species)
 c        lambda / cp (for enthalpy)
 c        lambda      (for temperature)
          call calc_diffusivities(scal_new(0,:,:),beta_new(0,:,:),
-     &                           mu_dummy(0,:),lo(0),hi(0))
+     &                           mu_new(0,:),lo(0),hi(0))
 
 c     compute div lambda grad T
          diff_new(0,:,Temp) = 0.d0
@@ -259,12 +257,12 @@ c     instantaneous omegadot for divu calc
                end do
                call CKWC(scal_new(0,i,Temp),C,IWRK,RWRK,WDOTK)
                do n=1,Nspec
-                  I_R_divu(0,i,n) = WDOTK(n)*mwt(n)
+                  I_R_instant(0,i,n) = WDOTK(n)*mwt(n)
                end do
             end do
 
 c     divu
-            call calc_divu(scal_new(0,:,:),beta_new(0,:,:),I_R_divu(0,:,:),
+            call calc_divu(scal_new(0,:,:),beta_new(0,:,:),I_R_instant(0,:,:),
      &                     divu_new(0,:),dx(0),lo(0),hi(0))
 
 c     time-centered divu
@@ -424,24 +422,24 @@ c     multiply cp by rho
                rho_cp(0,i) = rho_cp(0,i)*scal_new(0,i,Density)
             end do
 
-c     build rhs for delta T solve
+c     build rhs for delta T solve and store it in Rhs(Temp)
 c     Rhs(RhoH) already holds (rhoh)^n + dt*A + 
 c        (1/2) div (lambda^n grad T^n - lambda^(k) grad T^(k))
 c       +(1/2) div (h_m^n gamma_m^n - h_m^(k) gamma_m^(k)
 c     make a copy of Rhs(RhoH)
-            Rhs_deltaT(:,:) = Rhs(:,:,RhoH)
+            Rhs(:,:,Temp) = Rhs(:,:,RhoH)
 
-c     need to subtract rho^(k+1) h_AD^{(k+1),l} from Rhs_deltaT
+c     need to subtract rho^(k+1) h_AD^{(k+1),l} from Rhs(Temp)
             do i=lo(0),hi(0)
-               Rhs_deltaT(0,i) = Rhs_deltaT(0,i) - scal_new(0,i,RhoH)
+               Rhs(0,i,Temp) = Rhs(0,i,Temp) - scal_new(0,i,RhoH)
             end do
 
-c     need to add dt*div lambda_AD^{(k+1),l} grad T_AD^{(k+1),l} from Rhs_deltaT
+c     need to add dt*div lambda_AD^{(k+1),l} grad T_AD^{(k+1),l} from Rhs(Temp)
             diff_hat(:,:,Temp) = 0.d0
             call addDivLambdaGradT(scal_new(0,:,:),beta_new(0,:,:),
      $                             diff_hat(0,:,Temp),dx(0),lo(0),hi(0))
             do i=lo(0),hi(0)
-               Rhs_deltaT(0,i) = Rhs_deltaT(0,i) + dt(0)*diff_hat(0,i,Temp)
+               Rhs(0,i,Temp) = Rhs(0,i,Temp) + dt(0)*diff_hat(0,i,Temp)
             end do
 
             if (LeEQ1 .eq. 0) then
@@ -455,14 +453,14 @@ c     we compute h_m using T from the scalar argument
 
 c     add dt*div h_m Gamma_m^{(k+1),l-1)}
             do i=lo(0),hi(0)
-               Rhs_deltaT(0,i) = Rhs_deltaT(0,i) + dt(0)*diffdiff_tmp(0,i)
+               Rhs(0,i,Temp) = Rhs(0,i,Temp) + dt(0)*diffdiff_tmp(0,i)
             end do
 
 c     Solve C-N system for delta T
             deltaT = 0.d0
             call cn_solve_deltaT(deltaT(0,:),rho_cp(0,:),
      $                           beta_new(0,:,Temp),
-     $                           Rhs_deltaT(0,:),dx(0),dt(0),
+     $                           Rhs(0,:,Temp),dx(0),dt(0),
      $                           be_cn_theta,lo(0),hi(0),bc(0,:))
             
 c     update temperature
@@ -547,7 +545,7 @@ c     value of omegadot at t^{n+1}
          end do
          call CKWC(scal_new(0,i,Temp),C,IWRK,RWRK,WDOTK)
          do n=1,Nspec
-            I_R_divu(0,i,n) = WDOTK(n)*mwt(n)
+            I_R_instant(0,i,n) = WDOTK(n)*mwt(n)
          end do
       end do
 
@@ -559,7 +557,7 @@ c        lambda      (for temperature)
      &                        mu_new(0,:),lo(0),hi(0))
 
 c     calculate S
-      call calc_divu(scal_new(0,:,:),beta_new(0,:,:),I_R_divu(0,:,:),
+      call calc_divu(scal_new(0,:,:),beta_new(0,:,:),I_R_instant(0,:,:),
      &               divu_new(0,:),dx(0),lo(0),hi(0))
 
 c     calculate dSdt
