@@ -29,7 +29,6 @@
       real*8, allocatable :: divu_new(:,:)
 
 !     cell-centered, no ghost cells
-      real*8, allocatable ::        dSdt(:,:)
       real*8, allocatable ::   delta_chi(:,:)
       real*8, allocatable ::   const_src(:,:,:)
       real*8, allocatable :: lin_src_old(:,:,:)
@@ -59,7 +58,7 @@
      $                  plot_int, chk_int,
      $                  init_shrink, flame_offset,
      $                  dpdt_factor, 
-     $                  Patm, coef_avg_harm, initial_S_type, 
+     $                  Patm, coef_avg_harm,
      $                  probtype,
      $                  misdc_iterMAX,
      $                  do_initial_projection, num_divu_iters, 
@@ -84,7 +83,6 @@ c     Set defaults, change with namelist
       chk_int = 1
       init_shrink = 0.1d0
       flame_offset = 0.d0
-      initial_S_type = 1
       dpdt_factor = 0.d0
       Patm = 1.d0
       coef_avg_harm = 0
@@ -148,7 +146,6 @@ c     u_bc, T_bc, Y_bc, h_bc, and rho_bc
       allocate(divu_new(0:nlevs-1,-1:nfine))
 
 !     cell-centered, no ghost cells
-      allocate(       dSdt(0:nlevs-1,0:nfine-1))
       allocate(  delta_chi(0:nlevs-1,0:nfine-1))
       allocate(  const_src(0:nlevs-1,0:nfine-1,nscal))
       allocate(lin_src_old(0:nlevs-1,0:nfine-1,nscal))
@@ -170,7 +167,6 @@ c     u_bc, T_bc, Y_bc, h_bc, and rho_bc
       divu_new = 0.d0
 
 !     must zero this or else RHS in mac project could be undefined
-      dSdt = 0.d0
       delta_chi = 0.d0
       
 !     initialize dx
@@ -220,7 +216,7 @@ c     u_bc, T_bc, Y_bc, h_bc, and rho_bc
          print *,'CHKFILE ',chkfile
          
          call read_check(chkfile,vel_old,scal_old,press_old,
-     $                   I_R,divu_old,dSdt,
+     $                   I_R,divu_old,
      $                   time,at_nstep,dt,lo,hi)
 
          call write_plt(vel_old,scal_old,press_old,divu_old,I_R,
@@ -336,7 +332,7 @@ c     return zero pressure
 
             call advance(vel_old,vel_new,scal_old,scal_new,
      $                   I_R,press_old,press_new,
-     $                   divu_old,divu_new,dSdt,beta_old,beta_new,
+     $                   divu_old,divu_new,beta_old,beta_new,
      $                   dx,dt,lo,hi,bc,delta_chi,-init_iter)
 
 c     update pressure and I_R
@@ -366,7 +362,7 @@ c     update pressure and I_R
       call write_plt(vel_new,scal_new,press_new,divu_new,I_R,
      $     dx,nsteps_taken,time,lo,hi,bc)
       call write_check(nsteps_taken,vel_new,scal_new,press_new,
-     $     I_R,divu_new,dSdt,dx,time,dt,lo,hi)
+     $     I_R,divu_new,dx,time,dt,lo,hi)
 
 C-- Now advance 
       do nsteps_taken = at_nstep, nsteps
@@ -381,7 +377,7 @@ C-- Now advance
          
          call advance(vel_old,vel_new,scal_old,scal_new,
      $                I_R,press_old,press_new,
-     $                divu_old,divu_new,dSdt,beta_old,beta_new,
+     $                divu_old,divu_new,beta_old,beta_new,
      $                dx,dt,lo,hi,bc,delta_chi,nsteps_taken)
 
 c     update state, time
@@ -400,7 +396,7 @@ c     update state, time
          if (MOD(nsteps_taken,chk_int).eq.0 .OR.
      &        nsteps_taken.eq.nsteps) then 
             call write_check(nsteps_taken,vel_new,scal_new,press_new,
-     $                       I_R,divu_new,dSdt,dx,time,dt,lo,hi)
+     $                       I_R,divu_new,dx,time,dt,lo,hi)
          endif
       enddo
 

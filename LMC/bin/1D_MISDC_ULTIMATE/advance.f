@@ -7,7 +7,7 @@ ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
 
       subroutine advance(vel_old,vel_new,scal_old,scal_new,
      $                   I_R,press_old,press_new,
-     $                   divu_old,divu_new,dSdt,beta_old,beta_new,
+     $                   divu_old,divu_new,beta_old,beta_new,
      $                   dx,dt,lo,hi,bc,delta_chi,istep)
 
       implicit none
@@ -40,7 +40,6 @@ c     cell-centered, 1 ghost cell
       real*8   divu_new(0:nlevs-1,-1:nfine)
 
 c     cell-centered, no ghost cells
-      real*8       dSdt(0:nlevs-1,0:nfine-1)
       real*8  delta_chi(0:nlevs-1,0:nfine-1)
       real*8     deltaT(0:nlevs-1,0:nfine-1)
 
@@ -91,7 +90,6 @@ c     nodal, no ghost cells
       real*8      veledge(0:nlevs-1, 0:nfine  )
 
       real*8 Y(Nspec),WDOTK(Nspec),C(Nspec),RWRK
-      real*8 vel_theta,be_cn_theta
       
       integer i,is,misdc,n,rho_flag,IWRK,l
 
@@ -112,38 +110,8 @@ c     compute U^{ADV,*}
       call pre_mac_predict(vel_old(0,:),scal_old(0,:,:),gp(0,:),
      $                     macvel(0,:),dx(0),dt(0),lo(0),hi(0),bc(0,:))
 
-      if (initial_S_type .eq. 1) then
-c     extrapolate S^{n-1} and S^n to get S^extrap = S^{n+1/2}
-         do i=lo(0),hi(0)
-            divu_half(0,i) = divu_old(0,i) + 0.5d0*dt(0)*dSdt(0,i)
-         end do
-      else
-c     set S^extrap to S^n
-         do i=lo(0),hi(0)
-            divu_half(0,i) = divu_old(0,i)
-         end do
-      end if
-
-c     compute p(rho,T,Y)^n for the dpdt correction
-      call compute_pthermo(scal_old(0,:,:),lo(0),hi(0),bc(0,:))
-
 c     reset delta_chi
       delta_chi = 0.d0
-
-c     delta_chi = delta_chi + (peos-p0)/(dt*peos) + (1/peos) u dot grad peos
-      call add_dpdt(scal_old(0,:,:),scal_old(0,:,RhoRT),
-     $              delta_chi(0,:),macvel(0,:),dx(0),dt(0),
-     $              lo(0),hi(0),bc(0,:))
-
-c     S_hat^extrap = S^extrap + delta_chi
-      do i=lo(0),hi(0)
-         divu_half(0,i) = divu_half(0,i) + delta_chi(0,i)
-      end do
-
-c     mac projection
-c     macvel will now satisfy div(umac) = S_hat^extrap
-      call macproj(macvel(0,:),scal_old(0,:,Density),
-     &             divu_half(0,:),dx,lo(0),hi(0),bc(0,:))
 
 ccccccccccccccccccccccccccccccccccccccccccc
 c     Step 2: Advance thermodynamic variables
@@ -199,49 +167,50 @@ c     Otherwise,    I_R is I_R^kmax from previous pressure iteration
 
 c     non-fancy predictor that simply sets scal_new = scal_old
       scal_new = scal_old
+      beta_new = beta_old
+      diff_new = diff_old
+      diffdiff_new = diffdiff_old
+      divu_new = divu_old
 
 C----------------------------------------------------------------
 c     Begin MISDC iterations
 C----------------------------------------------------------------
 
-c     diffusion solves in SDC iterations are iterative corrections
-c     that have a backward Euler character
-      be_cn_theta = 1.d0
-
       do misdc = 1, misdc_iterMAX
+
          print *,'... doing SDC iter ',misdc
-            
-         print *,'... compute lagged diff_new, D^{n+1,(k-1)}'
+
+         if (misdc .gt. 1) then
+
+            print *,'... compute lagged diff_new, D^{n+1,(k-1)}'
 
 c     compute transport coefficients
 c        rho D_m     (for species)
 c        lambda / cp (for enthalpy)
 c        lambda      (for temperature)
-         call calc_diffusivities(scal_new(0,:,:),beta_new(0,:,:),
-     &                           mu_new(0,:),lo(0),hi(0))
+            call calc_diffusivities(scal_new(0,:,:),beta_new(0,:,:),
+     &                              mu_new(0,:),lo(0),hi(0))
 
 c     compute div lambda grad T
-         diff_new(0,:,Temp) = 0.d0
-         call addDivLambdaGradT(scal_new(0,:,:),beta_new(0,:,:),
-     &                          diff_new(0,:,Temp),dx(0),lo(0),hi(0))
+            diff_new(0,:,Temp) = 0.d0
+            call addDivLambdaGradT(scal_new(0,:,:),beta_new(0,:,:),
+     &                             diff_new(0,:,Temp),dx(0),lo(0),hi(0))
 
 c     compute a conservative div gamma_m
 c     save gamma_m for differential diffusion computation
-         call get_spec_visc_terms(scal_new(0,:,:),beta_new(0,:,:),
-     &                            diff_new(0,:,FirstSpec:),
-     &                            gamma_lo(0,:,:),gamma_hi(0,:,:),
-     &                            dx(0),lo(0),hi(0))
+            call get_spec_visc_terms(scal_new(0,:,:),beta_new(0,:,:),
+     &                               diff_new(0,:,FirstSpec:),
+     &                               gamma_lo(0,:,:),gamma_hi(0,:,:),
+     &                               dx(0),lo(0),hi(0))
 
-         if (LeEQ1 .eq. 0) then
+            if (LeEQ1 .eq. 0) then
 c     compute div h_m Gamma_m
 c     we pass in conservative gamma_m via gamma
 c     we compute h_m using T from the scalar argument
-            call get_diffdiff_terms(scal_new(0,:,:),
-     $                              gamma_lo(0,:,:),gamma_hi(0,:,:),
-     $                              diffdiff_new(0,:),dx(0),lo(0),hi(0))
-         end if
-
-         if (misdc .gt. 1) then
+               call get_diffdiff_terms(scal_new(0,:,:),
+     $                                 gamma_lo(0,:,:),gamma_hi(0,:,:),
+     $                                 diffdiff_new(0,:),dx(0),lo(0),hi(0))
+            end if
 
 cccccccccccccccccccccccccccccccccccc
 c     re-compute S^{n+1/2} by averaging old and new
@@ -265,37 +234,37 @@ c     divu
             call calc_divu(scal_new(0,:,:),beta_new(0,:,:),I_R_instant(0,:,:),
      &                     divu_new(0,:),dx(0),lo(0),hi(0))
 
+         end if
+
 c     time-centered divu
-            do i=lo(0),hi(0)
-               divu_half(0,i) = 0.5d0*(divu_old(0,i) + divu_new(0,i))
-            end do
+         do i=lo(0),hi(0)
+            divu_half(0,i) = 0.5d0*(divu_old(0,i) + divu_new(0,i))
+         end do
 
 cccccccccccccccccccccccccccccccccccc
 c     update delta_chi and project
 cccccccccccccccccccccccccccccccccccc
 
-            print *,'... updating S^{n+1/2} and macvel'
-            print *,'    using fancy delta_chi'
+         print *,'... updating S^{n+1/2} and macvel'
+         print *,'    using fancy delta_chi'
 
 c     compute ptherm = p(rho,T,Y)
 c     this is needed for any dpdt-based correction scheme
-            call compute_pthermo(scal_new(0,:,:),lo(0),hi(0),bc(0,:))
+         call compute_pthermo(scal_new(0,:,:),lo(0),hi(0),bc(0,:))
             
 c     delta_chi = delta_chi + (peos-p0)/(dt*peos) + (1/peos) u dot grad peos
-            call add_dpdt(scal_new(0,:,:),scal_new(0,:,RhoRT),
-     $                    delta_chi(0,:),macvel(0,:),dx(0),dt(0),
-     $                    lo(0),hi(0),bc(0,:))
+         call add_dpdt(scal_new(0,:,:),scal_new(0,:,RhoRT),
+     $                 delta_chi(0,:),macvel(0,:),dx(0),dt(0),
+     $                 lo(0),hi(0),bc(0,:))
 
 c     S_hat^{n+1/2} = S^{n+1/2} + delta_chi
-            do i=lo(0),hi(0)
-               divu_half(0,i) = divu_half(0,i) + delta_chi(0,i)
-            end do
+         do i=lo(0),hi(0)
+            divu_half(0,i) = divu_half(0,i) + delta_chi(0,i)
+         end do
 
 c     macvel will now satisfy div(umac) = S_hat^{n+1/2}
-            call macproj(macvel(0,:),scal_old(0,:,Density),
-     &                   divu_half(0,:),dx,lo(0),hi(0),bc(0,:))
-
-         end if
+         call macproj(macvel(0,:),scal_old(0,:,Density),
+     &                divu_half(0,:),dx,lo(0),hi(0),bc(0,:))
 
          print *,'... computing A forcing term = D^n + I_R^{k-1}'
 
@@ -323,7 +292,7 @@ c     update density
          call update_rho(scal_old(0,:,:),scal_new(0,:,:),aofs(0,:,:),
      &                   dt(0),lo(0),hi(0),bc(0,:))
 
-c     compute deferrec correcion terms
+c     compute deferred correcion terms
          do i=lo(0),hi(0)
             do n=1,Nspec
                is = FirstSpec + n - 1
@@ -357,7 +326,7 @@ c     Solve C-N system in equation (47) for \tilde{Y}_{m,AD}^{(k+1)}
          do n=1,Nspec
             is = FirstSpec + n - 1
             call cn_solve(scal_new(0,:,:),alpha(0,:),beta_new(0,:,:),
-     $                    Rhs(0,:,is),dx(0),dt(0),is,be_cn_theta,
+     $                    Rhs(0,:,is),dx(0),dt(0),is,1.d0,
      $                    rho_flag,.false.,lo(0),hi(0),bc(0,:))
          enddo
             
@@ -461,7 +430,7 @@ c     Solve C-N system for delta T
             call cn_solve_deltaT(deltaT(0,:),rho_cp(0,:),
      $                           beta_new(0,:,Temp),
      $                           Rhs(0,:,Temp),dx(0),dt(0),
-     $                           be_cn_theta,lo(0),hi(0),bc(0,:))
+     $                           1.d0,lo(0),hi(0),bc(0,:))
             
 c     update temperature
 c     no need to update h here, since the source terms for VODE doesn't use it
@@ -560,14 +529,7 @@ c     calculate S
       call calc_divu(scal_new(0,:,:),beta_new(0,:,:),I_R_instant(0,:,:),
      &               divu_new(0,:),dx(0),lo(0),hi(0))
 
-c     calculate dSdt
-      do i=lo(0),hi(0)
-         dSdt(0,i) = (divu_new(0,i) - divu_old(0,i)) / dt(0)
-      enddo
-
       print *,'... update velocities'
-
-      vel_theta = 0.5d0
 
 c     get velocity visc terms to use as a forcing term for advection
       call get_vel_visc_terms(vel_old(0,:),mu_old(0,:),visc(0,:),dx(0),
@@ -590,7 +552,7 @@ c     calculate rhohalf
 c     update velocity and set up RHS for C-N diffusion solve
       call update_vel(vel_old(0,:),vel_new(0,:),gp(0,:),rhohalf(0,:),
      &                macvel(0,:),veledge(0,:),alpha(0,:),mu_old(0,:),
-     &                vel_Rhs(0,:),dx(0),dt(0),vel_theta,
+     &                vel_Rhs(0,:),dx(0),dt(0),0.5d0,
      &                lo(0),hi(0),bc(0,:))
 
       if (is_first_initial_iter .eq. 1) then
@@ -608,7 +570,7 @@ c     explicit update for diffusion
 c     crank-nicolson viscous solve
          rho_flag = 1
          call cn_solve(vel_new(0,:),alpha(0,:),mu_new(0,:),
-     $                 vel_Rhs(0,:),dx(0),dt(0),1,vel_theta,rho_flag,
+     $                 vel_Rhs(0,:),dx(0),dt(0),1,0.5d0,rho_flag,
      $                 .true.,lo(0),hi(0),bc(0,:))
 
       endif
@@ -617,15 +579,23 @@ c     compute ptherm = p(rho,T,Y)
 c     this is needed for any dpdt-based correction scheme
       call compute_pthermo(scal_new(0,:,:),lo(0),hi(0),bc(0,:))
 
+c     reset delta_chi for new-time projection
+      delta_chi = 0.d0
+
 c     S_hat^{n+1} = S^{n+1} + dpdt_factor*(ptherm-p0)/(gamma*dt*p0)
 c                           + dpdt_factor*(u dot grad p)/(gamma*p0)
       call add_dpdt_nodal(scal_new(0,:,:),scal_new(0,:,RhoRT),
-     &                    divu_new(0,:),vel_new(0,:),dx(0),dt(0),
+     &                    delta_chi(0,:),vel_new(0,:),dx(0),dt(0),
      &                    lo(0),hi(0),bc(0,:))
+
+c     use divu_half as a temporary holding place for divu_new + delta_chi
+      do i=lo(0),hi(0)
+         divu_half(0,i) = divu_new(0,i) + delta_chi(0,i)
+      end do
 
 c     project cell-centered velocities
       print *,'...nodal projection...'
-      call project_level(vel_new(0,:),rhohalf(0,:),divu_new(0,:),
+      call project_level(vel_new(0,:),rhohalf(0,:),divu_half(0,:),
      &                   press_old(0,:),press_new(0,:),dx(0),dt(0),
      &                   lo(0),hi(0),bc(0,:))
 
