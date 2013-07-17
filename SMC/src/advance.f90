@@ -460,10 +460,10 @@ contains
 
     dm = U1%dim
     nc = ncomp(U1)
-    lo(3) = 1
-    hi(3) = 1
 
     !$omp parallel private(i,j,k,m,n,lo,hi,u1p,u2p,upp)
+    lo(3) = 1
+    hi(3) = 1
     do n=1,nfabs(U1)
 
        if (.not.tb_worktodo(n)) cycle
@@ -735,7 +735,7 @@ contains
        ! NSCBC boundary
        !
        call build(bpt_nscbc, "nscbc")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
-       call nscbc(Q, U, Fdif, Uprime, t, dx)
+       call nscbc(Q, U, Fdif, Uprime, t, dx, include_r)
        call destroy(bpt_nscbc)          !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
 
     end if
