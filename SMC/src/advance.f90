@@ -217,23 +217,26 @@ contains
     call c_f_pointer(Fptr, Uprime)
     call c_f_pointer(ctxptr, ctx)
 
+    ! t is in physical units
+    ! print *, 'EVAL TIME', t
+
     call dUdt(U, Uprime, time+t, ctx%dx)
   end subroutine srf1eval
 
-  subroutine srf1post(Uptr, Fptr, stateptr, ctxptr) bind(c)
-    type(c_ptr), intent(in), value :: Uptr, Fptr, stateptr, ctxptr
+  subroutine srf1post(Uptr, stateptr, ctxptr) bind(c)
+    type(c_ptr), intent(in), value :: Uptr, stateptr, ctxptr
 
     type(multifab), pointer :: U
     type(sdc_state_t), pointer :: state
     
-    real(dp_t) :: time
+    real(dp_t) :: t
 
     call c_f_pointer(Uptr, U)
     call c_f_pointer(stateptr, state)
 
-    time = state%t + state%dt
-
-    ! print *, "POST TIME", time    
+    ! t is in physical units
+    t = state%t + state%dt
+    ! print *, "POST TIME", t
 
     call reset_density(U)
     call impose_hard_bc(U)
