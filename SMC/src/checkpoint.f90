@@ -224,19 +224,26 @@ contains
     type(multifab), intent(inout) :: chk
     type(physbndry_reg), intent(in) :: qin
 
-    integer :: i,j,k,n
+    integer :: i,j,k,n,dm
     integer :: lo(3), hi(3)
     double precision, pointer, dimension(:,:,:,:) :: qp, cp
     
     call build(chk, qin%la, qin%nc, ng=0, stencil=.false.)
+
+    dm = chk%dim
     
     do n=1,nfabs(chk)
 
        cp => dataptr(chk,n)
 
        if (isValid(qin,n)) then
-          lo = lwb(get_box(chk,n))
-          hi = upb(get_box(chk,n))
+          lo(1:dm) = lwb(get_box(chk,n))
+          hi(1:dm) = upb(get_box(chk,n))
+
+          if (dm .eq. 2) then
+             lo(3) = 1
+             hi(3) = 1
+          end if
 
           qp => dataptr(qin%data, n)
 
