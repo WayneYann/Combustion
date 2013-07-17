@@ -8,6 +8,8 @@ ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
       subroutine advance(vel_old,vel_new,scal_old,scal_new,
      $                   I_R,press_old,press_new,
      $                   divu_old,divu_new,beta_old,beta_new,
+     $                   beta_for_Y_old,beta_for_Y_new,
+     $                   beta_for_Wbar_old,beta_for_Wbar_new,
      $                   dx,dt,lo,hi,bc,delta_chi,istep)
 
       implicit none
@@ -36,6 +38,10 @@ c     cell-centered, 1 ghost cell
       real*8        I_R(0:nlevs-1,-1:nfine  ,0:Nspec)
       real*8   beta_old(0:nlevs-1,-1:nfine  ,nscal)
       real*8   beta_new(0:nlevs-1,-1:nfine  ,nscal)
+      real*8   beta_for_Y_old(0:nlevs-1,-1:nfine  ,nscal)
+      real*8   beta_for_Y_new(0:nlevs-1,-1:nfine  ,nscal)
+      real*8   beta_for_Wbar_old(0:nlevs-1,-1:nfine  ,nscal)
+      real*8   beta_for_Wbar_new(0:nlevs-1,-1:nfine  ,nscal)
       real*8   divu_old(0:nlevs-1,-1:nfine)
       real*8   divu_new(0:nlevs-1,-1:nfine)
 
@@ -65,6 +71,7 @@ c     cell-centered, 1 ghost cell
       real*8     diff_old(0:nlevs-1,-1:nfine,  nscal)
       real*8     diff_new(0:nlevs-1,-1:nfine,  nscal)
       real*8     diff_hat(0:nlevs-1,-1:nfine,  nscal)
+      real*8     diff_tmp(0:nlevs-1,-1:nfine,  nscal)
       real*8       tforce(0:nlevs-1,-1:nfine,  nscal)
       real*8 diffdiff_old(0:nlevs-1,-1:nfine)
       real*8 diffdiff_new(0:nlevs-1,-1:nfine)
@@ -72,18 +79,20 @@ c     cell-centered, 1 ghost cell
       real*8    divu_half(0:nlevs-1,-1:nfine)
 
 c     cell-centered, no ghost cells
-      real*8      rhohalf(0:nlevs-1, 0:nfine-1)
-      real*8        alpha(0:nlevs-1, 0:nfine-1)
-      real*8       rho_cp(0:nlevs-1, 0:nfine-1)
-      real*8      vel_Rhs(0:nlevs-1, 0:nfine-1)
-      real*8         aofs(0:nlevs-1, 0:nfine-1,nscal)
-      real*8     gamma_lo(0:nlevs-1, 0:nfine-1,Nspec)
-      real*8     gamma_hi(0:nlevs-1, 0:nfine-1,Nspec)
-      real*8    const_src(0:nlevs-1, 0:nfine-1,nscal)
-      real*8  lin_src_old(0:nlevs-1, 0:nfine-1,nscal)
-      real*8  lin_src_new(0:nlevs-1, 0:nfine-1,nscal)
-      real*8          Rhs(0:nlevs-1, 0:nfine-1,nscal)
-      real*8         dRhs(0:nlevs-1, 0:nfine-1,0:Nspec)
+      real*8       rhohalf(0:nlevs-1, 0:nfine-1)
+      real*8         alpha(0:nlevs-1, 0:nfine-1)
+      real*8        rho_cp(0:nlevs-1, 0:nfine-1)
+      real*8       vel_Rhs(0:nlevs-1, 0:nfine-1)
+      real*8          aofs(0:nlevs-1, 0:nfine-1,nscal)
+      real*8      gamma_lo(0:nlevs-1, 0:nfine-1,Nspec)
+      real*8      gamma_hi(0:nlevs-1, 0:nfine-1,Nspec)
+      real*8 gamma_Wbar_lo(0:nlevs-1, 0:nfine-1,Nspec)
+      real*8 gamma_Wbar_hi(0:nlevs-1, 0:nfine-1,Nspec)
+      real*8     const_src(0:nlevs-1, 0:nfine-1,nscal)
+      real*8   lin_src_old(0:nlevs-1, 0:nfine-1,nscal)
+      real*8   lin_src_new(0:nlevs-1, 0:nfine-1,nscal)
+      real*8           Rhs(0:nlevs-1, 0:nfine-1,nscal)
+      real*8          dRhs(0:nlevs-1, 0:nfine-1,0:Nspec)
 
 c     nodal, no ghost cells
       real*8       macvel(0:nlevs-1, 0:nfine  )
@@ -122,6 +131,8 @@ c        rho D_m     (for species)
 c        lambda / cp (for enthalpy)
 c        lambda      (for temperature)
       call calc_diffusivities(scal_old(0,:,:),beta_old(0,:,:),
+     &                        beta_for_Y_old(0,:,:),
+     &                        beta_for_Wbar_old(0,:,:),
      &                        mu_old(0,:),lo(0),hi(0))
 
 c     compute diffusion terms at t^n
@@ -189,6 +200,8 @@ c        rho D_m     (for species)
 c        lambda / cp (for enthalpy)
 c        lambda      (for temperature)
             call calc_diffusivities(scal_new(0,:,:),beta_new(0,:,:),
+     &                              beta_for_Y_new(0,:,:),
+     &                              beta_for_Wbar_new(0,:,:),
      &                              mu_new(0,:),lo(0),hi(0))
 
 c     compute div lambda grad T
@@ -297,7 +310,7 @@ c     compute deferred correcion terms
             do n=1,Nspec
                is = FirstSpec + n - 1
 c     includes deferred correction term for species
-c     dRhs for species now holds dt*(I_R + (1/2) div Gamma_m^n + (1/2) div Gamma_m^{(k)}
+c     dRhs for species now holds dt*(I_R + (1/2) div Gamma_m^n + (1/2) div Gamma_m^{(k)} )
 c     Shouldn't have to modify dRhs again
                dRhs(0,i,n) = dt(0)*(I_R(0,i,n) 
      &              + 0.5d0*(diff_old(0,i,is) - diff_new(0,i,is)))
@@ -313,45 +326,59 @@ c     Shouldn't have to modify dRhs again
      &           + 0.5d0*(diffdiff_old(0,i) - diffdiff_new(0,i)))
          enddo
 
-c     update rhoY_m with advection terms and set up RHS for equation (47) C-N solve
-         call update_spec(scal_old(0,:,:),scal_new(0,:,:),aofs(0,:,:),
-     &                    alpha(0,:),
-     &                    dRhs(0,0:,1:),Rhs(0,0:,FirstSpec:),
-     &                    dt(0),lo(0),hi(0),bc(0,:))
+c     new iterative Wbar procedure
+            do l=0,1
 
-         print *,'... do correction diffusion solve for species'
+c     compute div(beta_for_Wbar^(k) grad Wbar^(k),l)
+c     also need to save the fluxes themselves
+               call get_spec_visc_terms_Wbar(scal_new(0,:,:),beta_for_Wbar_new(0,:,:),
+     &                                       diff_tmp(0,:,FirstSpec:),
+     &                                       gamma_Wbar_lo(0,:,:),
+     &                                       gamma_Wbar_hi(0,:,:),
+     &                                       dx(0),lo(0),hi(0))
 
-c     Solve C-N system in equation (47) for \tilde{Y}_{m,AD}^{(k+1)}
-         rho_flag = 2
-         do n=1,Nspec
-            is = FirstSpec + n - 1
-            call cn_solve(scal_new(0,:,:),alpha(0,:),beta_new(0,:,:),
-     $                    Rhs(0,:,is),dx(0),dt(0),is,1.d0,
-     $                    rho_flag,.false.,lo(0),hi(0),bc(0,:))
-         enddo
-            
-         if (LeEQ1 .eq. 1) then
+c     add dt*div(beta_for_Wbar^(k) grad Wbar^(k),l) to dRhs
+               do i=lo(0),hi(0)
+                  do n=1,Nspec
+                     is = FirstSpec + n - 1
+                     dRhs(0,i,n) = dRhs(0,i,n) + dt(0)*diff_tmp(0,i,is)
+                  end do
+               end do
 
-c     extract div gamma^n
-            do i=lo(0),hi(0)
+c     update rhoY_m with advection terms and set up RHS for correction solve
+               call update_spec(scal_old(0,:,:),scal_new(0,:,:),aofs(0,:,:),
+     &                          alpha(0,:),
+     &                          dRhs(0,0:,1:),Rhs(0,0:,FirstSpec:),
+     &                          dt(0),lo(0),hi(0),bc(0,:))
+
+c     Solve C-N system
+               rho_flag = 2
                do n=1,Nspec
                   is = FirstSpec + n - 1
-                  diff_hat(0,i,is) = (scal_new(0,i,is)-scal_old(0,i,is))/dt(0) 
-     $                 - aofs(0,i,is) - dRhs(0,i,n)/dt(0)
+                  call cn_solve(scal_new(0,:,:),alpha(0,:),beta_for_Y_new(0,:,:),
+     $                          Rhs(0,:,is),dx(0),dt(0),is,1.d0,
+     $                          rho_flag,.false.,lo(0),hi(0),bc(0,:))
                enddo
-            enddo
 
-         else
+c     subtract off Wbar piece - will add it back in over next l iterate
+               do i=lo(0),hi(0)
+                  do n=1,Nspec
+                     is = FirstSpec + n - 1
+                     dRhs(0,i,n) = dRhs(0,i,n) - dt(0)*diff_tmp(0,i,is)
+                  end do
+               end do
 
-c     compute conservatively corrected div gamma_m 
-c     also save gamma_m for computing diffdiff terms later
-            call get_spec_visc_terms(scal_new(0,:,:),beta_new(0,:,:),
-     &                               diff_hat(0,:,FirstSpec:),
-     &                               gamma_lo(0,:,:),
-     &                               gamma_hi(0,:,:),
-     &                               dx(0),lo(0),hi(0))
+c     end loop over l
+            end do
 
-         end if
+c     compute conservatively corrected version of div gamma_m
+c     where gamma_m = beta_for_y^(k) grad \tilde Y_{m,AD}^(k+1) + beta_for_Wbar^(k) grad Wbar^(k)
+c     fluxes from beta_for_Wbar^(k) grad Wbar^(k) are already available
+               call get_spec_visc_terms_Y_and_Wbar(scal_new(0,:,:),beta_for_Y_new(0,:,:),
+     &                                             diff_hat(0,:,FirstSpec:),
+     &                                             gamma_Wbar_lo(0,:,:),
+     &                                             gamma_Wbar_hi(0,:,:),
+     &                                             dx(0),lo(0),hi(0))
             
          print *,'... do correction diffusion solve for rhoh'
 
@@ -523,6 +550,8 @@ c        rho D_m     (for species)
 c        lambda / cp (for enthalpy)
 c        lambda      (for temperature)       
       call calc_diffusivities(scal_new(0,:,:),beta_new(0,:,:),
+     &                        beta_for_Y_new(0,:,:),
+     &                        beta_for_Wbar_new(0,:,:),
      &                        mu_new(0,:),lo(0),hi(0))
 
 c     calculate S
