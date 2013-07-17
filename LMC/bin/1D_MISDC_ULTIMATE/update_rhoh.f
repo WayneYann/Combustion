@@ -15,8 +15,9 @@
       integer i
 
       do i=lo,hi
-         scal_new(i,RhoH) = scal_old(i,RhoH) + dt*aofs(i,RhoH)
-         Rhs(i) = dRhs(i) + scal_new(i,RhoH)
+c         scal_new(i,RhoH) = scal_old(i,RhoH) + dt*aofs(i,RhoH)
+c         Rhs(i) = dRhs(i) + scal_new(i,RhoH)
+         Rhs(i) = dRhs(i) + scal_old(i,RhoH) + dt*aofs(i,RhoH)
          alpha(i) = scal_new(i,Density)
       enddo
       

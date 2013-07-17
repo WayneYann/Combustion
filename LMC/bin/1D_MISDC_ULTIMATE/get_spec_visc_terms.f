@@ -217,6 +217,8 @@ c              compute div(gamma)
       subroutine get_spec_visc_terms_Y_and_Wbar(scal,beta_for_Y,visc,
      &                                          gamma_Wbar_lo,
      &                                          gamma_Wbar_hi,
+     &                                          gamma_lo,
+     &                                          gamma_hi,
      &                                          dx,lo,hi)
 
 c     compute 
@@ -230,6 +232,8 @@ c     conservatively correct this, then set visc = (1/dxsq)*div(gamma_m)
       real*8          visc(-1:nfine  ,Nspec)
       real*8 gamma_Wbar_lo( 0:nfine-1,Nspec)
       real*8 gamma_Wbar_hi( 0:nfine-1,Nspec)
+      real*8 gamma_lo( 0:nfine-1,Nspec)
+      real*8 gamma_hi( 0:nfine-1,Nspec)
       real*8 dx
       integer lo,hi
       
@@ -240,8 +244,6 @@ c     conservatively correct this, then set visc = (1/dxsq)*div(gamma_m)
       real*8 RhoYe_lo, RhoYe_hi
       real*8 X(-1:nfine,Nspec)
       real*8 scal_X(-2:nfine+1,nscal)
-      real*8 gamma_lo( 0:nfine-1,Nspec)
-      real*8 gamma_hi( 0:nfine-1,Nspec)
 
       dxsqinv = 1.d0/(dx*dx)
 
