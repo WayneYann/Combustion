@@ -79,7 +79,7 @@ contains
     call set_dt(dt, courno, istep)
     call update_rk3(Zero,Unew, One,U, dt,Uprime)
     call reset_density(Unew)
-    call impose_hard_bc(Unew)
+    call impose_hard_bc(Unew, time+OneThird*dt)
 
     call destroy(bpt_rkstep1)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
 
@@ -88,7 +88,7 @@ contains
     call dUdt(Unew, Uprime, time+OneThird*dt, dx)
     call update_rk3(OneQuarter, Unew, ThreeQuarters, U, OneQuarter*dt, Uprime)
     call reset_density(Unew)
-    call impose_hard_bc(Unew)
+    call impose_hard_bc(Unew, time+TwoThirds*dt)
     call destroy(bpt_rkstep2)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
 
     ! RK Step 3
@@ -96,7 +96,7 @@ contains
     call dUdt(Unew, Uprime, time+TwoThirds*dt, dx)
     call update_rk3(OneThird, U, TwoThirds, Unew, TwoThirds*dt, Uprime)
     call reset_density(U)
-    call impose_hard_bc(U)
+    call impose_hard_bc(U, time+dt)
     call destroy(bpt_rkstep3)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
 
   end subroutine advance_rk3
@@ -107,6 +107,7 @@ contains
   !
   subroutine advance_sdc(U, dt, courno, dx, sdc, istep)
 
+    use time_module, only : time
     use smcdata_module, only : Q
     use probin_module, only : cfl_int, fixed_dt
 
@@ -193,7 +194,7 @@ contains
     call sdc_imex_get_qend(sdc%imex, mfptr(U))    
 
     call reset_density(U)
-    call impose_hard_bc(U)
+    call impose_hard_bc(U, time+dt)
 
     if (sdc%tol_residual > 0.d0) then
        call destroy(R)
@@ -236,7 +237,7 @@ contains
     ! print *, "POST TIME", time    
 
     call reset_density(U)
-    call impose_hard_bc(U)
+    call impose_hard_bc(U,time)
   end subroutine srf1post
 
   subroutine mrf1eval(Fptr, Uptr, t, ctxptr) bind(c)
@@ -275,6 +276,7 @@ contains
   !
   subroutine advance_multi_sdc(U, dt, courno, dx, sdc, istep)
 
+    use time_module, only : time
     use smcdata_module, only : Q
     use probin_module, only : cfl_int, fixed_dt
 
@@ -363,7 +365,7 @@ contains
     call sdc_mrex_get_qend(sdc%mrex, mfptr(U))
 
     call reset_density(U)
-    call impose_hard_bc(U)
+    call impose_hard_bc(U, time+dt)
 
     if (sdc%tol_residual > 0.d0) then
        call destroy(R)
@@ -744,7 +746,7 @@ contains
        ! NSCBC boundary
        !
        call build(bpt_nscbc, "nscbc")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
-       call nscbc(Q, U, Fdif, Uprime, t, dx, include_r)
+       call nscbc(Q, U, Fdif, Uprime, t, dx, inc_r)
        call destroy(bpt_nscbc)          !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
 
     end if

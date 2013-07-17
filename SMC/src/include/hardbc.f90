@@ -86,7 +86,8 @@
     !$omp end parallel
   end subroutine ctoprim_inflow_3d
 
-  subroutine impose_hard_bc(U)
+  subroutine impose_hard_bc(U, t)
+    double precision, intent(in) :: t
     type(multifab), intent(inout) :: U
 
     integer :: n, ng, dm
@@ -109,8 +110,10 @@
           qhi = upb(get_box(qin_xlo%data,n))
           qp  => dataptr(   qin_xlo%data,n)
           if (dm .eq. 2) then
+             call update_inlet_xlo_2d(lo,hi,qp(:,lo(1),:,1),t)
              call impose_inflow_2d(lo,hi,ng,up,qlo,qhi,qp,1)
           else
+             call update_inlet_xlo_3d(lo,hi,qp(:,lo(1),:,:),t)
              call impose_inflow_3d(lo,hi,ng,up,qlo,qhi,qp,1)
           end if
        end if
@@ -119,6 +122,7 @@
           qlo = lwb(get_box(qin_xhi%data,n))
           qhi = upb(get_box(qin_xhi%data,n))
           qp  => dataptr(   qin_xhi%data,n)
+          call bl_error("inflow for xhi not implemented")
           if (dm .eq. 2) then
              call impose_inflow_2d(lo,hi,ng,up,qlo,qhi,qp,1)
           else
@@ -130,6 +134,7 @@
           qlo = lwb(get_box(qin_ylo%data,n))
           qhi = upb(get_box(qin_ylo%data,n))
           qp  => dataptr(   qin_ylo%data,n)
+          call bl_error("inflow for ylo not implemented")
           if (dm .eq. 2) then
              call impose_inflow_2d(lo,hi,ng,up,qlo,qhi,qp,2)
           else
@@ -141,6 +146,7 @@
           qlo = lwb(get_box(qin_yhi%data,n))
           qhi = upb(get_box(qin_yhi%data,n))
           qp  => dataptr(   qin_yhi%data,n)
+          call bl_error("inflow for yhi not implemented")
           if (dm .eq. 2) then
              call impose_inflow_3d(lo,hi,ng,up,qlo,qhi,qp,2)
           else
@@ -153,6 +159,7 @@
              qlo = lwb(get_box(qin_zlo%data,n))
              qhi = upb(get_box(qin_zlo%data,n))
              qp  => dataptr(   qin_zlo%data,n)
+             call bl_error("inflow for zlo not implemented")
              call impose_inflow_3d(lo,hi,ng,up,qlo,qhi,qp,3)
           end if
           
@@ -160,6 +167,7 @@
              qlo = lwb(get_box(qin_zhi%data,n))
              qhi = upb(get_box(qin_zhi%data,n))
              qp  => dataptr(   qin_zhi%data,n)
+             call bl_error("inflow for zhi not implemented")
              call impose_inflow_3d(lo,hi,ng,up,qlo,qhi,qp,3)
           end if
        end if
