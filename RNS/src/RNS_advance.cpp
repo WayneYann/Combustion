@@ -74,6 +74,8 @@ RNS::advance (Real time,
 void
 RNS::fill_boundary(MultiFab& U, Real time, int type)
 {
+    if (type == no_fill) return;
+
     BL_ASSERT( level > 0 || type == use_FillBoundary );
 
     switch (type)
@@ -155,10 +157,7 @@ RNS::dUdt(MultiFab& U, MultiFab& Uprime, Real time, int fill_boundary_type,
 	}
     }
 
-    if (fill_boundary_type)
-    {
-	fill_boundary(U, time, fill_boundary_type);
-    }
+    fill_boundary(U, time, fill_boundary_type);
     
     const Real *dx = geom.CellSize();
 
@@ -305,7 +304,7 @@ RNS::advance_AD(const MultiFab& Uold, MultiFab& Unew, Real time, Real dt)
 	}
 
 	// Step 1 of RK2
-	dUdt(Unew, Uprime, time, 0);
+	dUdt(Unew, Uprime, time, no_fill);
 	update_rk(Unew, Uold, 0.5*dt, Uprime); // Unew = Uold + 0.5*dt*Uprime
 	post_update(Unew);
 	
@@ -323,7 +322,7 @@ RNS::advance_AD(const MultiFab& Uold, MultiFab& Unew, Real time, Real dt)
 	MultiFab Utmp(grids,NUM_STATE,NUM_GROW);
 
 	// Step 1 of RK3
-	dUdt(Unew, Uprime, time, 0);
+	dUdt(Unew, Uprime, time, no_fill);
 	update_rk(Unew, Uold, dt, Uprime);
 	post_update(Unew);	
 

@@ -66,6 +66,11 @@ contains
     allocate(datalo(ndm,nlbx))
     allocate(datahi(ndm,nlbx))
 
+    boxbclo = -1
+    boxbchi = -1
+    datalo  = 1
+    datahi  = 1
+
     do j=1,nlbx
        bx = get_box(U,j)
        lo = lwb(bx)

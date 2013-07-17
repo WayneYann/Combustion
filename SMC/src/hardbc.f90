@@ -2,11 +2,12 @@
     type(physbndry_reg), intent(inout) :: qin
     type(multifab), intent(in) :: U
 
-    integer :: n,ng
+    integer :: dm,n,ng
     integer ::  lo(U%dim),  hi(U%dim)
     integer :: qlo(U%dim), qhi(U%dim)
     double precision, pointer, dimension(:,:,:,:) :: qp, up
     
+    dm = U%dim
     ng = nghost(U)
 
     do n=1,nfabs(U)
@@ -20,13 +21,43 @@
           qp => dataptr(qin%data, n)
           up => dataptr(U,n)
 
-          call ctoprim_inflow(lo,hi,ng,up,qlo,qhi,qp)
+          if (dm .eq. 2) then
+             call ctoprim_inflow_2d(lo,hi,ng,up,qlo,qhi,qp)
+          else
+             call ctoprim_inflow_3d(lo,hi,ng,up,qlo,qhi,qp)
+          end if
        end if
     end do
 
   end subroutine store_inflow
 
-  subroutine ctoprim_inflow(lo,hi,ng,cons,qlo,qhi,qin)
+  subroutine ctoprim_inflow_2d(lo,hi,ng,cons,qlo,qhi,qin)
+    integer, intent(in) :: lo(2), hi(2), ng, qlo(2), qhi(2)
+    double precision, intent(in) :: cons(-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,ncons)
+    double precision, intent(out) :: qin(nqin,qlo(1):qhi(1),qlo(2):qhi(2))
+
+    integer :: i, j, iwrk, ierr
+    double precision :: rhoinv, ei, rwrk
+
+    !$omp parallel private(i,j,iwrk,rhoinv, ei, rwrk, ierr)
+    !$omp do collapse(2)
+    do j=qlo(2),qhi(2)
+    do i=qlo(1),qhi(1)
+       rhoinv = 1.d0/cons(i,j,irho)
+       qin(iuin,i,j) = cons(i,j,imx)*rhoinv
+       qin(ivin,i,j) = cons(i,j,imy)*rhoinv
+       qin(iYin1:,i,j) = cons(i,j,iry1:iry1+nspecies-1)*rhoinv
+       
+       ei = rhoinv*cons(i,j,iene) - 0.5d0*(qin(iuin,i,j)**2  &
+            + qin(ivin,i,j)**2)
+       call get_t_given_ey(ei, qin(iYin1:,i,j), iwrk, rwrk, qin(iTin,i,j), ierr)
+    end do
+    end do
+    !$omp end do
+    !$omp end parallel
+  end subroutine ctoprim_inflow_2d
+
+  subroutine ctoprim_inflow_3d(lo,hi,ng,cons,qlo,qhi,qin)
     integer, intent(in) :: lo(3), hi(3), ng, qlo(3), qhi(3)
     double precision, intent(in) :: cons(-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng,ncons)
     double precision, intent(out) :: qin(nqin,qlo(1):qhi(1),qlo(2):qhi(2),qlo(3):qhi(3))
@@ -53,16 +84,17 @@
     end do
     !$omp end do
     !$omp end parallel
-  end subroutine ctoprim_inflow
+  end subroutine ctoprim_inflow_3d
 
   subroutine impose_hard_bc(U)
     type(multifab), intent(inout) :: U
 
-    integer :: n, ng
+    integer :: n, ng, dm
     integer ::  lo(U%dim),  hi(U%dim)
     integer :: qlo(U%dim), qhi(U%dim)
     double precision, pointer, dimension(:,:,:,:) :: qp, up
 
+    dm = U%dim
     ng = nghost(U)
 
     do n=1,nfabs(U)
@@ -76,42 +108,60 @@
           qlo = lwb(get_box(qin_xlo%data,n))
           qhi = upb(get_box(qin_xlo%data,n))
           qp  => dataptr(   qin_xlo%data,n)
-          call impose_inflow(lo,hi,ng,up,qlo,qhi,qp,1)
+          if (dm .eq. 2) then
+             call impose_inflow_2d(lo,hi,ng,up,qlo,qhi,qp,1)
+          else
+             call impose_inflow_3d(lo,hi,ng,up,qlo,qhi,qp,1)
+          end if
        end if
 
        if (isValid(qin_xhi,n)) then
           qlo = lwb(get_box(qin_xhi%data,n))
           qhi = upb(get_box(qin_xhi%data,n))
           qp  => dataptr(   qin_xhi%data,n)
-          call impose_inflow(lo,hi,ng,up,qlo,qhi,qp,1)
+          if (dm .eq. 2) then
+             call impose_inflow_2d(lo,hi,ng,up,qlo,qhi,qp,1)
+          else
+             call impose_inflow_3d(lo,hi,ng,up,qlo,qhi,qp,1)
+          end if
        end if
 
        if (isValid(qin_ylo,n)) then
           qlo = lwb(get_box(qin_ylo%data,n))
           qhi = upb(get_box(qin_ylo%data,n))
           qp  => dataptr(   qin_ylo%data,n)
-          call impose_inflow(lo,hi,ng,up,qlo,qhi,qp,2)
+          if (dm .eq. 2) then
+             call impose_inflow_2d(lo,hi,ng,up,qlo,qhi,qp,2)
+          else
+             call impose_inflow_3d(lo,hi,ng,up,qlo,qhi,qp,2)
+          end if
        end if
 
        if (isValid(qin_yhi,n)) then
           qlo = lwb(get_box(qin_yhi%data,n))
           qhi = upb(get_box(qin_yhi%data,n))
           qp  => dataptr(   qin_yhi%data,n)
-          call impose_inflow(lo,hi,ng,up,qlo,qhi,qp,2)
+          if (dm .eq. 2) then
+             call impose_inflow_3d(lo,hi,ng,up,qlo,qhi,qp,2)
+          else
+             call impose_inflow_3d(lo,hi,ng,up,qlo,qhi,qp,2)
+          end if
        end if
 
-       if (isValid(qin_zlo,n)) then
-          qlo = lwb(get_box(qin_zlo%data,n))
-          qhi = upb(get_box(qin_zlo%data,n))
-          qp  => dataptr(   qin_zlo%data,n)
-          call impose_inflow(lo,hi,ng,up,qlo,qhi,qp,3)
-       end if
-
-       if (isValid(qin_zhi,n)) then
-          qlo = lwb(get_box(qin_zhi%data,n))
-          qhi = upb(get_box(qin_zhi%data,n))
-          qp  => dataptr(   qin_zhi%data,n)
-          call impose_inflow(lo,hi,ng,up,qlo,qhi,qp,3)
+       if (dm .eq. 3) then
+          if (isValid(qin_zlo,n)) then
+             qlo = lwb(get_box(qin_zlo%data,n))
+             qhi = upb(get_box(qin_zlo%data,n))
+             qp  => dataptr(   qin_zlo%data,n)
+             call impose_inflow_3d(lo,hi,ng,up,qlo,qhi,qp,3)
+          end if
+          
+          if (isValid(qin_zhi,n)) then
+             qlo = lwb(get_box(qin_zhi%data,n))
+             qhi = upb(get_box(qin_zhi%data,n))
+             qp  => dataptr(   qin_zhi%data,n)
+             call impose_inflow_3d(lo,hi,ng,up,qlo,qhi,qp,3)
+          end if
        end if
 
     end do
@@ -119,7 +169,37 @@
   end subroutine impose_hard_bc
 
 
-  subroutine impose_inflow(lo,hi,ng,cons,qlo,qhi,qin,idim)
+  subroutine impose_inflow_2d(lo,hi,ng,cons,qlo,qhi,qin,idim)
+    integer, intent(in) :: lo(2), hi(2), ng, qlo(2), qhi(2), idim
+    double precision, intent(inout) :: cons(-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,ncons)
+    double precision, intent(in) :: qin(nqin,qlo(1):qhi(1),qlo(2):qhi(2))
+
+    integer :: i, j, iwrk
+    double precision :: ei, rwrk
+
+    !$omp parallel private(i,j,iwrk, ei, rwrk)
+    !$omp do collapse(2)
+    do j=qlo(2),qhi(2)
+    do i=qlo(1),qhi(1)
+       if (idim.eq.1) then
+          cons(i,j,imy) = cons(i,j,irho) * qin(ivin,i,j)
+       else
+          cons(i,j,imx) = cons(i,j,irho) * qin(iuin,i,j)
+       end if
+
+       cons(i,j,iry1:iry1+nspecies-1) = cons(i,j,irho) * qin(iYin1:,i,j)
+
+       call CKUBMS(qin(iTin,i,j),qin(iYin1:,i,j),iwrk,rwrk,ei)
+
+       cons(i,j,iene) = cons(i,j,irho)*ei + (cons(i,j,imx)**2 &
+            + cons(i,j,imy)**2) / (2.d0*cons(i,j,irho))
+    end do
+    end do
+    !$omp end do
+    !$omp end parallel
+  end subroutine impose_inflow_2d
+
+  subroutine impose_inflow_3d(lo,hi,ng,cons,qlo,qhi,qin,idim)
     integer, intent(in) :: lo(3), hi(3), ng, qlo(3), qhi(3), idim
     double precision, intent(inout) :: cons(-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng,ncons)
     double precision, intent(in) :: qin(nqin,qlo(1):qhi(1),qlo(2):qhi(2),qlo(3):qhi(3))
@@ -154,4 +234,4 @@
     end do
     !$omp end do
     !$omp end parallel
-  end subroutine impose_inflow
+  end subroutine impose_inflow_3d
