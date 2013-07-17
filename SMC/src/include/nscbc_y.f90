@@ -1,5 +1,5 @@
 
-  subroutine outlet_ylo(lo,hi,ngq,ngc,dx,Q,con,fd,rhs,aux,dlo,dhi)
+  subroutine outlet_ylo_3d(lo,hi,ngq,ngc,dx,Q,con,fd,rhs,aux,dlo,dhi)
     integer, intent(in) :: lo(3), hi(3), ngq, ngc, dlo(3), dhi(3)
     double precision,intent(in   )::dx(3)
     double precision,intent(in   )::Q  (-ngq+lo(1):hi(1)+ngq,-ngq+lo(2):hi(2)+ngq,-ngq+lo(3):hi(3)+ngq,nprim)
@@ -25,7 +25,7 @@
        dxinv(n) = 1.0d0 / dx(n)
     end do
 
-    call comp_trans_deriv_y(j,lo,hi,ngq,Q,dxinv,dlo,dhi,dpdx,dpdz,dudx,dvdx,dvdz,dwdz)
+    call comp_trans_deriv_y_3d(j,lo,hi,ngq,Q,dxinv,dlo,dhi,dpdx,dpdz,dudx,dvdx,dvdz,dwdz)
 
     !$omp parallel do private(i,k,n,rho,u,v,w,T,pres,Y,h,rhoE) &
     !$omp private(dpdn, dudn,dvdn,dwdn, drhodn, dYdn, L, Ltr, lhs) &
@@ -101,7 +101,7 @@
                   + outlet_eta*aux(igamma,i,k)*pres*(1.d0-Ma2_ylo)/(2.d0*Lydomain)*v
           end if
           
-          call LtoLHS(2, L, lhs, aux(:,i,k), rho, u, v, w, T, Y, h, rhoE)
+          call LtoLHS_3d(2, L, lhs, aux(:,i,k), rho, u, v, w, T, Y, h, rhoE)
           
           rhs(i,j,k,:) = rhs(i,j,k,:) - lhs
 
@@ -109,7 +109,7 @@
     end do
     !$omp end parallel do
 
-  end subroutine outlet_ylo
+  end subroutine outlet_ylo_3d
 
 
 !   subroutine inlet_ylo(lo,hi,ngq,ngc,dx,Q,con,fd,rhs,aux,qin,dlo,dhi)
@@ -127,7 +127,7 @@
 !   end subroutine inlet_ylo
 
 
-  subroutine outlet_yhi(lo,hi,ngq,ngc,dx,Q,con,fd,rhs,aux,dlo,dhi)
+  subroutine outlet_yhi_3d(lo,hi,ngq,ngc,dx,Q,con,fd,rhs,aux,dlo,dhi)
     integer, intent(in) :: lo(3), hi(3), ngq, ngc, dlo(3), dhi(3)
     double precision,intent(in   )::dx(3)
     double precision,intent(in   )::Q  (-ngq+lo(1):hi(1)+ngq,-ngq+lo(2):hi(2)+ngq,-ngq+lo(3):hi(3)+ngq,nprim)
@@ -153,7 +153,7 @@
        dxinv(n) = 1.0d0 / dx(n)
     end do
 
-    call comp_trans_deriv_y(j,lo,hi,ngq,Q,dxinv,dlo,dhi,dpdx,dpdz,dudx,dvdx,dvdz,dwdz)
+    call comp_trans_deriv_y_3d(j,lo,hi,ngq,Q,dxinv,dlo,dhi,dpdx,dpdz,dudx,dvdx,dvdz,dwdz)
 
     !$omp parallel do private(i,k,n,rho,u,v,w,T,pres,Y,h,rhoE) &
     !$omp private(dpdn, dudn, dvdn, dwdn, drhodn, dYdn, L, Ltr, lhs) &
@@ -229,7 +229,7 @@
                   - outlet_eta*aux(igamma,i,k)*pres*(1.d0-Ma2_yhi)/(2.d0*Lydomain)*v
           end if
           
-          call LtoLHS(2, L, lhs, aux(:,i,k), rho, u, v, w, T, Y, h, rhoE)
+          call LtoLHS_3d(2, L, lhs, aux(:,i,k), rho, u, v, w, T, Y, h, rhoE)
           
           rhs(i,j,k,:) = rhs(i,j,k,:) - lhs
 
@@ -237,7 +237,7 @@
     end do
     !$omp end parallel do
 
-  end subroutine outlet_yhi
+  end subroutine outlet_yhi_3d
 
 
 !   subroutine inlet_yhi(lo,hi,ngq,ngc,dx,Q,con,fd,rhs,aux,qin,dlo,dhi)
@@ -255,7 +255,7 @@
 !   end subroutine inlet_yhi
 
 
-  subroutine comp_trans_deriv_y(j,lo,hi,ngq,Q,dxinv,dlo,dhi,dpdx,dpdz,dudx,dvdx,dvdz,dwdz)
+  subroutine comp_trans_deriv_y_3d(j,lo,hi,ngq,Q,dxinv,dlo,dhi,dpdx,dpdz,dudx,dvdx,dvdz,dwdz)
     integer, intent(in) :: j, lo(3), hi(3), ngq,dlo(3),dhi(3)
     double precision, intent(in) :: dxinv(3)
     double precision, intent(in) :: Q(-ngq+lo(1):hi(1)+ngq,-ngq+lo(2):hi(2)+ngq,-ngq+lo(3):hi(3)+ngq,nprim)
@@ -438,4 +438,297 @@
     end if
 
     !$omp end parallel
-  end subroutine comp_trans_deriv_y
+  end subroutine comp_trans_deriv_y_3d
+
+
+! ----------------- 2D routine --------------------------
+
+
+  subroutine outlet_ylo_2d(lo,hi,ngq,ngc,dx,Q,con,fd,rhs,aux,dlo,dhi)
+    integer, intent(in) :: lo(2), hi(2), ngq, ngc, dlo(2), dhi(2)
+    double precision,intent(in   )::dx(2)
+    double precision,intent(in   )::Q  (-ngq+lo(1):hi(1)+ngq,-ngq+lo(2):hi(2)+ngq,nprim)
+    double precision,intent(in   )::con(-ngc+lo(1):hi(1)+ngc,-ngc+lo(2):hi(2)+ngc,ncons)
+    double precision,intent(in   )::fd (lo(1):hi(1),lo(2):hi(2),ncons)
+    double precision,intent(inout)::rhs(lo(1):hi(1),lo(2):hi(2),ncons)
+    double precision,intent(in   )::aux(naux,lo(1):hi(1))
+
+    integer :: i,j,n
+    double precision :: dxinv(2)
+    double precision :: rho, u, v, T, pres, Y(nspecies), h(nspecies), rhoE
+    double precision :: dpdn, dudn, dvdn, drhodn, dYdn(nspecies)
+    double precision :: L(4+nspecies), Ltr(4+nspecies), lhs(ncons)
+    double precision :: S_p, S_Y(nspecies), d_u, d_v, d_p
+    double precision :: hcal, cpWT, gam1
+
+    double precision, dimension(lo(1):hi(1)) :: dpdx, dudx, dvdx
+
+    j = lo(2)
+
+    do n=1,2
+       dxinv(n) = 1.0d0 / dx(n)
+    end do
+
+    call comp_trans_deriv_y_2d(j,lo,hi,ngq,Q,dxinv,dlo,dhi,dpdx,dudx,dvdx)
+
+    !$omp parallel do private(i,n,rho,u,v,T,pres,Y,h,rhoE) &
+    !$omp private(dpdn, dudn,dvdn, drhodn, dYdn, L, Ltr, lhs) &
+    !$omp private(S_p, S_Y, d_u, d_v, d_p, hcal, cpWT, gam1)
+    do i=lo(1),hi(1)
+
+       rho  = q  (i,j,qrho)
+       u    = q  (i,j,qu)
+       v    = q  (i,j,qv)
+       pres = q  (i,j,qpres)
+       T    = q  (i,j,qtemp)
+       Y    = q  (i,j,qy1:qy1+nspecies-1)
+       h    = q  (i,j,qh1:qh1+nspecies-1)
+       rhoE = con(i,j,iene)
+
+       drhodn     = dxinv(2)*first_deriv_rb(q(i,j:j+3,qrho))
+       dudn       = dxinv(2)*first_deriv_rb(q(i,j:j+3,qu))
+       dvdn       = dxinv(2)*first_deriv_rb(q(i,j:j+3,qv))
+       dpdn       = dxinv(2)*first_deriv_rb(q(i,j:j+3,qpres))
+       do n=1,nspecies
+          dYdn(n) = dxinv(2)*first_deriv_rb(q(i,j:j+3,qy1+n-1))
+       end do
+
+       ! Simple 1D LODI 
+       L(1) = (v-aux(ics,i))*0.5d0*(dpdn-rho*aux(ics,i)*dvdn)
+       L(2) = v*(drhodn-dpdn/aux(ics,i)**2)
+       L(3) = v*dudn
+       L(4) = sigma*aux(ics,i)*(1.d0-Ma2_ylo)/(2.d0*Lydomain)*(pres-Pinfty)
+       L(5:) = v*dYdn
+
+       ! multi-D effects
+       Ltr(4) = -0.5d0*(u*dpdx(i) &
+            + aux(igamma,i)*pres*dudx(i) &
+            + rho*aux(ics,i)*u*dvdx(i))
+       L(4) = L(4) + min(0.99d0, (1.0d0-abs(v)/aux(ics,i))) * Ltr(4) 
+
+       ! viscous and reaction effects
+       d_u = fd(i,j,imx) / rho
+       d_v = fd(i,j,imy) / rho
+
+       S_p = 0.d0
+       d_p = fd(i,j,iene) - (d_u*con(i,j,imx)+d_v*con(i,j,imy))
+       cpWT = aux(icp,i)*aux(iWbar,i)*T
+       gam1 = aux(igamma,i) - 1.d0
+       do n=1,nspecies
+          hcal = h(n) - cpWT*inv_mwt(n)
+          S_p    = S_p - hcal*aux(iwdot1+n-1,i)
+          S_Y(n) = aux(iwdot1+n-1,i) / rho
+          d_p    = d_p - hcal*fd(i,j,iry1+n-1)
+       end do
+       S_p = gam1 * S_p
+       d_p = gam1 * d_p 
+
+       ! S_Y seems to cause instabilities
+       ! So set it to zero for now
+       S_Y = 0.d0
+       
+       L(4) = L(4) + 0.5d0*(S_p + d_p + rho*aux(ics,i)*d_v)
+
+       if (v > 0.d0) then
+          L(2) = -S_p/aux(ics,i)**2
+          L(3) = 0.d0
+          L(4) = 0.5d0*S_p
+          L(5:) = S_Y      
+             
+          L(4) = 0.5d0*(S_p + d_p + rho*aux(ics,i)*d_v) + Ltr(4) &
+               + outlet_eta*aux(igamma,i)*pres*(1.d0-Ma2_ylo)/(2.d0*Lydomain)*v
+       end if
+          
+       call LtoLHS_2d(2, L, lhs, aux(:,i), rho, u, v, T, Y, h, rhoE)
+          
+       rhs(i,j,:) = rhs(i,j,:) - lhs
+       
+    end do
+    !$omp end parallel do
+
+  end subroutine outlet_ylo_2d
+
+
+  subroutine outlet_yhi_2d(lo,hi,ngq,ngc,dx,Q,con,fd,rhs,aux,dlo,dhi)
+    integer, intent(in) :: lo(2), hi(2), ngq, ngc, dlo(2), dhi(2)
+    double precision,intent(in   )::dx(2)
+    double precision,intent(in   )::Q  (-ngq+lo(1):hi(1)+ngq,-ngq+lo(2):hi(2)+ngq,nprim)
+    double precision,intent(in   )::con(-ngc+lo(1):hi(1)+ngc,-ngc+lo(2):hi(2)+ngc,ncons)
+    double precision,intent(in   )::fd (lo(1):hi(1),lo(2):hi(2),ncons)
+    double precision,intent(inout)::rhs(lo(1):hi(1),lo(2):hi(2),ncons)
+    double precision,intent(in   )::aux(naux,lo(1):hi(1))
+
+    integer :: i,j,n
+    double precision :: dxinv(2)
+    double precision :: rho, u, v, T, pres, Y(nspecies), h(nspecies), rhoE
+    double precision :: dpdn, dudn, dvdn, drhodn, dYdn(nspecies)
+    double precision :: L(4+nspecies), Ltr(4+nspecies), lhs(ncons)
+    double precision :: S_p, S_Y(nspecies), d_u, d_v, d_p
+    double precision :: hcal, cpWT, gam1
+
+    double precision, dimension(lo(1):hi(1)) :: dpdx, dudx, dvdx
+
+    j = hi(2)
+
+    do n=1,2
+       dxinv(n) = 1.0d0 / dx(n)
+    end do
+
+    call comp_trans_deriv_y_2d(j,lo,hi,ngq,Q,dxinv,dlo,dhi,dpdx,dudx,dvdx)
+
+    !$omp parallel do private(i,n,rho,u,v,T,pres,Y,h,rhoE) &
+    !$omp private(dpdn, dudn, dvdn, drhodn, dYdn, L, Ltr, lhs) &
+    !$omp private(S_p, S_Y, d_u, d_v, d_p,  hcal, cpWT, gam1)
+    do i=lo(1),hi(1)
+
+       rho  = q  (i,j,qrho)
+       u    = q  (i,j,qu)
+       v    = q  (i,j,qv)
+       pres = q  (i,j,qpres)
+       T    = q  (i,j,qtemp)
+       Y    = q  (i,j,qy1:qy1+nspecies-1)
+       h    = q  (i,j,qh1:qh1+nspecies-1)
+       rhoE = con(i,j,iene)
+       
+       drhodn     = dxinv(2)*first_deriv_lb(q(i,j-3:j,qrho))
+       dudn       = dxinv(2)*first_deriv_lb(q(i,j-3:j,qu))
+       dvdn       = dxinv(2)*first_deriv_lb(q(i,j-3:j,qv))
+       dpdn       = dxinv(2)*first_deriv_lb(q(i,j-3:j,qpres))
+       do n=1,nspecies
+          dYdn(n) = dxinv(2)*first_deriv_lb(q(i,j-3:j,qy1+n-1))
+       end do
+       
+       ! Simple 1D LODI 
+       L(1) = sigma*aux(ics,i)*(1.d0-Ma2_yhi)/(2.d0*Lydomain)*(pres-Pinfty)
+       L(2) = v*(drhodn-dpdn/aux(ics,i)**2)
+       L(3) = v*dudn
+       L(4) = (v+aux(ics,i))*0.5d0*(dpdn+rho*aux(ics,i)*dvdn)
+       L(5:) = v*dYdn
+          
+       ! multi-D effects
+       Ltr(1) = -0.5d0*(u*dpdx(i) &
+               + aux(igamma,i)*pres*dudx(i) &
+               - rho*aux(ics,i)*u*dvdx(i))
+       L(1) = L(1) + min(0.99d0, (1.0d0-abs(v)/aux(ics,i))) * Ltr(1)
+          
+       ! viscous and reaction effects
+       d_u = fd(i,j,imx) / rho
+       d_v = fd(i,j,imy) / rho
+
+       S_p = 0.d0
+       d_p = fd(i,j,iene) - (d_u*con(i,j,imx)+d_v*con(i,j,imy))
+       cpWT = aux(icp,i)*aux(iWbar,i)*T
+       gam1 = aux(igamma,i) - 1.d0
+       do n=1,nspecies
+          hcal = h(n) - cpWT*inv_mwt(n)
+          S_p    = S_p - hcal*aux(iwdot1+n-1,i)
+          S_Y(n) = aux(iwdot1+n-1,i) / rho
+          d_p    = d_p - hcal*fd(i,j,iry1+n-1)
+       end do
+       S_p = gam1 * S_p
+       d_p = gam1 * d_p 
+
+       ! S_Y seems to cause instabilities
+       ! So set it to zero for now
+       S_Y = 0.d0
+       
+       L(1) = L(1) + 0.5d0*(S_p + d_p - rho*aux(ics,i)*d_v)
+          
+       if (v < 0.d0) then
+          L(1) = 0.5d0*S_p
+          L(2) = -S_p/aux(ics,i)**2
+          L(3) = 0.d0
+          L(5:) = S_Y      
+             
+          L(1) = 0.5d0*(S_p + d_p - rho*aux(ics,i)*d_v) + Ltr(1) &
+               - outlet_eta*aux(igamma,i)*pres*(1.d0-Ma2_yhi)/(2.d0*Lydomain)*v
+       end if
+          
+       call LtoLHS_2d(2, L, lhs, aux(:,i), rho, u, v, T, Y, h, rhoE)
+          
+       rhs(i,j,:) = rhs(i,j,:) - lhs
+       
+    end do
+    !$omp end parallel do
+
+  end subroutine outlet_yhi_2d
+
+
+  subroutine comp_trans_deriv_y_2d(j,lo,hi,ngq,Q,dxinv,dlo,dhi,dpdx,dudx,dvdx)
+    integer, intent(in) :: j, lo(2), hi(2), ngq,dlo(2),dhi(2)
+    double precision, intent(in) :: dxinv(2)
+    double precision, intent(in) :: Q(-ngq+lo(1):hi(1)+ngq,-ngq+lo(2):hi(2)+ngq,nprim)
+    double precision, intent(out):: dpdx(lo(1):hi(1))
+    double precision, intent(out):: dudx(lo(1):hi(1))
+    double precision, intent(out):: dvdx(lo(1):hi(1))
+
+    integer :: i, slo(2), shi(2)
+
+    slo = dlo + stencil_ng
+    shi = dhi - stencil_ng
+
+    !d()/dx
+    !$omp parallel do private(i)
+    do i=slo(1),shi(1)
+       dudx(i) = dxinv(1)*first_deriv_8(q(i-4:i+4,j,qu))
+       dvdx(i) = dxinv(1)*first_deriv_8(q(i-4:i+4,j,qv))
+       dpdx(i) = dxinv(1)*first_deriv_8(q(i-4:i+4,j,qpres))
+    end do
+    !$omp end parallel do
+
+    ! lo-x boundary
+    if (dlo(1) .eq. lo(1)) then
+       i = lo(1)
+       ! use completely right-biased stencil
+       dudx(i) = dxinv(1)*first_deriv_rb(q(i:i+3,j,qu))
+       dvdx(i) = dxinv(1)*first_deriv_rb(q(i:i+3,j,qv))
+       dpdx(i) = dxinv(1)*first_deriv_rb(q(i:i+3,j,qpres))
+       
+       i = lo(1)+1
+       ! use 3rd-order slightly right-biased stencil
+       dudx(i) = dxinv(1)*first_deriv_r3(q(i-1:i+2,j,qu))
+       dvdx(i) = dxinv(1)*first_deriv_r3(q(i-1:i+2,j,qv))
+       dpdx(i) = dxinv(1)*first_deriv_r3(q(i-1:i+2,j,qpres))
+       
+       i = lo(1)+2
+       ! use 4th-order stencil
+       dudx(i) = dxinv(1)*first_deriv_4(q(i-2:i+2,j,qu))
+       dvdx(i) = dxinv(1)*first_deriv_4(q(i-2:i+2,j,qv))
+       dpdx(i) = dxinv(1)*first_deriv_4(q(i-2:i+2,j,qpres))
+       
+       i = lo(1)+3
+       ! use 6th-order stencil
+       dudx(i) = dxinv(1)*first_deriv_6(q(i-3:i+3,j,qu))
+       dvdx(i) = dxinv(1)*first_deriv_6(q(i-3:i+3,j,qv))
+       dpdx(i) = dxinv(1)*first_deriv_6(q(i-3:i+3,j,qpres))
+    end if
+
+    ! hi-x boundary
+    if (dhi(1) .eq. hi(1)) then
+       i = hi(1)-3
+       ! use 6th-order stencil
+       dudx(i) = dxinv(1)*first_deriv_6(q(i-3:i+3,j,qu))
+       dvdx(i) = dxinv(1)*first_deriv_6(q(i-3:i+3,j,qv))
+       dpdx(i) = dxinv(1)*first_deriv_6(q(i-3:i+3,j,qpres))
+       
+       i = hi(1)-2
+       ! use 4th-order stencil
+       dudx(i) = dxinv(1)*first_deriv_4(q(i-2:i+2,j,qu))
+       dvdx(i) = dxinv(1)*first_deriv_4(q(i-2:i+2,j,qv))
+       dpdx(i) = dxinv(1)*first_deriv_4(q(i-2:i+2,j,qpres))
+       
+       i = hi(1)-1
+       ! use 3rd-order slightly left-biased stencil
+       dudx(i) = dxinv(1)*first_deriv_l3(q(i-2:i+1,j,qu))
+       dvdx(i) = dxinv(1)*first_deriv_l3(q(i-2:i+1,j,qv))
+       dpdx(i) = dxinv(1)*first_deriv_l3(q(i-2:i+1,j,qpres))
+       
+       i = hi(1)
+       ! use completely left-biased stencil
+       dudx(i) = dxinv(1)*first_deriv_lb(q(i-3:i,j,qu))
+       dvdx(i) = dxinv(1)*first_deriv_lb(q(i-3:i,j,qv))
+       dpdx(i) = dxinv(1)*first_deriv_lb(q(i-3:i,j,qpres))
+    end if
+    
+  end subroutine comp_trans_deriv_y_2d
+

@@ -6,7 +6,7 @@ include $(BOXLIB_HOME)/Tools/F_mk/GMakedefs.mak
 
 include ./GPackage.mak
 VPATH_LOCATIONS += .
-
+FINCLUDE_LOCATIONS += .
 
 # default target (make just takes the one that appears first)
 ALL: main.$(suf).exe
@@ -90,6 +90,9 @@ endif
 
 # any include directories
 Fmincludes += $(SMC_SRC)
+ifneq ("$(wildcard $(SMC_TOP_DIR)/$(strip $(SMC_SRC))/include)","")
+  Fmincludes += $(strip $(SMC_SRC))/include
+endif
 Fmincs := $(foreach dir, $(Fmincludes), $(SMC_TOP_DIR)/$(dir))
 
 

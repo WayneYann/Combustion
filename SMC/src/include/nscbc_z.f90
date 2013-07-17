@@ -101,7 +101,7 @@
                   + outlet_eta*aux(igamma,i,j)*pres*(1.d0-Ma2_zlo)/(2.d0*Lzdomain)*w
           end if
           
-          call LtoLHS(3, L, lhs, aux(:,i,j), rho, u, v, w, T, Y, h, rhoE)
+          call LtoLHS_3d(3, L, lhs, aux(:,i,j), rho, u, v, w, T, Y, h, rhoE)
           
           rhs(i,j,k,:) = rhs(i,j,k,:) - lhs
 
@@ -229,7 +229,7 @@
                   - outlet_eta*aux(igamma,i,j)*pres*(1.d0-Ma2_zhi)/(2.d0*Lzdomain)*w
           end if
           
-          call LtoLHS(3, L, lhs, aux(:,i,j), rho, u, v, w, T, Y, h, rhoE)
+          call LtoLHS_3d(3, L, lhs, aux(:,i,j), rho, u, v, w, T, Y, h, rhoE)
           
           rhs(i,j,k,:) = rhs(i,j,k,:) - lhs
 

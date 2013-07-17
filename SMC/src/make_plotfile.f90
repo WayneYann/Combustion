@@ -137,14 +137,14 @@ contains
     type(layout)     , intent(in   ) :: la
     type(multifab)   , intent(inout) :: U
     character(len=20), intent(in   ) :: plot_names(:)
-    real(dp_t)       , intent(in   ) :: time, dx(U%dim)
+    real(dp_t)       , intent(in   ) :: time, dx(3)
     real(dp_t)       , intent(  out) :: write_pf_time
 
     ! dimensioned as an array of size 1 for fabio_ml_multifab_write_d
     type(multifab) :: plotdata(1), Q
 
     ! dimensioned as an array of size 0 for fabio_ml_multifab_write_d
-    integer :: rr(0), prec, ngu, ngq
+    integer :: rr(0), prec, ngu, ngq, dm
     real(dp_t) :: writetime1, writetime2
 
     if (single_prec_plotfiles) then
@@ -153,6 +153,7 @@ contains
        prec = FABIO_DOUBLE
     endif
 
+    dm  = U%dim
     ngu = nghost(U)
 
     if (plot_divu) then
@@ -208,7 +209,7 @@ contains
     writetime1 = parallel_wtime()
 
     call fabio_ml_multifab_write_d(plotdata, rr, dirname, plot_names, &
-         la%lap%pd, prob_lo, prob_hi, time, dx, &
+         la%lap%pd, prob_lo(1:dm), prob_hi(1:dm), time, dx(1:dm), &
          nOutFiles = nOutFiles, &
          lUsingNFiles = lUsingNFiles, prec = prec)
 

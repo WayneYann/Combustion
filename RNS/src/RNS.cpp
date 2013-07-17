@@ -68,7 +68,7 @@ Real         RNS::Treference    = 298.0;
 
 int          RNS::RK_order      = 2;
 
-RNS::RiemannType RNS::Riemann   = RNS::HLL;
+RNS::RiemannType RNS::Riemann   = RNS::JBB;
 Real             RNS::difmag    = -1.0;
 
 ErrorList    RNS::err_list;
@@ -126,9 +126,18 @@ RNS::read_params ()
 	Riemann = static_cast<RiemannType>(riemann);
     }
 
+    // some Riemann solvers need artificial viscosity to suppress odd-even decouping
     if (Riemann == JBB)
     {
 	difmag = 0.1;
+    }
+    else if (Riemann == HLLC)
+    {
+	difmag = 0.1;
+    }
+    else
+    {
+	difmag = -1.0;
     }
     pp.query("difmag", difmag);
 

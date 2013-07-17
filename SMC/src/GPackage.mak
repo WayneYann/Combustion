@@ -13,6 +13,8 @@ else
   f90sources += kernels.f90
 endif
 
+f90sources += kernels_2d.f90
+
 f90sources += make_plot_variables.f90
 f90sources += make_plotfile.f90
 f90sources += nscbc.f90
@@ -33,3 +35,6 @@ endif
 
 f90sources += variables.f90
 f90sources += write_job_info.f90
+
+
+

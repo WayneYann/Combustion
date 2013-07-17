@@ -851,14 +851,14 @@ c     macvel will now satisfy div(umac) = S_hat^{n+1/2}
 
             print *,'... computing A forcing term = D^n + I_R^{k-1}'
 
-c     note: no need to recompute advective forcing for RhoH since it
-c     doesn't change from the predictor
-            do i=lo(0),hi(0)
-               do n = 1,Nspec
-                  is = FirstSpec + n - 1
-                  tforce(0,i,is) = diff_old(0,i,is) + I_R(0,i,n)
-               enddo
+c     compute advective forcing term
+         do i=lo(0),hi(0)
+            do n = 1,Nspec
+               is = FirstSpec + n - 1
+               tforce(0,i,is) = diff_old(0,i,is) + I_R(0,i,n)
             enddo
+            tforce(0,i,RhoH) = diff_old(0,i,RhoH) + diffdiff_old(0,i)
+         enddo
             
 c     compute advective flux divergence
             call scal_aofs(scal_old(0,:,:),macvel(0,:),aofs(0,:,:),

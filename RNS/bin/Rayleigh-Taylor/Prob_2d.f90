@@ -10,7 +10,7 @@ subroutine PROBINIT (init,name,namlen,problo,probhi)
 
   integer untin,i
 
-  namelist /fortin/ prob_type, frac, rho_1, rho_2, p0_base, &
+  namelist /fortin/ prob_type, frac, rho_1, rho_2, p0_base, pertmag, &
        dengrad, max_dengrad_lev
 
   ! Build "probin" filename -- the name of file containing fortin namelist.
@@ -31,6 +31,7 @@ subroutine PROBINIT (init,name,namlen,problo,probhi)
   rho_1 = 1.0d0
   rho_2 = 2.0d0
   p0_base = 5.0d0
+  pertmag = 0.0d0
   
   dengrad = 0.01
   max_dengrad_lev = 5
@@ -93,6 +94,21 @@ subroutine rns_initdata(level,time,lo,hi,nscal, &
   double precision, parameter :: ZERO=0.d0, HALF=0.5d0, &
        PI = 3.141592653589793238462643383279502884197d0
 
+  double precision :: r 
+  integer :: nseed
+  integer, allocatable :: seed(:)
+  logical, save :: first_call = .true.
+
+  if (first_call) then
+     call random_seed(SIZE=nseed)
+     allocate(seed(nseed))
+     call random_seed(GET=seed)
+     seed = seed + lo(1) + lo(2) + hi(1) + hi(2)
+     call random_seed(PUT=seed)
+     deallocate(seed)
+     first_call = .false.
+  end if
+
   if (NSPEC.ne. 2) then
      write(6,*)"nspec .ne. 2", NSPEC
      stop
@@ -132,6 +148,11 @@ subroutine rns_initdata(level,time,lo,hi,nscal, &
               xcen = (i+HALF)*delta(1)
            else
               xcen = ((ncell_x-i-1)+HALF)*delta(1)
+           end if
+
+           if (pertmag .gt. 0.0d0) then
+              call random_number(r)
+              xcen = xcen + pertmag*(r-0.5d0)*delta(1)
            end if
 
            ! we explicitly make the perturbation symmetric here
@@ -200,93 +221,3 @@ subroutine rns_initdata(level,time,lo,hi,nscal, &
 
 end subroutine rns_initdata
 
-
-! ::: -----------------------------------------------------------
-
-subroutine rns_hypfill(adv,adv_l1,adv_l2,adv_h1,adv_h2, &
-     domlo,domhi,delta,xlo,time,bc)
-  
-  use meth_params_module, only : NVAR
-  use probdata_module
-  
-  implicit none
-  include 'bc_types.fi'
-  integer adv_l1,adv_l2,adv_h1,adv_h2
-  integer bc(2,2,*)
-  integer domlo(2), domhi(2)
-  double precision delta(2), xlo(2), time
-  double precision adv(adv_l1:adv_h1,adv_l2:adv_h2,NVAR)
-  
-  integer i, j, n
-  
-  do n = 1,NVAR
-     call filcc(adv(adv_l1,adv_l2,n), &
-          adv_l1,adv_l2,adv_h1,adv_h2, &
-             domlo,domhi,delta,xlo,bc(1,1,n))
-  enddo
-  
-  do n=1,NVAR
-     !        XLO
-     if ( bc(1,1,n).eq.EXT_DIR .and. adv_l1.lt.domlo(1)) then
-        call bl_error('SHOULD NEVER GET HERE bc(1,1,n) .eq. EXT_DIR) ')
-     end if
-     
-     !        XHI
-     if ( bc(1,2,n).eq.EXT_DIR .and. adv_h1.gt.domhi(1)) then
-        call bl_error('SHOULD NEVER GET HERE bc(1,2,n) .eq. EXT_DIR) ')
-     end if
-         
-     !        YLO
-     if ( bc(2,1,n).eq.EXT_DIR .and. adv_l2.lt.domlo(2)) then
-        call bl_error('SHOULD NEVER GET HERE bc(2,1,n) .eq. EXT_DIR) ')
-     end if
-         
-     !        YHI
-     if ( bc(2,2,n).eq.EXT_DIR .and. adv_h2.gt.domhi(2)) then
-        call bl_error('SHOULD NEVER GET HERE bc(2,2,n) .eq. EXT_DIR) ')
-     end if
-
-  end do
-
-end subroutine rns_hypfill
-
-! ::: -----------------------------------------------------------
-
-subroutine rns_denfill(adv,adv_l1,adv_l2,adv_h1,adv_h2, &
-     domlo,domhi,delta,xlo,time,bc)
-  
-  implicit none
-  include 'bc_types.fi'
-  integer adv_l1,adv_l2,adv_h1,adv_h2
-  integer bc(2,2,*)
-  integer domlo(2), domhi(2)
-  double precision delta(2), xlo(2), time
-  double precision adv(adv_l1:adv_h1,adv_l2:adv_h2)
-      
-  call filcc(adv,adv_l1,adv_l2,adv_h1,adv_h2,domlo,domhi,delta,xlo,bc)
-  
-  !     XLO
-  if ( bc(1,1,1).eq.EXT_DIR .and. adv_l1.lt.domlo(1)) then
-     print *,'SHOULD NEVER GET HERE bc(1,1,1) .eq. EXT_DIR) '
-     stop
-  end if
-  
-  !     XHI
-  if ( bc(1,2,1).eq.EXT_DIR .and. adv_h1.gt.domhi(1)) then
-     print *,'SHOULD NEVER GET HERE bc(1,2,1) .eq. EXT_DIR) '
-     stop
-  end if
-  
-  !     YLO
-  if ( bc(2,1,1).eq.EXT_DIR .and. adv_l2.lt.domlo(2)) then
-     print *,'SHOULD NEVER GET HERE bc(2,1,1) .eq. EXT_DIR) '
-     stop
-  end if
-  
-  !     YHI
-  if ( bc(2,2,1).eq.EXT_DIR .and. adv_h2.gt.domhi(2)) then
-     print *,'SHOULD NEVER GET HERE bc(2,2,1) .eq. EXT_DIR) '
-     stop
-  end if
-  
-end subroutine rns_denfill

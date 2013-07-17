@@ -21,9 +21,9 @@ module probin_module
 
 
   ! These will be allocated and defined below
-  logical,    allocatable, save, public :: pmask(:)
-  real(dp_t), allocatable, save, public :: prob_lo(:)
-  real(dp_t), allocatable, save, public :: prob_hi(:)
+  logical,    save, public :: pmask(3)
+  real(dp_t), save, public :: prob_lo(3)
+  real(dp_t), save, public :: prob_hi(3)
 
 end module probin_module
 
@@ -230,25 +230,23 @@ contains
 
 
     ! initialize pmask
-    allocate(pmask(dm_in))
     pmask = .FALSE.
     if (bcx_lo .eq. -1 .and. bcx_hi .eq. -1) pmask(1) = .true.
-    if (dm_in > 1) then
-       if (bcy_lo .eq. -1 .and. bcy_hi .eq. -1) pmask(2) = .true.
-    end if
-    if (dm_in > 2) then
-       if (bcz_lo .eq. -1 .and. bcz_hi .eq. -1) pmask(3) = .true.
-    end if
+    if (bcy_lo .eq. -1 .and. bcy_hi .eq. -1) pmask(2) = .true.
+    if (bcz_lo .eq. -1 .and. bcz_hi .eq. -1) pmask(3) = .true.
 
     ! initialize prob_lo and prob_hi
-    allocate(prob_lo(dm_in))
     prob_lo(1) = prob_lo_x
-    if (dm_in > 1) prob_lo(2) = prob_lo_y
-    if (dm_in > 2) prob_lo(3) = prob_lo_z
-    allocate(prob_hi(dm_in))
+    prob_lo(2) = prob_lo_y
+    prob_lo(3) = prob_lo_z
     prob_hi(1) = prob_hi_x
-    if (dm_in > 1) prob_hi(2) = prob_hi_y
-    if (dm_in > 2) prob_hi(3) = prob_hi_z
+    prob_hi(2) = prob_hi_y
+    prob_hi(3) = prob_hi_z
+
+    if (dm_in .eq. 2) then
+       n_cellz = 1
+       tb_split_dim = min(tb_split_dim, 2)
+    end if
 
     call knapsack_set_verbose(the_knapsack_verbosity)
 
@@ -263,13 +261,7 @@ contains
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
   subroutine runtime_close()
-
     use probin_module
-
-    deallocate(pmask)
-    deallocate(prob_lo)
-    deallocate(prob_hi)
-
   end subroutine runtime_close
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!

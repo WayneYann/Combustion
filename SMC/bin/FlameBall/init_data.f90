@@ -17,35 +17,38 @@ contains
     double precision, intent(in   ) :: dx(data%dim)
     double precision, intent(in   ) :: plo(data%dim), phi(data%dim)
 
-    integer                   :: lo(data%dim), hi(data%dim), ng, i
+    integer                   :: lo(3), hi(3), ng, i, dm, dim3
     double precision, pointer :: dp(:,:,:,:)
 
     ng = data%ng
+    dm = data%dim
+    if (dm.eq.3) then
+       dim3 = 1
+    else
+       dim3 = 0
+       lo(3) = 1
+       hi(3) = 1
+    end if
 
     do i=1,nfabs(data)
        dp => dataptr(data,i)
-       lo = lwb(get_box(data,i))
-       hi = upb(get_box(data,i))
+       lo(1:dm) = lwb(get_box(data,i))
+       hi(1:dm) = upb(get_box(data,i))
 
-       select case(data%dim)
-       case (2)
-          call bl_error('We only support 3-D')
-       case (3)
-          call init_data_3d(lo,hi,ng,dx,dp,plo,phi)
-       end select
+       call init_data_nd(lo,hi,ng,dx,dp,plo,phi,dm,dim3)
     end do
 
   end subroutine init_data
 
-  subroutine init_data_3d(lo,hi,ng,dx,cons,phlo,phhi)
+  subroutine init_data_nd(lo,hi,ng,dx,cons,phlo,phhi,dm,dim3)
 
     use variables_module, only : irho, imx,imy,imz,iene,iry1,ncons, iH2, iO2, iN2
     use chemistry_module, only : nspecies, patm
     use probin_module, only : prob_type, pertmag, rfire, Tinit, uinit, vinit, winit, prob_dim
 
-    integer,          intent(in   ) :: lo(3),hi(3),ng
-    double precision, intent(in   ) :: dx(3),phlo(3),phhi(3)
-    double precision, intent(inout) :: cons(-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng+lo(3):hi(3)+ng,ncons)
+    integer,          intent(in   ) :: lo(3),hi(3),ng,dm,dim3
+    double precision, intent(in   ) :: dx(dm),phlo(dm),phhi(dm)
+    double precision, intent(inout) :: cons(-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng*dim3+lo(3):hi(3)+ng*dim3,ncons)
 
     integer          :: i,j,k,n, ii, jj, kk, nimages
     double precision :: x, y, z, r
@@ -89,7 +92,11 @@ contains
     !$omp private(rfront,phi,theta,xtemp,xloc,yloc,zloc,l,m,ctr) &
     !$omp private(ii,jj,kk)
     do k=lo(3),hi(3)
-       z = phlo(3) + dx(3)*k
+       if (dm.eq.3) then
+          z = phlo(3) + dx(3)*k
+       else
+          z = 0.d0
+       end if
        do j=lo(2),hi(2)
           y = phlo(2) + dx(2)*j
           do i=lo(1),hi(1)
@@ -180,7 +187,11 @@ contains
                    do jj = -nimages, nimages
                       do ii = -nimages, nimages
 
-                         z = phlo(3) + dx(3)*k + kk * (phhi(3) - phlo(3))
+                         if (dm.eq.3) then
+                            z = phlo(3) + dx(3)*k + kk * (phhi(3) - phlo(3))
+                         else
+                            z = 0.d0
+                         end if
                          y = phlo(2) + dx(2)*j + jj * (phhi(2) - phlo(2))
                          x = phlo(1) + dx(1)*i + ii * (phhi(1) - phlo(1))
                          r = sqrt(x**2+y**2+z**2)
@@ -190,6 +201,9 @@ contains
 
                       end do
                    end do
+                   
+                   if (dm .eq. 2) exit  ! only one image in z-direction
+
                 end do
 
                 u1t = uinit
@@ -214,7 +228,7 @@ contains
                    do jj = -nimages, nimages
                       do ii = -nimages, nimages
 
-                         if (prob_dim .eq. 2) then
+                         if (prob_dim .eq. 2 .or. dm.eq.2) then
                             z = 0.d0
                          else
                             z = phlo(3) + dx(3)*k + kk * (phhi(3) - phlo(3))
@@ -231,17 +245,21 @@ contains
                       end do
                    end do
 
-                   if (prob_dim .eq. 2) exit  ! only one image in z-direction
+                   if (prob_dim .eq. 2 .or. dm.eq.2) exit  ! only one image in z-direction
 
                 end do
 
                 kx = 2.d0*Pi/(phhi(1) - phlo(1))
                 ky = 2.d0*Pi/(phhi(2) - phlo(2))
-                kz = 2.d0*Pi/(phhi(3) - phlo(3))
+                if (dm.eq.3) then 
+                   kz = 2.d0*Pi/(phhi(3) - phlo(3))
+                else
+                   kz = 0.d0
+                end if
 
                 x = phlo(1) + dx(1)*i
                 y = phlo(2) + dx(2)*j
-                if (prob_dim .eq. 2) then
+                if (prob_dim .eq. 2 .or. dm.eq.2) then
                    z = 0.d0
                 else
                    z = phlo(3) + dx(3)*k
@@ -264,7 +282,11 @@ contains
              cons(i,j,k,irho) = rhot
              cons(i,j,k,imx)  = rhot*u1t
              cons(i,j,k,imy)  = rhot*u2t
-             cons(i,j,k,imz)  = rhot*u3t
+             if (dm.eq.3) then
+                cons(i,j,k,imz)  = rhot*u3t
+             else
+                u3t = 0.d0
+             end if
              cons(i,j,k,iene) = rhot*(et + 0.5d0*(u1t**2 + u2t**2 + u3t**2))
 
              do n=1,nspecies
@@ -277,7 +299,7 @@ contains
     !$omp end parallel do
 
 
-  end subroutine init_data_3d
+  end subroutine init_data_nd
 
 
   double precision function Ylm(l,m,phi,costheta)

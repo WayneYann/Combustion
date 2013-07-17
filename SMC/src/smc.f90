@@ -28,7 +28,7 @@ subroutine smc()
   integer :: init_step, istep
 
   real(dp_t) :: dt, courno
-  real(dp_t)  , pointer     :: dx(:)
+  real(dp_t) :: dx(3)
 
   real(dp_t) :: wt0, wt1, wt2, wt_init, wt_advance
 
@@ -115,8 +115,8 @@ subroutine smc()
   end if
 
   dm = dm_in
-  if (dm .ne. 3) then
-     call bl_error('SMC can only do 3D')
+  if (dm .eq. 1) then
+     call bl_error('SMC cannot do 1D')
   end if
 
   if (dm .ne. get_dim(la)) then
@@ -407,7 +407,6 @@ subroutine smc()
   call runtime_close()
 
   deallocate(plot_names)
-  deallocate(dx)
 
   call parallel_reduce(wt_init, wt1-wt0, MPI_MAX, proc = parallel_IOProcessorNode())
   call parallel_reduce(wt_advance, wt2-wt1, MPI_MAX, proc = parallel_IOProcessorNode())

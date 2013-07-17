@@ -134,14 +134,21 @@ contains
     type(physbndry_reg), intent(in) :: pbrin
     type(physbndry_reg), intent(inout) :: pbrou
     
-    integer :: i,j,k,n
+    integer :: i,j,k,n,dm
     integer :: lo(3), hi(3)
     double precision, pointer, dimension(:,:,:,:) :: ip, op
 
+    dm = pbrou%idim
+
     do n=1,nfabs(pbrin%data)
-       if (isValid(pbrin,n)) then
-          lo = lwb(get_box(pbrin%data,n))
-          hi = upb(get_box(pbrin%data,n))
+       if (isValid(pbrin,n)) then          
+          lo(1:dm) = lwb(get_box(pbrin%data,n))
+          hi(1:dm) = upb(get_box(pbrin%data,n))
+
+          if (dm .eq. 2) then
+             lo(3) = 1
+             hi(3) = 1
+          end if
 
           ip => dataptr(pbrin%data, n)
           op => dataptr(pbrou%data,n)

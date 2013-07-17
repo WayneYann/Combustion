@@ -15,6 +15,7 @@ c     Quantities passed in
       real*8 cpmix,mwmix
       
       real*8 diff(-1:nfine,nscal)
+      real*8 diffdiff(-1:nfine)
 
       real*8 RWRK,rho,T
       integer IWRK,i,n
@@ -22,9 +23,23 @@ c     Quantities passed in
       real*8 gamma_lo(0:nfine-1,Nspec)
       real*8 gamma_hi(0:nfine-1,Nspec)
 
-      call get_temp_visc_terms(scal,beta,diff(:,Temp),dx,lo,hi)
+c     compute Gamma_m
       call get_spec_visc_terms(scal,beta,diff(:,FirstSpec:),
      $                         gamma_lo,gamma_hi,dx,lo,hi)
+
+c     compute div lambda grad T
+      diff(:,Temp) = 0.d0
+      call addDivLambdaGradT(scal,beta,diff(:,Temp),dx,lo,hi)
+
+c     compute div h_m Gamma_m
+      call get_diffdiff_terms(scal,scal,
+     $                        gamma_lo,gamma_hi,beta,
+     $                        diffdiff,dx,lo,hi)
+
+c     combine div lambda grad T + div h_m Gamma_m
+      do i=lo,hi
+         diff(i,Temp) = diff(i,Temp) + diffdiff(i)
+      end do
 
       do i=lo,hi
          rho = scal(i,Density)
@@ -41,7 +56,7 @@ c     Quantities passed in
          do n=1,Nspec
             divu(i) = divu(i)
      &           + (diff(i,FirstSpec+n-1) + I_R(i,n))
-     &           *invmwt(n)*mwmix/rho - HK(n)*I_R(i,n)/(rho*cpmix*T)
+     &           *(invmwt(n)*mwmix/rho - HK(n)/(rho*cpmix*T))
          enddo
        enddo
 

@@ -71,9 +71,6 @@ contains
     end if
 
     ndim = la%lap%dim
-    if (ndim .eq. 2) then
-       call bl_error('2D not supported')
-    end if
     ng = ng_in
     nb = nlocal(la) ! number of local boxes
     numthreads = omp_get_max_threads()
@@ -81,19 +78,23 @@ contains
     if (tb_idim_more .eq. tb_idim_less) then
        call bl_error("threadbox_module: tb_idim_more .eq. tb_idim_less")
     end if
-    if (tb_idim_more < 1 .or. tb_idim_more > 3) then
+    if (tb_idim_more < 1 .or. tb_idim_more > ndim) then
        call bl_error("threadbox_module: invalid tb_idim_more")
     end if
-    if (tb_idim_less < 1 .or. tb_idim_less > 3) then
+    if (tb_idim_less < 1 .or. tb_idim_less > ndim) then
        call bl_error("threadbox_module: invalid tb_idim_less")
+    end if
+
+    if (tb_split_dim > ndim) then
+       call bl_error("threadbox_module: invalid tb_split_dim")
     end if
 
     !$omp parallel
 
-    allocate(tb_lo (3,nb))
-    allocate(tb_hi (3,nb))
-    allocate(tb_glo(3,nb))
-    allocate(tb_ghi(3,nb))
+    allocate(tb_lo (ndim,nb))
+    allocate(tb_hi (ndim,nb))
+    allocate(tb_glo(ndim,nb))
+    allocate(tb_ghi(ndim,nb))
     allocate(worktodo(nb))
     allocate(allblocks(nb))
 
@@ -280,7 +281,7 @@ contains
     integer :: tid
     integer, allocatable :: xsize(:), ysize(:), zsize(:)
     integer, allocatable :: xstart(:), ystart(:), zstart(:)
-    integer :: my_box_size(3), my_box_lo(3), zero_lo(3), zero_hi(3)
+    integer :: my_box_size(ndim), my_box_lo(ndim), zero_lo(ndim), zero_hi(ndim)
     integer :: i,j,k, itbox
     integer :: igroup, ibg, ibox, istart
     double precision :: stride
@@ -332,14 +333,18 @@ contains
              !
              call split_domain(my_box_size(1), nthreads_d(1), xsize, xstart)
              call split_domain(my_box_size(2), nthreads_d(2), ysize, ystart)
-             call split_domain(my_box_size(3), nthreads_d(3), zsize, zstart)
+             if (ndim.eq.3) then
+                call split_domain(my_box_size(3), nthreads_d(3), zsize, zstart)
+             end if
              
              zero_lo(1) = xstart(i)
              zero_lo(2) = ystart(j)
-             zero_lo(3) = zstart(k)
              zero_hi(1) = xstart(i) + xsize(i) - 1
              zero_hi(2) = ystart(j) + ysize(j) - 1
-             zero_hi(3) = zstart(k) + zsize(k) - 1
+             if (ndim.eq.3) then
+                zero_lo(3) = zstart(k)
+                zero_hi(3) = zstart(k) + zsize(k) - 1
+             end if
              
              tb_lo(:,ibox) = zero_lo + my_box_lo
              tb_hi(:,ibox) = zero_hi + my_box_lo
@@ -349,14 +354,18 @@ contains
              !
              call split_domain(my_box_size(1)+2*ng, nthreads_d(1), xsize, xstart)
              call split_domain(my_box_size(2)+2*ng, nthreads_d(2), ysize, ystart)
-             call split_domain(my_box_size(3)+2*ng, nthreads_d(3), zsize, zstart)
+             if (ndim.eq.3) then
+                call split_domain(my_box_size(3)+2*ng, nthreads_d(3), zsize, zstart)
+             end if
 
              zero_lo(1) = xstart(i)
              zero_lo(2) = ystart(j)
-             zero_lo(3) = zstart(k)
              zero_hi(1) = xstart(i) + xsize(i) - 1
              zero_hi(2) = ystart(j) + ysize(j) - 1
-             zero_hi(3) = zstart(k) + zsize(k) - 1
+             if (ndim.eq.3) then
+                zero_lo(3) = zstart(k)
+                zero_hi(3) = zstart(k) + zsize(k) - 1
+             end if
              
              tb_glo(:,ibox) = zero_lo + my_box_lo - ng
              tb_ghi(:,ibox) = zero_hi + my_box_lo - ng
@@ -398,15 +407,17 @@ contains
   subroutine init_allblocks(blksizex,blksizey,blksizez)
     implicit none
     integer,intent(in) :: blksizex,blksizey,blksizez
-    integer :: idim, ibox, nbk(3), tbsize(3)
+    integer :: idim, ibox, nbk(ndim), tbsize(ndim)
     integer :: i,j,k,ibk,nblk
-    integer :: bksize(3), zero_lo(3), zero_hi(3)
+    integer :: bksize(ndim), zero_lo(ndim), zero_hi(ndim)
     integer, allocatable :: xsize(:), ysize(:), zsize(:)
     integer, allocatable :: xstart(:), ystart(:), zstart(:)
 
     bksize(1) = blksizex
     bksize(2) = blksizey
-    bksize(3) = blksizez
+    if (ndim.eq.3) then
+       bksize(3) = blksizez
+    end if
 
     do ibox=1,nb
 
@@ -418,51 +429,71 @@ contains
 
           tbsize = tb_hi(:,ibox) - tb_lo(:,ibox) + 1
 
-          do idim=1,3
+          nblk = 1
+          do idim=1,ndim
              if (bksize(idim) <= 0) then
                 nbk(idim) = 1
              else
                 nbk(idim) = max(int(tbsize(idim)/bksize(idim)),1)
              end if
+             nblk = nblk*nbk(idim)
           end do
 
-          nblk = nbk(1)*nbk(2)*nbk(3)
           allblocks(ibox)%nblocks = nblk
-          allocate(allblocks(ibox)%lo(3,nblk))
-          allocate(allblocks(ibox)%hi(3,nblk))
+          allocate(allblocks(ibox)%lo(ndim,nblk))
+          allocate(allblocks(ibox)%hi(ndim,nblk))
 
           allocate(xsize (nbk(1)))
           allocate(ysize (nbk(2)))
-          allocate(zsize (nbk(3)))
           allocate(xstart(nbk(1)))
           allocate(ystart(nbk(2)))
-          allocate(zstart(nbk(3)))
 
           call split_domain(tbsize(1), nbk(1), xsize, xstart)
           call split_domain(tbsize(2), nbk(2), ysize, ystart)
-          call split_domain(tbsize(3), nbk(3), zsize, zstart)
+
+          if (ndim.eq.3) then
+             allocate(zsize (nbk(3)))
+             allocate(zstart(nbk(3)))
+             call split_domain(tbsize(3), nbk(3), zsize, zstart)
+          end if
 
           ibk = 1
-          do k = 1, nbk(3)
+          if (ndim.eq.3) then
+             do k = 1, nbk(3)
+                do j = 1, nbk(2)
+                   do i = 1, nbk(1)
+                      zero_lo(1) = xstart(i)
+                      zero_lo(2) = ystart(j)
+                      zero_lo(3) = zstart(k)
+                      zero_hi(1) = xstart(i) + xsize(i) - 1
+                      zero_hi(2) = ystart(j) + ysize(j) - 1
+                      zero_hi(3) = zstart(k) + zsize(k) - 1
+                      
+                      allblocks(ibox)%lo(:,ibk) = zero_lo + tb_lo(:,ibox)
+                      allblocks(ibox)%hi(:,ibk) = zero_hi + tb_lo(:,ibox)
+                      
+                      ibk = ibk + 1
+                   end do
+                end do
+             end do
+          else
              do j = 1, nbk(2)
-                do i = 1, nbk(1)
-
+                do i = 1, nbk(1)                      
                    zero_lo(1) = xstart(i)
                    zero_lo(2) = ystart(j)
-                   zero_lo(3) = zstart(k)
                    zero_hi(1) = xstart(i) + xsize(i) - 1
                    zero_hi(2) = ystart(j) + ysize(j) - 1
-                   zero_hi(3) = zstart(k) + zsize(k) - 1
-
+                      
                    allblocks(ibox)%lo(:,ibk) = zero_lo + tb_lo(:,ibox)
                    allblocks(ibox)%hi(:,ibk) = zero_hi + tb_lo(:,ibox)
-
+                      
                    ibk = ibk + 1
                 end do
              end do
-          end do
+          end if
 
-          deallocate(xsize,ysize,zsize,xstart,ystart,zstart)
+          deallocate(xsize,ysize,xstart,ystart)
+          if (ndim.eq.3) deallocate(zstart,zsize)
 
        end if
     end do
@@ -473,14 +504,14 @@ contains
   function tb_get_valid_lo(ilocal) result (lo)
     implicit none
     integer, intent(in) :: ilocal
-    integer, dimension(3) :: lo
+    integer, dimension(ndim) :: lo
     lo = tb_lo(:,ilocal)
   end function tb_get_valid_lo
 
   function tb_get_valid_hi(ilocal) result (hi)
     implicit none
     integer, intent(in) :: ilocal
-    integer, dimension(3) :: hi
+    integer, dimension(ndim) :: hi
     hi = tb_hi(:,ilocal)
   end function tb_get_valid_hi
 
@@ -488,14 +519,14 @@ contains
   function tb_get_grown_lo(ilocal) result (lo)
     implicit none
     integer, intent(in) :: ilocal
-    integer, dimension(3) :: lo
+    integer, dimension(ndim) :: lo
     lo = tb_glo(:,ilocal)
   end function tb_get_grown_lo
 
   function tb_get_grown_hi(ilocal) result (hi)
     implicit none
     integer, intent(in) :: ilocal
-    integer, dimension(3) :: hi
+    integer, dimension(ndim) :: hi
     hi = tb_ghi(:,ilocal)
   end function tb_get_grown_hi
 
@@ -510,14 +541,14 @@ contains
   function tb_get_block_lo(iblock, ilocal) result(lo)
     implicit none
     integer, intent(in) :: iblock, ilocal
-    integer, dimension(3) :: lo
+    integer, dimension(ndim) :: lo
     lo = allblocks(ilocal)%lo(:,iblock)
   end function tb_get_block_lo
 
   function tb_get_block_hi(iblock, ilocal) result(hi)
     implicit none
     integer, intent(in) :: iblock, ilocal
-    integer, dimension(3) :: hi
+    integer, dimension(ndim) :: hi
     hi = allblocks(ilocal)%hi(:,iblock)
   end function tb_get_block_hi
 
@@ -547,21 +578,25 @@ contains
 
     if (lall .and. ngmf.eq.ng) then
        !$omp parallel private(ib, wlo, whi, p)
+       wlo(3) = 1
+       whi(3) = 1
        do ib = 1, nfabs(mf)
           if (.not.tb_worktodo(ib)) cycle
           p => dataptr(mf, ib)
-          wlo = tb_get_grown_lo(ib)
-          whi = tb_get_grown_hi(ib)
+          wlo(1:ndim) = tb_get_grown_lo(ib)
+          whi(1:ndim) = tb_get_grown_hi(ib)
           p(wlo(1):whi(1),wlo(2):whi(2),wlo(3):whi(3),:) = val
        end do
        !$omp end parallel
     else
        !$omp parallel private(ib, wlo, whi, p)
+       wlo(3) = 1
+       whi(3) = 1
        do ib = 1, nfabs(mf)
           if (.not.tb_worktodo(ib)) cycle
           p => dataptr(mf, ib)
-          wlo = tb_get_valid_lo(ib)
-          whi = tb_get_valid_hi(ib)
+          wlo(1:ndim) = tb_get_valid_lo(ib)
+          whi(1:ndim) = tb_get_valid_hi(ib)
           p(wlo(1):whi(1),wlo(2):whi(2),wlo(3):whi(3),:) = val
        end do
        !$omp end parallel

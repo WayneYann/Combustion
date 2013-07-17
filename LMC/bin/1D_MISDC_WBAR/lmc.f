@@ -390,8 +390,8 @@ c     update pressure and I_R
       endif
 
       call write_plt(vel_new,scal_new,press_new,divu_new,I_R,
-     $     dx,nsteps_taken,time,lo,hi,bc)
-      call write_check(nsteps_taken,vel_new,scal_new,press_new,
+     $     dx,at_nstep,time,lo,hi,bc)
+      call write_check(at_nstep,vel_new,scal_new,press_new,
      $     I_R,divu_new,dSdt,dx,time,dt,lo,hi)
 
 C-- Now advance 

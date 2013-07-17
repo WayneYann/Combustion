@@ -15,10 +15,6 @@ using std::ostream;
 enum StateType { State_Type = 0,
                  NUM_STATE_TYPE };
 
-enum RNSFillType { use_FillPatchIterator = 0, 
-		   use_FillCoarsePatch, 
-		   use_FillBoundary }; 
-
 class RNS
     :
     public AmrLevel
@@ -114,20 +110,27 @@ public:
 			  int  ncycle);
     //
     // do chemistry
+    // When it's called, ghost cells of U should have already been filled properly.
     //
     void advance_chemistry(MultiFab& U, Real dt);
     // 
     // do advection and diffusion
+    // When it's called, Unew including ghost cells should have the state at t=time.
     //
     void advance_AD(const MultiFab& Uold, MultiFab& Unew, Real time, Real dt);
     //
     // fill boundary 
     //
-    void fill_boundary(MultiFab& U, Real time, RNSFillType type);
+    void fill_boundary(MultiFab& U, Real time, int type);
+    // choices for "type" in fill_boundary:
+    static const int no_fill               = 0;
+    static const int use_FillPatchIterator = 1;
+    static const int use_FillCoarsePatch   = 2;
+    static const int use_FillBoundary      = 3;
     //
     // Given U, compute Uprime (i.e., dUdt)
     //
-    void dUdt(MultiFab& U, MultiFab& Uprime, Real time, RNSFillType fill_boundary_type, 
+    void dUdt(MultiFab& U, MultiFab& Uprime, Real time, int fill_boundary_type, 
 	      FluxRegister* fine=0, FluxRegister* current=0, Real dt=0.0);
     //
     // Compute U1 = U2 + c Uprime.
@@ -279,6 +282,7 @@ protected:
 
     enum RiemannType { HLL = 0,
 		       JBB,
+		       HLLC,
 		       NUM_RIEMANN_TYPE };
     
     static RiemannType Riemann;

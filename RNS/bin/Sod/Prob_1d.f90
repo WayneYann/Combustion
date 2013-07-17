@@ -11,7 +11,7 @@ subroutine PROBINIT (init,name,namlen,problo,probhi)
 
   integer untin,i
 
-  namelist /fortin/ p_l, u_l, rho_l, p_r, u_r, rho_r
+  namelist /fortin/ prob_type, xsep, p_l, u_l, rho_l, p_r, u_r, rho_r
 
 !
 !     Build "probin" filename -- the name of file containing fortin namelist.
@@ -31,6 +31,9 @@ subroutine PROBINIT (init,name,namlen,problo,probhi)
          
 ! set namelist defaults
 
+  prob_type = 0
+  xsep = 0.5d0
+
   p_l = 1.0               ! left pressure (erg/cc)
   u_l = 0.0               ! left velocity (cm/s)
   rho_l = 1.0             ! left density (g/cc)
@@ -46,6 +49,73 @@ subroutine PROBINIT (init,name,namlen,problo,probhi)
   close(unit=untin)
 
   center(1) = 0.5d0*(problo(1)+probhi(1))
+
+  select case (prob_type) 
+     case (1)
+        rho_l = 1.d0
+        u_l   = 0.75d0
+        p_l   = 1.d0
+        rho_r = 0.125
+        u_r   = 0.d0
+        p_r   = 0.1d0
+        xsep  = 0.3
+     case (2)
+        rho_l = 1.d0
+        u_l   = -2.d0
+        p_l   = 0.4d0
+        rho_r = 1.d0
+        u_r   = 2.d0
+        p_r   = 0.4d0
+        xsep  = 0.5d0
+     case (3)
+        rho_l = 1.d0
+        u_l   = 1.d0
+        p_l   = 1.d-6
+        rho_r = 1.d0
+        u_r   = -1.d0
+        p_r   = 1.d-6
+        xsep  = 0.5d0
+     case (30)    ! case 3a
+        rho_l = 1.d0
+        u_l   = -19.59745d0
+        p_l   = 1000.d0
+        rho_r = 1.d0
+        u_r   = -19.59745d0
+        p_r   = 0.01d0
+        xsep  = 0.8d0
+     case (4)
+        rho_l = 5.99924d0
+        u_l   = 19.5975d0
+        p_l   = 460.894d0
+        rho_r = 5.99242d0
+        u_r   = -6.19633d0
+        p_r   = 46.095d0
+        xsep  = 0.4d0
+     case (5)
+        rho_l = 1.4d0
+        u_l   = 0.d0
+        p_l   = 1.d0
+        rho_r = 1.d0
+        u_r   = 0.d0
+        p_r   = 1.d0
+        xsep  = 0.5d0
+     case (6)
+        rho_l = 1.4d0
+        u_l   = 0.1d0
+        p_l   = 1.d0
+        rho_r = 1.d0
+        u_r   = 0.1d0
+        p_r   = 1.d0
+        xsep  = 0.5d0
+     case (7)   ! case peak
+        rho_l = 0.1261192d0
+        u_l   = 8.9047029d0
+        p_l   = 782.92899d0
+        rho_r = 6.591493d0
+        u_r   = 2.2654207d0
+        p_r   = 3.154487d0
+        xsep  = 0.5d0
+  end select
 
 !     compute the internal energy (erg/cc) for the left and right state
   rhoe_l = p_l/(gamma_const - 1.d0)
@@ -95,7 +165,7 @@ subroutine rns_initdata(level,time,lo,hi,nscal, &
   do i = state_l1, state_h1
      xcen = xlo(1) + delta(1)*(dble(i-lo(1)) + 0.5d0)
             
-     if (xcen <= center(1)) then
+     if (xcen <= xsep) then
         state(i,URHO ) = rho_l
         state(i,UMX  ) = rho_l*u_l
         state(i,UEDEN) = rhoe_l + 0.5*rho_l*u_l*u_l
@@ -124,80 +194,3 @@ subroutine rns_initdata(level,time,lo,hi,nscal, &
 end subroutine rns_initdata
 
 
-! ::: 
-! ::: -----------------------------------------------------------
-! :::
-
-     subroutine rns_hypfill(adv,adv_l1,adv_h1, &
-                           domlo,domhi,delta,xlo,time,bc)
-
-     use meth_params_module, only : NVAR
-     implicit none
-     include 'bc_types.fi'
-
-     integer          :: adv_l1,adv_h1
-     integer          :: bc(1,2,*)
-     integer          :: domlo(1), domhi(1)
-     double precision :: delta(1), xlo(1), time
-     double precision :: adv(adv_l1:adv_h1,NVAR)
-
-     integer n
-
-     do n = 1,NVAR
-        call filcc(adv(adv_l1,n),adv_l1,adv_h1, &
-                   domlo,domhi,delta,xlo,bc(1,1,n))
-     enddo
-
-     do n = 1, NVAR
-
-!        XLO
-         if ( bc(1,1,n).eq.EXT_DIR .and. adv_l1.lt.domlo(1)) then
-            print *,'SHOULD NEVER GET HERE bc(1,1,n) .eq. EXT_DIR) '
-            stop
-         end if
-
-!        XHI
-         if ( bc(1,2,n).eq.EXT_DIR .and. adv_l1.lt.domlo(1)) then
-            print *,'SHOULD NEVER GET HERE bc(1,2,n) .eq. EXT_DIR) '
-            stop
-         end if
-
-     end do
-
-     end subroutine rns_hypfill
-
-! ::: 
-! ::: -----------------------------------------------------------
-! :::
-
-      subroutine rns_denfill(adv,adv_l1,adv_h1,domlo,domhi,delta,xlo,time,bc)
-
-      implicit none
-      include 'bc_types.fi'
-
-      integer          :: adv_l1,adv_h1
-      integer          :: bc(1,2,*)
-      integer          :: domlo(1), domhi(1)
-      double precision :: delta(1), xlo(1), time
-      double precision :: adv(adv_l1:adv_h1)
-
-!     Note: this function should not be needed, technically, but is provided
-!     to filpatch because there are many times in the algorithm when just
-!     the density is needed.  We try to rig up the filling so that the same
-!     function is called here and in hypfill where all the states are filled.
-
-      call filcc(adv,adv_l1,adv_h1,domlo,domhi,delta,xlo,bc)
-
-!     XLO
-      if ( bc(1,1,1).eq.EXT_DIR .and. adv_l1.lt.domlo(1)) then
-         print *,'SHOULD NEVER GET HERE bc(1,1,1) .eq. EXT_DIR) '
-         stop
-      end if
-
-!     XHI
-      if ( bc(1,2,1).eq.EXT_DIR .and. adv_l1.lt.domlo(1)) then
-         print *,'SHOULD NEVER GET HERE bc(1,2,1) .eq. EXT_DIR) '
-         stop
-      end if
-
-      end subroutine rns_denfill
