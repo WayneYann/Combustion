@@ -79,7 +79,7 @@ contains
     call set_dt(dt, courno, istep)
     call update_rk3(Zero,Unew, One,U, dt,Uprime)
     call reset_density(Unew)
-    call impose_hard_bc(Unew)
+    call impose_hard_bc(Unew, time+OneThird*dt)
 
     call destroy(bpt_rkstep1)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
 
@@ -88,7 +88,7 @@ contains
     call dUdt(Unew, Uprime, time+OneThird*dt, dx)
     call update_rk3(OneQuarter, Unew, ThreeQuarters, U, OneQuarter*dt, Uprime)
     call reset_density(Unew)
-    call impose_hard_bc(Unew)
+    call impose_hard_bc(Unew, time+TwoThirds*dt)
     call destroy(bpt_rkstep2)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
 
     ! RK Step 3
@@ -96,7 +96,7 @@ contains
     call dUdt(Unew, Uprime, time+TwoThirds*dt, dx)
     call update_rk3(OneThird, U, TwoThirds, Unew, TwoThirds*dt, Uprime)
     call reset_density(U)
-    call impose_hard_bc(U)
+    call impose_hard_bc(U, time+dt)
     call destroy(bpt_rkstep3)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
 
   end subroutine advance_rk3
@@ -107,6 +107,7 @@ contains
   !
   subroutine advance_sdc(U, dt, courno, dx, sdc, istep)
 
+    use time_module, only : time
     use smcdata_module, only : Q
     use probin_module, only : cfl_int, fixed_dt
 
@@ -153,7 +154,7 @@ contains
     !
     call build(bpt_sdc_prep, "sdc_prep")
     call sdc_imex_set_q0(sdc%imex, mfptr(U))
-    call sdc_imex_spread(sdc%imex, 0.0d0)
+    call sdc_imex_spread(sdc%imex, time)
     call destroy(bpt_sdc_prep)
 
     if (sdc%tol_residual > 0.d0) then
@@ -165,12 +166,12 @@ contains
 
     call build(bpt_sdc_iter, "sdc_iter")
     do k = 1, sdc%iters
-       call sdc_imex_sweep(sdc%imex, 0.0d0, dt, 0)
+       call sdc_imex_sweep(sdc%imex, time, dt, 0)
 
        ! check residual
        if (sdc%tol_residual > 0.d0) then
           call sdc_imex_residual(sdc%imex, dt, mfptr(R))
-          call parallel_reduce(res1, norm_l2(R), MPI_MAX)
+          call parallel_reduce(res1, norm_l2(R), MPI_SUM)
 
           if (parallel_IOProcessor()) then
              if (res0 > 0.0d0) then
@@ -193,7 +194,7 @@ contains
     call sdc_imex_get_qend(sdc%imex, mfptr(U))    
 
     call reset_density(U)
-    call impose_hard_bc(U)
+    call impose_hard_bc(U, time+dt)
 
     if (sdc%tol_residual > 0.d0) then
        call destroy(R)
@@ -206,7 +207,6 @@ contains
   ! SDCLib callbacks
   !
   subroutine srf1eval(Fptr, Uptr, t, ctxptr) bind(c)
-    use time_module, only : time
     type(c_ptr),    intent(in), value :: Fptr, Uptr, ctxptr
     real(c_double), intent(in), value :: t
 
@@ -217,21 +217,34 @@ contains
     call c_f_pointer(Fptr, Uprime)
     call c_f_pointer(ctxptr, ctx)
 
-    call dUdt(U, Uprime, time+t, ctx%dx)
+    ! t is in physical units
+!    print *, 'srf1eval: EVAL TIME', t
+!    call flush(6)
+
+    call dUdt(U, Uprime, t, ctx%dx)
   end subroutine srf1eval
 
-  subroutine srf1post(Uptr, Fptr, stateptr, ctxptr) bind(c)
-    type(c_ptr), intent(in), value :: Uptr, Fptr, stateptr, ctxptr
+  subroutine srf1post(Uptr, stateptr, ctxptr) bind(c)
+    type(c_ptr), intent(in), value :: Uptr, stateptr, ctxptr
 
     type(multifab), pointer :: U
+    type(sdc_state_t), pointer :: state
+    
+    real(dp_t) :: t
+
     call c_f_pointer(Uptr, U)
+    call c_f_pointer(stateptr, state)
+
+    ! t is in physical units
+    t = state%t + state%dt
+!    print *, 'srf1post: POST TIME', t
+!    call flush(6)
 
     call reset_density(U)
-    call impose_hard_bc(U)
+    call impose_hard_bc(U,t)
   end subroutine srf1post
 
   subroutine mrf1eval(Fptr, Uptr, t, ctxptr) bind(c)
-    use time_module, only : time
     type(c_ptr),    intent(in), value :: Fptr, Uptr, ctxptr
     real(c_double), intent(in), value :: t
 
@@ -242,11 +255,13 @@ contains
     call c_f_pointer(Fptr, Uprime)
     call c_f_pointer(ctxptr, ctx)
 
-    call dUdt(U, Uprime, time+t, ctx%dx, include_r=.false.)
+!    print *, 'mrf1eval: EVAL TIME', t
+!    call flush(6)
+
+    call dUdt(U, Uprime, t, ctx%dx, include_r=.false.)
   end subroutine mrf1eval
 
   subroutine mrf2eval(Fptr, Uptr, t, ctxptr) bind(c)
-    use time_module, only : time
     type(c_ptr),    intent(in), value :: Fptr, Uptr, ctxptr
     real(c_double), intent(in), value :: t
 
@@ -257,7 +272,10 @@ contains
     call c_f_pointer(Fptr, Uprime)
     call c_f_pointer(ctxptr, ctx)
 
-    call dUdt(U, Uprime, time+t, ctx%dx, include_ad=.false.)
+!    print *, 'mrf2eval: EVAL TIME', t
+!    call flush(6)
+
+    call dUdt(U, Uprime, t, ctx%dx, include_ad=.false.)
   end subroutine mrf2eval
 
 
@@ -266,6 +284,7 @@ contains
   !
   subroutine advance_multi_sdc(U, dt, courno, dx, sdc, istep)
 
+    use time_module, only : time
     use smcdata_module, only : Q
     use probin_module, only : cfl_int, fixed_dt
 
@@ -315,7 +334,7 @@ contains
     ! advance
     !
     call sdc_mrex_set_q0(sdc%mrex, mfptr(U))
-    call sdc_mrex_spread(sdc%mrex, 0.0d0)
+    call sdc_mrex_spread(sdc%mrex, time)
     call destroy(bpt_sdc_prep)
 
     if (sdc%tol_residual > 0.d0) then
@@ -327,12 +346,12 @@ contains
 
     call build(bpt_sdc_iter, "sdc_iter")
     do k = 1, sdc%iters
-       call sdc_mrex_sweep(sdc%mrex, 0.0d0, dt, 0);
+       call sdc_mrex_sweep(sdc%mrex, time, dt, 0);
 
        ! check residual
        if (sdc%tol_residual > 0.d0) then
           call sdc_mrex_residual(sdc%mrex, dt, mfptr(R))
-          call parallel_reduce(res1, norm_l2(R), MPI_MAX)
+          call parallel_reduce(res1, norm_l2(R), MPI_SUM)
 
           if (parallel_IOProcessor()) then
              if (res0 > 0.0d0) then
@@ -354,7 +373,7 @@ contains
     call sdc_mrex_get_qend(sdc%mrex, mfptr(U))
 
     call reset_density(U)
-    call impose_hard_bc(U)
+    call impose_hard_bc(U, time+dt)
 
     if (sdc%tol_residual > 0.d0) then
        call destroy(R)
@@ -735,7 +754,7 @@ contains
        ! NSCBC boundary
        !
        call build(bpt_nscbc, "nscbc")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
-       call nscbc(Q, U, Fdif, Uprime, t, dx, include_r)
+       call nscbc(Q, U, Fdif, Uprime, t, dx, inc_r)
        call destroy(bpt_nscbc)          !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
 
     end if
