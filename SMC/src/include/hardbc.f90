@@ -50,6 +50,7 @@
        
        ei = rhoinv*cons(i,j,iene) - 0.5d0*(qin(iuin,i,j)**2  &
             + qin(ivin,i,j)**2)
+       qin(iTin,i,j) = 0.d0
        call get_t_given_ey(ei, qin(iYin1:,i,j), iwrk, rwrk, qin(iTin,i,j), ierr)
     end do
     end do
@@ -78,6 +79,7 @@
        
        ei = rhoinv*cons(i,j,k,iene) - 0.5d0*(qin(iuin,i,j,k)**2  &
             + qin(ivin,i,j,k)**2 + qin(iwin,i,j,k)**2)
+       qin(iTin,i,j,k) = 0.d0
        call get_t_given_ey(ei, qin(iYin1:,i,j,k), iwrk, rwrk, qin(iTin,i,j,k), ierr)
     end do
     end do
