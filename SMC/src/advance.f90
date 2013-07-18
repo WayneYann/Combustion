@@ -171,7 +171,7 @@ contains
        ! check residual
        if (sdc%tol_residual > 0.d0) then
           call sdc_imex_residual(sdc%imex, dt, mfptr(R))
-          call parallel_reduce(res1, norm_l2(R), MPI_SUM)
+          res1 = multifab_norm_l2(R)
 
           if (parallel_IOProcessor()) then
              if (res0 > 0.0d0) then
@@ -351,7 +351,7 @@ contains
        ! check residual
        if (sdc%tol_residual > 0.d0) then
           call sdc_mrex_residual(sdc%mrex, dt, mfptr(R))
-          call parallel_reduce(res1, norm_l2(R), MPI_SUM)
+          res1 = multifab_norm_l2(R)
 
           if (parallel_IOProcessor()) then
              if (res0 > 0.0d0) then

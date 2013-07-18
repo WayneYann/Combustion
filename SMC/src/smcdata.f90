@@ -39,7 +39,7 @@ contains
           call sdc_imex_allocate(sdc%imex, err)
        end if
        if (sdc%multi_rate) then
-          print *, 'MRSET ALLOCATE NOT IMPLEMENTED YET'
+          call sdc_mrex_allocate(sdc%mrex, err)
        end if
     end if
 
@@ -68,7 +68,7 @@ contains
           call sdc_imex_deallocate(sdc%imex)
        end if
        if (sdc%multi_rate) then
-          print *, 'MRSET ALLOCATE NOT IMPLEMENTED YET'
+          call sdc_mrex_deallocate(sdc%mrex)
        end if
     end if
 
