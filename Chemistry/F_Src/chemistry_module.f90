@@ -13,7 +13,7 @@ module chemistry_module
   integer, private, parameter :: L_elem_name = 3 ! Each element name has at most 3 characters
   character*(L_elem_name), allocatable, save :: elem_names(:)
 
-  integer, private, parameter :: L_spec_name = 8 ! Each species name has at most 8 characters
+  integer, private, parameter :: L_spec_name = 16 ! Each species name has at most 8 characters
   character*(L_spec_name), allocatable, save :: spec_names(:)
 
   double precision, allocatable, save :: molecular_weight(:), inv_mwt(:)

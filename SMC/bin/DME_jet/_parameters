@@ -1,0 +1,28 @@
+# Ambient pressure
+pamb                    real            4.053d7
+
+# mole fraction of CH3OCH3 in fuel
+phi_in                  real            0.2d0   
+
+# temperature of fuel
+T_in                    real            400.d0  
+
+# fuel injection velocity
+vn_in                   real            5.12d3  
+
+# temperature of air
+T_co                    real            1525.d0   
+
+# air injection velocity
+vn_co                   real            5.12d2    
+
+# where fuel and air split
+splity                  real            0.00569d0  
+
+# controls the width of split
+yfrontw                 real            .2d0       
+
+# sinusoidal variation of inflow velocity
+inflow_period           real            1.d-5
+inflow_vnmag            real            1.d3
+

@@ -5,7 +5,7 @@
 
  verbose = 2
 
- advance_method = 1        ! 1=RK3, 2=SDC, 3=PFASST
+ advance_method = 2        ! 1=RK3, 2=SDC
  stencil_type = "narrow"   ! narrow or S3D
 
  stop_time = 6.d-5
@@ -20,18 +20,24 @@
 
  n_cellx = 256
  n_celly = 256
+ n_cellz = 4
  max_grid_size = 128
 
  prob_lo_x = -0.1d0
  prob_lo_y = -0.1d0
+ prob_lo_z = -0.0015625
  prob_hi_x =  0.1d0
  prob_hi_y =  0.1d0
+ prob_hi_z =  0.0015625
 
  xlo_boundary_type = "inlet"
  xhi_boundary_type = "outlet"
 
  ylo_boundary_type = "outlet"
  yhi_boundary_type = "outlet"
+
+ zlo_boundary_type = "periodic"
+ zhi_boundary_type = "periodic"
 
  outlet_Pinfty = 1.01325d6 
  outlet_sigma  = 0.25d0

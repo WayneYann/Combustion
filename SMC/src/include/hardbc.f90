@@ -86,8 +86,8 @@
     !$omp end parallel
   end subroutine ctoprim_inflow_3d
 
-  subroutine impose_hard_bc(U, t)
-    double precision, intent(in) :: t
+  subroutine impose_hard_bc(U, t, dx)
+    double precision, intent(in) :: t, dx(3)
     type(multifab), intent(inout) :: U
 
     integer :: n, ng, dm
@@ -110,10 +110,10 @@
           qhi = upb(get_box(qin_xlo%data,n))
           qp  => dataptr(   qin_xlo%data,n)
           if (dm .eq. 2) then
-             call update_inlet_xlo_2d(lo,hi,qp(:,lo(1),:,1),t)
+             call update_inlet_xlo_2d(lo,hi,qp(:,lo(1),:,1),t,dx)
              call impose_inflow_2d(lo,hi,ng,up,qlo,qhi,qp,1)
           else
-             call update_inlet_xlo_3d(lo,hi,qp(:,lo(1),:,:),t)
+             call update_inlet_xlo_3d(lo,hi,qp(:,lo(1),:,:),t,dx)
              call impose_inflow_3d(lo,hi,ng,up,qlo,qhi,qp,1)
           end if
        end if

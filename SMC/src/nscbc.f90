@@ -354,10 +354,10 @@ contains
           else
              qinp => dataptr(qin_xlo%data,n)
              if (dm.eq.2) then
-                call update_inlet_xlo_2d(lo,hi,qinp(:,lo(1),:,1),t)
+                call update_inlet_xlo_2d(lo,hi,qinp(:,lo(1),:,1),t,dx)
                 call inlet_xlo_2d(lo,hi,ngq,ngc,dx,qp,cp,fdp,rhp,auxp(:,lo(1),:,1),qinp(:,lo(1),:,1),dlo,dhi)
              else
-                call update_inlet_xlo_3d(lo,hi,qinp(:,lo(1),:,:),t)
+                call update_inlet_xlo_3d(lo,hi,qinp(:,lo(1),:,:),t,dx)
                 call inlet_xlo_3d(lo,hi,ngq,ngc,dx,qp,cp,fdp,rhp,auxp(:,lo(1),:,:),qinp(:,lo(1),:,:),dlo,dhi)
              end if
           end if

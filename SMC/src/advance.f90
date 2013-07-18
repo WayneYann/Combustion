@@ -79,7 +79,7 @@ contains
     call set_dt(dt, courno, istep)
     call update_rk3(Zero,Unew, One,U, dt,Uprime)
     call reset_density(Unew)
-    call impose_hard_bc(Unew, time+OneThird*dt)
+    call impose_hard_bc(Unew, time+OneThird*dt, dx)
 
     call destroy(bpt_rkstep1)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
 
@@ -88,7 +88,7 @@ contains
     call dUdt(Unew, Uprime, time+OneThird*dt, dx)
     call update_rk3(OneQuarter, Unew, ThreeQuarters, U, OneQuarter*dt, Uprime)
     call reset_density(Unew)
-    call impose_hard_bc(Unew, time+TwoThirds*dt)
+    call impose_hard_bc(Unew, time+TwoThirds*dt, dx)
     call destroy(bpt_rkstep2)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
 
     ! RK Step 3
@@ -96,7 +96,7 @@ contains
     call dUdt(Unew, Uprime, time+TwoThirds*dt, dx)
     call update_rk3(OneThird, U, TwoThirds, Unew, TwoThirds*dt, Uprime)
     call reset_density(U)
-    call impose_hard_bc(U, time+dt)
+    call impose_hard_bc(U, time+dt, dx)
     call destroy(bpt_rkstep3)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
 
   end subroutine advance_rk3
@@ -194,7 +194,7 @@ contains
     call sdc_imex_get_qend(sdc%imex, mfptr(U))    
 
     call reset_density(U)
-    call impose_hard_bc(U, time+dt)
+    call impose_hard_bc(U, time+dt, dx)
 
     if (sdc%tol_residual > 0.d0) then
        call destroy(R)
@@ -229,11 +229,13 @@ contains
 
     type(multifab), pointer :: U
     type(sdc_state_t), pointer :: state
-    
+    type(ctx_t), pointer :: ctx
+
     real(dp_t) :: t
 
     call c_f_pointer(Uptr, U)
     call c_f_pointer(stateptr, state)
+    call c_f_pointer(ctxptr, ctx)
 
     ! t is in physical units
     t = state%t + state%dt
@@ -241,7 +243,7 @@ contains
 !    call flush(6)
 
     call reset_density(U)
-    call impose_hard_bc(U,t)
+    call impose_hard_bc(U,t,ctx%dx)
   end subroutine srf1post
 
   subroutine mrf1eval(Fptr, Uptr, t, ctxptr) bind(c)
@@ -373,7 +375,7 @@ contains
     call sdc_mrex_get_qend(sdc%mrex, mfptr(U))
 
     call reset_density(U)
-    call impose_hard_bc(U, time+dt)
+    call impose_hard_bc(U, time+dt, dx)
 
     if (sdc%tol_residual > 0.d0) then
        call destroy(R)
