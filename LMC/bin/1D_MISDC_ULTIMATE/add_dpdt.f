@@ -41,7 +41,7 @@
       include 'spec.h'
       real*8    scal(-2:nfine+1,nscal)
       real*8 pthermo(-2:nfine+1)
-      real*8    divu(-1:nfine)
+      real*8    divu(0:nfine-1)
       real*8     vel(-2:nfine+1)
       real*8 dx
       real*8 dt
