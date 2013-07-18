@@ -328,7 +328,7 @@ c       +(dt/2) div (h_m^n gamma_m^n - h_m^(k) gamma_m^(k))
          enddo
 
 c     new iterative coupled species/enthalpy diffusion algorithm
-         do l=0,9
+         do l=0,4
 
             print*,'diffusion iter',l
 
@@ -460,8 +460,11 @@ c     Solve C-N system for delta T
 c     update temperature
                scal_new(0,i,Temp) = scal_new(0,i,Temp) + deltaT(0,i)
 c     compute updated enthalpy from temperature
-               call CKHMS(scal_new(0,i,Temp),IWRK,RWRK,scal_new(0,i,RhoH))
-               scal_new(0,i,RhoH) = scal_new(0,i,RhoH)*scal_new(0,i,Density)
+               do n = 1,Nspec
+                  Y(n) = scal_new(0,i,FirstSpec+n-1) / scal_new(0,i,Density)
+               enddo
+               call CKHBMS(scal_new(0,i,Temp),Y,IWRK,RWRK,scal_new(0,i,RhoH))
+               scal_new(0,i,RhoH) = scal_new(0,i,RhoH) * scal_new(0,i,Density)
             end do
 
             call set_bc_s(scal_new(0,:,:),lo(0),hi(0),bc(0,:))
