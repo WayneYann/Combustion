@@ -138,7 +138,7 @@ contains
     integer :: lo(3), hi(3)
     double precision, pointer, dimension(:,:,:,:) :: ip, op
 
-    dm = pbrou%idim
+    dm = get_dim(pbrou%la)
 
     do n=1,nfabs(pbrin%data)
        if (isValid(pbrin,n)) then          

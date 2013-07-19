@@ -371,6 +371,7 @@ contains
              if (U(i,j,iryn) .lt. 0.d0) then
                 print *,'Just made dominant species',idom, &
                      'negative', U(i,j,iryn)/rho, 'at ',i,j 
+                print *, 'rho = ', rho, ' Y_under = ', rhoy_under/rho
                 call bl_error("Error:: variables :: reset_rho_2d")
              end if
           end if
