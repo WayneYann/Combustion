@@ -214,7 +214,7 @@
           L(5)  = L(5)  + 0.5d0*(S_p + d_p + rho*aux(ics,i,k)*d_v)
           L(6:) = L(6:) + S_Y + d_Y
 
-          call LtoLHS_3d(2, L, lhs, aux(:,j,k), rho, u, v, w, T, Y, h, rhoE)
+          call LtoLHS_3d(2, L, lhs, aux(:,i,k), rho, u, v, w, T, Y, h, rhoE)
           
           rhs(i,j,k,:) = rhs(i,j,k,:) - lhs
           
