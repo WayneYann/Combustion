@@ -9,7 +9,7 @@
 
  advance_method = 3        ! 1=RK3, 2=SDC, 3=MRSDC
 
- sdc_nnodes_chemistry = 11
+ sdc_nnodes_chemistry = 7
  sdc_nnodes           = 5
  sdc_iters            = 8
  sdc_tol_residual = 1.0d-6
@@ -21,7 +21,7 @@
  plot_int = 100
  chk_int  = 100
 
-! fixed_dt   = 1.d-10
+ fixed_dt    = 1.d-10
  max_dt      = 1.d-10
  cflfac      = 0.1d0
  cfl_int     = 100
