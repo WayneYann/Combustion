@@ -891,7 +891,7 @@
     double precision,intent(in   )::qin(nqin,lo(2):hi(2))
 
     integer :: i,j,n
-    double precision :: dxinv(3)
+    double precision :: dxinv(2)
     double precision :: rho, u, v, T, Y(nspecies), h(nspecies), rhoE
     double precision :: dpdn, dudn
     double precision :: L(4+nspecies), Ltr(4+nspecies), lhs(ncons)

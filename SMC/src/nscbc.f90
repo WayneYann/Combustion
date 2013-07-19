@@ -388,8 +388,13 @@ contains
              end if
           else
              qinp => dataptr(qin_ylo%data,n)
-             call bl_error("inlet_ylo not implemented")
-!             call inlet_ylo(lo,hi,ngq,ngc,dx,qp,cp,fdp,rhp,auxp(:,:,lo(2),:),qinp(:,:,lo(2),:),dlo,dhi)
+             if (dm .eq. 2) then
+                call update_inlet_ylo_2d(lo,hi,qinp(:,:,lo(2),1),t,dx)
+                call inlet_ylo_2d(lo,hi,ngq,ngc,dx,qp,cp,fdp,rhp,auxp(:,:,lo(2),1),qinp(:,:,lo(2),1),dlo,dhi)
+             else
+                call update_inlet_ylo_3d(lo,hi,qinp(:,:,lo(2),:),t,dx)
+                call inlet_ylo_3d(lo,hi,ngq,ngc,dx,qp,cp,fdp,rhp,auxp(:,:,lo(2),:),qinp(:,:,lo(2),:),dlo,dhi)
+             end if
           end if
        end if
 
@@ -641,5 +646,7 @@ include 'nscbc_y.f90'
 include 'nscbc_z.f90'  
 include 'inlet_x_2d.f90'
 include 'inlet_x_3d.f90'
+include 'inlet_y_2d.f90'
+include 'inlet_y_3d.f90'
 
 end module nscbc_module
