@@ -136,10 +136,11 @@
           qlo = lwb(get_box(qin_ylo%data,n))
           qhi = upb(get_box(qin_ylo%data,n))
           qp  => dataptr(   qin_ylo%data,n)
-          call bl_error("inflow for ylo not implemented")
           if (dm .eq. 2) then
+             call update_inlet_ylo_2d(lo,hi,qp(:,:,lo(2),1),t,dx)
              call impose_inflow_2d(lo,hi,ng,up,qlo,qhi,qp,2)
           else
+             call update_inlet_ylo_3d(lo,hi,qp(:,:,lo(2),:),t,dx)
              call impose_inflow_3d(lo,hi,ng,up,qlo,qhi,qp,2)
           end if
        end if

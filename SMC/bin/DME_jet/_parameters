@@ -17,10 +17,10 @@ T_co                    real            1525.d0
 vn_co                   real            5.12d2    
 
 # where fuel and air split
-splity                  real            0.00569d0  
+splitx                  real            0.00569d0  
 
 # controls the width of split
-yfrontw                 real            .2d0       
+xfrontw                 real            .2d0       
 
 # sinusoidal variation of inflow velocity
 inflow_period           real            1.d-5

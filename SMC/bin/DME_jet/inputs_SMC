@@ -5,38 +5,46 @@
 
  verbose = 2
 
- advance_method = 2        ! 1=RK3, 2=SDC, 3=MRSDC
- stencil_type = "narrow"   ! narrow or S3D
+ check_nans = .true.
 
- sdc_nnodes = 5
- sdc_iters  = 8
- sdc_tol_residual = 1.0d-3
+ advance_method = 3        ! 1=RK3, 2=SDC, 3=MRSDC
+
+ sdc_nnodes_chemistry = 11
+ sdc_nnodes           = 5
+ sdc_iters            = 8
+ sdc_tol_residual = 1.0d-6
 
  stop_time = 4.0d0
- max_step  = 10
+ max_step  = 1000000
  restart = -1
 
- plot_int = 1
- chk_int  = 1000
+ plot_int = 100
+ chk_int  = 100
 
- cflfac = 0.1d0
- init_shrink = 0.5d0
+! fixed_dt   = 1.d-10
+ max_dt      = 1.d-10
+ cflfac      = 0.1d0
+ cfl_int     = 100
+ init_shrink = 0.1d0
 
  n_cellx = 128
  n_celly = 128
  n_cellz = 1
  max_grid_size = 64
 
- prob_lo_x =  0.d0
- prob_lo_y = -0.114d0
- prob_hi_x =  0.228d0
- prob_hi_y =  0.114d0
+ prob_lo_x = -0.114d0
+ prob_lo_y =  0.d0
+ prob_hi_x =  0.114d0
+ prob_hi_y =  0.228d0
 
- xlo_boundary_type = "inlet"
+ xlo_boundary_type = "outlet"
  xhi_boundary_type = "outlet"
 
- ylo_boundary_type = "outlet"
+ ylo_boundary_type = "inlet"
  yhi_boundary_type = "outlet"
+
+ use_bulk_viscosity = .false.
+ reset_inactive_species = .true.
 
  outlet_Pinfty = 4.053d7   ! 1.01325d6 
  outlet_sigma  = 0.25d0
@@ -52,7 +60,10 @@
  T_co  = 1525.d0   ! temperature of air
  vn_co = 5.12d2    ! air injection velocity
 
- splity  = 0.00569d0  ! where fuel and air split
- yfrontw = .2d0       ! controls the width of split
+ splitx  = 0.00569d0  ! where fuel and air split
+ xfrontw = .2d0       ! controls the width of split
+
+ inflow_period = 1.d-5 ! period of sinusoidal variation of inflow velocity
+ inflow_vnmag  = 1.d3  ! magnitude of the variation
 
 /

@@ -584,7 +584,7 @@
           dddx     (i,k) = dxinv(1)*first_deriv_r3(q(i-1:i+2,j,k,qrho))
           dwdx     (i,k) = dxinv(1)*first_deriv_r3(q(i-1:i+2,j,k,qw))
           do n=1,nspecies                                   
-             dYdx(n,i,k) = dxinv(1)*first_deriv_r3(q(i-1:i+2,j,k,qy1+n-1))          
+             dYdx(n,i,k) = dxinv(1)*first_deriv_r3(q(i-1:i+2,j,k,qy1+n-1))  !xxxxxxxx
           end do
 
           i = lo(1)+2

@@ -45,8 +45,8 @@ contains
     ek = 0.5d0*vt**2
 
     fuel_state(irho) = rhot
-    fuel_state(imx ) = rhot*vt
-    fuel_state(imy ) = 0.d0
+    fuel_state(imx ) = 0.d0
+    fuel_state(imy ) = rhot*vt
     fuel_state(iene) = rhot*(et+ek)
     do n=1,nspecies
        fuel_state(iry1+n-1) = rhot*Yt(n)
@@ -69,8 +69,8 @@ contains
     ek = 0.5d0*vt**2
 
     air_state(irho) = rhot
-    air_state(imx ) = rhot*vt
-    air_state(imy ) = 0.d0
+    air_state(imx ) = 0.d0
+    air_state(imy ) = rhot*vt
     air_state(iene) = rhot*(et+ek)
     do n=1,nspecies
        air_state(iry1+n-1) = rhot*Yt(n)
