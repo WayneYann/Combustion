@@ -46,7 +46,7 @@ contains
 
     call sdc_multifab_build(sdc%encap, c_loc(sdc%mfencap), err)
     call sdc_nset_build(sdc%nset_adr, nnodes, qtype, 0, err)
-    call sdc_imex_build(sdc%imex, sdc%nset_adr, feval, c_null_ptr, c_null_ptr, err)
+    call sdc_imex_build(sdc%imex, sdc%nset_adr, feval, c_null_funptr, c_null_funptr, err)
     call sdc_hooks_add(sdc%imex%hooks, SDC_HOOK_POST_STEP, post, err)
 
   end subroutine sdc_build_single_rate
