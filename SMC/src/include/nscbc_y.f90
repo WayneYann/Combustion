@@ -584,7 +584,7 @@
           dddx     (i,k) = dxinv(1)*first_deriv_r3(q(i-1:i+2,j,k,qrho))
           dwdx     (i,k) = dxinv(1)*first_deriv_r3(q(i-1:i+2,j,k,qw))
           do n=1,nspecies                                   
-             dYdx(n,i,k) = dxinv(1)*first_deriv_r3(q(i-1:i+2,j,k,qy1+n-1))  !xxxxxxxx
+             dYdx(n,i,k) = dxinv(1)*first_deriv_r3(q(i-1:i+2,j,k,qy1+n-1))
           end do
 
           i = lo(1)+2
@@ -912,8 +912,8 @@
        h    = q  (i,j,qh1:qh1+nspecies-1)
        rhoE = con(i,j,iene)
 
-       dvdn = dxinv(2)*first_deriv_rb(q(i:i,j:j+3,qv))
-       dpdn = dxinv(2)*first_deriv_rb(q(i:i,j:j+3,qpres))
+       dvdn = dxinv(2)*first_deriv_rb(q(i,j:j+3,qv))
+       dpdn = dxinv(2)*first_deriv_rb(q(i,j:j+3,qpres))
        
        cs2 = aux(ics,i)**2
 
@@ -921,9 +921,9 @@
        L(1) = (v-aux(ics,i))*0.5d0*(dpdn-rho*aux(ics,i)*dvdn)
        L(2) = -inlet_eta*Ru*rho*(T-qin(iTin,i)) & 
             / (Lydomain*aux(ics,i)*aux(iWbar,i))
-       L(3) = inlet_eta*aux(ics,i)/Lxdomain*(u-qin(iuin,i))
+       L(3) = inlet_eta*aux(ics,i)/Lydomain*(u-qin(iuin,i))
        L(4) = inlet_eta*rho*cs2*(1.d0-Ma2_ylo)/(2.d0*Lydomain) &
-            * (v-qin(ivin,j))
+            * (v-qin(ivin,i))
        L(5:) = inlet_eta*aux(ics,i)/Lydomain*(Y-qin(iYin1:,i))
 
        ! multi-D effects
