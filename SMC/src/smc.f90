@@ -19,6 +19,7 @@ subroutine smc()
   use threadbox_module
   use time_module
   use variables_module
+  use vode_module, only : vode_init, vode_close
 
   use cputime_module, only: start_cputime_clock
 
@@ -63,6 +64,10 @@ subroutine smc()
   call runtime_init()
   call stencil_init()
   call chemistry_init()
+  if (use_vode) then
+     call vode_init(nspecies+1,vode_verbose,vode_itol,vode_rtol,vode_atol,vode_order,&
+          vode_use_ajac,vode_save_ajac,vode_stiff)
+  end if
 
   if (verbose .ge. 1) then
      if (parallel_IOProcessor()) then
@@ -403,6 +408,7 @@ subroutine smc()
 
   call chemistry_close()
   call egz_close()
+  call vode_close()
 
   call runtime_close()
 

@@ -4331,35 +4331,111 @@ contains
   end subroutine diffterm_2
 
 
-  subroutine chemterm_3d(lo,hi,q,qlo,qhi,up,uplo,uphi)
+  subroutine chemterm_3d(lo,hi,q,qlo,qhi,up,uplo,uphi,dt)
+    use probin_module, only : use_vode
+    use vode_module, only : verbose, itol, rtol, atol, vode_MF=>MF, &
+         voderwork, vodeiwork, lvoderwork, lvodeiwork, voderpar, vodeipar
+
+    double precision, intent(in) :: dt
     integer,         intent(in):: lo(3),hi(3),qlo(3),qhi(3),uplo(3),uphi(3)
     double precision,intent(in):: q ( qlo(1): qhi(1), qlo(2): qhi(2), qlo(3): qhi(3),nprim)
     double precision           :: up(uplo(1):uphi(1),uplo(2):uphi(2),uplo(3):uphi(3),ncons)
 
     integer :: iwrk, i,j,k,n,np
     double precision :: Yt(lo(1):hi(1),nspecies), wdot(lo(1):hi(1),nspecies), rwrk
+    double precision :: YTvode(nspecies+1), time, dtinv
 
-    np = hi(1) - lo(1) + 1
+    external f_jac, f_rhs, dvode
 
-    do k=lo(3),hi(3)
-       do j=lo(2),hi(2)
+    ! vode stuff
+    integer, parameter :: itask=1, iopt=1
+    integer :: MF, istate, ifail
 
-          do n=1, nspecies
+    if (use_vode) then
+
+       dtinv = 1.d0/dt
+
+       do k=lo(3),hi(3)
+          do j=lo(2),hi(2)
              do i=lo(1),hi(1)
-                Yt(i,n) = q(i,j,k,qy1+n-1)
+
+                voderpar(1) = q(i,j,k,qrho)
+
+                YTvode(1:nspecies) = q(i,j,k,qy1:qy1+nspecies-1)
+                YTvode(nspecies+1) = q(i,j,k,qtemp)
+                
+                istate = 1
+                
+                time = 0.d0
+                
+                MF = vode_MF  ! vode might change its sign!
+                call dvode(f_rhs, nspecies+1, YTvode, time, dt, itol, rtol, atol, itask, &
+                     istate, iopt, voderwork, lvoderwork, vodeiwork, lvodeiwork, &
+                     f_jac, MF, voderpar, vodeipar)
+                
+                if (verbose .ge. 1) then
+                   write(6,*) '......dvode done:'
+                   write(6,*) ' last successful step size = ',voderwork(11)
+                   write(6,*) '          next step to try = ',voderwork(12)
+                   write(6,*) '   integrated time reached = ',voderwork(13)
+                   write(6,*) '      number of time steps = ',vodeiwork(11)
+                   write(6,*) '              number of fs = ',vodeiwork(12)
+                   write(6,*) '              number of Js = ',vodeiwork(13)
+                   write(6,*) '    method order last used = ',vodeiwork(14)
+                   write(6,*) '   method order to be used = ',vodeiwork(15)
+                   write(6,*) '            number of LUDs = ',vodeiwork(19)
+                   write(6,*) ' number of Newton iterations ',vodeiwork(20)
+                   write(6,*) ' number of Newton failures = ',vodeiwork(21)
+                   if (ISTATE.eq.-4 .or. ISTATE.eq.-5) then
+                      ifail = vodeiwork(16)
+                      if (ifail .eq. nspecies+1) then
+                         write(6,*) '   T has the largest error'
+                      else
+                         write(6,*) '   spec with largest error is No. ', ifail
+                      end if
+                      call flush(6)
+                   end if
+                end if
+                
+                if (istate < 0) then
+                   print *, 'chemsolv: VODE failed'
+                   print *, 'istate = ', istate, ' time =', time
+                   call bl_error("ERROR in burn: VODE failed")
+                end if
+                
+                do n=1, nspecies
+                   up(i,j,k,iry1+n-1) = dtinv*q(i,j,k,qrho)*(YTvode(n)-q(i,j,k,qy1+n-1))
+                end do
+                
              end do
           end do
-          
-          call vckwyr(np, q(lo(1),j,k,qrho), q(lo(1),j,k,qtemp), Yt, iwrk, rwrk, wdot)
-
-          do n=1, nspecies
-             do i=lo(1),hi(1)
-                up(i,j,k,iry1+n-1) = wdot(i,n) * molecular_weight(n)
-             end do
-          end do
-
        end do
-    end do
+
+    else
+
+       np = hi(1) - lo(1) + 1
+       
+       do k=lo(3),hi(3)
+          do j=lo(2),hi(2)
+             
+             do n=1, nspecies
+                do i=lo(1),hi(1)
+                   Yt(i,n) = q(i,j,k,qy1+n-1)
+                end do
+             end do
+             
+             call vckwyr(np, q(lo(1),j,k,qrho), q(lo(1),j,k,qtemp), Yt, iwrk, rwrk, wdot)
+             
+             do n=1, nspecies
+                do i=lo(1),hi(1)
+                   up(i,j,k,iry1+n-1) = wdot(i,n) * molecular_weight(n)
+                end do
+             end do
+             
+          end do
+       end do
+
+    end if
 
   end subroutine chemterm_3d
 

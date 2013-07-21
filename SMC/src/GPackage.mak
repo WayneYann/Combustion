@@ -3,6 +3,7 @@ f90sources += main.f90
 f90sources += advance.f90
 f90sources += build_info.f90
 f90sources += checkpoint.f90
+f90sources += chemrhs.f90
 f90sources += cputime.f90
 f90sources += derivative_stencil.f90
 f90sources += initialize.f90
@@ -35,6 +36,4 @@ endif
 
 f90sources += variables.f90
 f90sources += write_job_info.f90
-
-
 

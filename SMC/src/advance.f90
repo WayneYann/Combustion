@@ -21,27 +21,30 @@ module advance_module
   private
   public advance, overlapped_part, srf1eval, srf1post, mrf1eval, mrf2eval
 
+  double precision, save, private :: dt
   integer, public :: count_ad = 0, count_r = 0
 
 contains
 
-  subroutine advance(U, dt, courno, dx, sdc, istep)
+  subroutine advance(U, dtio, courno, dx, sdc, istep)
 
     use probin_module, only : advance_method, check_nans
 
     type(multifab),    intent(inout) :: U
-    double precision,  intent(inout) :: dt, courno
+    double precision,  intent(inout) :: dtio, courno
     double precision,  intent(in   ) :: dx(3)
     integer,           intent(in   ) :: istep
     type(sdc_t),       intent(inout) :: sdc
 
+    dt = dtio
+
     select case(advance_method)
     case(1)
-       call advance_rk3(U,dt,courno,dx,istep)
+       call advance_rk3(U,courno,dx,istep)
     case (2)
-       call advance_sdc(U,dt,courno,dx,sdc,istep)
+       call advance_sdc(U,courno,dx,sdc,istep)
     case(3)
-       call advance_multi_sdc(U,dt,courno,dx,sdc,istep)
+       call advance_multi_sdc(U,courno,dx,sdc,istep)
     case default
        call bl_error("Invalid advance_method.")
     end select
@@ -52,19 +55,21 @@ contains
        end if
     end if
 
+    dtio = dt
+
   end subroutine advance
 
   !
   ! Advance U using SSP RK3
   !
-  subroutine advance_rk3 (U,dt,courno,dx,istep)
+  subroutine advance_rk3 (U,courno,dx,istep)
 
     use time_module, only : time
     use smcdata_module, only : Unew, Uprime
     implicit none
 
     type(multifab),    intent(inout) :: U
-    double precision,  intent(inout) :: dt, courno
+    double precision,  intent(inout) :: courno
     double precision,  intent(in   ) :: dx(3)
     integer, intent(in) :: istep
 
@@ -76,8 +81,7 @@ contains
     call build(bpt_rkstep1, "rkstep1")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
 
     call dUdt(U, Uprime, time, dx, courno=courno, istep=istep)
-    call set_dt(dt, courno, istep)
-    call update_rk3(Zero,Unew, One,U, dt,Uprime)
+    call update_rk3(Zero,Unew, One,U, dt, Uprime)
     call reset_density(Unew)
     call impose_hard_bc(Unew, time+OneThird*dt, dx)
 
@@ -105,14 +109,14 @@ contains
   !
   ! Advance U using single-rate SDC time-stepping
   !
-  subroutine advance_sdc(U, dt, courno, dx, sdc, istep)
+  subroutine advance_sdc(U, courno, dx, sdc, istep)
 
     use time_module, only : time
     use smcdata_module, only : Q
     use probin_module, only : cfl_int, fixed_dt
 
     type(multifab),    intent(inout) :: U
-    double precision,  intent(inout) :: dt, courno
+    double precision,  intent(inout) :: courno
     double precision,  intent(in   ) :: dx(3)
     type(sdc_t),       intent(inout) :: sdc
     integer,           intent(in   ) :: istep
@@ -147,7 +151,7 @@ contains
        call parallel_reduce(courno, courno_proc, MPI_MAX)
     end if
 
-    call set_dt(dt, courno, istep)
+    call set_dt(courno, istep)
 
     !
     ! advance (pass control to sdclib)
@@ -284,14 +288,14 @@ contains
   !
   ! Advance U using multi-rate SDC time-stepping
   !
-  subroutine advance_multi_sdc(U, dt, courno, dx, sdc, istep)
+  subroutine advance_multi_sdc(U, courno, dx, sdc, istep)
 
     use time_module, only : time
     use smcdata_module, only : Q
     use probin_module, only : cfl_int, fixed_dt
 
     type(multifab),    intent(inout) :: U
-    double precision,  intent(inout) :: dt, courno
+    double precision,  intent(inout) :: courno
     double precision,  intent(in   ) :: dx(3)
     type(sdc_t),       intent(inout) :: sdc
     integer,           intent(in   ) :: istep
@@ -330,7 +334,7 @@ contains
        call parallel_reduce(courno, courno_proc, MPI_MAX)
     end if
 
-    call set_dt(dt, courno, istep)
+    call set_dt(courno, istep)
 
     !
     ! advance
@@ -386,13 +390,12 @@ contains
   !
   ! Compute new time-step size
   !
-  subroutine set_dt(dt, courno, istep)
+  subroutine set_dt(courno, istep)
 
     use time_module, only : time
     use probin_module, only : fixed_dt, cflfac, init_shrink, max_dt_growth, &
          max_dt, small_dt, stop_time
 
-    double precision, intent(inout) :: dt
     double precision, intent(in   ) :: courno
     integer,          intent(in   ) :: istep
 
@@ -544,7 +547,7 @@ contains
     double precision, pointer, dimension(:,:,:,:) :: up, qp, mup, xip, lamp, Ddp, upp, fp
 
     type(bl_prof_timer), save :: bpt_ctoprim, bpt_gettrans, bpt_hypdiffterm
-    type(bl_prof_timer), save :: bpt_chemterm, bpt_courno, bpt_nscbc
+    type(bl_prof_timer), save :: bpt_chemterm, bpt_nscbc
 
     dm = U%dim
     ng = nghost(U)
@@ -601,6 +604,11 @@ contains
     if (update_courno) then
        courno_proc = -1.d50
        call compute_courno(Q, dx, courno_proc)
+       call parallel_reduce(courno, courno_proc, MPI_MAX)
+    end if
+
+    if (present(courno) .and. present(istep)) then
+       call set_dt(courno, istep)
     end if
 
     if (inc_ad .and. overlap_comm_comp) then
@@ -632,9 +640,9 @@ contains
           hi = tb_get_valid_hi(n)
           
           if (dm .eq. 2) then
-             call chemterm_2d(lo,hi,qp,qlo(1:2),qhi(1:2),upp,uplo(1:2),uphi(1:2))
+             call chemterm_2d(lo,hi,qp,qlo(1:2),qhi(1:2),upp,uplo(1:2),uphi(1:2),dt)
           else 
-             call chemterm_3d(lo,hi,qp,qlo(1:3),qhi(1:3),upp,uplo(1:3),uphi(1:3))
+             call chemterm_3d(lo,hi,qp,qlo(1:3),qhi(1:3),upp,uplo(1:3),uphi(1:3),dt)
           end if
        end do
        !$omp end parallel 
@@ -761,13 +769,6 @@ contains
 
     end if
 
-
-    if (update_courno) then
-       call build(bpt_courno, "courno")
-       call parallel_reduce(courno, courno_proc, MPI_MAX)
-       call destroy(bpt_courno)
-    end if
-
   end subroutine dUdt
 
 
@@ -868,10 +869,11 @@ contains
        lo = tb_get_valid_lo(n)
        hi = tb_get_valid_hi(n)
 
+       dt = 1.d-10
        if (dm .eq. 2) then
-          call chemterm_2d(lo,hi,qp,qlo(1:2),qhi(1:2),upp,uplo(1:2),uphi(1:2))
+          call chemterm_2d(lo,hi,qp,qlo(1:2),qhi(1:2),upp,uplo(1:2),uphi(1:2),dt)
        else
-          call chemterm_3d(lo,hi,qp,qlo(1:3),qhi(1:3),upp,uplo(1:3),uphi(1:3))
+          call chemterm_3d(lo,hi,qp,qlo(1:3),qhi(1:3),upp,uplo(1:3),uphi(1:3),dt)
        end if
     end do
     !$omp end parallel 

@@ -11,7 +11,8 @@ module nscbc_module
   use physbndry_reg_module
   use probin_module, only : bcx_lo,bcx_hi,bcy_lo,bcy_hi,bcz_lo,bcz_hi, &
        prob_lo_x, prob_lo_y, prob_lo_z, prob_hi_x, prob_hi_y, prob_hi_z, &
-       sigma=>outlet_sigma, Pinfty=>outlet_Pinfty, outlet_eta, inlet_eta
+       sigma=>outlet_sigma, Pinfty=>outlet_Pinfty, outlet_eta, inlet_eta, &
+       nscbc_burn
   use smc_bc_module
   use variables_module
 
@@ -457,7 +458,9 @@ contains
     double precision :: Yt(nspecies), wdot(nspecies)
     logical :: comp_wdot
 
-    if (present(include_r)) then
+    if (.not. nscbc_burn) then
+       comp_wdot = .false.
+    else if (present(include_r)) then
        comp_wdot = include_r
     else
        comp_wdot = .true.
@@ -515,7 +518,9 @@ contains
     double precision :: Yt(nspecies), wdot(nspecies)
     logical :: comp_wdot
 
-    if (present(include_r)) then
+    if (.not. nscbc_burn) then
+       comp_wdot = .false.
+    else if (present(include_r)) then
        comp_wdot = include_r
     else
        comp_wdot = .true.

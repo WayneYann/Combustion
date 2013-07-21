@@ -291,6 +291,7 @@ outlet_sigma                        real               0.25d0
 outlet_eta                          real               50.d0
 outlet_Pinfty                       real               1.01325d6
 inlet_eta                           real               30.d0
+nscbc_burn                          logical            .false.
 
 
 #-----------------------------------------------------------------------------
@@ -303,3 +304,16 @@ inactive_species_name               character          "N2"
 
 # use bulk viscosity?
 use_bulk_viscosity                  logical            .true.
+
+# use VODE?
+use_vode                            logical            .false.
+vode_verbose                        integer            0
+vode_itol                           integer            1
+vode_rtol                           real               1.d-10
+vode_atol                           real               1.d-10
+# vode will reduce order to a lower value
+vode_order                          integer            100    
+vode_use_ajac                       logical            .true.
+vode_save_ajac                      logical            .true.
+vode_stiff                          logical            .true.
+
