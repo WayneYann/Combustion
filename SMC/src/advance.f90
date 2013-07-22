@@ -561,7 +561,7 @@ contains
   !
   subroutine dUdt (U, Uprime, t, dx, courno, include_ad, include_r)
 
-    use smcdata_module, only : Q, mu, xi, lam, Ddiag, Fdif
+    use smcdata_module, only : Q, mu, xi, lam, Ddiag, Fdif, Upchem
     use probin_module, only : overlap_comm_comp, overlap_comm_gettrans, cfl_int, fixed_dt, &
          trans_int
 
@@ -585,8 +585,8 @@ contains
 
     logical :: inc_ad, inc_r, rYt_only
 
-    integer :: qlo(4), qhi(4), uplo(4), uphi(4), ulo(4), uhi(4), flo(4), fhi(4)
-    double precision, pointer, dimension(:,:,:,:) :: up, qp, mup, xip, lamp, Ddp, upp, fp
+    integer :: qlo(4), qhi(4), uplo(4), uphi(4), ulo(4), uhi(4), flo(4), fhi(4), upclo(4), upchi(4)
+    double precision, pointer, dimension(:,:,:,:) :: up, qp, mup, xip, lamp, Ddp, upp, fp, upcp
 
     type(bl_prof_timer), save :: bpt_ctoprim, bpt_gettrans, bpt_hypdiffterm
     type(bl_prof_timer), save :: bpt_chemterm, bpt_nscbc
@@ -682,21 +682,26 @@ contains
 
           if (.not.tb_worktodo(n)) cycle
 
-          qp  => dataptr(Q,n)
-          upp => dataptr(Uprime,n)
+          qp   => dataptr(Q,n)
+          upp  => dataptr(Uprime,n)
+          upcp => dataptr(Upchem,n)
 
           qlo = lbound(qp)
           qhi = ubound(qp)
           uplo = lbound(upp)
           uphi = ubound(upp)
+          upclo = lbound(upcp)
+          upchi = ubound(upcp)
           
           lo = tb_get_valid_lo(n)
           hi = tb_get_valid_hi(n)
           
           if (dm .eq. 2) then
-             call chemterm_2d(lo,hi,qp,qlo(1:2),qhi(1:2),upp,uplo(1:2),uphi(1:2),dt)
+             call chemterm_2d(lo,hi,qp,qlo(1:2),qhi(1:2),upp,uplo(1:2),uphi(1:2), &
+                  upcp,upclo(1:2),upchi(1:2), dt)
           else 
-             call chemterm_3d(lo,hi,qp,qlo(1:3),qhi(1:3),upp,uplo(1:3),uphi(1:3),dt)
+             call chemterm_3d(lo,hi,qp,qlo(1:3),qhi(1:3),upp,uplo(1:3),uphi(1:3), &
+                  upcp,upclo(1:3),upchi(1:3), dt)
           end if
        end do
        !$omp end parallel 
@@ -820,8 +825,9 @@ contains
        !
        ! NSCBC boundary
        !
+       if (.not. inc_r) call tb_multifab_setval(Upchem, 0.d0)
        call build(bpt_nscbc, "nscbc")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
-       call nscbc(Q, U, Fdif, Uprime, t, dx, inc_r)
+       call nscbc(Q, U, Fdif, Upchem, Uprime, t, dx, inc_r)
        call destroy(bpt_nscbc)          !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
 
     end if
@@ -877,10 +883,10 @@ contains
     type(mf_fb_data), intent(inout) :: U_fb_data
 
     integer :: dm, ng, ng_ctoprim, ng_gettrans, n, lo(U%dim), hi(U%dim)
-    integer :: qlo(4), qhi(4), uplo(4), uphi(4)
+    integer :: qlo(4), qhi(4), uplo(4), uphi(4), upclo(4), upchi(4)
     type(layout)     :: la
-    type(multifab)   :: Q, Uprime, mu, xi, lam, Ddiag
-    double precision, pointer, dimension(:,:,:,:) :: qp, upp
+    type(multifab)   :: Q, Uprime, Upchem, mu, xi, lam, Ddiag
+    double precision, pointer, dimension(:,:,:,:) :: qp, upp, upcp
 
     call multifab_fill_boundary_test(U, U_fb_data)
 
@@ -893,6 +899,8 @@ contains
     
     call multifab_build(Uprime, la, ncons, 0)
     call tb_multifab_setval(Uprime, 0.d0)
+
+    call multifab_build(Upchem, la, nspecies, 0)
 
     call multifab_fill_boundary_test(U, U_fb_data)
 
@@ -917,20 +925,25 @@ contains
 
        qp  => dataptr(Q,n)
        upp => dataptr(Uprime,n)
+       upcp => dataptr(Upchem,n)
 
        qlo = lbound(qp)
        qhi = ubound(qp)
        uplo = lbound(upp)
        uphi = ubound(upp)
+       upclo = lbound(upcp)
+       upchi = ubound(upcp)
 
        lo = tb_get_valid_lo(n)
        hi = tb_get_valid_hi(n)
 
        dt = 1.d-10
        if (dm .eq. 2) then
-          call chemterm_2d(lo,hi,qp,qlo(1:2),qhi(1:2),upp,uplo(1:2),uphi(1:2),dt)
+          call chemterm_2d(lo,hi,qp,qlo(1:2),qhi(1:2),upp,uplo(1:2),uphi(1:2), &
+               upcp,upclo(1:2),upchi(1:2), dt)
        else
-          call chemterm_3d(lo,hi,qp,qlo(1:3),qhi(1:3),upp,uplo(1:3),uphi(1:3),dt)
+          call chemterm_3d(lo,hi,qp,qlo(1:3),qhi(1:3),upp,uplo(1:3),uphi(1:3), &
+               upcp,upclo(1:3),upchi(1:3), dt)
        end if
     end do
     !$omp end parallel 

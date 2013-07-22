@@ -2550,15 +2550,16 @@ contains
   end subroutine diffterm_2
 
 
-  subroutine chemterm_2d(lo,hi,q,qlo,qhi,up,uplo,uphi,dt)
+  subroutine chemterm_2d(lo,hi,q,qlo,qhi,up,uplo,uphi,upc,upclo,upchi,dt)
     use probin_module, only : use_vode
     use vode_module, only : verbose, itol, rtol, atol, vode_MF=>MF, &
          voderwork, vodeiwork, lvoderwork, lvodeiwork, voderpar, vodeipar
 
     double precision, intent(in) :: dt
-    integer,         intent(in):: lo(2),hi(2),qlo(2),qhi(2),uplo(2),uphi(2)
-    double precision,intent(in):: q ( qlo(1): qhi(1), qlo(2): qhi(2),nprim)
-    double precision           :: up(uplo(1):uphi(1),uplo(2):uphi(2),ncons)
+    integer,         intent(in):: lo(2),hi(2),qlo(2),qhi(2),uplo(2),uphi(2),upclo(2),upchi(2)
+    double precision,intent(in):: q  (  qlo(1):  qhi(1),  qlo(2):  qhi(2),nprim)
+    double precision           :: up ( uplo(1): uphi(1), uplo(2): uphi(2),ncons)
+    double precision           :: upc(upclo(1):upchi(1),upclo(2):upchi(2),nspecies)
 
     integer :: iwrk, i,j,n,np
     double precision :: Yt(lo(1):hi(1),nspecies), wdot(lo(1):hi(1),nspecies), rwrk
@@ -2622,7 +2623,8 @@ contains
              end if
 
              do n=1, nspecies
-                up(i,j,iry1+n-1) = dtinv*q(i,j,qrho)*(YTvode(n)-q(i,j,qy1+n-1))
+                upc(i,j,n) = dtinv*q(i,j,qrho)*(YTvode(n)-q(i,j,qy1+n-1))
+                up (i,j,iry1+n-1) = upc(i,j,n)
              end do
 
           end do
@@ -2644,7 +2646,8 @@ contains
           
           do n=1, nspecies
              do i=lo(1),hi(1)
-                up(i,j,iry1+n-1) = wdot(i,n) * molecular_weight(n)
+                upc(i,j,n) = wdot(i,n) * molecular_weight(n)
+                up (i,j,iry1+n-1) = upc(i,j,n)
              end do
           end do
           
