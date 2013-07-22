@@ -111,7 +111,7 @@ fixed_dt                            real               -1.0d0
 
 # number of sdc nodes
 sdc_nnodes                          integer            3
-sdc_nnodes_chemistry                integer            3
+sdc_nnodes_fine                     integer            3
 sdc_qtype                           integer            2
 
 # number of sdc iterations per time step

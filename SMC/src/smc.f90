@@ -139,7 +139,7 @@ subroutine smc()
   end if
 
   if (advance_method == 3) then
-     call sdc_build_multi_rate(sdc, sdc_qtype, [ sdc_nnodes, sdc_nnodes_chemistry ], ctx, &
+     call sdc_build_multi_rate(sdc, sdc_qtype, [ sdc_nnodes, sdc_nnodes_fine ], ctx, &
           c_funloc(mrf1eval), c_funloc(mrf2eval), c_funloc(srf1post))
   end if
 
