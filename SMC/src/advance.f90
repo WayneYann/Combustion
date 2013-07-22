@@ -19,7 +19,9 @@ module advance_module
   implicit none
 
   private
-  public advance, overlapped_part, srf1eval, srf1post, mrf1eval, mrf2eval
+  public advance, overlapped_part
+  public single_sdc_feval, sdc_post_step_cb
+  public multi_sdc_feval_slow, multi_sdc_feval_fast
 
   logical, save, private :: trans_called
   integer, save, private :: istep_first = -1
@@ -54,6 +56,8 @@ contains
     case (2)
        call advance_sdc(U,courno,dx,sdc)
     case(3)
+       call advance_multi_sdc(U,courno,dx,sdc)
+    case(4)
        call advance_multi_sdc(U,courno,dx,sdc)
     case default
        call bl_error("Invalid advance_method.")
@@ -218,7 +222,7 @@ contains
   !
   ! SDCLib callbacks
   !
-  subroutine srf1eval(Fptr, Uptr, t, state, ctxptr) bind(c)
+  subroutine single_sdc_feval(Fptr, Uptr, t, state, ctxptr) bind(c)
     type(c_ptr),       intent(in), value :: Fptr, Uptr, ctxptr
     type(sdc_state_t), intent(in)        :: state
     real(c_double),    intent(in), value :: t
@@ -247,9 +251,9 @@ contains
     end if
 
     call dUdt(U, Uprime, t, dt_m, ctx%dx)
-  end subroutine srf1eval
+  end subroutine single_sdc_feval
 
-  subroutine srf1post(Uptr, state, ctxptr) bind(c)
+  subroutine sdc_post_step_cb(Uptr, state, ctxptr) bind(c)
     type(c_ptr),       intent(in), value :: Uptr, ctxptr
     type(sdc_state_t), intent(in)        :: state
 
@@ -261,9 +265,11 @@ contains
 
     call reset_density(U)
     call impose_hard_bc(U,state%t,ctx%dx)
-  end subroutine srf1post
+  end subroutine sdc_post_step_cb
 
-  subroutine mrf1eval(Fptr, Uptr, t, state, ctxptr) bind(c)
+  subroutine multi_sdc_feval_slow(Fptr, Uptr, t, state, ctxptr) bind(c)
+    use probin_module, only : advance_method
+
     type(c_ptr),       intent(in), value :: Fptr, Uptr, ctxptr
     type(sdc_state_t), intent(in)        :: state
     real(c_double),    intent(in), value :: t
@@ -281,7 +287,7 @@ contains
     call c_f_pointer(ctxptr, ctx)
 
     ! hack: compute sub-step dt and wrap around appropriately
-    nset => ctx%nset_ad
+    nset => ctx%nset1
     call c_f_pointer(nset%nodes, nodes, [ nset%nnodes ])
 
     node = state%node + 1
@@ -291,10 +297,15 @@ contains
        dt_m = dt * (nodes(node+1) - nodes(node))
     end if
 
-    call dUdt(U, Uprime, t, dt_m, ctx%dx, include_r=.false.)
-  end subroutine mrf1eval
+    if (advance_method == 3) then
+       call dUdt(U, Uprime, t, dt_m, ctx%dx, include_r=.false.)
+    else
+       call dUdt(U, Uprime, t, dt_m, ctx%dx, include_ad=.false.)
+    end if
+  end subroutine multi_sdc_feval_slow
 
-  subroutine mrf2eval(Fptr, Uptr, t, state, ctxptr) bind(c)
+  subroutine multi_sdc_feval_fast(Fptr, Uptr, t, state, ctxptr) bind(c)
+    use probin_module, only : advance_method
     type(c_ptr),       intent(in), value :: Fptr, Uptr, ctxptr
     type(sdc_state_t), intent(in)        :: state
     real(c_double),    intent(in), value :: t
@@ -322,8 +333,12 @@ contains
        dt_m = dt * (nodes(node+1) - nodes(node))
     end if
 
-    call dUdt(U, Uprime, t, dt_m, ctx%dx, include_ad=.false.)
-  end subroutine mrf2eval
+    if (advance_method == 3) then
+       call dUdt(U, Uprime, t, dt_m, ctx%dx, include_ad=.false.)
+    else
+       call dUdt(U, Uprime, t, dt_m, ctx%dx, include_r=.false.)
+    end if
+  end subroutine multi_sdc_feval_fast
 
 
   !

@@ -133,18 +133,13 @@ subroutine smc()
 
   if (advance_method == 2) then
      call sdc_build_single_rate(sdc, sdc_qtype, sdc_nnodes, &
-          c_funloc(srf1eval), c_funloc(srf1post))
+          c_funloc(single_sdc_feval), c_funloc(sdc_post_step_cb))
   end if
 
-  if (advance_method == 3) then
+  if (advance_method >= 3) then
      call sdc_build_multi_rate(sdc, sdc_qtype, [ sdc_nnodes, sdc_nnodes_fine ], &
-          c_funloc(mrf1eval), c_funloc(mrf2eval), c_funloc(srf1post))
-  end if
-
-  if (advance_method == 4) then
-     ! XXX
-     call sdc_build_multi_rate(sdc, sdc_qtype, [ sdc_nnodes, sdc_nnodes_fine ], &
-          c_funloc(mrf1eval), c_funloc(mrf2eval), c_funloc(srf1post))
+          c_funloc(multi_sdc_feval_slow), c_funloc(multi_sdc_feval_fast), &
+          c_funloc(sdc_post_step_cb))
   end if
 
   if (advance_method > 1) then
