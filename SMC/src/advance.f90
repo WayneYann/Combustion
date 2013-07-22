@@ -21,7 +21,11 @@ module advance_module
   private
   public advance, overlapped_part, srf1eval, srf1post, mrf1eval, mrf2eval
 
+  logical, save, private :: trans_called
+  integer, save, private :: istep_first = -1
+  integer, save, private :: istep_this
   double precision, save, private :: dt
+
   integer, public :: count_ad = 0, count_r = 0
 
 contains
@@ -36,15 +40,21 @@ contains
     integer,           intent(in   ) :: istep
     type(sdc_t),       intent(inout) :: sdc
 
+    if (istep_first < 0) then
+       istep_first = istep
+    end if
+    istep_this = istep
+    trans_called = .false.
+
     dt = dtio
 
     select case(advance_method)
     case(1)
-       call advance_rk3(U,courno,dx,istep)
+       call advance_rk3(U,courno,dx)
     case (2)
-       call advance_sdc(U,courno,dx,sdc,istep)
+       call advance_sdc(U,courno,dx,sdc)
     case(3)
-       call advance_multi_sdc(U,courno,dx,sdc,istep)
+       call advance_multi_sdc(U,courno,dx,sdc)
     case default
        call bl_error("Invalid advance_method.")
     end select
@@ -62,7 +72,7 @@ contains
   !
   ! Advance U using SSP RK3
   !
-  subroutine advance_rk3 (U,courno,dx,istep)
+  subroutine advance_rk3 (U,courno,dx)
 
     use time_module, only : time
     use smcdata_module, only : Unew, Uprime
@@ -71,7 +81,6 @@ contains
     type(multifab),    intent(inout) :: U
     double precision,  intent(inout) :: courno
     double precision,  intent(in   ) :: dx(3)
-    integer, intent(in) :: istep
 
     type(bl_prof_timer), save :: bpt_rkstep1, bpt_rkstep2, bpt_rkstep3
 
@@ -80,7 +89,7 @@ contains
     ! RK Step 1
     call build(bpt_rkstep1, "rkstep1")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
 
-    call dUdt(U, Uprime, time, dx, courno=courno, istep=istep)
+    call dUdt(U, Uprime, time, dx, courno=courno)
     call update_rk3(Zero,Unew, One,U, dt, Uprime)
     call reset_density(Unew)
     call impose_hard_bc(Unew, time+OneThird*dt, dx)
@@ -109,7 +118,7 @@ contains
   !
   ! Advance U using single-rate SDC time-stepping
   !
-  subroutine advance_sdc(U, courno, dx, sdc, istep)
+  subroutine advance_sdc(U, courno, dx, sdc)
 
     use time_module, only : time
     use smcdata_module, only : Q
@@ -119,7 +128,6 @@ contains
     double precision,  intent(inout) :: courno
     double precision,  intent(in   ) :: dx(3)
     type(sdc_t),       intent(inout) :: sdc
-    integer,           intent(in   ) :: istep
 
     logical :: update_courno
     double precision :: courno_proc
@@ -139,7 +147,7 @@ contains
 
     update_courno = .false.
     if (fixed_dt.le.0.d0) then
-       if (mod(istep,cfl_int).eq.1 .or. cfl_int.le.1) then
+       if (mod(istep_this,cfl_int).eq.1 .or. cfl_int.le.1) then
           update_courno = .true.
        end if
     end if
@@ -151,7 +159,7 @@ contains
        call parallel_reduce(courno, courno_proc, MPI_MAX)
     end if
 
-    call set_dt(courno, istep)
+    call set_dt(courno, istep_this)
 
     !
     ! advance (pass control to sdclib)
@@ -288,7 +296,7 @@ contains
   !
   ! Advance U using multi-rate SDC time-stepping
   !
-  subroutine advance_multi_sdc(U, courno, dx, sdc, istep)
+  subroutine advance_multi_sdc(U, courno, dx, sdc)
 
     use time_module, only : time
     use smcdata_module, only : Q
@@ -298,7 +306,6 @@ contains
     double precision,  intent(inout) :: courno
     double precision,  intent(in   ) :: dx(3)
     type(sdc_t),       intent(inout) :: sdc
-    integer,           intent(in   ) :: istep
 
     logical :: update_courno
     double precision :: courno_proc
@@ -322,7 +329,7 @@ contains
 
     update_courno = .false.
     if (fixed_dt.le.0.d0) then
-       if (mod(istep,cfl_int).eq.1 .or. cfl_int.le.1) then
+       if (mod(istep_this,cfl_int).eq.1 .or. cfl_int.le.1) then
           update_courno = .true.
        end if
     end if
@@ -334,7 +341,7 @@ contains
        call parallel_reduce(courno, courno_proc, MPI_MAX)
     end if
 
-    call set_dt(courno, istep)
+    call set_dt(courno, istep_this)
 
     !
     ! advance
@@ -519,15 +526,15 @@ contains
   !
   ! The Courant number (courno) is also computed if passed.
   !
-  subroutine dUdt (U, Uprime, t, dx, courno, istep, include_ad, include_r)
+  subroutine dUdt (U, Uprime, t, dx, courno, include_ad, include_r)
 
     use smcdata_module, only : Q, mu, xi, lam, Ddiag, Fdif
-    use probin_module, only : overlap_comm_comp, overlap_comm_gettrans, cfl_int, fixed_dt
+    use probin_module, only : overlap_comm_comp, overlap_comm_gettrans, cfl_int, fixed_dt, &
+         trans_int
 
     type(multifab),   intent(inout) :: U, Uprime
     double precision, intent(in   ) :: t, dx(3)
     double precision, intent(inout), optional :: courno
-    integer,          intent(in   ), optional :: istep
     logical,          intent(in   ), optional :: include_ad, include_r
 
     integer ::    lo(U%dim),    hi(U%dim)
@@ -535,6 +542,8 @@ contains
     integer ::   blo(U%dim),   bhi(U%dim)
     integer :: dm, n, ng, iblock
     integer :: ng_ctoprim, ng_gettrans
+
+    logical :: update_trans
 
     logical :: update_courno
     double precision :: courno_proc
@@ -556,9 +565,21 @@ contains
     inc_r  = .true.; if (present(include_r))  inc_r  = include_r
 
     update_courno = .false.
-    if (present(courno) .and. present(istep) .and. fixed_dt.le.0.d0) then
-       if (mod(istep,cfl_int).eq.1 .or. cfl_int.le.1) then
+    if (present(courno) .and. fixed_dt.le.0.d0) then
+       if (mod(istep_this,cfl_int).eq.1 .or. cfl_int.le.1) then
           update_courno = .true.
+       end if
+    end if
+
+    if (trans_int .le. 0) then
+       update_trans = .true.
+    else 
+       if (trans_called) then
+          update_trans = .false.
+       else if (mod((istep_this-istep_first), trans_int) .eq. 0) then
+          update_trans = .true.
+       else
+          update_trans = .false.
        end if
     end if
 
@@ -607,8 +628,8 @@ contains
        call parallel_reduce(courno, courno_proc, MPI_MAX)
     end if
 
-    if (present(courno) .and. present(istep)) then
-       call set_dt(courno, istep)
+    if (present(courno)) then
+       call set_dt(courno, istep_this)
     end if
 
     if (inc_ad .and. overlap_comm_comp) then
@@ -683,9 +704,12 @@ contains
        !
        ! transport coefficients
        !
-       call build(bpt_gettrans, "gettrans")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
-       call get_transport_properties(Q, mu, xi, lam, Ddiag, ng_gettrans)
-       call destroy(bpt_gettrans)               !! ^^^^^^^^^^^^^^^^^^^^^^^ timer       
+       if (update_trans) then
+          call build(bpt_gettrans, "gettrans")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
+          call get_transport_properties(Q, mu, xi, lam, Ddiag, ng_gettrans)
+          trans_called = .true.
+          call destroy(bpt_gettrans)               !! ^^^^^^^^^^^^^^^^^^^^^^^ timer  
+       end if
 
        if (overlap_comm_comp) then
           call multifab_fill_boundary_waitrecv(U, U_fb_data)
@@ -696,7 +720,7 @@ contains
              call destroy(bpt_ctoprim)             !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
           end if
 
-          if (ng_gettrans .eq. 0) then
+          if (ng_gettrans .eq. 0 .and. update_trans) then
              call build(bpt_gettrans, "gettrans")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
              call get_transport_properties(Q, mu, xi, lam, Ddiag, ghostcells_only=.true.)
              call destroy(bpt_gettrans)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer

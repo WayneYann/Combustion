@@ -305,6 +305,11 @@ inactive_species_name               character          "N2"
 # use bulk viscosity?
 use_bulk_viscosity                  logical            .true.
 
+# How often do we compute transport coefficients?  
+# 0 means every substep for every time step
+# 1 means once every time step
+trans_int                           integer            0
+
 # use VODE?
 use_vode                            logical            .false.
 vode_verbose                        integer            0
