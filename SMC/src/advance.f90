@@ -89,7 +89,7 @@ contains
     ! RK Step 1
     call build(bpt_rkstep1, "rkstep1")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
 
-    call dUdt(U, Uprime, time, dx, courno=courno)
+    call dUdt(U, Uprime, time, dt, dx, courno=courno)
     call update_rk3(Zero,Unew, One,U, dt, Uprime)
     call reset_density(Unew)
     call impose_hard_bc(Unew, time+OneThird*dt, dx)
@@ -98,7 +98,7 @@ contains
 
     ! RK Step 2
     call build(bpt_rkstep2, "rkstep2")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
-    call dUdt(Unew, Uprime, time+OneThird*dt, dx)
+    call dUdt(Unew, Uprime, time+OneThird*dt, OneThird*dt, dx)
     call update_rk3(OneQuarter, Unew, ThreeQuarters, U, OneQuarter*dt, Uprime)
     call reset_density(Unew)
     call impose_hard_bc(Unew, time+TwoThirds*dt, dx)
@@ -106,7 +106,7 @@ contains
 
     ! RK Step 3
     call build(bpt_rkstep3, "rkstep3")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
-    call dUdt(Unew, Uprime, time+TwoThirds*dt, dx)
+    call dUdt(Unew, Uprime, time+TwoThirds*dt, TwoThirds*dt, dx)
     call update_rk3(OneThird, U, TwoThirds, Unew, TwoThirds*dt, Uprime)
     call reset_density(U)
     call impose_hard_bc(U, time+dt, dx)
@@ -246,7 +246,7 @@ contains
        dt_m = dt * (nodes(node+1) - nodes(node))
     end if
 
-    call dUdt(U, Uprime, t, ctx%dx)
+    call dUdt(U, Uprime, t, dt_m, ctx%dx)
   end subroutine srf1eval
 
   subroutine srf1post(Uptr, state, ctxptr) bind(c)
@@ -291,7 +291,7 @@ contains
        dt_m = dt * (nodes(node+1) - nodes(node))
     end if
 
-    call dUdt(U, Uprime, t, ctx%dx, include_r=.false.)
+    call dUdt(U, Uprime, t, dt_m, ctx%dx, include_r=.false.)
   end subroutine mrf1eval
 
   subroutine mrf2eval(Fptr, Uptr, t, state, ctxptr) bind(c)
@@ -322,7 +322,7 @@ contains
        dt_m = dt * (nodes(node+1) - nodes(node))
     end if
 
-    call dUdt(U, Uprime, t, ctx%dx, include_ad=.false.)
+    call dUdt(U, Uprime, t, dt_m, ctx%dx, include_ad=.false.)
   end subroutine mrf2eval
 
 
@@ -559,14 +559,14 @@ contains
   !
   ! The Courant number (courno) is also computed if passed.
   !
-  subroutine dUdt (U, Uprime, t, dx, courno, include_ad, include_r)
+  subroutine dUdt (U, Uprime, t, dt_m, dx, courno, include_ad, include_r)
 
     use smcdata_module, only : Q, mu, xi, lam, Ddiag, Fdif, Upchem
     use probin_module, only : overlap_comm_comp, overlap_comm_gettrans, cfl_int, fixed_dt, &
          trans_int
 
     type(multifab),   intent(inout) :: U, Uprime
-    double precision, intent(in   ) :: t, dx(3)
+    double precision, intent(in   ) :: t, dt_m, dx(3)
     double precision, intent(inout), optional :: courno
     logical,          intent(in   ), optional :: include_ad, include_r
 
