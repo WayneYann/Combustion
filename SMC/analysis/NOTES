@@ -1,6 +1,19 @@
 
-FlameInABox
-===========
+March 15, 2013
+==============
+
+The runs performed below showed that multi-rate was a win in terms of
+timing, but multi-rate runs only seemed to have first-order
+convergence.  Since then a few things have been fixed/updated in the
+code, so I'm going to try again.  This time, however, I won't restart
+from the seed, just from scratch.
+
+The 'mrconv_test' task showed that MRSDC converges according to spec
+for the FlameBall example.
+
+
+March 13, 2013
+==============
 
 Used a fixed dt of 1.d-9, ran for 10 steps using SDC GL3, dumped
 checkpoint.  Subsequent runs were started from this checkpoint.

@@ -3,12 +3,10 @@
  verbose = 2
 
  stencil_type = "narrow"
- reset_n2     = .true.
 
  restart   = -1
- plot_int  =  10
+ plot_int  =  1
  chk_int   = -1
-
 
  advance_method = {advance_method}
 
@@ -51,5 +49,6 @@
  rfire     = 0.02d0
 
  tb_split_dim  = 1
+ reset_inactive_species = T
 
 /

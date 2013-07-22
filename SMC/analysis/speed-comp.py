@@ -7,6 +7,8 @@ import compare
 
 compare.setenv()
 
+#compare.env.debug = True
+
 
 def speed_comp():
 
@@ -14,7 +16,7 @@ def speed_comp():
 
   dt0 = 6e-9
   ref = 'gl3_dt1.000000e-09'
-  time = 4e-8 + dt0*70
+  time = dt0*70
 
   errors = {}
 
