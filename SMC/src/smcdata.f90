@@ -6,14 +6,14 @@ module smcdata_module
   implicit none
 
   type(multifab),save :: Uprime, Unew
-  type(multifab),save :: Q, Fdif
+  type(multifab),save :: Q, Fdif, Upchem
   type(multifab),save :: mu, xi ! viscosity
   type(multifab),save :: lam ! partial thermal conductivity
   type(multifab),save :: Ddiag ! diagonal components of rho * Y_k * D
 
   private
 
-  public :: Uprime, Unew, Q, Fdif, mu, xi, lam, Ddiag
+  public :: Uprime, Unew, Q, Fdif, Upchem, mu, xi, lam, Ddiag
   public :: build_smcdata, destroy_smcdata
 
 contains
@@ -47,6 +47,7 @@ contains
     call tb_multifab_setval(Q, 0.d0, .true.)
 
     call multifab_build(Fdif, la, ncons, 0)
+    call multifab_build(Upchem, la, nspecies, 0)
 
     call multifab_build(mu , la, 1, stencil_ng)
     call multifab_build(xi , la, 1, stencil_ng)
@@ -74,6 +75,7 @@ contains
 
     call destroy(Q)
     call destroy(Fdif)
+    call destroy(Upchem)
     call destroy(mu)
     call destroy(xi)
     call destroy(lam)
