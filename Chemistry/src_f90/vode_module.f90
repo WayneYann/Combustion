@@ -11,7 +11,7 @@ module vode_module
   integer, allocatable, save :: vodeiwork(:), vodeipar(:)
   integer, save :: lvoderwork, lvodeiwork
 
-!$omp threadprivate(voderwork,vodeiwork)
+!$omp threadprivate(voderwork,vodeiwork,voderpar,vodeipar)
 
 contains
 
