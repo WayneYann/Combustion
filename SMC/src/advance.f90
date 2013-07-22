@@ -38,7 +38,7 @@ contains
     double precision,  intent(inout) :: dtio, courno
     double precision,  intent(in   ) :: dx(3)
     integer,           intent(in   ) :: istep
-    type(sdc_t),       intent(inout) :: sdc
+    type(sdc_ctx_t),   intent(inout) :: sdc
 
     if (istep_first < 0) then
        istep_first = istep
@@ -127,7 +127,7 @@ contains
     type(multifab),    intent(inout) :: U
     double precision,  intent(inout) :: courno
     double precision,  intent(in   ) :: dx(3)
-    type(sdc_t),       intent(inout) :: sdc
+    type(sdc_ctx_t),   intent(inout) :: sdc
 
     logical :: update_courno
     double precision :: courno_proc
@@ -223,12 +223,28 @@ contains
     type(sdc_state_t), intent(in)        :: state
     real(c_double),    intent(in), value :: t
 
-    type(multifab), pointer :: U, Uprime
-    type(ctx_t),    pointer :: ctx
+    type(multifab),  pointer :: U, Uprime
+    type(sdc_ctx_t), pointer :: ctx
+
+    type(sdc_nset_t), pointer :: nset
+    real(c_double),   pointer :: nodes(:)
+    real(c_double)            :: dt_m
+    integer                   :: node
 
     call c_f_pointer(Uptr, U)
     call c_f_pointer(Fptr, Uprime)
     call c_f_pointer(ctxptr, ctx)
+
+    ! hack: compute sub-step dt and wrap around appropriately
+    call c_f_pointer(ctx%imex%nset, nset)
+    call c_f_pointer(nset%nodes, nodes, [ nset%nnodes ])
+
+    node = state%node + 1
+    if (node >= nset%nnodes) then
+       dt_m = dt * (nodes(2) - nodes(1))
+    else
+       dt_m = dt * (nodes(node+1) - nodes(node))
+    end if
 
     call dUdt(U, Uprime, t, ctx%dx)
   end subroutine srf1eval
@@ -237,8 +253,8 @@ contains
     type(c_ptr),       intent(in), value :: Uptr, ctxptr
     type(sdc_state_t), intent(in)        :: state
 
-    type(multifab), pointer :: U
-    type(ctx_t),    pointer :: ctx
+    type(multifab),  pointer :: U
+    type(sdc_ctx_t), pointer :: ctx
 
     call c_f_pointer(Uptr, U)
     call c_f_pointer(ctxptr, ctx)
@@ -252,12 +268,28 @@ contains
     type(sdc_state_t), intent(in)        :: state
     real(c_double),    intent(in), value :: t
 
-    type(multifab), pointer :: U, Uprime
-    type(ctx_t),    pointer :: ctx
+    type(multifab),  pointer :: U, Uprime
+    type(sdc_ctx_t), pointer :: ctx
+
+    type(sdc_nset_t), pointer :: nset
+    real(c_double),   pointer :: nodes(:)
+    real(c_double)            :: dt_m
+    integer                   :: node
 
     call c_f_pointer(Uptr, U)
     call c_f_pointer(Fptr, Uprime)
     call c_f_pointer(ctxptr, ctx)
+
+    ! hack: compute sub-step dt and wrap around appropriately
+    nset => ctx%nset_ad
+    call c_f_pointer(nset%nodes, nodes, [ nset%nnodes ])
+
+    node = state%node + 1
+    if (node >= nset%nnodes) then
+       dt_m = dt * (nodes(2) - nodes(1))
+    else
+       dt_m = dt * (nodes(node+1) - nodes(node))
+    end if
 
     call dUdt(U, Uprime, t, ctx%dx, include_r=.false.)
   end subroutine mrf1eval
@@ -267,12 +299,28 @@ contains
     type(sdc_state_t), intent(in)        :: state
     real(c_double),    intent(in), value :: t
 
-    type(multifab), pointer :: U, Uprime
-    type(ctx_t),    pointer :: ctx
+    type(multifab),  pointer :: U, Uprime
+    type(sdc_ctx_t), pointer :: ctx
+
+    type(sdc_nset_t), pointer :: nset
+    real(c_double),   pointer :: nodes(:)
+    real(c_double)            :: dt_m
+    integer                   :: node
 
     call c_f_pointer(Uptr, U)
     call c_f_pointer(Fptr, Uprime)
     call c_f_pointer(ctxptr, ctx)
+
+    ! hack: compute sub-step dt and wrap around appropriately
+    call c_f_pointer(ctx%mrex%nset, nset)
+    call c_f_pointer(nset%nodes, nodes, [ nset%nnodes ])
+
+    node = state%node + 1
+    if (node >= nset%nnodes) then
+       dt_m = dt * (nodes(2) - nodes(1))
+    else
+       dt_m = dt * (nodes(node+1) - nodes(node))
+    end if
 
     call dUdt(U, Uprime, t, ctx%dx, include_ad=.false.)
   end subroutine mrf2eval
@@ -290,7 +338,7 @@ contains
     type(multifab),    intent(inout) :: U
     double precision,  intent(inout) :: courno
     double precision,  intent(in   ) :: dx(3)
-    type(sdc_t),       intent(inout) :: sdc
+    type(sdc_ctx_t),   intent(inout) :: sdc
 
     logical :: update_courno
     double precision :: courno_proc

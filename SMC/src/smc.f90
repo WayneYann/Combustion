@@ -42,13 +42,11 @@ subroutine smc()
   logical :: dump_plotfile, dump_checkpoint, abort_smc
   real(dp_t) :: write_pf_time
 
-  type(layout)   :: la
-  type(multifab) :: U
-  type(sdc_t)    :: sdc
+  type(layout)    :: la
+  type(multifab)  :: U
+  type(sdc_ctx_t) :: sdc
 
   type(bl_prof_timer), save :: bpt_advance
-
-  type(ctx_t) :: ctx
 
 
   !
@@ -134,24 +132,24 @@ subroutine smc()
   !
 
   if (advance_method == 2) then
-     call sdc_build_single_rate(sdc, sdc_qtype, sdc_nnodes, ctx, &
+     call sdc_build_single_rate(sdc, sdc_qtype, sdc_nnodes, &
           c_funloc(srf1eval), c_funloc(srf1post))
   end if
 
   if (advance_method == 3) then
-     call sdc_build_multi_rate(sdc, sdc_qtype, [ sdc_nnodes, sdc_nnodes_fine ], ctx, &
+     call sdc_build_multi_rate(sdc, sdc_qtype, [ sdc_nnodes, sdc_nnodes_fine ], &
           c_funloc(mrf1eval), c_funloc(mrf2eval), c_funloc(srf1post))
   end if
 
   if (advance_method == 4) then
      ! XXX
-     call sdc_build_multi_rate(sdc, sdc_qtype, [ sdc_nnodes, sdc_nnodes_fine ], ctx, &
+     call sdc_build_multi_rate(sdc, sdc_qtype, [ sdc_nnodes, sdc_nnodes_fine ], &
           c_funloc(mrf1eval), c_funloc(mrf2eval), c_funloc(srf1post))
   end if
 
   if (advance_method > 1) then
      call sdc_setup(sdc, la, ncons, stencil_ng)
-     ctx%dx = dx
+     sdc%dx           = dx
      sdc%iters        = sdc_iters
      sdc%tol_residual = sdc_tol_residual
   end if
