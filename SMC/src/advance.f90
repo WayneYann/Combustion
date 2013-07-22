@@ -55,9 +55,7 @@ contains
        call advance_rk3(U,courno,dx)
     case (2)
        call advance_sdc(U,courno,dx,sdc)
-    case(3)
-       call advance_multi_sdc(U,courno,dx,sdc)
-    case(4)
+    case(3,4)
        call advance_multi_sdc(U,courno,dx,sdc)
     case default
        call bl_error("Invalid advance_method.")
@@ -713,10 +711,10 @@ contains
           
           if (dm .eq. 2) then
              call chemterm_2d(lo,hi,qp,qlo(1:2),qhi(1:2),upp,uplo(1:2),uphi(1:2), &
-                  upcp,upclo(1:2),upchi(1:2), dt)
+                  upcp,upclo(1:2),upchi(1:2), dt_m)
           else 
              call chemterm_3d(lo,hi,qp,qlo(1:3),qhi(1:3),upp,uplo(1:3),uphi(1:3), &
-                  upcp,upclo(1:3),upchi(1:3), dt)
+                  upcp,upclo(1:3),upchi(1:3), dt_m)
           end if
        end do
        !$omp end parallel 
