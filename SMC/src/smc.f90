@@ -143,6 +143,12 @@ subroutine smc()
           c_funloc(mrf1eval), c_funloc(mrf2eval), c_funloc(srf1post))
   end if
 
+  if (advance_method == 4) then
+     ! XXX
+     call sdc_build_multi_rate(sdc, sdc_qtype, [ sdc_nnodes, sdc_nnodes_fine ], ctx, &
+          c_funloc(mrf1eval), c_funloc(mrf2eval), c_funloc(srf1post))
+  end if
+
   if (advance_method > 1) then
      call sdc_setup(sdc, la, ncons, stencil_ng)
      ctx%dx = dx

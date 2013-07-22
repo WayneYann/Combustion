@@ -210,76 +210,61 @@ contains
   !
   ! SDCLib callbacks
   !
-  subroutine srf1eval(Fptr, Uptr, t, ctxptr) bind(c)
-    type(c_ptr),    intent(in), value :: Fptr, Uptr, ctxptr
-    real(c_double), intent(in), value :: t
+  subroutine srf1eval(Fptr, Uptr, t, state, ctxptr) bind(c)
+    type(c_ptr),       intent(in), value :: Fptr, Uptr, ctxptr
+    type(sdc_state_t), intent(in)        :: state
+    real(c_double),    intent(in), value :: t
 
     type(multifab), pointer :: U, Uprime
-    type(ctx_t), pointer    :: ctx
+    type(ctx_t),    pointer :: ctx
 
     call c_f_pointer(Uptr, U)
     call c_f_pointer(Fptr, Uprime)
     call c_f_pointer(ctxptr, ctx)
-
-    ! t is in physical units
-!    print *, 'srf1eval: EVAL TIME', t
-!    call flush(6)
 
     call dUdt(U, Uprime, t, ctx%dx)
   end subroutine srf1eval
 
-  subroutine srf1post(Uptr, stateptr, ctxptr) bind(c)
-    type(c_ptr), intent(in), value :: Uptr, stateptr, ctxptr
+  subroutine srf1post(Uptr, state, ctxptr) bind(c)
+    type(c_ptr),       intent(in), value :: Uptr, ctxptr
+    type(sdc_state_t), intent(in)        :: state
 
     type(multifab), pointer :: U
-    type(sdc_state_t), pointer :: state
-    type(ctx_t), pointer :: ctx
-
-    real(dp_t) :: t
+    type(ctx_t),    pointer :: ctx
 
     call c_f_pointer(Uptr, U)
-    call c_f_pointer(stateptr, state)
     call c_f_pointer(ctxptr, ctx)
 
-    ! t is in physical units
-    t = state%t + state%dt
-!    print *, 'srf1post: POST TIME', t
-!    call flush(6)
-
     call reset_density(U)
-    call impose_hard_bc(U,t,ctx%dx)
+    call impose_hard_bc(U,state%t,ctx%dx)
   end subroutine srf1post
 
-  subroutine mrf1eval(Fptr, Uptr, t, ctxptr) bind(c)
-    type(c_ptr),    intent(in), value :: Fptr, Uptr, ctxptr
-    real(c_double), intent(in), value :: t
+  subroutine mrf1eval(Fptr, Uptr, t, state, ctxptr) bind(c)
+    type(c_ptr),       intent(in), value :: Fptr, Uptr, ctxptr
+    type(sdc_state_t), intent(in)        :: state
+    real(c_double),    intent(in), value :: t
 
     type(multifab), pointer :: U, Uprime
-    type(ctx_t), pointer    :: ctx
+    type(ctx_t),    pointer :: ctx
 
     call c_f_pointer(Uptr, U)
     call c_f_pointer(Fptr, Uprime)
     call c_f_pointer(ctxptr, ctx)
-
-!    print *, 'mrf1eval: EVAL TIME', t
-!    call flush(6)
 
     call dUdt(U, Uprime, t, ctx%dx, include_r=.false.)
   end subroutine mrf1eval
 
-  subroutine mrf2eval(Fptr, Uptr, t, ctxptr) bind(c)
-    type(c_ptr),    intent(in), value :: Fptr, Uptr, ctxptr
-    real(c_double), intent(in), value :: t
+  subroutine mrf2eval(Fptr, Uptr, t, state, ctxptr) bind(c)
+    type(c_ptr),       intent(in), value :: Fptr, Uptr, ctxptr
+    type(sdc_state_t), intent(in)        :: state
+    real(c_double),    intent(in), value :: t
 
     type(multifab), pointer :: U, Uprime
-    type(ctx_t), pointer    :: ctx
+    type(ctx_t),    pointer :: ctx
 
     call c_f_pointer(Uptr, U)
     call c_f_pointer(Fptr, Uprime)
     call c_f_pointer(ctxptr, ctx)
-
-!    print *, 'mrf2eval: EVAL TIME', t
-!    call flush(6)
 
     call dUdt(U, Uprime, t, ctx%dx, include_ad=.false.)
   end subroutine mrf2eval
