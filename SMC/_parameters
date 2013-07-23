@@ -123,6 +123,7 @@ sdc_tol_residual                    real               -1.d100
 
 # multi-rate type (1 = repeated, 2 = local)
 sdc_multirate_type                  character          "local"
+sdc_multirate_repeat                integer            1
 
 
 #-----------------------------------------------------------------------------

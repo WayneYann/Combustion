@@ -50,7 +50,7 @@ contains
   ! Build/create multi-rate SDC object.
   !
   subroutine sdc_build_multi_rate(sdc, qtype, nnodes, f1eval, f2eval, post)
-    use probin_module, only: sdc_multirate_type
+    use probin_module, only: sdc_multirate_type, sdc_multirate_repeat
 
     type(sdc_ctx_t), intent(out), target :: sdc
     integer,         intent(in)          :: qtype, nnodes(2)
@@ -67,17 +67,22 @@ contains
     call sdc_nset_build(sdc%nset1, nnodes(1), qtype, 0, err)
     call sdc_nset_build(sdc%nset2, nnodes(2), qtype, 0, err)
     call sdc_mrex_build(sdc%mrex, 2, err)
-    call sdc_mrex_add_nset(sdc%mrex, sdc%nset1, f1eval, sdc%encap, c_loc(sdc), 0, err)
+    call sdc_mrex_add_nset(sdc%mrex, sdc%nset1, f1eval, sdc%encap, c_loc(sdc), 1, SDC_MR_ROOT, err)
 
     call sdc_hooks_add(sdc%mrex%hooks, SDC_HOOK_POST_STEP, post, err)
 
     select case(sdc_multirate_type)
     case ("local")
-       call sdc_mrex_add_nset(sdc%mrex, sdc%nset2, f2eval, sdc%encap, &
-            c_loc(sdc), SDC_MR_LOCAL, err)
+       if (sdc_multirate_repeat > 1) then
+          call sdc_mrex_add_nset(sdc%mrex, sdc%nset2, f2eval, sdc%encap, &
+               c_loc(sdc), sdc_multirate_repeat, SDC_MR_LREP, err)
+       else
+          call sdc_mrex_add_nset(sdc%mrex, sdc%nset2, f2eval, sdc%encap, &
+               c_loc(sdc), 1, SDC_MR_LOCAL, err)
+       end if
     case ("global")
        call sdc_mrex_add_nset(sdc%mrex, sdc%nset2, f2eval, sdc%encap, &
-            c_loc(sdc), SDC_MR_GLOBAL, err)
+            c_loc(sdc), 1, SDC_MR_GLOBAL, err)
        if (err .ne. 0) then
           call sdc_nset_print(sdc%nset1, 2)
           call sdc_nset_print(sdc%nset2, 2)
@@ -85,7 +90,7 @@ contains
        end if
     case ("repeated")
        call sdc_mrex_add_nset(sdc%mrex, sdc%nset2, f2eval, sdc%encap, &
-            c_loc(sdc), SDC_MR_REPEATED, err)
+            c_loc(sdc), 1, SDC_MR_GREP, err)
     case default
        stop "UNKNOWN MULTIRATE TYPE: should be one of 'local', 'global', or 'repeated'"
     end select
