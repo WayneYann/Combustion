@@ -1,3 +1,9 @@
+      SUBROUTINE SETFIRST (FRST)
+      LOGICAL FRST
+      include "vode.H"
+      FIRST = FRST
+      END
+
 *DECK DVODE
       SUBROUTINE DVODE (F, NEQ, Y, T, TOUT, ITOL, RTOL, ATOL, ITASK,
      1            ISTATE, IOPT, RWORK, LRW, IWORK, LIW, JAC, MF,
@@ -2713,12 +2719,14 @@ C-----------------------------------------------------------------------
       IF (NFLAG .EQ. -2) IPUP = MITER
 C
 C ORIG
-      IF ( (JSTART .EQ. 0) .OR. (JSTART .EQ. -1) ) IPUP = MITER
-C VHACK      IF (JSTART .EQ. -1) IPUP = MITER
-C VHACK      IF (FIRST) THEN
-C VHACK         FIRST = .FALSE.
-C VHACK         IF (JSTART .EQ. 0) IPUP  = MITER
-C VHACK      ENDIF
+C ORIG      IF ( (JSTART .EQ. 0) .OR. (JSTART .EQ. -1) ) IPUP = MITER
+C <VHACK>
+      IF (JSTART .EQ. -1) IPUP = MITER
+      IF (FIRST) THEN
+         FIRST = .FALSE.
+         IF (JSTART .EQ. 0) IPUP  = MITER
+      ENDIF
+C </VHACK>
 C
 C If this is functional iteration, set CRATE .eq. 1 and drop to 220
       IF (MITER .EQ. 0) THEN
@@ -2734,11 +2742,12 @@ C-----------------------------------------------------------------------
       DRC = ABS(RC-ONE)
 C
 C ORIG      
-      IF (DRC .GT. CCMAX .OR. NST .GE. NSLP+MSBP) IPUP = MITER
-C
-C VHACK      IF (JSTART .NE. 0) THEN
-C VHACK         IF (DRC .GT. CCMAX .OR. NST .GE. NSLP+MSBP) IPUP = MITER
-C VHACK      ENDIF
+C ORIG      IF (DRC .GT. CCMAX .OR. NST .GE. NSLP+MSBP) IPUP = MITER
+C <VHACK>
+      IF (JSTART .NE. 0) THEN
+         IF (DRC .GT. CCMAX .OR. NST .GE. NSLP+MSBP) IPUP = MITER
+      ENDIF
+C </VHACK>
 C
 C-----------------------------------------------------------------------
 C Up to MAXCOR corrector iterations are taken.  A convergence test is
@@ -2757,10 +2766,11 @@ C If indicated, the matrix P = I - h*rl1*J is reevaluated and
 C preprocessed before starting the corrector iteration.  IPUP is set
 C to 0 as an indicator that this has been done.
 C-----------------------------------------------------------------------
-C
-C VHACK      do I=1,N
-C VHACK         YJ_SAVE(I) = Y(I)
-C VHACK      end do
+C <VHACK>
+      do I=1,N
+         YJ_SAVE(I) = Y(I)
+      end do
+C </VHACK>
       CALL DVJAC (Y, YH, LDYH, EWT, ACOR, SAVF, WM, IWM, F, JAC, IERPJ,
      1           RPAR, IPAR)
       IPUP = 0

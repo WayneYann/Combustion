@@ -70,6 +70,8 @@ contains
 
     allocate(voderpar(2))
     allocate(vodeipar(1))
+
+    call setfirst(.true.)
     !$omp end parallel
 
   end subroutine vode_init

@@ -4332,7 +4332,7 @@ contains
 
 
   subroutine chemterm_3d(lo,hi,q,qlo,qhi,up,uplo,uphi,upc,upclo,upchi,dt)
-    use probin_module, only : use_vode
+    use probin_module, only : use_vode, vode_always_new_j
     use vode_module, only : verbose, itol, rtol, atol, vode_MF=>MF, &
          voderwork, vodeiwork, lvoderwork, lvodeiwork, voderpar, vodeipar
 
@@ -4356,6 +4356,8 @@ contains
 
        dtinv = 1.d0/dt
 
+       call setfirst(.true.)
+
        do k=lo(3),hi(3)
           do j=lo(2),hi(2)
              do i=lo(1),hi(1)
@@ -4368,6 +4370,8 @@ contains
                 istate = 1
                 
                 time = 0.d0
+
+                if (vode_always_new_j) call setfirst(.true.)
                 
                 MF = vode_MF  ! vode might change its sign!
                 call dvode(f_rhs, nspecies+1, YTvode, time, dt, itol, rtol, atol, itask, &

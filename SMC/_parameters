@@ -323,4 +323,4 @@ vode_order                          integer            100
 vode_use_ajac                       logical            .true.
 vode_save_ajac                      logical            .true.
 vode_stiff                          logical            .true.
-
+vode_always_new_j                   logical            .true.
