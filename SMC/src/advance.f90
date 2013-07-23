@@ -703,7 +703,7 @@ contains
        ! chemistry
        !
        call build(bpt_chemterm, "chemterm")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
-       !$omp parallel private(n,qp,upp,qlo,qhi,uplo,uphi,lo,hi)
+       !$omp parallel private(n,qp,upp,upcp,qlo,qhi,uplo,uphi,lo,hi,upclo,upchi)
        do n=1,nfabs(Q)
 
           if (.not.tb_worktodo(n)) cycle
