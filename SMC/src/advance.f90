@@ -23,7 +23,7 @@ module advance_module
   public single_sdc_feval, sdc_post_step_cb
   public multi_sdc_feval_slow, multi_sdc_feval_fast
 
-  logical, save, private :: trans_called
+  logical, save, private :: trans_called, Mach_computed
   integer, save, private :: istep_first = -1
   integer, save, private :: istep_this
   double precision, save, private :: dt
@@ -47,6 +47,7 @@ contains
     end if
     istep_this = istep
     trans_called = .false.
+    Mach_computed = .false.
 
     dt = dtio
 
@@ -576,7 +577,7 @@ contains
 
     use smcdata_module, only : Q, mu, xi, lam, Ddiag, Fdif, Upchem
     use probin_module, only : overlap_comm_comp, overlap_comm_gettrans, cfl_int, fixed_dt, &
-         trans_int
+         trans_int, mach_int
 
     type(multifab),   intent(inout) :: U, Uprime
     double precision, intent(in   ) :: t, dt_m, dx(3)
@@ -589,7 +590,7 @@ contains
     integer :: dm, n, ng, iblock
     integer :: ng_ctoprim, ng_gettrans
 
-    logical :: update_trans
+    logical :: update_trans, update_mach
 
     logical :: update_courno
     double precision :: courno_proc
@@ -626,6 +627,18 @@ contains
           update_trans = .true.
        else
           update_trans = .false.
+       end if
+    end if
+
+    if (mach_int .le. 0) then
+       update_mach = .true.
+    else
+       if (Mach_computed) then
+          update_mach = .false.
+       else if (mod((istep_this-istep_first), Mach_int) .eq. 0) then
+          update_mach = .true.
+       else
+          update_mach = .false.
        end if
     end if
 
@@ -840,7 +853,8 @@ contains
        !
        if (.not. inc_r) call tb_multifab_setval(Upchem, 0.d0)
        call build(bpt_nscbc, "nscbc")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
-       call nscbc(Q, U, Fdif, Upchem, Uprime, t, dx, inc_r)
+       call nscbc(Q, U, Fdif, Upchem, Uprime, t, dx, inc_r, update_mach)
+       if (update_mach) mach_computed = .true.
        call destroy(bpt_nscbc)          !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
 
     end if

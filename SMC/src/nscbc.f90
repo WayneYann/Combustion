@@ -218,11 +218,11 @@ contains
   end subroutine nscbc_close
 
 
-  subroutine nscbc(Q, con, Fdif, Upchem, rhs, t, dx, include_r)
+  subroutine nscbc(Q, con, Fdif, Upchem, rhs, t, dx, include_r, update_mach)
     type(multifab), intent(in   ) :: Q, con, Fdif, Upchem
     type(multifab), intent(inout) :: rhs
     double precision, intent(in) :: t, dx(3)
-    logical, intent(in), optional :: include_r
+    logical, intent(in) :: include_r, update_mach
 
     integer :: n, nb, ngq, ngc, ireg
     integer :: blo(Q%dim), bhi(Q%dim)
@@ -330,69 +330,71 @@ contains
 
     end do
 
-    ireg = 0
-    if (aux_xlo%nc .gt. 0) then
-       ireg = ireg+1
-       proc_Ma2s(ireg) = proc_Ma2_xlo
-    end if
-
-    if (aux_xhi%nc .gt. 0) then
-       ireg = ireg+1
-       proc_Ma2s(ireg) = proc_Ma2_xhi
-    end if
-
-    if (aux_ylo%nc .gt. 0) then
-       ireg = ireg+1
-       proc_Ma2s(ireg) = proc_Ma2_ylo
-    end if
-
-    if (aux_yhi%nc .gt. 0) then
-       ireg = ireg+1
-       proc_Ma2s(ireg) = proc_Ma2_yhi
-    end if
-
-    if (aux_zlo%nc .gt. 0) then
-       ireg = ireg+1
-       proc_Ma2s(ireg) = proc_Ma2_zlo
-    end if
-
-    if (aux_zhi%nc .gt. 0) then
-       ireg = ireg+1
-       proc_Ma2s(ireg) = proc_Ma2_zhi
-    end if
-
-    if (ireg > 0) then
-       call parallel_reduce(Ma2s, proc_Ma2s, MPI_MAX)
-
+    if (update_mach) then
        ireg = 0
        if (aux_xlo%nc .gt. 0) then
           ireg = ireg+1
-          Ma2_xlo = proc_Ma2s(ireg)
+          proc_Ma2s(ireg) = proc_Ma2_xlo
        end if
        
        if (aux_xhi%nc .gt. 0) then
           ireg = ireg+1
-          Ma2_xhi = proc_Ma2s(ireg)
+          proc_Ma2s(ireg) = proc_Ma2_xhi
        end if
        
        if (aux_ylo%nc .gt. 0) then
           ireg = ireg+1
-          Ma2_ylo = proc_Ma2s(ireg)
+          proc_Ma2s(ireg) = proc_Ma2_ylo
        end if
        
        if (aux_yhi%nc .gt. 0) then
           ireg = ireg+1
-          Ma2_yhi = proc_Ma2s(ireg)
+          proc_Ma2s(ireg) = proc_Ma2_yhi
        end if
        
        if (aux_zlo%nc .gt. 0) then
           ireg = ireg+1
-          Ma2_zlo = proc_Ma2s(ireg)
+          proc_Ma2s(ireg) = proc_Ma2_zlo
        end if
        
        if (aux_zhi%nc .gt. 0) then
           ireg = ireg+1
-          Ma2_zhi = proc_Ma2s(ireg)
+          proc_Ma2s(ireg) = proc_Ma2_zhi
+       end if
+       
+       if (ireg > 0) then
+          call parallel_reduce(Ma2s, proc_Ma2s, MPI_MAX)
+          
+          ireg = 0
+          if (aux_xlo%nc .gt. 0) then
+             ireg = ireg+1
+             Ma2_xlo = proc_Ma2s(ireg)
+          end if
+          
+          if (aux_xhi%nc .gt. 0) then
+             ireg = ireg+1
+             Ma2_xhi = proc_Ma2s(ireg)
+          end if
+          
+          if (aux_ylo%nc .gt. 0) then
+             ireg = ireg+1
+             Ma2_ylo = proc_Ma2s(ireg)
+          end if
+          
+          if (aux_yhi%nc .gt. 0) then
+             ireg = ireg+1
+             Ma2_yhi = proc_Ma2s(ireg)
+          end if
+          
+          if (aux_zlo%nc .gt. 0) then
+             ireg = ireg+1
+             Ma2_zlo = proc_Ma2s(ireg)
+          end if
+          
+          if (aux_zhi%nc .gt. 0) then
+             ireg = ireg+1
+             Ma2_zhi = proc_Ma2s(ireg)
+          end if
        end if
     end if
 
@@ -516,7 +518,7 @@ contains
     double precision, intent(in ) :: Upc(      lo(1): hi(1)   ,    lo(2): hi(2)   ,nspecies)
     double precision, intent(out) :: A  (naux,alo(1):ahi(1)   ,   alo(2):ahi(2)         )
     double precision, intent(inout) :: mach2
-    logical, intent(in), optional :: include_r
+    logical, intent(in) :: include_r
 
     integer :: i, j, iwrk
     double precision :: Tt, rwrk, cv, cp, gamma, Wbar, vel2, cs2
@@ -525,10 +527,8 @@ contains
 
     if (.not. nscbc_burn) then
        comp_wdot = .false.
-    else if (present(include_r)) then
+    else 
        comp_wdot = include_r
-    else
-       comp_wdot = .true.
     end if
 
     !$omp parallel private(i,j,iwrk,Tt,rwrk,cv,cp,gamma,Wbar,vel2,cs2,Yt) &
@@ -576,7 +576,7 @@ contains
     double precision, intent(in ) ::Upc(      lo(1): hi(1)   ,    lo(2): hi(2)   ,    lo(3): hi(3)   ,nspecies)
     double precision, intent(out) :: A (naux,alo(1):ahi(1)   ,   alo(2):ahi(2)   ,   alo(3):ahi(3))
     double precision, intent(inout) :: mach2
-    logical, intent(in), optional :: include_r
+    logical, intent(in) :: include_r
 
     integer :: i, j, k, iwrk
     double precision :: Tt, rwrk, cv, cp, gamma, Wbar, vel2, cs2
@@ -585,10 +585,8 @@ contains
 
     if (.not. nscbc_burn) then
        comp_wdot = .false.
-    else if (present(include_r)) then
+    else 
        comp_wdot = include_r
-    else
-       comp_wdot = .true.
     end if
 
     !$omp parallel private(i,j,k,iwrk,Tt,rwrk,cv,cp,gamma,Wbar,vel2,cs2,Yt) &
