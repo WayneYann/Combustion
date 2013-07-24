@@ -218,11 +218,11 @@ contains
   end subroutine nscbc_close
 
 
-  subroutine nscbc(Q, con, Fdif, Upchem, rhs, t, dx, include_r, update_mach)
+  subroutine nscbc(Q, con, Fdif, Upchem, rhs, t, dx, update_mach)
     type(multifab), intent(in   ) :: Q, con, Fdif, Upchem
     type(multifab), intent(inout) :: rhs
     double precision, intent(in) :: t, dx(3)
-    logical, intent(in) :: include_r, update_mach
+    logical, intent(in) :: update_mach
 
     integer :: n, nb, ngq, ngc, ireg
     integer :: blo(Q%dim), bhi(Q%dim)
@@ -263,9 +263,9 @@ contains
           auxp => dataptr(aux_xlo%data,n)
 
           if (dm.eq.2) then
-             call compute_aux_2d(1,lo,hi,ngq,qp,upcp,auxp,alo,ahi,proc_Ma2_xlo,include_r)
+             call compute_aux_2d(1,lo,hi,ngq,qp,upcp,auxp,alo,ahi,proc_Ma2_xlo)
           else
-             call compute_aux_3d(1,lo,hi,ngq,qp,upcp,auxp,alo,ahi,proc_Ma2_xlo,include_r)
+             call compute_aux_3d(1,lo,hi,ngq,qp,upcp,auxp,alo,ahi,proc_Ma2_xlo)
           end if
        end if
 
@@ -276,9 +276,9 @@ contains
           auxp => dataptr(aux_xhi%data,n)
 
           if (dm.eq.2) then
-             call compute_aux_2d(1,lo,hi,ngq,qp,upcp,auxp,alo,ahi,proc_Ma2_xhi,include_r)
+             call compute_aux_2d(1,lo,hi,ngq,qp,upcp,auxp,alo,ahi,proc_Ma2_xhi)
           else
-             call compute_aux_3d(1,lo,hi,ngq,qp,upcp,auxp,alo,ahi,proc_Ma2_xhi,include_r)
+             call compute_aux_3d(1,lo,hi,ngq,qp,upcp,auxp,alo,ahi,proc_Ma2_xhi)
           end if
        end if
 
@@ -289,9 +289,9 @@ contains
           auxp => dataptr(aux_ylo%data,n)
 
           if (dm.eq.2) then
-             call compute_aux_2d(2,lo,hi,ngq,qp,upcp,auxp,alo,ahi,proc_Ma2_ylo,include_r)
+             call compute_aux_2d(2,lo,hi,ngq,qp,upcp,auxp,alo,ahi,proc_Ma2_ylo)
           else
-             call compute_aux_3d(2,lo,hi,ngq,qp,upcp,auxp,alo,ahi,proc_Ma2_ylo,include_r)
+             call compute_aux_3d(2,lo,hi,ngq,qp,upcp,auxp,alo,ahi,proc_Ma2_ylo)
           end if
        end if
 
@@ -302,9 +302,9 @@ contains
           auxp => dataptr(aux_yhi%data,n)
 
           if (dm.eq.2) then
-             call compute_aux_2d(2,lo,hi,ngq,qp,upcp,auxp,alo,ahi,proc_Ma2_yhi,include_r)
+             call compute_aux_2d(2,lo,hi,ngq,qp,upcp,auxp,alo,ahi,proc_Ma2_yhi)
           else
-             call compute_aux_3d(2,lo,hi,ngq,qp,upcp,auxp,alo,ahi,proc_Ma2_yhi,include_r)
+             call compute_aux_3d(2,lo,hi,ngq,qp,upcp,auxp,alo,ahi,proc_Ma2_yhi)
           end if
        end if
 
@@ -315,7 +315,7 @@ contains
              
              auxp => dataptr(aux_zlo%data,n)
              
-             call compute_aux_3d(3,lo,hi,ngq,qp,upcp,auxp,alo,ahi,proc_Ma2_zlo,include_r)
+             call compute_aux_3d(3,lo,hi,ngq,qp,upcp,auxp,alo,ahi,proc_Ma2_zlo)
           end if
           
           if (isValid(aux_zhi,n)) then
@@ -324,7 +324,7 @@ contains
              
              auxp => dataptr(aux_zhi%data,n)
              
-             call compute_aux_3d(3,lo,hi,ngq,qp,upcp,auxp,alo,ahi,proc_Ma2_zhi,include_r)
+             call compute_aux_3d(3,lo,hi,ngq,qp,upcp,auxp,alo,ahi,proc_Ma2_zhi)
           end if
        end if
 
@@ -511,25 +511,17 @@ contains
   end subroutine nscbc
 
 
-  subroutine compute_aux_2d(idim,lo,hi,ng,Q,Upc,A,alo,ahi,mach2,include_r)
+  subroutine compute_aux_2d(idim,lo,hi,ng,Q,Upc,A,alo,ahi,mach2)
     integer, intent(in) :: idim,ng
     integer, dimension(2), intent(in) :: lo, hi, alo, ahi
     double precision, intent(in ) :: Q  (  -ng+lo(1): hi(1)+ng,-ng+lo(2): hi(2)+ng,nprim)
     double precision, intent(in ) :: Upc(      lo(1): hi(1)   ,    lo(2): hi(2)   ,nspecies)
     double precision, intent(out) :: A  (naux,alo(1):ahi(1)   ,   alo(2):ahi(2)         )
     double precision, intent(inout) :: mach2
-    logical, intent(in) :: include_r
 
     integer :: i, j, iwrk
     double precision :: Tt, rwrk, cv, cp, gamma, Wbar, vel2, cs2
     double precision :: Yt(nspecies)
-    logical :: comp_wdot
-
-    if (.not. nscbc_burn) then
-       comp_wdot = .false.
-    else 
-       comp_wdot = include_r
-    end if
 
     !$omp parallel private(i,j,iwrk,Tt,rwrk,cv,cp,gamma,Wbar,vel2,cs2,Yt) &
     !$omp reduction(max:mach2)
@@ -556,7 +548,7 @@ contains
           A(icv   ,i,j) = cv
           A(ics   ,i,j) = sqrt(cs2)
 
-          if (comp_wdot) then
+          if (nscbc_burn) then
              A(iwdot1:,i,j) = Upc(i,j,:)
           else
              A(iwdot1:,i,j) = 0.d0
@@ -569,25 +561,17 @@ contains
 
   end subroutine compute_aux_2d
 
-  subroutine compute_aux_3d(idim,lo,hi,ng,Q,Upc,A,alo,ahi,mach2,include_r)
+  subroutine compute_aux_3d(idim,lo,hi,ng,Q,Upc,A,alo,ahi,mach2)
     integer, intent(in) :: idim,ng
     integer, dimension(3), intent(in) :: lo, hi, alo, ahi
     double precision, intent(in ) :: Q (  -ng+lo(1): hi(1)+ng,-ng+lo(2): hi(2)+ng,-ng+lo(3): hi(3)+ng,nprim)
     double precision, intent(in ) ::Upc(      lo(1): hi(1)   ,    lo(2): hi(2)   ,    lo(3): hi(3)   ,nspecies)
     double precision, intent(out) :: A (naux,alo(1):ahi(1)   ,   alo(2):ahi(2)   ,   alo(3):ahi(3))
     double precision, intent(inout) :: mach2
-    logical, intent(in) :: include_r
 
     integer :: i, j, k, iwrk
     double precision :: Tt, rwrk, cv, cp, gamma, Wbar, vel2, cs2
     double precision :: Yt(nspecies)
-    logical :: comp_wdot
-
-    if (.not. nscbc_burn) then
-       comp_wdot = .false.
-    else 
-       comp_wdot = include_r
-    end if
 
     !$omp parallel private(i,j,k,iwrk,Tt,rwrk,cv,cp,gamma,Wbar,vel2,cs2,Yt) &
     !$omp reduction(max:mach2)
@@ -615,7 +599,7 @@ contains
              A(icv   ,i,j,k) = cv
              A(ics   ,i,j,k) = sqrt(cs2)
 
-             if (comp_wdot) then
+             if (nscbc_burn) then
                 A(iwdot1:,i,j,k) = Upc(i,j,k,:)
              else
                 A(iwdot1:,i,j,k) = 0.d0

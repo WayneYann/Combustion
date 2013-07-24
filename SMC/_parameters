@@ -292,7 +292,7 @@ outlet_sigma                        real               0.25d0
 outlet_eta                          real               50.d0
 outlet_Pinfty                       real               1.01325d6
 inlet_eta                           real               30.d0
-nscbc_burn                          logical            .false.
+nscbc_burn                          logical            .true.
 mach_int                            integer            0
 
 

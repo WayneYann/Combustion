@@ -851,9 +851,8 @@ contains
        !
        ! NSCBC boundary
        !
-       if (.not. inc_r) call tb_multifab_setval(Upchem, 0.d0)
        call build(bpt_nscbc, "nscbc")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
-       call nscbc(Q, U, Fdif, Upchem, Uprime, t, dx, inc_r, update_mach)
+       call nscbc(Q, U, Fdif, Upchem, Uprime, t, dx, update_mach)
        if (update_mach) mach_computed = .true.
        call destroy(bpt_nscbc)          !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
 
