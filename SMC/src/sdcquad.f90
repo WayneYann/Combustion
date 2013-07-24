@@ -50,7 +50,7 @@ contains
   ! Build/create multi-rate SDC object.
   !
   subroutine sdc_build_multi_rate(sdc, qtype, nnodes, f1eval, f2eval, post)
-    use probin_module, only: sdc_multirate_type, sdc_multirate_repeat
+    use probin_module, only: sdc_multirate_type, sdc_multirate_repeat, advance_method
 
     type(sdc_ctx_t), intent(out), target :: sdc
     integer,         intent(in)          :: qtype, nnodes(2)
@@ -94,6 +94,18 @@ contains
     case default
        stop "UNKNOWN MULTIRATE TYPE: should be one of 'local', 'global', or 'repeated'"
     end select
+
+    ! this controls the order in which the different multi-rate
+    ! components are evaluated.  we always want chemistry to be
+    ! evaluated first (so that up-to-date chemistry can be used when
+    ! computing the boundary conditions for the adv/diff term)
+    if (advance_method == 3) then
+       ! chemistry is on the "fast" component
+       sdc%mrex%order = 1
+    else
+       ! chemistry is on the "slow" component
+       sdc%mrex%order = -1
+    end if
 
   end subroutine sdc_build_multi_rate
 
