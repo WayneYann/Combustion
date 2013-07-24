@@ -398,7 +398,7 @@ subroutine smc()
   call destroy_smcdata(sdc)
   call destroy_threadbox()
 
-  if (advance_method == 2 .or. advance_method == 3) then
+  if (advance_method > 1) then
      call sdc_destroy(sdc)
   end if
 
