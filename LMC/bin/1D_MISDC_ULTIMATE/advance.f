@@ -102,6 +102,10 @@ c     nodal, no ghost cells
       
       integer i,is,misdc,n,rho_flag,IWRK,l,j
 
+      real*8 deltarhoY_old(0:nlevs-1,0:nfine-1,Nspec)
+      real*8 deltarhoY_new(0:nlevs-1,0:nfine-1,Nspec)
+      real*8 deltarhoY_max(Nspec)
+
       real*8 deltaTmax
       integer max_cell
 
@@ -398,8 +402,26 @@ c     compute rho^{(k+1)}*Y_{m,AD}^{(k+1),l+1}
                   is = FirstSpec + n -1
                   scal_new(0,i,is) = scal_old(0,i,is) + dt(0)*aofs(0,i,is)
      &                 + dRhs(0,i,n) + dt(0)*diff_hat(0,i,is)
+
+                  deltarhoY_new(0,i,n) = scal_new(0,i,is)-scal_old(0,i,is)
                end do
             end do
+
+            if (l .gt. 1) then
+               deltarhoY_max = 0.d0
+               do i=lo(0),hi(0)
+                  do n=1,Nspec
+                     deltarhoY_max(n) = max(deltarhoY_max(n),
+     &                    abs((deltarhoY_new(0,i,n)-deltarhoY_old(0,i,n))
+     &                        /deltarhoY_old(0,i,n)))
+                  end do
+               end do               
+               print*,'change in rhoY relative to previous iter'
+               write(*,1000) (deltarhoY_max(1:Nspec))
+ 1000          format (1000E11.3)
+
+            end if
+            deltarhoY_old = deltarhoY_new
 
             call set_bc_s(scal_new(0,:,:),lo(0),hi(0),bc(0,:))
 
