@@ -100,7 +100,10 @@ c     nodal, no ghost cells
 
       real*8 Y(Nspec),WDOTK(Nspec),C(Nspec),RWRK
       
-      integer i,is,misdc,n,rho_flag,IWRK,l
+      integer i,is,misdc,n,rho_flag,IWRK,l,j
+
+      real*8 deltaTmax
+      integer max_cell
 
       print *,'advance: at start of time step',istep
 
@@ -190,6 +193,16 @@ c     Begin MISDC iterations
 C----------------------------------------------------------------
 
       do misdc = 1, misdc_iterMAX
+
+
+c     compute rho*cp
+            do i=lo(0),hi(0)
+               do n = 1,Nspec
+                  Y(n) = scal_new(0,i,FirstSpec+n-1) / scal_new(0,i,Density)
+               enddo
+               call CKCPBS(scal_new(0,i,Temp),Y,IWRK,RWRK,rho_cp(0,i))
+               rho_cp(0,i) = rho_cp(0,i)*scal_new(0,i,Density)
+            end do
 
          print *,'... doing SDC iter ',misdc
 
@@ -308,6 +321,11 @@ c     update density
          call update_rho(scal_old(0,:,:),scal_new(0,:,:),aofs(0,:,:),
      &                   dt(0),lo(0),hi(0),bc(0,:))
 
+c     this is used as the alpha coefficient for species and velocity solver
+         do i=lo(0),hi(0)
+            alpha(0,i) = scal_new(0,i,Density)
+         end do
+
 c     compute deferred correcion terms
          do i=lo(0),hi(0)
             do n=1,Nspec
@@ -328,25 +346,11 @@ c       +(dt/2) div (h_m^n gamma_m^n - h_m^(k) gamma_m^(k))
          enddo
 
 c     new iterative coupled species/enthalpy diffusion algorithm
-         do l=0,4
+         do l=1,Wbar_iter
 
-            print*,'diffusion iter',l
+            print*,'Wbar iter',l
 
-c     compute rho*cp
-            do i=lo(0),hi(0)
-               do n = 1,Nspec
-                  Y(n) = scal_new(0,i,FirstSpec+n-1) / scal_new(0,i,Density)
-               enddo
-               call CKCPBS(scal_new(0,i,Temp),Y,IWRK,RWRK,rho_cp(0,i))
-               rho_cp(0,i) = rho_cp(0,i)*scal_new(0,i,Density)
-            end do
-
-c     compute div lambda_{AD}^{(k+1),l} grad T_{AD}^{(k+1),l}
-            diff_hat(:,:,Temp) = 0.d0
-            call addDivLambdaGradT(scal_new(0,:,:),beta_new(0,:,:),
-     $                             diff_hat(0,:,Temp),dx(0),lo(0),hi(0))
-
-c     compute div(beta_for_Wbar_{AD}^{(k+1),l} grad Wbar_{AD}^{(k+1),l}
+c     compute div ( beta_for_Wbar^{(k)} grad Wbar_{AD}^{(k+1),l} )
 c     also need to save the fluxes themselves for constructing Gamma_m later
             call get_spec_visc_terms_Wbar(scal_new(0,:,:),beta_for_Wbar_new(0,:,:),
      &                                    diff_tmp(0,:,FirstSpec:),
@@ -354,25 +358,12 @@ c     also need to save the fluxes themselves for constructing Gamma_m later
      &                                    gamma_Wbar_hi(0,:,:),
      &                                    dx(0),lo(0),hi(0))
 
-c     temporarily add dt*this to dRhs
+c     construct Rhs for implicit system
             do i=lo(0),hi(0)
                do n=1,Nspec
                   is = FirstSpec + n - 1
-                  dRhs(0,i,n) = dRhs(0,i,n) + dt(0)*diff_tmp(0,i,is)
-               end do
-            end do
-
-c     update rhoY_m with advection terms and set up RHS for correction solve
-            call update_spec(scal_old(0,:,:),scal_new(0,:,:),aofs(0,:,:),
-     &                       alpha(0,:),
-     &                       dRhs(0,0:,1:),Rhs(0,0:,FirstSpec:),
-     &                       dt(0),lo(0),hi(0),bc(0,:))
-
-c     subtract off dt*this from dRhs
-            do i=lo(0),hi(0)
-               do n=1,Nspec
-                  is = FirstSpec + n - 1
-                  dRhs(0,i,n) = dRhs(0,i,n) - dt(0)*diff_tmp(0,i,is)
+                  Rhs(0,i,is) = scal_old(0,i,is) + dt(0)*aofs(0,i,is) 
+     &                 + dRhs(0,i,n) + dt(0)*diff_tmp(0,i,is)
                end do
             end do
 
@@ -385,11 +376,15 @@ c     Solve implicit system
      $                       rho_flag,.false.,lo(0),hi(0),bc(0,:))
             enddo
 
+            call set_bc_s(scal_new(0,:,:),lo(0),hi(0),bc(0,:))
+
 c     compute conservatively corrected version of div gamma_m
-c     where gamma_m =   beta_for_y_{AD}^{(k+1),l} grad \tilde Y_{m,AD}^{(k+1),l+1} 
-c                     + beta_for_Wbar_{AD}^{(k+1),l} grad Wbar_{AD}^{(k+1),l}
+c     where gamma_m =   beta_for_Y^{(k)} grad \tilde Y_{m,AD}^{(k+1),l+1} 
+c                     + beta_for_Wbar^{(k)} grad Wbar_{AD}^{(k+1),l}
 c     the latter term is already available from the get_spec_visc_terms_Wbar call above
-            call get_spec_visc_terms_Y_and_Wbar(scal_new(0,:,:),beta_for_Y_new(0,:,:),
+c     we save the total fluxes for calculating diffdiff terms for the enthalpy solve
+            call get_spec_visc_terms_Y_and_Wbar(scal_new(0,:,:),
+     &                                          beta_for_Y_new(0,:,:),
      &                                          diff_hat(0,:,FirstSpec:),
      &                                          gamma_Wbar_lo(0,:,:),
      &                                          gamma_Wbar_hi(0,:,:),
@@ -401,20 +396,48 @@ c     compute rho^{(k+1)}*Y_{m,AD}^{(k+1),l+1}
             do i=lo(0),hi(0)
                do n=1,Nspec
                   is = FirstSpec + n -1
-                  scal_new(0,i,is) = Rhs(0,i,is) - dt(0)*diff_tmp(0,i,is) + dt(0)*diff_hat(0,i,is)
+                  scal_new(0,i,is) = scal_old(0,i,is) + dt(0)*aofs(0,i,is)
+     &                 + dRhs(0,i,n) + dt(0)*diff_hat(0,i,is)
                end do
             end do
 
             call set_bc_s(scal_new(0,:,:),lo(0),hi(0),bc(0,:))
 
+         end do
+
 c     set Rhs(RhoH) to (rhoh)^n + dt*A + 
 c        (dt/2) div (lambda^n grad T^n - lambda^(k) grad T^(k))
 c       +(dt/2) div (h_m^n gamma_m^n - h_m^(k) gamma_m^(k)
-c     diabled the RhoH update since we need the lagged RhoH
-            call update_rhoh(scal_old(0,:,:),scal_new(0,:,:),aofs(0,:,:),
-     &                       alpha(0,:),
-     &                       dRhs(0,:,0),Rhs(0,:,RhoH),dt(0),
-     &                       lo(0),hi(0),bc(0,:))
+         do i=lo(0),hi(0)
+            Rhs(0,i,RhoH) = scal_old(0,i,RhoH) + dt(0)*aofs(0,i,RhoH) + dRhs(0,i,0)
+         end do
+
+         if (LeEQ1 .eq. 0) then
+
+c     compute div h_m^{(k)} Gamma_{m,AD}^{(k+1)}
+c     we pass in conservative gamma_m via gamma
+c     we compute h_m using T from the scalar argument
+            call get_diffdiff_terms(scal_new(0,:,:),
+     $                              gamma_lo(0,:,:),gamma_hi(0,:,:),
+     $                              diffdiff_tmp(0,:),dx(0),lo(0),hi(0))
+
+         end if
+
+         do j=1,deltaT_iter
+
+c     compute rho^{(k+1)}*cp_{AD}^{(k+1),l}
+            do i=lo(0),hi(0)
+               do n = 1,Nspec
+                  Y(n) = scal_new(0,i,FirstSpec+n-1) / scal_new(0,i,Density)
+               enddo
+               call CKCPBS(scal_new(0,i,Temp),Y,IWRK,RWRK,rho_cp(0,i))
+               rho_cp(0,i) = rho_cp(0,i)*scal_new(0,i,Density)
+            end do
+
+c     compute div lambda^{(k)} grad T_{AD}^{(k+1),l}
+            diff_hat(:,:,Temp) = 0.d0
+            call addDivLambdaGradT(scal_new(0,:,:),beta_new(0,:,:),
+     $                             diff_hat(0,:,Temp),dx(0),lo(0),hi(0))
 
 c     build rhs for delta T solve and store it in Rhs(Temp)
 c     Rhs(RhoH) already holds (rhoh)^n + dt*A
@@ -428,23 +451,12 @@ c     need to subtract rho^(k+1) h_AD^{(k+1),l} from Rhs(Temp)
                Rhs(0,i,Temp) = Rhs(0,i,Temp) - scal_new(0,i,RhoH)
             end do
 
-c     need to add dt*div lambda_{AD}^{(k+1),l} grad T_AD^{(k+1),l} to Rhs(Temp)
+c     need to add dt*div lambda^{(k)} grad T_AD^{(k+1),l} to Rhs(Temp)
             do i=lo(0),hi(0)
                Rhs(0,i,Temp) = Rhs(0,i,Temp) + dt(0)*diff_hat(0,i,Temp)
             end do
 
-            if (LeEQ1 .eq. 0) then
-
-c     compute div h_m Gamma_m
-c     we pass in conservative gamma_m via gamma
-c     we compute h_m using T from the scalar argument
-               call get_diffdiff_terms(scal_new(0,:,:),
-     $                                 gamma_lo(0,:,:),gamma_hi(0,:,:),
-     $                                 diffdiff_tmp(0,:),dx(0),lo(0),hi(0))
-
-            end if
-
-c     add dt*div h_{m,AD}^{(k+1),l} Gamma_{m,AD}^{(k+1),l+1}
+c     add dt*div h_m^{(k)} Gamma_{m,AD}^{(k+1)}
             do i=lo(0),hi(0)
                Rhs(0,i,Temp) = Rhs(0,i,Temp) + dt(0)*diffdiff_tmp(0,i)
             end do
@@ -455,11 +467,21 @@ c     Solve C-N system for delta T
      $                           beta_new(0,:,Temp),
      $                           Rhs(0,:,Temp),dx(0),dt(0),
      $                           1.d0,lo(0),hi(0),bc(0,:))
-            
+
+c     diagnostic stuff
+            deltaTmax = 0.d0
+            max_cell = 0.d0
             do i=lo(0),hi(0)
-c     update temperature
+               if (deltaT(0,i)/scal_new(0,i,Temp) .gt. deltaTmax) then
+                  deltaTmax = deltaT(0,i)/scal_new(0,i,Temp)
+                  max_cell = i
+               end if
+            end do
+            print*,'deltaTmax',deltaTmax,max_cell
+
+            do i=lo(0),hi(0)
+c     update temperature and use EOS to get enthalpy
                scal_new(0,i,Temp) = scal_new(0,i,Temp) + deltaT(0,i)
-c     compute updated enthalpy from temperature
                do n = 1,Nspec
                   Y(n) = scal_new(0,i,FirstSpec+n-1) / scal_new(0,i,Density)
                enddo
@@ -467,16 +489,15 @@ c     compute updated enthalpy from temperature
                scal_new(0,i,RhoH) = scal_new(0,i,RhoH) * scal_new(0,i,Density)
             end do
 
-            call set_bc_s(scal_new(0,:,:),lo(0),hi(0),bc(0,:))
-               
-c     update transport coefficients
-c     compute <.>_{AD}^{(k+1),l+1}
-            call calc_diffusivities(scal_new(0,:,:),beta_new(0,:,:),
-     &                              beta_for_Y_new(0,:,:),
-     &                              beta_for_Wbar_new(0,:,:),
-     &                              mu_new(0,:),lo(0),hi(0))
+c     update enthalpy and use EOS to get temperature
+c            do i=lo(0),hi(0)
+c               scal_new(0,i,RhoH) = scal_new(0,i,RhoH) + rho_cp(0,i)*deltaT(0,i)
+c            end do
+c            call rhoh_to_temp(scal_new(0,:,:),lo(0),hi(0))
 
-c     end loop over l
+            call set_bc_s(scal_new(0,:,:),lo(0),hi(0),bc(0,:))
+
+c     end loop over m
          end do
 
 c     dRhs for was holding :
@@ -485,7 +506,8 @@ c       +(dt/2) div (h_m^n gamma_m^n - h_m^(k) gamma_m^(k))
 
          do i=lo(0),hi(0)
             dRhs(0,i,0) = dRhs(0,i,0) / dt(0)
-            dRhs(0,i,0) = dRhs(0,i,0) + aofs(0,i,RhoH) + diff_hat(0,i,Temp) + diffdiff_tmp(0,i)
+            dRhs(0,i,0) = dRhs(0,i,0) + aofs(0,i,RhoH) 
+     &           + diff_hat(0,i,Temp) + diffdiff_tmp(0,i)
          end do
 
          print *,'... react with const sources'

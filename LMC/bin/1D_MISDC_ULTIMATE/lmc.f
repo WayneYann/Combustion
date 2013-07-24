@@ -64,7 +64,7 @@
      $                  dpdt_factor, 
      $                  Patm, coef_avg_harm,
      $                  probtype,
-     $                  misdc_iterMAX,
+     $                  misdc_iterMAX, Wbar_iter, deltaT_iter,
      $                  do_initial_projection, num_divu_iters, 
      $                  num_init_iters,fixed_dt,
      $                  V_in, lim_rxns,
@@ -90,7 +90,9 @@ c     Set defaults, change with namelist
       dpdt_factor = 0.d0
       Patm = 1.d0
       coef_avg_harm = 0
-      misdc_iterMAX = 3
+      misdc_iterMAX = 1
+      Wbar_iter = 2
+      deltaT_iter = 3
       do_initial_projection = 1
       num_divu_iters = 3
       num_init_iters = 2

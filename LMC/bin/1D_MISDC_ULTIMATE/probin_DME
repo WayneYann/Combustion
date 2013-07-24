@@ -19,6 +19,8 @@
   num_divu_iters = 3
   num_init_iters = 2
   misdc_iterMAX = 1
+  Wbar_iter = 2
+  deltaT_iter = 3
   lim_rxns = 0
   V_in = 0.
   V_in = 1.e30
