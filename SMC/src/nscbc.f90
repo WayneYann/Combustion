@@ -263,9 +263,9 @@ contains
           auxp => dataptr(aux_xlo%data,n)
 
           if (dm.eq.2) then
-             call compute_aux_2d(lo,hi,ngq,qp,upcp,auxp,alo,ahi,proc_Ma2_xlo,include_r)
+             call compute_aux_2d(1,lo,hi,ngq,qp,upcp,auxp,alo,ahi,proc_Ma2_xlo,include_r)
           else
-             call compute_aux_3d(lo,hi,ngq,qp,upcp,auxp,alo,ahi,proc_Ma2_xlo,include_r)
+             call compute_aux_3d(1,lo,hi,ngq,qp,upcp,auxp,alo,ahi,proc_Ma2_xlo,include_r)
           end if
        end if
 
@@ -276,9 +276,9 @@ contains
           auxp => dataptr(aux_xhi%data,n)
 
           if (dm.eq.2) then
-             call compute_aux_2d(lo,hi,ngq,qp,upcp,auxp,alo,ahi,proc_Ma2_xhi,include_r)
+             call compute_aux_2d(1,lo,hi,ngq,qp,upcp,auxp,alo,ahi,proc_Ma2_xhi,include_r)
           else
-             call compute_aux_3d(lo,hi,ngq,qp,upcp,auxp,alo,ahi,proc_Ma2_xhi,include_r)
+             call compute_aux_3d(1,lo,hi,ngq,qp,upcp,auxp,alo,ahi,proc_Ma2_xhi,include_r)
           end if
        end if
 
@@ -289,9 +289,9 @@ contains
           auxp => dataptr(aux_ylo%data,n)
 
           if (dm.eq.2) then
-             call compute_aux_2d(lo,hi,ngq,qp,upcp,auxp,alo,ahi,proc_Ma2_ylo,include_r)
+             call compute_aux_2d(2,lo,hi,ngq,qp,upcp,auxp,alo,ahi,proc_Ma2_ylo,include_r)
           else
-             call compute_aux_3d(lo,hi,ngq,qp,upcp,auxp,alo,ahi,proc_Ma2_ylo,include_r)
+             call compute_aux_3d(2,lo,hi,ngq,qp,upcp,auxp,alo,ahi,proc_Ma2_ylo,include_r)
           end if
        end if
 
@@ -302,9 +302,9 @@ contains
           auxp => dataptr(aux_yhi%data,n)
 
           if (dm.eq.2) then
-             call compute_aux_2d(lo,hi,ngq,qp,upcp,auxp,alo,ahi,proc_Ma2_yhi,include_r)
+             call compute_aux_2d(2,lo,hi,ngq,qp,upcp,auxp,alo,ahi,proc_Ma2_yhi,include_r)
           else
-             call compute_aux_3d(lo,hi,ngq,qp,upcp,auxp,alo,ahi,proc_Ma2_yhi,include_r)
+             call compute_aux_3d(2,lo,hi,ngq,qp,upcp,auxp,alo,ahi,proc_Ma2_yhi,include_r)
           end if
        end if
 
@@ -315,7 +315,7 @@ contains
              
              auxp => dataptr(aux_zlo%data,n)
              
-             call compute_aux_3d(lo,hi,ngq,qp,upcp,auxp,alo,ahi,proc_Ma2_zlo,include_r)
+             call compute_aux_3d(3,lo,hi,ngq,qp,upcp,auxp,alo,ahi,proc_Ma2_zlo,include_r)
           end if
           
           if (isValid(aux_zhi,n)) then
@@ -324,7 +324,7 @@ contains
              
              auxp => dataptr(aux_zhi%data,n)
              
-             call compute_aux_3d(lo,hi,ngq,qp,upcp,auxp,alo,ahi,proc_Ma2_zhi,include_r)
+             call compute_aux_3d(3,lo,hi,ngq,qp,upcp,auxp,alo,ahi,proc_Ma2_zhi,include_r)
           end if
        end if
 
@@ -511,8 +511,8 @@ contains
   end subroutine nscbc
 
 
-  subroutine compute_aux_2d(lo,hi,ng,Q,Upc,A,alo,ahi,mach2,include_r)
-    integer, intent(in) :: ng
+  subroutine compute_aux_2d(idim,lo,hi,ng,Q,Upc,A,alo,ahi,mach2,include_r)
+    integer, intent(in) :: idim,ng
     integer, dimension(2), intent(in) :: lo, hi, alo, ahi
     double precision, intent(in ) :: Q  (  -ng+lo(1): hi(1)+ng,-ng+lo(2): hi(2)+ng,nprim)
     double precision, intent(in ) :: Upc(      lo(1): hi(1)   ,    lo(2): hi(2)   ,nspecies)
@@ -547,7 +547,7 @@ contains
           gamma = cp / cv
           cs2 = gamma*q(i,j,qpres)/q(i,j,qrho)
           
-          vel2 = q(i,j,qu)**2 + q(i,j,qv)**2
+          vel2 = q(i,j,qu+idim-1)**2
           mach2 = max(mach2, vel2/cs2)
 
           A(igamma,i,j) = gamma
@@ -569,8 +569,8 @@ contains
 
   end subroutine compute_aux_2d
 
-  subroutine compute_aux_3d(lo,hi,ng,Q,Upc,A,alo,ahi,mach2,include_r)
-    integer, intent(in) :: ng
+  subroutine compute_aux_3d(idim,lo,hi,ng,Q,Upc,A,alo,ahi,mach2,include_r)
+    integer, intent(in) :: idim,ng
     integer, dimension(3), intent(in) :: lo, hi, alo, ahi
     double precision, intent(in ) :: Q (  -ng+lo(1): hi(1)+ng,-ng+lo(2): hi(2)+ng,-ng+lo(3): hi(3)+ng,nprim)
     double precision, intent(in ) ::Upc(      lo(1): hi(1)   ,    lo(2): hi(2)   ,    lo(3): hi(3)   ,nspecies)
@@ -606,7 +606,7 @@ contains
              gamma = cp / cv
              cs2 = gamma*q(i,j,k,qpres)/q(i,j,k,qrho)
 
-             vel2 = q(i,j,k,qu)**2 + q(i,j,k,qv)**2 + q(i,j,k,qw)**2
+             vel2 = q(i,j,k,qu+idim-1)**2
              mach2 = max(mach2, vel2/cs2)
 
              A(igamma,i,j,k) = gamma
