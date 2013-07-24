@@ -300,6 +300,9 @@ mach_int                            integer            0
 # category: physics/chemistry
 #-----------------------------------------------------------------------------
 
+# Change to .true. to emulate the original LMC formulation; for 2D only
+diff_gradY                          logical            .false.
+
 # If true, reset inactive species (e.g., N2), rather than normalize diffusion flux
 reset_inactive_species              logical            .false.
 inactive_species_name               character          "N2"

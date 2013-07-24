@@ -1,6 +1,6 @@
 module kernels_2d_module
   use bc_module
-  use chemistry_module, only : nspecies, molecular_weight, Ru
+  use chemistry_module, only : nspecies, molecular_weight, inv_mwt, Ru
   use derivative_stencil_module, only : stencil_ng, first_deriv_8, first_deriv_6, &
        first_deriv_4, first_deriv_l3, first_deriv_r3, first_deriv_rb, first_deriv_lb, &
        M8, M8T, M6, M6T, M4, M4T, M2, BRB, BLB, D8, D6, D4
@@ -1117,9 +1117,9 @@ contains
   end subroutine diffterm_1
 
   
-  subroutine diffterm_2(q,qlo,qhi,rhs,rlo,rhi,mu,xi,lam,dxy, &
+  subroutine diffterm_2(q,qlo,qhi,rhs,rlo,rhi,mu,xi,lam,dxy0, &
        lo,hi,slo,shi,dlo,dhi,finlo,finhi,foulo,fouhi,physbclo,physbchi,dxinv,dx2inv)
-    use probin_module, only : reset_inactive_species
+    use probin_module, only : reset_inactive_species, diff_gradY
     integer,         intent(in):: lo(2),hi(2),slo(2),shi(2),dlo(2),dhi(2)
     integer,         intent(in):: qlo(2),qhi(2),rlo(2),rhi(2)
     logical,         intent(in):: physbclo(2),physbchi(2)
@@ -1129,25 +1129,27 @@ contains
     double precision,intent(in)   :: mu(qlo(1):qhi(1),qlo(2):qhi(2))
     double precision,intent(in)   :: xi(qlo(1):qhi(1),qlo(2):qhi(2))
     double precision,intent(in)   ::lam(qlo(1):qhi(1),qlo(2):qhi(2))
-    double precision,intent(in)   ::dxy(qlo(1):qhi(1),qlo(2):qhi(2),nspecies)
+    double precision,target,intent(in)::dxy0(qlo(1):qhi(1),qlo(2):qhi(2),nspecies)
     double precision,intent(inout)::rhs(rlo(1):rhi(1),rlo(2):rhi(2),ncons)
 
     double precision, allocatable, dimension(:,:) :: vsp, dpe
     double precision, allocatable, dimension(:,:,:) :: Hg, dpy, dxe
+    double precision, pointer :: dxy(:,:,:)
     ! dxy: diffusion coefficient of X in equation for Y
     ! dpy: diffusion coefficient of p in equation for Y
     ! dxe: diffusion coefficient of X in equation for energy
     ! dpe: diffusion coefficient of p in equation for energy
 
-    integer          :: i,j,n, qxn, qyn, qhn, iryn
+    integer          :: i,j,n, qxn, qyn, qhn, iryn, qxy1
 
     double precision :: mmtmp8(8,lo(1):hi(1)+1)
     double precision, allocatable, dimension(:,:,:) :: M8p
     double precision, allocatable, dimension(:,:) :: sumdrY, sumrYv, gradp
     double precision :: ry_c, ene_c
 
-    double precision :: hhalf, sumdrytmp, sumryvtmp, gradptmp
-    double precision :: Htot, Htmp(nspecies), Ytmp(nspecies)
+    integer :: iwrk
+    double precision :: hhalf, sumdrytmp, sumryvtmp, gradptmp, Wbar, rwrk
+    double precision :: Htot, Htmp(nspecies), Ytmp(nspecies), Xtmp(nspecies)
     double precision :: M6p(6), M6X(6), mmtmp6(6)
     double precision :: M4p(4), M4X(4), mmtmp4(4)
     double precision :: M2p(2), M2X(2), mmtmp2(2)
@@ -1158,6 +1160,15 @@ contains
 
     logical :: add_v_correction
     add_v_correction = .not. reset_inactive_species
+
+    if (diff_gradY) then  ! original LMC formulation
+       qxy1 = qy1
+       allocate(dxy(dlo(1):dhi(1),dlo(2):dhi(2),nspecies))
+       dxy = dxy0(dlo(1):dhi(1),dlo(2):dhi(2),:)
+    else                  ! Original SMC formulation (i.e., LMC w/ Wbar)
+       qxy1 = qx1
+       dxy => dxy0
+    end if
 
     allocate(vsp(dlo(1):dhi(1),dlo(2):dhi(2)))
 
@@ -1193,6 +1204,19 @@ contains
           end do
        end do
     end do
+
+    if (diff_gradY) then
+       do j=dlo(2),dhi(2)
+          do i=dlo(1),dhi(1)
+             Xtmp = q(i,j,qx1:qx1+nspecies-1)
+             call ckmmwx(Xtmp, iwrk, rwrk, Wbar)
+             do n=1,nspecies
+                dxy(i,j,n) = dxy(i,j,n) * Wbar * inv_mwt(n)
+                dxe(i,j,n) = dxe(i,j,n) * Wbar * inv_mwt(n)
+             end do
+          end do
+       end do
+    end if
 
     ! ------- BEGIN x-direction -------
 
@@ -1231,7 +1255,7 @@ contains
 
        if (n .eq. iias) cycle  ! inactive speices
 
-       qxn = qx1+n-1
+       qxn = qxy1+n-1    ! qxn might point to Y!
        iryn = iry1+n-1
 
        do j=lo(2),hi(2)   
@@ -1286,7 +1310,7 @@ contains
 
        if (n.eq.iias) cycle
 
-       qxn = qx1+n-1
+       qxn = qxy1+n-1    ! qxn might point to Y!
        do j=lo(2),hi(2)
           do i=slo(1),shi(1)
              sumryv(i,j) = sumryv(i,j) + dpy(i,j,n)*gradp(i,j)  &
@@ -1371,7 +1395,7 @@ contains
 
        if (n .eq. iias) cycle  ! inactive speices
 
-       qxn = qx1+n-1
+       qxn = qxy1+n-1    ! qxn might point to Y!
        iryn = iry1+n-1
 
        do j=slo(2),shi(2)+1
@@ -1426,7 +1450,7 @@ contains
 
        if (n.eq.iias) cycle
 
-       qxn = qx1+n-1
+       qxn = qxy1+n-1   ! qxn might point to Y!
        do j=slo(2),shi(2)
           do i=lo(1),hi(1)
              sumryv(i,j) = sumryv(i,j) + dpy(i,j,n)*gradp(i,j)  &
@@ -1496,7 +1520,7 @@ contains
           rhstot = 0.d0
           rhsene = 0.d0
           do n = 1, nspecies
-             qxn = qx1+n-1
+             qxn = qxy1+n-1
              qyn = qy1+n-1
              
              BBX = matmul(BRB, q(i:i+3,j,qxn))
@@ -1541,7 +1565,7 @@ contains
              
              Htot = 0.d0
              do n = 1, nspecies
-                qxn = qx1+n-1
+                qxn = qxy1+n-1
                 qyn = qy1+n-1
                 
                 M2X = matmul(M2, q(i-1:i,j,qxn))
@@ -1591,7 +1615,7 @@ contains
              do n = 1, nspecies
                 if (n .eq. iias) cycle  ! inactive speices
                 
-                qxn = qx1+n-1
+                qxn = qxy1+n-1
                 iryn = iry1+n-1
                 M4X = matmul(M4T, q(i-2:i+1,j,qxn))
                 Hcell(iface,iene) = Hcell(iface,iene) &
@@ -1620,7 +1644,7 @@ contains
           sumryvtmp = 0.d0
           do n = 1, nspecies
              if (n.eq.iias) cycle
-             qxn = qx1+n-1
+             qxn = qxy1+n-1
              sumryvtmp = sumryvtmp + dpy(i,j,n)*gradptmp  &
                   + dxy(i,j,n)*dxinv(1)*first_deriv_4(q(i-2:i+2,j,qxn))
           end do
@@ -1671,7 +1695,7 @@ contains
              
              do n = 1, nspecies
                 if (n .eq. iias) cycle  ! inactive speices
-                qxn = qx1+n-1
+                qxn = qxy1+n-1
                 iryn = iry1+n-1
                 M6X = matmul(M6T, q(i-3:i+2,j,qxn))
                 Hcell(iface,iene) = Hcell(iface,iene) &
@@ -1700,7 +1724,7 @@ contains
           sumryvtmp = 0.d0
           do n = 1, nspecies
              if (n.eq.iias) cycle
-             qxn = qx1+n-1
+             qxn = qxy1+n-1
              sumryvtmp = sumryvtmp + dpy(i,j,n)*gradptmp  &
                   + dxy(i,j,n)*dxinv(1)*first_deriv_6(q(i-3:i+3,j,qxn))
           end do
@@ -1759,7 +1783,7 @@ contains
              
              do n = 1, nspecies
                 if (n .eq. iias) cycle  ! inactive speices
-                qxn = qx1+n-1
+                qxn = qxy1+n-1
                 iryn = iry1+n-1
                 M6X = matmul(M6T, q(i-3:i+2,j,qxn))
                 Hcell(iface,iene) = Hcell(iface,iene) &
@@ -1788,7 +1812,7 @@ contains
           sumryvtmp = 0.d0
           do n = 1, nspecies
              if (n.eq.iias) cycle
-             qxn = qx1+n-1
+             qxn = qxy1+n-1
              sumryvtmp = sumryvtmp + dpy(i,j,n)*gradptmp  &
                   + dxy(i,j,n)*dxinv(1)*first_deriv_6(q(i-3:i+3,j,qxn))
           end do
@@ -1839,7 +1863,7 @@ contains
              
              do n = 1, nspecies
                 if (n .eq. iias) cycle  ! inactive speices
-                qxn = qx1+n-1
+                qxn = qxy1+n-1
                 iryn = iry1+n-1
                 
                 M4X = matmul(M4T, q(i-2:i+1,j,qxn))
@@ -1869,7 +1893,7 @@ contains
           sumryvtmp = 0.d0
           do n = 1, nspecies
              if (n.eq.iias) cycle
-             qxn = qx1+n-1
+             qxn = qxy1+n-1
              sumryvtmp = sumryvtmp + dpy(i,j,n)*gradptmp  &
                   + dxy(i,j,n)*dxinv(1)*first_deriv_4(q(i-2:i+2,j,qxn))
           end do
@@ -1920,7 +1944,7 @@ contains
              
              Htot = 0.d0
              do n = 1, nspecies
-                qxn = qx1+n-1
+                qxn = qxy1+n-1
                 qyn = qy1+n-1
                 
                 M2X = matmul(M2, q(i-1:i,j,qxn))
@@ -1969,7 +1993,7 @@ contains
           rhstot = 0.d0
           rhsene = 0.d0
           do n = 1, nspecies
-             qxn = qx1+n-1
+             qxn = qxy1+n-1
              qyn = qy1+n-1
              
              BBX = matmul(BLB, q(i-3:i,j,qxn))
@@ -2021,7 +2045,7 @@ contains
           rhstot = 0.d0
           rhsene = 0.d0
           do n = 1, nspecies
-             qxn = qx1+n-1
+             qxn = qxy1+n-1
              qyn = qy1+n-1
              
              BBX = matmul(BRB, q(i,j:j+3,qxn))
@@ -2067,7 +2091,7 @@ contains
              
              Htot = 0.d0
              do n = 1, nspecies
-                qxn = qx1+n-1
+                qxn = qxy1+n-1
                 qyn = qy1+n-1
                 
                 M2X = matmul(M2, q(i,j-1:j,qxn))
@@ -2119,7 +2143,7 @@ contains
              do n = 1, nspecies
                 if (n .eq. iias) cycle  ! inactive speices
                 
-                qxn = qx1+n-1
+                qxn = qxy1+n-1
                 iryn = iry1+n-1
                 M4X = matmul(M4T, q(i,j-2:j+1,qxn))
                 Hcell(iface,iene) = Hcell(iface,iene) &
@@ -2148,7 +2172,7 @@ contains
           sumryvtmp = 0.d0
           do n = 1, nspecies
              if (n.eq.iias) cycle
-             qxn = qx1+n-1
+             qxn = qxy1+n-1
              sumryvtmp = sumryvtmp + dpy(i,j,n)*gradptmp  &
                   + dxy(i,j,n)*dxinv(2)*first_deriv_4(q(i,j-2:j+2,qxn))
           end do
@@ -2201,7 +2225,7 @@ contains
              
              do n = 1, nspecies
                 if (n .eq. iias) cycle  ! inactive speices
-                qxn = qx1+n-1
+                qxn = qxy1+n-1
                 iryn = iry1+n-1
                 M6X = matmul(M6T, q(i,j-3:j+2,qxn))
                 Hcell(iface,iene) = Hcell(iface,iene) &
@@ -2230,7 +2254,7 @@ contains
           sumryvtmp = 0.d0
           do n = 1, nspecies
              if (n.eq.iias) cycle
-             qxn = qx1+n-1
+             qxn = qxy1+n-1
              sumryvtmp = sumryvtmp + dpy(i,j,n)*gradptmp  &
                   + dxy(i,j,n)*dxinv(2)*first_deriv_6(q(i,j-3:j+3,qxn))
           end do
@@ -2288,7 +2312,7 @@ contains
              
              do n = 1, nspecies
                 if (n .eq. iias) cycle  ! inactive speices
-                qxn = qx1+n-1
+                qxn = qxy1+n-1
                 iryn = iry1+n-1
                 M6X = matmul(M6T, q(i,j-3:j+2,qxn))
                 Hcell(iface,iene) = Hcell(iface,iene) &
@@ -2317,7 +2341,7 @@ contains
           sumryvtmp = 0.d0
           do n = 1, nspecies
              if (n.eq.iias) cycle
-             qxn = qx1+n-1
+             qxn = qxy1+n-1
              sumryvtmp = sumryvtmp + dpy(i,j,n)*gradptmp  &
                   + dxy(i,j,n)*dxinv(2)*first_deriv_6(q(i,j-3:j+3,qxn))
           end do
@@ -2371,7 +2395,7 @@ contains
              do n = 1, nspecies
                 if (n .eq. iias) cycle  ! inactive speices
                 
-                qxn = qx1+n-1
+                qxn = qxy1+n-1
                 iryn = iry1+n-1
                 M4X = matmul(M4T, q(i,j-2:j+1,qxn))
                 Hcell(iface,iene) = Hcell(iface,iene) &
@@ -2400,7 +2424,7 @@ contains
           sumryvtmp = 0.d0
           do n = 1, nspecies
              if (n.eq.iias) cycle
-             qxn = qx1+n-1
+             qxn = qxy1+n-1
              sumryvtmp = sumryvtmp + dpy(i,j,n)*gradptmp  &
                   + dxy(i,j,n)*dxinv(2)*first_deriv_4(q(i,j-2:j+2,qxn))
           end do
@@ -2453,7 +2477,7 @@ contains
              
              Htot = 0.d0
              do n = 1, nspecies
-                qxn = qx1+n-1
+                qxn = qxy1+n-1
                 qyn = qy1+n-1
                 
                 M2X = matmul(M2, q(i,j-1:j,qxn))
@@ -2505,7 +2529,7 @@ contains
           rhstot = 0.d0
           rhsene = 0.d0
           do n = 1, nspecies
-             qxn = qx1+n-1
+             qxn = qxy1+n-1
              qyn = qy1+n-1
              
              BBX = matmul(BLB, q(i,j-3:j,qxn))
@@ -2546,6 +2570,12 @@ contains
 
     deallocate(Hg,dpy,dxe,dpe,vsp,M8p)
     deallocate(sumdrY,sumryv,gradp)
+
+    if (diff_gradY) then
+       deallocate(dxy)
+    else
+       nullify(dxy)
+    end if
 
   end subroutine diffterm_2
 
