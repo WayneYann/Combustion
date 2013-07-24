@@ -84,10 +84,6 @@
           S_p = gam1 * S_p
           d_p = gam1 * d_p 
 
-          ! S_Y seems to cause instabilities
-          ! So set it to zero for now
-          S_Y = 0.d0
-          
           L(5) = L(5) + 0.5d0*(S_p + d_p + rho*aux(ics,i,k)*d_v)
 
           if (v > 0.d0) then
@@ -204,10 +200,6 @@
           S_p = gam1 * S_p
           d_p = gam1 * d_p 
 
-          ! S_Y seems to cause instabilities
-          ! So set it to zero for now
-          S_Y = 0.d0
-          
           L(2)  = L(2)  - (d_p + S_p) / cs2
           L(3)  = L(3)  + d_u
           L(4)  = L(4)  + d_w
@@ -310,10 +302,6 @@
           S_p = gam1 * S_p
           d_p = gam1 * d_p 
 
-          ! S_Y seems to cause instabilities
-          ! So set it to zero for now
-          S_Y = 0.d0
-          
           L(1) = L(1) + 0.5d0*(S_p + d_p - rho*aux(ics,i,k)*d_v)
           
           if (v < 0.d0) then
@@ -844,10 +832,6 @@
        S_p = gam1 * S_p
        d_p = gam1 * d_p 
 
-       ! S_Y seems to cause instabilities
-       ! So set it to zero for now
-       S_Y = 0.d0
-       
        L(4) = L(4) + 0.5d0*(S_p + d_p + rho*aux(ics,i)*d_v)
 
        if (v > 0.d0) then
@@ -954,10 +938,6 @@
        S_p = gam1 * S_p
        d_p = gam1 * d_p 
 
-       ! S_Y seems to cause instabilities
-       ! So set it to zero for now
-       S_Y = 0.d0
-       
        L(2)  = L(2)  - (d_p + S_p) / cs2
        L(3)  = L(3)  + d_u
        L(4)  = L(4)  + 0.5d0*(S_p + d_p + rho*aux(ics,i)*d_v)
@@ -1052,10 +1032,6 @@
        S_p = gam1 * S_p
        d_p = gam1 * d_p 
 
-       ! S_Y seems to cause instabilities
-       ! So set it to zero for now
-       S_Y = 0.d0
-       
        L(1) = L(1) + 0.5d0*(S_p + d_p - rho*aux(ics,i)*d_v)
           
        if (v < 0.d0) then
