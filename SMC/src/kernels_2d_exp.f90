@@ -1759,7 +1759,7 @@ contains
 
     do j=lo(2),hi(2)
        do i=slo(1),shi(1)+1
-!EXPAND          mmtmp8(1:8,i) = matmul(M8T,  q(i-4:i+3,j,qpres))
+!EXPAND          mmtmp8(1:8,i) = matmul(M8, q(i-4:i+3,j,qpres))
           mmtmp8(1,i) = M8T(1,1) * q(i-4,j,qpres) &
                       + M8T(2,1) * q(i-3,j,qpres) &
                       + M8T(3,1) * q(i-2,j,qpres) &
@@ -1844,7 +1844,7 @@ contains
 
        do j=lo(2),hi(2)   
           do i=slo(1),shi(1)+1
-!EXPAND             mmtmp8(1:8,i) = matmul(M8T, q(i-4:i+3,j,qxn))
+!EXPAND             mmtmp8(1:8,i) = matmul(M8, q(i-4:i+3,j,qxn))
              mmtmp8(1,i) = M8T(1,1) * q(i-4,j,qxn) &
                          + M8T(2,1) * q(i-3,j,qxn) &
                          + M8T(3,1) * q(i-2,j,qxn) &
@@ -2219,7 +2219,7 @@ contains
     
     do j=slo(2),shi(2)+1
        do i=lo(1),hi(1)
-!EXPAND          mmtmp8(1:8,i) = matmul(M8T, q(i,j-4:j+3,qpres))
+!EXPAND          mmtmp8(1:8,i) = matmul(M8, q(i,j-4:j+3,qpres))
           mmtmp8(1,i) = M8T(1,1) * q(i,j-4,qpres) &
                       + M8T(2,1) * q(i,j-3,qpres) &
                       + M8T(3,1) * q(i,j-2,qpres) &
@@ -2304,7 +2304,7 @@ contains
 
        do j=slo(2),shi(2)+1
           do i=lo(1),hi(1)
-!EXPAND             mmtmp8(1:8,i) = matmul(M8T, q(i,j-4:j+3,qxn))
+!EXPAND             mmtmp8(1:8,i) = matmul(M8, q(i,j-4:j+3,qxn))
              mmtmp8(1,i) = M8T(1,1) * q(i,j-4,qxn) &
                          + M8T(2,1) * q(i,j-3,qxn) &
                          + M8T(3,1) * q(i,j-2,qxn) &
@@ -2672,7 +2672,7 @@ contains
              mmtmp4(4) = lam(i-1,j) * M4(2,4) &
                        + lam(i  ,j) * M4(3,4) &
                        + lam(i+1,j) * M4(4,4)
-!EXPAND             M4p = matmul(M4T,  q(i-2:i+1,j,qpres))
+!EXPAND             M4p = matmul(M4,  q(i-2:i+1,j,qpres))
              M4p(1) = M4T(1,1) * q(i-2,j,qpres) &
                     + M4T(2,1) * q(i-1,j,qpres) &
                     + M4T(3,1) * q(i  ,j,qpres)
@@ -2700,7 +2700,7 @@ contains
                 
                 qxn = qxy1+n-1
                 iryn = iry1+n-1
-!EXPAND                M4X = matmul(M4T, q(i-2:i+1,j,qxn))
+!EXPAND                M4X = matmul(M4, q(i-2:i+1,j,qxn))
                 M4X(1) = M4T(1,1) * q(i-2,j,qxn) &
                        + M4T(2,1) * q(i-1,j,qxn) &
                        + M4T(3,1) * q(i  ,j,qxn)
@@ -2907,7 +2907,7 @@ contains
                        + lam(i  ,j) * M6(4,6) &
                        + lam(i+1,j) * M6(5,6) &
                        + lam(i+2,j) * M6(6,6)
-!EXPAND             M6p = matmul(M6T,  q(i-3:i+2,j,qpres))
+!EXPAND             M6p = matmul(M6,  q(i-3:i+2,j,qpres))
              M6p(1) = M6T(1,1) * q(i-3,j,qpres) &
                     + M6T(2,1) * q(i-2,j,qpres) &
                     + M6T(3,1) * q(i-1,j,qpres) &
@@ -2952,7 +2952,7 @@ contains
                 if (n .eq. iias) cycle  ! inactive speices
                 qxn = qxy1+n-1
                 iryn = iry1+n-1
-!EXPAND                M6X = matmul(M6T, q(i-3:i+2,j,qxn))
+!EXPAND                M6X = matmul(M6, q(i-3:i+2,j,qxn))
                 M6X(1) = M6T(1,1) * q(i-3,j,qxn) &
                        + M6T(2,1) * q(i-2,j,qxn) &
                        + M6T(3,1) * q(i-1,j,qxn) &
@@ -3191,7 +3191,7 @@ contains
                        + lam(i  ,j) * M6(4,6) &
                        + lam(i+1,j) * M6(5,6) &
                        + lam(i+2,j) * M6(6,6)
-!EXPAND             M6p = matmul(M6T,  q(i-3:i+2,j,qpres))
+!EXPAND             M6p = matmul(M6,  q(i-3:i+2,j,qpres))
              M6p(1) = M6T(1,1) * q(i-3,j,qpres) &
                     + M6T(2,1) * q(i-2,j,qpres) &
                     + M6T(3,1) * q(i-1,j,qpres) &
@@ -3236,7 +3236,7 @@ contains
                 if (n .eq. iias) cycle  ! inactive speices
                 qxn = qxy1+n-1
                 iryn = iry1+n-1
-!EXPAND                M6X = matmul(M6T, q(i-3:i+2,j,qxn))
+!EXPAND                M6X = matmul(M6, q(i-3:i+2,j,qxn))
                 M6X(1) = M6T(1,1) * q(i-3,j,qxn) &
                        + M6T(2,1) * q(i-2,j,qxn) &
                        + M6T(3,1) * q(i-1,j,qxn) &
@@ -3417,7 +3417,7 @@ contains
              mmtmp4(4) = lam(i-1,j) * M4(2,4) &
                        + lam(i  ,j) * M4(3,4) &
                        + lam(i+1,j) * M4(4,4)
-!EXPAND             M4p = matmul(M4T,  q(i-2:i+1,j,qpres))
+!EXPAND             M4p = matmul(M4,  q(i-2:i+1,j,qpres))
              M4p(1) = M4T(1,1) * q(i-2,j,qpres) &
                     + M4T(2,1) * q(i-1,j,qpres) &
                     + M4T(3,1) * q(i  ,j,qpres)
@@ -3445,7 +3445,7 @@ contains
                 qxn = qxy1+n-1
                 iryn = iry1+n-1
                 
-!EXPAND                M4X = matmul(M4T, q(i-2:i+1,j,qxn))
+!EXPAND                M4X = matmul(M4, q(i-2:i+1,j,qxn))
                 M4X(1) = M4T(1,1) * q(i-2,j,qxn) &
                        + M4T(2,1) * q(i-1,j,qxn) &
                        + M4T(3,1) * q(i  ,j,qxn)
@@ -3862,7 +3862,7 @@ contains
              mmtmp4(4) = lam(i,j-1) * M4(2,4) &
                        + lam(i,j  ) * M4(3,4) &
                        + lam(i,j+1) * M4(4,4)
-!EXPAND             M4p = matmul(M4T,  q(i,j-2:j+1,qpres))
+!EXPAND             M4p = matmul(M4,  q(i,j-2:j+1,qpres))
              M4p(1) = M4T(1,1) * q(i,j-2,qpres) &
                     + M4T(2,1) * q(i,j-1,qpres) &
                     + M4T(3,1) * q(i,j  ,qpres)
@@ -3890,7 +3890,7 @@ contains
                 
                 qxn = qxy1+n-1
                 iryn = iry1+n-1
-!EXPAND                M4X = matmul(M4T, q(i,j-2:j+1,qxn))
+!EXPAND                M4X = matmul(M4, q(i,j-2:j+1,qxn))
                 M4X(1) = M4T(1,1) * q(i,j-2,qxn) &
                        + M4T(2,1) * q(i,j-1,qxn) &
                        + M4T(3,1) * q(i,j  ,qxn)
@@ -4099,7 +4099,7 @@ contains
                        + lam(i,j  ) * M6(4,6) &
                        + lam(i,j+1) * M6(5,6) &
                        + lam(i,j+2) * M6(6,6)
-!EXPAND             M6p = matmul(M6T,  q(i,j-3:j+2,qpres))
+!EXPAND             M6p = matmul(M6,  q(i,j-3:j+2,qpres))
              M6p(1) = M6T(1,1) * q(i,j-3,qpres) &
                     + M6T(2,1) * q(i,j-2,qpres) &
                     + M6T(3,1) * q(i,j-1,qpres) &
@@ -4144,7 +4144,7 @@ contains
                 if (n .eq. iias) cycle  ! inactive speices
                 qxn = qxy1+n-1
                 iryn = iry1+n-1
-!EXPAND                M6X = matmul(M6T, q(i,j-3:j+2,qxn))
+!EXPAND                M6X = matmul(M6, q(i,j-3:j+2,qxn))
                 M6X(1) = M6T(1,1) * q(i,j-3,qxn) &
                        + M6T(2,1) * q(i,j-2,qxn) &
                        + M6T(3,1) * q(i,j-1,qxn) &
@@ -4382,7 +4382,7 @@ contains
                        + lam(i,j  ) * M6(4,6) &
                        + lam(i,j+1) * M6(5,6) &
                        + lam(i,j+2) * M6(6,6)
-!EXPAND             M6p = matmul(M6T,  q(i,j-3:j+2,qpres))
+!EXPAND             M6p = matmul(M6,  q(i,j-3:j+2,qpres))
              M6p(1) = M6T(1,1) * q(i,j-3,qpres) &
                     + M6T(2,1) * q(i,j-2,qpres) &
                     + M6T(3,1) * q(i,j-1,qpres) &
@@ -4427,7 +4427,7 @@ contains
                 if (n .eq. iias) cycle  ! inactive speices
                 qxn = qxy1+n-1
                 iryn = iry1+n-1
-!EXPAND                M6X = matmul(M6T, q(i,j-3:j+2,qxn))
+!EXPAND                M6X = matmul(M6, q(i,j-3:j+2,qxn))
                 M6X(1) = M6T(1,1) * q(i,j-3,qxn) &
                        + M6T(2,1) * q(i,j-2,qxn) &
                        + M6T(3,1) * q(i,j-1,qxn) &
@@ -4610,7 +4610,7 @@ contains
              mmtmp4(4) = lam(i,j-1) * M4(2,4) &
                        + lam(i,j  ) * M4(3,4) &
                        + lam(i,j+1) * M4(4,4)
-!EXPAND             M4p = matmul(M4T,  q(i,j-2:j+1,qpres))
+!EXPAND             M4p = matmul(M4,  q(i,j-2:j+1,qpres))
              M4p(1) = M4T(1,1) * q(i,j-2,qpres) &
                     + M4T(2,1) * q(i,j-1,qpres) &
                     + M4T(3,1) * q(i,j  ,qpres)
@@ -4638,7 +4638,7 @@ contains
                 
                 qxn = qxy1+n-1
                 iryn = iry1+n-1
-!EXPAND                M4X = matmul(M4T, q(i,j-2:j+1,qxn))
+!EXPAND                M4X = matmul(M4, q(i,j-2:j+1,qxn))
                 M4X(1) = M4T(1,1) * q(i,j-2,qxn) &
                        + M4T(2,1) * q(i,j-1,qxn) &
                        + M4T(3,1) * q(i,j  ,qxn)

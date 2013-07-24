@@ -1033,7 +1033,7 @@ contains
                 + q(i  ,j,k,qtemp)*mmtmp(5) + q(i+1,j,k,qtemp)*mmtmp(6) &
                 + q(i+2,j,k,qtemp)*mmtmp(7) + q(i+3,j,k,qtemp)*mmtmp(8) )
 
-!EXPAND             mmtmp = matmul(M8T, q(i-4:i+3,j,k,qpres))
+!EXPAND             mmtmp = matmul(M8, q(i-4:i+3,j,k,qpres))
              mmtmp(1) = M8T(1,1) * q(i-4,j,k,qpres) &
                       + M8T(2,1) * q(i-3,j,k,qpres) &
                       + M8T(3,1) * q(i-2,j,k,qpres) &
@@ -1114,7 +1114,7 @@ contains
              end do
     
              do i=lo(1),hi(1)+1
-!EXPAND                mmtmp = matmul(M8T, q(i-4:i+3,j,k,qxn))
+!EXPAND                mmtmp = matmul(M8, q(i-4:i+3,j,k,qxn))
                 mmtmp(1) = M8T(1,1) * q(i-4,j,k,qxn) &
                          + M8T(2,1) * q(i-3,j,k,qxn) &
                          + M8T(3,1) * q(i-2,j,k,qxn) &
@@ -1438,7 +1438,7 @@ contains
           end do
 
           do i=lo(1),hi(1)
-!EXPAND             mmtmp = matmul(M8T, q(i,j-4:j+3,k,qpres))
+!EXPAND             mmtmp = matmul(M8, q(i,j-4:j+3,k,qpres))
              mmtmp(1) = M8T(1,1) * q(i,j-4,k,qpres) &
                       + M8T(2,1) * q(i,j-3,k,qpres) &
                       + M8T(3,1) * q(i,j-2,k,qpres) &
@@ -1521,7 +1521,7 @@ contains
              end do
 
              do i=lo(1),hi(1)
-!EXPAND                mmtmp = matmul(M8T, q(i,j-4:j+3,k,qxn))
+!EXPAND                mmtmp = matmul(M8, q(i,j-4:j+3,k,qxn))
                 mmtmp(1) = M8T(1,1) * q(i,j-4,k,qxn) &
                          + M8T(2,1) * q(i,j-3,k,qxn) &
                          + M8T(3,1) * q(i,j-2,k,qxn) &
@@ -1862,7 +1862,7 @@ contains
     do k=lo(3),hi(3)+1
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
-!EXPAND             mmtmp = matmul(M8T, q(i,j,k-4:k+3,qpres))
+!EXPAND             mmtmp = matmul(M8, q(i,j,k-4:k+3,qpres))
              mmtmp(1) = M8T(1,1) * q(i,j,k-4,qpres) &
                       + M8T(2,1) * q(i,j,k-3,qpres) &
                       + M8T(3,1) * q(i,j,k-2,qpres) &
@@ -1954,7 +1954,7 @@ contains
 !          do j=lo(2),hi(2)
           do j=jj,min(jj+jblocksize-1,hi(2))
              do i=lo(1),hi(1)
-!EXPAND                mmtmp = matmul(M8T, q(i,j,k-4:k+3,qxn))
+!EXPAND                mmtmp = matmul(M8, q(i,j,k-4:k+3,qxn))
                 mmtmp(1) = M8T(1,1) * q(i,j,k-4,qxn) &
                          + M8T(2,1) * q(i,j,k-3,qxn) &
                          + M8T(3,1) * q(i,j,k-2,qxn) &

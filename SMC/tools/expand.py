@@ -81,19 +81,20 @@ def expand_line(line):
     else:
         return ''
 
-def expand_matmul(line):
-    if re.compile(r"matmul\s*\(.*M8T.*\)").search(line):
-        return expand_matmul_8T(line)
-    elif re.compile(r"matmul\s*\(.*M8.*\)").search(line):
-        return expand_matmul_8(line)
-    elif re.compile(r"matmul\s*\(.*M6T.*\)").search(line):
-        return expand_matmul_6T(line)
-    elif re.compile(r"matmul\s*\(.*M6.*\)").search(line):
-        return expand_matmul_6(line)
-    elif re.compile(r"matmul\s*\(.*M4T.*\)").search(line):
-        return expand_matmul_4T(line)
-    elif re.compile(r"matmul\s*\(.*M4.*\)").search(line):
-        return expand_matmul_4(line)
+def expand_matmul(line0):
+    line = line0.strip(' \t')
+    if re.compile(r"matmul\s*\(M8.*\)").search(line):
+        return expand_matmul_8T(line0)
+    elif re.compile(r"matmul\s*\(.*M8\)").search(line):
+        return expand_matmul_8(line0)
+    elif re.compile(r"matmul\s*\(M6.*\)").search(line):
+        return expand_matmul_6T(line0)
+    elif re.compile(r"matmul\s*\(.*M6\)").search(line):
+        return expand_matmul_6(line0)
+    elif re.compile(r"matmul\s*\(M4.*\)").search(line):
+        return expand_matmul_4T(line0)
+    elif re.compile(r"matmul\s*\(.*M4\)").search(line):
+        return expand_matmul_4(line0)
     else:
         return ''
 
@@ -206,7 +207,7 @@ def expand_matmul_8(line):
 
 
 def expand_matmul_8T(line):
-    # expand lhs = matmul(M8T, u( .... ))
+    # expand lhs = matmul(M8, u( .... ))
     lhs, rhs = line.split('=')
 
     lhs = lhs.strip(' \t')
@@ -217,7 +218,7 @@ def expand_matmul_8T(line):
     elif lhs.count(',') == 1:
         lhsdim = 2
     else:
-        print 'expand_matmul_8', lhs
+        print 'expand_matmul_8T', lhs
         sys.exit(2)
     if lhsdim == 1:
         moreindent = indent+'   '
@@ -234,9 +235,9 @@ def expand_matmul_8T(line):
 
     rhs = rhs.strip(' \t\n\r')
     args = rhs[7:-1].replace(' ','')  # 7 comes form 'matmul('
-    if args[0:3] == 'M8T':  
-        # M8T,u(,,,)
-        x = args[4:]
+    if args[0:3] == 'M8,':  
+        # M8,u(,,,)
+        x = args[3:]
         u = expand_fortran_slice(x)
         return indent+lhs+'(1'+ld2+' = '+'M8T(1,1) * '+u[0]+' &\n' + \
                      moreindent + ' + ' +'M8T(2,1) * '+u[1]+' &\n' + \
@@ -348,7 +349,7 @@ def expand_matmul_6(line):
 
 
 def expand_matmul_6T(line):
-    # expand lhs = matmul(M6T, u( .... ))
+    # expand lhs = matmul(M6, u( .... ))
     lhs, rhs = line.split('=')
 
     lhs = lhs.strip(' \t')
@@ -360,9 +361,9 @@ def expand_matmul_6T(line):
 
     rhs = rhs.strip(' \t\n\r')
     args = rhs[7:-1].replace(' ','')  # 7 comes form 'matmul('
-    if args[0:3] == 'M6T':  
-        # M6T,u(,,,)
-        x = args[4:]
+    if args[0:3] == 'M6,':  
+        # M6,u(,,,)
+        x = args[3:]
         u = expand_fortran_slice(x)
         return indent+lhs+'(1) = '+'M6T(1,1) * '+u[0]+' &\n' + \
                moreindent + ' + ' +'M6T(2,1) * '+u[1]+' &\n' + \
@@ -436,7 +437,7 @@ def expand_matmul_4(line):
 
 
 def expand_matmul_4T(line):
-    # expand lhs = matmul(M4T, u( .... ))
+    # expand lhs = matmul(M4, u( .... ))
     lhs, rhs = line.split('=')
 
     lhs = lhs.strip(' \t')
@@ -448,9 +449,9 @@ def expand_matmul_4T(line):
 
     rhs = rhs.strip(' \t\n\r')
     args = rhs[7:-1].replace(' ','')  # 7 comes form 'matmul('
-    if args[0:3] == 'M4T':  
-        # M4T,u(,,,)
-        x = args[4:]
+    if args[0:3] == 'M4,':  
+        # M4,u(,,,)
+        x = args[3:]
         u = expand_fortran_slice(x)
         return indent+lhs+'(1) = '+'M4T(1,1) * '+u[0]+' &\n' + \
                moreindent + ' + ' +'M4T(2,1) * '+u[1]+' &\n' + \

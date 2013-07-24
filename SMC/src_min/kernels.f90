@@ -674,7 +674,7 @@ contains
              mmtmp = matmul(lam(i-4:i+3,j,k), M8)
              Hg(i,j,k,iene) = dot_product(mmtmp, q(i-4:i+3,j,k,qtemp))
 
-             mmtmp = matmul(M8T, q(i-4:i+3,j,k,qpres))
+             mmtmp = matmul(M8, q(i-4:i+3,j,k,qpres))
              Hg(i,j,k,iene) = Hg(i,j,k,iene) + dot_product(dpe(i-4:i+3,j,k), mmtmp)
              M8p(:,i,j,k) = mmtmp
           end do
@@ -693,7 +693,7 @@ contains
              end do
     
              do i=lo(1),hi(1)+1
-                mmtmp = matmul(M8T, q(i-4:i+3,j,k,qxn))
+                mmtmp = matmul(M8, q(i-4:i+3,j,k,qxn))
                 Hg(i,j,k,iene) = Hg(i,j,k,iene) + dot_product(dxe(i-4:i+3,j,k,n), mmtmp)
                 Hg(i,j,k,iry1+n-1) = Hg(i,j,k,iry1+n-1) &
                      + dot_product(dxy(i-4:i+3,j,k,n), mmtmp)
@@ -779,7 +779,7 @@ contains
           end do
 
           do i=lo(1),hi(1)
-             mmtmp = matmul(M8T, q(i,j-4:j+3,k,qpres))
+             mmtmp = matmul(M8, q(i,j-4:j+3,k,qpres))
              M8p(:,i,j,k) = mmtmp
              Hg(i,j,k,iene) = Hg(i,j,k,iene) + dot_product(dpe(i,j-4:j+3,k), mmtmp)
           end do
@@ -800,7 +800,7 @@ contains
              end do
 
              do i=lo(1),hi(1)
-                mmtmp = matmul(M8T, q(i,j-4:j+3,k,qxn))
+                mmtmp = matmul(M8, q(i,j-4:j+3,k,qxn))
                 Hg(i,j,k,iene) = Hg(i,j,k,iene) + dot_product(dxe(i,j-4:j+3,k,n), mmtmp)
                 Hg(i,j,k,iry1+n-1) = Hg(i,j,k,iry1+n-1) &
                      + dot_product(dxy(i,j-4:j+3,k,n), mmtmp)
@@ -903,7 +903,7 @@ contains
     do k=lo(3),hi(3)+1
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
-             mmtmp = matmul(M8T, q(i,j,k-4:k+3,qpres))
+             mmtmp = matmul(M8, q(i,j,k-4:k+3,qpres))
              M8p(:,i,j,k) = mmtmp
              Hg(i,j,k,iene) = Hg(i,j,k,iene) + dot_product(dpe(i,j,k-4:k+3), mmtmp)
           end do
@@ -933,7 +933,7 @@ contains
 !          do j=lo(2),hi(2)
           do j=jj,min(jj+jblocksize-1,hi(2))
              do i=lo(1),hi(1)
-                mmtmp = matmul(M8T, q(i,j,k-4:k+3,qxn))
+                mmtmp = matmul(M8, q(i,j,k-4:k+3,qxn))
                 Hg(i,j,k,iene) = Hg(i,j,k,iene) + dot_product(dxe(i,j,k-4:k+3,n), mmtmp)
                 Hg(i,j,k,iry1+n-1) = Hg(i,j,k,iry1+n-1) &
                      + dot_product(dxy(i,j,k-4:k+3,n), mmtmp)

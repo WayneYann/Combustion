@@ -2204,7 +2204,7 @@ contains
     do k=lo(3),hi(3)
        do j=lo(2),hi(2)
           do i=slo(1),shi(1)+1
-             mmtmp8(1:8,i) = matmul(M8T,  q(i-4:i+3,j,k,qpres))
+             mmtmp8(1:8,i) = matmul(M8,  q(i-4:i+3,j,k,qpres))
              Hg(i,j,k,iene) = Hg(i,j,k,iene) + dot_product(dpe(i-4:i+3,j,k), mmtmp8(1:8,i))
           end do
           do i=slo(1),shi(1)+1
@@ -2231,7 +2231,7 @@ contains
        do k=lo(3),hi(3)
           do j=lo(2),hi(2)   
              do i=slo(1),shi(1)+1
-                mmtmp8(1:8,i) = matmul(M8T, q(i-4:i+3,j,k,qxn))
+                mmtmp8(1:8,i) = matmul(M8, q(i-4:i+3,j,k,qxn))
                 Hg(i,j,k,iene) = Hg(i,j,k,iene) + dot_product(dxe(i-4:i+3,j,k,n), mmtmp8(1:8,i))
                 Hg(i,j,k,iryn) = Hg(i,j,k,iryn) &
                      + dot_product(dxy(i-4:i+3,j,k,n), mmtmp8(1:8,i))
@@ -2369,7 +2369,7 @@ contains
     do k=lo(3),hi(3)
        do j=slo(2),shi(2)+1
           do i=lo(1),hi(1)
-             mmtmp8(1:8,i) = matmul(M8T, q(i,j-4:j+3,k,qpres))
+             mmtmp8(1:8,i) = matmul(M8, q(i,j-4:j+3,k,qpres))
              Hg(i,j,k,iene) = Hg(i,j,k,iene) + dot_product(dpe(i,j-4:j+3,k), mmtmp8(1:8,i))
           end do
           do i=lo(1),hi(1)
@@ -2396,7 +2396,7 @@ contains
        do k=lo(3),hi(3)
           do j=slo(2),shi(2)+1
              do i=lo(1),hi(1)
-                mmtmp8(1:8,i) = matmul(M8T, q(i,j-4:j+3,k,qxn))
+                mmtmp8(1:8,i) = matmul(M8, q(i,j-4:j+3,k,qxn))
                 Hg(i,j,k,iene) = Hg(i,j,k,iene) + dot_product(dxe(i,j-4:j+3,k,n), mmtmp8(1:8,i))
                 Hg(i,j,k,iryn) = Hg(i,j,k,iryn) &
                      + dot_product(dxy(i,j-4:j+3,k,n), mmtmp8(1:8,i))
@@ -2534,7 +2534,7 @@ contains
     do k=slo(3),shi(3)+1
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
-             mmtmp8(1:8,i) = matmul(M8T, q(i,j,k-4:k+3,qpres))
+             mmtmp8(1:8,i) = matmul(M8, q(i,j,k-4:k+3,qpres))
              Hg(i,j,k,iene) = Hg(i,j,k,iene) + dot_product(dpe(i,j,k-4:k+3), mmtmp8(1:8,i))
           end do
           do i=lo(1),hi(1)
@@ -2561,7 +2561,7 @@ contains
        do k=slo(3),shi(3)+1
           do j=lo(2),hi(2)
              do i=lo(1),hi(1)
-                mmtmp8(1:8,i) = matmul(M8T, q(i,j,k-4:k+3,qxn))
+                mmtmp8(1:8,i) = matmul(M8, q(i,j,k-4:k+3,qxn))
                 Hg(i,j,k,iene) = Hg(i,j,k,iene) + dot_product(dxe(i,j,k-4:k+3,n), mmtmp8(1:8,i))
                 Hg(i,j,k,iryn) = Hg(i,j,k,iryn) &
                      + dot_product(dxy(i,j,k-4:k+3,n), mmtmp8(1:8,i))
@@ -2780,7 +2780,7 @@ contains
                 Hcell(iface,imz) = dot_product(mmtmp4, q(i-2:i+1,j,k,qw))
 
                 mmtmp4 = matmul(lam(i-2:i+1,j,k), M4)
-                M4p = matmul(M4T,  q(i-2:i+1,j,k,qpres))
+                M4p = matmul(M4,  q(i-2:i+1,j,k,qpres))
                 Hcell(iface,iene) = dot_product(mmtmp4, q(i-2:i+1,j,k,qtemp))      &
                      &            + dot_product(      dpe(i-2:i+1,j,k), M4p)
 
@@ -2789,7 +2789,7 @@ contains
                    
                    qxn = qx1+n-1
                    iryn = iry1+n-1
-                   M4X = matmul(M4T, q(i-2:i+1,j,k,qxn))
+                   M4X = matmul(M4, q(i-2:i+1,j,k,qxn))
                    Hcell(iface,iene) = Hcell(iface,iene) &
                         +    dot_product(dxe(i-2:i+1,j,k,n), M4X)
                    Hcell(iface,iryn) = dot_product(dpy(i-2:i+1,j,k,n), M4p) &
@@ -2862,7 +2862,7 @@ contains
                 Hcell(iface,imz) = dot_product(mmtmp6, q(i-3:i+2,j,k,qw))
 
                 mmtmp6 = matmul(lam(i-3:i+2,j,k), M6)
-                M6p = matmul(M6T,  q(i-3:i+2,j,k,qpres))
+                M6p = matmul(M6,  q(i-3:i+2,j,k,qpres))
                 Hcell(iface,iene) = dot_product(mmtmp6, q(i-3:i+2,j,k,qtemp)) &
                      &            + dot_product(      dpe(i-3:i+2,j,k), M6p)
 
@@ -2870,7 +2870,7 @@ contains
                    if (n .eq. iias) cycle  ! inactive speices
                    qxn = qx1+n-1
                    iryn = iry1+n-1
-                   M6X = matmul(M6T, q(i-3:i+2,j,k,qxn))
+                   M6X = matmul(M6, q(i-3:i+2,j,k,qxn))
                    Hcell(iface,iene) = Hcell(iface,iene) &
                         +    dot_product(dxe(i-3:i+2,j,k,n), M6X)
                    Hcell(iface,iryn) = dot_product(dpy(i-3:i+2,j,k,n), M6p) &
@@ -2953,7 +2953,7 @@ contains
                 Hcell(iface,imz) = dot_product(mmtmp6, q(i-3:i+2,j,k,qw))
 
                 mmtmp6 = matmul(lam(i-3:i+2,j,k), M6)
-                M6p = matmul(M6T,  q(i-3:i+2,j,k,qpres))
+                M6p = matmul(M6,  q(i-3:i+2,j,k,qpres))
                 Hcell(iface,iene) = dot_product(mmtmp6, q(i-3:i+2,j,k,qtemp)) &
                      &            + dot_product(      dpe(i-3:i+2,j,k), M6p)
 
@@ -2961,7 +2961,7 @@ contains
                    if (n .eq. iias) cycle  ! inactive speices
                    qxn = qx1+n-1
                    iryn = iry1+n-1
-                   M6X = matmul(M6T, q(i-3:i+2,j,k,qxn))
+                   M6X = matmul(M6, q(i-3:i+2,j,k,qxn))
                    Hcell(iface,iene) = Hcell(iface,iene) &
                         +    dot_product(dxe(i-3:i+2,j,k,n), M6X)                
                    Hcell(iface,iryn) = dot_product(dpy(i-3:i+2,j,k,n), M6p) &
@@ -3034,7 +3034,7 @@ contains
                 Hcell(iface,imz) = dot_product(mmtmp4, q(i-2:i+1,j,k,qw))
 
                 mmtmp4 = matmul(lam(i-2:i+1,j,k), M4)
-                M4p = matmul(M4T,  q(i-2:i+1,j,k,qpres))
+                M4p = matmul(M4,  q(i-2:i+1,j,k,qpres))
                 Hcell(iface,iene) = dot_product(mmtmp4, q(i-2:i+1,j,k,qtemp)) &
                      &            + dot_product(      dpe(i-2:i+1,j,k), M4p)
 
@@ -3043,7 +3043,7 @@ contains
                    qxn = qx1+n-1
                    iryn = iry1+n-1
 
-                   M4X = matmul(M4T, q(i-2:i+1,j,k,qxn))
+                   M4X = matmul(M4, q(i-2:i+1,j,k,qxn))
                    Hcell(iface,iene) = Hcell(iface,iene) &
                         +    dot_product(dxe(i-2:i+1,j,k,n), M4X)
                    Hcell(iface,iryn) = dot_product(dpy(i-2:i+1,j,k,n), M4p) &
@@ -3320,7 +3320,7 @@ contains
                 Hcell(iface,imy) = dot_product(mmtmp4, q(i,j-2:j+1,k,qv))
 
                 mmtmp4 = matmul(lam(i,j-2:j+1,k), M4)
-                M4p = matmul(M4T,  q(i,j-2:j+1,k,qpres))
+                M4p = matmul(M4,  q(i,j-2:j+1,k,qpres))
                 Hcell(iface,iene) = dot_product(mmtmp4, q(i,j-2:j+1,k,qtemp)) &
                      &            + dot_product(      dpe(i,j-2:j+1,k), M4p)
 
@@ -3329,7 +3329,7 @@ contains
 
                    qxn = qx1+n-1
                    iryn = iry1+n-1
-                   M4X = matmul(M4T, q(i,j-2:j+1,k,qxn))
+                   M4X = matmul(M4, q(i,j-2:j+1,k,qxn))
                    Hcell(iface,iene) = Hcell(iface,iene) &
                         +    dot_product(dxe(i,j-2:j+1,k,n), M4X)
                    Hcell(iface,iryn) = dot_product(dpy(i,j-2:j+1,k,n), M4p) &
@@ -3404,7 +3404,7 @@ contains
                 Hcell(iface,imy) = dot_product(mmtmp6, q(i,j-3:j+2,k,qv))
 
                 mmtmp6 = matmul(lam(i,j-3:j+2,k), M6)
-                M6p = matmul(M6T,  q(i,j-3:j+2,k,qpres))
+                M6p = matmul(M6,  q(i,j-3:j+2,k,qpres))
                 Hcell(iface,iene) = dot_product(mmtmp6, q(i,j-3:j+2,k,qtemp))      &
                      &            + dot_product(      dpe(i,j-3:j+2,k), M6p)
 
@@ -3412,7 +3412,7 @@ contains
                    if (n .eq. iias) cycle  ! inactive speices
                    qxn = qx1+n-1
                    iryn = iry1+n-1
-                   M6X = matmul(M6T, q(i,j-3:j+2,k,qxn))
+                   M6X = matmul(M6, q(i,j-3:j+2,k,qxn))
                    Hcell(iface,iene) = Hcell(iface,iene) &
                         +    dot_product(dxe(i,j-3:j+2,k,n), M6X)
                    Hcell(iface,iryn) = dot_product(dpy(i,j-3:j+2,k,n), M6p) &
@@ -3494,7 +3494,7 @@ contains
                 Hcell(iface,imy) = dot_product(mmtmp6, q(i,j-3:j+2,k,qv))
 
                 mmtmp6 = matmul(lam(i,j-3:j+2,k), M6)
-                M6p = matmul(M6T,  q(i,j-3:j+2,k,qpres))
+                M6p = matmul(M6,  q(i,j-3:j+2,k,qpres))
                 Hcell(iface,iene) = dot_product(mmtmp6, q(i,j-3:j+2,k,qtemp))      &
                      &            + dot_product(      dpe(i,j-3:j+2,k), M6p)
 
@@ -3502,7 +3502,7 @@ contains
                    if (n .eq. iias) cycle  ! inactive speices
                    qxn = qx1+n-1
                    iryn = iry1+n-1
-                   M6X = matmul(M6T, q(i,j-3:j+2,k,qxn))
+                   M6X = matmul(M6, q(i,j-3:j+2,k,qxn))
                    Hcell(iface,iene) = Hcell(iface,iene) &
                         +    dot_product(dxe(i,j-3:j+2,k,n), M6X)
                    Hcell(iface,iryn) = dot_product(dpy(i,j-3:j+2,k,n), M6p) &
@@ -3577,7 +3577,7 @@ contains
                 Hcell(iface,imy) = dot_product(mmtmp4, q(i,j-2:j+1,k,qv))
 
                 mmtmp4 = matmul(lam(i,j-2:j+1,k), M4)
-                M4p = matmul(M4T,  q(i,j-2:j+1,k,qpres))
+                M4p = matmul(M4,  q(i,j-2:j+1,k,qpres))
                 Hcell(iface,iene) = dot_product(mmtmp4, q(i,j-2:j+1,k,qtemp)) &
                      &            + dot_product(      dpe(i,j-2:j+1,k), M4p)
 
@@ -3586,7 +3586,7 @@ contains
 
                    qxn = qx1+n-1
                    iryn = iry1+n-1
-                   M4X = matmul(M4T, q(i,j-2:j+1,k,qxn))
+                   M4X = matmul(M4, q(i,j-2:j+1,k,qxn))
                    Hcell(iface,iene) = Hcell(iface,iene) &
                         +    dot_product(dxe(i,j-2:j+1,k,n), M4X)
                    Hcell(iface,iryn) = dot_product(dpy(i,j-2:j+1,k,n), M4p) &
@@ -3873,7 +3873,7 @@ contains
                 Hcell(iface,imz) = dot_product(mmtmp4, q(i,j,k-2:k+1,qw))
 
                 mmtmp4 = matmul(lam(i,j,k-2:k+1), M4)
-                M4p = matmul(M4T,  q(i,j,k-2:k+1,qpres))
+                M4p = matmul(M4,  q(i,j,k-2:k+1,qpres))
                 Hcell(iface,iene) = dot_product(mmtmp4, q(i,j,k-2:k+1,qtemp)) &
                      &            + dot_product(      dpe(i,j,k-2:k+1), M4p)
 
@@ -3882,7 +3882,7 @@ contains
 
                    qxn = qx1+n-1
                    iryn = iry1+n-1
-                   M4X = matmul(M4T, q(i,j,k-2:k+1,qxn))
+                   M4X = matmul(M4, q(i,j,k-2:k+1,qxn))
                    Hcell(iface,iene) = Hcell(iface,iene) &
                         +    dot_product(dxe(i,j,k-2:k+1,n), M4X)
                    Hcell(iface,iryn) = dot_product(dpy(i,j,k-2:k+1,n), M4p) &
@@ -3959,7 +3959,7 @@ contains
                 Hcell(iface,imz) = dot_product(mmtmp6, q(i,j,k-3:k+2,qw))
 
                 mmtmp6 = matmul(lam(i,j,k-3:k+2), M6)
-                M6p = matmul(M6T,  q(i,j,k-3:k+2,qpres))
+                M6p = matmul(M6,  q(i,j,k-3:k+2,qpres))
                 Hcell(iface,iene) = dot_product(mmtmp6, q(i,j,k-3:k+2,qtemp)) &
                      &            + dot_product(      dpe(i,j,k-3:k+2), M6p)
 
@@ -3967,7 +3967,7 @@ contains
                    if (n .eq. iias) cycle  ! inactive speices
                    qxn = qx1+n-1
                    iryn = iry1+n-1
-                   M6X = matmul(M6T, q(i,j,k-3:k+2,qxn))
+                   M6X = matmul(M6, q(i,j,k-3:k+2,qxn))
                    Hcell(iface,iene) = Hcell(iface,iene) &
                         +    dot_product(dxe(i,j,k-3:k+2,n), M6X)
                    Hcell(iface,iryn) = dot_product(dpy(i,j,k-3:k+2,n), M6p) &
@@ -4049,7 +4049,7 @@ contains
                 Hcell(iface,imz) = dot_product(mmtmp6, q(i,j,k-3:k+2,qw))
 
                 mmtmp6 = matmul(lam(i,j,k-3:k+2), M6)
-                M6p = matmul(M6T,  q(i,j,k-3:k+2,qpres))
+                M6p = matmul(M6,  q(i,j,k-3:k+2,qpres))
                 Hcell(iface,iene) = dot_product(mmtmp6, q(i,j,k-3:k+2,qtemp)) &
                      &            + dot_product(      dpe(i,j,k-3:k+2), M6p)
 
@@ -4057,7 +4057,7 @@ contains
                    if (n .eq. iias) cycle  ! inactive speices
                    qxn = qx1+n-1
                    iryn = iry1+n-1
-                   M6X = matmul(M6T, q(i,j,k-3:k+2,qxn))
+                   M6X = matmul(M6, q(i,j,k-3:k+2,qxn))
                    Hcell(iface,iene) = Hcell(iface,iene) &
                         +    dot_product(dxe(i,j,k-3:k+2,n), M6X)
                    Hcell(iface,iryn) = dot_product(dpy(i,j,k-3:k+2,n), M6p) &
@@ -4134,7 +4134,7 @@ contains
                 Hcell(iface,imz) = dot_product(mmtmp4, q(i,j,k-2:k+1,qw))
 
                 mmtmp4 = matmul(lam(i,j,k-2:k+1), M4)
-                M4p = matmul(M4T,  q(i,j,k-2:k+1,qpres))
+                M4p = matmul(M4,  q(i,j,k-2:k+1,qpres))
                 Hcell(iface,iene) = dot_product(mmtmp4, q(i,j,k-2:k+1,qtemp)) &
                      &            + dot_product(      dpe(i,j,k-2:k+1), M4p)
 
@@ -4143,7 +4143,7 @@ contains
 
                    qxn = qx1+n-1
                    iryn = iry1+n-1
-                   M4X = matmul(M4T, q(i,j,k-2:k+1,qxn))
+                   M4X = matmul(M4, q(i,j,k-2:k+1,qxn))
                    Hcell(iface,iene) = Hcell(iface,iene) &
                         +    dot_product(dxe(i,j,k-2:k+1,n), M4X)
                    Hcell(iface,iryn) = dot_product(dpy(i,j,k-2:k+1,n), M4p) &
