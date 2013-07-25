@@ -194,16 +194,6 @@ C----------------------------------------------------------------
 
       do misdc = 1, misdc_iterMAX
 
-
-c     compute rho*cp
-            do i=lo(0),hi(0)
-               do n = 1,Nspec
-                  Y(n) = scal_new(0,i,FirstSpec+n-1) / scal_new(0,i,Density)
-               enddo
-               call CKCPBS(scal_new(0,i,Temp),Y,IWRK,RWRK,rho_cp(0,i))
-               rho_cp(0,i) = rho_cp(0,i)*scal_new(0,i,Density)
-            end do
-
          print *,'... doing SDC iter ',misdc
 
          if (misdc .gt. 1) then
