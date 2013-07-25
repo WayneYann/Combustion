@@ -273,7 +273,7 @@ contains
     type(sdc_state_t), intent(in)        :: state
     real(c_double),    intent(in), value :: t
 
-    type(multifab),  pointer :: U, Uprime
+    type(multifab),  pointer :: U, Uprime, Uprime_chem
     type(sdc_ctx_t), pointer :: ctx
 
     type(sdc_nset_t), pointer :: nset
@@ -297,6 +297,7 @@ contains
     end if
 
     if (advance_method == 3) then
+       Uprime_chem => sdc_get_chemterm(ctx, state%node)
        call dUdt(U, Uprime, t, dt_m, ctx%dx, include_r=.false.)
     else
        call dUdt(U, Uprime, t, dt_m, ctx%dx, include_ad=.false.)
@@ -309,7 +310,7 @@ contains
     type(sdc_state_t), intent(in)        :: state
     real(c_double),    intent(in), value :: t
 
-    type(multifab),  pointer :: U, Uprime
+    type(multifab),  pointer :: U, Uprime, Uprime_chem
     type(sdc_ctx_t), pointer :: ctx
 
     type(sdc_nset_t), pointer :: nset
@@ -335,6 +336,7 @@ contains
     if (advance_method == 3) then
        call dUdt(U, Uprime, t, dt_m, ctx%dx, include_ad=.false.)
     else
+       Uprime_chem => sdc_get_chemterm(ctx, state%node)
        call dUdt(U, Uprime, t, dt_m, ctx%dx, include_r=.false.)
     end if
   end subroutine multi_sdc_feval_fast

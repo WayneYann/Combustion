@@ -109,6 +109,36 @@ contains
 
   end subroutine sdc_build_multi_rate
 
+  function sdc_get_chemterm(ctx, node_advdif) result(r)
+    use probin_module, only : advance_method
+
+    type(sdc_ctx_t), intent(in) :: ctx
+    integer,         intent(in) :: node_advdif
+    type(multifab),  pointer    :: r
+
+    integer :: trat, node_chem
+
+    type(sdc_nset_t), pointer :: nset1, nset2
+    type(c_ptr),      pointer :: p(:)
+
+    call c_f_pointer(ctx%mrex%nsets, p, [ ctx%mrex%ncomps ])
+    call c_f_pointer(p(1), nset1)
+    call c_f_pointer(p(2), nset2)
+
+    trat = (nset2%nnodes - 1) / (nset1%nnodes - 1)
+
+    if (advance_method == 3) then
+       node_chem = node_advdif * trat
+       call c_f_pointer(nset2%F, p, [ nset2%nnodes ])
+       call c_f_pointer(p(node_chem+1), r)
+    else
+       node_chem = node_advdif / trat
+       call c_f_pointer(nset1%F, p, [ nset1%nnodes ])
+       call c_f_pointer(p(node_chem+1), r)
+    end if
+
+  end function sdc_get_chemterm
+
 
   !
   ! Set multifab layout, feval context etc
