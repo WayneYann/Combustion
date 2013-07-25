@@ -393,7 +393,7 @@ contains
           do n=1,nspecies
              do i=lo(1),hi(1)
                 burn(i,j,ib_heatRelease) = burn(i,j,ib_heatRelease) &
-                     - q(i,j,qh1+n-1) * wdot(i,n) * molecular_weight(n)
+                     + q(i,j,qh1+n-1) * wdot(i,n) * molecular_weight(n)
              end do
           end do
        end if

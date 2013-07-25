@@ -855,11 +855,11 @@ contains
        ! NSCBC boundary
        !
        call build(bpt_nscbc, "nscbc")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
-       if (present(Uprime_c)) then
-          call nscbc(Q, U, Fdif, Uprime_c, Uprime, t, dx, update_mach)
-       else
+!       if (present(Uprime_c)) then
+!          call nscbc(Q, U, Fdif, Uprime_c, Uprime, t, dx, update_mach)
+!       else
           call nscbc(Q, U, Fdif, Upchem  , Uprime, t, dx, update_mach)
-       end if
+!       end if
        if (update_mach) mach_computed = .true.
        call destroy(bpt_nscbc)          !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
 

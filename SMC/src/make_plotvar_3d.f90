@@ -604,7 +604,7 @@ contains
              do n=1,nspecies
                 do i=lo(1),hi(1)
                    burn(i,j,k,ib_heatRelease) = burn(i,j,k,ib_heatRelease) &
-                        - q(i,j,k,qh1+n-1) * wdot(i,n) * molecular_weight(n)
+                        + q(i,j,k,qh1+n-1) * wdot(i,n) * molecular_weight(n)
                 end do
              end do
           end if
