@@ -298,7 +298,7 @@ contains
 
     if (advance_method == 3) then
        Uprime_chem => sdc_get_chemterm(ctx, state%node)
-       call dUdt(U, Uprime, t, dt_m, ctx%dx, include_r=.false.)
+       call dUdt(U, Uprime, t, dt_m, ctx%dx, include_r=.false., Uprime_c=Uprime_chem)
     else
        call dUdt(U, Uprime, t, dt_m, ctx%dx, include_ad=.false.)
     end if
@@ -337,7 +337,7 @@ contains
        call dUdt(U, Uprime, t, dt_m, ctx%dx, include_ad=.false.)
     else
        Uprime_chem => sdc_get_chemterm(ctx, state%node)
-       call dUdt(U, Uprime, t, dt_m, ctx%dx, include_r=.false.)
+       call dUdt(U, Uprime, t, dt_m, ctx%dx, include_r=.false., Uprime_c=Uprime_chem)
     end if
   end subroutine multi_sdc_feval_fast
 
@@ -575,7 +575,7 @@ contains
   !
   ! The Courant number (courno) is also computed if passed.
   !
-  subroutine dUdt (U, Uprime, t, dt_m, dx, courno, include_ad, include_r, Uprime_chem)
+  subroutine dUdt (U, Uprime, t, dt_m, dx, courno, include_ad, include_r, Uprime_c)
 
     use smcdata_module, only : Q, mu, xi, lam, Ddiag, Fdif, Upchem
     use probin_module, only : overlap_comm_comp, overlap_comm_gettrans, cfl_int, fixed_dt, &
@@ -585,7 +585,7 @@ contains
     double precision, intent(in   ) :: t, dt_m, dx(3)
     double precision, intent(inout), optional :: courno
     logical,          intent(in   ), optional :: include_ad, include_r
-    type(multifab),   intent(in   ), optional :: Uprime_chem
+    type(multifab),   intent(in   ), optional :: Uprime_c
 
     integer ::    lo(U%dim),    hi(U%dim)
     integer ::   dlo(U%dim),   dhi(U%dim)
@@ -855,10 +855,10 @@ contains
        ! NSCBC boundary
        !
        call build(bpt_nscbc, "nscbc")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
-       if (present(Uprime_chem)) then
-          call nscbc(Q, U, Fdif, Uprime_chem, Uprime, t, dx, update_mach)
+       if (present(Uprime_c)) then
+          call nscbc(Q, U, Fdif, Uprime_c, Uprime, t, dx, update_mach)
        else
-          call nscbc(Q, U, Fdif, Upchem     , Uprime, t, dx, update_mach)
+          call nscbc(Q, U, Fdif, Upchem  , Uprime, t, dx, update_mach)
        end if
        if (update_mach) mach_computed = .true.
        call destroy(bpt_nscbc)          !! ^^^^^^^^^^^^^^^^^^^^^^^ timer

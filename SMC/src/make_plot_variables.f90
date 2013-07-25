@@ -54,6 +54,9 @@ contains
              if (icomp .eq. icomp_h) then
                 call make_h_2d(lo,hi,pdp(:,:,1,icomp),pdlo(1:2),pdhi(1:2), &
                      qp,qlo(1:2),qhi(1:2))
+             else if (icomp .eq. icomp_rhoh) then
+                call make_rhoh_2d(lo,hi,pdp(:,:,1,icomp),pdlo(1:2),pdhi(1:2), &
+                     qp,qlo(1:2),qhi(1:2))
              else if (icomp .eq. icomp_divu) then
                 call make_divu_2d(lo,hi,pdp(:,:,1,icomp),pdlo(1:2),pdhi(1:2), &
                      qp,qlo(1:2),qhi(1:2), dx, dlo,dhi)
@@ -69,6 +72,9 @@ contains
           else
              if (icomp .eq. icomp_h) then
                 call make_h_3d(lo,hi,pdp(:,:,:,icomp),pdlo(1:3),pdhi(1:3), &
+                     qp,qlo(1:3),qhi(1:3))
+             else if (icomp .eq. icomp_rhoh) then
+                call make_rhoh_3d(lo,hi,pdp(:,:,:,icomp),pdlo(1:3),pdhi(1:3), &
                      qp,qlo(1:3),qhi(1:3))
              else if (icomp .eq. icomp_divu) then
                 call make_divu_3d(lo,hi,pdp(:,:,:,icomp),pdlo(1:3),pdhi(1:3), &

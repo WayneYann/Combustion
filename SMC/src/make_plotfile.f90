@@ -8,7 +8,7 @@ module make_plotfile_module
   use variables_module
 
   use chemistry_module, only : nspecies, spec_names, get_species_index
-  use probin_module, only : dm_in, plot_eint, plot_h, plot_divu, plot_magvort, &
+  use probin_module, only : dm_in, plot_eint, plot_h, plot_rhoh, plot_divu, plot_magvort, &
        plot_Y, plot_X, plot_hspec, plot_omegadot, plot_dYdt, plot_heatRelease, &
        plot_fuelConsumption, fuel_name, &
        nOutFiles, lUsingNFiles, single_prec_plotfiles, prob_lo, prob_hi
@@ -48,6 +48,10 @@ contains
 
     if (plot_h) then
        icomp_h = get_next_plot_index(1)
+    end if
+
+    if (plot_rhoh) then
+       icomp_rhoh = get_next_plot_index(1)
     end if
 
     if (plot_divu) then
@@ -137,6 +141,10 @@ contains
 
     if (plot_h) then
        plot_names(icomp_h) = "h"
+    end if
+
+    if (plot_rhoh) then
+       plot_names(icomp_rhoh) = "rhoh"
     end if
 
     if (plot_divu) then
@@ -244,6 +252,10 @@ contains
 
     if (plot_h) then
        call make_plotvar(plotdata(1),icomp_h, Q, dx)
+    end if
+
+    if (plot_rhoh) then
+       call make_plotvar(plotdata(1),icomp_rhoh, Q, dx)
     end if
 
     if (plot_Y) then

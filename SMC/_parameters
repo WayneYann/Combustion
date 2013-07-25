@@ -249,6 +249,7 @@ plot_eint                           logical            .false.
 
 # plot mean specific enthlpy in plotfile
 plot_h                              logical            .false.
+plot_rhoh                           logical            .true.
 
 # plot enthlpy of each species in plotfile
 plot_hspec                          logical            .false.

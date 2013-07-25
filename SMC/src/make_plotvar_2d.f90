@@ -26,6 +26,29 @@ contains
   end subroutine make_h_2d
 
 
+  subroutine make_rhoh_2d(lo, hi, rh,  vlo, vhi, Q, qlo, qhi)
+    use variables_module
+    integer, intent(in) :: lo(2), hi(2), vlo(2), vhi(2), qlo(2), qhi(2)
+    double precision, intent(inout) :: rh(vlo(1):vhi(1),vlo(2):vhi(2))
+    double precision, intent(in   ) ::  Q(qlo(1):qhi(1),qlo(2):qhi(2),nprim)
+
+    integer :: i,j, n, qyn, qhn
+
+    do j=lo(2),hi(2)
+       do i=lo(1),hi(1)
+          rh(i,j) = 0.d0
+          do n=1, nspecies
+             qhn = qh1+n-1
+             qyn = qy1+n-1
+             rh(i,j) = rh(i,j) + q(i,j,qyn)*q(i,j,qhn)
+          end do
+          rh(i,j) = rh(i,j) * q(i,j,qrho)
+       enddo
+    enddo
+
+  end subroutine make_rhoh_2d
+
+
   subroutine make_divu_2d(lo, hi, divu, vlo, vhi, Q, qlo, qhi, dx, dlo_g, dhi_g)
     use variables_module
     use derivative_stencil_module, only : stencil_ng, first_deriv_8, first_deriv_6, &
@@ -368,14 +391,16 @@ contains
           end do
           
           do n=1,nspecies
-             burn(i,j,ib_heatRelease) = burn(i,j,ib_heatRelease) &
-                  - q(i,j,qh1+n-1) * wdot(i,n) * molecular_weight(n)
+             do i=lo(1),hi(1)
+                burn(i,j,ib_heatRelease) = burn(i,j,ib_heatRelease) &
+                     + q(i,j,qh1+n-1) * wdot(i,n) * molecular_weight(n)
+             end do
           end do
        end if
        
        if (ib_fuelConsumption > 0) then
           do i=lo(1),hi(1)
-             burn(i,j,ib_fuelConsumption) = wdot(i,ifuel) * molecular_weight(ifuel)
+             burn(i,j,ib_fuelConsumption) = -wdot(i,ifuel) * molecular_weight(ifuel)
           end do
        end if
 
