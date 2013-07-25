@@ -255,9 +255,15 @@ plot_hspec                          logical            .false.
 
 # plot divu in plotfile
 plot_divu                           logical            .true.
+# plot magnitude of vorticity
+plot_magvort                        logical            .false.
 
 # plot omegadot in plotfile
 plot_omegadot                       logical            .true.
+plot_dYdt                           logical            .false.
+plot_heatRelease                    logical            .false.
+plot_fuelConsumption                logical            .false.
+fuel_name                           character          "none"
 
 # prefix to use in plotfile file names
 plot_base_name                      character          "plt"

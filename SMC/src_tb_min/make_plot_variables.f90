@@ -50,7 +50,7 @@ contains
        else if (icomp .eq. icomp_divu) then
           call make_divu_3d(pdp(:,:,:,icomp), qp, lo, hi, ngpd, ngq, dx)
        else if (icomp .eq. icomp_omegadot) then
-          call make_omegadot_3d(pdp(:,:,:,icomp:nspecies-1), qp, lo, hi, ngpd, ngq)
+          call make_omegadot_3d(pdp(:,:,:,icomp:icomp+nspecies-1), qp, lo, hi, ngpd, ngq)
        else
           call bl_error("make_plot_variables_module: unknown icomp")          
        end if

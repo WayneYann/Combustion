@@ -18,6 +18,8 @@ endif
 
 f90sources += make_plot_variables.f90
 f90sources += make_plotfile.f90
+f90sources += make_plotvar_2d.f90
+f90sources += make_plotvar_3d.f90
 f90sources += nscbc.f90
 f90sources += physbndry_reg.f90
 f90sources += probin.f90

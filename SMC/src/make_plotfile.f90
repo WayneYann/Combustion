@@ -7,9 +7,10 @@ module make_plotfile_module
   use threadbox_module, only : tb_multifab_setval
   use variables_module
 
-  use chemistry_module, only : nspecies, spec_names
-  use probin_module, only : dm_in, plot_eint, plot_h, plot_divu, &
-       plot_Y, plot_X, plot_hspec, plot_omegadot, &
+  use chemistry_module, only : nspecies, spec_names, get_species_index
+  use probin_module, only : dm_in, plot_eint, plot_h, plot_divu, plot_magvort, &
+       plot_Y, plot_X, plot_hspec, plot_omegadot, plot_dYdt, plot_heatRelease, &
+       plot_fuelConsumption, fuel_name, &
        nOutFiles, lUsingNFiles, single_prec_plotfiles, prob_lo, prob_hi
 
 
@@ -18,7 +19,9 @@ module make_plotfile_module
   ! the total number of plot components
   integer, save :: n_plot_comps = 0
   integer, save :: icomp_rho=0, icomp_vel=0, icomp_pres=0, icomp_temp=0, icomp_eint=0, &
-       icomp_h=0, icomp_divu=0, icomp_Y=0, icomp_X=0, icomp_hspec=0, icomp_omegadot=0
+       icomp_h=0, icomp_divu=0, icomp_magvort=0, icomp_Y=0, icomp_X=0, icomp_hspec=0, &
+       icomp_omegadot=0, icomp_dYdt=0, icomp_heatRelease=0, icomp_fuelConsumption=0
+  integer, save :: ifuel = -1
 
   private
   public :: n_plot_comps, get_plot_names, make_plotfile, init_plot_variables
@@ -57,6 +60,10 @@ contains
        icomp_divu = get_next_plot_index(1)
     end if
 
+    if (plot_magvort) then
+       icomp_magvort = get_next_plot_index(1)
+    end if
+
     if (plot_Y) then
        icomp_Y = get_next_plot_index(nspecies)
     end if
@@ -73,7 +80,23 @@ contains
        icomp_omegadot = get_next_plot_index(nspecies)
     end if
 
-    call make_plotvar_init(icomp_h, icomp_divu, icomp_omegadot)
+    if (plot_dYdt) then
+       icomp_dYdt = get_next_plot_index(nspecies)
+    end if
+
+    if (plot_heatRelease) then
+       icomp_heatRelease = get_next_plot_index(1)
+    end if
+
+    if (plot_fuelConsumption) then
+       ifuel = get_species_index(fuel_name)
+       if (ifuel > 0) then
+          icomp_fuelConsumption = get_next_plot_index(1)
+       end if
+    end if
+
+    call make_plotvar_init(icomp_h, icomp_divu, icomp_magvort, icomp_omegadot, &
+         icomp_dYdt, icomp_heatRelease, icomp_fuelConsumption, ifuel)
 
   end subroutine init_plot_variables
 
@@ -104,6 +127,10 @@ contains
        plot_names(icomp_divu) = "divu"
     end if
 
+    if (plot_magvort) then
+       plot_names(icomp_magvort) = "magvort"
+    end if
+
     if (plot_Y) then
        do i=1,nspecies
           plot_names(icomp_Y+i-1) = "Y("//trim(spec_names(i))//")"
@@ -126,6 +153,20 @@ contains
        do i=1,nspecies
           plot_names(icomp_omegadot+i-1) = "rho*omgdot("//trim(spec_names(i))//")"
        end do
+    end if
+
+    if (plot_dYdt) then
+       do i=1,nspecies
+          plot_names(icomp_dYdt+i-1) = "Ydot("//trim(spec_names(i))//")"
+       end do
+    end if
+
+    if (plot_heatRelease) then
+       plot_names(icomp_heatRelease) = "HeatRelease"
+    end if
+
+    if (plot_fuelConsumption .and. ifuel>0) then
+       plot_names(icomp_fuelConsumption) = "FuelConsumptionRate"
     end if
 
   end subroutine get_plot_names
@@ -156,7 +197,7 @@ contains
     dm  = U%dim
     ngu = nghost(U)
 
-    if (plot_divu) then
+    if (plot_divu .or. plot_magvort) then
        ngq = ngu
        call multifab_fill_boundary(U)
     else
@@ -181,6 +222,10 @@ contains
        call make_plotvar(plotdata(1),icomp_divu, Q, dx)
     end if
 
+    if (plot_magvort) then
+       call make_plotvar(plotdata(1),icomp_magvort, Q, dx)
+    end if
+
     if (plot_h) then
        call make_plotvar(plotdata(1),icomp_h, Q, dx)
     end if
@@ -199,6 +244,18 @@ contains
 
     if (plot_omegadot) then
        call make_plotvar(plotdata(1),icomp_omegadot, Q, dx)
+    end if
+
+    if (plot_dYdt) then
+       call make_plotvar(plotdata(1),icomp_dYdt, Q, dx)
+    end if
+
+    if (plot_heatRelease) then
+       call make_plotvar(plotdata(1),icomp_heatRelease, Q, dx)
+    end if
+
+    if (plot_fuelConsumption) then
+       call make_plotvar(plotdata(1),icomp_fuelConsumption, Q, dx)
     end if
 
     if (parallel_IOProcessor()) then
