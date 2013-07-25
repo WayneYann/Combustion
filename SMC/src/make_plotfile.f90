@@ -13,15 +13,9 @@ module make_plotfile_module
        plot_fuelConsumption, fuel_name, &
        nOutFiles, lUsingNFiles, single_prec_plotfiles, prob_lo, prob_hi
 
+  use plotvar_index_module
 
   implicit none
-
-  ! the total number of plot components
-  integer, save :: n_plot_comps = 0
-  integer, save :: icomp_rho=0, icomp_vel=0, icomp_pres=0, icomp_temp=0, icomp_eint=0, &
-       icomp_h=0, icomp_divu=0, icomp_magvort=0, icomp_Y=0, icomp_X=0, icomp_hspec=0, &
-       icomp_omegadot=0, icomp_dYdt=0, icomp_heatRelease=0, icomp_fuelConsumption=0
-  integer, save :: ifuel = -1
 
   private
   public :: n_plot_comps, get_plot_names, make_plotfile, init_plot_variables
@@ -76,27 +70,49 @@ contains
        icomp_hspec = get_next_plot_index(nspecies)
     end if
 
+    nburn = 0
     if (plot_omegadot) then
        icomp_omegadot = get_next_plot_index(nspecies)
+       icomp_burn = icomp_omegadot
+       ib_omegadot = 1
+       nburn = nburn + 1
     end if
 
     if (plot_dYdt) then
        icomp_dYdt = get_next_plot_index(nspecies)
+       if (nburn > 0) then
+          ib_dYdt = icomp_dYdt - icomp_burn + 1
+       else
+          icomp_burn = icomp_dYdt
+          ib_dYdt = 1
+       end if
+       nburn = nburn + 1
     end if
 
     if (plot_heatRelease) then
        icomp_heatRelease = get_next_plot_index(1)
+       if (nburn > 0) then
+          ib_heatRelease = icomp_heatRelease - icomp_burn + 1
+       else
+          icomp_burn = icomp_heatRelease
+          ib_heatRelease = 1
+       end if
+       nburn = nburn + 1
     end if
 
     if (plot_fuelConsumption) then
        ifuel = get_species_index(fuel_name)
        if (ifuel > 0) then
           icomp_fuelConsumption = get_next_plot_index(1)
+          if (nburn > 0) then
+             ib_fuelConsumption = icomp_fuelConsumption - icomp_burn + 1
+          else
+             icomp_burn = icomp_fuelConsumption
+             ib_fuelConsumption = 1
+          end if
+          nburn = nburn + 1
        end if
     end if
-
-    call make_plotvar_init(icomp_h, icomp_divu, icomp_magvort, icomp_omegadot, &
-         icomp_dYdt, icomp_heatRelease, icomp_fuelConsumption, ifuel)
 
   end subroutine init_plot_variables
 
@@ -242,20 +258,8 @@ contains
        call multifab_copy_c(plotdata(1),icomp_hspec, Q,qh1, nspecies)       
     end if
 
-    if (plot_omegadot) then
-       call make_plotvar(plotdata(1),icomp_omegadot, Q, dx)
-    end if
-
-    if (plot_dYdt) then
-       call make_plotvar(plotdata(1),icomp_dYdt, Q, dx)
-    end if
-
-    if (plot_heatRelease) then
-       call make_plotvar(plotdata(1),icomp_heatRelease, Q, dx)
-    end if
-
-    if (plot_fuelConsumption) then
-       call make_plotvar(plotdata(1),icomp_fuelConsumption, Q, dx)
+    if (nburn > 0) then
+       call make_plotvar(plotdata(1),icomp_burn, Q, dx)
     end if
 
     if (parallel_IOProcessor()) then

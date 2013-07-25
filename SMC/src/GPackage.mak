@@ -22,6 +22,7 @@ f90sources += make_plotvar_2d.f90
 f90sources += make_plotvar_3d.f90
 f90sources += nscbc.f90
 f90sources += physbndry_reg.f90
+f90sources += plotvar_index.f90
 f90sources += probin.f90
 f90sources += sdcquad.f90
 f90sources += smc.f90

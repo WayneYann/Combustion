@@ -318,12 +318,13 @@ contains
   end subroutine make_magvort_2d
 
 
-  subroutine make_omegadot_2d(lo, hi, odot, vlo, vhi, Q, qlo, qhi)
+  subroutine make_burn_2d(lo, hi, burn, vlo, vhi, Q, qlo, qhi)
+    use plotvar_index_module
     use variables_module
     use chemistry_module, only : molecular_weight
 
     integer, intent(in) :: lo(2), hi(2), vlo(2), vhi(2), qlo(2), qhi(2)
-    double precision, intent(inout) :: odot(vlo(1):vhi(1),vlo(2):vhi(2),nspecies)
+    double precision, intent(inout) :: burn(vlo(1):vhi(1),vlo(2):vhi(2),nburn)
     double precision, intent(in   ) ::    Q(qlo(1):qhi(1),qlo(2):qhi(2),nprim)
 
     integer :: i,j,n,np,iwrk
@@ -341,80 +342,36 @@ contains
        
        call vckwyr(np, q(lo(1),j,qrho), q(lo(1),j,qtemp), Yt, iwrk, rwrk, wdot)
        
-       do n=1, nspecies
-          do i=lo(1),hi(1)
-             odot(i,j,n) = wdot(i,n) * molecular_weight(n)
+       if (ib_omegadot > 0) then
+          do n=1, nspecies
+             do i=lo(1),hi(1)
+                burn(i,j,ib_omegadot+n-1) = wdot(i,n) * molecular_weight(n)
+             end do
           end do
-       end do
+       end if
+
+       if (ib_dYdt > 0) then
+          do n=1, nspecies
+             do i=lo(1),hi(1)
+                burn(i,j,ib_dYdt+n-1) = wdot(i,n) * molecular_weight(n) / q(i,j,qrho)
+             end do
+          end do
+       end if
+
+       if (ib_heatRelease > 0) then
+          do i=lo(1),hi(1)
+             burn(i,j,ib_heatRelease) = 0.d0
+          end do
+       end if
+
+       if (ib_fuelConsumption > 0) then
+          do i=lo(1),hi(1)
+             burn(i,j,ib_fuelConsumption) = 0.d0
+          end do
+       end if
 
     enddo
 
-  end subroutine make_omegadot_2d
-
-
-  subroutine make_dYdt_2d(lo, hi, Ydot, vlo, vhi, Q, qlo, qhi)
-    use variables_module
-    use chemistry_module, only : molecular_weight
-
-    integer, intent(in) :: lo(2), hi(2), vlo(2), vhi(2), qlo(2), qhi(2)
-    double precision, intent(inout) :: Ydot(vlo(1):vhi(1),vlo(2):vhi(2),nspecies)
-    double precision, intent(in   ) ::    Q(qlo(1):qhi(1),qlo(2):qhi(2),nprim)
-
-    integer :: i,j,n,np,iwrk
-    double precision :: Yt(lo(1):hi(1),nspecies), wdot(lo(1):hi(1),nspecies), rwrk
-
-    np = hi(1) - lo(1) + 1
-
-    do j=lo(2),hi(2)
-       
-       do n=1, nspecies
-          do i=lo(1),hi(1)
-             Yt(i,n) = q(i,j,qy1+n-1)
-          end do
-       end do
-       
-       call vckwyr(np, q(lo(1),j,qrho), q(lo(1),j,qtemp), Yt, iwrk, rwrk, wdot)
-       
-       do n=1, nspecies
-          do i=lo(1),hi(1)
-             Ydot(i,j,n) = wdot(i,n) * molecular_weight(n) / q(i,j,qrho)
-          end do
-       end do
-
-    enddo
-
-  end subroutine make_dYdt_2d
-
-
-  subroutine make_heatRelease_2d(lo, hi, heat, vlo, vhi, Q, qlo, qhi)
-    use variables_module
-    use chemistry_module, only : molecular_weight
-
-    integer, intent(in) :: lo(2), hi(2), vlo(2), vhi(2), qlo(2), qhi(2)
-    double precision, intent(inout) :: heat(vlo(1):vhi(1),vlo(2):vhi(2))
-    double precision, intent(in   ) ::    Q(qlo(1):qhi(1),qlo(2):qhi(2),nprim)
-
-    integer :: i,j,n,np,iwrk
-    double precision :: Yt(lo(1):hi(1),nspecies), wdot(lo(1):hi(1),nspecies), rwrk
-
-    heat(lo(1):hi(1),lo(2):hi(2)) = 0.d0
-
-  end subroutine make_heatRelease_2d
-
-
-  subroutine make_fuelCsmp_2d(lo, hi, fuel, vlo, vhi, Q, qlo, qhi, ifuel)
-    use variables_module
-    use chemistry_module, only : molecular_weight
-
-    integer, intent(in) :: lo(2), hi(2), vlo(2), vhi(2), qlo(2), qhi(2), ifuel
-    double precision, intent(inout) :: fuel(vlo(1):vhi(1),vlo(2):vhi(2))
-    double precision, intent(in   ) ::    Q(qlo(1):qhi(1),qlo(2):qhi(2),nprim)
-
-    integer :: i,j,n,np,iwrk
-    double precision :: Yt(lo(1):hi(1),nspecies), wdot(lo(1):hi(1),nspecies), rwrk
-
-    fuel(lo(1):hi(1),lo(2):hi(2)) = 0.d0
-
-  end subroutine make_fuelCsmp_2d
+  end subroutine make_burn_2d
 
 end module make_plotvar_2d_module
