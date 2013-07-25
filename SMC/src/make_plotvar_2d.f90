@@ -163,7 +163,11 @@ contains
        enddo
     end if
 
-    divu = ux + vy
+    do j=lo(2),hi(2)
+       do i=lo(1),hi(1)
+          divu(i,j) = ux(i,j) + vy(i,j)
+       end do
+    enddo
 
     deallocate(ux,vy)
 
@@ -362,11 +366,16 @@ contains
           do i=lo(1),hi(1)
              burn(i,j,ib_heatRelease) = 0.d0
           end do
+          
+          do n=1,nspecies
+             burn(i,j,ib_heatRelease) = burn(i,j,ib_heatRelease) &
+                  - q(i,j,qh1+n-1) * wdot(i,n) * molecular_weight(n)
+          end do
        end if
-
+       
        if (ib_fuelConsumption > 0) then
           do i=lo(1),hi(1)
-             burn(i,j,ib_fuelConsumption) = 0.d0
+             burn(i,j,ib_fuelConsumption) = wdot(i,ifuel) * molecular_weight(ifuel)
           end do
        end if
 

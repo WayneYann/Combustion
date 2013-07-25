@@ -250,7 +250,13 @@ contains
        enddo
     end if
 
-    divu = ux + vy + wz
+    do k=lo(3),hi(3)
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+             divu(i,j,k) = ux(i,j,k) + vy(i,j,k) + wz(i,j,k)
+          end do
+       enddo
+    enddo
 
     deallocate(ux,vy,wz)
 
@@ -569,11 +575,16 @@ contains
              do i=lo(1),hi(1)
                 burn(i,j,k,ib_heatRelease) = 0.d0
              end do
+
+             do n=1,nspecies
+                burn(i,j,k,ib_heatRelease) = burn(i,j,k,ib_heatRelease) &
+                     - q(i,j,k,qh1+n-1) * wdot(i,n) * molecular_weight(n)
+             end do
           end if
           
           if (ib_fuelConsumption > 0) then
              do i=lo(1),hi(1)
-                burn(i,j,k,ib_fuelConsumption) = 0.d0
+                burn(i,j,k,ib_fuelConsumption) = wdot(i,ifuel) * molecular_weight(ifuel)
              end do
           end if
           
@@ -581,73 +592,5 @@ contains
     enddo
 
   end subroutine make_burn_3d
-
-
-  subroutine make_dYdt_3d(lo, hi, Ydot, vlo, vhi, Q, qlo, qhi)
-    use variables_module
-    use chemistry_module, only : molecular_weight
-
-    integer, intent(in) :: lo(3), hi(3), vlo(3), vhi(3), qlo(3), qhi(3)
-    double precision, intent(inout) :: Ydot(vlo(1):vhi(1),vlo(2):vhi(2),vlo(3):vhi(3),nspecies)
-    double precision, intent(in   ) ::    Q(qlo(1):qhi(1),qlo(2):qhi(2),qlo(3):qhi(3),nprim)
-
-    integer :: i,j,k,n,np,iwrk
-    double precision :: Yt(lo(1):hi(1),nspecies), wdot(lo(1):hi(1),nspecies), rwrk
-
-    np = hi(1) - lo(1) + 1
-
-    do k=lo(3),hi(3)
-       do j=lo(2),hi(2)
-
-          do n=1, nspecies
-             do i=lo(1),hi(1)
-                Yt(i,n) = q(i,j,k,qy1+n-1)
-             end do
-          end do
-          
-          call vckwyr(np, q(lo(1),j,k,qrho), q(lo(1),j,k,qtemp), Yt, iwrk, rwrk, wdot)
-
-          do n=1, nspecies
-             do i=lo(1),hi(1)
-                Ydot(i,j,k,n) = wdot(i,n) * molecular_weight(n) / q(i,j,k,qrho)
-             end do
-          end do
-
-       enddo
-    enddo
-
-  end subroutine make_dYdt_3d
-
-
-  subroutine make_heatRelease_3d(lo, hi, heat, vlo, vhi, Q, qlo, qhi)
-    use variables_module
-    use chemistry_module, only : molecular_weight
-
-    integer, intent(in) :: lo(3), hi(3), vlo(3), vhi(3), qlo(3), qhi(3)
-    double precision, intent(inout) :: heat(vlo(1):vhi(1),vlo(2):vhi(2),vlo(3):vhi(3))
-    double precision, intent(in   ) ::    Q(qlo(1):qhi(1),qlo(2):qhi(2),qlo(3):qhi(3),nprim)
-
-    integer :: i,j,k,n,np,iwrk
-    double precision :: Yt(lo(1):hi(1),nspecies), wdot(lo(1):hi(1),nspecies), rwrk
-
-    heat(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3)) = 0.d0
-
-  end subroutine make_heatRelease_3d
-
-
-  subroutine make_fuelCsmp_3d(lo, hi, fuel, vlo, vhi, Q, qlo, qhi, ifuel)
-    use variables_module
-    use chemistry_module, only : molecular_weight
-
-    integer, intent(in) :: lo(3), hi(3), vlo(3), vhi(3), qlo(3), qhi(3), ifuel
-    double precision, intent(inout) :: fuel(vlo(1):vhi(1),vlo(2):vhi(2),vlo(3):vhi(3))
-    double precision, intent(in   ) ::    Q(qlo(1):qhi(1),qlo(2):qhi(2),qlo(3):qhi(3),nprim)
-
-    integer :: i,j,k,n,np,iwrk
-    double precision :: Yt(lo(1):hi(1),nspecies), wdot(lo(1):hi(1),nspecies), rwrk
-
-    fuel(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3)) = 0.d0
-
-  end subroutine make_fuelCsmp_3d
 
 end module make_plotvar_3d_module
