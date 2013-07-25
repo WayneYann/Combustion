@@ -248,7 +248,7 @@ plot_X                              logical            .false.
 plot_eint                           logical            .false.
 
 # plot mean specific enthlpy in plotfile
-plot_h                              logical            .true.
+plot_h                              logical            .false.
 
 # plot enthlpy of each species in plotfile
 plot_hspec                          logical            .false.
@@ -256,12 +256,12 @@ plot_hspec                          logical            .false.
 # plot divu in plotfile
 plot_divu                           logical            .true.
 # plot magnitude of vorticity
-plot_magvort                        logical            .false.
+plot_magvort                        logical            .true.
 
 # plot omegadot in plotfile
-plot_omegadot                       logical            .true.
-plot_dYdt                           logical            .false.
-plot_heatRelease                    logical            .false.
+plot_omegadot                       logical            .false.
+plot_dYdt                           logical            .true.
+plot_heatRelease                    logical            .true.
 plot_fuelConsumption                logical            .false.
 fuel_name                           character          "none"
 

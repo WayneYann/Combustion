@@ -8060,9 +8060,9 @@ contains
     integer,         intent(in):: lo(3),hi(3),qlo(3),qhi(3),uplo(3),uphi(3),upclo(3),upchi(3)
     double precision,intent(in):: q  (  qlo(1):  qhi(1),  qlo(2):  qhi(2),  qlo(3):  qhi(3),nprim)
     double precision           :: up ( uplo(1): uphi(1), uplo(2): uphi(2), uplo(3): uphi(3),ncons)
-    double precision           :: upc(upclo(1):upchi(1),upclo(2):upchi(2),upclo(3):upchi(3),nspecies)
+    double precision           :: upc(upclo(1):upchi(1),upclo(2):upchi(2),upclo(3):upchi(3),ncons)
 
-    integer :: iwrk, i,j,k,n,np
+    integer :: iwrk, i,j,k,n,np, iryn
     double precision :: Yt(lo(1):hi(1),nspecies), wdot(lo(1):hi(1),nspecies), rwrk
     double precision :: YTvode(nspecies+1), time, dtinv
 
@@ -8129,10 +8129,21 @@ contains
                 end if
                 
                 do n=1, nspecies
-                   upc(i,j,k,n) = dtinv*q(i,j,k,qrho)*(YTvode(n)-q(i,j,k,qy1+n-1))
-                   up (i,j,k,iry1+n-1) = upc(i,j,k,n)
+                   iryn = iry1+n-1
+                   upc(i,j,k,iryn) = dtinv*q(i,j,k,qrho)*(YTvode(n)-q(i,j,k,qy1+n-1))
                 end do
                 
+             end do
+          end do
+       end do
+
+       do n=1, nspecies
+          iryn = iry1+n-1
+          do k=lo(3),hi(3)
+             do j=lo(2),hi(2)
+                do i=lo(1),hi(1)
+                   up(i,j,k,iryn) = upc(i,j,k,iryn)
+                end do
              end do
           end do
        end do
@@ -8153,9 +8164,10 @@ contains
              call vckwyr(np, q(lo(1),j,k,qrho), q(lo(1),j,k,qtemp), Yt, iwrk, rwrk, wdot)
              
              do n=1, nspecies
+                iryn = iry1+n-1
                 do i=lo(1),hi(1)
-                   upc(i,j,k,n) = wdot(i,n) * molecular_weight(n)
-                   up (i,j,k,iry1+n-1) = upc(i,j,k,n)
+                   upc(i,j,k,iryn) = wdot(i,n) * molecular_weight(n)
+                   up (i,j,k,iryn) = upc(i,j,k,iryn)
                 end do
              end do
              

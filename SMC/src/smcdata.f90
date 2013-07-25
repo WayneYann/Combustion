@@ -47,7 +47,7 @@ contains
     call tb_multifab_setval(Q, 0.d0, .true.)
 
     call multifab_build(Fdif, la, ncons, 0)
-    call multifab_build(Upchem, la, nspecies, 0)
+    call multifab_build(Upchem, la, ncons, 0)
     call tb_multifab_setval(Upchem, 0.d0)
 
     call multifab_build(mu , la, 1, stencil_ng)

@@ -575,7 +575,7 @@ contains
   !
   ! The Courant number (courno) is also computed if passed.
   !
-  subroutine dUdt (U, Uprime, t, dt_m, dx, courno, include_ad, include_r)
+  subroutine dUdt (U, Uprime, t, dt_m, dx, courno, include_ad, include_r, Uprime_chem)
 
     use smcdata_module, only : Q, mu, xi, lam, Ddiag, Fdif, Upchem
     use probin_module, only : overlap_comm_comp, overlap_comm_gettrans, cfl_int, fixed_dt, &
@@ -585,6 +585,7 @@ contains
     double precision, intent(in   ) :: t, dt_m, dx(3)
     double precision, intent(inout), optional :: courno
     logical,          intent(in   ), optional :: include_ad, include_r
+    type(multifab),   intent(in   ), optional :: Uprime_chem
 
     integer ::    lo(U%dim),    hi(U%dim)
     integer ::   dlo(U%dim),   dhi(U%dim)
@@ -854,7 +855,11 @@ contains
        ! NSCBC boundary
        !
        call build(bpt_nscbc, "nscbc")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
-       call nscbc(Q, U, Fdif, Upchem, Uprime, t, dx, update_mach)
+       if (present(Uprime_chem)) then
+          call nscbc(Q, U, Fdif, Uprime_chem, Uprime, t, dx, update_mach)
+       else
+          call nscbc(Q, U, Fdif, Upchem     , Uprime, t, dx, update_mach)
+       end if
        if (update_mach) mach_computed = .true.
        call destroy(bpt_nscbc)          !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
 

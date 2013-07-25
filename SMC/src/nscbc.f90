@@ -515,7 +515,7 @@ contains
     integer, intent(in) :: idim,ng
     integer, dimension(2), intent(in) :: lo, hi, alo, ahi
     double precision, intent(in ) :: Q  (  -ng+lo(1): hi(1)+ng,-ng+lo(2): hi(2)+ng,nprim)
-    double precision, intent(in ) :: Upc(      lo(1): hi(1)   ,    lo(2): hi(2)   ,nspecies)
+    double precision, intent(in ) :: Upc(      lo(1): hi(1)   ,    lo(2): hi(2)   ,ncons)
     double precision, intent(out) :: A  (naux,alo(1):ahi(1)   ,   alo(2):ahi(2)         )
     double precision, intent(inout) :: mach2
 
@@ -549,7 +549,7 @@ contains
           A(ics   ,i,j) = sqrt(cs2)
 
           if (nscbc_burn) then
-             A(iwdot1:,i,j) = Upc(i,j,:)
+             A(iwdot1:,i,j) = Upc(i,j,iry1:iry1+nspecies-1)
           else
              A(iwdot1:,i,j) = 0.d0
           end if
@@ -565,7 +565,7 @@ contains
     integer, intent(in) :: idim,ng
     integer, dimension(3), intent(in) :: lo, hi, alo, ahi
     double precision, intent(in ) :: Q (  -ng+lo(1): hi(1)+ng,-ng+lo(2): hi(2)+ng,-ng+lo(3): hi(3)+ng,nprim)
-    double precision, intent(in ) ::Upc(      lo(1): hi(1)   ,    lo(2): hi(2)   ,    lo(3): hi(3)   ,nspecies)
+    double precision, intent(in ) ::Upc(      lo(1): hi(1)   ,    lo(2): hi(2)   ,    lo(3): hi(3)   ,ncons)
     double precision, intent(out) :: A (naux,alo(1):ahi(1)   ,   alo(2):ahi(2)   ,   alo(3):ahi(3))
     double precision, intent(inout) :: mach2
 
@@ -600,7 +600,7 @@ contains
              A(ics   ,i,j,k) = sqrt(cs2)
 
              if (nscbc_burn) then
-                A(iwdot1:,i,j,k) = Upc(i,j,k,:)
+                A(iwdot1:,i,j,k) = Upc(i,j,k,iry1:iry1+nspecies-1)
              else
                 A(iwdot1:,i,j,k) = 0.d0
              end if
