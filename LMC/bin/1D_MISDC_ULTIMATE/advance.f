@@ -102,12 +102,8 @@ c     nodal, no ghost cells
       
       integer i,is,misdc,n,rho_flag,IWRK,l,j
 
-      real*8 deltarhoY_old(0:nlevs-1,0:nfine-1,Nspec)
-      real*8 deltarhoY_new(0:nlevs-1,0:nfine-1,Nspec)
-      real*8 deltarhoY_max(Nspec)
-
-      real*8 deltaTmax
-      integer max_cell
+      real*8   scal_tmp(0:nlevs-1,-2:nfine+1,nscal)
+      real*8 norm(Nspec),deltaTsum
 
       print *,'advance: at start of time step',istep
 
@@ -402,26 +398,23 @@ c     compute rho^{(k+1)}*Y_{m,AD}^{(k+1),l+1}
                   is = FirstSpec + n -1
                   scal_new(0,i,is) = scal_old(0,i,is) + dt(0)*aofs(0,i,is)
      &                 + dRhs(0,i,n) + dt(0)*diff_hat(0,i,is)
-
-                  deltarhoY_new(0,i,n) = scal_new(0,i,is)-scal_old(0,i,is)
                end do
             end do
 
+c     diagnostic stuff
             if (l .gt. 1) then
-               deltarhoY_max = 0.d0
+               norm = 0.d0
                do i=lo(0),hi(0)
                   do n=1,Nspec
-                     deltarhoY_max(n) = max(deltarhoY_max(n),
-     &                    abs((deltarhoY_new(0,i,n)-deltarhoY_old(0,i,n))
-     &                        /deltarhoY_old(0,i,n)))
+                     is = FirstSpec + n - 1
+                     norm(n) = norm(n) + abs(scal_new(0,i,is)-scal_tmp(0,i,is))
                   end do
                end do               
                print*,'change in rhoY relative to previous iter'
-               write(*,1000) (deltarhoY_max(1:Nspec))
+               write(*,1000) (norm(1:Nspec))
  1000          format (1000E11.3)
-
             end if
-            deltarhoY_old = deltarhoY_new
+            scal_tmp = scal_new
 
             call set_bc_s(scal_new(0,:,:),lo(0),hi(0),bc(0,:))
 
@@ -446,6 +439,8 @@ c     we compute h_m using T from the scalar argument
          end if
 
          do j=1,deltaT_iter
+
+            print*,'deltaT iter',j
 
 c     compute rho^{(k+1)}*cp_{AD}^{(k+1),l}
             do i=lo(0),hi(0)
@@ -491,15 +486,11 @@ c     Solve C-N system for delta T
      $                           1.d0,lo(0),hi(0),bc(0,:))
 
 c     diagnostic stuff
-            deltaTmax = 0.d0
-            max_cell = 0.d0
+            deltaTsum = 0.d0
             do i=lo(0),hi(0)
-               if (deltaT(0,i)/scal_new(0,i,Temp) .gt. deltaTmax) then
-                  deltaTmax = deltaT(0,i)/scal_new(0,i,Temp)
-                  max_cell = i
-               end if
+               deltaTsum = deltaTsum + abs(deltaT(0,i))
             end do
-            print*,'deltaTmax',deltaTmax,max_cell
+            print*,'deltaTsum',deltaTsum
 
             do i=lo(0),hi(0)
 c     update temperature and use EOS to get enthalpy
