@@ -336,7 +336,8 @@ contains
 
     do j=lo(2),hi(2)
        do i=lo(1),hi(1)
-          mvor(i,j) = abs(vx(i,j)-uy(i,j))
+!          mvor(i,j) = abs(vx(i,j)-uy(i,j))
+          mvor(i,j) = vx(i,j)-uy(i,j)
        end do
     end do
 
@@ -348,7 +349,7 @@ contains
   subroutine make_burn_2d(lo, hi, burn, vlo, vhi, Q, qlo, qhi)
     use plotvar_index_module
     use variables_module
-    use chemistry_module, only : molecular_weight
+    use chemistry_module, only : molecular_weight, h0 => std_heat_formation
 
     integer, intent(in) :: lo(2), hi(2), vlo(2), vhi(2), qlo(2), qhi(2)
     double precision, intent(inout) :: burn(vlo(1):vhi(1),vlo(2):vhi(2),nburn)
@@ -393,7 +394,7 @@ contains
           do n=1,nspecies
              do i=lo(1),hi(1)
                 burn(i,j,ib_heatRelease) = burn(i,j,ib_heatRelease) &
-                     + q(i,j,qh1+n-1) * wdot(i,n) * molecular_weight(n)
+                     - h0(n) * wdot(i,n) * molecular_weight(n)
              end do
           end do
        end if
