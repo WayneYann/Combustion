@@ -558,7 +558,7 @@ contains
   subroutine make_burn_3d(lo, hi, burn, vlo, vhi, Q, qlo, qhi)
     use plotvar_index_module
     use variables_module
-    use chemistry_module, only : molecular_weight
+    use chemistry_module, only : molecular_weight, h0 => std_heat_formation
 
     integer, intent(in) :: lo(3), hi(3), vlo(3), vhi(3), qlo(3), qhi(3)
     double precision, intent(inout) :: burn(vlo(1):vhi(1),vlo(2):vhi(2),vlo(3):vhi(3),nburn)
@@ -604,7 +604,7 @@ contains
              do n=1,nspecies
                 do i=lo(1),hi(1)
                    burn(i,j,k,ib_heatRelease) = burn(i,j,k,ib_heatRelease) &
-                        + q(i,j,k,qh1+n-1) * wdot(i,n) * molecular_weight(n)
+                        - h0(n) * wdot(i,n) * molecular_weight(n)
                 end do
              end do
           end if
