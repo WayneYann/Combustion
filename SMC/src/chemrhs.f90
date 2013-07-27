@@ -32,6 +32,7 @@ end subroutine f_rhs
 
 
 subroutine f_jac(neq, time, y, ml, mu, pd, nrpd, rpar, ipar)
+  use chemistry_module, only : molecular_weight, inv_mwt
   implicit none
   integer :: neq
   integer :: ml, mu, nrpd
@@ -45,7 +46,7 @@ subroutine f_jac(neq, time, y, ml, mu, pd, nrpd, rpar, ipar)
   double precision :: time
 
   ! local variables
-  integer :: iwrk
+  integer :: iwrk, i, j
   double precision :: rwrk, rho, T, C(neq-1)
   integer, parameter :: consP = 0
 
@@ -54,6 +55,12 @@ subroutine f_jac(neq, time, y, ml, mu, pd, nrpd, rpar, ipar)
 
   call ckytcr(rho, T, y, iwrk, rwrk, C)
   call DWDOT(PD, C, T, consP)
+
+  do j=1,neq-1
+     do i=1,neq-1
+        pd(i,j) = pd(i,j) * molecular_weight(i) * inv_mwt(j)
+     end do
+  end do
 
   return
 end subroutine f_jac
