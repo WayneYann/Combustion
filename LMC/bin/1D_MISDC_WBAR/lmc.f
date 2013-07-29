@@ -28,7 +28,8 @@
       real*8, allocatable :: beta_for_Y_new(:,:,:)
       real*8, allocatable :: beta_for_Wbar_old(:,:,:)
       real*8, allocatable :: beta_for_Wbar_new(:,:,:)
-      real*8, allocatable :: mu_dummy(:,:)
+      real*8, allocatable :: mu_old(:,:)
+      real*8, allocatable :: mu_new(:,:)
       real*8, allocatable :: divu_old(:,:)
       real*8, allocatable :: divu_new(:,:)
 
@@ -150,7 +151,8 @@ c     u_bc, T_bc, Y_bc, h_bc, and rho_bc
       allocate(beta_for_Y_new(0:nlevs-1,-1:nfine,nscal))
       allocate(beta_for_Wbar_old(0:nlevs-1,-1:nfine,nscal))
       allocate(beta_for_Wbar_new(0:nlevs-1,-1:nfine,nscal))
-      allocate(mu_dummy(0:nlevs-1,-1:nfine))
+      allocate(mu_old(0:nlevs-1,-1:nfine))
+      allocate(mu_new(0:nlevs-1,-1:nfine))
       allocate(divu_old(0:nlevs-1,-1:nfine))
       allocate(divu_new(0:nlevs-1,-1:nfine))
 
@@ -261,7 +263,7 @@ c     needed for seed to EOS after first strang_chem call
             call calc_diffusivities(scal_old(l,:,:),beta_old(l,:,:),
      &                              beta_for_Y_old(l,:,:),
      &                              beta_for_Wbar_old(l,:,:),
-     &                              mu_dummy(l,:),lo(l),hi(l))
+     &                              mu_old(l,:),lo(l),hi(l))
          end do
          
          if (do_initial_projection .eq. 1) then
@@ -348,6 +350,7 @@ c     return zero pressure
      $                   divu_old,divu_new,dSdt,beta_old,beta_new,
      $                   beta_for_Y_old,beta_for_Y_new,
      $                   beta_for_Wbar_old,beta_for_Wbar_new,
+     $                   mu_old,mu_new,
      $                   dx,dt,lo,hi,bc,delta_chi,-init_iter)
 
 c     update pressure and I_R
@@ -395,6 +398,7 @@ C-- Now advance
      $                divu_old,divu_new,dSdt,beta_old,beta_new,
      $                beta_for_Y_old,beta_for_Y_new,
      $                beta_for_Wbar_old,beta_for_Wbar_new,
+     $                mu_old,mu_new,
      $                dx,dt,lo,hi,bc,delta_chi,nsteps_taken)
 
 c     update state, time
@@ -402,6 +406,10 @@ c     update state, time
          scal_old = scal_new
          divu_old = divu_new
          press_old = press_new
+         beta_old = beta_new
+         beta_for_Y_old = beta_for_Y_new
+         beta_for_Wbar_old = beta_for_Wbar_new
+         mu_old = mu_new
 
          time = time + dt(0)
 

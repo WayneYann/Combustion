@@ -10,7 +10,7 @@ ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
      $                   divu_old,divu_new,dSdt,beta_old,beta_new,
      $                   beta_for_Y_old,beta_for_Y_new,
      $                   beta_for_Wbar_old,beta_for_Wbar_new,
-     $                   dx,dt,lo,hi,bc,delta_chi,istep)
+     $                   mu_old,mu_new,dx,dt,lo,hi,bc,delta_chi,istep)
 
       implicit none
 
@@ -42,6 +42,8 @@ c     cell-centered, 1 ghost cell
       real*8   beta_for_Y_new(0:nlevs-1,-1:nfine  ,nscal)
       real*8   beta_for_Wbar_old(0:nlevs-1,-1:nfine  ,nscal)
       real*8   beta_for_Wbar_new(0:nlevs-1,-1:nfine  ,nscal)
+      real*8   mu_old(0:nlevs-1,-1:nfine)
+      real*8   mu_new(0:nlevs-1,-1:nfine)
       real*8   divu_old(0:nlevs-1,-1:nfine)
       real*8   divu_new(0:nlevs-1,-1:nfine)
 
@@ -63,9 +65,6 @@ c     nodal, 1 ghost cell
 c     local variables
 
 c     cell-centered, 1 ghost cell
-      real*8       mu_old(0:nlevs-1,-1:nfine)
-      real*8       mu_new(0:nlevs-1,-1:nfine)
-      real*8     mu_dummy(0:nlevs-1,-1:nfine)
       real*8           gp(0:nlevs-1,-1:nfine)
       real*8         visc(0:nlevs-1,-1:nfine)
       real*8     I_R_divu(0:nlevs-1,-1:nfine,  0:Nspec)
@@ -135,15 +134,6 @@ c     reset delta_chi
 ccccccccccccccccccccccccccccccccccccccccccc
 c     Step 2: Advance thermodynamic variables
 ccccccccccccccccccccccccccccccccccccccccccc
-
-c     compute transport coefficients
-c        rho D_m     (for species)
-c        lambda / cp (for enthalpy)
-c        lambda      (for temperature)
-      call calc_diffusivities(scal_old(0,:,:),beta_old(0,:,:),
-     &                        beta_for_Y_old(0,:,:),
-     &                        beta_for_Wbar_old(0,:,:),
-     &                        mu_old(0,:),lo(0),hi(0))
 
 c     compute diffusion terms at time n
       print *,'... creating the diffusive terms with old data'
@@ -223,7 +213,7 @@ c        lambda      (for temperature)
             call calc_diffusivities(scal_new(0,:,:),beta_new(0,:,:),
      &                              beta_for_Y_new(0,:,:),
      &                              beta_for_Wbar_new(0,:,:),
-     &                              mu_dummy(0,:),lo(0),hi(0))
+     &                              mu_new(0,:),lo(0),hi(0))
 c     compute a conservative div gamma_m
 c     save gamma_m for differential diffusion computation
             call get_spec_visc_terms(scal_new(0,:,:),beta_new(0,:,:),
