@@ -69,7 +69,6 @@ c     cell-centered, 1 ghost cell
       real*8           gp(0:nlevs-1,-1:nfine)
       real*8         visc(0:nlevs-1,-1:nfine)
       real*8     I_R_divu(0:nlevs-1,-1:nfine,  0:Nspec)
-      real*8     I_R_temp(0:nlevs-1,-1:nfine,  0:Nspec)
       real*8     diff_old(0:nlevs-1,-1:nfine,  nscal)
       real*8     diff_new(0:nlevs-1,-1:nfine,  nscal)
       real*8     diff_hat(0:nlevs-1,-1:nfine,  nscal)
@@ -99,22 +98,19 @@ c     nodal, no ghost cells
       real*8       macvel(0:nlevs-1, 0:nfine  )
       real*8      veledge(0:nlevs-1, 0:nfine  )
 
-      real*8 Y(Nspec),WDOTK(Nspec),C(Nspec),RWRK
-      real*8 cpmix,rhocp,vel_theta,be_cn_theta
+      real*8 WDOTK(Nspec),C(Nspec),RWRK
+      real*8 vel_theta,be_cn_theta
       
       integer i,is,misdc,n,rho_flag,IWRK,l
 
       real*8 scal_tmp(0:nlevs-1,-2:nfine+1,nscal)
       real*8 norm(Nspec)
 
-      diffdiff_old = 0.d0
-      diffdiff_new = 0.d0
-
 c     "diffdiff" means "differential diffusion", which corresponds to
 c     sum_m div [ h_m (rho D_m - lambda/cp) grad Y_m ]
 c     in equation (3)
-      diffdiff_old(0,:) = 0.d0
-      diffdiff_new(0,:) = 0.d0
+      diffdiff_old = 0.d0
+      diffdiff_new = 0.d0
 
       print *,'advance: at start of time step'
 
@@ -133,32 +129,8 @@ c     compute U^{ADV,*}
       call pre_mac_predict(vel_old(0,:),scal_old(0,:,:),gp(0,:),
      $                     macvel(0,:),dx(0),dt(0),lo(0),hi(0),bc(0,:))
 
-c     set S^{n+1/2} to S^n
-      do i=lo(0),hi(0)
-         divu_extrap(0,i) = divu_old(0,i)
-      end do
-
-c     compute ptherm = p(rho,T,Y)
-c     this is needed for any dpdt-based correction scheme
-      call compute_pthermo(scal_old(0,:,:),lo(0),hi(0),bc(0,:))
-
 c     reset delta_chi
       delta_chi = 0.d0
-
-c     delta_chi = delta_chi + (peos-p0)/(dt*peos) + (1/peos) u dot grad peos
-      call add_dpdt(scal_old(0,:,:),scal_old(0,:,RhoRT),
-     $              delta_chi(0,:),macvel(0,:),dx(0),dt(0),
-     $              lo(0),hi(0),bc(0,:))
-
-c     S_hat^{n+1/2} = S^{n+1/2} + delta_chi
-      do i=lo(0),hi(0)
-         divu_effect(0,i) = divu_extrap(0,i) + delta_chi(0,i)
-      end do
-
-c     mac projection
-c     macvel will now satisfy div(umac) = S_hat^{n+1/2}
-      call macproj(macvel(0,:),scal_old(0,:,Density),
-     &             divu_effect(0,:),dx,lo(0),hi(0),bc(0,:))
 
 ccccccccccccccccccccccccccccccccccccccccccc
 c     Step 2: Advance thermodynamic variables
@@ -199,9 +171,9 @@ c     we compute grad Y_m using Y_m from the second argument
      $                           diffdiff_old(0,:),dx(0),lo(0),hi(0))
       end if
 
-c     If .true., use I_R in predictor is instantaneous value at t^n
-c     If .false., use I_R^lagged = I_R^kmax from previous time step
-      if (.true.) then
+c     If istep > 1, I_R is instantaneous value at t^n
+c     Otherwise,    I_R is I_R^kmax from previous pressure iteration
+      if (istep .gt. 1) then
          do i=lo(0),hi(0)
             do n=1,Nspec
                C(n) = scal_old(0,i,FirstSpec+n-1)*invmwt(n)
@@ -215,17 +187,14 @@ c     If .false., use I_R^lagged = I_R^kmax from previous time step
 
       print *,'... computing A forcing = D^n + I_R^{n-1,kmax}'
 
-c     compute advective forcing term
-      do i=lo(0),hi(0)
-         do n = 1,Nspec
-            is = FirstSpec + n - 1
-            tforce(0,i,is) = diff_old(0,i,is) + I_R(0,i,n)
-         enddo
-         tforce(0,i,RhoH) = diff_old(0,i,RhoH) + diffdiff_old(0,i)
-      enddo
-
 c     non-fancy predictor that simply sets scal_new = scal_old
-      scal_new(0,:,:) = scal_old(0,:,:)
+      scal_new = scal_old
+      beta_new = beta_old
+      beta_for_Y_new = beta_for_Y_old
+      beta_for_Wbar_new = beta_for_Wbar_old
+      diff_new = diff_old
+      diffdiff_new = diffdiff_old
+      divu_new = divu_old
 
 C----------------------------------------------------------------
 c     End initial predictor
@@ -243,41 +212,42 @@ c     that have a backward Euler character
          
          print *,'... doing SDC iter ',misdc
          
-         print *,'... compute lagged diff_new, D(U^{n+1,k-1})'
+         if (misdc .gt. 1) then
+
+            print *,'... compute lagged diff_new, D(U^{n+1,k-1})'
 
 c     compute transport coefficients
 c        rho D_m     (for species)
 c        lambda / cp (for enthalpy)
 c        lambda      (for temperature)
-         call calc_diffusivities(scal_new(0,:,:),beta_new(0,:,:),
-     &                           beta_for_Y_new(0,:,:),
-     &                           beta_for_Wbar_new(0,:,:),
-     &                           mu_dummy(0,:),lo(0),hi(0))
+            call calc_diffusivities(scal_new(0,:,:),beta_new(0,:,:),
+     &                              beta_for_Y_new(0,:,:),
+     &                              beta_for_Wbar_new(0,:,:),
+     &                              mu_dummy(0,:),lo(0),hi(0))
 c     compute a conservative div gamma_m
 c     save gamma_m for differential diffusion computation
-         call get_spec_visc_terms(scal_new(0,:,:),beta_new(0,:,:),
-     &                            diff_new(0,:,FirstSpec:),
-     &                            gamma_lo(0,:,:),
-     &                            gamma_hi(0,:,:),
-     &                            dx(0),lo(0),hi(0))
+            call get_spec_visc_terms(scal_new(0,:,:),beta_new(0,:,:),
+     &                               diff_new(0,:,FirstSpec:),
+     &                               gamma_lo(0,:,:),
+     &                               gamma_hi(0,:,:),
+     &                               dx(0),lo(0),hi(0))
 c     compute div lambda/cp grad h (no differential diffusion)
-         call get_rhoh_visc_terms(scal_new(0,:,:),beta_new(0,:,:),
-     &                            diff_new(0,:,RhoH),dx(0),lo(0),hi(0))
+            call get_rhoh_visc_terms(scal_new(0,:,:),beta_new(0,:,:),
+     &                               diff_new(0,:,RhoH),dx(0),lo(0),hi(0))
 
-         if (LeEQ1 .eq. 0) then
+            if (LeEQ1 .eq. 0) then
 c     calculate differential diffusion "diffdiff" terms, i.e.,
 c     sum_m div [ h_m (Gamma_m - lambda/cp grad Y_m) ]
 c     we pass in conservative gamma_m via gamma
 c     we take lambda / cp from beta
 c     we compute h_m using T from the first argument
 c     we compute grad Y_m using Y_m from the second argument
-            call get_diffdiff_terms(scal_new(0,:,:),scal_new(0,:,:),
-     $                              gamma_lo(0,:,:),
-     $                              gamma_hi(0,:,:),beta_new(0,:,:),
-     $                              diffdiff_new(0,:),dx(0),lo(0),hi(0))
-         end if
+               call get_diffdiff_terms(scal_new(0,:,:),scal_new(0,:,:),
+     $                                 gamma_lo(0,:,:),
+     $                                 gamma_hi(0,:,:),beta_new(0,:,:),
+     $                                 diffdiff_new(0,:),dx(0),lo(0),hi(0))
 
-         if (misdc .gt. 1) then
+            end if
 
 cccccccccccccccccccccccccccccccccccc
 c     re-compute S^{n+1/2} by averaging old and new
@@ -301,37 +271,37 @@ c     divu
             call calc_divu(scal_new(0,:,:),beta_new(0,:,:),I_R_divu(0,:,:),
      &                     divu_new(0,:),dx(0),lo(0),hi(0))
 
+         end if
+
 c     time-centered divu
-            do i=lo(0),hi(0)
-               divu_extrap(0,i) = 0.5d0*(divu_old(0,i) + divu_new(0,i))
-            end do
+         do i=lo(0),hi(0)
+            divu_extrap(0,i) = 0.5d0*(divu_old(0,i) + divu_new(0,i))
+         end do
 
 cccccccccccccccccccccccccccccccccccc
 c     update delta_chi and project
 cccccccccccccccccccccccccccccccccccc
 
-            print *,'... updating S^{n+1/2} and macvel'
-            print *,'    using fancy delta_chi'
+         print *,'... updating S^{n+1/2} and macvel'
+         print *,'    using fancy delta_chi'
 
 c     compute ptherm = p(rho,T,Y)
 c     this is needed for any dpdt-based correction scheme
-            call compute_pthermo(scal_new(0,:,:),lo(0),hi(0),bc(0,:))
-               
+         call compute_pthermo(scal_new(0,:,:),lo(0),hi(0),bc(0,:))
+            
 c     delta_chi = delta_chi + (peos-p0)/(dt*peos) + (1/peos) u dot grad peos
-            call add_dpdt(scal_new(0,:,:),scal_new(0,:,RhoRT),
-     $                    delta_chi(0,:),macvel(0,:),dx(0),dt(0),
-     $                    lo(0),hi(0),bc(0,:))
+         call add_dpdt(scal_new(0,:,:),scal_new(0,:,RhoRT),
+     $                 delta_chi(0,:),macvel(0,:),dx(0),dt(0),
+     $                 lo(0),hi(0),bc(0,:))
 
 c     S_hat^{n+1/2} = S^{n+1/2} + delta_chi
-            do i=lo(0),hi(0)
-               divu_effect(0,i) = divu_extrap(0,i) + delta_chi(0,i)
-            end do
+         do i=lo(0),hi(0)
+            divu_effect(0,i) = divu_extrap(0,i) + delta_chi(0,i)
+         end do
             
 c     macvel will now satisfy div(umac) = S_hat^{n+1/2}
-            call macproj(macvel(0,:),scal_old(0,:,Density),
-     &                   divu_effect(0,:),dx,lo(0),hi(0),bc(0,:))
-
-         end if
+         call macproj(macvel(0,:),scal_old(0,:,Density),
+     &                divu_effect(0,:),dx,lo(0),hi(0),bc(0,:))
 
          print *,'... computing A forcing term = D^n + I_R^{k-1}'
 
