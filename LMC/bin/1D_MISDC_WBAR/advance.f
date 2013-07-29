@@ -104,6 +104,9 @@ c     nodal, no ghost cells
       
       integer i,is,misdc,n,rho_flag,IWRK,l
 
+      real*8 scal_tmp(0:nlevs-1,-2:nfine+1,nscal)
+      real*8 norm(Nspec)
+
       diffdiff_old = 0.d0
       diffdiff_new = 0.d0
 
@@ -887,7 +890,7 @@ c     differential diffusion will be added later
             enddo
 
 c     new iterative Wbar procedure
-            do l=0,1
+            do l=1,3
 
 c     compute div(beta_for_Wbar^(k) grad Wbar^(k),l)
 c     also need to save the fluxes themselves
@@ -928,9 +931,6 @@ c     subtract off Wbar piece - will add it back in over next l iterate
                   end do
                end do
 
-c     end loop over l
-            end do
-
 c     compute conservatively corrected version of div gamma_m
 c     where gamma_m = beta_for_y^(k) grad \tilde Y_{m,AD}^(k+1) + beta_for_Wbar^(k) grad Wbar^(k)
 c     fluxes from beta_for_Wbar^(k) grad Wbar^(k) are already available
@@ -939,6 +939,35 @@ c     fluxes from beta_for_Wbar^(k) grad Wbar^(k) are already available
      &                                             gamma_Wbar_lo(0,:,:),
      &                                             gamma_Wbar_hi(0,:,:),
      &                                             dx(0),lo(0),hi(0))
+
+c     compute rho^{(k+1)}*Y_{m,AD}^{(k+1),l+1}
+            do i=lo(0),hi(0)
+               do n=1,Nspec
+                  is = FirstSpec + n -1
+                  scal_new(0,i,is) = scal_old(0,i,is) + dt(0)*aofs(0,i,is)
+     &                 + dRhs(0,i,n) + dt(0)*diff_hat(0,i,is)
+               end do
+            end do
+
+c     diagnostic stuff
+            if (l .gt. 1) then
+               norm = 0.d0
+               do i=lo(0),hi(0)
+                  do n=1,Nspec
+                     is = FirstSpec + n - 1
+                     norm(n) = norm(n) + abs(scal_new(0,i,is)-scal_tmp(0,i,is))
+                  end do
+               end do               
+               print*,'change in rhoY relative to previous iter'
+               write(*,1000) (norm(1:Nspec))
+ 1000          format (1000E11.3)
+            end if
+            scal_tmp = scal_new
+
+            call set_bc_s(scal_new(0,:,:),lo(0),hi(0),bc(0,:))
+
+c     end loop over l
+            end do
 
 c     add differential diffusion to forcing for enthalpy solve in equation (49)
                do i=lo(0),hi(0)
