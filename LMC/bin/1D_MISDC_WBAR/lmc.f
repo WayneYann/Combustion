@@ -62,13 +62,12 @@
      $                  problo,probhi,chkfile,
      $                  plot_int, chk_int,
      $                  init_shrink, flame_offset,
-     $                  fancy_predictor, dpdt_factor, 
-     $                  Patm, coef_avg_harm, initial_S_type, 
-     $                  recompute_S, probtype,
+     $                  dpdt_factor, 
+     $                  Patm, coef_avg_harm,
+     $                  probtype,
      $                  misdc_iterMAX,
      $                  do_initial_projection, num_divu_iters, 
      $                  num_init_iters,fixed_dt,
-     $                  use_strang, 
      $                  V_in, lim_rxns,
      $                  LeEQ1, tranfile, TMIN_TRANS, Pr, Sc,
      $                  max_vode_subcycles,
@@ -89,9 +88,6 @@ c     Set defaults, change with namelist
       chk_int = 1
       init_shrink = 0.1d0
       flame_offset = 0.d0
-      fancy_predictor = 1
-      initial_S_type = 1
-      recompute_S = 0
       dpdt_factor = 0.d0
       Patm = 1.d0
       coef_avg_harm = 0
@@ -100,7 +96,6 @@ c     Set defaults, change with namelist
       num_divu_iters = 3
       num_init_iters = 2
       fixed_dt = -1.d0
-      use_strang = .false.
       V_in = 1.d20
       lim_rxns = 1
       LeEQ1 = 0
@@ -348,22 +343,12 @@ c     return zero pressure
             print *,' '
             print *,'INITIAL PRESSURE ITERATION ',init_iter
 
-c     strang split overwrites scal_old so we preserve it
-            if (use_strang) then
-               scal_hold = scal_old
-            end if
-
             call advance(vel_old,vel_new,scal_old,scal_new,
      $                   I_R,press_old,press_new,
      $                   divu_old,divu_new,dSdt,beta_old,beta_new,
      $                   beta_for_Y_old,beta_for_Y_new,
      $                   beta_for_Wbar_old,beta_for_Wbar_new,
      $                   dx,dt,lo,hi,bc,delta_chi,-init_iter)
-
-c     restore scal_old
-            if (use_strang) then
-               scal_old = scal_hold
-            end if
 
 c     update pressure and I_R
             press_old = press_new
