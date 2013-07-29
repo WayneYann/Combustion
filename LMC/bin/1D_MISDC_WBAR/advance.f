@@ -7,10 +7,10 @@ ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
 
       subroutine advance(vel_old,vel_new,scal_old,scal_new,
      $                   I_R,press_old,press_new,
-     $                   divu_old,divu_new,dSdt,beta_old,beta_new,
+     $                   divu_old,divu_new,beta_old,beta_new,
      $                   beta_for_Y_old,beta_for_Y_new,
      $                   beta_for_Wbar_old,beta_for_Wbar_new,
-     $                   mu_old,mu_new,dx,dt,lo,hi,bc,delta_chi,istep)
+     $                   mu_old,mu_new,dx,dt,lo,hi,bc,istep)
 
       implicit none
 
@@ -47,10 +47,6 @@ c     cell-centered, 1 ghost cell
       real*8   divu_old(0:nlevs-1,-1:nfine)
       real*8   divu_new(0:nlevs-1,-1:nfine)
 
-c     cell-centered, no ghost cells
-      real*8       dSdt(0:nlevs-1, 0:nfine-1)
-      real*8  delta_chi(0:nlevs-1, 0:nfine-1)
-
 c     nodal, 1 ghost cell
       real*8  press_old(0:nlevs-1,-1:nfine+1)
       real*8  press_new(0:nlevs-1,-1:nfine+1)
@@ -75,10 +71,10 @@ c     cell-centered, 1 ghost cell
       real*8       tforce(0:nlevs-1,-1:nfine,  nscal)
       real*8 diffdiff_old(0:nlevs-1,-1:nfine)
       real*8 diffdiff_new(0:nlevs-1,-1:nfine)
-      real*8  divu_extrap(0:nlevs-1,-1:nfine)
       real*8  divu_effect(0:nlevs-1,-1:nfine)
 
 c     cell-centered, no ghost cells
+      real*8  delta_chi(0:nlevs-1, 0:nfine-1)
       real*8      rhohalf(0:nlevs-1, 0:nfine-1)
       real*8        alpha(0:nlevs-1, 0:nfine-1)
       real*8      vel_Rhs(0:nlevs-1, 0:nfine-1)
@@ -265,7 +261,7 @@ c     divu
 
 c     time-centered divu
          do i=lo(0),hi(0)
-            divu_extrap(0,i) = 0.5d0*(divu_old(0,i) + divu_new(0,i))
+            divu_effect(0,i) = 0.5d0*(divu_old(0,i) + divu_new(0,i))
          end do
 
 cccccccccccccccccccccccccccccccccccc
@@ -286,7 +282,7 @@ c     delta_chi = delta_chi + (peos-p0)/(dt*peos) + (1/peos) u dot grad peos
 
 c     S_hat^{n+1/2} = S^{n+1/2} + delta_chi
          do i=lo(0),hi(0)
-            divu_effect(0,i) = divu_extrap(0,i) + delta_chi(0,i)
+            divu_effect(0,i) = divu_effect(0,i) + delta_chi(0,i)
          end do
             
 c     macvel will now satisfy div(umac) = S_hat^{n+1/2}
@@ -341,21 +337,17 @@ c     also need to save the fluxes themselves
      &                                    gamma_Wbar_hi(0,:,:),
      &                                    dx(0),lo(0),hi(0))
 
-c     add dt*div(beta_for_Wbar^(k) grad Wbar^(k),l) to dRhs
+c     setup alpha and rhs for species solve
             do i=lo(0),hi(0)
+               alpha(0,i) = scal_new(0,i,Density)
                do n=1,Nspec
                   is = FirstSpec + n - 1
-                  dRhs(0,i,n) = dRhs(0,i,n) + dt(0)*diff_tmp(0,i,is)
+                  Rhs(0,i,is) = scal_old(0,i,is) + dt(0)*aofs(0,i,is) 
+     $                 + dRhs(0,i,n) + dt(0)*diff_tmp(0,i,is)
                end do
             end do
 
-c     update rhoY_m with advection terms and set up RHS for correction solve
-            call update_spec(scal_old(0,:,:),scal_new(0,:,:),aofs(0,:,:),
-     &                       alpha(0,:),beta_old(0,:,:),
-     &                       dRhs(0,0:,1:),Rhs(0,0:,FirstSpec:),
-     &                       dx(0),dt(0),be_cn_theta,lo(0),hi(0),bc(0,:))
-
-c     Solve C-N system
+c     Solve implicit system
             rho_flag = 2
             do n=1,Nspec
                is = FirstSpec + n - 1
@@ -363,14 +355,6 @@ c     Solve C-N system
      $                       Rhs(0,:,is),dx(0),dt(0),is,be_cn_theta,
      $                       rho_flag,.false.,lo(0),hi(0),bc(0,:))
             enddo
-
-c     subtract off Wbar piece - will add it back in over next l iterate
-            do i=lo(0),hi(0)
-               do n=1,Nspec
-                  is = FirstSpec + n - 1
-                  dRhs(0,i,n) = dRhs(0,i,n) - dt(0)*diff_tmp(0,i,is)
-               end do
-            end do
 
 c     compute conservatively corrected version of div gamma_m
 c     where gamma_m = beta_for_y^(k) grad \tilde Y_{m,AD}^(k+1) + beta_for_Wbar^(k) grad Wbar^(k)
@@ -428,11 +412,9 @@ c     add differential diffusion to forcing for enthalpy solve in equation (49)
             
          print *,'... do correction diffusion solve for rhoh'
 
-c     update rhoh with advection terms and set up RHS for equation (49) C-N solve
-         call update_rhoh(scal_old(0,:,:),scal_new(0,:,:),aofs(0,:,:),
-     &                    alpha(0,:),beta_old(0,:,:),
-     &                    dRhs(0,:,0),Rhs(0,:,RhoH),dx(0),dt(0),
-     &                    be_cn_theta,lo(0),hi(0),bc(0,:))
+         do i=lo(0),hi(0)
+            Rhs(0,i,RhoH) = scal_old(0,i,RhoH) + dt(0)*aofs(0,i,RhoH) + dRhs(0,i,0)
+         end do
 
 c     Solve C-N system in equation (49) for h_{AD}^{(k+1)}
          rho_flag = 2
@@ -504,11 +486,6 @@ c        lambda      (for temperature)
 c     calculate S
       call calc_divu(scal_new(0,:,:),beta_new(0,:,:),I_R_divu(0,:,:),
      &               divu_new(0,:),dx(0),lo(0),hi(0))
-
-c     calculate dSdt
-      do i=lo(0),hi(0)
-         dSdt(0,i) = (divu_new(0,i) - divu_old(0,i)) / dt(0)
-      enddo
 
       print *,'... update velocities'
 
