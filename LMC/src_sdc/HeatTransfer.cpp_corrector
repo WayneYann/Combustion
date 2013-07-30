@@ -5655,18 +5655,22 @@ HeatTransfer::advance (Real time,
     if (verbose && ParallelDescriptor::IOProcessor())
       std::cout << " SDC iterations complete \n";
 
-    if (plot_consumption) {
-      for (int j=0; j<consumptionName.size(); ++j) {
+    if (plot_consumption)
+    {
+      for (int j=0; j<consumptionName.size(); ++j)
+      {
         int consumptionComp = getChemSolve().index(consumptionName[j]);
         MultiFab::Copy((*auxDiag["CONSUMPTION"]),get_new_data(RhoYdot_Type),consumptionComp,j,1,0);
         auxDiag["CONSUMPTION"]->mult(-1); // Convert production to consumption
       }
     }
 
-    if (plot_heat_release) {
+    if (plot_heat_release)
+    {
       FArrayBox enthi, T;
       const MultiFab& R = get_new_data(RhoYdot_Type);
-      for (MFIter mfi(R); mfi.isValid(); ++mfi) {
+      for (MFIter mfi(R); mfi.isValid(); ++mfi)
+      {
         const Box& box = mfi.validbox();
         T.resize(mfi.validbox(),1);
         T.setVal(298.15);
@@ -5677,7 +5681,8 @@ HeatTransfer::advance (Real time,
         
         // Form heat release
         (*auxDiag["HEATRELEASE"])[mfi].setVal(0.);
-        for (int j=0; j<R.nComp(); ++j) {
+        for (int j=0; j<R.nComp(); ++j)
+	{
           (*auxDiag["HEATRELEASE"])[mfi].minus(enthi,j,0,1);
         }
       }
@@ -5715,8 +5720,7 @@ HeatTransfer::advance (Real time,
             for (int i = 0, N = isects.size(); i < N; i++)
             {
                 const Box& ovlp = isects[i].second;
-
-                divu_new[mfi].copy(dsdt_old[mfi],ovlp,0,ovlp,0,1);
+		divu_new[mfi].copy(dsdt_old[mfi],ovlp,0,ovlp,0,1);
                 divu_new[mfi].mult(dt,ovlp,0,1);
                 divu_new[mfi].plus(divu_old[mfi],ovlp,0,0,1);
             }
@@ -7534,18 +7538,24 @@ HeatTransfer::calc_divu (Real      time,
     // If divu_iter (dt>0 && is_divu_iter) we want rho*omegadot = get_new_data(RhoYdot_Type)
     // Otherwise we want rho*omegadot from compute_instantaneous_reaction_rates
     MultiFab RhoYdotTmp;
-    MultiFab& RhoYdot = (is_divu_iter) ? get_new_data(RhoYdot_Type) : RhoYdotTmp;
-    if (!is_divu_iter)
+
+    bool is_init_proj = (dt<0);
+    
+    // if divu_iter, pressure iter, or the first time step use RhoYdot_Type
+    MultiFab& RhoYdot = (is_divu_iter || (time == 0.0 && dt>0) ) ? get_new_data(RhoYdot_Type) : RhoYdotTmp;
+    if ( !(is_divu_iter || (time == 0.0 && dt>0)) )
     {
-      if (dt > 0)
+      if (dt<=0)
       {
+	// initial projection
 	RhoYdotTmp.define(grids,nspecies,0,Fab_allocate);
-	compute_instantaneous_reaction_rates(RhoYdot,S,nGrow);
+	RhoYdot.setVal(0.);
       }
       else
       {
+	// a regular time step, but not the first one
 	RhoYdotTmp.define(grids,nspecies,0,Fab_allocate);
-	RhoYdot.setVal(0.);
+	compute_instantaneous_reaction_rates(RhoYdot,S,nGrow);
       }
     }
     
@@ -7834,14 +7844,6 @@ HeatTransfer::calc_dsdt (Real      time,
     MultiFab& Divu_old = get_old_data(Divu_Type);
 
     dsdt.setVal(0);
-
-    for (MFIter mfi(dsdt); mfi.isValid(); ++mfi)
-    {
-        const int k = mfi.index();
-        dsdt[k].copy(Divu_new[k],grids[k]);
-        dsdt[k].minus(Divu_old[k],grids[k],0,0,1);
-        dsdt[k].divide(dt,grids[k],0,1);
-    }
 }
 
 
