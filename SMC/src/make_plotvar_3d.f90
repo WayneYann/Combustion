@@ -4,6 +4,26 @@ module make_plotvar_3d_module
 
 contains
 
+  subroutine make_wbar_3d(lo, hi, w,  vlo, vhi, Q, qlo, qhi)
+    use variables_module
+    integer, intent(in) :: lo(3), hi(3), vlo(3), vhi(3), qlo(3), qhi(3)
+    double precision, intent(inout) :: w(vlo(1):vhi(1),vlo(2):vhi(2),vlo(3):vhi(3))
+    double precision, intent(in   ) :: Q(qlo(1):qhi(1),qlo(2):qhi(2),qlo(3):qhi(3),nprim)
+
+    integer :: i,j,k,iwrk
+    double precision :: rwrk, Yt(nspecies)
+
+    do k=lo(3),hi(3)
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+             Yt = Q(i,j,k,qy1:qy1+nspecies-1)
+             call ckmmwy(Yt, iwrk, rwrk, w(i,j,k))
+          enddo
+       enddo
+    enddo
+
+  end subroutine make_wbar_3d
+
   subroutine make_h_3d(lo, hi, h,  vlo, vhi, Q, qlo, qhi)
     use variables_module
     integer, intent(in) :: lo(3), hi(3), vlo(3), vhi(3), qlo(3), qhi(3)
@@ -26,7 +46,6 @@ contains
     enddo
 
   end subroutine make_h_3d
-
 
   subroutine make_rhoh_3d(lo, hi, rh,  vlo, vhi, Q, qlo, qhi)
     use variables_module

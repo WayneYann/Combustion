@@ -9,7 +9,7 @@ module make_plotfile_module
 
   use chemistry_module, only : nspecies, spec_names, get_species_index
   use probin_module, only : dm_in, plot_eint, plot_h, plot_rhoh, plot_divu, plot_magvort, &
-       plot_Y, plot_X, plot_hspec, plot_omegadot, plot_dYdt, plot_heatRelease, &
+       plot_Y, plot_X, plot_wbar, plot_hspec, plot_omegadot, plot_dYdt, plot_heatRelease, &
        plot_fuelConsumption, fuel_name, &
        nOutFiles, lUsingNFiles, single_prec_plotfiles, prob_lo, prob_hi
 
@@ -68,6 +68,10 @@ contains
 
     if (plot_X) then
        icomp_X = get_next_plot_index(nspecies)
+    end if
+
+    if (plot_wbar) then
+       icomp_wbar = get_next_plot_index(1)
     end if
 
     if (plot_hspec) then
@@ -167,6 +171,10 @@ contains
        end do
     end if
 
+    if (plot_wbar) then
+       plot_names(icomp_wbar) = "wbar"
+    end if
+
     if (plot_hspec) then
        do i=1,nspecies
           plot_names(icomp_hspec+i-1) = "h("//trim(spec_names(i))//")"
@@ -264,6 +272,10 @@ contains
 
     if (plot_X) then
        call multifab_copy_c(plotdata(1),icomp_X, Q,qx1, nspecies)       
+    end if
+
+    if (plot_wbar) then
+       call make_plotvar(plotdata(1),icomp_wbar, Q, dx)
     end if
 
     if (plot_hspec) then

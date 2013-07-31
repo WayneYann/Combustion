@@ -244,6 +244,9 @@ plot_Y                              logical            .true.
 # plot molar fraction species in plotfile
 plot_X                              logical            .false.
 
+# plot mean molecular weight
+plot_wbar                           logical            .false.
+
 # plot mean specific internal energy in plotfile
 plot_eint                           logical            .false.
 
@@ -256,6 +259,7 @@ plot_hspec                          logical            .false.
 
 # plot divu in plotfile
 plot_divu                           logical            .true.
+
 # plot magnitude of vorticity
 plot_magvort                        logical            .true.
 

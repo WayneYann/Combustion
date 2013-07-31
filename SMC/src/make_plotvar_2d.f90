@@ -4,6 +4,25 @@ module make_plotvar_2d_module
 
 contains
 
+  subroutine make_wbar_2d(lo, hi, w,  vlo, vhi, Q, qlo, qhi)
+    use variables_module
+    integer, intent(in) :: lo(2), hi(2), vlo(2), vhi(2), qlo(2), qhi(2)
+    double precision, intent(inout) :: w(vlo(1):vhi(1),vlo(2):vhi(2))
+    double precision, intent(in   ) :: Q(qlo(1):qhi(1),qlo(2):qhi(2),nprim)
+
+    integer :: i,j,iwrk
+    double precision :: rwrk, Yt(nspecies)
+
+    do j=lo(2),hi(2)
+       do i=lo(1),hi(1)
+          Yt = Q(i,j,qy1:qy1+nspecies-1)
+          call ckmmwy(Yt, iwrk, rwrk, w(i,j))
+       enddo
+    enddo
+
+  end subroutine make_wbar_2d
+
+
   subroutine make_h_2d(lo, hi, h,  vlo, vhi, Q, qlo, qhi)
     use variables_module
     integer, intent(in) :: lo(2), hi(2), vlo(2), vhi(2), qlo(2), qhi(2)

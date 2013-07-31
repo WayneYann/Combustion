@@ -51,7 +51,10 @@ contains
           hi = tb_get_block_hi(iblock,i)
 
           if (dm .eq. 2) then
-             if (icomp .eq. icomp_h) then
+             if (icomp .eq. icomp_wbar) then
+                call make_wbar_2d(lo,hi,pdp(:,:,1,icomp),pdlo(1:2),pdhi(1:2), &
+                     qp,qlo(1:2),qhi(1:2))
+             else if (icomp .eq. icomp_h) then
                 call make_h_2d(lo,hi,pdp(:,:,1,icomp),pdlo(1:2),pdhi(1:2), &
                      qp,qlo(1:2),qhi(1:2))
              else if (icomp .eq. icomp_rhoh) then
@@ -70,7 +73,10 @@ contains
                 call bl_error("make_plot_variables_module: unknown icomp")          
              end if
           else
-             if (icomp .eq. icomp_h) then
+             if (icomp .eq. icomp_wbar) then
+                call make_wbar_3d(lo,hi,pdp(:,:,:,icomp),pdlo(1:3),pdhi(1:3), &
+                     qp,qlo(1:3),qhi(1:3))
+             else if (icomp .eq. icomp_h) then
                 call make_h_3d(lo,hi,pdp(:,:,:,icomp),pdlo(1:3),pdhi(1:3), &
                      qp,qlo(1:3),qhi(1:3))
              else if (icomp .eq. icomp_rhoh) then
