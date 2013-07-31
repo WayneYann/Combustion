@@ -68,6 +68,81 @@ contains
   end subroutine make_rhoh_2d
 
 
+  subroutine make_cs_2d(lo, hi, cs, vlo, vhi, Q, qlo, qhi)
+    use variables_module
+    use chemistry_module, only : Ru
+    integer, intent(in) :: lo(2), hi(2), vlo(2), vhi(2), qlo(2), qhi(2)
+    double precision, intent(inout) :: cs(vlo(1):vhi(1),vlo(2):vhi(2))
+    double precision, intent(in   ) ::  Q(qlo(1):qhi(1),qlo(2):qhi(2),nprim)
+
+    integer :: i,j, iwrk
+    double precision :: Tt, Yt(nspecies), cv, cp, Wbar, gamma, rwrk
+
+    do j=lo(2),hi(2)
+       do i=lo(1),hi(1)
+          Tt = q(i,j,qtemp)
+          Yt = q(i,j,qy1:qy1+nspecies-1)
+          
+          call ckcvbs(Tt, Yt, iwrk, rwrk, cv)
+          call ckmmwy(Yt, iwrk, rwrk, Wbar)
+          
+          cp = cv + Ru/Wbar
+          gamma = cp / cv
+          cs(i,j) = sqrt(gamma*q(i,j,qpres)/q(i,j,qrho))
+       enddo
+    enddo
+
+  end subroutine make_cs_2d
+
+
+  subroutine make_magvel_2d(lo, hi, v, vlo, vhi, Q, qlo, qhi)
+    use variables_module
+    integer, intent(in) :: lo(2), hi(2), vlo(2), vhi(2), qlo(2), qhi(2)
+    double precision, intent(inout) ::  v(vlo(1):vhi(1),vlo(2):vhi(2))
+    double precision, intent(in   ) ::  Q(qlo(1):qhi(1),qlo(2):qhi(2),nprim)
+
+    integer :: i,j
+
+    do j=lo(2),hi(2)
+       do i=lo(1),hi(1)
+          v(i,j) = sqrt(q(i,j,qu)**2+q(i,j,qv)**2)
+       enddo
+    enddo
+
+  end subroutine make_magvel_2d
+
+
+  subroutine make_Mach_2d(lo, hi, Ma, vlo, vhi, Q, qlo, qhi)
+    use variables_module
+    use chemistry_module, only : Ru
+    integer, intent(in) :: lo(2), hi(2), vlo(2), vhi(2), qlo(2), qhi(2)
+    double precision, intent(inout) :: Ma(vlo(1):vhi(1),vlo(2):vhi(2))
+    double precision, intent(in   ) ::  Q(qlo(1):qhi(1),qlo(2):qhi(2),nprim)
+
+    integer :: i,j, iwrk
+    double precision :: Tt, Yt(nspecies), cv, cp, Wbar, gamma, cs2, v2, rwrk
+
+    do j=lo(2),hi(2)
+       do i=lo(1),hi(1)
+          Tt = q(i,j,qtemp)
+          Yt = q(i,j,qy1:qy1+nspecies-1)
+          
+          call ckcvbs(Tt, Yt, iwrk, rwrk, cv)
+          call ckmmwy(Yt, iwrk, rwrk, Wbar)
+          
+          cp = cv + Ru/Wbar
+          gamma = cp / cv
+          cs2 = gamma*q(i,j,qpres)/q(i,j,qrho)
+
+          v2 = q(i,j,qu)**2+q(i,j,qv)**2
+
+          Ma(i,j) = sqrt(v2/cs2)
+       enddo
+    enddo
+
+  end subroutine make_Mach_2d
+
+
   subroutine make_divu_2d(lo, hi, divu, vlo, vhi, Q, qlo, qhi, dx, dlo_g, dhi_g)
     use variables_module
     use derivative_stencil_module, only : stencil_ng, first_deriv_8, first_deriv_6, &

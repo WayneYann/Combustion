@@ -8,9 +8,9 @@ module make_plotfile_module
   use variables_module
 
   use chemistry_module, only : nspecies, spec_names, get_species_index
-  use probin_module, only : dm_in, plot_eint, plot_h, plot_rhoh, plot_divu, plot_magvort, &
-       plot_Y, plot_X, plot_wbar, plot_hspec, plot_omegadot, plot_dYdt, plot_heatRelease, &
-       plot_fuelConsumption, fuel_name, &
+  use probin_module, only : dm_in, plot_eint, plot_wbar, plot_h, plot_rhoh, plot_cs, &
+       plot_magvel, plot_Mach, plot_divu, plot_magvort, plot_Y, plot_X, plot_hspec,  &
+       plot_omegadot, plot_dYdt, plot_heatRelease, plot_fuelConsumption, fuel_name,  &
        nOutFiles, lUsingNFiles, single_prec_plotfiles, prob_lo, prob_hi
 
   use plotvar_index_module
@@ -46,12 +46,28 @@ contains
        icomp_eint = get_next_plot_index(1)
     end if
 
+    if (plot_wbar) then
+       icomp_wbar = get_next_plot_index(1)
+    end if
+
     if (plot_h) then
        icomp_h = get_next_plot_index(1)
     end if
 
     if (plot_rhoh) then
        icomp_rhoh = get_next_plot_index(1)
+    end if
+
+    if (plot_cs) then
+       icomp_cs = get_next_plot_index(1)
+    end if
+
+    if (plot_magvel) then
+       icomp_magvel = get_next_plot_index(1)
+    end if
+
+    if (plot_Mach) then
+       icomp_Mach = get_next_plot_index(1)
     end if
 
     if (plot_divu) then
@@ -68,10 +84,6 @@ contains
 
     if (plot_X) then
        icomp_X = get_next_plot_index(nspecies)
-    end if
-
-    if (plot_wbar) then
-       icomp_wbar = get_next_plot_index(1)
     end if
 
     if (plot_hspec) then
@@ -143,12 +155,28 @@ contains
        plot_names(icomp_eint) = "eint"
     end if
 
+    if (plot_wbar) then
+       plot_names(icomp_wbar) = "wbar"
+    end if
+
     if (plot_h) then
        plot_names(icomp_h) = "h"
     end if
 
     if (plot_rhoh) then
        plot_names(icomp_rhoh) = "rhoh"
+    end if
+
+    if (plot_cs) then
+       plot_names(icomp_cs) = "cs"
+    end if
+
+    if (plot_magvel) then
+       plot_names(icomp_magvel) = "magvel"
+    end if
+
+    if (plot_Mach) then
+       plot_names(icomp_Mach) = "Mach"
     end if
 
     if (plot_divu) then
@@ -169,10 +197,6 @@ contains
        do i=1,nspecies
           plot_names(icomp_X+i-1) = "X("//trim(spec_names(i))//")"
        end do
-    end if
-
-    if (plot_wbar) then
-       plot_names(icomp_wbar) = "wbar"
     end if
 
     if (plot_hspec) then
@@ -250,12 +274,8 @@ contains
        call multifab_copy_c(plotdata(1),icomp_eint, Q,qe, 1)
     end if    
 
-    if (plot_divu) then
-       call make_plotvar(plotdata(1),icomp_divu, Q, dx)
-    end if
-
-    if (plot_magvort) then
-       call make_plotvar(plotdata(1),icomp_magvort, Q, dx)
+    if (plot_wbar) then
+       call make_plotvar(plotdata(1),icomp_wbar, Q, dx)
     end if
 
     if (plot_h) then
@@ -266,16 +286,32 @@ contains
        call make_plotvar(plotdata(1),icomp_rhoh, Q, dx)
     end if
 
+    if (plot_cs) then
+       call make_plotvar(plotdata(1),icomp_cs, Q, dx)
+    end if
+
+    if (plot_magvel) then
+       call make_plotvar(plotdata(1),icomp_magvel, Q, dx)
+    end if
+
+    if (plot_Mach) then
+       call make_plotvar(plotdata(1),icomp_Mach, Q, dx)
+    end if
+
+    if (plot_divu) then
+       call make_plotvar(plotdata(1),icomp_divu, Q, dx)
+    end if
+
+    if (plot_magvort) then
+       call make_plotvar(plotdata(1),icomp_magvort, Q, dx)
+    end if
+
     if (plot_Y) then
        call multifab_copy_c(plotdata(1),icomp_Y, Q,qy1, nspecies)       
     end if
 
     if (plot_X) then
        call multifab_copy_c(plotdata(1),icomp_X, Q,qx1, nspecies)       
-    end if
-
-    if (plot_wbar) then
-       call make_plotvar(plotdata(1),icomp_wbar, Q, dx)
     end if
 
     if (plot_hspec) then

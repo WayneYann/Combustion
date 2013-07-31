@@ -257,6 +257,15 @@ plot_rhoh                           logical            .true.
 # plot enthlpy of each species in plotfile
 plot_hspec                          logical            .false.
 
+# plot sound speed in plotfile
+plot_cs                             logical            .false.
+
+# plot magnitude of velocity
+plot_magvel                         logical            .false.
+
+# plot magnitude of Mach number
+plot_Mach                           logical            .false.
+
 # plot divu in plotfile
 plot_divu                           logical            .true.
 

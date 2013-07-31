@@ -60,6 +60,15 @@ contains
              else if (icomp .eq. icomp_rhoh) then
                 call make_rhoh_2d(lo,hi,pdp(:,:,1,icomp),pdlo(1:2),pdhi(1:2), &
                      qp,qlo(1:2),qhi(1:2))
+             else if (icomp .eq. icomp_cs) then
+                call make_cs_2d(lo,hi,pdp(:,:,1,icomp),pdlo(1:2),pdhi(1:2), &
+                     qp,qlo(1:2),qhi(1:2))
+             else if (icomp .eq. icomp_magvel) then
+                call make_magvel_2d(lo,hi,pdp(:,:,1,icomp),pdlo(1:2),pdhi(1:2), &
+                     qp,qlo(1:2),qhi(1:2))
+             else if (icomp .eq. icomp_Mach) then
+                call make_Mach_2d(lo,hi,pdp(:,:,1,icomp),pdlo(1:2),pdhi(1:2), &
+                     qp,qlo(1:2),qhi(1:2))
              else if (icomp .eq. icomp_divu) then
                 call make_divu_2d(lo,hi,pdp(:,:,1,icomp),pdlo(1:2),pdhi(1:2), &
                      qp,qlo(1:2),qhi(1:2), dx, dlo,dhi)
@@ -81,6 +90,15 @@ contains
                      qp,qlo(1:3),qhi(1:3))
              else if (icomp .eq. icomp_rhoh) then
                 call make_rhoh_3d(lo,hi,pdp(:,:,:,icomp),pdlo(1:3),pdhi(1:3), &
+                     qp,qlo(1:3),qhi(1:3))
+             else if (icomp .eq. icomp_cs) then
+                call make_cs_3d(lo,hi,pdp(:,:,:,icomp),pdlo(1:3),pdhi(1:3), &
+                     qp,qlo(1:3),qhi(1:3))
+             else if (icomp .eq. icomp_magvel) then
+                call make_magvel_3d(lo,hi,pdp(:,:,:,icomp),pdlo(1:3),pdhi(1:3), &
+                     qp,qlo(1:3),qhi(1:3))
+             else if (icomp .eq. icomp_Mach) then
+                call make_Mach_3d(lo,hi,pdp(:,:,:,icomp),pdlo(1:3),pdhi(1:3), &
                      qp,qlo(1:3),qhi(1:3))
              else if (icomp .eq. icomp_divu) then
                 call make_divu_3d(lo,hi,pdp(:,:,:,icomp),pdlo(1:3),pdhi(1:3), &
