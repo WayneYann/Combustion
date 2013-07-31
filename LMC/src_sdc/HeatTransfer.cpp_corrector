@@ -5421,6 +5421,10 @@ HeatTransfer::advance (Real time,
 		       int  ncycle)
 {
     updateFluxReg = false;
+    if (sdc_iterMAX == 1)
+    {
+      updateFluxReg = true;
+    }
 
     if (level == 0)
     {
@@ -5491,7 +5495,7 @@ HeatTransfer::advance (Real time,
     showMF("sdc",DDn,"sdc_DDn",level,parent->levelSteps(level));
 
     /*
-      You could compute instantaneous I_R here if prev_type == 0?
+      You could compute instantaneous I_R here if doing a pressure iter
     */
 
     // copy old state into new state for:
@@ -5500,6 +5504,7 @@ HeatTransfer::advance (Real time,
     // divu - done in advance_setup
     // Dn and DDn
     MultiFab::Copy(Dnp1,Dn,0,0,nspecies+2,nGrowAdvForcing);
+    MultiFab::Copy(DDnp1,DDn,0,0,1,nGrowAdvForcing);
 
     MultiFab dpdt(grids,1,nGrowAdvForcing);
     MultiFab delta_dpdt(grids,1,nGrowAdvForcing);
