@@ -5519,7 +5519,7 @@ HeatTransfer::advance (Real time,
 	updateFluxReg = true;
       }
 
-      if (sdc_iter == 1)
+      if (sdc_iter > 1)
       {
 	// compute new-time transport coefficients
 	calcDiffusivity(cur_time);
