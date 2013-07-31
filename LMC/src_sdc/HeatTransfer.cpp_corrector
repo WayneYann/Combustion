@@ -5421,6 +5421,10 @@ HeatTransfer::advance (Real time,
 		       int  ncycle)
 {
     updateFluxReg = false;
+    if (sdc_iterMAX == 1)
+    {
+      updateFluxReg = true;
+    }
 
     if (level == 0)
     {
@@ -5491,7 +5495,7 @@ HeatTransfer::advance (Real time,
     showMF("sdc",DDn,"sdc_DDn",level,parent->levelSteps(level));
 
     /*
-      You could compute instantaneous I_R here if prev_type == 0?
+      You could compute instantaneous I_R here if doing a pressure iter
     */
 
     // copy old state into new state for:
@@ -5500,6 +5504,7 @@ HeatTransfer::advance (Real time,
     // divu - done in advance_setup
     // Dn and DDn
     MultiFab::Copy(Dnp1,Dn,0,0,nspecies+2,nGrowAdvForcing);
+    MultiFab::Copy(DDnp1,DDn,0,0,1,nGrowAdvForcing);
 
     MultiFab dpdt(grids,1,nGrowAdvForcing);
     MultiFab delta_dpdt(grids,1,nGrowAdvForcing);
@@ -5514,7 +5519,7 @@ HeatTransfer::advance (Real time,
 	updateFluxReg = true;
       }
 
-      if (sdc_iter == 1)
+      if (sdc_iter > 1)
       {
 	// compute new-time transport coefficients
 	calcDiffusivity(cur_time);
@@ -7533,29 +7538,30 @@ HeatTransfer::calc_divu (Real      time,
 
     MultiFab& S = get_data(State_Type,time);
 
-    // complicated logic.
-    // If initial projection (dt<0) we want rho*omegadot=0
-    // If divu_iter (dt>0 && is_divu_iter) we want rho*omegadot = get_new_data(RhoYdot_Type)
-    // Otherwise we want rho*omegadot from compute_instantaneous_reaction_rates
     MultiFab RhoYdotTmp;
 
-    bool is_init_proj = (dt<0);
-    
     // if divu_iter, pressure iter, or the first time step use RhoYdot_Type
-    MultiFab& RhoYdot = (is_divu_iter || (time == 0.0 && dt>0) ) ? get_new_data(RhoYdot_Type) : RhoYdotTmp;
-    if ( !(is_divu_iter || (time == 0.0 && dt>0)) )
+    bool use_IR = (time == 0 && dt > 0);
+
+    MultiFab& RhoYdot = (use_IR) ? get_new_data(RhoYdot_Type) : RhoYdotTmp;
+
+    if (!use_IR)
     {
-      if (dt<=0)
+      if (time == 0)
       {
-	// initial projection
+	// initial projection, set omegadot to zero
 	RhoYdotTmp.define(grids,nspecies,0,Fab_allocate);
 	RhoYdot.setVal(0.);
       }
-      else
+      else if (dt > 0)
       {
-	// a regular time step, but not the first one
+	// a regular time step, but not the first one, use instantaneous omegadot
 	RhoYdotTmp.define(grids,nspecies,0,Fab_allocate);
 	compute_instantaneous_reaction_rates(RhoYdot,S,nGrow);
+      }
+      else
+      {
+	BoxLib::Abort("bad divu_logic - shouldn't be here");
       }
     }
     
