@@ -2737,15 +2737,19 @@ HeatTransfer::differential_diffusion_update (MultiFab& Force,
     //   if we are in the predictor, ADD (1/2)*Gamma_{m,AD}^(0).
     //   if we are in the corrector, ADD Gamma_{m,AD}^(k+1),
     //                               ADD lambda^(k)/cp^(k) grad h_AD^(k+1).
-    if (do_reflux && updateFluxReg) {
-      for (int d = 0; d < BL_SPACEDIM; d++) {
+    if (do_reflux && updateFluxReg)
+    {
+      for (int d = 0; d < BL_SPACEDIM; d++)
+      {
         for (MFIter fmfi(*SpecDiffusionFluxn[d]); fmfi.isValid(); ++fmfi) {
-          if (level > 0) {
+          if (level > 0)
+	  {
 	    getViscFluxReg().FineAdd((*SpecDiffusionFluxnp1[d])[fmfi],d,fmfi.index(),0,first_spec,nspecies+1,dt);
-	  }
-        }
-        if (level < parent->finestLevel()) {
-	  getLevel(level+1).getViscFluxReg().CrseInit((*SpecDiffusionFluxnp1[d]),d,0,first_spec,nspecies+1,-dt,FluxRegister::ADD);
+          }
+	  if (level < parent->finestLevel())
+	  {
+            getLevel(level+1).getViscFluxReg().CrseInit((*SpecDiffusionFluxnp1[d]),d,0,first_spec,nspecies+1,-dt,FluxRegister::ADD);
+          }
         }
       }
     }
@@ -4795,7 +4799,7 @@ HeatTransfer::compute_differential_diffusion_fluxes (const Real& time,
     //   COPY (1/2)*Gamma_m^n and (1/2)*lambda^n/cp^n grad h^n to flux registers
     // If we are calling this in the corrector AND updateFluxReg=T:
     //   SUBTRACT (1/2)*Gamma_m^(k) and (1/2)*lambda^(k)/cp^(k) grad h^(k)
-    if (do_reflux && updateFluxReg)
+    if ( do_reflux && (updateFluxReg || sdc_iter==1) )
     {
       for (int d = 0; d < BL_SPACEDIM; d++)
       {
@@ -4803,13 +4807,27 @@ HeatTransfer::compute_differential_diffusion_fluxes (const Real& time,
 	{
 	  if (level > 0)
           {
-	    getViscFluxReg().FineAdd((*SpecDiffusionFluxnp1[d])[fmfi],d,fmfi.index(),0,first_spec,nspecies+1,-0.5*dt);
+	    if (sdc_iter==1)
+	    {
+	      getViscFluxReg().FineAdd((*SpecDiffusionFluxn[d])[fmfi],d,fmfi.index(),0,first_spec,nspecies+1,0.5*dt);
+	    }
+	    if (updateFluxReg)
+            {
+	      getViscFluxReg().FineAdd((*SpecDiffusionFluxnp1[d])[fmfi],d,fmfi.index(),0,first_spec,nspecies+1,-0.5*dt);
+	    }
 	  }
 	}
 
 	if (level < parent->finestLevel())
         {
-	  getLevel(level+1).getViscFluxReg().CrseInit((*SpecDiffusionFluxnp1[d]),d,0,first_spec,nspecies+1,0.5*dt,FluxRegister::ADD);
+	  if (sdc_iter==1)
+	  {
+	    getLevel(level+1).getViscFluxReg().CrseInit((*SpecDiffusionFluxn[d]),d,0,first_spec,nspecies+1,-0.5*dt,FluxRegister::COPY);
+	  }
+	  if (updateFluxReg)
+	  {
+	    getLevel(level+1).getViscFluxReg().CrseInit((*SpecDiffusionFluxnp1[d]),d,0,first_spec,nspecies+1,0.5*dt,FluxRegister::ADD);
+	  }
 	}
       }
     }
@@ -4827,17 +4845,35 @@ HeatTransfer::compute_differential_diffusion_fluxes (const Real& time,
     //   ADD (1/2)*h_m^n(Gamma_m^n-lambda^n/cp^n grad Y_m^n)
     // If we are calling this in the corrector AND updateFluxReg=T:
     //   ADD (1/2)*h_m^(k)(Gamma_m^(k)-lambda^(k)/cp^(k) grad Y_m^(k))
-    if (do_reflux && updateFluxReg)
+    if (do_reflux && (updateFluxReg || sdc_iter==1) )
     {
-      for (int d = 0; d < BL_SPACEDIM; d++) {
-	for (MFIter fmfi(*SpecDiffusionFluxn[d]); fmfi.isValid(); ++fmfi) {
-	  if (level > 0) {
-	    advflux_reg->FineAdd((*SpecDiffusionFluxnp1[d])[fmfi],d,fmfi.index(),nspecies+1,RhoH,1,0.5*dt);
+      for (int d = 0; d < BL_SPACEDIM; d++)
+      {
+	for (MFIter fmfi(*SpecDiffusionFluxn[d]); fmfi.isValid(); ++fmfi)
+	{
+	  if (level > 0)
+	  {
+	    if (sdc_iter==1)
+	    {
+	      advflux_reg->FineAdd((*SpecDiffusionFluxn[d])[fmfi],  d,fmfi.index(),nspecies+1,RhoH,1,0.5*dt);
+	    }
+	    if (updateFluxReg)
+	    {
+	      advflux_reg->FineAdd((*SpecDiffusionFluxnp1[d])[fmfi],d,fmfi.index(),nspecies+1,RhoH,1,0.5*dt);
+            }
 	  }
 	}
 
-	if (level < parent->finestLevel()) {
-	  getAdvFluxReg(level+1).CrseInit((*SpecDiffusionFluxnp1[d]),d,nspecies+1,RhoH,1,-0.5*dt,FluxRegister::ADD);
+	if (level < parent->finestLevel())
+	{
+	  if (sdc_iter==1)
+	  {
+	    getAdvFluxReg(level+1).CrseInit((*SpecDiffusionFluxn[d])  ,d,nspecies+1,RhoH,1,-0.5*dt,FluxRegister::ADD);
+	  }
+	  if (updateFluxReg)
+	  {
+	    getAdvFluxReg(level+1).CrseInit((*SpecDiffusionFluxnp1[d]),d,nspecies+1,RhoH,1,-0.5*dt,FluxRegister::ADD);
+          }
 	}
       }
     }
@@ -5511,7 +5547,7 @@ HeatTransfer::advance (Real time,
 
     dpdt.setVal(0);
 
-    for (int sdc_iter=1; sdc_iter<=sdc_iterMAX; ++sdc_iter)
+    for (sdc_iter=1; sdc_iter<=sdc_iterMAX; ++sdc_iter)
     {
 
       if (sdc_iter == sdc_iterMAX)
