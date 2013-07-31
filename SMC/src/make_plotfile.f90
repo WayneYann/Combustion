@@ -83,7 +83,7 @@ contains
        icomp_omegadot = get_next_plot_index(nspecies)
        icomp_burn = icomp_omegadot
        ib_omegadot = 1
-       nburn = nburn + 1
+       nburn = nburn + nspecies
     end if
 
     if (plot_dYdt) then
@@ -94,7 +94,7 @@ contains
           icomp_burn = icomp_dYdt
           ib_dYdt = 1
        end if
-       nburn = nburn + 1
+       nburn = nburn + nspecies
     end if
 
     if (plot_heatRelease) then
