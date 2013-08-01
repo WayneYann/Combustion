@@ -5456,6 +5456,7 @@ HeatTransfer::advance (Real time,
 		       int  iteration,
 		       int  ncycle)
 {
+    sdc_iter = 1;  // need to set this in order to add time n fluxes to registers
     updateFluxReg = false;
     if (sdc_iterMAX == 1)
     {
