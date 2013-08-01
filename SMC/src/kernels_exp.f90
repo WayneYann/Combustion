@@ -4617,8 +4617,8 @@ contains
              sumdrytmp = 0.d0
              do n=iry1,ncons
                 if (n.eq.iry_ias) cycle
-                sumdrytmp = sumdrytmp + (Hcell(1,n) - Hcell(0,n)) * dx2inv(1)
-                rhs(i,j,k,n)  =  rhs(i,j,k,n) + (Hcell(1,n) - Hcell(0,n)) * dx2inv(1)
+                sumdrytmp    = sumdrytmp    + (Hcell(1,n) - Hcell(0,n)) * dx2inv(1)
+                rhs(i,j,k,n) = rhs(i,j,k,n) + (Hcell(1,n) - Hcell(0,n)) * dx2inv(1)
              end do
 
              if (reset_inactive_species) then
@@ -4882,8 +4882,8 @@ contains
              sumdrytmp = 0.d0
              do n=iry1,ncons
                 if (n.eq.iry_ias) cycle
-                sumdrytmp = sumdrytmp + (Hcell(1,n) - Hcell(0,n)) * dx2inv(1)
-                rhs(i,j,k,n)  =  rhs(i,j,k,n) + (Hcell(1,n) - Hcell(0,n)) * dx2inv(1)
+                sumdrytmp    = sumdrytmp    + (Hcell(1,n) - Hcell(0,n)) * dx2inv(1)
+                rhs(i,j,k,n) = rhs(i,j,k,n) + (Hcell(1,n) - Hcell(0,n)) * dx2inv(1)
              end do
 
              if (reset_inactive_species) then
@@ -5161,8 +5161,8 @@ contains
              sumdrytmp = 0.d0
              do n=iry1,ncons
                 if (n.eq.iry_ias) cycle
-                sumdrytmp = sumdrytmp + (Hcell(1,n) - Hcell(0,n)) * dx2inv(1)
-                rhs(i,j,k,n)  =  rhs(i,j,k,n) + (Hcell(1,n) - Hcell(0,n)) * dx2inv(1)
+                sumdrytmp    = sumdrytmp    + (Hcell(1,n) - Hcell(0,n)) * dx2inv(1)
+                rhs(i,j,k,n) = rhs(i,j,k,n) + (Hcell(1,n) - Hcell(0,n)) * dx2inv(1)
              end do
 
              if (reset_inactive_species) then
@@ -5343,8 +5343,8 @@ contains
              sumdrytmp = 0.d0
              do n=iry1,ncons
                 if (n.eq.iry_ias) cycle
-                sumdrytmp = sumdrytmp + (Hcell(1,n) - Hcell(0,n)) * dx2inv(1)
-                rhs(i,j,k,n)  =  rhs(i,j,k,n) + (Hcell(1,n) - Hcell(0,n)) * dx2inv(1)
+                sumdrytmp    = sumdrytmp    + (Hcell(1,n) - Hcell(0,n)) * dx2inv(1)
+                rhs(i,j,k,n) = rhs(i,j,k,n) + (Hcell(1,n) - Hcell(0,n)) * dx2inv(1)
              end do
 
              if (reset_inactive_species) then
@@ -5444,7 +5444,7 @@ contains
 
                 if (.not. reset_inactive_species) then
                    do n = 1, nspecies
-                      Hcell(iface,iry1+n-1) = Htmp(n) - Ytmp(n)*Htot
+                      Hcell(iface,iry1+n-1) = Hcell(iface,iry1+n-1) - Ytmp(n)*Htot
                    end do
                    
                    do n = 1, nspecies
@@ -5638,8 +5638,8 @@ contains
              else
 
                 do n = 1, nspecies
-                   rhs(i,j,k,iry1+n-1) =  rhs(i,j,k,iry1+n-1) + &
-                        foulo(2)*dx2inv(2) * (rhstmp(n) - Ytmp(n)*rhstot)
+                   rhs(i,j,k,iry1+n-1) =  rhs(i,j,k,iry1+n-1) - &
+                        foulo(2)*dx2inv(2) * Ytmp(n)*rhstot
                 end do
 
                 rhsene = 0.d0
@@ -5870,8 +5870,8 @@ contains
              sumdrytmp = 0.d0
              do n=iry1,ncons
                 if (n.eq.iry_ias) cycle
-                sumdrytmp = sumdrytmp + (Hcell(1,n) - Hcell(0,n)) * dx2inv(2)
-                rhs(i,j,k,n)  =  rhs(i,j,k,n) + (Hcell(1,n) - Hcell(0,n)) * dx2inv(2)
+                sumdrytmp    = sumdrytmp    + (Hcell(1,n) - Hcell(0,n)) * dx2inv(2)
+                rhs(i,j,k,n) = rhs(i,j,k,n) + (Hcell(1,n) - Hcell(0,n)) * dx2inv(2)
              end do
 
              if (reset_inactive_species) then
@@ -6137,8 +6137,8 @@ contains
              sumdrytmp = 0.d0
              do n=iry1,ncons
                 if (n.eq.iry_ias) cycle
-                sumdrytmp = sumdrytmp + (Hcell(1,n) - Hcell(0,n)) * dx2inv(2)
-                rhs(i,j,k,n)  =  rhs(i,j,k,n) + (Hcell(1,n) - Hcell(0,n)) * dx2inv(2)
+                sumdrytmp    = sumdrytmp    + (Hcell(1,n) - Hcell(0,n)) * dx2inv(2)
+                rhs(i,j,k,n) = rhs(i,j,k,n) + (Hcell(1,n) - Hcell(0,n)) * dx2inv(2)
              end do
 
              if (reset_inactive_species) then
@@ -6415,8 +6415,8 @@ contains
              sumdrytmp = 0.d0
              do n=iry1,ncons
                 if (n.eq.iry_ias) cycle
-                sumdrytmp = sumdrytmp + (Hcell(1,n) - Hcell(0,n)) * dx2inv(2)
-                rhs(i,j,k,n)  =  rhs(i,j,k,n) + (Hcell(1,n) - Hcell(0,n)) * dx2inv(2)
+                sumdrytmp    = sumdrytmp    + (Hcell(1,n) - Hcell(0,n)) * dx2inv(2)
+                rhs(i,j,k,n) = rhs(i,j,k,n) + (Hcell(1,n) - Hcell(0,n)) * dx2inv(2)
              end do
 
              if (reset_inactive_species) then
@@ -6599,8 +6599,8 @@ contains
              sumdrytmp = 0.d0
              do n=iry1,ncons
                 if (n.eq.iry_ias) cycle
-                sumdrytmp = sumdrytmp + (Hcell(1,n) - Hcell(0,n)) * dx2inv(2)
-                rhs(i,j,k,n)  =  rhs(i,j,k,n) + (Hcell(1,n) - Hcell(0,n)) * dx2inv(2)
+                sumdrytmp    = sumdrytmp    + (Hcell(1,n) - Hcell(0,n)) * dx2inv(2)
+                rhs(i,j,k,n) = rhs(i,j,k,n) + (Hcell(1,n) - Hcell(0,n)) * dx2inv(2)
              end do
 
              if (reset_inactive_species) then
@@ -6702,7 +6702,7 @@ contains
 
                 if (.not. reset_inactive_species) then
                    do n = 1, nspecies
-                      Hcell(iface,iry1+n-1) = Htmp(n) - Ytmp(n)*Htot
+                      Hcell(iface,iry1+n-1) = Hcell(iface,iry1+n-1) - Ytmp(n)*Htot
                    end do
                    
                    do n = 1, nspecies
@@ -6806,8 +6806,8 @@ contains
              else
                 
                 do n = 1, nspecies
-                   rhs(i,j,k,iry1+n-1) =  rhs(i,j,k,iry1+n-1) + &
-                        fouhi(2)*dx2inv(2) * (rhstmp(n) - Ytmp(n)*rhstot)
+                   rhs(i,j,k,iry1+n-1) =  rhs(i,j,k,iry1+n-1) - &
+                        fouhi(2)*dx2inv(2) * Ytmp(n)*rhstot
                 end do
 
                 rhsene = 0.d0
@@ -7685,8 +7685,8 @@ contains
              sumdrytmp = 0.d0
              do n=iry1,ncons
                 if (n.eq.iry_ias) cycle
-                sumdrytmp = sumdrytmp + (Hcell(1,n) - Hcell(0,n)) * dx2inv(3)
-                rhs(i,j,k,n)  =  rhs(i,j,k,n) + (Hcell(1,n) - Hcell(0,n)) * dx2inv(3)
+                sumdrytmp    = sumdrytmp    + (Hcell(1,n) - Hcell(0,n)) * dx2inv(3)
+                rhs(i,j,k,n) = rhs(i,j,k,n) + (Hcell(1,n) - Hcell(0,n)) * dx2inv(3)
              end do
 
              if (reset_inactive_species) then
@@ -7871,8 +7871,8 @@ contains
              sumdrytmp = 0.d0
              do n=iry1,ncons
                 if (n.eq.iry_ias) cycle
-                sumdrytmp = sumdrytmp + (Hcell(1,n) - Hcell(0,n)) * dx2inv(3)
-                rhs(i,j,k,n)  =  rhs(i,j,k,n) + (Hcell(1,n) - Hcell(0,n)) * dx2inv(3)
+                sumdrytmp    = sumdrytmp    + (Hcell(1,n) - Hcell(0,n)) * dx2inv(3)
+                rhs(i,j,k,n) = rhs(i,j,k,n) + (Hcell(1,n) - Hcell(0,n)) * dx2inv(3)
              end do
 
              if (reset_inactive_species) then
@@ -7976,7 +7976,7 @@ contains
 
                 if (.not. reset_inactive_species) then
                    do n = 1, nspecies
-                      Hcell(iface,iry1+n-1) = Htmp(n) - Ytmp(n)*Htot
+                      Hcell(iface,iry1+n-1) = Hcell(iface,iry1+n-1) - Ytmp(n)*Htot
                    end do
                    
                    do n = 1, nspecies
@@ -8081,8 +8081,8 @@ contains
              else
 
                 do n = 1, nspecies
-                   rhs(i,j,k,iry1+n-1) =  rhs(i,j,k,iry1+n-1) + &
-                        fouhi(3)*dx2inv(3) * (rhstmp(n) - Ytmp(n)*rhstot)
+                   rhs(i,j,k,iry1+n-1) =  rhs(i,j,k,iry1+n-1) - &
+                        fouhi(3)*dx2inv(3) * Ytmp(n)*rhstot
                 end do
                 
                 rhsene = 0.d0
