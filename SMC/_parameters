@@ -111,7 +111,7 @@ fixed_dt                            real               -1.0d0
 
 # number of sdc nodes
 sdc_nnodes                          integer            3
-sdc_nnodes_chemistry                integer            3
+sdc_nnodes_fine                     integer            3
 sdc_qtype                           integer            2
 
 # number of sdc iterations per time step
@@ -123,6 +123,7 @@ sdc_tol_residual                    real               -1.d100
 
 # multi-rate type (1 = repeated, 2 = local)
 sdc_multirate_type                  character          "local"
+sdc_multirate_repeat                integer            1
 
 
 #-----------------------------------------------------------------------------
@@ -190,7 +191,7 @@ zlo_boundary_type                   character          "periodic"
 # value set through {\tt bcz\_hi}
 zhi_boundary_type                   character          "periodic"
 
-# dimensionality (valid value is 3)
+# dimensionality (valid value is 2 or 3)
 dm_in                               integer            3
 
 # The largest grid size that will be created using make\_new\_grids.
@@ -243,20 +244,40 @@ plot_Y                              logical            .true.
 # plot molar fraction species in plotfile
 plot_X                              logical            .false.
 
+# plot mean molecular weight
+plot_wbar                           logical            .false.
+
 # plot mean specific internal energy in plotfile
 plot_eint                           logical            .false.
 
 # plot mean specific enthlpy in plotfile
-plot_h                              logical            .true.
+plot_h                              logical            .false.
+plot_rhoh                           logical            .true.
 
 # plot enthlpy of each species in plotfile
 plot_hspec                          logical            .false.
 
+# plot sound speed in plotfile
+plot_cs                             logical            .false.
+
+# plot magnitude of velocity
+plot_magvel                         logical            .false.
+
+# plot magnitude of Mach number
+plot_Mach                           logical            .false.
+
 # plot divu in plotfile
 plot_divu                           logical            .true.
 
+# plot magnitude of vorticity
+plot_magvort                        logical            .true.
+
 # plot omegadot in plotfile
-plot_omegadot                       logical            .true.
+plot_omegadot                       logical            .false.
+plot_dYdt                           logical            .true.
+plot_heatRelease                    logical            .true.
+plot_fuelConsumption                logical            .false.
+fuel_name                           character          "none"
 
 # prefix to use in plotfile file names
 plot_base_name                      character          "plt"
@@ -291,11 +312,16 @@ outlet_sigma                        real               0.25d0
 outlet_eta                          real               50.d0
 outlet_Pinfty                       real               1.01325d6
 inlet_eta                           real               30.d0
+nscbc_burn                          logical            .true.
+mach_int                            integer            0
 
 
 #-----------------------------------------------------------------------------
 # category: physics/chemistry
 #-----------------------------------------------------------------------------
+
+# Change to .true. to emulate the original LMC formulation; for 2D only
+diff_gradY                          logical            .false.
 
 # If true, reset inactive species (e.g., N2), rather than normalize diffusion flux
 reset_inactive_species              logical            .false.
@@ -303,3 +329,21 @@ inactive_species_name               character          "N2"
 
 # use bulk viscosity?
 use_bulk_viscosity                  logical            .true.
+
+# How often do we compute transport coefficients?  
+# 0 means every substep for every time step
+# 1 means once every time step
+trans_int                           integer            0
+
+# use VODE?
+use_vode                            logical            .false.
+vode_verbose                        integer            0
+vode_itol                           integer            1
+vode_rtol                           real               1.d-10
+vode_atol                           real               1.d-10
+# vode will reduce order to a lower value
+vode_order                          integer            100    
+vode_use_ajac                       logical            .true.
+vode_save_ajac                      logical            .true.
+vode_stiff                          logical            .true.
+vode_always_new_j                   logical            .true.

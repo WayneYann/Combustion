@@ -19,6 +19,7 @@ subroutine smc()
   use threadbox_module
   use time_module
   use variables_module
+  use vode_module, only : vode_init, vode_close
 
   use cputime_module, only: start_cputime_clock
 
@@ -28,7 +29,7 @@ subroutine smc()
   integer :: init_step, istep
 
   real(dp_t) :: dt, courno
-  real(dp_t)  , pointer     :: dx(:)
+  real(dp_t) :: dx(3)
 
   real(dp_t) :: wt0, wt1, wt2, wt_init, wt_advance
 
@@ -41,13 +42,11 @@ subroutine smc()
   logical :: dump_plotfile, dump_checkpoint, abort_smc
   real(dp_t) :: write_pf_time
 
-  type(layout)   :: la
-  type(multifab) :: U
-  type(sdc_t)    :: sdc
+  type(layout)    :: la
+  type(multifab)  :: U
+  type(sdc_ctx_t) :: sdc
 
   type(bl_prof_timer), save :: bpt_advance
-
-  type(ctx_t) :: ctx
 
 
   !
@@ -63,6 +62,10 @@ subroutine smc()
   call runtime_init()
   call stencil_init()
   call chemistry_init()
+  if (use_vode) then
+     call vode_init(nspecies+1,vode_verbose,vode_itol,vode_rtol,vode_atol,vode_order,&
+          vode_use_ajac,vode_save_ajac,vode_stiff)
+  end if
 
   if (verbose .ge. 1) then
      if (parallel_IOProcessor()) then
@@ -115,8 +118,8 @@ subroutine smc()
   end if
 
   dm = dm_in
-  if (dm .ne. 3) then
-     call bl_error('SMC can only do 3D')
+  if (dm .eq. 1) then
+     call bl_error('SMC cannot do 1D')
   end if
 
   if (dm .ne. get_dim(la)) then
@@ -129,18 +132,19 @@ subroutine smc()
   !
 
   if (advance_method == 2) then
-     call sdc_build_single_rate(sdc, sdc_qtype, sdc_nnodes, ctx, &
-          c_funloc(srf1eval), c_funloc(srf1post))
+     call sdc_build_single_rate(sdc, sdc_qtype, sdc_nnodes, &
+          c_funloc(single_sdc_feval), c_funloc(sdc_post_step_cb))
   end if
 
-  if (advance_method == 3) then
-     call sdc_build_multi_rate(sdc, sdc_qtype, [ sdc_nnodes, sdc_nnodes_chemistry ], ctx, &
-          c_funloc(mrf1eval), c_funloc(mrf2eval), c_funloc(srf1post))
+  if (advance_method >= 3) then
+     call sdc_build_multi_rate(sdc, sdc_qtype, [ sdc_nnodes, sdc_nnodes_fine ], &
+          c_funloc(multi_sdc_feval_slow), c_funloc(multi_sdc_feval_fast), &
+          c_funloc(sdc_post_step_cb))
   end if
 
   if (advance_method > 1) then
      call sdc_setup(sdc, la, ncons, stencil_ng)
-     ctx%dx = dx
+     sdc%dx           = dx
      sdc%iters        = sdc_iters
      sdc%tol_residual = sdc_tol_residual
   end if
@@ -394,7 +398,7 @@ subroutine smc()
   call destroy_smcdata(sdc)
   call destroy_threadbox()
 
-  if (advance_method == 2 .or. advance_method == 3) then
+  if (advance_method > 1) then
      call sdc_destroy(sdc)
   end if
 
@@ -403,11 +407,11 @@ subroutine smc()
 
   call chemistry_close()
   call egz_close()
+  call vode_close()
 
   call runtime_close()
 
   deallocate(plot_names)
-  deallocate(dx)
 
   call parallel_reduce(wt_init, wt1-wt0, MPI_MAX, proc = parallel_IOProcessorNode())
   call parallel_reduce(wt_advance, wt2-wt1, MPI_MAX, proc = parallel_IOProcessorNode())

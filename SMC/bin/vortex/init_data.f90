@@ -29,13 +29,91 @@ contains
 
        select case(data%dim)
        case (2)
-          call bl_error('We only support 3-D')
+          call init_data_2d(lo,hi,ng,dx,dp,plo,phi)
        case (3)
           call init_data_3d(lo,hi,ng,dx,dp,plo,phi)
        end select
     end do
 
   end subroutine init_data
+
+  subroutine init_data_2d(lo,hi,ng,dx,cons,phlo,phhi)
+
+    use bc_module
+    use variables_module, only : irho, imx,imy,iene,iry1,ncons
+    use chemistry_module, only : nspecies, patm, Ru
+    use probin_module,    only : Minfty, Rvortex, Cvortex
+
+    integer,          intent(in   ) :: lo(2),hi(2),ng
+    double precision, intent(in   ) :: dx(2),phlo(2),phhi(2)
+    double precision, intent(inout) :: cons(-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,ncons)
+
+    integer          :: i,j,n
+    double precision :: x, y
+
+    double precision pmf_vals(nspecies+3)
+    double precision Xt(nspecies), Yt(nspecies)
+    double precision rhot,u1t,u2t,Tt,et,Pt
+    integer :: iwrk
+    double precision :: rwrk, Lx, exptmp, Wbar, Rc, Cc, cs, Cv, Cp, gamma, uinfty
+
+    do j=lo(2),hi(2)
+       y = phlo(2) + dx(2)*(j + 0.5d0)
+       do i=lo(1),hi(1)
+          x = phlo(1) + dx(1)*(i + 0.5d0)
+          
+          Lx = phhi(1) - phlo(1)
+          
+          call pmf(-1.d0,-1.d0,pmf_vals,n)
+          
+          if (n.ne.nspecies+3) then
+             write(6,*)"n,nspecies",n,nspecies
+             call bl_error('INITDATA: n .ne. nspecies+3')
+          endif
+          
+          Tt = pmf_vals(1)
+          
+          do n = 1,nspecies
+             Xt(n) = pmf_vals(3+n)
+          end do
+          CALL CKXTY (Xt, IWRK, RWRK, Yt)
+          CALL CKRHOY(patm,Tt,Yt,IWRK,RWRK,rhot)
+          ! we now have rho
+          
+          call CKCVBL(Tt, Xt, iwrk, rwrk, Cv)
+          Cp = Cv + Ru
+          gamma = Cp / Cv
+          cs = sqrt(gamma*patm/rhot)
+          
+          uinfty = Minfty*cs
+          Rc = Rvortex*Lx
+          Cc = Cvortex*cs*Lx
+          
+          exptmp = exp(-(x**2+y**2)/(2.d0*Rc**2))
+
+          u1t = uinfty - Cc*exptmp*y/Rc**2
+          u2t = Cc*exptmp*x/Rc**2
+
+          Pt = patm - rhot*(Cc/Rc)**2*exptmp
+          
+          call CKMMWX(Xt, iwrk, rwrk, Wbar)
+          Tt = Pt*Wbar / (rhot*Ru)
+          
+          call CKUBMS(Tt,Yt,IWRK,RWRK,et)
+          
+          cons(i,j,irho) = rhot
+          cons(i,j,imx)  = rhot*u1t
+          cons(i,j,imy)  = rhot*u2t
+          cons(i,j,iene) = rhot*(et + 0.5d0*(u1t**2 + u2t**2))
+          
+          do n=1,nspecies
+             cons(i,j,iry1-1+n) = Yt(n)*rhot
+          end do
+          
+       enddo
+    enddo
+
+  end subroutine init_data_2d
 
   subroutine init_data_3d(lo,hi,ng,dx,cons,phlo,phhi)
 

@@ -29,14 +29,6 @@ c     Shut off diagnostics
       print *,'... chemistry'
 c     Evolve chem over grid
       do i=lo,hi
-         if (use_strang) then
-C           integrating Y_m's not rhoY_m
-            do n = 1,Nspec
-               RYold(n) = scal_old(i,FirstSpec+n-1)/scal_old(i,Density)
-            enddo
-            Told = scal_old(i,Temp)            
-
-         else 
 
             rho_old = 0.d0
             do n = 1,Nspec
@@ -56,7 +48,6 @@ c     Set linear source terms in common for ode integrators access
             c_1(0) = (lin_src_new(i,RhoH) - lin_src_old(i,RhoH))/dt
             rhoh_INIT = scal_old(i,RhoH)
             T_INIT = scal_old(i,Temp)
-         endif
 
          call chemsolve(RYnew, Tnew, RYold, Told, FuncCount, dt,
      &                  diag, do_diag, ifail, i)
@@ -64,19 +55,6 @@ c     Set linear source terms in common for ode integrators access
             print *,'solve failed, i=',i
             stop
          endif
-
-         if(use_strang) then
-
-            do n = 1,Nspec
-               scal_new(i,FirstSpec+n-1) = RYnew(n)*scal_old(i,Density)
-            enddo
-            scal_new(i,Temp) = Tnew
-            do n = 1,Nspec
-               is = FirstSpec + n - 1
-               I_R(i,n) = (scal_new(i,is)-scal_old(i,is)) / dt
-            enddo
-
-         else
 
             scal_new(i,Density) = 0.d0
             do n = 1,Nspec
@@ -107,8 +85,6 @@ c     Set linear source terms in common for ode integrators access
      $              - const_src(i,is)
      $              - 0.5d0*(lin_src_old(i,is)+lin_src_new(i,is))
             enddo
-
-         endif
 
          call set_bc_s(scal_new,lo,hi,bc)
 

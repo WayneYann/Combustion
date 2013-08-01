@@ -81,19 +81,20 @@ def expand_line(line):
     else:
         return ''
 
-def expand_matmul(line):
-    if re.compile(r"matmul\s*\(.*M8T.*\)").search(line):
-        return expand_matmul_8T(line)
-    elif re.compile(r"matmul\s*\(.*M8.*\)").search(line):
-        return expand_matmul_8(line)
-    elif re.compile(r"matmul\s*\(.*M6T.*\)").search(line):
-        return expand_matmul_6T(line)
-    elif re.compile(r"matmul\s*\(.*M6.*\)").search(line):
-        return expand_matmul_6(line)
-    elif re.compile(r"matmul\s*\(.*M4T.*\)").search(line):
-        return expand_matmul_4T(line)
-    elif re.compile(r"matmul\s*\(.*M4.*\)").search(line):
-        return expand_matmul_4(line)
+def expand_matmul(line0):
+    line = line0.strip(' \t')
+    if re.compile(r"matmul\s*\(M8.*\)").search(line):
+        return expand_matmul_8T(line0)
+    elif re.compile(r"matmul\s*\(.*M8\)").search(line):
+        return expand_matmul_8(line0)
+    elif re.compile(r"matmul\s*\(M6.*\)").search(line):
+        return expand_matmul_6T(line0)
+    elif re.compile(r"matmul\s*\(.*M6\)").search(line):
+        return expand_matmul_6(line0)
+    elif re.compile(r"matmul\s*\(M4.*\)").search(line):
+        return expand_matmul_4T(line0)
+    elif re.compile(r"matmul\s*\(.*M4\)").search(line):
+        return expand_matmul_4(line0)
     else:
         return ''
 
@@ -206,7 +207,7 @@ def expand_matmul_8(line):
 
 
 def expand_matmul_8T(line):
-    # expand lhs = matmul(M8T, u( .... ))
+    # expand lhs = matmul(M8, u( .... ))
     lhs, rhs = line.split('=')
 
     lhs = lhs.strip(' \t')
@@ -217,7 +218,7 @@ def expand_matmul_8T(line):
     elif lhs.count(',') == 1:
         lhsdim = 2
     else:
-        print 'expand_matmul_8', lhs
+        print 'expand_matmul_8T', lhs
         sys.exit(2)
     if lhsdim == 1:
         moreindent = indent+'   '
@@ -234,9 +235,9 @@ def expand_matmul_8T(line):
 
     rhs = rhs.strip(' \t\n\r')
     args = rhs[7:-1].replace(' ','')  # 7 comes form 'matmul('
-    if args[0:3] == 'M8T':  
-        # M8T,u(,,,)
-        x = args[4:]
+    if args[0:3] == 'M8,':  
+        # M8,u(,,,)
+        x = args[3:]
         u = expand_fortran_slice(x)
         return indent+lhs+'(1'+ld2+' = '+'M8T(1,1) * '+u[0]+' &\n' + \
                      moreindent + ' + ' +'M8T(2,1) * '+u[1]+' &\n' + \
@@ -348,7 +349,7 @@ def expand_matmul_6(line):
 
 
 def expand_matmul_6T(line):
-    # expand lhs = matmul(M6T, u( .... ))
+    # expand lhs = matmul(M6, u( .... ))
     lhs, rhs = line.split('=')
 
     lhs = lhs.strip(' \t')
@@ -360,9 +361,9 @@ def expand_matmul_6T(line):
 
     rhs = rhs.strip(' \t\n\r')
     args = rhs[7:-1].replace(' ','')  # 7 comes form 'matmul('
-    if args[0:3] == 'M6T':  
-        # M6T,u(,,,)
-        x = args[4:]
+    if args[0:3] == 'M6,':  
+        # M6,u(,,,)
+        x = args[3:]
         u = expand_fortran_slice(x)
         return indent+lhs+'(1) = '+'M6T(1,1) * '+u[0]+' &\n' + \
                moreindent + ' + ' +'M6T(2,1) * '+u[1]+' &\n' + \
@@ -436,7 +437,7 @@ def expand_matmul_4(line):
 
 
 def expand_matmul_4T(line):
-    # expand lhs = matmul(M4T, u( .... ))
+    # expand lhs = matmul(M4, u( .... ))
     lhs, rhs = line.split('=')
 
     lhs = lhs.strip(' \t')
@@ -448,9 +449,9 @@ def expand_matmul_4T(line):
 
     rhs = rhs.strip(' \t\n\r')
     args = rhs[7:-1].replace(' ','')  # 7 comes form 'matmul('
-    if args[0:3] == 'M4T':  
-        # M4T,u(,,,)
-        x = args[4:]
+    if args[0:3] == 'M4,':  
+        # M4,u(,,,)
+        x = args[3:]
         u = expand_fortran_slice(x)
         return indent+lhs+'(1) = '+'M4T(1,1) * '+u[0]+' &\n' + \
                moreindent + ' + ' +'M4T(2,1) * '+u[1]+' &\n' + \
@@ -771,17 +772,29 @@ def expand_fortran_slice(x):
     v = x[0:lb]
     indices = x[lb+1:rb].split(',')
     if len(indices) == 2:
-        if string.find(indices[0],':') :
+        if indices[0] == 'i':
+            jstart, jend = ii(indices[1])
+            xs = [v+'(i,j+'+str(j)+')' for j in range(jstart,jend+1)]
+            return [t.replace('+-','-').replace('+0','  ') for t in xs]
+        elif indices[1] == 'j':
             istart, iend = ii(indices[0])
-            return[v+'('+str(i)+','+indices[1]+')' for i in range(istart,iend+1)]
+            xs = [v+'(i+'+str(i)+',j)' for i in range(istart,iend+1)]
+            return [t.replace('+-','-').replace('+0','  ') for t in xs]
         else:
-            print 'expand_fortran_slice', indices
-            sys.exit(2)
+            if string.find(indices[0],':') :
+                istart, iend = ii(indices[0])
+                return[v+'('+str(i)+','+indices[1]+')' for i in range(istart,iend+1)]
+            else:
+                print 'expand_fortran_slice', indices
+                sys.exit(2)
     elif indices[0] == ':':
         i_index = indices[1]
         j_index = indices[2]
-        k_index = indices[3]
-        return [v+'('+str(n+1)+','+i_index+','+j_index+','+k_index+')' for n in range(8)]
+        if len(indices) == 4:
+            k_index = indices[3]
+            return [v+'('+str(n+1)+','+i_index+','+j_index+','+k_index+')' for n in range(8)]
+        else:
+            return [v+'('+str(n+1)+','+i_index+','+j_index+')' for n in range(8)]
     else:
         i_index = indices[0]
         j_index = indices[1]
@@ -800,47 +813,67 @@ def expand_fortran_slice(x):
                 xs.append(v+'(i,j,k+'+str(k)+',NCOMP)')
         if len(indices) == 4:
             return [t.replace('NCOMP',indices[3]).replace('+-','-').replace('+0','  ') for t in xs]
-        else:
+        elif string.find(k_index,':') >= 0:
             return [t.replace(',NCOMP','').replace('+-','-').replace('+0','  ') for t in xs]
+        else:  # 2D
+            return [t.replace('k,NCOMP',indices[2]).replace('+-','-').replace('+0','  ') for t in xs]
 
 
 def expand_fortran_slice2(x,idir):
     # cons(i-4:i+4,j,k,iu)
-    match1 = re.compile(r"(?P<v>[a-zA-Z]\w*)\((?P<i>i[i\+\-:0-9]*,j[j\+\-:0-9]*,k[k\+\-:0-9]*)(?P<e>(,[a-zA-Z]\w*))*\)$").match(x)
+    mat3d1 = re.compile(r"(?P<v>[a-zA-Z]\w*)\((?P<i>i[i\+\-:0-9]*,j[j\+\-:0-9]*,k[k\+\-:0-9]*)(?P<e>(,[a-zA-Z]\w*))*\)$").match(x)
     
     # cons(i-4:i+4,j,k,imx)*un+q(i-4:i+4,j,k,qpres)
-    match2 = re.compile(r"(?P<v1>[a-zA-Z]\w*)\((?P<i1>i[i\+\-:0-9]*,j[j\+\-:0-9]*,k[k\+\-:0-9]*)(?P<e1>(,[a-zA-Z]\w*))*\)" +
+    mat3d2 = re.compile(r"(?P<v1>[a-zA-Z]\w*)\((?P<i1>i[i\+\-:0-9]*,j[j\+\-:0-9]*,k[k\+\-:0-9]*)(?P<e1>(,[a-zA-Z]\w*))*\)" +
                         "\*un(\(-[23]:[23]\))*\+"+
                         "(?P<v2>[a-zA-Z]\w*)\((?P<i2>i[i\+\-:0-9]*,j[j\+\-:0-9]*,k[k\+\-:0-9]*)(?P<e2>(,[a-zA-Z]\w*))*\)$").match(x)
 
     # cons(i-4:i+4,j,k,imy)*un
-    match3 = re.compile(r"(?P<v1>[a-zA-Z]\w*)\((?P<i1>i[i\+\-:0-9]*,j[j\+\-:0-9]*,k[k\+\-:0-9]*)(?P<e1>(,[a-zA-Z]\w*))*\)" +
+    mat3d3 = re.compile(r"(?P<v1>[a-zA-Z]\w*)\((?P<i1>i[i\+\-:0-9]*,j[j\+\-:0-9]*,k[k\+\-:0-9]*)(?P<e1>(,[a-zA-Z]\w*))*\)" +
                         "\*un(\(-[23]:[23]\))*$").match(x)
 
     # (cons(i-4:i+4,j,k,iene)+q(i-4:i+4,j,k,qpres))*un
-    match4 = re.compile(r"\((?P<v1>[a-zA-Z]\w*)\((?P<i1>i[i\+\-:0-9]*,j[j\+\-:0-9]*,k[k\+\-:0-9]*)(?P<e1>(,[a-zA-Z]\w*))*\)" +
+    mat3d4 = re.compile(r"\((?P<v1>[a-zA-Z]\w*)\((?P<i1>i[i\+\-:0-9]*,j[j\+\-:0-9]*,k[k\+\-:0-9]*)(?P<e1>(,[a-zA-Z]\w*))*\)" +
                         "\+(?P<v2>[a-zA-Z]\w*)\((?P<i2>i[i\+\-:0-9]*,j[j\+\-:0-9]*,k[k\+\-:0-9]*)(?P<e2>(,[a-zA-Z]\w*))*\)\)" +
                         "\*un(\(-[23]:[23]\))*$").match(x) 
 
     # vsm(i-4:i+4,j,k)*(vy(i-4:i+4,j,k)+wz(i-4:i+4,j,k))
-    match5 = re.compile(r"(?P<v0>[a-zA-Z]\w*)\((?P<i0>i[i\+\-:0-9]*,j[j\+\-:0-9]*,k[k\+\-:0-9]*)(?P<e0>(,[a-zA-Z]\w*))*\)" +
+    mat3d5 = re.compile(r"(?P<v0>[a-zA-Z]\w*)\((?P<i0>i[i\+\-:0-9]*,j[j\+\-:0-9]*,k[k\+\-:0-9]*)(?P<e0>(,[a-zA-Z]\w*))*\)" +
                         "\*\((?P<v1>[a-zA-Z]\w*)\((?P<i1>i[i\+\-:0-9]*,j[j\+\-:0-9]*,k[k\+\-:0-9]*)(?P<e1>(,[a-zA-Z]\w*))*\)" +
                         "\+(?P<v2>[a-zA-Z]\w*)\((?P<i2>i[i\+\-:0-9]*,j[j\+\-:0-9]*,k[k\+\-:0-9]*)(?P<e2>(,[a-zA-Z]\w*))*\)\)$").match(x)
 
     # mu(i-4:i+4,j,k)*uy(i-4:i+4,j,k)
-    match6 = re.compile(r"(?P<v1>[a-zA-Z]\w*)\((?P<i1>i[i\+\-:0-9]*,j[j\+\-:0-9]*,k[k\+\-:0-9]*)(?P<e1>(,[a-zA-Z]\w*))*\)" +
+    mat3d6 = re.compile(r"(?P<v1>[a-zA-Z]\w*)\((?P<i1>i[i\+\-:0-9]*,j[j\+\-:0-9]*,k[k\+\-:0-9]*)(?P<e1>(,[a-zA-Z]\w*))*\)" +
                         "\*(?P<v2>[a-zA-Z]\w*)\((?P<i2>i[i\+\-:0-9]*,j[j\+\-:0-9]*,k[k\+\-:0-9]*)(?P<e2>(,[a-zA-Z]\w*))*\)$").match(x)
 
+    # tmpy(i,j-4:j+4,iu)
+    mat2d1 = re.compile(r"(?P<v>[a-zA-Z]\w*)\((?P<i>i[i\+\-:0-9]*,j[j\+\-:0-9]*)(?P<e>(,[a-zA-Z]\w*))*\)$").match(x)
+
+    # cons(i-2:i+2,j,imx)*un(-2:2)+q(i-2:i+2,j,qpres)
+    mat2d2 = re.compile(r"(?P<v1>[a-zA-Z]\w*)\((?P<i1>i[i\+\-:0-9]*,j[j\+\-:0-9]*)(?P<e1>(,[a-zA-Z]\w*))*\)" +
+                        "\*un(\(-[23]:[23]\))*\+"+
+                        "(?P<v2>[a-zA-Z]\w*)\((?P<i2>i[i\+\-:0-9]*,j[j\+\-:0-9]*)(?P<e2>(,[a-zA-Z]\w*))*\)$").match(x)
+
+    # cons(i-2:i+2,j,imy)*un(-2:2)
+    mat2d3 = re.compile(r"(?P<v1>[a-zA-Z]\w*)\((?P<i1>i[i\+\-:0-9]*,j[j\+\-:0-9]*)(?P<e1>(,[a-zA-Z]\w*))*\)" +
+                        "\*un(\(-[23]:[23]\))*$").match(x)
+
+    # (cons(i-2:i+2,j,iene)+q(i-2:i+2,j,qpres))*un(-2:2)
+    mat2d4 = re.compile(r"\((?P<v1>[a-zA-Z]\w*)\((?P<i1>i[i\+\-:0-9]*,j[j\+\-:0-9]*)(?P<e1>(,[a-zA-Z]\w*))*\)" +
+                        "\+(?P<v2>[a-zA-Z]\w*)\((?P<i2>i[i\+\-:0-9]*,j[j\+\-:0-9]*)(?P<e2>(,[a-zA-Z]\w*))*\)\)" +
+                        "\*un(\(-[23]:[23]\))*$").match(x) 
+
+    # cons(i-2:i+2,j,n)*q(i-2:i+2,j,qu)
+    mat2d6 = re.compile(r"(?P<v1>[a-zA-Z]\w*)\((?P<i1>i[i\+\-:0-9]*,j[j\+\-:0-9]*)(?P<e1>(,[a-zA-Z]\w*))*\)" +
+                        "\*(?P<v2>[a-zA-Z]\w*)\((?P<i2>i[i\+\-:0-9]*,j[j\+\-:0-9]*)(?P<e2>(,[a-zA-Z]\w*))*\)$").match(x)
+
     # tmpx(i-4:i+4,comp)
-    match7 = re.compile(r"(?P<v>[a-zA-Z]\w*)\((?P<i>i[i\+\-:0-9]*)(?P<e>(,[a-zA-Z]\w*))*\)$").match(x)
+    mat1d1 = re.compile(r"(?P<v>[a-zA-Z]\w*)\((?P<i>i[i\+\-:0-9]*)(?P<e>(,[a-zA-Z]\w*))*\)$").match(x)
 
-    # tmpy(i,j-4:j+4,k,iu)
-    match8 = re.compile(r"(?P<v>[a-zA-Z]\w*)\((?P<i>i[i\+\-:0-9]*,j[j\+\-:0-9]*)(?P<e>(,[a-zA-Z]\w*))*\)$").match(x)
-
-    if match1:
-        v =  match1.group('v')
-        ijk = match1.group('i')
-        ncomp = match1.group('e')
+    if mat3d1:
+        v =  mat3d1.group('v')
+        ijk = mat3d1.group('i')
+        ncomp = mat3d1.group('e')
         if ncomp is None:
             ncomp = ''
         if idir == 1:
@@ -860,16 +893,16 @@ def expand_fortran_slice2(x,idir):
                 xs.append(v+'(i,j,k+'+str(k)+',NCOMP)')
         return [t.replace(',NCOMP',ncomp).replace('+-','-').replace('+0','  ') for t in xs]
 
-    elif match2:
-        v1 = match2.group('v1')
-        v2 = match2.group('v2')
-        n1 = match2.group('e1')
-        n2 = match2.group('e2')
+    elif mat3d2:
+        v1 = mat3d2.group('v1')
+        v2 = mat3d2.group('v2')
+        n1 = mat3d2.group('e1')
+        n2 = mat3d2.group('e2')
         if n1 is None:
             n1 = ''
         if n2 is None:
             n2 = ''
-        ijk = match2.group('i1')
+        ijk = mat3d2.group('i1')
         if idir == 1:
             xs = []
             istart = int(ijk[1:3])
@@ -890,12 +923,12 @@ def expand_fortran_slice2(x,idir):
                           v2+'(i,j,k+'+str(k)+',NCOMP2))')            
         return [t.replace(',NCOMP1',n1).replace(',NCOMP2',n2).replace('+-','-').replace('+0','  ') for t in xs]
 
-    elif match3:
-        v1 = match3.group('v1')
-        n1 = match3.group('e1')
+    elif mat3d3:
+        v1 = mat3d3.group('v1')
+        n1 = mat3d3.group('e1')
         if n1 is None:
             n1 = ''
-        ijk = match3.group('i1')
+        ijk = mat3d3.group('i1')
         if idir == 1:
             xs = []
             istart = int(ijk[1:3])
@@ -913,16 +946,16 @@ def expand_fortran_slice2(x,idir):
                 xs.append(v1+'(i,j,k+'+str(k)+',NCOMP1)*un('+str(k)+')')
         return [t.replace(',NCOMP1',n1).replace('+-','-').replace('+0','  ') for t in xs]
 
-    elif match4:
-        v1 = match4.group('v1')
-        v2 = match4.group('v2')
-        n1 = match4.group('e1')
-        n2 = match4.group('e2')
+    elif mat3d4:
+        v1 = mat3d4.group('v1')
+        v2 = mat3d4.group('v2')
+        n1 = mat3d4.group('e1')
+        n2 = mat3d4.group('e2')
         if n1 is None:
             n1 = ''
         if n2 is None:
             n2 = ''
-        ijk = match4.group('i1')
+        ijk = mat3d4.group('i1')
         if idir == 1:
             xs = []
             istart = int(ijk[1:3])
@@ -943,14 +976,14 @@ def expand_fortran_slice2(x,idir):
                           v2+'(i,j,k+'+str(k)+',NCOMP2))*un('+str(k)+')')            
         return [t.replace(',NCOMP1',n1).replace(',NCOMP2',n2).replace('+-','-').replace('+0','  ') for t in xs]
 
-    elif match5:
-        v0 = match5.group('v0')
-        v1 = match5.group('v1')
-        v2 = match5.group('v2')
-        n0 = match5.group('e0')
-        n1 = match5.group('e1')
-        n2 = match5.group('e2')
-        ijk = match5.group('i1')
+    elif mat3d5:
+        v0 = mat3d5.group('v0')
+        v1 = mat3d5.group('v1')
+        v2 = mat3d5.group('v2')
+        n0 = mat3d5.group('e0')
+        n1 = mat3d5.group('e1')
+        n2 = mat3d5.group('e2')
+        ijk = mat3d5.group('i1')
         if n0 is None:
             n0 = ''
         if n1 is None:
@@ -980,12 +1013,12 @@ def expand_fortran_slice2(x,idir):
                           v2+'(i,j,k+'+str(k)+',NCOMP2))')
         return [t.replace(',NCOMP0',n0).replace(',NCOMP1',n1).replace(',NCOMP2',n2).replace('+-','-').replace('+0','  ') for t in xs]
 
-    elif match6:
-        v1 = match6.group('v1')
-        v2 = match6.group('v2')
-        n1 = match6.group('e1')
-        n2 = match6.group('e2')
-        ijk = match6.group('i1')
+    elif mat3d6:
+        v1 = mat3d6.group('v1')
+        v2 = mat3d6.group('v2')
+        n1 = mat3d6.group('e1')
+        n2 = mat3d6.group('e2')
+        ijk = mat3d6.group('i1')
         if n1 is None:
             n1 = ''
         if n2 is None:
@@ -1010,25 +1043,10 @@ def expand_fortran_slice2(x,idir):
                           v2+'(i,j,k+'+str(k)+',NCOMP2)')
         return [t.replace(',NCOMP1',n1).replace(',NCOMP2',n2).replace('+-','-').replace('+0','  ') for t in xs]
 
-    elif match7:
-        v =  match7.group('v')
-        ijk = match7.group('i')
-        ncomp = match7.group('e')
-        if ncomp is None:
-            ncomp = ''
-        if idir == 1:
-            xs = []
-            istart = int(ijk[1:3])
-            for i in range(istart,-istart+1):
-                xs.append(v+'(i+'+str(i)+',NCOMP)')
-        else:
-            return ''
-        return [t.replace(',NCOMP',ncomp).replace('+-','-').replace('+0','  ') for t in xs]
-            
-    elif match8:
-        v =  match8.group('v')
-        ijk = match8.group('i')
-        ncomp = match8.group('e')
+    elif mat2d1:
+        v =  mat2d1.group('v')
+        ijk = mat2d1.group('i')
+        ncomp = mat2d1.group('e')
         if ncomp is None:
             ncomp = ''
         if idir == 1:
@@ -1041,6 +1059,112 @@ def expand_fortran_slice2(x,idir):
             jstart = int(ijk[3:5])
             for j in range(jstart,-jstart+1):
                 xs.append(v+'(i,j+'+str(j)+',NCOMP)')
+        else:
+            return ''
+        return [t.replace(',NCOMP',ncomp).replace('+-','-').replace('+0','  ') for t in xs]
+
+    elif mat2d2:
+        v1 = mat2d2.group('v1')
+        v2 = mat2d2.group('v2')
+        n1 = mat2d2.group('e1')
+        n2 = mat2d2.group('e2')
+        if n1 is None:
+            n1 = ''
+        if n2 is None:
+            n2 = ''
+        ijk = mat2d2.group('i1')
+        if idir == 1:
+            xs = []
+            istart = int(ijk[1:3])
+            for i in range(istart,-istart+1):
+                xs.append('('+v1+'(i+'+str(i)+',j,NCOMP1)*un('+str(i)+')+'+
+                          v2+'(i+'+str(i)+',j,NCOMP2))')
+        elif idir == 2:
+            xs = []
+            jstart = int(ijk[3:5])
+            for j in range(jstart,-jstart+1):
+                xs.append('('+v1+'(i,j+'+str(j)+',NCOMP1)*un('+str(j)+')+'+
+                          v2+'(i,j+'+str(j)+',NCOMP2))')
+
+        return [t.replace(',NCOMP1',n1).replace(',NCOMP2',n2).replace('+-','-').replace('+0','  ') for t in xs]
+
+    elif mat2d3:
+        v1 = mat2d3.group('v1')
+        n1 = mat2d3.group('e1')
+        if n1 is None:
+            n1 = ''
+        ijk = mat2d3.group('i1')
+        if idir == 1:
+            xs = []
+            istart = int(ijk[1:3])
+            for i in range(istart,-istart+1):
+                xs.append(v1+'(i+'+str(i)+',j,NCOMP1)*un('+str(i)+')')
+        elif idir == 2:
+            xs = []
+            jstart = int(ijk[3:5])
+            for j in range(jstart,-jstart+1):
+                xs.append(v1+'(i,j+'+str(j)+',NCOMP1)*un('+str(j)+')')
+        return [t.replace(',NCOMP1',n1).replace('+-','-').replace('+0','  ') for t in xs]
+
+    elif mat2d4:
+        v1 = mat2d4.group('v1')
+        v2 = mat2d4.group('v2')
+        n1 = mat2d4.group('e1')
+        n2 = mat2d4.group('e2')
+        if n1 is None:
+            n1 = ''
+        if n2 is None:
+            n2 = ''
+        ijk = mat2d4.group('i1')
+        if idir == 1:
+            xs = []
+            istart = int(ijk[1:3])
+            for i in range(istart,-istart+1):
+                xs.append('('+v1+'(i+'+str(i)+',j,NCOMP1)+'+
+                          v2+'(i+'+str(i)+',j,NCOMP2))*un('+str(i)+')')
+        elif idir == 2:
+            xs = []
+            jstart = int(ijk[3:5])
+            for j in range(jstart,-jstart+1):
+                xs.append('('+v1+'(i,j+'+str(j)+',NCOMP1)+'+
+                          v2+'(i,j+'+str(j)+',NCOMP2))*un('+str(j)+')')
+        return [t.replace(',NCOMP1',n1).replace(',NCOMP2',n2).replace('+-','-').replace('+0','  ') for t in xs]
+
+    elif mat2d6:
+        v1 = mat2d6.group('v1')
+        v2 = mat2d6.group('v2')
+        n1 = mat2d6.group('e1')
+        n2 = mat2d6.group('e2')
+        ijk = mat2d6.group('i1')
+        if n1 is None:
+            n1 = ''
+        if n2 is None:
+            n2 = ''
+        if idir == 1:
+            xs = []
+            istart = int(ijk[1:3])
+            for i in range(istart,-istart+1):
+                xs.append(v1+'(i+'+str(i)+',j,NCOMP1)*'+
+                          v2+'(i+'+str(i)+',j,NCOMP2)')
+        elif idir == 2:
+            xs = []
+            jstart = int(ijk[3:5])
+            for j in range(jstart,-jstart+1):
+                xs.append(v1+'(i,j+'+str(j)+',NCOMP1)*'+
+                          v2+'(i,j+'+str(j)+',NCOMP2)')
+        return [t.replace(',NCOMP1',n1).replace(',NCOMP2',n2).replace('+-','-').replace('+0','  ') for t in xs]
+            
+    elif mat1d1:
+        v =  mat1d1.group('v')
+        ijk = mat1d1.group('i')
+        ncomp = mat1d1.group('e')
+        if ncomp is None:
+            ncomp = ''
+        if idir == 1:
+            xs = []
+            istart = int(ijk[1:3])
+            for i in range(istart,-istart+1):
+                xs.append(v+'(i+'+str(i)+',NCOMP)')
         else:
             return ''
         return [t.replace(',NCOMP',ncomp).replace('+-','-').replace('+0','  ') for t in xs]

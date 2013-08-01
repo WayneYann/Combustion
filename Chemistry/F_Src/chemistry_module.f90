@@ -13,18 +13,20 @@ module chemistry_module
   integer, private, parameter :: L_elem_name = 3 ! Each element name has at most 3 characters
   character*(L_elem_name), allocatable, save :: elem_names(:)
 
-  integer, private, parameter :: L_spec_name = 8 ! Each species name has at most 8 characters
+  integer, private, parameter :: L_spec_name = 16 ! Each species name has at most 8 characters
   character*(L_spec_name), allocatable, save :: spec_names(:)
 
   double precision, allocatable, save :: molecular_weight(:), inv_mwt(:)
 
   double precision, save :: Ru, Ruc, Patm
 
+  double precision, allocatable, save :: std_heat_formation(:)
+
 contains
 
   subroutine chemistry_init()
     integer :: iwrk, nfit, i, ic, ii
-    double precision :: rwrk
+    double precision :: rwrk, t0
     integer, allocatable :: names(:)
 
     call ckindx(iwrk, rwrk, nelements, nspecies, nreactions, nfit)
@@ -35,6 +37,8 @@ contains
     allocate(inv_mwt(nspecies))
 
     allocate(names(nspecies*L_spec_name))  
+
+    allocate(std_heat_formation(nspecies))
 
     call cksyme(names, L_elem_name) 
 
@@ -62,6 +66,9 @@ contains
     inv_mwt = 1.d0 / molecular_weight
 
     call ckrp(iwrk, rwrk, Ru, Ruc, Patm)
+
+    T0 = 298.15d0
+    call ckhms(T0, iwrk, rwrk, std_heat_formation)
 
     chemistry_initialized = .true.
 

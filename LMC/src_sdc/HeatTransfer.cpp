@@ -5677,7 +5677,7 @@ HeatTransfer::advance (Real time,
 
     temperature_stats(S_new);
 
-    for (int sdc_iter=0; sdc_iter<sdc_iterMAX; ++sdc_iter)
+    for (sdc_iter=0; sdc_iter<sdc_iterMAX; ++sdc_iter)
     {
         is_predictor = false;
         if (sdc_iter == sdc_iterMAX-1)

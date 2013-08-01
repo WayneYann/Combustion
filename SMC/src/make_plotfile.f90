@@ -7,18 +7,15 @@ module make_plotfile_module
   use threadbox_module, only : tb_multifab_setval
   use variables_module
 
-  use chemistry_module, only : nspecies, spec_names
-  use probin_module, only : dm_in, plot_eint, plot_h, plot_divu, &
-       plot_Y, plot_X, plot_hspec, plot_omegadot, &
+  use chemistry_module, only : nspecies, spec_names, get_species_index
+  use probin_module, only : dm_in, plot_eint, plot_wbar, plot_h, plot_rhoh, plot_cs, &
+       plot_magvel, plot_Mach, plot_divu, plot_magvort, plot_Y, plot_X, plot_hspec,  &
+       plot_omegadot, plot_dYdt, plot_heatRelease, plot_fuelConsumption, fuel_name,  &
        nOutFiles, lUsingNFiles, single_prec_plotfiles, prob_lo, prob_hi
 
+  use plotvar_index_module
 
   implicit none
-
-  ! the total number of plot components
-  integer, save :: n_plot_comps = 0
-  integer, save :: icomp_rho=0, icomp_vel=0, icomp_pres=0, icomp_temp=0, icomp_eint=0, &
-       icomp_h=0, icomp_divu=0, icomp_Y=0, icomp_X=0, icomp_hspec=0, icomp_omegadot=0
 
   private
   public :: n_plot_comps, get_plot_names, make_plotfile, init_plot_variables
@@ -49,12 +46,36 @@ contains
        icomp_eint = get_next_plot_index(1)
     end if
 
+    if (plot_wbar) then
+       icomp_wbar = get_next_plot_index(1)
+    end if
+
     if (plot_h) then
        icomp_h = get_next_plot_index(1)
     end if
 
+    if (plot_rhoh) then
+       icomp_rhoh = get_next_plot_index(1)
+    end if
+
+    if (plot_cs) then
+       icomp_cs = get_next_plot_index(1)
+    end if
+
+    if (plot_magvel) then
+       icomp_magvel = get_next_plot_index(1)
+    end if
+
+    if (plot_Mach) then
+       icomp_Mach = get_next_plot_index(1)
+    end if
+
     if (plot_divu) then
        icomp_divu = get_next_plot_index(1)
+    end if
+
+    if (plot_magvort) then
+       icomp_magvort = get_next_plot_index(1)
     end if
 
     if (plot_Y) then
@@ -69,11 +90,49 @@ contains
        icomp_hspec = get_next_plot_index(nspecies)
     end if
 
+    nburn = 0
     if (plot_omegadot) then
        icomp_omegadot = get_next_plot_index(nspecies)
+       icomp_burn = icomp_omegadot
+       ib_omegadot = 1
+       nburn = nburn + nspecies
     end if
 
-    call make_plotvar_init(icomp_h, icomp_divu, icomp_omegadot)
+    if (plot_dYdt) then
+       icomp_dYdt = get_next_plot_index(nspecies)
+       if (nburn > 0) then
+          ib_dYdt = icomp_dYdt - icomp_burn + 1
+       else
+          icomp_burn = icomp_dYdt
+          ib_dYdt = 1
+       end if
+       nburn = nburn + nspecies
+    end if
+
+    if (plot_heatRelease) then
+       icomp_heatRelease = get_next_plot_index(1)
+       if (nburn > 0) then
+          ib_heatRelease = icomp_heatRelease - icomp_burn + 1
+       else
+          icomp_burn = icomp_heatRelease
+          ib_heatRelease = 1
+       end if
+       nburn = nburn + 1
+    end if
+
+    if (plot_fuelConsumption) then
+       ifuel = get_species_index(fuel_name)
+       if (ifuel > 0) then
+          icomp_fuelConsumption = get_next_plot_index(1)
+          if (nburn > 0) then
+             ib_fuelConsumption = icomp_fuelConsumption - icomp_burn + 1
+          else
+             icomp_burn = icomp_fuelConsumption
+             ib_fuelConsumption = 1
+          end if
+          nburn = nburn + 1
+       end if
+    end if
 
   end subroutine init_plot_variables
 
@@ -96,12 +155,36 @@ contains
        plot_names(icomp_eint) = "eint"
     end if
 
+    if (plot_wbar) then
+       plot_names(icomp_wbar) = "wbar"
+    end if
+
     if (plot_h) then
        plot_names(icomp_h) = "h"
     end if
 
+    if (plot_rhoh) then
+       plot_names(icomp_rhoh) = "rhoh"
+    end if
+
+    if (plot_cs) then
+       plot_names(icomp_cs) = "cs"
+    end if
+
+    if (plot_magvel) then
+       plot_names(icomp_magvel) = "magvel"
+    end if
+
+    if (plot_Mach) then
+       plot_names(icomp_Mach) = "Mach"
+    end if
+
     if (plot_divu) then
        plot_names(icomp_divu) = "divu"
+    end if
+
+    if (plot_magvort) then
+       plot_names(icomp_magvort) = "magvort"
     end if
 
     if (plot_Y) then
@@ -128,6 +211,20 @@ contains
        end do
     end if
 
+    if (plot_dYdt) then
+       do i=1,nspecies
+          plot_names(icomp_dYdt+i-1) = "Ydot("//trim(spec_names(i))//")"
+       end do
+    end if
+
+    if (plot_heatRelease) then
+       plot_names(icomp_heatRelease) = "HeatRelease"
+    end if
+
+    if (plot_fuelConsumption .and. ifuel>0) then
+       plot_names(icomp_fuelConsumption) = "FuelConsumptionRate"
+    end if
+
   end subroutine get_plot_names
 
 
@@ -137,14 +234,14 @@ contains
     type(layout)     , intent(in   ) :: la
     type(multifab)   , intent(inout) :: U
     character(len=20), intent(in   ) :: plot_names(:)
-    real(dp_t)       , intent(in   ) :: time, dx(U%dim)
+    real(dp_t)       , intent(in   ) :: time, dx(3)
     real(dp_t)       , intent(  out) :: write_pf_time
 
     ! dimensioned as an array of size 1 for fabio_ml_multifab_write_d
     type(multifab) :: plotdata(1), Q
 
     ! dimensioned as an array of size 0 for fabio_ml_multifab_write_d
-    integer :: rr(0), prec, ngu, ngq
+    integer :: rr(0), prec, ngu, ngq, dm
     real(dp_t) :: writetime1, writetime2
 
     if (single_prec_plotfiles) then
@@ -153,9 +250,10 @@ contains
        prec = FABIO_DOUBLE
     endif
 
+    dm  = U%dim
     ngu = nghost(U)
 
-    if (plot_divu) then
+    if (plot_divu .or. plot_magvort) then
        ngq = ngu
        call multifab_fill_boundary(U)
     else
@@ -176,12 +274,36 @@ contains
        call multifab_copy_c(plotdata(1),icomp_eint, Q,qe, 1)
     end if    
 
-    if (plot_divu) then
-       call make_plotvar(plotdata(1),icomp_divu, Q, dx)
+    if (plot_wbar) then
+       call make_plotvar(plotdata(1),icomp_wbar, Q, dx)
     end if
 
     if (plot_h) then
        call make_plotvar(plotdata(1),icomp_h, Q, dx)
+    end if
+
+    if (plot_rhoh) then
+       call make_plotvar(plotdata(1),icomp_rhoh, Q, dx)
+    end if
+
+    if (plot_cs) then
+       call make_plotvar(plotdata(1),icomp_cs, Q, dx)
+    end if
+
+    if (plot_magvel) then
+       call make_plotvar(plotdata(1),icomp_magvel, Q, dx)
+    end if
+
+    if (plot_Mach) then
+       call make_plotvar(plotdata(1),icomp_Mach, Q, dx)
+    end if
+
+    if (plot_divu) then
+       call make_plotvar(plotdata(1),icomp_divu, Q, dx)
+    end if
+
+    if (plot_magvort) then
+       call make_plotvar(plotdata(1),icomp_magvort, Q, dx)
     end if
 
     if (plot_Y) then
@@ -196,8 +318,8 @@ contains
        call multifab_copy_c(plotdata(1),icomp_hspec, Q,qh1, nspecies)       
     end if
 
-    if (plot_omegadot) then
-       call make_plotvar(plotdata(1),icomp_omegadot, Q, dx)
+    if (nburn > 0) then
+       call make_plotvar(plotdata(1),icomp_burn, Q, dx)
     end if
 
     if (parallel_IOProcessor()) then
@@ -208,7 +330,7 @@ contains
     writetime1 = parallel_wtime()
 
     call fabio_ml_multifab_write_d(plotdata, rr, dirname, plot_names, &
-         la%lap%pd, prob_lo, prob_hi, time, dx, &
+         la%lap%pd, prob_lo(1:dm), prob_hi(1:dm), time, dx(1:dm), &
          nOutFiles = nOutFiles, &
          lUsingNFiles = lUsingNFiles, prec = prec)
 

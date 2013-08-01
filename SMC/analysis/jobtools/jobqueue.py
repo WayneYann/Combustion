@@ -33,7 +33,8 @@ class JobQueue(base.Container):
 
 
     def rsync_stage(self):
-        local('rsync -auz {src}/* {host}:{dst}/'.format(src=self.stage, host=env.host, dst=self.rwd))
+        rwd = self.rwd or env.get('rwd', '')
+        local('rsync -auz {src}/* {host}:{dst}/'.format(src=self.stage, host=env.host, dst=rwd))
         shutil.rmtree(self.stage)
 
 

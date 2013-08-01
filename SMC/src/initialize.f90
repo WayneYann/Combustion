@@ -26,7 +26,7 @@ contains
     character(len=*), intent(in) :: dirname
     type(layout),intent(inout) :: la
     real(dp_t), intent(out) :: dt,courno
-    real(dp_t), pointer :: dx(:)
+    real(dp_t), intent(out) :: dx(3)
     type(multifab), intent(inout) :: U
 
     ! local
@@ -58,13 +58,11 @@ contains
     if (ncell(2) .ne. n_celly) then
        call bl_error("Inconsistent n_celly in checkpoint file and probin")
     end if
-    if (dm .eq. 3) then
-       if (ncell(3) .ne. n_cellz) then
-          call bl_error("Inconsistent n_cellz in checkpoint file and probin")
-       end if
+    if (ncell(3) .ne. n_cellz) then
+       call bl_error("Inconsistent n_cellz in checkpoint file and probin")
     end if
 
-    do idim=1,dm
+    do idim=1,3
        if (prob_lo(idim) .ne. prob_lo_chk(idim) .or. prob_hi(idim) .ne. prob_hi_chk(idim)) then
           call bl_error("Inconsistent prob_lo or prob_hi in checkpoint file and probin")
        end if
@@ -89,12 +87,9 @@ contains
        call bl_error("Inconsistent bcz_hi in checkpoint file and probin")
     end if
 
-    allocate(dx(dm))
     dx(1) = (prob_hi(1)-prob_lo(1)) / n_cellx
     dx(2) = (prob_hi(2)-prob_lo(2)) / n_celly
-    if (dm > 2) then
-       dx(3) = (prob_hi(3)-prob_lo(3)) / n_cellz
-    end if
+    dx(3) = (prob_hi(3)-prob_lo(3)) / n_cellz
 
     ng = stencil_ng
 
@@ -104,17 +99,15 @@ contains
        lo = 0
        hi(1) = n_cellx-1
        hi(2) = n_celly-1
-       if (dm > 2) then
-          hi(3) = n_cellz - 1
-       end if
-       bx = make_box(lo,hi)
+       hi(3) = n_cellz-1
+       bx = make_box(lo(1:dm),hi(1:dm))
        call boxarray_build_bx(ba,bx)
        call boxarray_maxsize(ba,max_grid_size)
     else
        call boxarray_build_copy(ba, bachk)
     end if
 
-    call layout_build_ba(la,ba,boxarray_bbox(ba),pmask=pmask)
+    call layout_build_ba(la,ba,boxarray_bbox(ba),pmask=pmask(1:dm))
 
     call build_threadbox(la,ng)
 
@@ -127,14 +120,14 @@ contains
     call destroy(lachk)
 
     if (parallel_nprocs() > 1 .and. t_trylayout > 0.d0) then
-       call build_better_layout(U,la,ba,boxarray_bbox(ba),pmask,ncons,ng,t_trylayout)
+       call build_better_layout(U,la,ba,boxarray_bbox(ba),pmask(1:dm),ncons,ng,t_trylayout)
     end if
 
     call destroy(ba)
 
     call smc_bc_init(la, U)
 
-    call nscbc_init()
+    call nscbc_init(dm)
     call nscbc_build_registers(la)
 
     if (bcx_lo .eq. INLET) then
@@ -157,7 +150,7 @@ contains
        call destroy(lachk)
     end if
 
-    if (bcz_lo .eq. INLET) then
+    if (dm .eq. 3 .and. bcz_lo .eq. INLET) then
        call physbndry_reg_build(chqin_zlo,la,qin_zlo%nc,qin_zlo%idim,qin_zlo%iface,.false.)
        call multifab_copy_c(chqin_zlo%data,1,chkzlo(1),1,chqin_zlo%nc)
        call physbndry_reg_copy(chqin_zlo, qin_zlo)
@@ -187,7 +180,7 @@ contains
        call destroy(lachk)
     end if
 
-    if (bcz_hi .eq. INLET) then
+    if (dm .eq. 3 .and. bcz_hi .eq. INLET) then
        call physbndry_reg_build(chqin_zhi,la,qin_zhi%nc,qin_zhi%idim,qin_zhi%iface,.false.)
        call multifab_copy_c(chqin_zhi%data,1,chkzhi(1),1,chqin_zhi%nc)
        call physbndry_reg_copy(chqin_zhi, qin_zhi)
@@ -215,11 +208,11 @@ contains
 
     type(layout),intent(inout) :: la
     real(dp_t), intent(out) :: dt,courno
-    real(dp_t), pointer :: dx(:)
+    real(dp_t), intent(out) :: dx(3)
     type(multifab), intent(inout) :: U
 
     ! local
-    integer :: lo(dm_in), hi(dm_in), dm, ng
+    integer :: lo(3), hi(3), dm, ng
     type(box)          :: bx
     type(boxarray)     :: ba
 
@@ -231,24 +224,19 @@ contains
     lo = 0
     hi(1) = n_cellx-1
     hi(2) = n_celly-1
-    if (dm > 2) then
-       hi(3) = n_cellz - 1
-    end if
+    hi(3) = n_cellz-1
 
-    allocate(dx(dm))
     dx(1) = (prob_hi(1)-prob_lo(1)) / n_cellx
     dx(2) = (prob_hi(2)-prob_lo(2)) / n_celly
-    if (dm > 2) then
-       dx(3) = (prob_hi(3)-prob_lo(3)) / n_cellz
-    end if
+    dx(3) = (prob_hi(3)-prob_lo(3)) / n_cellz
 
     ng = stencil_ng
 
-    bx = make_box(lo,hi)
+    bx = make_box(lo(1:dm),hi(1:dm))
     
     call boxarray_build_bx(ba,bx)
     call boxarray_maxsize(ba,max_grid_size)
-    call layout_build_ba(la,ba,boxarray_bbox(ba),pmask=pmask)
+    call layout_build_ba(la,ba,boxarray_bbox(ba),pmask=pmask(1:dm))
 
     call build_threadbox(la,ng)
 
@@ -258,14 +246,14 @@ contains
     call init_data(U,dx,prob_lo,prob_hi)
 
     if (parallel_nprocs() > 1 .and. t_trylayout > 0.d0) then
-       call build_better_layout(U,la,ba,boxarray_bbox(ba),pmask,ncons,ng,t_trylayout)
+       call build_better_layout(U,la,ba,boxarray_bbox(ba),pmask(1:dm),ncons,ng,t_trylayout)
     end if
 
     call destroy(ba)
 
     call smc_bc_init(la, U)
 
-    call nscbc_init()
+    call nscbc_init(dm)
     call nscbc_build_registers(la)
 
     call nscbc_init_inlet_reg_from_scratch(U)

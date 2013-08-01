@@ -11,11 +11,11 @@ class Container(object):
     pass
 env = Container()
 
-def setenv():
+def setenv(rwd=None, debug=False):
     import socket
     host = socket.gethostname()
 
-    print host
+    env.debug = debug
 
     if host == 'gigan':
         env.scratch    = '/scratch/memmett/Combustion/SMC/bin/FlameBall/'
@@ -24,17 +24,28 @@ def setenv():
         env.scratch    = '/scratch/scratchdirs/memmett/'
         env.ffdcompare = '/global/homes/m/memmett/projects/AmrPostprocessing/F_Src/ffdcompare.Linux.gfortran.exe'
 
+    elif host[:6] == 'edison':
+        env.scratch    = '/scratch1/scratchdirs/memmett/'
+        env.ffdcompare = '/global/homes/m/memmett/projects/AmrPostprocessing/F_Src/ffdcompare.Linux.gfortran.exe'
+
+    if rwd:
+        env.rwd = rwd
+
+
 
 def find_plotfile(rundir, time):
   """Return plotfile with time *time* in run directory *rundir*."""
 
   plts = glob.glob(os.path.join(env.scratch, env.rwd, rundir, 'plt*'))
-  # print rundir, len(plts)
+  if env.debug:
+      print rundir, len(plts)
   for plt in plts:
     with open(plt + '/Header', 'r') as f:
       header = f.read().split('\n')
     ncomp = int(header[1])
     plttime = float(header[ncomp+3])
+    if env.debug:
+        print rundir, plttime, time
     if abs(plttime - time) < 1e-18:
       return plt
 
@@ -84,7 +95,6 @@ def error(rundir1, rundir2, time, norm=2, variable='pressure', refratio=1, diff=
     print '  plotfiles not found!'
     return None
 
-  # errs = fdcompare.fdcompare(p1, p2, refratio=refratio, variables=[variable], diff=diff, norm=norm)
   err = compare(p1, p2, variable, norm)
 
   print '  p1:', p1

@@ -58,18 +58,14 @@ c     DVODE driver stuff
 c     LMC alg stuff
       integer misdc_iterMAX,on_lo,on_hi,max_order,
      &     divu_ceiling_flag, is_first_initial_iter, doing_init_iters,
-     &     unlim, lim_rxns, coef_avg_harm, fancy_predictor,
-     &     initial_S_type, recompute_S, probtype
+     &     unlim, lim_rxns, coef_avg_harm,
+     &     probtype
       parameter (on_lo = 0, on_hi = 1, max_order = 3)
       common / lmci / misdc_iterMAX, divu_ceiling_flag,
      &     is_first_initial_iter, doing_init_iters, unlim, lim_rxns,
-     &     coef_avg_harm, fancy_predictor, 
-     &     initial_S_type, recompute_S, probtype
+     &     coef_avg_harm,
+     &     probtype
       save /lmci/
-
-      logical use_strang
-      common / lmcl / use_strang
-      save /lmcl/
 
       double precision dpdt_factor, Pcgs, T_bc(0:1), rho_bc(0:1),
      &     Y_bc(maxspec,0:1), h_bc(0:1), u_bc(0:1), flame_offset, 

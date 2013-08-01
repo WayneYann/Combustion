@@ -1,0 +1,84 @@
+&PROBIN
+
+ dm_in = 2
+ tb_split_dim = 1
+
+ verbose = 2
+
+ check_nans = .true.
+
+ advance_method = 4        ! 1=RK3, 2=SDC, 3=MRSDC
+
+ sdc_nnodes_fine  = 3
+ sdc_nnodes       = 5
+ sdc_iters        = 4
+ sdc_tol_residual = 1.0d-6
+ sdc_multirate_repeat = 2
+
+ stop_time = 5.97411d-5
+ max_step  = 1000000
+ restart = -2000
+
+ plot_int = -100
+ chk_int  = -100
+
+! fixed_dt    = 1.d-10
+! max_dt      = 1.d-10
+ cflfac      = 0.333d0
+ cfl_int     = 100
+ init_shrink = 0.1d0
+
+ n_cellx = 128
+ n_celly = 128
+ n_cellz = 1
+ max_grid_size = 64
+
+ prob_lo_x = -0.114d0
+ prob_lo_y =  0.d0
+ prob_hi_x =  0.114d0
+ prob_hi_y =  0.228d0
+
+ xlo_boundary_type = "outlet"
+ xhi_boundary_type = "outlet"
+
+ ylo_boundary_type = "inlet"
+ yhi_boundary_type = "outlet"
+
+ trans_int = 1
+ use_bulk_viscosity = .false.
+ reset_inactive_species = .true.
+
+ outlet_Pinfty = 4.053d7   ! 1.01325d6 
+ outlet_sigma  = 0.25d0
+ outlet_eta    = 50.d0
+ inlet_eta     = 30.d0
+ mach_int      = 10
+ nscbc_burn    = .false.
+
+ pamb = 4.053d7  ! 40 Patm
+
+ phi_in = 0.2d0   ! mole fraction of CH3OCH3 in fuel
+ T_in   = 400.d0  ! temperature of fuel
+ vn_in  = 5.12d3  ! fuel injection velocity
+
+ T_co  = 1525.d0   ! temperature of air
+ vn_co = 5.12d2    ! air injection velocity
+
+ splitx  = 0.00569d0  ! where fuel and air split
+ xfrontw = .2d0       ! controls the width of split
+
+ inflow_period = 1.d-5 ! period of sinusoidal variation of inflow velocity
+ inflow_vnmag  = 1.d3  ! magnitude of the variation
+
+ use_vode = .true.
+ vode_verbose = 0
+ vode_itol  = 1
+ vode_rtol  = 1.d-10
+ vode_atol  = 1.d-10
+ vode_order = 5
+ vode_use_ajac  = .true. ! use analytic Jacobian
+ vode_save_ajac = .true. ! resue analytic Jacobian
+ vode_stiff     = .true.
+ vode_always_new_j = .false.
+
+/

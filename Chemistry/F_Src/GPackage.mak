@@ -5,10 +5,13 @@ ifdef USE_EGZ
 else
    f90sources += eglib_module.f90
 
-   fsources += EGaux.f
    fsources += EGini.f
 
    #fsources += EGSlib.f
    fsources += EGMlib.f
    #fsources += EGFlib.f
 endif
+
+f90sources += vode_module.f90
+fsources += vode.f LinAlg.f
+

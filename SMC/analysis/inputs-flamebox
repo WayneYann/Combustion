@@ -7,7 +7,7 @@
 
  stop_time = {stop_time}
  max_step  = 900000
- restart   = 40
+ restart   = -1
 
  sdc_iters            = {sdc_iters}
  sdc_nnodes           = {sdc_nnodes}
@@ -48,4 +48,7 @@
 
  pertmag =  0.04d0
  xfire   =  0.0d0
+
+ reset_inactive_species = T
+
 /

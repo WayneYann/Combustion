@@ -58,9 +58,13 @@ class HopperPBS(base.Container):
         if not exe:
             raise ValueError("Invalid executable (exe): not set.")
 
+        if pernode and width and pernode > width:
+            pernode = width
+
         #
         # construct pbs script
         #
+        opts = []               # aprun options
 
         pbs = [ '#!/bin/sh' ]
         pbs.append("#PBS -N " + job.name)
@@ -68,10 +72,13 @@ class HopperPBS(base.Container):
             pbs.append("#PBS -q " + queue)
         if width:
             pbs.append("#PBS -l mppwidth=" + str(width))
+            opts.append("-n " + str(width))
         if depth:
             pbs.append("#PBS -l mppdepth=" + str(depth))
+            opts.append("-d " + str(depth))
         if pernode:
             pbs.append("#PBS -l mppnppn=" + str(pernode))
+            opts.append("-N " + str(pernode))
         if walltime:
             pbs.append("#PBS -l walltime=" + walltime)
         if stdout:
@@ -88,15 +95,13 @@ class HopperPBS(base.Container):
             pbs.extend(cmds)
         if depth:
             pbs.append("export OMP_NUM_THREADS=" + str(depth))
-        pbs.append("aprun {opts} -B {exe} {inputs}") # change this
+        pbs.append("aprun {opts} {exe} {inputs}")
 
         if aprun_opts:
-            opts = ' '.join(aprun_opts)
-        else:
-            opts = ''
+            opts.extend(aprun_opts)
 
-        pbs = '\n'.join(pbs).format(opts=opts, rwd=rwd, exe=exe, inputs=inputs)
-
+        opts = ' '.join(opts)
+        pbs  = '\n'.join(pbs).format(opts=opts, rwd=rwd, exe=exe, inputs=inputs)
 
         if not dry_run:
             # push to remote host
@@ -104,6 +109,7 @@ class HopperPBS(base.Container):
             put(strio(pbs), run_script)
             
             # submit to queue
+            print 'SUBMITTING ', job.name, ' USING ', exe
             run('qsub ' + run_script)
 
         else:

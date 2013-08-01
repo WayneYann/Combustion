@@ -100,10 +100,11 @@ contains
     logical, optional, intent(in) :: ryt_only
 
     logical :: lgco, lryto
-    integer :: ngu, ngq, ngto
+    integer :: ngu, ngq, ngto, dm
     integer :: n, lo(U%dim), hi(U%dim), dlo(U%dim), dhi(U%dim)
     double precision, pointer, dimension(:,:,:,:) :: up, qp
 
+    dm  = U%dim
     ngu = nghost(U)
     ngq = nghost(Q)
 
@@ -132,14 +133,85 @@ contains
 
        call get_data_lo_hi(n,dlo,dhi)
 
-       if (U%dim .eq. 2) then
-          call bl_error("2D not supported in variables::ctoprim")
+       if (dm .eq. 2) then
+          call ctoprim_2d(lo,hi,up,qp,ngu,ngq,ngto,dlo,dhi,lgco, lryto)
        else
           call ctoprim_3d(lo,hi,up,qp,ngu,ngq,ngto,dlo,dhi,lgco, lryto)
        end if
     end do
 
   end subroutine ctoprim
+
+  subroutine ctoprim_2d(lo, hi, u, q, ngu, ngq, ngto, dlo, dhi, gco, ryto)
+    logical, intent(in) :: gco  ! ghost cells only?
+    logical, intent(in) :: ryto ! compute rho, Y and T only?
+    integer, intent(in) :: lo(2), hi(2), ngu, ngq, ngto, dlo(2), dhi(2)
+    double precision, intent(in ) :: u(lo(1)-ngu:hi(1)+ngu,lo(2)-ngu:hi(2)+ngu,ncons)
+    double precision, intent(out) :: q(lo(1)-ngq:hi(1)+ngq,lo(2)-ngq:hi(2)+ngq,nprim)
+    
+    integer :: i, j, n, iwrk, ierr
+    double precision :: rho, rhoinv, rwrk, X(nspecies), Y(nspecies), h(nspecies), ei, Tt, Pt
+    integer :: llo(2), lhi(2)
+
+    ! be safe
+    do i=1,2
+       llo(i) = max(lo(i)-ngto, dlo(i))
+       lhi(i) = min(hi(i)+ngto, dhi(i))
+    end do
+
+    !$omp parallel private(i, j, n, iwrk, rho, rhoinv, rwrk) &
+    !$omp private(X, Y, h, ei, Tt, Pt, ierr)
+    !$omp do
+    do j = llo(2),lhi(2)
+       do i = llo(1),lhi(1)
+
+          if (gco) then
+             if ( (i.ge.lo(1) .and. i.le.hi(1)) .and. &
+                  (j.ge.lo(2) .and. j.le.hi(2)) ) then
+                cycle
+             end if
+          end if
+          
+          rho = u(i,j,irho)
+          rhoinv = 1.d0/rho
+          q(i,j,qrho) = rho
+          q(i,j,qu) = u(i,j,imx) * rhoinv
+          q(i,j,qv) = u(i,j,imy) * rhoinv
+
+          do n=1,nspecies
+             Y(n) = u(i,j,iry1+n-1) * rhoinv
+             q(i,j,qy1+n-1) = Y(n)
+          end do
+          
+          ei = rhoinv*u(i,j,iene) - 0.5d0*(q(i,j,qu)**2+q(i,j,qv)**2)
+          q(i,j,qe) = ei
+
+          Tt = q(i,j,qtemp)
+          call get_t_given_ey(ei, Y, iwrk, rwrk, Tt, ierr)
+          q(i,j,qtemp) = Tt
+
+          if (ryto) cycle
+          
+          call ckytx(Y, iwrk, rwrk, X)
+          
+          do n=1,nspecies
+             q(i,j,qx1+n-1) = X(n)
+          end do
+          
+          call CKPY(rho, Tt, Y, iwrk, rwrk, Pt)
+          q(i,j,qpres) = Pt
+
+          call ckhms(Tt, iwrk, rwrk, h)
+          
+          do n=1,nspecies
+             q(i,j,qh1+n-1) = h(n)
+          end do
+       enddo
+    enddo
+    !$omp end do
+    !$omp end parallel
+
+  end subroutine ctoprim_2d
 
   subroutine ctoprim_3d(lo, hi, u, q, ngu, ngq, ngto, dlo, dhi, gco, ryto)
     logical, intent(in) :: gco  ! ghost cells only?
@@ -236,13 +308,80 @@ contains
        hi = upb(get_box(U,n))
 
        if (dm .eq. 2) then
-          call bl_error("2D not supported in variables::reset_density")
-       else
+          call reset_rho_2d(lo,hi,ng,up)
+        else
           call reset_rho_3d(lo,hi,ng,up)
        end if
     end do
 
   end subroutine reset_density
+
+  subroutine reset_rho_2d(lo, hi, ng, u)
+    integer, intent(in) :: lo(2), hi(2), ng
+    double precision, intent(inout) :: u(lo(1)-ng:hi(1)+ng,lo(2)-ng:hi(2)+ng,ncons)
+
+    integer :: i, j, n, iryn
+    double precision :: rho
+    double precision, parameter :: eps = -1.0d-16
+    integer          :: idom
+    double precision :: rhoy_dom, rhoy_under
+
+    !$omp parallel private(i,j,n,iryn,rho) &
+    !$omp private(idom, rhoy_dom, rhoy_under)
+    !$omp do
+    do j = lo(2),hi(2)
+       do i = lo(1),hi(1)
+          
+          rho = 0.d0
+          do n=1, nspecies
+             rho = rho + U(i,j,iry1+n-1)
+          end do
+          U(i,j,irho) = rho
+          
+          !
+          ! Enforce nonnegative species
+          !
+          rhoy_under = 0.d0
+          do n = 1, nspecies
+             iryn = iry1+n-1
+             if (U(i,j,iryn) .lt. 0.d0) then
+                rhoy_under = rhoy_under + U(i,j,iryn)
+                U(i,j,iryn) = 0.d0
+             end if
+          end do
+          
+          if (rhoy_under .lt. rho*eps) then
+             !
+             ! Find the dominant species.
+             !
+             idom = 1
+             rhoy_dom = U(i,j,iry1)
+             do n = 2, nspecies
+                iryn = iry1+n-1
+                if (U(i,j,iryn) .gt. rhoy_dom) then
+                   idom = n
+                   rhoy_dom = U(i,j,iryn)
+                end if
+             end do
+             !
+             ! Take enough from the dominant species to fill the negative one.
+             !
+             iryn = iry1+idom-1
+             U(i,j,iryn) = U(i,j,iryn) + rhoy_under
+             if (U(i,j,iryn) .lt. 0.d0) then
+                print *,'Just made dominant species',idom, &
+                     'negative', U(i,j,iryn)/rho, 'at ',i,j 
+                print *, 'rho = ', rho, ' Y_under = ', rhoy_under/rho
+                call bl_error("Error:: variables :: reset_rho_2d")
+             end if
+          end if
+          
+       end do
+    end do
+    !$omp end do
+    !$omp end parallel
+
+  end subroutine reset_rho_2d
 
   subroutine reset_rho_3d(lo, hi, ng, u)
     integer, intent(in) :: lo(3), hi(3), ng

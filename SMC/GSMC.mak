@@ -6,7 +6,7 @@ include $(BOXLIB_HOME)/Tools/F_mk/GMakedefs.mak
 
 include ./GPackage.mak
 VPATH_LOCATIONS += .
-
+FINCLUDE_LOCATIONS += .
 
 # default target (make just takes the one that appears first)
 ALL: main.$(suf).exe
@@ -82,6 +82,10 @@ else ifeq ($(CHEMISTRY_MODEL),GRI30)
   csources += grimech30.c
   vpath %.c   $(VPATH_LOCATIONS) $(CHEMISTRY_DIR)/data/gri
   vpath %.f   $(VPATH_LOCATIONS) $(CHEMISTRY_DIR)/data/gri/PMFs
+else ifeq ($(CHEMISTRY_MODEL),LUDEM)
+  csources += LuDME.c
+  vpath %.c   $(VPATH_LOCATIONS) $(CHEMISTRY_DIR)/data/Lu
+  vpath %.f   $(VPATH_LOCATIONS) $(CHEMISTRY_DIR)/data/Lu/PMFs
 endif
 
 ifdef CONVERGENCE
@@ -90,6 +94,9 @@ endif
 
 # any include directories
 Fmincludes += $(SMC_SRC)
+ifneq ("$(wildcard $(SMC_TOP_DIR)/$(strip $(SMC_SRC))/include)","")
+  Fmincludes += $(strip $(SMC_SRC))/include
+endif
 Fmincs := $(foreach dir, $(Fmincludes), $(SMC_TOP_DIR)/$(dir))
 
 

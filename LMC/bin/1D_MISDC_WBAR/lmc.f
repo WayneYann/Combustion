@@ -28,13 +28,12 @@
       real*8, allocatable :: beta_for_Y_new(:,:,:)
       real*8, allocatable :: beta_for_Wbar_old(:,:,:)
       real*8, allocatable :: beta_for_Wbar_new(:,:,:)
-      real*8, allocatable :: mu_dummy(:,:)
+      real*8, allocatable :: mu_old(:,:)
+      real*8, allocatable :: mu_new(:,:)
       real*8, allocatable :: divu_old(:,:)
       real*8, allocatable :: divu_new(:,:)
 
 !     cell-centered, no ghost cells
-      real*8, allocatable ::        dSdt(:,:)
-      real*8, allocatable ::   delta_chi(:,:)
       real*8, allocatable ::   const_src(:,:,:)
       real*8, allocatable :: lin_src_old(:,:,:)
       real*8, allocatable :: lin_src_new(:,:,:)
@@ -62,13 +61,12 @@
      $                  problo,probhi,chkfile,
      $                  plot_int, chk_int,
      $                  init_shrink, flame_offset,
-     $                  fancy_predictor, dpdt_factor, 
-     $                  Patm, coef_avg_harm, initial_S_type, 
-     $                  recompute_S, probtype,
+     $                  dpdt_factor, 
+     $                  Patm, coef_avg_harm,
+     $                  probtype,
      $                  misdc_iterMAX,
      $                  do_initial_projection, num_divu_iters, 
      $                  num_init_iters,fixed_dt,
-     $                  use_strang, 
      $                  V_in, lim_rxns,
      $                  LeEQ1, tranfile, TMIN_TRANS, Pr, Sc,
      $                  max_vode_subcycles,
@@ -89,9 +87,6 @@ c     Set defaults, change with namelist
       chk_int = 1
       init_shrink = 0.1d0
       flame_offset = 0.d0
-      fancy_predictor = 1
-      initial_S_type = 1
-      recompute_S = 0
       dpdt_factor = 0.d0
       Patm = 1.d0
       coef_avg_harm = 0
@@ -100,7 +95,6 @@ c     Set defaults, change with namelist
       num_divu_iters = 3
       num_init_iters = 2
       fixed_dt = -1.d0
-      use_strang = .false.
       V_in = 1.d20
       lim_rxns = 1
       LeEQ1 = 0
@@ -155,13 +149,12 @@ c     u_bc, T_bc, Y_bc, h_bc, and rho_bc
       allocate(beta_for_Y_new(0:nlevs-1,-1:nfine,nscal))
       allocate(beta_for_Wbar_old(0:nlevs-1,-1:nfine,nscal))
       allocate(beta_for_Wbar_new(0:nlevs-1,-1:nfine,nscal))
-      allocate(mu_dummy(0:nlevs-1,-1:nfine))
+      allocate(mu_old(0:nlevs-1,-1:nfine))
+      allocate(mu_new(0:nlevs-1,-1:nfine))
       allocate(divu_old(0:nlevs-1,-1:nfine))
       allocate(divu_new(0:nlevs-1,-1:nfine))
 
 !     cell-centered, no ghost cells
-      allocate(       dSdt(0:nlevs-1,0:nfine-1))
-      allocate(  delta_chi(0:nlevs-1,0:nfine-1))
       allocate(  const_src(0:nlevs-1,0:nfine-1,nscal))
       allocate(lin_src_old(0:nlevs-1,0:nfine-1,nscal))
       allocate(lin_src_new(0:nlevs-1,0:nfine-1,nscal))
@@ -181,10 +174,6 @@ c     u_bc, T_bc, Y_bc, h_bc, and rho_bc
       divu_old = 0.d0
       divu_new = 0.d0
 
-!     must zero this or else RHS in mac project could be undefined
-      dSdt = 0.d0
-      delta_chi = 0.d0
-      
 !     initialize dx
       dx(0) = (probhi-problo)/DBLE(nx)
       do l=1,nlevs-1
@@ -232,7 +221,7 @@ c     u_bc, T_bc, Y_bc, h_bc, and rho_bc
          print *,'CHKFILE ',chkfile
          
          call read_check(chkfile,vel_old,scal_old,press_old,
-     $                   I_R,divu_old,dSdt,
+     $                   I_R,divu_old,
      $                   time,at_nstep,dt,lo,hi)
 
          call write_plt(vel_old,scal_old,press_old,divu_old,I_R,
@@ -266,7 +255,7 @@ c     needed for seed to EOS after first strang_chem call
             call calc_diffusivities(scal_old(l,:,:),beta_old(l,:,:),
      &                              beta_for_Y_old(l,:,:),
      &                              beta_for_Wbar_old(l,:,:),
-     &                              mu_dummy(l,:),lo(l),hi(l))
+     &                              mu_old(l,:),lo(l),hi(l))
          end do
          
          if (do_initial_projection .eq. 1) then
@@ -348,22 +337,13 @@ c     return zero pressure
             print *,' '
             print *,'INITIAL PRESSURE ITERATION ',init_iter
 
-c     strang split overwrites scal_old so we preserve it
-            if (use_strang) then
-               scal_hold = scal_old
-            end if
-
             call advance(vel_old,vel_new,scal_old,scal_new,
      $                   I_R,press_old,press_new,
-     $                   divu_old,divu_new,dSdt,beta_old,beta_new,
+     $                   divu_old,divu_new,beta_old,beta_new,
      $                   beta_for_Y_old,beta_for_Y_new,
      $                   beta_for_Wbar_old,beta_for_Wbar_new,
-     $                   dx,dt,lo,hi,bc,delta_chi,-init_iter)
-
-c     restore scal_old
-            if (use_strang) then
-               scal_old = scal_hold
-            end if
+     $                   mu_old,mu_new,
+     $                   dx,dt,lo,hi,bc,-init_iter)
 
 c     update pressure and I_R
             press_old = press_new
@@ -390,9 +370,9 @@ c     update pressure and I_R
       endif
 
       call write_plt(vel_new,scal_new,press_new,divu_new,I_R,
-     $     dx,nsteps_taken,time,lo,hi,bc)
-      call write_check(nsteps_taken,vel_new,scal_new,press_new,
-     $     I_R,divu_new,dSdt,dx,time,dt,lo,hi)
+     $     dx,at_nstep,time,lo,hi,bc)
+      call write_check(at_nstep,vel_new,scal_new,press_new,
+     $     I_R,divu_new,dx,time,dt,lo,hi)
 
 C-- Now advance 
       do nsteps_taken = at_nstep, nsteps
@@ -407,16 +387,21 @@ C-- Now advance
          
          call advance(vel_old,vel_new,scal_old,scal_new,
      $                I_R,press_old,press_new,
-     $                divu_old,divu_new,dSdt,beta_old,beta_new,
+     $                divu_old,divu_new,beta_old,beta_new,
      $                beta_for_Y_old,beta_for_Y_new,
      $                beta_for_Wbar_old,beta_for_Wbar_new,
-     $                dx,dt,lo,hi,bc,delta_chi,nsteps_taken)
+     $                mu_old,mu_new,
+     $                dx,dt,lo,hi,bc,nsteps_taken)
 
 c     update state, time
          vel_old = vel_new
          scal_old = scal_new
          divu_old = divu_new
          press_old = press_new
+         beta_old = beta_new
+         beta_for_Y_old = beta_for_Y_new
+         beta_for_Wbar_old = beta_for_Wbar_new
+         mu_old = mu_new
 
          time = time + dt(0)
 
@@ -428,7 +413,7 @@ c     update state, time
          if (MOD(nsteps_taken,chk_int).eq.0 .OR.
      &        nsteps_taken.eq.nsteps) then 
             call write_check(nsteps_taken,vel_new,scal_new,press_new,
-     $                       I_R,divu_new,dSdt,dx,time,dt,lo,hi)
+     $                       I_R,divu_new,dx,time,dt,lo,hi)
          endif
       enddo
 

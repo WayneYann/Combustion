@@ -76,8 +76,8 @@ contains
           whi(idim) = min(whi(idim), hi(idim)+ngwork)
        end do
 
-       if (dm .ne. 3) then
-          call bl_error("Only 3D is supported in get_transport_properties")
+       if (dm .eq. 2) then
+          call get_trans_prop_2d(lo,hi,ngq,qp,mup,xip,lamp,dp,wlo,whi,lgco)
        else
           call get_trans_prop_3d(lo,hi,ngq,qp,mup,xip,lamp,dp,wlo,whi,lgco)
        end if
@@ -85,6 +85,257 @@ contains
     end do
 
   end subroutine get_transport_properties
+
+  subroutine get_trans_prop_2d(lo,hi,ng,q,mu,xi,lam,Ddiag,wlo,whi,gco)
+    use probin_module, only : use_bulk_viscosity
+    logical, intent(in) :: gco  ! ghost cells only
+    integer, intent(in) :: lo(2), hi(2), ng, wlo(2), whi(2)
+    double precision,intent(in )::    q(lo(1)-ng:hi(1)+ng,lo(2)-ng:hi(2)+ng,nprim)
+    double precision,intent(out)::   mu(lo(1)-ng:hi(1)+ng,lo(2)-ng:hi(2)+ng)
+    double precision,intent(out)::   xi(lo(1)-ng:hi(1)+ng,lo(2)-ng:hi(2)+ng)
+    double precision,intent(out)::  lam(lo(1)-ng:hi(1)+ng,lo(2)-ng:hi(2)+ng)
+    double precision,intent(out)::Ddiag(lo(1)-ng:hi(1)+ng,lo(2)-ng:hi(2)+ng,nspecies)
+
+    integer :: i, j, n, np, qxn, iwrk, ii, jj, iisize, jisize
+    integer :: iindex(whi(1)-wlo(1)-hi(1)+lo(1))
+    integer :: jindex(whi(2)-wlo(2)-hi(2)+lo(2))
+    double precision :: rwrk, Cp(nspecies)
+    double precision, allocatable :: L1Z(:), L2Z(:), DZ(:,:), XZ(:,:), CPZ(:,:), &
+         TZ(:), EZ(:), KZ(:)
+
+    if (.not. gco) then
+
+       np = whi(1) - wlo(1) + 1
+
+       call egzini(np, ITLS, IFLAG)
+       
+       !$omp parallel private(i,j,n,qxn,iwrk) &
+       !$omp private(rwrk,Cp,L1Z,L2Z,DZ,XZ,CPZ)
+       
+       allocate(L1Z(wlo(1):whi(1)))
+       allocate(L2Z(wlo(1):whi(1)))
+
+       allocate(DZ(wlo(1):whi(1),nspecies))
+       allocate(XZ(wlo(1):whi(1),nspecies))
+       allocate(CPZ(wlo(1):whi(1),nspecies))
+
+       !$omp do
+       do j=wlo(2),whi(2)
+
+          do n=1,nspecies
+             qxn = qx1+n-1
+             do i=wlo(1),whi(1)
+                XZ(i,n) = q(i,j,qxn)
+             end do
+          end do
+          
+          if (iflag > 3) then
+             do i=wlo(1),whi(1)
+                call ckcpms(q(i,j,qtemp), iwrk, rwrk, Cp)
+                CPZ(i,:) = Cp
+             end do
+          else
+             CPZ = 0.d0
+          end if
+          
+          call egzpar(q(wlo(1):whi(1),j,qtemp), XZ, CPZ)
+
+          call egze3(q(wlo(1):whi(1),j,qtemp), mu(wlo(1):whi(1),j))
+
+          if (use_bulk_viscosity) then
+             CALL egzk3(q(wlo(1):whi(1),j,qtemp), xi(wlo(1):whi(1),j))
+          else
+             xi(wlo(1):whi(1),j) = 0.d0
+          end if
+
+          call egzl1( 1.d0, XZ, L1Z)
+          call egzl1(-1.d0, XZ, L2Z)
+          lam(wlo(1):whi(1),j) = 0.5d0*(L1Z+L2Z)
+          
+          call EGZVR1(q(wlo(1):whi(1),j,qtemp), DZ)
+          do n=1,nspecies
+             do i=wlo(1),whi(1)
+                Ddiag(i,j,n) = DZ(i,n)
+             end do
+          end do
+
+       end do
+       !$omp end do
+       
+       deallocate(L1Z, L2Z, DZ, XZ, CPZ)
+       !$omp end parallel
+
+    else ! ghost cells only 
+
+       jisize = size(jindex)
+
+       if (jisize > 0) then
+          ! do j = wlo(2),lo(2)-1 & hi(2)+2,whi(2)
+          ! do i = wlo(1), wlo(2)
+
+          jj = 1
+          do j=wlo(2),lo(2)-1
+             jindex(jj) = j
+             jj = jj+1
+          end do
+          do j=hi(2)+1,whi(2)
+             jindex(jj) = j
+             jj = jj+1
+          end do
+
+          np = whi(1) - wlo(1) + 1
+          call egzini(np, ITLS, IFLAG)
+
+          !$omp parallel private(i,j,jj,n,qxn,iwrk) &
+          !$omp private(rwrk,Cp,L1Z,L2Z,DZ,XZ,CPZ)
+
+          allocate(L1Z(wlo(1):whi(1)))
+          allocate(L2Z(wlo(1):whi(1)))
+
+          allocate(DZ(wlo(1):whi(1),nspecies))
+          allocate(XZ(wlo(1):whi(1),nspecies))
+          allocate(CPZ(wlo(1):whi(1),nspecies))
+    
+          !$omp do
+          do jj=1,jisize
+             
+             j = jindex(jj)
+             
+             do n=1,nspecies
+                qxn = qx1+n-1
+                do i=wlo(1),whi(1)
+                   XZ(i,n) = q(i,j,qxn)
+                end do
+             end do
+             
+             if (iflag > 3) then
+                do i=wlo(1),whi(1)
+                   call ckcpms(q(i,j,qtemp), iwrk, rwrk, Cp)
+                   CPZ(i,:) = Cp
+                end do
+             else
+                CPZ = 0.d0
+             end if
+                
+             call egzpar(q(wlo(1):whi(1),j,qtemp), XZ, CPZ)
+
+             call egze3(q(wlo(1):whi(1),j,qtemp), mu(wlo(1):whi(1),j))
+
+             if (use_bulk_viscosity) then
+                CALL egzk3(q(wlo(1):whi(1),j,qtemp), xi(wlo(1):whi(1),j))
+             else
+                xi(wlo(1):whi(1),j) = 0.d0
+             end if
+             
+             call egzl1( 1.d0, XZ, L1Z)
+             call egzl1(-1.d0, XZ, L2Z)
+             lam(wlo(1):whi(1),j) = 0.5d0*(L1Z+L2Z)
+
+             call EGZVR1(q(wlo(1):whi(1),j,qtemp), DZ)
+             do n=1,nspecies
+                do i=wlo(1),whi(1)
+                   Ddiag(i,j,n) = DZ(i,n)
+                end do
+             end do
+             
+          end do
+          !$omp end do
+          
+          deallocate(L1Z, L2Z, DZ, XZ, CPZ)
+          !$omp end parallel
+       end if
+       
+       iisize = size(iindex)
+
+       if (iisize > 0) then
+          ! do j = lo(2), hi(2)
+          ! do i = wlo(1),lo(1)-1 & hi(1)+1,whi(1)
+
+          ii = 1
+          do i=wlo(1),lo(1)-1
+             iindex(ii) = i
+             ii = ii+1
+          end do
+          do i=hi(1)+1,whi(1)
+             iindex(ii) = i
+             ii = ii+1
+          end do
+          
+          np = iisize
+          call egzini(np, ITLS, IFLAG)
+
+          !$omp parallel private(i,j,ii,n,qxn,iwrk) &
+          !$omp private(rwrk,Cp,L1Z,L2Z,DZ,XZ,CPZ,TZ,EZ,KZ)
+    
+          allocate(TZ(np))
+          allocate(EZ(np))
+          allocate(KZ(np))
+          allocate(L1Z(np))
+          allocate(L2Z(np))
+          allocate(DZ(np,nspecies))
+          allocate(XZ(np,nspecies))
+          allocate(CPZ(np,nspecies))
+        
+          !$omp do
+          do j=lo(2),hi(2)
+             
+             do n=1,nspecies
+                qxn = qx1+n-1
+                do ii=1,np
+                   i = iindex(ii)
+                   XZ(ii,n) = q(i,j,qxn)
+                end do
+             end do
+
+             if (iflag > 3) then
+                do ii=1,np
+                   i = iindex(ii)
+                   TZ(ii) = q(i,j,qtemp)
+                   call ckcpms(TZ(ii), iwrk, rwrk, Cp)
+                   CPZ(ii,:) = Cp
+                end do
+             else
+                CPZ = 0.d0
+             end if
+             
+             call egzpar(TZ, XZ, CPZ)
+             
+             call egze3(TZ, EZ)
+             
+             if (use_bulk_viscosity) then
+                CALL egzk3(TZ, KZ)
+             else
+                KZ = 0.d0
+             end if
+             
+             call egzl1( 1.d0, XZ, L1Z)
+             call egzl1(-1.d0, XZ, L2Z)
+             
+             do ii=1,np
+                i = iindex(ii)
+                mu(i,j) = EZ(ii)
+                xi(i,j) = KZ(ii)
+                lam(i,j) = 0.5d0*(L1Z(ii)+L2Z(ii))
+             end do
+             
+             call EGZVR1(TZ, DZ)
+             do n=1,nspecies
+                do ii=1,np
+                   i = iindex(ii)
+                   Ddiag(i,j,n) = DZ(ii,n)
+                end do
+             end do
+             
+          end do
+          !$omp end do
+
+          deallocate(TZ, EZ, KZ, L1Z, L2Z, DZ, XZ, CPZ)
+          !$omp end parallel
+       end if
+
+    end if
+    
+  end subroutine get_trans_prop_2d
 
   subroutine get_trans_prop_3d(lo,hi,ng,q,mu,xi,lam,Ddiag,wlo,whi,gco)
     use probin_module, only : use_bulk_viscosity
