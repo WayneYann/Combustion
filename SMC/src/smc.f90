@@ -325,9 +325,8 @@ subroutine smc()
 
               call destroy_smcdata(sdc) ! to save memory
 
-              call make_plotfile(plot_file_name,la,U,plot_names,time,dt,dx,write_pf_time,U0)
-
               if (plot_use_U0) then
+                 call make_plotfile(plot_file_name,la,U,plot_names,time,dt,dx,write_pf_time,U0)
                  call destroy(U0)
               end if
 
@@ -397,10 +396,9 @@ subroutine smc()
         end if
 
         call destroy_smcdata(sdc)
-
-        call make_plotfile(plot_file_name,la,U,plot_names,dt,time,dx,write_pf_time,U0)
-
+        
         if (plot_use_U0) then
+           call make_plotfile(plot_file_name,la,U,plot_names,dt,time,dx,write_pf_time,U0)
            call destroy(U0)
         end if
 
