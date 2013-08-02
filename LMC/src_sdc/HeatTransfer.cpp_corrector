@@ -5596,18 +5596,27 @@ HeatTransfer::advance (Real time,
       //
       // Compute A (advection terms) with F = Dn + R
       //
+
       for (MFIter mfi(Forcing); mfi.isValid(); ++mfi)
       {
 	FArrayBox& f = Forcing[mfi];
 	const FArrayBox& dn = Dn[mfi];
 	const FArrayBox& ddn = DDn[mfi];
-	const FArrayBox& r = get_new_data(RhoYdot_Type)[mfi];
+	const FArrayBox& r1 = get_old_data(RhoYdot_Type)[mfi];
+	const FArrayBox& r2 = get_new_data(RhoYdot_Type)[mfi];
 	const Box gbox = Box(mfi.validbox()).grow(nGrowAdvForcing);
-            
 	f.copy(dn,gbox,0,gbox,0,nspecies+1); // add Dn to RhoY and RhoH
-	f.plus(r,gbox,gbox,0,0,nspecies); // add R to RhoY, no contribution for RhoH
 	f.plus(ddn,gbox,gbox,0,nspecies,1); // add DDn to RhoH forcing
+	if (sdc_iter == 1)
+	{
+	  f.plus(r1,gbox,gbox,0,0,nspecies); // add R to RhoY, no contribution for RhoH
+	}
+	else
+	{
+	  f.plus(r2,gbox,gbox,0,0,nspecies); // add R to RhoY, no contribution for RhoH
+	}
       }
+
       Forcing.FillBoundary(0,nspecies+1);
       geom.FillPeriodicBoundary(Forcing,0,nspecies,true);
 
@@ -5634,7 +5643,8 @@ HeatTransfer::advance (Real time,
 	const Box& box = mfi.validbox();
 	FArrayBox& f = Forcing[mfi];
 	const FArrayBox& a = (*aofs)[mfi];
-	const FArrayBox& r = get_new_data(RhoYdot_Type)[mfi];
+	const FArrayBox& r1 = get_old_data(RhoYdot_Type)[mfi];
+	const FArrayBox& r2 = get_new_data(RhoYdot_Type)[mfi];
 	const FArrayBox& dn = Dn[mfi];
 	const FArrayBox& ddn = DDn[mfi];
 	const FArrayBox& dnp1 = Dnp1[mfi];
@@ -5645,7 +5655,14 @@ HeatTransfer::advance (Real time,
 	f.plus(ddnp1,box,box,0,nspecies,1); // add DDnp1 to RhoH, no contribution for RhoY
 	f.mult(0.5);
 	f.plus(a,box,box,first_spec,0,nspecies+1); // add A into RhoY and RhoH
-	f.plus(r,box,box,0,0,nspecies); // no reactions for RhoH
+	if (sdc_iter == 1)
+	{
+	  f.plus(r1,box,box,0,0,nspecies); // no reactions for RhoH
+	}
+	else
+	{
+	  f.plus(r2,box,box,0,0,nspecies); // no reactions for RhoH
+	}
       }
 
       // advection-diffusion solve with theta=1, theta_enthalpy=-1
