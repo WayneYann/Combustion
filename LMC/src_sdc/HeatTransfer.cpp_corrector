@@ -2739,7 +2739,8 @@ HeatTransfer::differential_diffusion_update (MultiFab& Force,
     {
       for (int d = 0; d < BL_SPACEDIM; d++)
       {
-        for (MFIter fmfi(*SpecDiffusionFluxn[d]); fmfi.isValid(); ++fmfi) {
+        for (MFIter fmfi(*SpecDiffusionFluxn[d]); fmfi.isValid(); ++fmfi)
+	{
           if (level > 0)
 	  {
 	    getViscFluxReg().FineAdd((*SpecDiffusionFluxnp1[d])[fmfi],d,fmfi.index(),0,first_spec,nspecies+1,dt);
@@ -4709,6 +4710,9 @@ HeatTransfer::compute_differential_diffusion_fluxes (const Real& time,
     // conservatively correct Gamma_m
     adjust_spec_diffusion_fluxes(time);
 
+    Real prev_time = state[State_Type].prevTime();
+    Real cur_time = state[State_Type].curTime();
+
     //
     // AJN FLUXREG
     // We have just explicitly computed "D" for Y_m and h given an input state.
@@ -4717,7 +4721,7 @@ HeatTransfer::compute_differential_diffusion_fluxes (const Real& time,
     //   COPY (1/2)*Gamma_m^n and (1/2)*lambda^n/cp^n grad h^n to flux registers
     // If updateFluxReg=T:
     //   SUBTRACT (1/2)*Gamma_m^(k) and (1/2)*lambda^(k)/cp^(k) grad h^(k)
-    if ( do_reflux && (updateFluxReg || sdc_iter==1) )
+    if ( do_reflux && (updateFluxReg || (sdc_iter==1 && time==prev_time) ) )
     {
       for (int d = 0; d < BL_SPACEDIM; d++)
       {
@@ -4725,7 +4729,7 @@ HeatTransfer::compute_differential_diffusion_fluxes (const Real& time,
 	{
 	  if (level > 0)
           {
-	    if (sdc_iter==1)
+	    if (sdc_iter==1 && time==prev_time)
 	    {
 	      getViscFluxReg().FineAdd((*SpecDiffusionFluxn[d])[fmfi],d,fmfi.index(),0,first_spec,nspecies+1,0.5*dt);
 	    }
@@ -4738,7 +4742,7 @@ HeatTransfer::compute_differential_diffusion_fluxes (const Real& time,
 
 	if (level < parent->finestLevel())
         {
-	  if (sdc_iter==1)
+	  if (sdc_iter==1 && time==prev_time)
 	  {
 	    getLevel(level+1).getViscFluxReg().CrseInit((*SpecDiffusionFluxn[d]),d,0,first_spec,nspecies+1,-0.5*dt,FluxRegister::COPY);
 	  }
@@ -4755,9 +4759,6 @@ HeatTransfer::compute_differential_diffusion_fluxes (const Real& time,
     // compute sum_m Gamma_m dot grad h_m (for divu)
     compute_enthalpy_fluxes(time,beta);
 
-    Real prev_time = state[State_Type].prevTime();
-    Real curr_time = state[State_Type].curTime();
-
     //
     // AJN FLUXREG
     // We have just computed "DD" given an input state.
@@ -4766,7 +4767,7 @@ HeatTransfer::compute_differential_diffusion_fluxes (const Real& time,
     //   ADD (1/2)*h_m^n(Gamma_m^n-lambda^n/cp^n grad Y_m^n)
     // If updateFluxReg=T:
     //   ADD (1/2)*h_m^(k)(Gamma_m^(k)-lambda^(k)/cp^(k) grad Y_m^(k))
-    if (do_reflux && (updateFluxReg || sdc_iter==1) )
+    if ( do_reflux && (updateFluxReg || (sdc_iter==1 && time==prev_time) ) )
     {
       for (int d = 0; d < BL_SPACEDIM; d++)
       {
@@ -4774,7 +4775,7 @@ HeatTransfer::compute_differential_diffusion_fluxes (const Real& time,
 	{
 	  if (level > 0)
 	  {
-	    if (time==prev_time)
+	    if (sdc_iter == 1 && time==prev_time)
 	    {
 	      advflux_reg->FineAdd((*SpecDiffusionFluxn[d])[fmfi],  d,fmfi.index(),nspecies+1,RhoH,1,0.5*dt);
 	    }
@@ -4787,7 +4788,7 @@ HeatTransfer::compute_differential_diffusion_fluxes (const Real& time,
 
 	if (level < parent->finestLevel())
 	{
-	  if (time==prev_time)
+	  if (sdc_iter == 1 && time==prev_time)
 	  {
 	    getAdvFluxReg(level+1).CrseInit((*SpecDiffusionFluxn[d])  ,d,nspecies+1,RhoH,1,-0.5*dt,FluxRegister::ADD);
 	  }
@@ -5486,9 +5487,13 @@ HeatTransfer::advance (Real time,
 	// iteratively lagged
 	if (verbose && ParallelDescriptor::IOProcessor())
             std::cout << "Computing Dnp1 and DDnp1 (SDC iteration " << sdc_iter << ")\n";
+      }
 
-        compute_differential_diffusion_terms(Dnp1,DDnp1,cur_time,dt);
+      // need to redo this in order to load np1 flux registers if sdc_iterMAX=1
+      compute_differential_diffusion_terms(Dnp1,DDnp1,cur_time,dt);
 
+      if (sdc_iter > 1)
+      {
 	// compute new-time DivU with instantaneous reaction rates
 	calc_divu(cur_time, dt, get_new_data(Divu_Type));
       }
@@ -6223,14 +6228,19 @@ HeatTransfer::compute_scalar_advection_fluxes_and_divergence (MultiFab& Force,
   //
   //   FIXME: Since the fluxes and states are class data, perhaps these flux register calls should be
   //          managed in the advance function directly rather than hidden/encoded inside here??
-  if (do_reflux && updateFluxReg) {
-    if (level > 0) {
-      for (int d = 0; d < BL_SPACEDIM; d++) {
+  if (do_reflux && updateFluxReg)
+  {
+    if (level > 0)
+    {
+      for (int d = 0; d < BL_SPACEDIM; d++)
+      {
         advflux_reg->FineAdd((*EdgeFlux[d]),d,Density,Density,NUM_SCALARS,dt);
       }
     }
-    if (level < parent->finestLevel()) {
-      for (int d = 0; d < BL_SPACEDIM; d++) {
+    if (level < parent->finestLevel())
+    {
+      for (int d = 0; d < BL_SPACEDIM; d++)
+      {
         getAdvFluxReg(level+1).CrseInit((*EdgeFlux[d]),d,Density,Density,NUM_SCALARS,-dt,FluxRegister::ADD);
       }
     }
