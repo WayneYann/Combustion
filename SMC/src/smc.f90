@@ -328,6 +328,8 @@ subroutine smc()
               if (plot_use_U0) then
                  call make_plotfile(plot_file_name,la,U,plot_names,time,dt,dx,write_pf_time,U0)
                  call destroy(U0)
+              else
+                 call make_plotfile(plot_file_name,la,U,plot_names,time,dt,dx,write_pf_time)
               end if
 
               call build_smcdata(la,sdc)
@@ -400,6 +402,8 @@ subroutine smc()
         if (plot_use_U0) then
            call make_plotfile(plot_file_name,la,U,plot_names,dt,time,dx,write_pf_time,U0)
            call destroy(U0)
+        else
+           call make_plotfile(plot_file_name,la,U,plot_names,dt,time,dx,write_pf_time)
         end if
 
         call build_smcdata(la,sdc)
