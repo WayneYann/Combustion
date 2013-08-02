@@ -720,4 +720,85 @@ contains
 
   end subroutine make_burn_3d
 
+
+  subroutine make_burn2_3d(lo, hi, burn, vlo, vhi, u0, u0lo, u0hi, u, ulo, uhi, dt)
+    use plotvar_index_module
+    use variables_module
+    use chemistry_module, only : h0 => std_heat_formation
+
+    integer, intent(in) :: lo(3),hi(3),vlo(3),vhi(3),u0lo(3),u0hi(3),ulo(3),uhi(3)
+    double precision, intent(inout) :: burn( vlo(1): vhi(1), vlo(2): vhi(2), vlo(3): vhi(3),nburn)
+    double precision, intent(in   ) ::   u0(u0lo(1):u0hi(1),u0lo(2):u0hi(2),u0lo(3):u0hi(3),ncons)
+    double precision, intent(in   ) ::   u ( ulo(1): uhi(1), ulo(2): uhi(2), ulo(3): uhi(3),ncons)
+    double precision, intent(in) :: dt
+
+    integer :: i, j, k, n, iryn, ibn
+    double precision :: dtinv
+
+    dtinv = 1.d0/dt
+
+    if (ib_omegadot > 0) then
+       do n=1,nspecies
+          iryn = iry1+n-1
+          ibn  = ib_omegadot+n-1
+          do k=lo(3),hi(3)
+             do j=lo(2),hi(2)
+                do i=lo(1),hi(1)
+                   burn(i,j,k,ibn) = (u(i,j,k,iryn)-u0(i,j,k,iryn))*dtinv
+                end do
+             end do
+          end do
+       end do
+    end if
+
+    if (ib_dYdt > 0) then
+       do n=1,nspecies
+          iryn = iry1+n-1
+          ibn  = ib_dYdt+n-1
+          do k=lo(3),hi(3)
+             do j=lo(2),hi(2)
+                do i=lo(1),hi(1)
+                   burn(i,j,k,ibn) = ( u(i,j,k,iryn)/ u(i,j,k,irho)  &
+                        -             u0(i,j,k,iryn)/u0(i,j,k,irho) )*dtinv
+                end do
+             end do
+          end do
+       end do       
+    end if
+
+    if (ib_heatRelease > 0) then
+       do k=lo(3),hi(3)
+          do j=lo(2),hi(2)
+             do i=lo(1),hi(1)
+                burn(i,j,k,ib_heatRelease) = 0.d0
+             end do
+          end do
+       end do
+       
+       do n=1,nspecies
+          iryn = iry1+n-1
+          do k=lo(3),hi(3)
+             do j=lo(2),hi(2)
+                do i=lo(1),hi(1)
+                   burn(i,j,k,ib_heatRelease) = burn(i,j,k,ib_heatRelease) &
+                        - h0(n) * (u(i,j,k,iryn)-u0(i,j,k,iryn))*dtinv
+                end do
+             end do
+          end do
+       end do
+    end if
+
+    if (ib_fuelConsumption > 0) then
+       iryn = iry1+ifuel-1
+       do k=lo(3),hi(3)
+          do j=lo(2),hi(2)
+             do i=lo(1),hi(1)
+                burn(i,j,k,ib_fuelConsumption) = -(u(i,j,k,iryn)-u0(i,j,k,iryn))*dtinv
+             end do
+          end do
+       end do       
+    end if
+
+  end subroutine make_burn2_3d
+
 end module make_plotvar_3d_module

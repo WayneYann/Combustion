@@ -503,4 +503,75 @@ contains
 
   end subroutine make_burn_2d
 
+
+  subroutine make_burn2_2d(lo, hi, burn, vlo, vhi, u0, u0lo, u0hi, u, ulo, uhi, dt)
+    use plotvar_index_module
+    use variables_module
+    use chemistry_module, only : h0 => std_heat_formation
+
+    integer, intent(in) :: lo(2),hi(2),vlo(2),vhi(2),u0lo(2),u0hi(2),ulo(2),uhi(2)
+    double precision, intent(inout) :: burn( vlo(1): vhi(1), vlo(2): vhi(2),nburn)
+    double precision, intent(in   ) ::   u0(u0lo(1):u0hi(1),u0lo(2):u0hi(2),ncons)
+    double precision, intent(in   ) ::   u ( ulo(1): uhi(1), ulo(2): uhi(2),ncons)
+    double precision, intent(in) :: dt
+
+    integer :: i, j, n, iryn, ibn
+    double precision :: dtinv
+
+    dtinv = 1.d0/dt
+
+    if (ib_omegadot > 0) then
+       do n=1,nspecies
+          iryn = iry1+n-1
+          ibn  = ib_omegadot+n-1
+          do j=lo(2),hi(2)
+             do i=lo(1),hi(1)
+                burn(i,j,ibn) = (u(i,j,iryn)-u0(i,j,iryn))*dtinv
+             end do
+          end do
+       end do
+    end if
+
+    if (ib_dYdt > 0) then
+       do n=1,nspecies
+          iryn = iry1+n-1
+          ibn  = ib_dYdt+n-1
+          do j=lo(2),hi(2)
+             do i=lo(1),hi(1)
+                burn(i,j,ibn) = ( u(i,j,iryn)/ u(i,j,irho)  &
+                     -           u0(i,j,iryn)/u0(i,j,irho) )*dtinv
+             end do
+          end do
+       end do       
+    end if
+
+    if (ib_heatRelease > 0) then
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+             burn(i,j,ib_heatRelease) = 0.d0
+          end do
+       end do
+       
+       do n=1,nspecies
+          iryn = iry1+n-1
+          do j=lo(2),hi(2)
+             do i=lo(1),hi(1)
+                burn(i,j,ib_heatRelease) = burn(i,j,ib_heatRelease) &
+                     - h0(n) * (u(i,j,iryn)-u0(i,j,iryn))*dtinv
+             end do
+          end do
+       end do
+    end if
+
+    if (ib_fuelConsumption > 0) then
+       iryn = iry1+ifuel-1
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+             burn(i,j,ib_fuelConsumption) = -(u(i,j,iryn)-u0(i,j,iryn))*dtinv
+          end do
+       end do       
+    end if
+
+  end subroutine make_burn2_2d
+
 end module make_plotvar_2d_module

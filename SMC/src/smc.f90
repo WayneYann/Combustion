@@ -8,6 +8,7 @@ subroutine smc()
   use initialize_module
   use layout_module
   use make_plotfile_module
+  use plotvar_index_module, only : nburn
   use multifab_module
   use nscbc_module
   use omp_module
@@ -43,8 +44,10 @@ subroutine smc()
   real(dp_t) :: write_pf_time
 
   type(layout)    :: la
-  type(multifab)  :: U
+  type(multifab)  :: U, U0
   type(sdc_ctx_t) :: sdc
+
+  logical :: plot_use_U0
 
   type(bl_prof_timer), save :: bpt_advance
 
@@ -81,6 +84,11 @@ subroutine smc()
   call init_variables()
   call init_plot_variables()
 
+  if (advance_method > 1 .and. plot_get_rates_from_sdc .and. nburn>0) then
+     plot_use_U0 = .true.
+  else
+     plot_use_U0 = .false.
+  end if
 
   !
   ! load/set initial condition
@@ -202,7 +210,7 @@ subroutine smc()
         plot_file_name = trim(plot_base_name) // plot_index
 
         call destroy_smcdata(sdc) ! to save memory
-        call make_plotfile(plot_file_name,la,U,plot_names,time,dx,write_pf_time)
+        call make_plotfile(plot_file_name,la,U,plot_names,time,dt,dx,write_pf_time)
         call build_smcdata(la,sdc)
 
         call write_job_info(plot_file_name, la, write_pf_time)
@@ -310,8 +318,19 @@ subroutine smc()
                  plot_file_name = trim(plot_base_name) // plot_index6
               endif
 
+              if (plot_use_U0) then
+                 call build(U0, la, ncons, 0)
+                 call sdc_get_q0(U0, sdc)
+              end if
+
               call destroy_smcdata(sdc) ! to save memory
-              call make_plotfile(plot_file_name,la,U,plot_names,time,dx,write_pf_time)
+
+              call make_plotfile(plot_file_name,la,U,plot_names,time,dt,dx,write_pf_time,U0)
+
+              if (plot_use_U0) then
+                 call destroy(U0)
+              end if
+
               call build_smcdata(la,sdc)
 
               call write_job_info(plot_file_name, la, write_pf_time)
@@ -372,8 +391,19 @@ subroutine smc()
            plot_file_name = trim(plot_base_name) // plot_index6
         endif
 
+        if (plot_use_U0) then
+           call build(U0, la, ncons, 0)
+           call sdc_get_q0(U0, sdc)
+        end if
+
         call destroy_smcdata(sdc)
-        call make_plotfile(plot_file_name,la,U,plot_names,time,dx,write_pf_time)
+
+        call make_plotfile(plot_file_name,la,U,plot_names,dt,time,dx,write_pf_time,U0)
+
+        if (plot_use_U0) then
+           call destroy(U0)
+        end if
+
         call build_smcdata(la,sdc)
 
         call write_job_info(plot_file_name, la, write_pf_time)

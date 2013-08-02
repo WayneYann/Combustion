@@ -278,6 +278,7 @@ plot_dYdt                           logical            .true.
 plot_heatRelease                    logical            .true.
 plot_fuelConsumption                logical            .false.
 fuel_name                           character          "none"
+plot_get_rates_from_sdc             logical            .true.
 
 # prefix to use in plotfile file names
 plot_base_name                      character          "plt"
