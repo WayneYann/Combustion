@@ -22,6 +22,7 @@ module advance_module
   public advance, overlapped_part
   public single_sdc_feval, sdc_post_step_cb
   public multi_sdc_feval_slow, multi_sdc_feval_fast
+  public sdc_get_q0
 
   logical, save, private :: trans_called, Mach_computed
   integer, save, private :: istep_first = -1
@@ -998,5 +999,19 @@ contains
     end if
 
   end subroutine overlapped_part
+
+  subroutine sdc_get_q0(U0, sdc)
+    use probin_module, only : advance_method
+    type(multifab), intent(inout) :: U0
+    type(sdc_ctx_t),intent(inout) :: sdc
+    select case(advance_method)
+    case (2)
+       call sdc_imex_get_q0(sdc%imex, mfptr(U0))
+    case(3,4)
+       call sdc_mrex_get_q0(sdc%mrex, mfptr(U0))
+    case default
+       call bl_error("Invalid advance_method in sdc_get_q0")
+    end select
+  end subroutine sdc_get_q0
 
 end module advance_module
