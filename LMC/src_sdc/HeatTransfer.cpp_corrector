@@ -2745,11 +2745,11 @@ HeatTransfer::differential_diffusion_update (MultiFab& Force,
 	  {
 	    getViscFluxReg().FineAdd((*SpecDiffusionFluxnp1[d])[fmfi],d,fmfi.index(),0,first_spec,nspecies+1,dt);
           }
-	  if (level < parent->finestLevel())
-	  {
-            getLevel(level+1).getViscFluxReg().CrseInit((*SpecDiffusionFluxnp1[d]),d,0,first_spec,nspecies+1,-dt,FluxRegister::ADD);
-          }
-        }
+	}
+	if (level < parent->finestLevel())
+	{
+	  getLevel(level+1).getViscFluxReg().CrseInit((*SpecDiffusionFluxnp1[d]),d,0,first_spec,nspecies+1,-dt,FluxRegister::ADD);
+	}
       }
     }
 
