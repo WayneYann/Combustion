@@ -626,6 +626,7 @@ protected:
     static int         hack_nomcddsync;
     static int         hack_noavgdivu;
     static Real        trac_diff_coef;
+    static int         use_tranlib;
     static Real        P1atm_MKS;
     static std::string turbFile;
     static std::string fuelName;

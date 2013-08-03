@@ -2,6 +2,9 @@
 #define _ChemDriver_F_H_
 
 #ifdef BL_LANG_FORT
+#    define FORT_USINGEG         dusingeg
+#    define FORT_USINGMC         dusingmc
+#    define FORT_MCLINKNAME      dmclink
 #    define FORT_SETVERBOSEVODE  dverbose
 #    define FORT_SETVODETOLS     dvodetols
 #    define FORT_SETVODESUBCYC   dmxsubcy
@@ -62,6 +65,9 @@
 #    define FORT_SETNU           dsetnu
 #else
 #  if defined(BL_FORT_USE_UPPERCASE)
+#    define FORT_USINGEG         DUSINGEG
+#    define FORT_USINGMC         DUSINGMC
+#    define FORT_MCLINKNAME      DMCLINK
 #    define FORT_SETVERBOSEVODE  DVERBOSE
 #    define FORT_SETVVODETOLS    DVODETOLS
 #    define FORT_SETVODESUBCYC   DMXSUBCY
@@ -121,6 +127,9 @@
 #    define FORT_SETTMINTRANS    DSETTTRANS
 #    define FORT_SETNU           DSETNU
 #  elif defined(BL_FORT_USE_LOWERCASE)
+#    define FORT_USINGEG         dusingeg
+#    define FORT_USINGMC         dusingmc
+#    define FORT_MCLINKNAME      dmclink
 #    define FORT_SETVERBOSEVODE  dverbose
 #    define FORT_SETVODETOLS     dvodetols
 #    define FORT_SETVODESUBCYC   dmxsubcy
@@ -180,6 +189,9 @@
 #    define FORT_SETTMINTRANS    dsetttrans
 #    define FORT_SETNU           dsetnu
 #  elif defined(BL_FORT_USE_UNDERSCORE)
+#    define FORT_USINGEG         dusingeg_
+#    define FORT_USINGMC         dusingmc_
+#    define FORT_MCLINKNAME      dmclink_
 #    define FORT_SETVERBOSEVODE  dverbose_
 #    define FORT_SETVODETOLS     dvodetols_
 #    define FORT_SETVODESUBCYC   dmxsubcy_

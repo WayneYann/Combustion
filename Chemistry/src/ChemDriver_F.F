@@ -86,6 +86,36 @@ c
  40   continue 
       end
 
+      subroutine open_mclink(LINKMC)
+      implicit none
+#include "cdwrk.H"
+      integer maxlen
+      parameter (maxlen=256)
+      character filet*(maxlen)
+      character*(maxspnml) spname, spinname
+      integer LINKMC, nlength, name(maxlen), i, j
+      REAL_T val
+
+      call FORT_MCLINKNAME(name,nlength,maxlen)
+c      
+c     Convert encoded names to strings, and open file
+c
+      if (nlength.GT.maxlen) then
+         call bl_abort('open_mclink: mc linking file name too long')
+      end if
+      
+      do i = 1, nlength
+         filet(i:i) = char(name(i))
+      end do
+
+      open(unit=LINKMC,status='OLD',form='FORMATTED',
+     &     file=filet(1:nlength),err=30)
+      goto 40
+ 30   write(6,*) 'Trouble opening file = ',filet(1:nlength)
+      call bl_abort(" ")
+ 40   continue 
+      end
+
       subroutine FORT_INITCHEM()
       implicit none
 #include "cdwrk.H"
@@ -94,6 +124,9 @@ c
       integer FORT_GETCKSPECNAME
       double precision rdummy(1)
       character*(maxspnml) name
+      integer MAXFIT, NO, NFDIM, NT, NRANGE, NLITEMAX
+      integer mcr, mci, FORT_USINGEG, FORT_USINGMC
+      integer ierr, LOUTCK
       !
       ! Get chemistry mechanism parameters.
       !
@@ -124,19 +157,51 @@ c
       NWTI  = NWT + Nspec
       NZ    = NWTI + Nspec
       RTOT  = NZ  + NEQ - 1
+      !
+      ! Setup tranlib space
+      !
+      MAXFIT=7
+      NO=4
+      NFDIM=165
+      NT=50
+      NRANGE = MAXTP-1
+      NLITEMAX=2
+      mcr = Nspec*(19+2*NO+NO*NLITEMAX)+(NO+15)*Nspec**2
+      mci = 4*Nspec + NLITEMAX
+      LLINKMC = 44
+      LOUTCK = 6
 
 !$omp parallel
-      allocate(EGRWRK(egrlen))
-      allocate(EGIWRK(egilen))
       allocate(RWRK(dvr+dvdr))
       allocate(IWRK(dvi))
 
-      call EGINICD(eg_nodes, lout, eg_IFLAG, eg_ITLS,
-     &     EGRWRK, egrlen, EGIWRK, egilen)
+      use_eg = 0
+      use_mc = 0
+      if (FORT_USINGEG() .eq. 1) then
+         allocate(EGRWRK(egrlen))
+         allocate(EGIWRK(egilen))         
+         call EGINICD(eg_nodes, lout, eg_IFLAG, eg_ITLS,
+     &        EGRWRK, egrlen, EGIWRK, egilen)
+         use_eg = 1
+      else if (FORT_USINGMC() .eq. 1) then
+         allocate(MCRWRK(mcr))
+         allocate(MCIWRK(mci))
+         call open_mclink(LLINKMC)
+         CALL MCINIT (LLINKMC, LOUTCK, mci, mcr, MCIWRK, MCRWRK, ierr)
+         if (ierr .gt. 0) then
+            WRITE(LOUTCK,*)' QUITTING BECAUSE MCINIT IFLAG = ', ierr
+            call bl_abort(" ")
+         end if
+         close(LLINKMC)
+         use_mc = 1
+      else
+         write(6,*) 'Unknown transport library'
+         call bl_abort(" ")
+      endif
       !
-      ! Set IOPT=1 parameter settings for VODE
-      ! They only really need to be set once.
-      !
+      !     Set IOPT=1 parameter settings for VODE
+      !     They only really need to be set once.
+      !     
       RWRK(dvbr+4) = 0
       RWRK(dvbr+5) = 0
       RWRK(dvbr+6) = 1.d-19
@@ -172,10 +237,19 @@ c
       subroutine FORT_FINALIZECHEM()
       implicit none
 #include "cdwrk.H"
+      integer FORT_USINGEG, FORT_USINGMC
 
 !$omp parallel
-      deallocate(EGRWRK)
-      deallocate(EGIWRK)
+      if (FORT_USINGEG() .eq. 1) then
+         deallocate(EGRWRK)
+         deallocate(EGIWRK)
+      else if (FORT_USINGMC() .eq. 1) then
+         deallocate(MCRWRK)
+         deallocate(MCIWRK)
+      else
+         write(6,*) 'Unknown transport library'
+         call bl_abort(" ")
+      endif
       deallocate(RWRK)
       deallocate(IWRK)
 !$omp end parallel

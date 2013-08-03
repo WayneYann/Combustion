@@ -162,6 +162,7 @@ int  HeatTransfer::hack_nochem;
 int  HeatTransfer::hack_nospecdiff;
 int  HeatTransfer::hack_nomcddsync;
 int  HeatTransfer::hack_noavgdivu;
+int  HeatTransfer::use_tranlib;
 Real HeatTransfer::trac_diff_coef;
 Real HeatTransfer::P1atm_MKS;
 bool HeatTransfer::plot_reactions;
@@ -287,6 +288,7 @@ HeatTransfer::Initialize ()
     HeatTransfer::hack_nospecdiff           = 0;
     HeatTransfer::hack_nomcddsync           = 1;
     HeatTransfer::hack_noavgdivu            = 0;
+    HeatTransfer::use_tranlib               = 0;
     HeatTransfer::trac_diff_coef            = 0.0;
     HeatTransfer::P1atm_MKS                 = -1.0;
     HeatTransfer::turbFile                  = "";
@@ -391,12 +393,22 @@ HeatTransfer::Initialize ()
     pp.query("hack_nomcddsync",hack_nomcddsync);
     pp.query("hack_noavgdivu",hack_noavgdivu);
     pp.query("do_check_divudt",do_check_divudt);
-
     pp.query("do_OT_radiation",do_OT_radiation);
     do_OT_radiation = (do_OT_radiation ? 1 : 0);
     pp.query("do_heat_sink",do_heat_sink);
     do_heat_sink = (do_heat_sink ? 1 : 0);
 
+    pp.query("use_tranlib",use_tranlib);
+    if (use_tranlib == 1) {
+      chemSolve->SetTransport(ChemDriver::CD_TRANLIB);
+      if (verbose && ParallelDescriptor::IOProcessor())
+        std::cout << "HeatTransfer::read_params: Using Tranlib transport " << '\n';
+    }
+    else {
+      chemSolve->SetTransport(ChemDriver::CD_EG);
+      if (verbose && ParallelDescriptor::IOProcessor())
+        std::cout << "HeatTransfer::read_params: Using EGLib transport " << '\n';
+    }
     chemSolve = new ChemDriver();
 
     pp.query("turbFile",turbFile);

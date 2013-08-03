@@ -46,6 +46,13 @@
       double precision, pointer :: EGRWRK(:)
       common / EGWORK / EGRWRK, EGIWRK
       save   / EGWORK /
+      !
+      ! Tranlib workspace -- allocated once in FORT_INITCHEM()
+      !
+      integer,          pointer :: MCIWRK(:)
+      double precision, pointer :: MCRWRK(:)
+      common / MCWORK / MCRWRK, MCIWRK
+      save   / MCWORK /
 
 !$omp threadprivate(/EGWORK/)
       !
@@ -81,8 +88,9 @@
       common / tran2 / TMIN_TRANS
       save   / tran2 /
 
-      integer Ncoefs,Doffset,PTCoffset,DMIXoffset,TDoffset
-      common / tran3 / Ncoefs,Doffset,PTCoffset,DMIXoffset,TDoffset
+      integer Ncoefs,Doffset,PTCoffset,DMIXoffset,TDoffset,use_mc,use_eg
+      common / tran3 / Ncoefs,Doffset,PTCoffset,DMIXoffset,TDoffset,
+     &     use_mc,use_eg
       save   / tran3 /
 
 #ifdef LMC_SDC

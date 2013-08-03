@@ -11,9 +11,18 @@ class ChemDriver
 {
 public:
 
+  enum TRANSPORT
+  {
+    CD_EG, 
+    CD_TRANLIB
+  };
+
     ChemDriver ();	  
 
     ~ChemDriver ();
+
+    static void SetTransport(const ChemDriver::TRANSPORT& tran_in);
+    static ChemDriver::TRANSPORT Transport ();
 
     void solveTransient (FArrayBox&        Ynew,
                          FArrayBox&        Tnew,

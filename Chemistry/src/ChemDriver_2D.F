@@ -1554,55 +1554,105 @@ c     "jbb hack"
          invmwt(n) = one / invmwt(n)
       end do
 
-      do j=lo(2),hi(2)
-         do i=lo(1),hi(1)
+      if (use_eg .eq. 1) then
+         do j=lo(2),hi(2)
+            do i=lo(1),hi(1)
 
 #ifdef LMC_SDC
-            RHO = 0.d0
-            do n=1,Nspec
-               RHO = RHO + Y(i,j,n)
-            end do
+               RHO = 0.d0
+               do n=1,Nspec
+                  RHO = RHO + Y(i,j,n)
+               end do
 
-            do n=1,Nspec
-               Yt(n) = Y(i,j,n) / RHO
-            end do
+               do n=1,Nspec
+                  Yt(n) = Y(i,j,n) / RHO
+               end do
 #else
-            do n=1,Nspec
-               Yt(n) = Y(i,j,n)
-            end do
+               do n=1,Nspec
+                  Yt(n) = Y(i,j,n)
+               end do
 #endif
 
-            Tt = MAX(T(i,j),TMIN_TRANS) 
-            CALL CKMMWY(Yt,IWRK(ckbi),RWRK(ckbr),Wavg)
-            CALL CKCPMS(Tt,IWRK(ckbi),RWRK(ckbr),CPMS)
-            CALL CKYTX(Yt,IWRK(ckbi),RWRK(ckbr),X)
-            CALL EGSPAR(Tt,X,Yt,CPMS,EGRWRK(1),EGIWRK(1))
-            CALL EGSV1(Ptmp,Tt,Yt,Wavg,EGRWRK(1),Dt)
+               Tt = MAX(T(i,j),TMIN_TRANS) 
+               CALL CKMMWY(Yt,IWRK(ckbi),RWRK(ckbr),Wavg)
+               CALL CKCPMS(Tt,IWRK(ckbi),RWRK(ckbr),CPMS)
+               CALL CKYTX(Yt,IWRK(ckbi),RWRK(ckbr),X)
+               CALL EGSPAR(Tt,X,Yt,CPMS,EGRWRK(1),EGIWRK(1))
+               CALL EGSV1(Ptmp,Tt,Yt,Wavg,EGRWRK(1),Dt)
 #ifdef LMC_SDC
-            RHO = RHO*1.d-3
+               RHO = RHO*1.d-3
 #else
-            CALL CKRHOY(Ptmp,Tt,Yt,IWRK(ckbi),RWRK(ckbr),RHO)
+               CALL CKRHOY(Ptmp,Tt,Yt,IWRK(ckbi),RWRK(ckbr),RHO)
 #endif
 
-            do n=1,Nspec
-               RD(i,j,n) = RHO * Wavg * invmwt(n) * Dt(n) * SCAL
+               do n=1,Nspec
+                  RD(i,j,n) = RHO * Wavg * invmwt(n) * Dt(n) * SCAL
+               end do
+
+               if (do_temp .ne. 0) then
+                  alpha = 1.0D0
+                  CALL EGSL1(alpha,Tt,X,EGRWRK(1),l1)
+                  alpha = -1.0D0
+                  CALL EGSL1(alpha,Tt,X,EGRWRK(1),l2)
+                  RD(i,j,Nspec+1) = half * (l1 + l2) * TSCAL
+               endif
+
+               if (do_VelVisc .ne. 0) then
+                  CALL EGSE3(Tt,Yt,EGRWRK(1),RD(i,j,Nspec+2))
+                  RD(i,j,Nspec+2) = RD(i,j,Nspec+2) * SCAL
+               endif
+
             end do
-
-            if (do_temp .ne. 0) then
-               alpha = 1.0D0
-               CALL EGSL1(alpha,Tt,X,EGRWRK(1),l1)
-               alpha = -1.0D0
-               CALL EGSL1(alpha,Tt,X,EGRWRK(1),l2)
-               RD(i,j,Nspec+1) = half * (l1 + l2) * TSCAL
-            endif
-
-            if (do_VelVisc .ne. 0) then
-               CALL EGSE3(Tt,Yt,EGRWRK(1),RD(i,j,Nspec+2))
-               RD(i,j,Nspec+2) = RD(i,j,Nspec+2) * SCAL
-            endif
-
          end do
-      end do
+
+      else if (use_mc .eq. 1) then
+
+         do j=lo(2),hi(2)
+            do i=lo(1),hi(1)
+
+#ifdef LMC_SDC
+               RHO = 0.d0
+               do n=1,Nspec
+                  RHO = RHO + Y(i,j,n)
+               end do
+
+               do n=1,Nspec
+                  Yt(n) = Y(i,j,n) / RHO
+               end do
+#else
+               do n=1,Nspec
+                  Yt(n) = Y(i,j,n)
+               end do
+#endif
+
+               Tt = MAX(T(i,j),TMIN_TRANS) 
+               CALL CKMMWY(Yt,IWRK(ckbi),RWRK(ckbr),Wavg)
+               CALL CKYTX(Yt,IWRK(ckbi),RWRK(ckbr),X)
+               CALL MCADIF(Ptmp,Tt,X,MCRWRK,Dt)
+#ifdef LMC_SDC
+               RHO = RHO*1.d-3
+#else
+               CALL CKRHOY(Ptmp,Tt,Yt,IWRK(ckbi),RWRK(ckbr),RHO)
+#endif
+
+               do n=1,Nspec
+                  RD(i,j,n) = RHO * Dt(n) * SCAL
+               end do
+
+               if (do_temp .ne. 0) then
+                  CALL MCACON(Tt,X,MCRWRK,l1)
+                  RD(i,j,Nspec+1) = l1 * TSCAL
+               endif
+
+               if (do_VelVisc .ne. 0) then
+                  CALL MCAVIS(Tt,X,MCRWRK,RD(i,j,Nspec+2))
+                  RD(i,j,Nspec+2) = RD(i,j,Nspec+2) * SCAL
+               endif
+
+            end do
+         end do
+
+      endif
 
       end
 
@@ -1629,19 +1679,33 @@ c     "jbb hack"
 ! The following computes the mixture averaged shear viscosity using EGLib
 ! Note that SCAL converts assumed cgs units to MKS (1 g/cm.s = .1 kg/m.s)
 !
-      do j=lo(2),hi(2)
-         do i=lo(1),hi(1)
-            do n=1,Nspec
-               Yt(n) = Y(i,j,n)
+      if (use_eg .eq. 1) then
+         do j=lo(2),hi(2)
+            do i=lo(1),hi(1)
+               do n=1,Nspec
+                  Yt(n) = Y(i,j,n)
+               end do
+               Tt = MAX(T(i,j),TMIN_TRANS) 
+               CALL CKCPMS(Tt,IWRK(ckbi),RWRK(ckbr),CPMS)
+               CALL CKYTX(Yt,IWRK(ckbi),RWRK(ckbr),X)
+               CALL EGSPAR(Tt,X,Yt,CPMS,EGRWRK(1),EGIWRK(1))
+               CALL EGSE3(Tt,Yt,EGRWRK(1),eta(i,j))
+               eta(i,j) = eta(i,j) * SCAL
             end do
-            Tt = MAX(T(i,j),TMIN_TRANS) 
-            CALL CKCPMS(Tt,IWRK(ckbi),RWRK(ckbr),CPMS)
-            CALL CKYTX(Yt,IWRK(ckbi),RWRK(ckbr),X)
-            CALL EGSPAR(Tt,X,Yt,CPMS,EGRWRK(1),EGIWRK(1))
-            CALL EGSE3(Tt,Yt,EGRWRK(1),eta(i,j))
-            eta(i,j) = eta(i,j) * SCAL
          end do
-      end do
+      else if (use_eg .eq. 1) then
+         do j=lo(2),hi(2)
+            do i=lo(1),hi(1)
+               do n=1,Nspec
+                  Yt(n) = Y(i,j,n)
+               end do
+               Tt = MAX(T(i,j),TMIN_TRANS) 
+               CALL CKYTX(Yt,IWRK(ckbi),RWRK(ckbr),X)
+               CALL MCAVIS(Tt,X,MCRWRK,eta(i,j))
+               eta(i,j) = eta(i,j) * SCAL
+            end do
+         end do
+      endif
 
       end
 

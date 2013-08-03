@@ -6,17 +6,44 @@
 #include <ParallelDescriptor.H>
 #include <ParmParse.H>
 
-namespace
-{
-    bool initialized = false;
-
-    void ChemDriver_Finalize() { initialized = false; }
-}
-
 const Real HtoTerrMAX_DEF  = 1.e-8;
 const int  HtoTiterMAX_DEF = 20;
 const Real Tmin_trans_DEF  = 0.;
+const ChemDriver::TRANSPORT transport_DEF = ChemDriver::CD_EG;
+const std::string tranlib_linking_file="tran.asc";
 
+namespace
+{
+    bool initialized = false;
+    ChemDriver::TRANSPORT transport = transport_DEF;
+
+    void ChemDriver_Finalize() {
+      initialized = false;
+      transport = transport_DEF;
+    }
+}
+
+extern "C" {
+  int FORT_USINGEG() {
+    return (int)(transport == ChemDriver::CD_EG);
+  }
+
+  int FORT_USINGMC() {
+    return (int)(transport == ChemDriver::CD_TRANLIB);
+  }
+
+  void FORT_MCLINKNAME(int* codedName, int* len, int* maxlen) {
+    Array<int> file = ChemDriver::encodeStringForFortran(tranlib_linking_file);
+    *len = file.size();
+    if (*len > *maxlen) {
+      BoxLib::Abort("Fort memory bust...need more space for tranlib linking file name");
+    }
+
+    for (int i=0; i<file.size(); ++i) {
+      codedName[i] = file[i];
+    }
+  }
+}
 
 ChemDriver::ChemDriver ()
     :
@@ -39,6 +66,21 @@ ChemDriver::ChemDriver ()
 ChemDriver::~ChemDriver ()
 {
     FORT_FINALIZECHEM();
+}
+
+void
+ChemDriver::SetTransport (const ChemDriver::TRANSPORT& tran_in)
+{
+  if (initialized) {
+    BoxLib::Abort("Must set transport model before constructing the ChemDriver");
+  }
+  transport = tran_in;
+}
+
+ChemDriver::TRANSPORT
+ChemDriver::Transport ()
+{
+  return transport;
 }
 
 void
