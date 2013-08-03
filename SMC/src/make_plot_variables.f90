@@ -16,22 +16,25 @@ module make_plot_variables_module
 
 contains
 
-  subroutine make_plotvar(plotdata,icomp,Q,dx)
+  subroutine make_plotvar(plotdata,icomp,Q,dx,dt,U0,U)
     use threadbox_module
     type(multifab), intent(inout) :: plotdata
     type(multifab), intent(in   ) :: Q
     integer, intent(in) :: icomp
     double precision, intent(in) :: dx(3)
+    double precision, intent(in), optional :: dt
+    type(multifab), intent(in), optional :: U0, U
 
     integer :: i, dm, iblock
-    double precision, pointer :: qp(:,:,:,:), pdp(:,:,:,:)
-    integer :: qlo(4), qhi(4), pdlo(4), pdhi(4)
+    double precision, pointer :: qp(:,:,:,:), pdp(:,:,:,:), u0p(:,:,:,:), up(:,:,:,:)
+    integer :: qlo(4), qhi(4), pdlo(4), pdhi(4), u0lo(4), u0hi(4), ulo(4), uhi(4)
     integer ::  lo(Q%dim),  hi(Q%dim)
     integer :: dlo(Q%dim), dhi(Q%dim)
 
     dm = Q%dim
 
-    !$omp parallel private(i,iblock,lo,hi,qp,pdp,qlo,qhi,pdlo,pdhi,dlo,dhi)
+    !$omp parallel private(i,iblock,lo,hi,qp,pdp,qlo,qhi,pdlo,pdhi,dlo,dhi) &
+    !$omp private(u0p, up, u0lo, u0hi, ulo, uhi)
     do i = 1, nfabs(Q)
 
        if (.not.tb_worktodo(i)) cycle
@@ -43,6 +46,15 @@ contains
        qhi = ubound(qp)
        pdlo = lbound(pdp)
        pdhi = ubound(pdp)
+
+       if (present(dt)) then
+          u0p => dataptr(U0,i)
+          up  => dataptr(U ,i)
+          u0lo = lbound(u0p)
+          u0hi = ubound(u0p)
+          ulo  = lbound(up)
+          uhi  = ubound(up)
+       end if
 
        call get_data_lo_hi(i,dlo,dhi)
        
@@ -76,8 +88,14 @@ contains
                 call make_magvort_2d(lo,hi,pdp(:,:,1,icomp),pdlo(1:2),pdhi(1:2), &
                      qp,qlo(1:2),qhi(1:2), dx, dlo,dhi)
              else if (icomp .eq. icomp_burn) then
-                call make_burn_2d(lo,hi,pdp(:,:,1,icomp:icomp+nburn-1),pdlo(1:2),pdhi(1:2), &
-                     qp,qlo(1:2),qhi(1:2))
+                if (present(dt)) then
+                   call make_burn2_2d(lo,hi,pdp(:,:,1,icomp:icomp+nburn-1), &
+                        pdlo(1:2),pdhi(1:2),u0p,u0lo(1:2),u0hi(1:2), &
+                        up,ulo(1:2),uhi(1:2),dt)
+                else
+                   call make_burn_2d(lo,hi,pdp(:,:,1,icomp:icomp+nburn-1), &
+                        pdlo(1:2),pdhi(1:2),qp,qlo(1:2),qhi(1:2))
+                end if
              else
                 call bl_error("make_plot_variables_module: unknown icomp")          
              end if
@@ -107,8 +125,14 @@ contains
                 call make_magvort_3d(lo,hi,pdp(:,:,:,icomp),pdlo(1:3),pdhi(1:3), &
                      qp,qlo(1:3),qhi(1:3), dx, dlo,dhi)
              else if (icomp .eq. icomp_burn) then
-                call make_burn_3d(lo,hi,pdp(:,:,:,icomp:icomp+nburn-1),pdlo(1:3),pdhi(1:3), &
-                     qp,qlo(1:3),qhi(1:3))
+                if (present(dt)) then
+                   call make_burn2_3d(lo,hi,pdp(:,:,:,icomp:icomp+nburn-1), &
+                        pdlo(1:3),pdhi(1:3),u0p,u0lo(1:3),u0hi(1:3), &
+                        up,ulo(1:3),uhi(1:3),dt)
+                else
+                   call make_burn_3d(lo,hi,pdp(:,:,:,icomp:icomp+nburn-1), &
+                        pdlo(1:3),pdhi(1:3),qp,qlo(1:3),qhi(1:3))
+                end if
              else
                 call bl_error("make_plot_variables_module: unknown icomp")          
              end if

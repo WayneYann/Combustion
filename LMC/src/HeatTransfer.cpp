@@ -5387,7 +5387,7 @@ HeatTransfer::advance_setup (Real time,
         MultiFab& nstate = get_new_data(k);
         MultiFab& ostate = get_old_data(k);
 
-        MultiFab::Copy(nstate,ostate,0,0,nstate.nComp(),0);
+        MultiFab::Copy(nstate,ostate,0,0,nstate.nComp(),nstate.nGrow());
     }
     if (level == 0)
         set_htt_hmixTYP();

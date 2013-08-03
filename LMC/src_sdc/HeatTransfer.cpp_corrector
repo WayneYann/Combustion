@@ -2707,7 +2707,7 @@ HeatTransfer::differential_diffusion_update (MultiFab& Force,
     //
     MultiFab* alpha = 0; // Never need alpha for RhoY, RhoH
     int alphaComp = 0;
-    int nComp = (  theta_enthalpy > 0  ?  nspecies : nspecies+1 );
+    int nComp = nspecies+1;
     for (int sigma = 0; sigma < nComp; ++sigma) {
       int betaComp = sigma;
       const int state_ind = first_spec + sigma;
@@ -2731,112 +2731,31 @@ HeatTransfer::differential_diffusion_update (MultiFab& Force,
     adjust_spec_diffusion_fluxes(curr_time);
 
     // AJN FLUXREG
-    // We have just performed the diffusion solve for Y_m.
-    // If we are in the corrector, we have also performed the diffusion solve for h.
+    // We have just performed the correction diffusion solve for Y_m and h
     // If updateFluxReg=T, we update VISCOUS flux registers:
-    //   if we are in the predictor, ADD (1/2)*Gamma_{m,AD}^(0).
-    //   if we are in the corrector, ADD Gamma_{m,AD}^(k+1),
-    //                               ADD lambda^(k)/cp^(k) grad h_AD^(k+1).
+    //   ADD Gamma_{m,AD}^(k+1),
+    //   ADD lambda^(k)/cp^(k) grad h_AD^(k+1).
     if (do_reflux && updateFluxReg)
     {
       for (int d = 0; d < BL_SPACEDIM; d++)
       {
-        for (MFIter fmfi(*SpecDiffusionFluxn[d]); fmfi.isValid(); ++fmfi) {
+        for (MFIter fmfi(*SpecDiffusionFluxn[d]); fmfi.isValid(); ++fmfi)
+	{
           if (level > 0)
 	  {
 	    getViscFluxReg().FineAdd((*SpecDiffusionFluxnp1[d])[fmfi],d,fmfi.index(),0,first_spec,nspecies+1,dt);
           }
-	  if (level < parent->finestLevel())
-	  {
-            getLevel(level+1).getViscFluxReg().CrseInit((*SpecDiffusionFluxnp1[d]),d,0,first_spec,nspecies+1,-dt,FluxRegister::ADD);
-          }
-        }
+	}
+	if (level < parent->finestLevel())
+	{
+	  getLevel(level+1).getViscFluxReg().CrseInit((*SpecDiffusionFluxnp1[d]),d,0,first_spec,nspecies+1,-dt,FluxRegister::ADD);
+	}
       }
     }
 
     flux_divergence(Dnew,DComp,SpecDiffusionFluxnp1,0,nComp,-1);
 
-    if (theta_enthalpy > 0) {
-      // update species with corrected fluxes, for species, snew = sold + dt*(theta*Dnp1 + F)
-      for (MFIter mfi(Forcing); mfi.isValid(); ++mfi) {
-        const Box& box = mfi.validbox();
-        const FArrayBox& f = Forcing[mfi];
-        const FArrayBox& Sold = get_old_data(State_Type)[mfi];
-        FArrayBox& Snew = get_new_data(State_Type)[mfi];
-        const FArrayBox& Dnp1 = Dnew[mfi];
-
-        Snew.copy(Dnp1,box,0,box,first_spec,nspecies);
-        Snew.mult(theta,first_spec,nspecies);
-        Snew.plus(f,box,box,0,first_spec,nspecies);
-        Snew.mult(dt,first_spec,nspecies);
-        Snew.plus(Sold,box,box,first_spec,first_spec,nspecies);
-      }
-
-      // compute enthalpy fluxes with correct species
-      compute_enthalpy_fluxes(curr_time,betanp1);
-
-      // AJN FLUXREG
-      // We have just computed the time-advanced "DD" terms for the forcing in the
-      //   predictor h implicit solve.
-      // If updateFluxReg=T, we update ADVECTIVE flux registers:
-      //   ADD (1/2)*h_m^n*(Gamma_{m,AD}^(0)-lambda^n/cp^n grad Y_{m,AD}^(0)).
-      if (do_reflux && updateFluxReg) {
-        for (int d = 0; d < BL_SPACEDIM; d++) {
-          for (MFIter fmfi(*SpecDiffusionFluxn[d]); fmfi.isValid(); ++fmfi) {
-            if (level > 0) {
-              advflux_reg->FineAdd((*SpecDiffusionFluxn[d])[fmfi],d,fmfi.index(),nspecies+1,RhoH,1,0.5*dt);
-            }
-          }
-          if (level < parent->finestLevel()) {
-            getAdvFluxReg(level+1).CrseInit((*SpecDiffusionFluxn[d]),d,nspecies+1,RhoH,1,-0.5*dt,FluxRegister::ADD);
-          }
-        }
-      }
-
-      flux_divergence(DDnew,0,SpecDiffusionFluxnp1,nspecies+1,1,-1);
-            
-      DDnew.mult(theta_enthalpy,0,1);
-      MultiFab::Add(Force,DDnew,0,nspecies,1,0);
-      DDnew.mult(1/theta_enthalpy,0,1);
-
-      //
-      // Now diffuse RhoH
-      //
-      int sigma = nspecies;
-      int betaComp = sigma;
-      const int state_ind = first_spec + sigma;
-      bool add_old_time_divFlux = false; // indicate that the rhs contains the time-explicit diff terms already
-      int rho_flag = 2;
-      diffusion->diffuse_scalar(dt,state_ind,theta,rho_half,rho_flag,
-                                SpecDiffusionFluxn,SpecDiffusionFluxnp1,sigma,&Force,sigma,alpha,
-                                alphaComp,betan,betanp1,betaComp,solve_mode,add_old_time_divFlux);
-            
-      // Remove theta scaling of fluxes and compute - Div(lambda/cp Grad(H) )
-      for (int d=0; d<BL_SPACEDIM; ++d) {
-        (*SpecDiffusionFluxnp1[d]).mult(1/theta,sigma,1);
-        (*SpecDiffusionFluxn[d]).mult(1/(1-theta),sigma,1);
-      }
-
-      // AJN FLUXREG
-      // We have just finished the implicit solve for h in the predictor.
-      // If updateFluxReg=T, we update VISCOUS flux registers:
-      //  ADD (1/2)*lambda^n/cp^ngrad h_AD^(0)
-      //         NOTE: we only get here if sdc_iterMAX=0
-      if (do_reflux && updateFluxReg) {
-        for (int d = 0; d < BL_SPACEDIM; d++) {
-          for (MFIter fmfi(*SpecDiffusionFluxn[d]); fmfi.isValid(); ++fmfi) {
-            if (level > 0) {  // we only get here if sdc_iterMAX=0
-              getViscFluxReg().FineAdd((*SpecDiffusionFluxnp1[d])[fmfi],d,fmfi.index(),nspecies,RhoH,1,0.5*dt);
-            }
-          }
-          if (level < parent->finestLevel()) {
-            getLevel(level+1).getViscFluxReg().CrseInit((*SpecDiffusionFluxnp1[d]),d,nspecies,RhoH,1,-0.5*dt,FluxRegister::ADD);
-          }
-        }
-      }
-      flux_divergence(Dnew,nspecies,SpecDiffusionFluxnp1,nspecies,1,-1);
-    }
-    diffusion->removeFluxBoxesLevel(betanp1);
+        diffusion->removeFluxBoxesLevel(betanp1);
   }
     
   if (verbose) {
@@ -4791,15 +4710,18 @@ HeatTransfer::compute_differential_diffusion_fluxes (const Real& time,
     // conservatively correct Gamma_m
     adjust_spec_diffusion_fluxes(time);
 
+    Real prev_time = state[State_Type].prevTime();
+    Real cur_time = state[State_Type].curTime();
+
     //
     // AJN FLUXREG
     // We have just explicitly computed "D" for Y_m and h given an input state.
     // Update VISCOUS flux registers as follows.
-    // If we are calling this in the predictor:
+    // If this is the first sdc sweep:
     //   COPY (1/2)*Gamma_m^n and (1/2)*lambda^n/cp^n grad h^n to flux registers
-    // If we are calling this in the corrector AND updateFluxReg=T:
+    // If updateFluxReg=T:
     //   SUBTRACT (1/2)*Gamma_m^(k) and (1/2)*lambda^(k)/cp^(k) grad h^(k)
-    if ( do_reflux && (updateFluxReg || sdc_iter==1) )
+    if ( do_reflux && (updateFluxReg || (sdc_iter==1 && time==prev_time) ) )
     {
       for (int d = 0; d < BL_SPACEDIM; d++)
       {
@@ -4807,7 +4729,7 @@ HeatTransfer::compute_differential_diffusion_fluxes (const Real& time,
 	{
 	  if (level > 0)
           {
-	    if (sdc_iter==1)
+	    if (sdc_iter==1 && time==prev_time)
 	    {
 	      getViscFluxReg().FineAdd((*SpecDiffusionFluxn[d])[fmfi],d,fmfi.index(),0,first_spec,nspecies+1,0.5*dt);
 	    }
@@ -4820,7 +4742,7 @@ HeatTransfer::compute_differential_diffusion_fluxes (const Real& time,
 
 	if (level < parent->finestLevel())
         {
-	  if (sdc_iter==1)
+	  if (sdc_iter==1 && time==prev_time)
 	  {
 	    getLevel(level+1).getViscFluxReg().CrseInit((*SpecDiffusionFluxn[d]),d,0,first_spec,nspecies+1,-0.5*dt,FluxRegister::COPY);
 	  }
@@ -4839,13 +4761,13 @@ HeatTransfer::compute_differential_diffusion_fluxes (const Real& time,
 
     //
     // AJN FLUXREG
-    // We have just explicitly computed "DD" given an input state.
+    // We have just computed "DD" given an input state.
     // Update ADVECTIVE flux registers as follows.
-    // If we are calling this in the predictor:
+    // If we are at the old time and computing the t^n flux divergence:
     //   ADD (1/2)*h_m^n(Gamma_m^n-lambda^n/cp^n grad Y_m^n)
-    // If we are calling this in the corrector AND updateFluxReg=T:
+    // If updateFluxReg=T:
     //   ADD (1/2)*h_m^(k)(Gamma_m^(k)-lambda^(k)/cp^(k) grad Y_m^(k))
-    if (do_reflux && (updateFluxReg || sdc_iter==1) )
+    if ( do_reflux && (updateFluxReg || (sdc_iter==1 && time==prev_time) ) )
     {
       for (int d = 0; d < BL_SPACEDIM; d++)
       {
@@ -4853,7 +4775,7 @@ HeatTransfer::compute_differential_diffusion_fluxes (const Real& time,
 	{
 	  if (level > 0)
 	  {
-	    if (sdc_iter==1)
+	    if (sdc_iter == 1 && time==prev_time)
 	    {
 	      advflux_reg->FineAdd((*SpecDiffusionFluxn[d])[fmfi],  d,fmfi.index(),nspecies+1,RhoH,1,0.5*dt);
 	    }
@@ -4866,7 +4788,7 @@ HeatTransfer::compute_differential_diffusion_fluxes (const Real& time,
 
 	if (level < parent->finestLevel())
 	{
-	  if (sdc_iter==1)
+	  if (sdc_iter == 1 && time==prev_time)
 	  {
 	    getAdvFluxReg(level+1).CrseInit((*SpecDiffusionFluxn[d])  ,d,nspecies+1,RhoH,1,-0.5*dt,FluxRegister::ADD);
 	  }
@@ -5292,7 +5214,7 @@ HeatTransfer::advance_setup (Real time,
         MultiFab& nstate = get_new_data(k);
         MultiFab& ostate = get_old_data(k);
 
-        MultiFab::Copy(nstate,ostate,0,0,nstate.nComp(),0);
+        MultiFab::Copy(nstate,ostate,0,0,nstate.nComp(),nstate.nGrow());
     }
     if (level == 0)
         set_htt_hmixTYP();
@@ -5456,6 +5378,7 @@ HeatTransfer::advance (Real time,
 		       int  iteration,
 		       int  ncycle)
 {
+    sdc_iter = 1;  // need to set this in order to add time n fluxes to registers
     updateFluxReg = false;
     if (sdc_iterMAX == 1)
     {
@@ -5564,9 +5487,13 @@ HeatTransfer::advance (Real time,
 	// iteratively lagged
 	if (verbose && ParallelDescriptor::IOProcessor())
             std::cout << "Computing Dnp1 and DDnp1 (SDC iteration " << sdc_iter << ")\n";
+      }
 
-        compute_differential_diffusion_terms(Dnp1,DDnp1,cur_time,dt);
+      // need to redo this in order to load np1 flux registers if sdc_iterMAX=1
+      compute_differential_diffusion_terms(Dnp1,DDnp1,cur_time,dt);
 
+      if (sdc_iter > 1)
+      {
 	// compute new-time DivU with instantaneous reaction rates
 	calc_divu(cur_time, dt, get_new_data(Divu_Type));
       }
@@ -5595,6 +5522,7 @@ HeatTransfer::advance (Real time,
       //
       // Compute A (advection terms) with F = Dn + R
       //
+
       for (MFIter mfi(Forcing); mfi.isValid(); ++mfi)
       {
 	FArrayBox& f = Forcing[mfi];
@@ -5602,11 +5530,11 @@ HeatTransfer::advance (Real time,
 	const FArrayBox& ddn = DDn[mfi];
 	const FArrayBox& r = get_new_data(RhoYdot_Type)[mfi];
 	const Box gbox = Box(mfi.validbox()).grow(nGrowAdvForcing);
-            
 	f.copy(dn,gbox,0,gbox,0,nspecies+1); // add Dn to RhoY and RhoH
-	f.plus(r,gbox,gbox,0,0,nspecies); // add R to RhoY, no contribution for RhoH
 	f.plus(ddn,gbox,gbox,0,nspecies,1); // add DDn to RhoH forcing
+	f.plus(r,gbox,gbox,0,0,nspecies); // add R to RhoY, no contribution for RhoH
       }
+
       Forcing.FillBoundary(0,nspecies+1);
       geom.FillPeriodicBoundary(Forcing,0,nspecies,true);
 
@@ -6300,14 +6228,19 @@ HeatTransfer::compute_scalar_advection_fluxes_and_divergence (MultiFab& Force,
   //
   //   FIXME: Since the fluxes and states are class data, perhaps these flux register calls should be
   //          managed in the advance function directly rather than hidden/encoded inside here??
-  if (do_reflux && updateFluxReg) {
-    if (level > 0) {
-      for (int d = 0; d < BL_SPACEDIM; d++) {
+  if (do_reflux && updateFluxReg)
+  {
+    if (level > 0)
+    {
+      for (int d = 0; d < BL_SPACEDIM; d++)
+      {
         advflux_reg->FineAdd((*EdgeFlux[d]),d,Density,Density,NUM_SCALARS,dt);
       }
     }
-    if (level < parent->finestLevel()) {
-      for (int d = 0; d < BL_SPACEDIM; d++) {
+    if (level < parent->finestLevel())
+    {
+      for (int d = 0; d < BL_SPACEDIM; d++)
+      {
         getAdvFluxReg(level+1).CrseInit((*EdgeFlux[d]),d,Density,Density,NUM_SCALARS,-dt,FluxRegister::ADD);
       }
     }

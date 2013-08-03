@@ -228,14 +228,15 @@ contains
   end subroutine get_plot_names
 
 
-  subroutine make_plotfile(dirname, la, U, plot_names, time, dx, write_pf_time)
+  subroutine make_plotfile(dirname, la, U, plot_names, time, dt, dx, write_pf_time, U0)
 
     character(len=*) , intent(in   ) :: dirname
     type(layout)     , intent(in   ) :: la
     type(multifab)   , intent(inout) :: U
     character(len=20), intent(in   ) :: plot_names(:)
-    real(dp_t)       , intent(in   ) :: time, dx(3)
+    real(dp_t)       , intent(in   ) :: time, dt, dx(3)
     real(dp_t)       , intent(  out) :: write_pf_time
+    type(multifab)   , intent(in   ), optional :: U0
 
     ! dimensioned as an array of size 1 for fabio_ml_multifab_write_d
     type(multifab) :: plotdata(1), Q
@@ -319,7 +320,11 @@ contains
     end if
 
     if (nburn > 0) then
-       call make_plotvar(plotdata(1),icomp_burn, Q, dx)
+       if (present(U0)) then
+          call make_plotvar(plotdata(1),icomp_burn, Q, dx, dt, U0, U)
+       else
+          call make_plotvar(plotdata(1),icomp_burn, Q, dx)
+       end if
     end if
 
     if (parallel_IOProcessor()) then
