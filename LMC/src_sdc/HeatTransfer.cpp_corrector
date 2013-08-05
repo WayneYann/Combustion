@@ -2743,12 +2743,15 @@ HeatTransfer::differential_diffusion_update (MultiFab& Force,
 	{
           if (level > 0)
 	  {
-	    getViscFluxReg().FineAdd((*SpecDiffusionFluxnp1[d])[fmfi],d,fmfi.index(),0,first_spec,nspecies+1,dt);
+	    getViscFluxReg().FineAdd((*SpecDiffusionFluxnp1[d])[fmfi],d,fmfi.index(),
+				     0,first_spec,nspecies+1,dt);
           }
 	}
 	if (level < parent->finestLevel())
 	{
-	  getLevel(level+1).getViscFluxReg().CrseInit((*SpecDiffusionFluxnp1[d]),d,0,first_spec,nspecies+1,-dt,FluxRegister::ADD);
+	  getLevel(level+1).getViscFluxReg().CrseInit((*SpecDiffusionFluxnp1[d]),d,
+						      0,first_spec,nspecies+1,-dt,
+						      FluxRegister::ADD);
 	}
       }
     }
@@ -4717,12 +4720,13 @@ HeatTransfer::compute_differential_diffusion_fluxes (const Real& time,
     // AJN FLUXREG
     // We have just explicitly computed "D" for Y_m and h given an input state.
     // Update VISCOUS flux registers as follows.
-    // If this is the first sdc sweep:
+    // If this is the predictor and sdc_iterMAX>1:
     //   COPY (1/2)*Gamma_m^n and (1/2)*lambda^n/cp^n grad h^n to flux registers
-    // If updateFluxReg=T:
+    // If this is the predictor AND sdc_iterMAX=1:
+    //   DO NOTHING
+    // If updateFluxReg=T (we are in the final corrector):
     //   SUBTRACT (1/2)*Gamma_m^(k) and (1/2)*lambda^(k)/cp^(k) grad h^(k)
-    if ( do_reflux && (   (updateFluxReg && time==cur_time ) 
-		       || (sdc_iter==1   && time==prev_time) ) )
+    if ( do_reflux && ( (is_predictor && sdc_iterMAX>1) || updateFluxReg ) )
     {
       for (int d = 0; d < BL_SPACEDIM; d++)
       {
@@ -4730,12 +4734,12 @@ HeatTransfer::compute_differential_diffusion_fluxes (const Real& time,
 	{
 	  if (level > 0)
           {
-	    if (sdc_iter==1 && time==prev_time)
+	    if (is_predictor && sdc_iterMAX>1)
 	    {
 	      getViscFluxReg().FineAdd((*SpecDiffusionFluxn[d])[fmfi],d,fmfi.index(),0,
 				       first_spec,nspecies+1,0.5*dt);
 	    }
-	    else if (updateFluxReg && time==cur_time)
+	    if (updateFluxReg)
             {
 	      getViscFluxReg().FineAdd((*SpecDiffusionFluxnp1[d])[fmfi],d,fmfi.index(),0,
 				       first_spec,nspecies+1,-0.5*dt);
@@ -4745,13 +4749,13 @@ HeatTransfer::compute_differential_diffusion_fluxes (const Real& time,
 
 	if (level < parent->finestLevel())
         {
-	  if (sdc_iter==1 && time==prev_time)
+	  if (is_predictor && sdc_iterMAX>1)
 	  {
 	    getLevel(level+1).getViscFluxReg().CrseInit((*SpecDiffusionFluxn[d]),d,0,
 							first_spec,nspecies+1,-0.5*dt,
 							FluxRegister::COPY);
 	  }
-	  else if (updateFluxReg && time==cur_time)
+	  if (updateFluxReg)
 	  {
 	    getLevel(level+1).getViscFluxReg().CrseInit((*SpecDiffusionFluxnp1[d]),d,0,
 							first_spec,nspecies+1,0.5*dt,
@@ -4770,12 +4774,13 @@ HeatTransfer::compute_differential_diffusion_fluxes (const Real& time,
     // AJN FLUXREG
     // We have just computed "DD" given an input state.
     // Update ADVECTIVE flux registers as follows.
-    // If we are at the old time and computing the t^n flux divergence:
+    // If we are in the predictor and sdc_iterMAX>1:
     //   ADD (1/2)*h_m^n(Gamma_m^n-lambda^n/cp^n grad Y_m^n)
-    // If updateFluxReg=T:
+    // If we are in the predictor and sdc_iterMAX=1:
+    //   ADD h_m^n(Gamma_m^n-lambda^n/cp^n grad Y_m^n)
+    // If updateFluxReg=T (we are in the final corrector):
     //   ADD (1/2)*h_m^(k)(Gamma_m^(k)-lambda^(k)/cp^(k) grad Y_m^(k))
-    if ( do_reflux && (   (updateFluxReg && time==cur_time ) 
-		       || (sdc_iter==1   && time==prev_time) ) )
+    if ( do_reflux && ( is_predictor || updateFluxReg ) )
     {
       for (int d = 0; d < BL_SPACEDIM; d++)
       {
@@ -4783,12 +4788,13 @@ HeatTransfer::compute_differential_diffusion_fluxes (const Real& time,
 	{
 	  if (level > 0)
 	  {
-	    if (sdc_iter == 1 && time==prev_time)
+	    if (is_predictor)
 	    {
+	      Real fac = (sdc_iterMAX==1) ? dt : 0.5*dt;
 	      advflux_reg->FineAdd((*SpecDiffusionFluxn[d])[fmfi],  d,fmfi.index(),
-				   nspecies+1,RhoH,1,0.5*dt);
+				   nspecies+1,RhoH,1,fac);
 	    }
-	    else if (updateFluxReg && time==cur_time)
+	    if (updateFluxReg)
 	    {
 	      advflux_reg->FineAdd((*SpecDiffusionFluxnp1[d])[fmfi],d,fmfi.index(),
 				   nspecies+1,RhoH,1,0.5*dt);
@@ -4798,12 +4804,13 @@ HeatTransfer::compute_differential_diffusion_fluxes (const Real& time,
 
 	if (level < parent->finestLevel())
 	{
-	  if (sdc_iter == 1 && time==prev_time)
+	  if (is_predictor)
 	  {
+	    Real fac = (sdc_iterMAX==1) ? dt : 0.5*dt;
 	    getAdvFluxReg(level+1).CrseInit((*SpecDiffusionFluxn[d])  ,d,nspecies+1,RhoH,
-					    1,-0.5*dt,FluxRegister::ADD);
+					    1,-fac,FluxRegister::ADD);
 	  }
-	  else if (updateFluxReg && time==cur_time)
+	  if (updateFluxReg)
 	  {
 	    getAdvFluxReg(level+1).CrseInit((*SpecDiffusionFluxnp1[d]),d,nspecies+1,RhoH,
 					    1,-0.5*dt,FluxRegister::ADD);
@@ -5390,12 +5397,8 @@ HeatTransfer::advance (Real time,
 		       int  iteration,
 		       int  ncycle)
 {
-    sdc_iter = 1;  // need to set this in order to add time n fluxes to registers
+    is_predictor = true;
     updateFluxReg = false;
-    if (sdc_iterMAX == 1)
-    {
-      updateFluxReg = true;
-    }
 
     if (level == 0)
     {
@@ -5482,7 +5485,9 @@ HeatTransfer::advance (Real time,
 
     dpdt.setVal(0);
 
-    for (sdc_iter=1; sdc_iter<=sdc_iterMAX; ++sdc_iter)
+    is_predictor = false;
+
+    for (int sdc_iter=1; sdc_iter<=sdc_iterMAX; ++sdc_iter)
     {
 
       if (sdc_iter == sdc_iterMAX)
@@ -5499,13 +5504,9 @@ HeatTransfer::advance (Real time,
 	// iteratively lagged
 	if (verbose && ParallelDescriptor::IOProcessor())
             std::cout << "Computing Dnp1 and DDnp1 (SDC iteration " << sdc_iter << ")\n";
-      }
 
-      // need to redo this in order to load np1 flux registers if sdc_iterMAX=1
-      compute_differential_diffusion_terms(Dnp1,DDnp1,cur_time,dt);
+	compute_differential_diffusion_terms(Dnp1,DDnp1,cur_time,dt);
 
-      if (sdc_iter > 1)
-      {
 	// compute new-time DivU with instantaneous reaction rates
 	calc_divu(cur_time, dt, get_new_data(Divu_Type));
       }
