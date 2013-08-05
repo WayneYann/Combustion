@@ -4721,7 +4721,8 @@ HeatTransfer::compute_differential_diffusion_fluxes (const Real& time,
     //   COPY (1/2)*Gamma_m^n and (1/2)*lambda^n/cp^n grad h^n to flux registers
     // If updateFluxReg=T:
     //   SUBTRACT (1/2)*Gamma_m^(k) and (1/2)*lambda^(k)/cp^(k) grad h^(k)
-    if ( do_reflux && (updateFluxReg || (sdc_iter==1 && time==prev_time) ) )
+    if ( do_reflux && (   (updateFluxReg && time==cur_time ) 
+		       || (sdc_iter==1   && time==prev_time) ) )
     {
       for (int d = 0; d < BL_SPACEDIM; d++)
       {
@@ -4731,11 +4732,13 @@ HeatTransfer::compute_differential_diffusion_fluxes (const Real& time,
           {
 	    if (sdc_iter==1 && time==prev_time)
 	    {
-	      getViscFluxReg().FineAdd((*SpecDiffusionFluxn[d])[fmfi],d,fmfi.index(),0,first_spec,nspecies+1,0.5*dt);
+	      getViscFluxReg().FineAdd((*SpecDiffusionFluxn[d])[fmfi],d,fmfi.index(),0,
+				       first_spec,nspecies+1,0.5*dt);
 	    }
-	    if (updateFluxReg)
+	    else if (updateFluxReg && time==cur_time)
             {
-	      getViscFluxReg().FineAdd((*SpecDiffusionFluxnp1[d])[fmfi],d,fmfi.index(),0,first_spec,nspecies+1,-0.5*dt);
+	      getViscFluxReg().FineAdd((*SpecDiffusionFluxnp1[d])[fmfi],d,fmfi.index(),0,
+				       first_spec,nspecies+1,-0.5*dt);
 	    }
 	  }
 	}
@@ -4744,11 +4747,15 @@ HeatTransfer::compute_differential_diffusion_fluxes (const Real& time,
         {
 	  if (sdc_iter==1 && time==prev_time)
 	  {
-	    getLevel(level+1).getViscFluxReg().CrseInit((*SpecDiffusionFluxn[d]),d,0,first_spec,nspecies+1,-0.5*dt,FluxRegister::COPY);
+	    getLevel(level+1).getViscFluxReg().CrseInit((*SpecDiffusionFluxn[d]),d,0,
+							first_spec,nspecies+1,-0.5*dt,
+							FluxRegister::COPY);
 	  }
-	  if (updateFluxReg)
+	  else if (updateFluxReg && time==cur_time)
 	  {
-	    getLevel(level+1).getViscFluxReg().CrseInit((*SpecDiffusionFluxnp1[d]),d,0,first_spec,nspecies+1,0.5*dt,FluxRegister::ADD);
+	    getLevel(level+1).getViscFluxReg().CrseInit((*SpecDiffusionFluxnp1[d]),d,0,
+							first_spec,nspecies+1,0.5*dt,
+							FluxRegister::ADD);
 	  }
 	}
       }
@@ -4767,7 +4774,8 @@ HeatTransfer::compute_differential_diffusion_fluxes (const Real& time,
     //   ADD (1/2)*h_m^n(Gamma_m^n-lambda^n/cp^n grad Y_m^n)
     // If updateFluxReg=T:
     //   ADD (1/2)*h_m^(k)(Gamma_m^(k)-lambda^(k)/cp^(k) grad Y_m^(k))
-    if ( do_reflux && (updateFluxReg || (sdc_iter==1 && time==prev_time) ) )
+    if ( do_reflux && (   (updateFluxReg && time==cur_time ) 
+		       || (sdc_iter==1   && time==prev_time) ) )
     {
       for (int d = 0; d < BL_SPACEDIM; d++)
       {
@@ -4777,11 +4785,13 @@ HeatTransfer::compute_differential_diffusion_fluxes (const Real& time,
 	  {
 	    if (sdc_iter == 1 && time==prev_time)
 	    {
-	      advflux_reg->FineAdd((*SpecDiffusionFluxn[d])[fmfi],  d,fmfi.index(),nspecies+1,RhoH,1,0.5*dt);
+	      advflux_reg->FineAdd((*SpecDiffusionFluxn[d])[fmfi],  d,fmfi.index(),
+				   nspecies+1,RhoH,1,0.5*dt);
 	    }
-	    if (updateFluxReg)
+	    else if (updateFluxReg && time==cur_time)
 	    {
-	      advflux_reg->FineAdd((*SpecDiffusionFluxnp1[d])[fmfi],d,fmfi.index(),nspecies+1,RhoH,1,0.5*dt);
+	      advflux_reg->FineAdd((*SpecDiffusionFluxnp1[d])[fmfi],d,fmfi.index(),
+				   nspecies+1,RhoH,1,0.5*dt);
             }
 	  }
 	}
@@ -4790,11 +4800,13 @@ HeatTransfer::compute_differential_diffusion_fluxes (const Real& time,
 	{
 	  if (sdc_iter == 1 && time==prev_time)
 	  {
-	    getAdvFluxReg(level+1).CrseInit((*SpecDiffusionFluxn[d])  ,d,nspecies+1,RhoH,1,-0.5*dt,FluxRegister::ADD);
+	    getAdvFluxReg(level+1).CrseInit((*SpecDiffusionFluxn[d])  ,d,nspecies+1,RhoH,
+					    1,-0.5*dt,FluxRegister::ADD);
 	  }
-	  if (updateFluxReg)
+	  else if (updateFluxReg && time==cur_time)
 	  {
-	    getAdvFluxReg(level+1).CrseInit((*SpecDiffusionFluxnp1[d]),d,nspecies+1,RhoH,1,-0.5*dt,FluxRegister::ADD);
+	    getAdvFluxReg(level+1).CrseInit((*SpecDiffusionFluxnp1[d]),d,nspecies+1,RhoH,
+					    1,-0.5*dt,FluxRegister::ADD);
           }
 	}
       }
