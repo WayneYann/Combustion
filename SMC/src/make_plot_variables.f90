@@ -64,36 +64,36 @@ contains
 
           if (dm .eq. 2) then
              if (icomp .eq. icomp_wbar) then
-                call make_wbar_2d(lo,hi,pdp(:,:,1,icomp),pdlo(1:2),pdhi(1:2), &
+                call make_wbar_2d(lo,hi,pdp(:,:,:,icomp),pdlo(1:2),pdhi(1:2), &
                      qp,qlo(1:2),qhi(1:2))
              else if (icomp .eq. icomp_h) then
-                call make_h_2d(lo,hi,pdp(:,:,1,icomp),pdlo(1:2),pdhi(1:2), &
+                call make_h_2d(lo,hi,pdp(:,:,:,icomp),pdlo(1:2),pdhi(1:2), &
                      qp,qlo(1:2),qhi(1:2))
              else if (icomp .eq. icomp_rhoh) then
-                call make_rhoh_2d(lo,hi,pdp(:,:,1,icomp),pdlo(1:2),pdhi(1:2), &
+                call make_rhoh_2d(lo,hi,pdp(:,:,:,icomp),pdlo(1:2),pdhi(1:2), &
                      qp,qlo(1:2),qhi(1:2))
              else if (icomp .eq. icomp_cs) then
-                call make_cs_2d(lo,hi,pdp(:,:,1,icomp),pdlo(1:2),pdhi(1:2), &
+                call make_cs_2d(lo,hi,pdp(:,:,:,icomp),pdlo(1:2),pdhi(1:2), &
                      qp,qlo(1:2),qhi(1:2))
              else if (icomp .eq. icomp_magvel) then
-                call make_magvel_2d(lo,hi,pdp(:,:,1,icomp),pdlo(1:2),pdhi(1:2), &
+                call make_magvel_2d(lo,hi,pdp(:,:,:,icomp),pdlo(1:2),pdhi(1:2), &
                      qp,qlo(1:2),qhi(1:2))
              else if (icomp .eq. icomp_Mach) then
-                call make_Mach_2d(lo,hi,pdp(:,:,1,icomp),pdlo(1:2),pdhi(1:2), &
+                call make_Mach_2d(lo,hi,pdp(:,:,:,icomp),pdlo(1:2),pdhi(1:2), &
                      qp,qlo(1:2),qhi(1:2))
              else if (icomp .eq. icomp_divu) then
-                call make_divu_2d(lo,hi,pdp(:,:,1,icomp),pdlo(1:2),pdhi(1:2), &
+                call make_divu_2d(lo,hi,pdp(:,:,:,icomp),pdlo(1:2),pdhi(1:2), &
                      qp,qlo(1:2),qhi(1:2), dx, dlo,dhi)
              else if (icomp .eq. icomp_magvort) then
-                call make_magvort_2d(lo,hi,pdp(:,:,1,icomp),pdlo(1:2),pdhi(1:2), &
+                call make_magvort_2d(lo,hi,pdp(:,:,:,icomp),pdlo(1:2),pdhi(1:2), &
                      qp,qlo(1:2),qhi(1:2), dx, dlo,dhi)
              else if (icomp .eq. icomp_burn) then
                 if (present(dt)) then
-                   call make_burn2_2d(lo,hi,pdp(:,:,1,icomp:icomp+nburn-1), &
+                   call make_burn2_2d(lo,hi,pdp(:,:,:,icomp:icomp+nburn-1), &
                         pdlo(1:2),pdhi(1:2),u0p,u0lo(1:2),u0hi(1:2), &
                         up,ulo(1:2),uhi(1:2),dt)
                 else
-                   call make_burn_2d(lo,hi,pdp(:,:,1,icomp:icomp+nburn-1), &
+                   call make_burn_2d(lo,hi,pdp(:,:,:,icomp:icomp+nburn-1), &
                         pdlo(1:2),pdhi(1:2),qp,qlo(1:2),qhi(1:2))
                 end if
              else
