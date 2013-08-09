@@ -4723,7 +4723,9 @@ HeatTransfer::compute_differential_diffusion_fluxes (const Real& time,
     // If this is the predictor and sdc_iterMAX>1:
     //   COPY (1/2)*Gamma_m^n and (1/2)*lambda^n/cp^n grad h^n to flux registers
     // If this is the predictor AND sdc_iterMAX=1:
-    //   DO NOTHING
+    //   DO NOTHING - we never call compute_differential_diffusion_terms again to
+    //   subtract (1/2)*Gamma_m^{(k)} and (1/2)*lambda/cp grad h^{(k)}, which in this
+    //   case is equal to the t^n version
     // If updateFluxReg=T (we are in the final corrector):
     //   SUBTRACT (1/2)*Gamma_m^(k) and (1/2)*lambda^(k)/cp^(k) grad h^(k)
     if ( do_reflux && ( (is_predictor && sdc_iterMAX>1) || updateFluxReg ) )
@@ -4777,7 +4779,7 @@ HeatTransfer::compute_differential_diffusion_fluxes (const Real& time,
     // If we are in the predictor and sdc_iterMAX>1:
     //   ADD (1/2)*h_m^n(Gamma_m^n-lambda^n/cp^n grad Y_m^n)
     // If we are in the predictor and sdc_iterMAX=1:
-    //   ADD h_m^n(Gamma_m^n-lambda^n/cp^n grad Y_m^n)
+    //   ADD 1.0*h_m^n(Gamma_m^n-lambda^n/cp^n grad Y_m^n)
     // If updateFluxReg=T (we are in the final corrector):
     //   ADD (1/2)*h_m^(k)(Gamma_m^(k)-lambda^(k)/cp^(k) grad Y_m^(k))
     if ( do_reflux && ( is_predictor || updateFluxReg ) )
@@ -5463,20 +5465,18 @@ HeatTransfer::advance (Real time,
     //  (Note that coeffs at tn and tnp1 were intialized in _setup)
     if (verbose && ParallelDescriptor::IOProcessor())
       std::cout << "Computing Dn and DDn \n";
-
     compute_differential_diffusion_terms(Dn,DDn,prev_time,dt);
     showMF("sdc",Dn,"sdc_Dn",level,parent->levelSteps(level));
     showMF("sdc",DDn,"sdc_DDn",level,parent->levelSteps(level));
 
     /*
-      You could compute instantaneous I_R here if doing a pressure iter
+      You could compute instantaneous I_R here but for now it's using either the
+      previous step or divu_iter's version of I_R.
     */
 
-    // copy old state into new state for:
-    // scalars - done in advance_setup
-    // transport coefficients - done in advance_setup
-    // divu - done in advance_setup
-    // Dn and DDn
+    // copy old state into new state for Dn and DDn.
+    // Note: this was already done for scalars, transport coefficients,
+    // and divu in advance_setup
     MultiFab::Copy(Dnp1,Dn,0,0,nspecies+2,nGrowAdvForcing);
     MultiFab::Copy(DDnp1,DDn,0,0,1,nGrowAdvForcing);
 
@@ -5504,7 +5504,6 @@ HeatTransfer::advance (Real time,
 	// iteratively lagged
 	if (verbose && ParallelDescriptor::IOProcessor())
             std::cout << "Computing Dnp1 and DDnp1 (SDC iteration " << sdc_iter << ")\n";
-
 	compute_differential_diffusion_terms(Dnp1,DDnp1,cur_time,dt);
 
 	// compute new-time DivU with instantaneous reaction rates
@@ -5529,7 +5528,7 @@ HeatTransfer::advance (Real time,
       MultiFab::Add(dpdt,delta_dpdt,0,0,1,nGrowAdvForcing);
       MultiFab::Add(Forcing,dpdt,0,0,1,nGrowAdvForcing);
 
-      // MAC-project... I think we overwrite U^{ADV,*}
+      // MAC-project... and overwrite U^{ADV,*}
       mac_project(time,dt,S_old,&Forcing,1,nGrowAdvForcing,updateFluxReg);
 
       //
@@ -5554,9 +5553,13 @@ HeatTransfer::advance (Real time,
       if (verbose && ParallelDescriptor::IOProcessor())
 	std::cout << "A (SDC iter " << sdc_iter << ")\n";
 
+      // compute A
       compute_scalar_advection_fluxes_and_divergence(Forcing,dt);
+
+      // update rho, rho*Y, and rho*h
       scalar_advection_update(dt, Density, RhoH);
 
+      // update pointer to new-time density
       make_rho_curr_time();
 
       // 
