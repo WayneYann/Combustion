@@ -327,7 +327,7 @@ c     differential diffusion will be added later
          enddo
 
 c     new iterative Wbar procedure
-         do l=1,3
+         do l=1,Wbar_iter
 
 c     compute div(beta_for_Wbar^(k) grad Wbar^(k),l)
 c     also need to save the fluxes themselves
