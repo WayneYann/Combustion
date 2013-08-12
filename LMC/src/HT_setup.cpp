@@ -1067,7 +1067,7 @@ HeatTransfer::rhoydotSetUp()
     set_rhoydot_bc(bc,phys_bc);
     for (int i = 0; i < nrhoydot; i++)
     {
-	const std::string name = "d[Y("+names[i]+")]/dt";
+	const std::string name = "I_R[rhoY("+names[i]+")]";
 	desc_lst.setComponent(RhoYdot_Type, i, name.c_str(), bc,
 			      BndryFunc(FORT_RHOYDOTFILL), &lincc_interp, 0, nrhoydot-1);
     }
