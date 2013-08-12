@@ -1693,7 +1693,7 @@ c     "jbb hack"
                eta(i,j) = eta(i,j) * SCAL
             end do
          end do
-      else if (use_eg .eq. 1) then
+      else if (use_mc .eq. 1) then
          do j=lo(2),hi(2)
             do i=lo(1),hi(1)
                do n=1,Nspec
