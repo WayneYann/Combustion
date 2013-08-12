@@ -125,7 +125,7 @@ ns.oxidizerName    = O2
 ns.flameTracName   = H
 ns.unity_Le = 0
 
-ns.sdc_iterMAX = 1
+ns.sdc_iterMAX = 2
 
 ns.dpdt_option = 0
 #macop.max_order = 3
