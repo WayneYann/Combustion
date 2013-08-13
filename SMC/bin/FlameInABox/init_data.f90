@@ -62,11 +62,11 @@ contains
     !$omp private(Xt,Yt,rhot,u1t,u2t,u3t,Tt,et,iwrk,rwrk) &
     !$omp private(pert,Ly,Lz,x1,x2)
     do k=lo(3),hi(3)
-       z = phlo(3) + dx(3)*(k + 0.5d0)
+       z = phlo(3) + dx(3)*k
        do j=lo(2),hi(2)
-          y = phlo(2) + dx(2)*(j + 0.5d0)
+          y = phlo(2) + dx(2)*j
           do i=lo(1),hi(1)
-             x = phlo(1) + dx(1)*(i + 0.5d0)
+             x = phlo(1) + dx(1)*i
 
              pert = 0.d0
              if (pertmag .gt. 0.d0) then
