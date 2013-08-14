@@ -1,0 +1,7 @@
+&files
+ CHEMKIN_input='inert_3.dat'
+ THERMO_input='inert_3.therm'
+ TRANLIB_input='inert_3.trans'
+ TRANLIB_c_file='inert_3-tran.cpp'
+ log_file='log'
+/
