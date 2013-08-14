@@ -9,11 +9,11 @@
  max_step  = 900000
  restart   = -1
 
- sdc_iters            = {sdc_iters}
- sdc_nnodes           = {sdc_nnodes}
- sdc_nnodes_chemistry = {sdc_nnodes_chemistry}
- sdc_tol_residual     = 1.d-3
- sdc_multirate_type   = "local"
+ sdc_iters          = {sdc_iters}
+ sdc_nnodes         = {sdc_nnodes}
+ sdc_nnodes_fine    = {sdc_nnodes_fine}
+ sdc_tol_residual   = 1.d-3
+ sdc_multirate_type = "local"
 
  plot_int = 2
  chk_int  = -10

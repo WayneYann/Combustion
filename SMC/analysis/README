@@ -1,0 +1,21 @@
+
+* SMC convergence analysis
+
+  The files in this directory run various numerical experiments
+  (convergence, speed etc) for SMC.
+
+** Multirate speed tests
+
+   This test uses the FlameInABox binary to compare vanilla SDC
+   execution times to MRSDC execution times.
+
+   First, sync local sources to the remote host and build the
+   FlameInABox executable:
+
+   $ fab -H hopper build:flamebox
+
+   Next, run the speed tests, compare the results, and plot the results:
+
+   $ fab -H hopper flamebox_speed
+   $ fab -H hopper flamebox_speed_compare
+   $ fab -H hopper flamebox_speed_plot

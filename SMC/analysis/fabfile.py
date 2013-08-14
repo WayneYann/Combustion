@@ -1,83 +1,193 @@
-"""Fabric (fabfile.org) tasks for SMC."""
+"""Fabric (fabfile.org) tasks for SMC.  See README."""
 
 import numpy as np
-#import stconv
 
 from fabric.api import *
 from jobtools import JobQueue, Job
 from itertools import product
+from collections import namedtuple
 
+import pickle
+import compare
+
+from pylab import *
+
+class Container():
+    pass
 
 
 ###############################################################################
 # flamebox multi-rate speed tests
+
+fbox = Container()
+
+fbox.stop_time = 6e-9 * 70
+fbox.dt_ref    = 1e-9
+fbox.dt        = [ 6e-9, 3e-9, 1.5e-9 ]
+fbox.nx        = 32
+fbox.mrruns    = [ (5, 9), (7, 13) ]   # (trat, nnodes_fine)
+
+SpeedTuple = namedtuple('SpeedTuple', [ 'scheme', 'dt', 'error', 'runtime', 'ad_evals', 'r_evals' ])
+
 
 @task
 def flamebox_speed():
   """Timing tests for the FlameInABox example using MRSDC."""
 
   setenv('Combustion/SMC/bin/FlameInABox', find_exe=True)
-  make()
 
   jobs = JobQueue(queue='regular', walltime="01:00:00")
 
-  dt0        = 6e-9
-  start_time = 0
-  stop_time  = start_time + dt0 * 70
-
-  nx            = 32
   max_grid_size = 32
-  nprocs        = nx**3 / max_grid_size**3
+  nprocs        = fbox.nx**3 / max_grid_size**3
 
   # reference run
-  dt   = 1e-9
+  dt   = fbox.dt_ref
   name = 'gl3_dt%e' % dt
-
-  job = Job(name=name, param_file='inputs-flamebox', rwd='speed/'+name, 
+  job  = Job(name=name, param_file='inputs-flamebox', rwd='speed/'+name, 
             width=nprocs, walltime="02:00:00")
   job.update_params(
-    advance_method=2, stop_time=stop_time,
-    sdc_nnodes=3, sdc_nnodes_chemistry=0, sdc_iters=4,
-    fixed_dt=dt, nx=nx, max_grid_size=max_grid_size)
-  jobs.add(job)
+    advance_method=2, stop_time=fbox.stop_time,
+    sdc_nnodes=3, sdc_nnodes_fine=0, sdc_iters=4,
+    fixed_dt=dt, nx=fbox.nx, max_grid_size=max_grid_size).add_to(jobs)
 
   # timing runs
-  for dt0 in [ 6e-9, 3e-9, 1.5e-9 ]:
+  for dt0 in fbox.dt:
 
     # single-rate sdc run
     dt   = dt0
     name = 'gl3_dt%e' % dt
-
-    job = Job(name=name, param_file='inputs-flamebox', rwd='speed/'+name, 
+    job = Job(name=name, param_file='inputs-flamebox', rwd='speed/'+name,
               width=nprocs, walltime="02:00:00")
     job.update_params(
-      advance_method=2, stop_time=stop_time,
-      sdc_nnodes=3, sdc_nnodes_chemistry=0, sdc_iters=4,
-      fixed_dt=dt, nx=nx, max_grid_size=max_grid_size)
-    jobs.add(job)
+      advance_method=2, stop_time=fbox.stop_time,
+      sdc_nnodes=3, sdc_nnodes_fine=0, sdc_iters=4,
+      fixed_dt=dt, nx=fbox.nx, max_grid_size=max_grid_size).add_to(jobs)
 
     # multi-rate sdc runs
-    dt   = 5*dt0
-    name = 'gl3.9_dt%e' % dt
-
-    job = Job(name=name, param_file='inputs-flamebox', rwd='speed/'+name, width=nprocs)
-    job.update_params(
-      advance_method=3, stop_time=stop_time,
-      sdc_nnodes=3, sdc_nnodes_chemistry=9, sdc_iters=5,
-      fixed_dt=dt, nx=nx, max_grid_size=max_grid_size)
-    jobs.add(job)
-
-    dt   = 7*dt0
-    name = 'gl3.13_dt%e' % dt
-
-    job = Job(name=name, param_file='inputs-flamebox', rwd='speed/'+name, width=nprocs)
-    job.update_params(
-      advance_method=3, stop_time=stop_time,
-      sdc_nnodes=3, sdc_nnodes_chemistry=13, sdc_iters=5,
-      fixed_dt=dt, nx=nx, max_grid_size=max_grid_size)
-    jobs.add(job)
+    for trat, nnodes in fbox.mrruns:
+      dt   = trat*dt0
+      name = 'gl3.9_dt%e' % dt
+      job  = Job(name=name, rwd='speed/'+name, param_file='inputs-flamebox',
+                 width=nprocs)
+      job.update_params(
+        advance_method=3, stop_time=fbox.stop_time,
+        sdc_nnodes=3, sdc_nnodes_fine=nnodes, sdc_iters=5,
+        fixed_dt=dt, nx=fbox.nx, max_grid_size=max_grid_size).add_to(jobs)
 
   jobs.submit_all()
+
+  
+@task
+def flamebox_speed_compare():
+  """Compute flamebox timing and errors."""
+
+  setenv('Combustion/SMC/bin/FlameInABox/speed')
+
+  ref  = 'gl3_dt%e' % fbox.dt_ref
+  norm = 0
+
+  errors = []
+
+  for dt0 in fbox.dt:
+
+    name = 'gl3_dt%e' % dt0
+    rt, nad, nr = compare.runtime(name)
+    error = compare.error(name, ref, fbox.stop_time,
+                          refratio=1, norm=norm, variable='pressure')
+
+    errors.append(SpeedTuple('gl3', dt0, error, rt, nad, nr))
+
+    for trat, nnodes in fbox.mrruns:
+      dt = trat*dt0
+      name = 'gl3.9_dt%e' % dt
+      rt, nad, nr = compare.runtime(name)
+      error = compare.error(name, ref, fbox.stop_time,
+                            refratio=1, norm=norm, variable='pressure')
+
+      errors.append(SpeedTuple('gl3.%d' % nnodes, dt0, error, rt, nad, nr))
+
+  with open('speed.pkl', 'w') as f:
+    pickle.dump(errors, f)
+
+    
+@task
+def flamebox_speed_plot():
+  """Plot flamebox timing and speed results."""
+
+  with open('speed.pkl', 'r') as f:
+    speed = pickle.load(f)
+
+    schemes = set([ x.scheme for x in speed ])
+
+    pens = {
+        'gl3': { 'marker': 'o', 'ms': 12, 'color': 'black', 'label': 'SR GL 3', 'lw': 2 },
+        'gl3.9': { 'marker': 's', 'ms': 12, 'color': 'blue', 'label': 'MR GL 3, 9', 'lw': 2 },
+        'gl3.13': { 'marker': '^', 'ms': 12, 'color': 'red' , 'label': 'MR GL 3, 13', 'lw': 2 },
+        }
+
+    # runtime vs dt
+    figure()
+    for scheme in schemes:
+        x, y = np.asarray(sorted([ (r.dt, r.runtime) for r in speed 
+                                   if r.scheme == scheme ])).transpose()
+        semilogx(x, y, **pens[scheme])
+
+    legend()
+    xlabel('dt')
+    ylabel('runtime')
+    savefig('mrsdc_runtime_vs_dt.eps')
+
+
+    # adv/diff evals vs dt
+    figure()
+    for scheme in schemes:
+        x, y = np.asarray(sorted([ (r.dt, r.ad_evals) for r in speed 
+                                   if r.scheme == scheme ])).transpose()
+        semilogx(x, y, **pens[scheme])
+
+    legend()
+    xlabel('dt')
+    ylabel('number of adv/diff evals')
+    savefig('mrsdc_nfevals_vs_dt.eps')
+
+    # runtime vs error
+    figure()
+    for scheme in schemes:
+        x, y = np.asarray(sorted([ (r.error, r.runtime) for r in speed 
+                                   if r.scheme == scheme ])).transpose()
+        semilogx(x, y, **pens[scheme])
+
+    legend()
+    xlabel('error')
+    ylabel('runtime')
+    savefig('mrsdc_error_vs_runtime.eps')
+
+
+    # adv/diff evals vs error
+    figure()
+    for scheme in schemes:
+        x, y = np.asarray(sorted([ (r.error, r.ad_evals) for r in speed 
+                                   if r.scheme == scheme ])).transpose()
+        semilogx(x, y, **pens[scheme])
+
+    legend()
+    xlabel('error')
+    ylabel('number of adv/diff evals')
+    savefig('mrsdc_nfevals_vs_error.eps')
+
+    # error vs dt
+    figure()
+    for scheme in schemes:
+        x, y = np.asarray(sorted([ (r.dt, r.error) for r in speed 
+                                   if r.scheme == scheme ])).transpose()
+        loglog(x, y, **pens[scheme])
+
+    legend()
+    xlabel('dt')
+    ylabel('error')
+    savefig('mrsdc_error_vs_dt.eps')
+    
 
 
 ###############################################################################
@@ -89,7 +199,6 @@ def flameball_mrconv():
 
   setenv('Combustion/SMC/bin/FlameBall', find_exe=True)
   rsync()
-  make()
 
   jobs = JobQueue(rwd=env.rwd, queue='regular')
 
@@ -160,7 +269,6 @@ def flameball_stconv():
   """Convergence tests for the FlameBall example."""
 
   setenv('Combustion/SMC/bin/FlameBall', find_exe=True)
-  make()
 
   jobs = JobQueue(rwd=env.rwd, queue='regular')
 
@@ -202,94 +310,18 @@ def flameball_stconv():
 
 
 ###############################################################################
-# compute/plot tasks
-
-@task
-def flameball_mrconv_comp():
-  """Compute convergence errors (run mrconv-comp.py) on the remote host."""
-  setenv()
-  rsync()
-
-  if env.host == 'hopper' or env.host[:6] == 'edison':
-    with prefix('module load numpy'):
-      with cd(env.scratch + '/Combustion/SMC/analysis'):
-        run('python mrconv-comp.py')
-  elif env.host[:5] == 'gigan':
-    with cd(env.scratch + '/Combustion/SMC/analysis'):
-      run('/home/memmett/venv/base/bin/python mrconv-comp.py')
-
-
-@task
-def flameball_mrconv_plot():
-  """Get convergence results and plot them (run mrconv-plot.py) on the local host."""
-  setenv()
-  get(env.scratch + 'Combustion/SMC/analysis/mrconv.pkl', 'mrconv.pkl')
-  local(env.python + ' mrconv-plot.py')
-
-
-@task
-def flameball_stconv_comp():
-  """Compute convergence errors (run stconv-comp.py) on the remote host."""
-  setenv()
-  rsync()
-
-  if env.host == 'hopper' or env.host[:5] == 'edison':
-    with prefix('module load numpy'):
-      with cd(env.scratch + '/Combustion/SMC/analysis'):
-        run('python stconv-comp.py')
-  elif env.host[:5] == 'gigan':
-    with cd(env.scratch + '/Combustion/SMC/analysis'):
-      run('/home/memmett/venv/base/bin/python stconv-comp.py')
-
-
-@task
-def flameball_stconv_plot():
-  """Get convergence results and plot them (run stconv-plot.py) on the local host."""
-  setenv()
-  get(env.scratch + 'Combustion/SMC/analysis/stconv.pkl', 'stconv.pkl')
-  local(env.python + ' stconv-plot.py')
-
-
-@task
-def flamebox_speed_comp():
-  """Compute convergence errors (run speed-comp.py) on the remote host."""
-  setenv()
-  rsync()
-
-  if env.host[:6] == 'hopper' or env.host[:6] == 'edison':
-    with prefix('module load numpy'):
-      with cd(env.scratch + '/Combustion/SMC/analysis'):
-        run('python speed-comp.py')
-  elif env.host[:5] == 'gigan':
-    with cd(env.scratch + '/Combustion/SMC/analysis'):
-      run('/home/memmett/venv/base/bin/python speed-comp.py')
-
-
-@task
-def flamebox_speed_plot():
-  """Get convergence results and plot them (run stconv-plot.py) on the local host."""
-  setenv()
-  get(env.scratch + 'Combustion/SMC/analysis/speed.pkl', 'speed.pkl')
-  local(env.python + ' speed-plot.py')
-
-
-###############################################################################
 # build, rsync, setenv etc
 
 @task
-def flamebox_build():
-  """Sync and make the FlameInABox example."""
+def build(bin):
+  """Sync and build according to env.bin."""
 
-  setenv('Combustion/SMC/bin/FlameInABox')
-  make()
+  setenv(bin=bin)
+  rsync()
 
-
-@task
-def flameball_build():
-  """Sync and make the FlameBall example."""
-
-  setenv('Combustion/SMC/bin/FlameBall')
-  make()
+  with cd(env.rwd):
+    run('rm -f *.exe')
+    run('make -j 4')
 
 
 @task
@@ -300,21 +332,19 @@ def rsync():
     return
 
   for src, dst in env.rsync:
-      command = "rsync -avz -F {src}/ {host}:{dst}".format(
-          host=env.host_rsync, src=src, dst=dst)
+      command = "rsync -aFvz {src}/ {host}:{dst}".format(
+          host=env.host_string, src=src, dst=dst)
       local(command)
 
 
-@task
-def make(make_args=''):
-  """Run make in the env.rwd directory on the remote host."""
-
-  with cd(env.rwd):
-    run('make ' + make_args)
-
-
-def setenv(rwd=None, find_exe=False):
+def setenv(rwd=None, bin=None, find_exe=False):
   """Setup Fabric and jobtools environment."""
+
+  env.debug = False
+
+  if bin is not None:
+    rwd = { 'flamebox': 'Combustion/SMC/bin/FlameInABox',
+            'flameball': 'Combustion/SMC/bin/FlameBall' }[bin]
 
   projects = '/home/memmett/projects/'
 
@@ -322,11 +352,6 @@ def setenv(rwd=None, find_exe=False):
     env.scratch     = '/scratch1/scratchdirs/memmett/'
     env.scheduler   = 'edison'
     env.host_string = 'edison.nersc.gov'
-    env.host_rsync  = 'edison-s'
-    # env.exe         = 'main.Linux.Intel.prof.mpi.omp.exe'
-    # env.exe         = 'main.Linux.Intel.debug.prof.omp.exe'
-    # env.exe = 'main.Linux.gfortran.prof.mpi.omp.exe'
-    env.exe = 'main.Linux.Intel.prof.mpi.omp.exe'
 
     env.depth   = 8
     env.pernode = 2
@@ -335,28 +360,23 @@ def setenv(rwd=None, find_exe=False):
     env.scratch     = '/scratch/scratchdirs/memmett/'
     env.scheduler   = 'hopper'
     env.host_string = 'hopper.nersc.gov'
-    env.host_rsync  = 'hopper-s'
-    env.exe         = 'main.Linux.gfortran.prof.mpi.omp.exe'
 
     env.depth   = 6
     env.pernode = 4
 
     env.aprun_opts = [ '-cc numa_node' ]
 
-
   elif env.host[:5] == 'gigan':
-    env.scratch     = '/scratch/memmett/'
+    env.scratch     = '/scratch1/memmett/'
     env.scheduler   = 'serial'
     env.host_string = 'gigan.lbl.gov'
-    env.host_rsync  = 'gigan-s'
-    env.exe         = 'main.Linux.gfortran.omp.exe'
+    env.ffdcompare  = env.scratch + 'AmrPostprocessing/F_Src/ffdcompare.Linux.gfortran.exe'
 
     env.width = 1
-    env.depth = 16
+    env.depth = 8
 
   if rwd:
     env.rwd = env.scratch + rwd
-
 
   if find_exe:
     with cd(env.rwd):

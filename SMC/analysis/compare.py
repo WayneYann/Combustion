@@ -1,61 +1,29 @@
 
-from __future__ import with_statement
+from fabric.api import *
 
-import glob
 import os
 import re
-import subprocess
-
-
-class Container(object):
-    pass
-env = Container()
-
-def setenv(rwd=None, debug=False):
-    import socket
-    host = socket.gethostname()
-
-    env.debug = debug
-
-    if host == 'gigan':
-        env.scratch    = '/scratch/memmett/Combustion/SMC/bin/FlameBall/'
-        env.ffdcompare = '/scratch/memmett/AmrPostprocessing/F_Src/ffdcompare.Linux.gfortran.exe'
-    elif host[:6] == 'hopper':
-        env.scratch    = '/scratch/scratchdirs/memmett/'
-        env.ffdcompare = '/global/homes/m/memmett/projects/AmrPostprocessing/F_Src/ffdcompare.Linux.gfortran.exe'
-
-    elif host[:6] == 'edison':
-        env.scratch    = '/scratch1/scratchdirs/memmett/'
-        env.ffdcompare = '/global/homes/m/memmett/projects/AmrPostprocessing/F_Src/ffdcompare.Linux.gfortran.exe'
-
-    if rwd:
-        env.rwd = rwd
-
+from StringIO import StringIO
 
 
 def find_plotfile(rundir, time):
   """Return plotfile with time *time* in run directory *rundir*."""
 
-  plts = glob.glob(os.path.join(env.scratch, env.rwd, rundir, 'plt*'))
-  if env.debug:
-      print rundir, len(plts)
-  for plt in plts:
-    with open(plt + '/Header', 'r') as f:
-      header = f.read().split('\n')
-    ncomp = int(header[1])
-    plttime = float(header[ncomp+3])
-    if env.debug:
-        print rundir, plttime, time
-    if abs(plttime - time) < 1e-18:
-      return plt
+  with cd(os.path.join(env.rwd, rundir)):
+    program = [ "function abs(x) { if (x<0.0) return -x; return x }",
+                "FNR==2 { ncomp=$1 }",
+                "FNR==ncomp+4 { if (abs($1-%e) < 1e-18) print(FILENAME) }" % time ]
+    header = run("awk '%s' plt*/Header" % '; '.join(program), quiet=True)
+    if header:
+      return os.path.join(rundir, header.split('/')[0])
 
   return None
 
 
 def compare(p1, p2, variable, norm=0):
 
-  proc = subprocess.Popen([env.ffdcompare, '--infile1', p1, '--infile2', p2], stdout=subprocess.PIPE)
-  output, _ = proc.communicate()
+  with cd(env.rwd):
+    output = run('%s --infile1 %s --infile2 %s' % (env.ffdcompare, p1, p2), quiet=True)
   
   for l in output.split('\n'):
     r = l.split()
@@ -65,18 +33,18 @@ def compare(p1, p2, variable, norm=0):
   return None
 
 
-def runtime(run):
+def runtime(rundir):
 
-  with open(os.path.join(env.scratch, env.rwd, run, 'stdout'), 'r') as f:
-    stdout = f.read()
+  with cd(os.path.join(env.rwd, rundir)):
+    out = run('grep -e "Total Run Time =" -e "AD fevals =" -e "R  fevals =" stdout', quiet=True)
 
-  m = re.search(r"Total Run Time =\s*(\S*)", stdout)
+  m = re.search(r"Total Run Time =\s*(\S*)", out)
   time = float(m.group(1)) if m else -1.0
 
-  m = re.search(r"AD fevals =\s*(\S*)", stdout)
+  m = re.search(r"AD fevals =\s*(\S*)", out)
   nad = int(m.group(1)) if m else -1
 
-  m = re.search(r"R  fevals =\s*(\S*)", stdout)
+  m = re.search(r"R  fevals =\s*(\S*)", out)
   nr = int(m.group(1)) if m else -1
 
   return time, nad, nr
@@ -84,7 +52,6 @@ def runtime(run):
 
 def error(rundir1, rundir2, time, norm=2, variable='pressure', refratio=1, diff=None):
   """Compute the error of *variable* between runs at time *time*."""
-
 
   print 'computing errors:', rundir1, rundir2, time, variable, refratio
 
