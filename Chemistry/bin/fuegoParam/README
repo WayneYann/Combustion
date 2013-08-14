@@ -1,0 +1,78 @@
+
+FuegoParam
+
+This is a work-in-progress folder containing code for using the
+"parameterized version" of the fuego-generated chemistry routines I'll
+call "FuegoParam".
+
+FeugoParam is a modified version of the standard CCSE code for
+generating hard-coded chemistry function evaluators based on ChemKin
+input files.  The original fuego code hard-codes all mechanism
+parameters into the eval routines, resulting in highly efficient code
+tuned for each mechanism specifically.  This version leaves a subset
+of the parameters (the "active set") as runtime-accessible variables
+(for the purposes of various optimization and sampling strategies).
+Note that not all the parameters are accessible this way.  In
+particular, the thermodynamics and transport databases are currently
+unavailable, as are the third-body coefficients.  Also, if the
+original mechanism declares a reaction to be pressure-dependent, that
+is not alterable either.  At the moment, the complete set of active
+parameters includes the Arrhenius coefficients (A,Beta,Ea) for the
+forward (and explicit reverse, if specified) reactions, and those of
+the low-temperature parameterization for pressure-dependent ones, as
+well as the Troe/SRI factors.  Others may be added as the project
+progresses.
+
+The following is a list of deviations from the "normal" CCSE build
+process in order to get this all to hang together.
+
+1. Source code locations: In the GNUmakefile, the usual BoxLib and
+combustion chemistry folder locations are set.  However, the paths are
+modified to first look in the local folder "hacked_src" for
+alternative generic code, and in one of the "data" folders for the
+fuego-generated src (see 2.).
+
+2. Fuego: Fuego is a python script (actually a whole library of them)
+for reading a ChemKin input file and generating c code that implements
+specialized versions of a number of ChemKin functions.  The CCSE
+combustion repo includes a standardized set of script files and
+instructions for generating fuego code.  The main 'serialization'
+script that generates c code has been modified for our purposes here.
+So, while usage instructions are similar, they had to be modified to
+access the appropriate modified code.  Specifically, to generate a new
+c file from one of the existing folders in the stock database, do the
+following (we'll use the Lu DME mech here as an example):
+
+   <from within the fuegoParam folder...>
+   export CCSE_DIR=../../../../../..  (should be a folder containing BoxLib)
+
+   . Fuego/setup.sh  (this will set some paths to enable running python)
+
+   cp -r ../../data/Lu data  (this has already been done for the Lu case)
+
+   cd data/Lu
+         (edit the "make-LuDME.sh" file so that CHEMTOOLSDIR=../../../../tools)
+
+   ./make-LuDME.sh  (this will generate the file LuDME.c)
+
+   cd ../.. (then build the test code...)
+
+3. Example data location: If you build the LuMDE version, a handy 
+datafile for testing should be in ../vodeDriver.  After building,
+you should be able to run with one of those files directly, e.g.:
+
+   make  (from within the fuegoParam folder to build the exec "driver2d.....ex")
+   driver2d.....ex pmf_file=../vodeDriver/pmf_file=../vodeDriver/dme_0700_1444pt.fab
+
+ where "driver2d....ex" is the BoxLib-generated name of the test executable.
+ Note that at the moment, the pmf data is not actually used by the test driver,
+ but it will be soon.
+
+Contact me if any of this doesn't make sense, or if the steps as described
+fail on your platform.  I've had success running this stuff on an Ubuntu
+desktop and a Mac laptop, so I'm reasonably hopeful fixes wont be too
+difficult.
+
+Good luck,
+-Marc, 510-486-5076
+
