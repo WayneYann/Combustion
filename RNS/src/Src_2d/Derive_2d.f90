@@ -153,7 +153,7 @@ subroutine rns_dermagvort(vort,  v_l1,  v_l2,  v_h1,  v_h2,nv, &
      do i = lo(1), hi(1)
         uy = 0.5d0 * (u(i,j+1) - u(i,j-1)) * dxinv(2) 
         vx = 0.5d0 * (v(i+1,j) - v(i-1,j)) * dxinv(1)
-        vort(i,j,1) = abs(vx - uy)
+        vort(i,j,1) = uy - vx
      end do
   end do
 

@@ -297,7 +297,7 @@
       if (level .lt. max_vorterr_lev) then
          do j = lo(2), hi(2)
             do i = lo(1), hi(1)
-               if (vort(i,j,1) .ge. vorterr) then
+               if (abs(vort(i,j,1)) .ge. vorterr) then
                   tag(i,j) = set
                endif
             enddo
