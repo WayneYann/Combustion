@@ -6,7 +6,8 @@ TRANINP=tran.dat
 FINALFILE=LuDME.c
 
 CONVERT=${CHEMTOOLSDIR}/convert/convert.exe
-FMC=${CHEMTOOLSDIR}/fuego/Pythia/products/bin/fmc.py
+#FMC=${CHEMTOOLSDIR}/fuego/Pythia/products/bin/fmc.py
+FMC=../../Fuego/bin/fmc.py
 
 CHEMLK=chem.asc
 LOG=chem.log
