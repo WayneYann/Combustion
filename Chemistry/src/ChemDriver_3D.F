@@ -1581,9 +1581,9 @@ c     terminate the LMC_SDC ifdef
          invmwt(n) = one / invmwt(n)
       end do
 
+      if (use_eg .eq. 1) then
 !$omp parallel do private(i,j,k,n,Yt,Tt,alpha,Dt,Wavg)
 !$omp&private(CPMS,X,RHO,l1,l2)
-      if (use_eg .eq. 1) then
          do k=lo(3),hi(3)
             do j=lo(2),hi(2)
                do i=lo(1),hi(1)
@@ -1633,6 +1633,7 @@ c     terminate the LMC_SDC ifdef
                end do
             end do
          end do
+!$omp end parallel do
       else if (use_mc .eq. 1) then
          do k=lo(3),hi(3)
             do j=lo(2),hi(2)
@@ -1681,7 +1682,6 @@ c     terminate the LMC_SDC ifdef
             end do
          end do
       endif
-!$omp end parallel do
 
       end
 
@@ -1709,8 +1709,8 @@ c     terminate the LMC_SDC ifdef
       ! using EGLib. Note that SCAL converts assumed cgs units to
       ! MKS (1 g/cm.s = .1 kg/m.s)
       !
-!$omp parallel do private(i,j,k,n,Yt,Tt,CPMS,X)
       if (use_eg .eq. 1) then
+!$omp parallel do private(i,j,k,n,Yt,Tt,CPMS,X)
          do k=lo(3),hi(3)
             do j=lo(2),hi(2)
                do i=lo(1),hi(1)
@@ -1726,6 +1726,7 @@ c     terminate the LMC_SDC ifdef
                end do
             end do
          end do
+!$omp end parallel do
       else if (use_mc .eq. 1) then
          do k=lo(3),hi(3)
             do j=lo(2),hi(2)
@@ -1741,7 +1742,6 @@ c     terminate the LMC_SDC ifdef
             end do
          end do
       endif
-!$omp end parallel do
 
       end
 
