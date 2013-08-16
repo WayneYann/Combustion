@@ -82,10 +82,15 @@ else ifeq ($(CHEMISTRY_MODEL),GRI30)
   csources += grimech30.c
   vpath %.c   $(VPATH_LOCATIONS) $(CHEMISTRY_DIR)/data/gri
   vpath %.f   $(VPATH_LOCATIONS) $(CHEMISTRY_DIR)/data/gri/PMFs
-else ifeq ($(CHEMISTRY_MODEL),LUDEM)
+else ifeq ($(CHEMISTRY_MODEL),LUDME)
   csources += LuDME.c
   vpath %.c   $(VPATH_LOCATIONS) $(CHEMISTRY_DIR)/data/Lu
   vpath %.f   $(VPATH_LOCATIONS) $(CHEMISTRY_DIR)/data/Lu/PMFs
+else ifeq ($(CHEMISTRY_MODEL),LUDMEDS)
+  csources += LuDME-DS.c
+  fsources += ckwyp.f
+  vpath %.c   $(VPATH_LOCATIONS) $(CHEMISTRY_DIR)/data/Lu-destiff
+  vpath %.f   $(VPATH_LOCATIONS) $(CHEMISTRY_DIR)/data/Lu-destiff
 endif
 
 ifdef CONVERGENCE
