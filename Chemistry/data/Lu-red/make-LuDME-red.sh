@@ -3,7 +3,7 @@ CHEMTOOLSDIR=../../tools
 CHEMINP=chem.inp
 THERMINP=therm.dat
 TRANINP=tran.dat
-FINALFILE=LuDME-DS.c
+FINALFILE=LuDME-red.c
 
 CONVERT=${CHEMTOOLSDIR}/convert/convert.exe
 FMC=${CHEMTOOLSDIR}/fuego/Pythia/products/bin/fmc.py
