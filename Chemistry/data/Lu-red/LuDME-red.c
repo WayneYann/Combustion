@@ -2449,7 +2449,7 @@ void VCKWYR(int * restrict np, double * restrict rho, double * restrict T,
 	    double * restrict y, int * restrict iwrk, double * restrict rwrk,
 	    double * restrict wdot)
 {
-    printf("VCKWYR not supported!");
+    printf("VCKWYR not supported!\n");
     exit(1);
 }
 
@@ -3317,7 +3317,7 @@ void vproductionRate(int npt, double * restrict wdot, double * restrict sc, doub
 /*compute the reaction Jacobian */
 void DWDOT(double * restrict  J, double * restrict  sc, double * Tp, int * consP)
 {
-    printf("DWDOT not supported!");
+    printf("DWDOT not supported!\n");
     exit(1);
 }
 

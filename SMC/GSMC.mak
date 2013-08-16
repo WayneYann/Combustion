@@ -86,11 +86,11 @@ else ifeq ($(CHEMISTRY_MODEL),LUDME)
   csources += LuDME.c
   vpath %.c   $(VPATH_LOCATIONS) $(CHEMISTRY_DIR)/data/Lu
   vpath %.f   $(VPATH_LOCATIONS) $(CHEMISTRY_DIR)/data/Lu/PMFs
-else ifeq ($(CHEMISTRY_MODEL),LUDMEDS)
-  csources += LuDME-DS.c
+else ifeq ($(CHEMISTRY_MODEL),LUDMERED)
+  csources += LuDME-red.c
   fsources += ckwyp.f
-  vpath %.c   $(VPATH_LOCATIONS) $(CHEMISTRY_DIR)/data/Lu-destiff
-  vpath %.f   $(VPATH_LOCATIONS) $(CHEMISTRY_DIR)/data/Lu-destiff
+  vpath %.c   $(VPATH_LOCATIONS) $(CHEMISTRY_DIR)/data/Lu-red
+  vpath %.f   $(VPATH_LOCATIONS) $(CHEMISTRY_DIR)/data/Lu-red
 endif
 
 ifdef CONVERGENCE
