@@ -10,7 +10,6 @@ const Real HtoTerrMAX_DEF  = 1.e-8;
 const int  HtoTiterMAX_DEF = 20;
 const Real Tmin_trans_DEF  = 0.;
 const ChemDriver::TRANSPORT transport_DEF = ChemDriver::CD_EG;
-const std::string tranlib_linking_file="tran.asc";
 
 namespace
 {
@@ -30,18 +29,6 @@ extern "C" {
 
   int FORT_USINGMC() {
     return (int)(transport == ChemDriver::CD_TRANLIB);
-  }
-
-  void FORT_MCLINKNAME(int* codedName, int* len, int* maxlen) {
-    Array<int> file = ChemDriver::encodeStringForFortran(tranlib_linking_file);
-    *len = file.size();
-    if (*len > *maxlen) {
-      BoxLib::Abort("Fort memory bust...need more space for tranlib linking file name");
-    }
-
-    for (int i=0; i<file.size(); ++i) {
-      codedName[i] = file[i];
-    }
   }
 }
 
