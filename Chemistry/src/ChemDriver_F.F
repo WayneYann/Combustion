@@ -86,36 +86,6 @@ c
  40   continue 
       end
 
-      subroutine open_mclink(LINKMC)
-      implicit none
-#include "cdwrk.H"
-      integer maxlen
-      parameter (maxlen=256)
-      character filet*(maxlen)
-      character*(maxspnml) spname, spinname
-      integer LINKMC, nlength, name(maxlen), i, j
-      REAL_T val
-
-      call FORT_MCLINKNAME(name,nlength,maxlen)
-c      
-c     Convert encoded names to strings, and open file
-c
-      if (nlength.GT.maxlen) then
-         call bl_abort('open_mclink: mc linking file name too long')
-      end if
-      
-      do i = 1, nlength
-         filet(i:i) = char(name(i))
-      end do
-
-      open(unit=LINKMC,status='OLD',form='FORMATTED',
-     &     file=filet(1:nlength),err=30)
-      goto 40
- 30   write(6,*) 'Trouble opening file = ',filet(1:nlength)
-      call bl_abort(" ")
- 40   continue 
-      end
-
       subroutine FORT_INITCHEM()
       implicit none
 #include "cdwrk.H"
@@ -183,21 +153,15 @@ c
          call EGINICD(eg_nodes, lout, eg_IFLAG, eg_ITLS,
      &        EGRWRK, egrlen, EGIWRK, egilen)
          use_eg = 1
-
-         print *,'Using eglib'
       else if (FORT_USINGMC() .eq. 1) then
          allocate(MCRWRK(mcr))
          allocate(MCIWRK(mci))
-         call open_mclink(LLINKMC)
-         CALL MCINITCD (LLINKMC, LOUTCK, mci, mcr, MCIWRK, MCRWRK, ierr)
+         CALL MCINITCD (LOUTCK, mci, mcr, MCIWRK, MCRWRK, ierr)
          if (ierr .gt. 0) then
             WRITE(LOUTCK,*)' QUITTING BECAUSE MCINIT IFLAG = ', ierr
             call bl_abort(" ")
          end if
-         close(LLINKMC)
          use_mc = 1
-
-         print *,'Using tranlib'
       else
          write(6,*) 'Unknown transport library'
          call bl_abort(" ")
@@ -563,12 +527,12 @@ C-----------------------------------------------------------------------
       RETURN
       END
 
-      SUBROUTINE MCINITCD (LINKMC, LOUT, LENIMC, LENRMC, IMCWRK, RMCWRK,
+      SUBROUTINE MCINITCD (LOUT, LENIMC, LENRMC, IMCWRK, RMCWRK,
      1           IFLAG)
 C
 C  START PROLOGUE
 C
-C  SUBROUTINE MCINIT (LINKMC, LOUT, LENIMC, LENRMC, IMCWRK, RMCWRK,
+C  SUBROUTINE MCINIT (LOUT, LENIMC, LENRMC, IMCWRK, RMCWRK,
 C                     IFLAG)
 C  This subroutine reads the transport linkfile from the fitting code
 C  and creates the internal storage and work arrays, IMCWRK(*) and
@@ -577,7 +541,6 @@ C  subroutine is called.  It must be called after the CHEMKIN package
 C  is initialized.
 C
 C  INPUT
-C  LINKMC    - Integer scalar, transport linkfile input unit number.
 C  LOUT      - Integer scalar, formatted output file unit number.
 C  LENIMC    - Integer scalar, minimum dimension of the integer
 C              storage and workspace array IMCWRK(*);
@@ -682,12 +645,12 @@ C
       IF (.NOT.IOK .OR. .NOT.ROK) THEN
          IF (.NOT. IOK) WRITE (LOUT, 300) LI
          IF (.NOT. ROK) WRITE (LOUT, 350) LR
-         REWIND (LINKMC)
+c         REWIND (LINKMC)
          IFLAG = 1
          RETURN
       ENDIF
 C
-      REWIND LINKMC
+c      REWIND LINKMC
 C*****linkfile (transport) > binary
 C      LBIN = .TRUE.
 C*****END linkfile (transport) > binary
@@ -905,8 +868,8 @@ C
   350 FORMAT (10X,'RMCWRK MUST BE DIMENSIONED AT LEAST ', I5)
       RETURN
   999 CONTINUE
-      WRITE (LOUT, *) ' Error reading Transport linkfile...'
-      REWIND (LINKMC)
+c      WRITE (LOUT, *) ' Error reading Transport linkfile...'
+c      REWIND (LINKMC)
       IFLAG = NREC
 C
 C     end of SUBROUTINE MCINITCD

@@ -440,19 +440,22 @@ c ::: -----------------------------------------------------------
 
                   if(probtype(1:len).eq.BL_PROB_PREMIXED_FREE)then
 
+                     iO2 = -1; iH2 = -1; iCH4 = -1
 
                     do n = 1,Nspec
                        Xlin(n) = 0.d0
                     end do
+
                     alpha = H2_frac
                     beta = 1.d0 - H2_frac
                     gamma = (0.5d0*alpha + 2.d0*beta) / phi_in
                     delt = gamma*.79d0/.21d0
                     factor = alpha+beta +gamma+delt
-                    Xlin(iH2) = alpha / factor
-                    Xlin(iCH4) = beta / factor
-                    Xlin(iO2) = gamma / factor
-                    Xlin(iN2) = delt / factor
+
+                    if (iH2  > 0) Xlin(iH2) = alpha / factor
+                    if (iCH4 > 0) Xlin(iCH4) = beta / factor
+                    if (iO2  > 0) Xlin(iO2) = gamma / factor
+                    if (iN2  > 0) Xlin(iN2) = delt / factor
 
 c                 blend here if needed
                   if( scal(i,j,k,Temp) .lt. T_switch)then
