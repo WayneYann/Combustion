@@ -826,6 +826,14 @@ c     1   (((COFD(N,J,K), N=1,NO), J=1,KK), K=1,KK)
 c      call write3DRealArrayFn('COFD',COFD,NO,KK,KK,LINMC)
       call write3DDoubleArrayFn('COFD',COFD,NO,KK,KK,LINMC)
 C
+c      WRITE (LINMC, ERR=5002) (KTDIF(N), N = 1, NLITE)
+      call writeIntArrayFn('KTDIF',KTDIF,NLITE,LINMC)
+
+c      WRITE (LINMC, ERR=5002)
+c     1   (((COFTD(N,J,L), N=1,NO), J=1,KK), L=1,NLITE)
+      call write3DDoubleArrayFn('COFTD',COFTD,NO,KK,NLITE,LINMC)
+
+
       RETURN
 C
 C ERROR HANDLING
