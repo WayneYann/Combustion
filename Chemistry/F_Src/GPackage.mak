@@ -15,3 +15,5 @@ endif
 f90sources += vode_module.f90
 fsources += vode.f LinAlg.f
 
+f90sources += tranlib_module.f90
+fsources += tranlib_d.f math_d.f
