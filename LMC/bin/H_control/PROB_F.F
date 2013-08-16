@@ -196,12 +196,12 @@ c ::: -----------------------------------------------------------
 c
 c      Build `probin' filename -- the name of file containing fortin namelist.
 c
-      integer maxlen, nCompFile, isioproc
+      integer maxlen, isioproc
       parameter (maxlen=256)
       character probin*(maxlen)
 
 #if defined(BL_DO_FLCT)
-      integer ierr
+      integer ierr, nCompFile
 #endif
 
 
@@ -718,6 +718,8 @@ c     Set amplitudes
 
       if (probtype(1:len).eq.BL_PROB_PREMIXED_FREE) then
 
+         iO2 = -1; iH2 = -1; iCH4 = -1
+
         do n=1,Nspec
             call get_spec_name(name,n)
             if (name .eq. 'N2' ) iN2 = n
@@ -729,15 +731,16 @@ c     Set amplitudes
         do n = 1,Nspec
            Xt(n) = 0.d0
         end do
+
         alpha = H2_frac
         beta = 1.d0 - H2_frac
         gamma = (0.5d0*alpha + 2.d0*beta) / phi_in
         delt = gamma*.79d0/.21d0
         factor = alpha+beta +gamma+delt
-        Xt(iH2) = alpha / factor
-        Xt(iCH4) = beta / factor
-        Xt(iO2) = gamma / factor
-        Xt(iN2) = delt / factor
+        if (iH2  > 0) Xt(iH2) = alpha / factor
+        if (iCH4 > 0) Xt(iCH4) = beta / factor
+        if (iO2  > 0) Xt(iO2) = gamma / factor
+        if (iN2  > 0) Xt(iN2) = delt / factor
 
       else
 
