@@ -2397,21 +2397,8 @@ void CKABMS(double * restrict P, double * restrict T, double * restrict y, int *
 /*compute the production rate for each species */
 void CKWC(double * restrict  T, double * restrict  C, int * iwrk, double * restrict  rwrk, double * restrict  wdot)
 {
-    int id; /*loop counter */
-
-    /*convert to SI */
-    for (id = 0; id < 30; ++id) {
-        C[id] *= 1.0e6;
-    }
-
-    /*convert to chemkin units */
-    productionRate(wdot, C, *T);
-
-    /*convert to chemkin units */
-    for (id = 0; id < 30; ++id) {
-        C[id] *= 1.0e-6;
-        wdot[id] *= 1.0e-6;
-    }
+    printf("CKWC not supported!\n");
+    exit(1);
 }
 
 
@@ -2449,8 +2436,19 @@ void VCKWYR(int * restrict np, double * restrict rho, double * restrict T,
 	    double * restrict y, int * restrict iwrk, double * restrict rwrk,
 	    double * restrict wdot)
 {
-    printf("VCKWYR not supported!\n");
-    exit(1);
+    double wdott[30], Yt[30];
+    for (int i=0; i<*np; i++) 
+    {
+	for (int n=0; n<30; n++)
+	{
+	    Yt[n] = y[n*(*np)+i];
+	}
+	CKWYR(rho, T, Yt, iwrk, rwrk, wdott);
+	for (int n=0; n<30; n++)
+	{
+	    wdot[n*(*np)+i] = wdott[n];
+	}	
+    }
 }
 
 
@@ -2468,24 +2466,8 @@ void CKWXR(double * restrict  rho, double * restrict  T, double * restrict  x, i
 /*Returns the rate of progress for each reaction */
 void CKQC(double * restrict  T, double * restrict  C, int * iwrk, double * restrict  rwrk, double * restrict  qdot)
 {
-    int id; /*loop counter */
-
-    /*convert to SI */
-    for (id = 0; id < 30; ++id) {
-        C[id] *= 1.0e6;
-    }
-
-    /*convert to chemkin units */
-    progressRate(qdot, C, *T);
-
-    /*convert to chemkin units */
-    for (id = 0; id < 30; ++id) {
-        C[id] *= 1.0e-6;
-    }
-
-    for (id = 0; id < 3; ++id) {
-        qdot[id] *= 1.0e-6;
-    }
+    printf("CKQC not supported!\n");
+    exit(1);
 }
 
 
@@ -2493,23 +2475,8 @@ void CKQC(double * restrict  T, double * restrict  C, int * iwrk, double * restr
 /*Given P, T, and mole fractions */
 void CKKFKR(double * restrict  P, double * restrict  T, double * restrict  x, int * iwrk, double * restrict  rwrk, double * restrict  q_f, double * restrict  q_r)
 {
-    int id; /*loop counter */
-    double c[30]; /*temporary storage */
-    double PORT = 1e6 * (*P)/(8.31451e+07 * (*T)); /*1e6 * P/RT so c goes to SI units */
-
-    /*Compute conversion, see Eq 10 */
-    for (id = 0; id < 30; ++id) {
-        c[id] = x[id]*PORT;
-    }
-
-    /*convert to chemkin units */
-    progressRateFR(q_f, q_r, c, *T);
-
-    /*convert to chemkin units */
-    for (id = 0; id < 3; ++id) {
-        q_f[id] *= 1.0e-6;
-        q_r[id] *= 1.0e-6;
-    }
+    printf("CKKFKR not supported!\n");
+    exit(1);
 }
 
 
@@ -2517,84 +2484,8 @@ void CKKFKR(double * restrict  P, double * restrict  T, double * restrict  x, in
 /*Given P, T, and mass fractions */
 void CKQYP(double * restrict  P, double * restrict  T, double * restrict  y, int * iwrk, double * restrict  rwrk, double * restrict  qdot)
 {
-    int id; /*loop counter */
-    double c[30]; /*temporary storage */
-    double YOW = 0; 
-    double PWORT; 
-    /*Compute inverse of mean molecular wt first */
-    YOW += y[0]*imw[0]; /*H */
-    YOW += y[1]*imw[1]; /*H2 */
-    YOW += y[2]*imw[2]; /*CH3 */
-    YOW += y[3]*imw[3]; /*O */
-    YOW += y[4]*imw[4]; /*CH4 */
-    YOW += y[5]*imw[5]; /*OH */
-    YOW += y[6]*imw[6]; /*H2O */
-    YOW += y[7]*imw[7]; /*C2H2 */
-    YOW += y[8]*imw[8]; /*CO */
-    YOW += y[9]*imw[9]; /*C2H4 */
-    YOW += y[10]*imw[10]; /*C2H5 */
-    YOW += y[11]*imw[11]; /*CH2O */
-    YOW += y[12]*imw[12]; /*C2H6 */
-    YOW += y[13]*imw[13]; /*CH3O */
-    YOW += y[14]*imw[14]; /*O2 */
-    YOW += y[15]*imw[15]; /*HO2 */
-    YOW += y[16]*imw[16]; /*H2O2 */
-    YOW += y[17]*imw[17]; /*CO2 */
-    YOW += y[18]*imw[18]; /*CH3HCO */
-    YOW += y[19]*imw[19]; /*HCOOH */
-    YOW += y[20]*imw[20]; /*CH3OCH3 */
-    YOW += y[21]*imw[21]; /*CH3OCO */
-    YOW += y[22]*imw[22]; /*CH3OCHO */
-    YOW += y[23]*imw[23]; /*CH3OCH2OH */
-    YOW += y[24]*imw[24]; /*OCH2OCHO */
-    YOW += y[25]*imw[25]; /*HOCH2OCO */
-    YOW += y[26]*imw[26]; /*CH3OCH2O2 */
-    YOW += y[27]*imw[27]; /*HO2CH2OCHO */
-    YOW += y[28]*imw[28]; /*O2CH2OCH2O2H */
-    YOW += y[29]*imw[29]; /*N2 */
-    /*PW/RT (see Eq. 7) */
-    PWORT = (*P)/(YOW * 8.31451e+07 * (*T)); 
-    /*multiply by 1e6 so c goes to SI */
-    PWORT *= 1e6; 
-    /*Now compute conversion (and go to SI) */
-    c[0] = PWORT * y[0]*imw[0]; 
-    c[1] = PWORT * y[1]*imw[1]; 
-    c[2] = PWORT * y[2]*imw[2]; 
-    c[3] = PWORT * y[3]*imw[3]; 
-    c[4] = PWORT * y[4]*imw[4]; 
-    c[5] = PWORT * y[5]*imw[5]; 
-    c[6] = PWORT * y[6]*imw[6]; 
-    c[7] = PWORT * y[7]*imw[7]; 
-    c[8] = PWORT * y[8]*imw[8]; 
-    c[9] = PWORT * y[9]*imw[9]; 
-    c[10] = PWORT * y[10]*imw[10]; 
-    c[11] = PWORT * y[11]*imw[11]; 
-    c[12] = PWORT * y[12]*imw[12]; 
-    c[13] = PWORT * y[13]*imw[13]; 
-    c[14] = PWORT * y[14]*imw[14]; 
-    c[15] = PWORT * y[15]*imw[15]; 
-    c[16] = PWORT * y[16]*imw[16]; 
-    c[17] = PWORT * y[17]*imw[17]; 
-    c[18] = PWORT * y[18]*imw[18]; 
-    c[19] = PWORT * y[19]*imw[19]; 
-    c[20] = PWORT * y[20]*imw[20]; 
-    c[21] = PWORT * y[21]*imw[21]; 
-    c[22] = PWORT * y[22]*imw[22]; 
-    c[23] = PWORT * y[23]*imw[23]; 
-    c[24] = PWORT * y[24]*imw[24]; 
-    c[25] = PWORT * y[25]*imw[25]; 
-    c[26] = PWORT * y[26]*imw[26]; 
-    c[27] = PWORT * y[27]*imw[27]; 
-    c[28] = PWORT * y[28]*imw[28]; 
-    c[29] = PWORT * y[29]*imw[29]; 
-
-    /*convert to chemkin units */
-    progressRate(qdot, c, *T);
-
-    /*convert to chemkin units */
-    for (id = 0; id < 3; ++id) {
-        qdot[id] *= 1.0e-6;
-    }
+    printf("CKQYP not supported!\n");
+    exit(1);
 }
 
 
@@ -2602,22 +2493,8 @@ void CKQYP(double * restrict  P, double * restrict  T, double * restrict  y, int
 /*Given P, T, and mole fractions */
 void CKQXP(double * restrict  P, double * restrict  T, double * restrict  x, int * iwrk, double * restrict  rwrk, double * restrict  qdot)
 {
-    int id; /*loop counter */
-    double c[30]; /*temporary storage */
-    double PORT = 1e6 * (*P)/(8.31451e+07 * (*T)); /*1e6 * P/RT so c goes to SI units */
-
-    /*Compute conversion, see Eq 10 */
-    for (id = 0; id < 30; ++id) {
-        c[id] = x[id]*PORT;
-    }
-
-    /*convert to chemkin units */
-    progressRate(qdot, c, *T);
-
-    /*convert to chemkin units */
-    for (id = 0; id < 3; ++id) {
-        qdot[id] *= 1.0e-6;
-    }
+    printf("CKQXP not supported!\n");
+    exit(1);
 }
 
 
@@ -2625,47 +2502,8 @@ void CKQXP(double * restrict  P, double * restrict  T, double * restrict  x, int
 /*Given rho, T, and mass fractions */
 void CKQYR(double * restrict  rho, double * restrict  T, double * restrict  y, int * iwrk, double * restrict  rwrk, double * restrict  qdot)
 {
-    int id; /*loop counter */
-    double c[30]; /*temporary storage */
-    /*See Eq 8 with an extra 1e6 so c goes to SI */
-    c[0] = 1e6 * (*rho) * y[0]*imw[0]; 
-    c[1] = 1e6 * (*rho) * y[1]*imw[1]; 
-    c[2] = 1e6 * (*rho) * y[2]*imw[2]; 
-    c[3] = 1e6 * (*rho) * y[3]*imw[3]; 
-    c[4] = 1e6 * (*rho) * y[4]*imw[4]; 
-    c[5] = 1e6 * (*rho) * y[5]*imw[5]; 
-    c[6] = 1e6 * (*rho) * y[6]*imw[6]; 
-    c[7] = 1e6 * (*rho) * y[7]*imw[7]; 
-    c[8] = 1e6 * (*rho) * y[8]*imw[8]; 
-    c[9] = 1e6 * (*rho) * y[9]*imw[9]; 
-    c[10] = 1e6 * (*rho) * y[10]*imw[10]; 
-    c[11] = 1e6 * (*rho) * y[11]*imw[11]; 
-    c[12] = 1e6 * (*rho) * y[12]*imw[12]; 
-    c[13] = 1e6 * (*rho) * y[13]*imw[13]; 
-    c[14] = 1e6 * (*rho) * y[14]*imw[14]; 
-    c[15] = 1e6 * (*rho) * y[15]*imw[15]; 
-    c[16] = 1e6 * (*rho) * y[16]*imw[16]; 
-    c[17] = 1e6 * (*rho) * y[17]*imw[17]; 
-    c[18] = 1e6 * (*rho) * y[18]*imw[18]; 
-    c[19] = 1e6 * (*rho) * y[19]*imw[19]; 
-    c[20] = 1e6 * (*rho) * y[20]*imw[20]; 
-    c[21] = 1e6 * (*rho) * y[21]*imw[21]; 
-    c[22] = 1e6 * (*rho) * y[22]*imw[22]; 
-    c[23] = 1e6 * (*rho) * y[23]*imw[23]; 
-    c[24] = 1e6 * (*rho) * y[24]*imw[24]; 
-    c[25] = 1e6 * (*rho) * y[25]*imw[25]; 
-    c[26] = 1e6 * (*rho) * y[26]*imw[26]; 
-    c[27] = 1e6 * (*rho) * y[27]*imw[27]; 
-    c[28] = 1e6 * (*rho) * y[28]*imw[28]; 
-    c[29] = 1e6 * (*rho) * y[29]*imw[29]; 
-
-    /*call progressRate */
-    progressRate(qdot, c, *T);
-
-    /*convert to chemkin units */
-    for (id = 0; id < 3; ++id) {
-        qdot[id] *= 1.0e-6;
-    }
+    printf("CKQYP not supported!\n");
+    exit(1);
 }
 
 
@@ -2673,56 +2511,8 @@ void CKQYR(double * restrict  rho, double * restrict  T, double * restrict  y, i
 /*Given rho, T, and mole fractions */
 void CKQXR(double * restrict  rho, double * restrict  T, double * restrict  x, int * iwrk, double * restrict  rwrk, double * restrict  qdot)
 {
-    int id; /*loop counter */
-    double c[30]; /*temporary storage */
-    double XW = 0; /*See Eq 4, 11 in CK Manual */
-    double ROW; 
-    /*Compute mean molecular wt first */
-    XW += x[0]*1.007970; /*H */
-    XW += x[1]*2.015940; /*H2 */
-    XW += x[2]*15.035060; /*CH3 */
-    XW += x[3]*15.999400; /*O */
-    XW += x[4]*16.043030; /*CH4 */
-    XW += x[5]*17.007370; /*OH */
-    XW += x[6]*18.015340; /*H2O */
-    XW += x[7]*26.038240; /*C2H2 */
-    XW += x[8]*28.010550; /*CO */
-    XW += x[9]*28.054180; /*C2H4 */
-    XW += x[10]*29.062150; /*C2H5 */
-    XW += x[11]*30.026490; /*CH2O */
-    XW += x[12]*30.070120; /*C2H6 */
-    XW += x[13]*31.034460; /*CH3O */
-    XW += x[14]*31.998800; /*O2 */
-    XW += x[15]*33.006770; /*HO2 */
-    XW += x[16]*34.014740; /*H2O2 */
-    XW += x[17]*44.009950; /*CO2 */
-    XW += x[18]*44.053580; /*CH3HCO */
-    XW += x[19]*46.025890; /*HCOOH */
-    XW += x[20]*46.069520; /*CH3OCH3 */
-    XW += x[21]*59.045010; /*CH3OCO */
-    XW += x[22]*60.052980; /*CH3OCHO */
-    XW += x[23]*62.068920; /*CH3OCH2OH */
-    XW += x[24]*75.044410; /*OCH2OCHO */
-    XW += x[25]*75.044410; /*HOCH2OCO */
-    XW += x[26]*77.060350; /*CH3OCH2O2 */
-    XW += x[27]*92.051780; /*HO2CH2OCHO */
-    XW += x[28]*109.059150; /*O2CH2OCH2O2H */
-    XW += x[29]*28.013400; /*N2 */
-    /*Extra 1e6 factor to take c to SI */
-    ROW = 1e6*(*rho) / XW;
-
-    /*Compute conversion, see Eq 11 */
-    for (id = 0; id < 30; ++id) {
-        c[id] = x[id]*ROW;
-    }
-
-    /*convert to chemkin units */
-    progressRate(qdot, c, *T);
-
-    /*convert to chemkin units */
-    for (id = 0; id < 3; ++id) {
-        qdot[id] *= 1.0e-6;
-    }
+    printf("CKQYP not supported!\n");
+    exit(1);
 }
 
 
@@ -2730,30 +2520,8 @@ void CKQXR(double * restrict  rho, double * restrict  T, double * restrict  x, i
 /*of the reaction mechanism. (Eq 50) */
 void CKNU(int * kdim, int * iwrk, double * restrict  rwrk, int * nuki)
 {
-    int id; /*loop counter */
-    int kd = (*kdim); 
-    /*Zero nuki */
-    for (id = 0; id < 30 * kd; ++ id) {
-         nuki[id] = 0; 
-    }
-
-    /*reaction 1: H + O2 <=> O + OH */
-    nuki[ 0 * kd + 0 ] += -1 ;
-    nuki[ 14 * kd + 0 ] += -1 ;
-    nuki[ 3 * kd + 0 ] += +1 ;
-    nuki[ 5 * kd + 0 ] += +1 ;
-
-    /*reaction 2: O + H2 <=> H + OH */
-    nuki[ 3 * kd + 1 ] += -1 ;
-    nuki[ 1 * kd + 1 ] += -1 ;
-    nuki[ 0 * kd + 1 ] += +1 ;
-    nuki[ 5 * kd + 1 ] += +1 ;
-
-    /*reaction 3: H2 + OH <=> H2O + H */
-    nuki[ 1 * kd + 2 ] += -1 ;
-    nuki[ 5 * kd + 2 ] += -1 ;
-    nuki[ 6 * kd + 2 ] += +1 ;
-    nuki[ 0 * kd + 2 ] += +1 ;
+    printf("CKNU not supported!\n");
+    exit(1);
 }
 
 
@@ -3064,254 +2832,16 @@ static double Kc_save[3];
 /*compute the production rate for each species */
 void productionRate(double * restrict  wdot, double * restrict  sc, double T)
 {
-    double qdot;
-
-    int id; /*loop counter */
-    double mixture;                 /*mixture concentration */
-    double g_RT[30];                /*Gibbs free energy */
-    double Kc;                      /*equilibrium constant */
-    double k_f;                     /*forward reaction rate */
-    double k_r;                     /*reverse reaction rate */
-    double q_f;                     /*forward progress rate */
-    double q_r;                     /*reverse progress rate */
-    double phi_f;                   /*forward phase space factor */
-    double phi_r;                   /*reverse phase space factor */
-    double alpha;                   /*enhancement */
-    double redP;                    /*reduced pressure */
-    double logPred;                 /*log of above */
-    double F;                       /*fallof rate enhancement */
-
-    double F_troe;                  /*TROE intermediate */
-    double logFcent;                /*TROE intermediate */
-    double troe;                    /*TROE intermediate */
-    double troe_c;                  /*TROE intermediate */
-    double troe_n;                  /*TROE intermediate */
-
-    double tc[] = { log(T), T, T*T, T*T*T, T*T*T*T }; /*temperature cache */
-
-    double invT = 1.0 / tc[1];
-
-    /*reference concentration: P_atm / (RT) in inverse mol/m^3 */
-    double refC = 101325 / 8.31451 / T;
-    double refCinv = 1 / refC;
-
-    /*compute the mixture concentration */
-    mixture = 0.0;
-    for (id = 0; id < 30; ++id) {
-        mixture += sc[id];
-    }
-
-    /*compute the Gibbs free energy */
-    gibbs(g_RT, tc);
-
-    /*zero out wdot */
-    for (id = 0; id < 30; ++id) {
-        wdot[id] = 0.0;
-    }
-
-    if (T != T_save)
-    {
-        T_save = T;
-
-        k_f_save[0] = 1e-06 * 0;
-        k_f_save[1] = 1e-06 * 0;
-        k_f_save[2] = 1e-06 * 0;
-
-        Kc_save[0] = exp((g_RT[0] + g_RT[14]) - (g_RT[3] + g_RT[5]));
-        Kc_save[1] = exp((g_RT[3] + g_RT[1]) - (g_RT[0] + g_RT[5]));
-        Kc_save[2] = exp((g_RT[1] + g_RT[5]) - (g_RT[6] + g_RT[0]));
-    }
-
-    /*reaction 1: H + O2 <=> O + OH */
-    phi_f = sc[0]*sc[14];
-    k_f = k_f_save[0];
-    q_f = phi_f * k_f;
-    phi_r = sc[3]*sc[5];
-    Kc = Kc_save[0];
-    k_r = k_f / Kc;
-    q_r = phi_r * k_r;
-    qdot = q_f - q_r;
-    wdot[0] -= 1 * qdot;
-    wdot[14] -= 1 * qdot;
-    wdot[3] += 1 * qdot;
-    wdot[5] += 1 * qdot;
-
-    /*reaction 2: O + H2 <=> H + OH */
-    phi_f = sc[3]*sc[1];
-    k_f = k_f_save[1];
-    q_f = phi_f * k_f;
-    phi_r = sc[0]*sc[5];
-    Kc = Kc_save[1];
-    k_r = k_f / Kc;
-    q_r = phi_r * k_r;
-    qdot = q_f - q_r;
-    wdot[3] -= 1 * qdot;
-    wdot[1] -= 1 * qdot;
-    wdot[0] += 1 * qdot;
-    wdot[5] += 1 * qdot;
-
-    /*reaction 3: H2 + OH <=> H2O + H */
-    phi_f = sc[1]*sc[5];
-    k_f = k_f_save[2];
-    q_f = phi_f * k_f;
-    phi_r = sc[6]*sc[0];
-    Kc = Kc_save[2];
-    k_r = k_f / Kc;
-    q_r = phi_r * k_r;
-    qdot = q_f - q_r;
-    wdot[1] -= 1 * qdot;
-    wdot[5] -= 1 * qdot;
-    wdot[6] += 1 * qdot;
-    wdot[0] += 1 * qdot;
-
-    return;
+    printf("productionRate not supported!\n");
+    exit(1);
 }
 
 
 /*compute the production rate for each species */
 void vproductionRate(int npt, double * restrict wdot, double * restrict sc, double * restrict T)
 {
-    double k_f_s[3][npt], Kc_s[3][npt], mixture[npt], g_RT[30*npt];
-    double tc[5*npt], invT[npt];
-
-#ifdef __INTEL_COMPILER
-     #pragma simd
-#endif
-    for (int i=0; i<npt; i++) {
-        tc[0*npt+i] = log(T[i]);
-        tc[1*npt+i] = T[i];
-        tc[2*npt+i] = T[i]*T[i];
-        tc[3*npt+i] = T[i]*T[i]*T[i];
-        tc[4*npt+i] = T[i]*T[i]*T[i]*T[i];
-        invT[i] = 1.0 / T[i];
-    }
-
-#ifdef __INTEL_COMPILER
-    #pragma simd
-#endif
-    for (int i=0; i<npt; i++) {
-        k_f_s[0][i] = 1e-06 * 0.0;
-        k_f_s[1][i] = 1e-06 * 0.0;
-        k_f_s[2][i] = 1e-06 * 0.0;
-    }
-
-    /*compute the Gibbs free energy */
-    for (int i=0; i<npt; i++) {
-        double tg[5], g[30];
-        tg[0] = tc[0*npt+i];
-        tg[1] = tc[1*npt+i];
-        tg[2] = tc[2*npt+i];
-        tg[3] = tc[3*npt+i];
-        tg[4] = tc[4*npt+i];
-
-        gibbs(g, tg);
-
-        g_RT[0*npt+i] = g[0];
-        g_RT[1*npt+i] = g[1];
-        g_RT[2*npt+i] = g[2];
-        g_RT[3*npt+i] = g[3];
-        g_RT[4*npt+i] = g[4];
-        g_RT[5*npt+i] = g[5];
-        g_RT[6*npt+i] = g[6];
-        g_RT[7*npt+i] = g[7];
-        g_RT[8*npt+i] = g[8];
-        g_RT[9*npt+i] = g[9];
-        g_RT[10*npt+i] = g[10];
-        g_RT[11*npt+i] = g[11];
-        g_RT[12*npt+i] = g[12];
-        g_RT[13*npt+i] = g[13];
-        g_RT[14*npt+i] = g[14];
-        g_RT[15*npt+i] = g[15];
-        g_RT[16*npt+i] = g[16];
-        g_RT[17*npt+i] = g[17];
-        g_RT[18*npt+i] = g[18];
-        g_RT[19*npt+i] = g[19];
-        g_RT[20*npt+i] = g[20];
-        g_RT[21*npt+i] = g[21];
-        g_RT[22*npt+i] = g[22];
-        g_RT[23*npt+i] = g[23];
-        g_RT[24*npt+i] = g[24];
-        g_RT[25*npt+i] = g[25];
-        g_RT[26*npt+i] = g[26];
-        g_RT[27*npt+i] = g[27];
-        g_RT[28*npt+i] = g[28];
-        g_RT[29*npt+i] = g[29];
-    }
-
-#ifdef __INTEL_COMPILER
-    #pragma simd
-#endif
-    for (int i=0; i<npt; i++) {
-        /*reference concentration: P_atm / (RT) in inverse mol/m^3 */
-        double refC = 101325. / 8.31451 / T[i];
-
-        Kc_s[0][i] = exp((g_RT[0*npt+i] + g_RT[14*npt+i]) - (g_RT[3*npt+i] + g_RT[5*npt+i]));
-        Kc_s[1][i] = exp((g_RT[3*npt+i] + g_RT[1*npt+i]) - (g_RT[0*npt+i] + g_RT[5*npt+i]));
-        Kc_s[2][i] = exp((g_RT[1*npt+i] + g_RT[5*npt+i]) - (g_RT[6*npt+i] + g_RT[0*npt+i]));
-    }
-
-    for (int i=0; i<npt; i++) {
-        mixture[i] = 0.0;
-    }
-
-    for (int n=0; n<30; n++) {
-        for (int i=0; i<npt; i++) {
-            mixture[i] += sc[n*npt+i];
-            wdot[n*npt+i] = 0.0;
-        }
-    }
-
-#ifdef __INTEL_COMPILER
-    #pragma simd
-#endif
-    for (int i=0; i<npt; i++) {
-        double qdot, q_f, q_r, phi_f, phi_r, k_f, k_r, Kc;
-        double alpha, redP, F, logPred, logFcent;
-        double troe_c, troe_n, troe, F_troe;
-        double X, F_src;
-
-        /*reaction 1: H + O2 <=> O + OH */
-        phi_f = sc[0*npt+i]*sc[14*npt+i];
-        k_f = k_f_s[0][i];
-        q_f = phi_f * k_f;
-        phi_r = sc[3*npt+i]*sc[5*npt+i];
-        Kc = Kc_s[0][i];
-        k_r = k_f / Kc;
-        q_r = phi_r * k_r;
-        qdot = q_f - q_r;
-        wdot[0*npt+i] -= 1 * qdot;
-        wdot[14*npt+i] -= 1 * qdot;
-        wdot[3*npt+i] += 1 * qdot;
-        wdot[5*npt+i] += 1 * qdot;
-
-        /*reaction 2: O + H2 <=> H + OH */
-        phi_f = sc[3*npt+i]*sc[1*npt+i];
-        k_f = k_f_s[1][i];
-        q_f = phi_f * k_f;
-        phi_r = sc[0*npt+i]*sc[5*npt+i];
-        Kc = Kc_s[1][i];
-        k_r = k_f / Kc;
-        q_r = phi_r * k_r;
-        qdot = q_f - q_r;
-        wdot[3*npt+i] -= 1 * qdot;
-        wdot[1*npt+i] -= 1 * qdot;
-        wdot[0*npt+i] += 1 * qdot;
-        wdot[5*npt+i] += 1 * qdot;
-
-        /*reaction 3: H2 + OH <=> H2O + H */
-        phi_f = sc[1*npt+i]*sc[5*npt+i];
-        k_f = k_f_s[2][i];
-        q_f = phi_f * k_f;
-        phi_r = sc[6*npt+i]*sc[0*npt+i];
-        Kc = Kc_s[2][i];
-        k_r = k_f / Kc;
-        q_r = phi_r * k_r;
-        qdot = q_f - q_r;
-        wdot[1*npt+i] -= 1 * qdot;
-        wdot[5*npt+i] -= 1 * qdot;
-        wdot[6*npt+i] += 1 * qdot;
-        wdot[0*npt+i] += 1 * qdot;
-    }
+    printf("vproductionRate not supported!\n");
+    exit(1);
 }
 
 /*compute the reaction Jacobian */
@@ -3989,172 +3519,16 @@ void dcvpRdT(double * restrict  species, double * restrict  tc)
 /*compute the progress rate for each reaction */
 void progressRate(double * restrict  qdot, double * restrict  sc, double T)
 {
-
-    int id; /*loop counter */
-    double mixture;                 /*mixture concentration */
-    double g_RT[30];                /*Gibbs free energy */
-    double Kc;                      /*equilibrium constant */
-    double k_f;                     /*forward reaction rate */
-    double k_r;                     /*reverse reaction rate */
-    double q_f;                     /*forward progress rate */
-    double q_r;                     /*reverse progress rate */
-    double phi_f;                   /*forward phase space factor */
-    double phi_r;                   /*reverse phase space factor */
-    double alpha;                   /*enhancement */
-    double redP;                    /*reduced pressure */
-    double logPred;                 /*log of above */
-    double F;                       /*fallof rate enhancement */
-
-    double F_troe;                  /*TROE intermediate */
-    double logFcent;                /*TROE intermediate */
-    double troe;                    /*TROE intermediate */
-    double troe_c;                  /*TROE intermediate */
-    double troe_n;                  /*TROE intermediate */
-
-    double tc[] = { log(T), T, T*T, T*T*T, T*T*T*T }; /*temperature cache */
-
-    double invT = 1.0 / tc[1];
-
-    /*reference concentration: P_atm / (RT) in inverse mol/m^3 */
-    double refC = 101325 / 8.31451 / T;
-    double refCinv = 1 / refC;
-
-    /*compute the mixture concentration */
-    mixture = 0.0;
-    for (id = 0; id < 30; ++id) {
-        mixture += sc[id];
-    }
-
-    /*compute the Gibbs free energy */
-    gibbs(g_RT, tc);
-
-    if (T != T_save)
-    {
-        T_save = T;
-
-        k_f_save[0] = 1e-06 * 0;
-        k_f_save[1] = 1e-06 * 0;
-        k_f_save[2] = 1e-06 * 0;
-
-        Kc_save[0] = exp((g_RT[0] + g_RT[14]) - (g_RT[3] + g_RT[5]));
-        Kc_save[1] = exp((g_RT[3] + g_RT[1]) - (g_RT[0] + g_RT[5]));
-        Kc_save[2] = exp((g_RT[1] + g_RT[5]) - (g_RT[6] + g_RT[0]));
-    }
-
-    /*reaction 1: H + O2 <=> O + OH */
-    phi_f = sc[0]*sc[14];
-    k_f = k_f_save[0];
-    q_f = phi_f * k_f;
-    phi_r = sc[3]*sc[5];
-    Kc = Kc_save[0];
-    k_r = k_f / Kc;
-    q_r = phi_r * k_r;
-    qdot[0] = q_f - q_r;
-
-    /*reaction 2: O + H2 <=> H + OH */
-    phi_f = sc[3]*sc[1];
-    k_f = k_f_save[1];
-    q_f = phi_f * k_f;
-    phi_r = sc[0]*sc[5];
-    Kc = Kc_save[1];
-    k_r = k_f / Kc;
-    q_r = phi_r * k_r;
-    qdot[1] = q_f - q_r;
-
-    /*reaction 3: H2 + OH <=> H2O + H */
-    phi_f = sc[1]*sc[5];
-    k_f = k_f_save[2];
-    q_f = phi_f * k_f;
-    phi_r = sc[6]*sc[0];
-    Kc = Kc_save[2];
-    k_r = k_f / Kc;
-    q_r = phi_r * k_r;
-    qdot[2] = q_f - q_r;
-
-    return;
+    printf("progressRate not supported!\n");
+    exit(1);
 }
 
 
 /*compute the progress rate for each reaction */
 void progressRateFR(double * restrict  q_f, double * restrict  q_r, double * restrict  sc, double T)
 {
-
-    int id; /*loop counter */
-    double mixture;                 /*mixture concentration */
-    double g_RT[30];                /*Gibbs free energy */
-    double Kc;                      /*equilibrium constant */
-    double k_f;                     /*forward reaction rate */
-    double k_r;                     /*reverse reaction rate */
-    double phi_f;                   /*forward phase space factor */
-    double phi_r;                   /*reverse phase space factor */
-    double alpha;                   /*enhancement */
-    double redP;                    /*reduced pressure */
-    double logPred;                 /*log of above */
-    double F;                       /*fallof rate enhancement */
-
-    double F_troe;                  /*TROE intermediate */
-    double logFcent;                /*TROE intermediate */
-    double troe;                    /*TROE intermediate */
-    double troe_c;                  /*TROE intermediate */
-    double troe_n;                  /*TROE intermediate */
-
-    double tc[] = { log(T), T, T*T, T*T*T, T*T*T*T }; /*temperature cache */
-
-    double invT = 1.0 / tc[1];
-
-    /*reference concentration: P_atm / (RT) in inverse mol/m^3 */
-    double refC = 101325 / 8.31451 / T;
-
-    /*compute the mixture concentration */
-    mixture = 0.0;
-    for (id = 0; id < 30; ++id) {
-        mixture += sc[id];
-    }
-
-    /*compute the Gibbs free energy */
-    gibbs(g_RT, tc);
-
-    if (T != T_save)
-    {
-        T_save = T;
-
-        k_f_save[0] = 1e-06 * 0;
-        k_f_save[1] = 1e-06 * 0;
-        k_f_save[2] = 1e-06 * 0;
-
-        Kc_save[0] = exp((g_RT[0] + g_RT[14]) - (g_RT[3] + g_RT[5]));
-        Kc_save[1] = exp((g_RT[3] + g_RT[1]) - (g_RT[0] + g_RT[5]));
-        Kc_save[2] = exp((g_RT[1] + g_RT[5]) - (g_RT[6] + g_RT[0]));
-    }
-
-    /*reaction 1: H + O2 <=> O + OH */
-    phi_f = sc[0]*sc[14];
-    k_f = k_f_save[0];
-    q_f[0] = phi_f * k_f;
-    phi_r = sc[3]*sc[5];
-    Kc = Kc_save[0];
-    k_r = k_f / Kc;
-    q_r[0] = phi_r * k_r;
-
-    /*reaction 2: O + H2 <=> H + OH */
-    phi_f = sc[3]*sc[1];
-    k_f = k_f_save[1];
-    q_f[1] = phi_f * k_f;
-    phi_r = sc[0]*sc[5];
-    Kc = Kc_save[1];
-    k_r = k_f / Kc;
-    q_r[1] = phi_r * k_r;
-
-    /*reaction 3: H2 + OH <=> H2O + H */
-    phi_f = sc[1]*sc[5];
-    k_f = k_f_save[2];
-    q_f[2] = phi_f * k_f;
-    phi_r = sc[6]*sc[0];
-    Kc = Kc_save[2];
-    k_r = k_f / Kc;
-    q_r[2] = phi_r * k_r;
-
-    return;
+    printf("progressRateFR not supported!\n");
+    exit(1);
 }
 
 
