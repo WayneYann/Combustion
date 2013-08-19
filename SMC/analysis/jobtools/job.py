@@ -7,6 +7,7 @@ class Job(Container):
 
     def add_to(self, jobs):
         jobs.add(self)
+        return self
 
     def update_params(self, **kwargs):
         if hasattr(self, 'param_file'):

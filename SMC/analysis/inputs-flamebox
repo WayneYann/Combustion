@@ -14,6 +14,7 @@
  sdc_nnodes_fine    = {sdc_nnodes_fine}
  sdc_tol_residual   = 1.d-3
  sdc_multirate_type = "local"
+ sdc_multirate_repeat = {repeat}
 
  plot_int = 2
  chk_int  = -10

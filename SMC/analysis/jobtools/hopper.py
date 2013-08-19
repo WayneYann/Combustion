@@ -70,14 +70,18 @@ class HopperPBS(base.Container):
         pbs.append("#PBS -N " + job.name)
         if queue:
             pbs.append("#PBS -q " + queue)
-        if width:
+        if width and depth:
+            pbs.append("#PBS -l mppwidth=" + str(width*depth))
+            opts.append("-n " + str(width))
+            opts.append("-d " + str(depth))
+        elif width:
             pbs.append("#PBS -l mppwidth=" + str(width))
             opts.append("-n " + str(width))
-        if depth:
+        elif depth:
             pbs.append("#PBS -l mppdepth=" + str(depth))
             opts.append("-d " + str(depth))
         if pernode:
-            pbs.append("#PBS -l mppnppn=" + str(pernode))
+            # pbs.append("#PBS -l mppnppn=" + str(pernode))
             opts.append("-N " + str(pernode))
         if walltime:
             pbs.append("#PBS -l walltime=" + walltime)
@@ -103,11 +107,11 @@ class HopperPBS(base.Container):
         opts = ' '.join(opts)
         pbs  = '\n'.join(pbs).format(opts=opts, rwd=rwd, exe=exe, inputs=inputs)
 
-        if not dry_run:
-            # push to remote host
-            run_script = rwd + '/pbs.sh'
-            put(strio(pbs), run_script)
+        # push to remote host
+        run_script = rwd + '/pbs.sh'
+        put(strio(pbs), run_script)
             
+        if not dry_run:
             # submit to queue
             print 'SUBMITTING ', job.name, ' USING ', exe
             run('qsub ' + run_script)
