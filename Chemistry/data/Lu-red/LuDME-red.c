@@ -2397,8 +2397,15 @@ void CKABMS(double * restrict P, double * restrict T, double * restrict y, int *
 /*compute the production rate for each species */
 void CKWC(double * restrict  T, double * restrict  C, int * iwrk, double * restrict  rwrk, double * restrict  wdot)
 {
-    printf("CKWC not supported!\n");
-    exit(1);
+    double y[30], pres;
+    pres = 0.0;
+    for (int n=0; n<30; n++)
+    {
+	pres += C[n];
+    }
+    pres *= 8.31451e+07 * (*T);
+    CKCTY(C, iwrk, rwrk, y);
+    FORT_CKWYP(&pres, T, y, iwrk, rwrk, wdot);
 }
 
 
