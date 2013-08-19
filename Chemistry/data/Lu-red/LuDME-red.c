@@ -2443,7 +2443,7 @@ void VCKWYR(int * restrict np, double * restrict rho, double * restrict T,
 	{
 	    Yt[n] = y[n*(*np)+i];
 	}
-	CKWYR(rho, T, Yt, iwrk, rwrk, wdott);
+	CKWYR(&rho[i], &T[i], Yt, iwrk, rwrk, wdott);
 	for (int n=0; n<30; n++)
 	{
 	    wdot[n*(*np)+i] = wdott[n];
