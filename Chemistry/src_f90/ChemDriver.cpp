@@ -65,6 +65,7 @@ ChemDriver::initOnce ()
     Real rtol = 1.e-10;
     Real atol = 1.e-10;
     int  order = 100;  // vode will reduce it to a lower value
+    int  maxstep = 2000;  // max step vode takes
     int  use_ajac = 1; // use analytic Jacobian
     int  save_ajac = 1; // reuse analytic Jacobian
     int  stiff = 1;
@@ -75,6 +76,7 @@ ChemDriver::initOnce ()
     ppv.query("rtol", rtol);
     ppv.query("atol", atol);
     ppv.query("order", order);
+    ppv.query("maxstep", maxstep);
     ppv.query("use_ajac", use_ajac);
     ppv.query("save_ajac", save_ajac);
     ppv.query("stiff", stiff);
@@ -87,7 +89,7 @@ ChemDriver::initOnce ()
     
     int neq = nspec+1; 
     BL_FORT_PROC_CALL(CD_INITVODE, cd_initvode)
-	(neq, itol, rtol, atol, order, use_ajac, save_ajac, stiff, verbose); 
+	(neq, itol, rtol, atol, order, maxstep, use_ajac, save_ajac, stiff, verbose); 
 
 
     // eglib

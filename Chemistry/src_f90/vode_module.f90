@@ -2,7 +2,7 @@ module vode_module
 
   implicit none
 
-  integer, save :: verbose, itol, neq, order
+  integer, save :: verbose, itol, neq, order, maxstep
   integer, save :: MF, use_ajac, save_ajac, stiff
 
   double precision, save :: rtol, atol
@@ -55,6 +55,7 @@ contains
     voderwork = 0.d0
     vodeiwork = 0
     vodeiwork(5) = order
+    vodeiwork(6) = maxstep
 
     allocate(voderpar(2))
     allocate(vodeipar(1))
