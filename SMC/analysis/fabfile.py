@@ -3,9 +3,11 @@
 import numpy as np
 
 from fabric.api import *
+from fabric.colors import *
 from jobtools import JobQueue, Job
 from itertools import product
 from collections import namedtuple
+from pprint import pprint
 
 import pickle
 import compare
@@ -22,13 +24,24 @@ class Container():
 fbox = Container()
 
 fbox.stop_time = 6e-9 * 70
-fbox.dt_ref    = 1e-9
+fbox.dt_ref    = 1.5e-9
 fbox.dt        = [ 6e-9, 3e-9, 1.5e-9 ]
 fbox.nx        = 32
-fbox.mrruns    = [ (5, 9), (7, 13) ]   # (trat, nnodes_fine)
+fbox.mrruns    = [ (5, 9), (7, 13) ]
+fbox.mrreps    = [ (5, 3, 4), (7, 3, 6), (10, 3, 8), (10, 5, 2) ]
 
-SpeedTuple = namedtuple('SpeedTuple', [ 'scheme', 'dt', 'error', 'runtime', 'ad_evals', 'r_evals' ])
+SpeedTuple = namedtuple('SpeedTuple',
+                        [ 'scheme', 'dt', 'error', 'runtime', 'ad_evals', 'r_evals' ])
 
+pens = {
+    'gl3':     { 'marker': 'o', 'ms': 12, 'color': 'black', 'label': 'SR GL 3', 'lw': 2 },
+    'gl3.3r4': { 'marker': '^', 'ms': 12, 'color': 'black', 'label': 'SR GL 3x4', 'lw': 2 },
+    'gl3.3r6': { 'marker': 'v', 'ms': 12, 'color': 'black', 'label': 'SR GL 3x6', 'lw': 2 },
+    'gl3.3r8': { 'marker': 's', 'ms': 12, 'color': 'black', 'label': 'SR GL 3x8', 'lw': 2 },
+    'gl3.5r2': { 'marker': 'd', 'ms': 12, 'color': 'black', 'label': 'SR GL 5x2', 'lw': 2 },
+    'gl3.9':   { 'marker': 's', 'ms': 12, 'color': 'blue',  'label': 'MR GL 3, 9', 'lw': 2 },
+    'gl3.13':  { 'marker': '^', 'ms': 12, 'color': 'red' ,  'label': 'MR GL 3, 13', 'lw': 2 },
+    }
 
 @task
 def flamebox_speed():
@@ -38,7 +51,7 @@ def flamebox_speed():
 
   jobs = JobQueue(queue='regular', walltime="01:00:00")
 
-  max_grid_size = 32
+  max_grid_size = 16
   nprocs        = fbox.nx**3 / max_grid_size**3
 
   # reference run
@@ -48,8 +61,8 @@ def flamebox_speed():
             width=nprocs, walltime="02:00:00")
   job.update_params(
     advance_method=2, stop_time=fbox.stop_time,
-    sdc_nnodes=3, sdc_nnodes_fine=0, sdc_iters=4,
-    fixed_dt=dt, nx=fbox.nx, max_grid_size=max_grid_size).add_to(jobs)
+    sdc_nnodes=3, sdc_nnodes_fine=0, sdc_iters=4, repeat=1,
+    fixed_dt=dt, nx=fbox.nx, max_grid_size=max_grid_size)#.add_to(jobs)
 
   # timing runs
   for dt0 in fbox.dt:
@@ -61,18 +74,28 @@ def flamebox_speed():
               width=nprocs, walltime="02:00:00")
     job.update_params(
       advance_method=2, stop_time=fbox.stop_time,
-      sdc_nnodes=3, sdc_nnodes_fine=0, sdc_iters=4,
+      sdc_nnodes=3, sdc_nnodes_fine=0, sdc_iters=4, repeat=1,
       fixed_dt=dt, nx=fbox.nx, max_grid_size=max_grid_size).add_to(jobs)
 
     # multi-rate sdc runs
     for trat, nnodes in fbox.mrruns:
       dt   = trat*dt0
-      name = 'gl3.9_dt%e' % dt
+      name = 'gl3.%d_dt%e' % (nnodes, dt)
       job  = Job(name=name, rwd='speed/'+name, param_file='inputs-flamebox',
                  width=nprocs)
       job.update_params(
         advance_method=3, stop_time=fbox.stop_time,
-        sdc_nnodes=3, sdc_nnodes_fine=nnodes, sdc_iters=5,
+        sdc_nnodes=3, sdc_nnodes_fine=nnodes, sdc_iters=4, repeat=1,
+        fixed_dt=dt, nx=fbox.nx, max_grid_size=max_grid_size).add_to(jobs)
+
+    for trat, nnodes, nrep in fbox.mrreps:
+      dt   = trat*dt0
+      name = 'gl3.%dr%d_dt%e' % (nnodes, nrep, dt)
+      job  = Job(name=name, rwd='speed/'+name, param_file='inputs-flamebox',
+                 width=nprocs)
+      job.update_params(
+        advance_method=3, stop_time=fbox.stop_time,
+        sdc_nnodes=3, sdc_nnodes_fine=nnodes, sdc_iters=4, repeat=nrep,
         fixed_dt=dt, nx=fbox.nx, max_grid_size=max_grid_size).add_to(jobs)
 
   jobs.submit_all()
@@ -95,36 +118,36 @@ def flamebox_speed_compare():
     rt, nad, nr = compare.runtime(name)
     error = compare.error(name, ref, fbox.stop_time,
                           refratio=1, norm=norm, variable='pressure')
-
     errors.append(SpeedTuple('gl3', dt0, error, rt, nad, nr))
 
     for trat, nnodes in fbox.mrruns:
       dt = trat*dt0
-      name = 'gl3.9_dt%e' % dt
+      name = 'gl3.%d_dt%e' % (nnodes, dt)
       rt, nad, nr = compare.runtime(name)
       error = compare.error(name, ref, fbox.stop_time,
                             refratio=1, norm=norm, variable='pressure')
+      errors.append(SpeedTuple('gl3.%d' % nnodes, dt, error, rt, nad, nr))
 
-      errors.append(SpeedTuple('gl3.%d' % nnodes, dt0, error, rt, nad, nr))
+    for trat, nnodes, nrep in fbox.mrreps:
+      dt   = trat*dt0
+      name = 'gl3.%dr%d_dt%e' % (nnodes, nrep, dt)
+      rt, nad, nr = compare.runtime(name)
+      error = compare.error(name, ref, fbox.stop_time,
+                            refratio=1, norm=norm, variable='pressure')
+      errors.append(SpeedTuple('gl3.%dr%d' % (nnodes, nrep), dt, error, rt, nad, nr))
 
   with open('speed.pkl', 'w') as f:
     pickle.dump(errors, f)
 
     
 @task
-def flamebox_speed_plot():
+def flamebox_speed_plot(interactive=False):
   """Plot flamebox timing and speed results."""
 
   with open('speed.pkl', 'r') as f:
     speed = pickle.load(f)
 
     schemes = set([ x.scheme for x in speed ])
-
-    pens = {
-        'gl3': { 'marker': 'o', 'ms': 12, 'color': 'black', 'label': 'SR GL 3', 'lw': 2 },
-        'gl3.9': { 'marker': 's', 'ms': 12, 'color': 'blue', 'label': 'MR GL 3, 9', 'lw': 2 },
-        'gl3.13': { 'marker': '^', 'ms': 12, 'color': 'red' , 'label': 'MR GL 3, 13', 'lw': 2 },
-        }
 
     # runtime vs dt
     figure()
@@ -150,6 +173,8 @@ def flamebox_speed_plot():
     xlabel('dt')
     ylabel('number of adv/diff evals')
     savefig('mrsdc_nfevals_vs_dt.eps')
+
+    pprint(sorted([ (r.scheme, r.dt, r.r_evals, r.ad_evals, r.runtime) for r in speed ]))
 
     # runtime vs error
     figure()
@@ -187,8 +212,9 @@ def flamebox_speed_plot():
     xlabel('dt')
     ylabel('error')
     savefig('mrsdc_error_vs_dt.eps')
-    
 
+    if interactive:
+      show()
 
 ###############################################################################
 # flameball multi-rate convergence tests
@@ -360,6 +386,7 @@ def setenv(rwd=None, bin=None, find_exe=False):
     env.scratch     = '/scratch/scratchdirs/memmett/'
     env.scheduler   = 'hopper'
     env.host_string = 'hopper.nersc.gov'
+    env.ffdcompare  = env.scratch + 'AmrPostprocessing/F_Src/ffdcompare.Linux.gfortran.exe'
 
     env.depth   = 6
     env.pernode = 4
@@ -388,3 +415,13 @@ def setenv(rwd=None, bin=None, find_exe=False):
                 (projects + 'SDCLib',     env.scratch + 'SDCLib') ]
 
   env.python = '/home/memmett/anaconda/bin/python'
+
+
+@task
+def echo_env():
+  setenv()
+  print green("=== remote environment variables ===")
+  run('env')
+  print green("=== remote modules ===")
+  run('module list')
+  

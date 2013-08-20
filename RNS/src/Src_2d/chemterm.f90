@@ -29,6 +29,8 @@ contains
        call cellavg2gausspt_2d(U(:,:,n), Ulo, Uhi, UG(:,:,:,n), lo, hi)
     end do
 
+    call setfirst(.true.)
+
     do j=lo(2),hi(2)
        do i=lo(1),hi(1)
 

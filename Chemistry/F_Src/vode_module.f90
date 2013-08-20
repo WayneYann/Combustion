@@ -2,7 +2,7 @@ module vode_module
 
   implicit none
 
-  integer, save :: verbose, itol, neq, order
+  integer, save :: verbose, itol, neq, order, maxstep
   integer, save :: MF
 
   logical, save :: use_ajac, save_ajac, stiff
@@ -18,10 +18,10 @@ module vode_module
 contains
 
   subroutine vode_init(neq_in,vode_verbose,vode_itol,vode_rtol,vode_atol,vode_order,&
-          vode_use_ajac,vode_save_ajac,vode_stiff)
+       vode_maxstep,vode_use_ajac,vode_save_ajac,vode_stiff)
     implicit none
 
-    integer, intent(in) :: neq_in, vode_verbose, vode_itol, vode_order
+    integer, intent(in) :: neq_in, vode_verbose, vode_itol, vode_order, vode_maxstep
     logical, intent(in) :: vode_use_ajac,vode_save_ajac,vode_stiff
     double precision, intent(in) :: vode_rtol,vode_atol
 
@@ -31,6 +31,7 @@ contains
     rtol      = vode_rtol
     atol      = vode_atol
     order     = vode_order
+    maxstep   = vode_maxstep
     use_ajac  = vode_use_ajac
     save_ajac = vode_save_ajac
     stiff     = vode_stiff
@@ -67,6 +68,7 @@ contains
     voderwork = 0.d0
     vodeiwork = 0
     vodeiwork(5) = order
+    vodeiwork(6) = maxstep
 
     allocate(voderpar(2))
     allocate(vodeipar(1))

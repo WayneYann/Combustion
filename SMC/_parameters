@@ -344,7 +344,11 @@ vode_rtol                           real               1.d-10
 vode_atol                           real               1.d-10
 # vode will reduce order to a lower value
 vode_order                          integer            100    
+vode_maxstep                        integer            2000
 vode_use_ajac                       logical            .true.
 vode_save_ajac                      logical            .true.
 vode_stiff                          logical            .true.
 vode_always_new_j                   logical            .true.
+
+# use tranlib?
+use_tranlib                         logical            .false.
