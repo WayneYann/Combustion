@@ -17,3 +17,8 @@ contains
   end subroutine burn
 
 end module burner_module
+
+
+subroutine setfirst(frst)
+  logical, intent(in) :: frst
+end subroutine setfirst
