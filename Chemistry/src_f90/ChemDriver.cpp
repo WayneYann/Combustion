@@ -68,6 +68,7 @@ ChemDriver::initOnce ()
     int  maxstep = 2000;  // max step vode takes
     int  use_ajac = 1; // use analytic Jacobian
     int  save_ajac = 1; // reuse analytic Jacobian
+    int  always_new_j = 0;
     int  stiff = 1;
     int  verbose = 0;
 
@@ -79,6 +80,7 @@ ChemDriver::initOnce ()
     ppv.query("maxstep", maxstep);
     ppv.query("use_ajac", use_ajac);
     ppv.query("save_ajac", save_ajac);
+    ppv.query("always_new_j", always_new_j);
     ppv.query("stiff", stiff);
     ppv.query("v", verbose);
     ppv.query("verbose", verbose);
@@ -89,8 +91,8 @@ ChemDriver::initOnce ()
     
     int neq = nspec+1; 
     BL_FORT_PROC_CALL(CD_INITVODE, cd_initvode)
-	(neq, itol, rtol, atol, order, maxstep, use_ajac, save_ajac, stiff, verbose); 
-
+	(neq, itol, rtol, atol, order, maxstep, use_ajac, save_ajac, always_new_j, 
+	 stiff, verbose); 
 
     // eglib
     int use_bulk_visc = 1;

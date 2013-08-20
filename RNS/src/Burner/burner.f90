@@ -1,7 +1,7 @@
 module burner_module
 
   use chemistry_module, only : nspecies, spec_names
-  use vode_module, only : verbose, itol, rtol, atol, vode_MF=>MF, &
+  use vode_module, only : verbose, itol, rtol, atol, vode_MF=>MF, always_new_j, &
        voderwork, vodeiwork, lvoderwork, lvodeiwork, voderpar, vodeipar
 
   implicit none
@@ -28,6 +28,8 @@ contains
        
     istate = 1
     time = 0.d0
+
+    if (always_new_j) call setfirst(.true.)
 
     MF = vode_MF  ! vode might change its sign!
     call dvode(f_rhs, nspecies+1, YT, time, dt, itol, rtol, atol, itask, &
