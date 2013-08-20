@@ -26,12 +26,6 @@ contains
 
     if (stiff) then
 
-       MF = 10
-       lvoderwork = 20+16*NEQ
-       lvodeiwork = 30
-
-    else 
-
        if (use_ajac) then
           if (save_ajac) then
              MF = 21
@@ -46,6 +40,12 @@ contains
        end if
 
        lvodeiwork = 30 + NEQ
+
+    else 
+
+       MF = 10
+       lvoderwork = 20+16*NEQ
+       lvodeiwork = 30
 
     end if
 
