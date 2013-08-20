@@ -405,7 +405,6 @@ c ::: -----------------------------------------------------------
 
          endif
 
-
          do k = lo(3), hi(3)
             z = (float(k)+.5d0)*delta(3)+domnlo(3)
             do j = lo(2), hi(2)
@@ -415,8 +414,8 @@ c ::: -----------------------------------------------------------
                   
                   pert = 0.d0
                   if (pertmag .gt. 0.d0) then
-                     Lx = domnhi(1) - domnlo(1)
-                     Ly = domnhi(2) - domnlo(2)
+                     Lx = (domnhi(1) - domnlo(1)) / pert_scale
+                     Ly = (domnhi(2) - domnlo(2)) / pert_scale
                      pert = pertmag*(1.000 * sin(2*Pi*4*x/Lx)             * sin(2*Pi*5*y/Ly)
      &                              + 1.023 * sin(2*Pi*2*(x-.004598)/Lx)   * sin(2*Pi*4*(y-.0053765)/Ly)
      &                              + 0.945 * sin(2*Pi*3*(x-.00712435)/Lx) * sin(2*Pi*3*(y-.02137)/Ly) 

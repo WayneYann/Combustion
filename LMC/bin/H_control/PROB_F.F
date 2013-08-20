@@ -162,7 +162,7 @@ c ::: -----------------------------------------------------------
      &		        max_temp_lev, max_vort_lev, max_trac_lev,
      &                  traceSpecVal,phi_in,T_in,
      $                  turb_scale, V_in, V_co, H2_frac,T_switch,
-     $                  standoff, pertmag, nchemdiag, splitx, xfrontw,
+     $                  standoff, pertmag, pert_scale, nchemdiag, splitx, xfrontw,
      &                  splity, yfrontw, blobx, bloby, blobz, blobr,
      &                  blobT, Tfrontw, stTh, fuel_N2_vol_percent
       namelist /heattransin/ pamb, dpdt_factor
@@ -283,6 +283,7 @@ c
 c     Note: for setup with no coflow, set Ro=Rf+wallth
       standoff = zero
       pertmag = 0.d0
+      pert_scale = 1.0d0
 
 c     Initialize control variables
       tau_control = one
