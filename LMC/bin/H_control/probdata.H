@@ -38,8 +38,8 @@
      &     H2_frac,T_switch
       save /myprob1/, /myprob2/, /myprob3/, /myprob4/, /myprob5/ 
 
-      REAL_T pertmag
-      common /pert1/ pertmag
+      REAL_T pertmag, pert_scale
+      common /pert1/ pertmag, pert_scale
       save /pert1/
 
       integer dimFile
