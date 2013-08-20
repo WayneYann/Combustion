@@ -30,6 +30,8 @@ contains
        call cellavg2gausspt_1d(U(:,n), Ulo(1), Uhi(1), U1(:,n), U2(:,n), lo(1), hi(1))
     end do
 
+    call setfirst(.true.)
+
     do i=lo(1),hi(1)
 
        ! Guass point 1

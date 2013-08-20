@@ -5,6 +5,7 @@ module transport_properties
   use variables_module
 
   use egz_module
+  use tranlib_module
 
   implicit none
 
@@ -19,7 +20,7 @@ contains
 
   subroutine get_transport_properties(Q, mu, xi, lam, Ddiag, ng, ghostcells_only)
 
-    use probin_module, only : use_bulk_viscosity
+    use probin_module, only : use_bulk_viscosity, use_tranlib
     use smc_bc_module, only : get_data_lo_hi
 
     type(multifab), intent(in   ) :: Q
@@ -77,9 +78,17 @@ contains
        end do
 
        if (dm .eq. 2) then
-          call get_trans_prop_2d(lo,hi,ngq,qp,mup,xip,lamp,dp,wlo,whi,lgco)
+          if (use_tranlib) then
+             call tranlib_2d(lo,hi,ngq,qp,mup,xip,lamp,dp,wlo,whi,lgco)
+          else
+             call get_trans_prop_2d(lo,hi,ngq,qp,mup,xip,lamp,dp,wlo,whi,lgco)
+          end if
        else
-          call get_trans_prop_3d(lo,hi,ngq,qp,mup,xip,lamp,dp,wlo,whi,lgco)
+          if (use_tranlib) then
+             call tranlib_3d(lo,hi,ngq,qp,mup,xip,lamp,dp,wlo,whi,lgco)
+          else
+             call get_trans_prop_3d(lo,hi,ngq,qp,mup,xip,lamp,dp,wlo,whi,lgco)
+          end if
        end if
 
     end do
@@ -334,7 +343,7 @@ contains
        end if
 
     end if
-    
+
   end subroutine get_trans_prop_2d
 
   subroutine get_trans_prop_3d(lo,hi,ng,q,mu,xi,lam,Ddiag,wlo,whi,gco)
@@ -677,5 +686,104 @@ contains
     end if
 
   end subroutine get_trans_prop_3d
+
+
+  subroutine tranlib_2d(lo,hi,ng,q,mu,xi,lam,Ddiag,wlo,whi,gco)
+    logical, intent(in) :: gco  ! ghost cells only
+    integer, intent(in) :: lo(2), hi(2), ng, wlo(2), whi(2)
+    double precision,intent(in )::    q(lo(1)-ng:hi(1)+ng,lo(2)-ng:hi(2)+ng,nprim)
+    double precision,intent(out)::   mu(lo(1)-ng:hi(1)+ng,lo(2)-ng:hi(2)+ng)
+    double precision,intent(out)::   xi(lo(1)-ng:hi(1)+ng,lo(2)-ng:hi(2)+ng)
+    double precision,intent(out)::  lam(lo(1)-ng:hi(1)+ng,lo(2)-ng:hi(2)+ng)
+    double precision,intent(out)::Ddiag(lo(1)-ng:hi(1)+ng,lo(2)-ng:hi(2)+ng,nspecies)
+
+    integer :: i, j, n, iwrk
+    double precision :: Xt(nspecies), Dt(nspecies), Wbar, rwrk
+
+    !$omp parallel do private(i,j,n,Xt,Dt,Wbar,iwrk,rwrk)
+    do    j=wlo(2),whi(2)
+       do i=wlo(1),whi(1)
+
+          if (gco) then
+             if ( i.ge.lo(1).and.i.le.hi(1) .and. &
+                  j.ge.lo(2).and.j.le.hi(2) ) then ! not a ghost cell
+                cycle 
+             end if
+          end if
+
+          do n=1,nspecies
+             Xt(n) = q(i,j,qx1+n-1)
+          end do
+
+          call mcavis(q(i,j,qtemp),Xt,mcwork,mu(i,j))
+
+          xi(i,j) = 0.d0
+
+         call mcacon(q(i,j,qtemp),Xt,mcwork,lam(i,j))
+          
+         call mcadif(q(i,j,qpres),q(i,j,qtemp),Xt,mcwork,Dt)
+
+         call ckmmwx(Xt, iwrk, rwrk, Wbar)
+         rwrk = q(i,j,qrho) / Wbar
+         do n=1,nspecies
+            Ddiag(i,j,n) = rwrk * Dt(n) * molecular_weight(n)
+         end do
+
+       end do
+    end do
+    !$omp end parallel do
+
+  end subroutine tranlib_2d
+
+
+  subroutine tranlib_3d(lo,hi,ng,q,mu,xi,lam,Ddiag,wlo,whi,gco)
+    logical, intent(in) :: gco  ! ghost cells only
+    integer, intent(in) :: lo(3), hi(3), ng, wlo(3), whi(3)
+    double precision,intent(in )::    q(lo(1)-ng:hi(1)+ng,lo(2)-ng:hi(2)+ng,lo(3)-ng:hi(3)+ng,nprim)
+    double precision,intent(out)::   mu(lo(1)-ng:hi(1)+ng,lo(2)-ng:hi(2)+ng,lo(3)-ng:hi(3)+ng)
+    double precision,intent(out)::   xi(lo(1)-ng:hi(1)+ng,lo(2)-ng:hi(2)+ng,lo(3)-ng:hi(3)+ng)
+    double precision,intent(out)::  lam(lo(1)-ng:hi(1)+ng,lo(2)-ng:hi(2)+ng,lo(3)-ng:hi(3)+ng)
+    double precision,intent(out)::Ddiag(lo(1)-ng:hi(1)+ng,lo(2)-ng:hi(2)+ng,lo(3)-ng:hi(3)+ng,nspecies)
+
+    integer :: i, j, k, n, iwrk
+    double precision :: Xt(nspecies), Dt(nspecies), Wbar, rwrk
+
+    !$omp parallel do private(i,j,k,n,Xt,Dt,Wbar,iwrk,rwrk)
+    do    k=wlo(3),whi(3)
+       do j=wlo(2),whi(2)
+       do i=wlo(1),whi(1)
+
+          if (gco) then
+             if ( i.ge.lo(1).and.i.le.hi(1) .and. &
+                  j.ge.lo(2).and.j.le.hi(2) .and. &
+                  k.ge.lo(3).and.k.le.hi(3) ) then ! not a ghost cell
+                cycle 
+             end if
+          end if
+
+          do n=1,nspecies
+             Xt(n) = q(i,j,k,qx1+n-1)
+          end do
+          
+          call mcavis(q(i,j,k,qtemp),Xt,mcwork,mu(i,j,k))
+
+          xi(i,j,k) = 0.d0
+
+          call mcacon(q(i,j,k,qtemp),Xt,mcwork,lam(i,j,k))
+          
+          call mcadif(q(i,j,k,qpres),q(i,j,k,qtemp),Xt,mcwork,Dt)
+
+          call ckmmwx(Xt, iwrk, rwrk, Wbar)
+          rwrk = q(i,j,k,qrho) / Wbar
+          do n=1,nspecies
+             Ddiag(i,j,k,n) = rwrk * Dt(n) * molecular_weight(n)
+          end do
+
+       end do
+       end do
+    end do
+    !$omp end parallel do
+
+  end subroutine tranlib_3d
 
 end module transport_properties

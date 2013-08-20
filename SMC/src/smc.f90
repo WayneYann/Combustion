@@ -19,6 +19,7 @@ subroutine smc()
   use smcdata_module
   use threadbox_module
   use time_module
+  use tranlib_module
   use variables_module
   use vode_module, only : vode_init, vode_close
 
@@ -67,7 +68,10 @@ subroutine smc()
   call chemistry_init()
   if (use_vode) then
      call vode_init(nspecies+1,vode_verbose,vode_itol,vode_rtol,vode_atol,vode_order,&
-          vode_use_ajac,vode_save_ajac,vode_stiff)
+          vode_maxstep,vode_use_ajac,vode_save_ajac,vode_stiff)
+  end if
+  if (use_tranlib) then
+     call tranlib_init(nspecies)
   end if
 
   if (verbose .ge. 1) then
@@ -438,7 +442,11 @@ subroutine smc()
   call destroy(la)
 
   call chemistry_close()
-  call egz_close()
+  if (use_tranlib) then
+     call tranlib_close()
+  else
+     call egz_close()
+  end if
   call vode_close()
 
   call runtime_close()

@@ -1,3 +1,8 @@
+      DOUBLE PRECISION YJ_SAVE(80)
+      LOGICAL FIRST
+      COMMON /VHACK/ YJ_SAVE, FIRST
+      SAVE   /VHACK/
+
 C
 C Type declarations for labeled COMMON block DVOD01 --------------------
 C
@@ -28,5 +33,5 @@ C
 C
       SAVE /DVOD01/, /DVOD02/
 
-!$omp threadprivate(/DVOD01/,/DVOD02/)
+!$omp threadprivate(/VHACK/,/DVOD01/,/DVOD02/)
 

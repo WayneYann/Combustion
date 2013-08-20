@@ -13,8 +13,8 @@ BL_FORT_PROC_DECL(CD_GETSPECNAME, cd_getspecname)
 
 BL_FORT_PROC_DECL(CD_INITVODE, cd_initvode)
    (const int& neq, const int& itol, const Real& rtol, const Real& atol,
-    const int& order, const int& use_ajac, const int& save_ajac,
-    const int& stiff, const int& verbose);
+    const int& order, const int& maxstep, const int& use_ajac, const int& save_ajac,
+    const int& always_new_j, const int& stiff, const int& verbose);
 BL_FORT_PROC_DECL(CD_CLOSEVODE, cd_closevode)();
 
 BL_FORT_PROC_DECL(CD_INITEGLIB, cd_initeglib)

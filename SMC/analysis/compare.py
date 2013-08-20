@@ -12,7 +12,7 @@ def find_plotfile(rundir, time):
   with cd(os.path.join(env.rwd, rundir)):
     program = [ "function abs(x) { if (x<0.0) return -x; return x }",
                 "FNR==2 { ncomp=$1 }",
-                "FNR==ncomp+4 { if (abs($1-%e) < 1e-18) print(FILENAME) }" % time ]
+                "FNR==ncomp+4 { if (abs($1-%e) < 1e-12) print(FILENAME) }" % time ]
     header = run("awk '%s' plt*/Header" % '; '.join(program), quiet=True)
     if header:
       return os.path.join(rundir, header.split('/')[0])
