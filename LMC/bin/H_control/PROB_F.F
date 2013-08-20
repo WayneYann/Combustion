@@ -171,7 +171,7 @@ c ::: -----------------------------------------------------------
      &     strmwse_dir, nCompInflow, flct_file, convVelInit
 #endif
       namelist /control/ tau_control, sest, cfix, changeMax_control, h_control, 
-     &     zbase_control, pseudo_gravity
+     &     zbase_control, pseudo_gravity, ac_hist_file
 #ifdef DO_LMC_FORCE
       REAL_T  twicePi, kxd, kyd, kzd
       REAL_T  thetaTmp, phiTmp
