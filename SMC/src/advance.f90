@@ -277,21 +277,21 @@ contains
     type(multifab),  pointer :: U, Uprime, Uprime_chem
     type(sdc_ctx_t), pointer :: ctx
 
-    type(sdc_nset_t), pointer :: nset
-    real(c_double),   pointer :: nodes(:)
-    real(c_double)            :: dt_m
-    integer                   :: node
+    type(sdc_nodes_t), pointer :: nds
+    real(c_double),    pointer :: nodes(:)
+    real(c_double)             :: dt_m
+    integer                    :: node
 
     call c_f_pointer(Uptr, U)
     call c_f_pointer(Fptr, Uprime)
     call c_f_pointer(ctxptr, ctx)
 
     ! hack: compute sub-step dt and wrap around appropriately
-    nset => ctx%nset1
-    call c_f_pointer(nset%nodes, nodes, [ nset%nnodes ])
+    nds => ctx%nodes1
+    call c_f_pointer(nds%nodes, nodes, [ nds%nnodes ])
 
     node = state%node + 1
-    if (node >= nset%nnodes) then
+    if (node >= nds%nnodes) then
        dt_m = dt * (nodes(2) - nodes(1))
     else
        dt_m = dt * (nodes(node+1) - nodes(node))
