@@ -3,10 +3,6 @@
 #include "RNS.H"
 #include <cmath>
 
-#ifdef USE_SDCLIB
-#include "SDCLevelBld.H"
-#endif
-
 class RNSBld
     :
     public LevelBld
@@ -56,26 +52,3 @@ RNSBld::operator() (Amr&            papa,
 {
     return new RNS(papa, lev, level_geom, ba, time);
 }
-
-
-
-#ifdef USE_SDCLIB
-class RNSSDCBld
-    :
-    public SDCLevelBld
-{
-  sdc_sweeper_t* build (SDCAmr& papa,
-                        int     lev,
-                        Real    time)
-  {
-    sdc_nodes_t nodes;
-    int nnodes0 = 3;
-    int trat    = 2;
-    int nnodes  = 1 + (nnodes0 - 1) * ((int) pow(trat, lev));
-    sdc_nodes_build(&nodes, nnodes, SDC_GAUSS_LOBATTO);
-    sdc_imex_t* imex = sdc_imex_create(&nodes, NULL, NULL, NULL);
-    return (sdc_sweeper_t*) imex;
-  }
-};
-#endif
-

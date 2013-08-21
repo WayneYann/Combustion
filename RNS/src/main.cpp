@@ -23,16 +23,8 @@
 
 #ifdef USE_SDCLIB
 #include <SDCAmr.H>
+#include "RNS.H"
 #endif
-
-// extern "C" {
-//   sdc_sweeper_t* sdc_build_level(int level)
-//   {
-//     std::cout << "BUILDING" << std::endl;
-//     return NULL;
-//   }
-// }
-// #endif
 
 int main (int argc, char* argv[])
 {
@@ -63,7 +55,7 @@ int main (int argc, char* argv[])
 #ifndef USE_SDCLIB
     Amr* amrptr = new Amr;
 #else
-    Amr* amrptr = new SDCAmr;
+    Amr* amrptr = new SDCAmr(rns_sdc_build_level);
 #endif
 
     int trat = 2;

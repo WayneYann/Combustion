@@ -17,6 +17,7 @@ Bpack	+= ../../../Chemistry/src_f90/Make.package
 Blocs	+= ../../../Chemistry/src_f90
 
 ifeq ($(USE_SDCLIB), TRUE)
+  CEXE_sources += RNS_SDC.cpp
   Bpack   += $(SDCLIB_HOME)/Make.package
   Blocs   += $(SDCLIB_HOME)/src $(SDCLIB_HOME)/include
 endif

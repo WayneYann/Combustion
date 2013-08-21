@@ -337,3 +337,14 @@ RNS::advance_AD(const MultiFab& Uold, MultiFab& Unew, Real time, Real dt)
 	post_update(Unew);	
     }
 }
+
+#ifdef USE_SDCLIB
+BEGIN_EXTERN_C
+
+void sdc_feval(void *Uprime, void *U, double t, sdc_state_t *state, void *ctx)
+{
+  cout << "FEVAL" << endl;
+}
+
+END_EXTERN_C
+#endif

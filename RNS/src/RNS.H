@@ -12,6 +12,15 @@
 using std::istream;
 using std::ostream;
 
+#ifdef USE_SDCLIB
+#include <SDCAmr.H>
+sdc_sweeper_t* rns_sdc_build_level(SDCAmr&, int);
+BEGIN_EXTERN_C
+void sdc_feval(void*, void*, double, sdc_state_t*, void*);
+END_EXTERN_C
+#endif
+
+
 enum StateType { State_Type = 0,
                  NUM_STATE_TYPE };
 
