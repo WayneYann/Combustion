@@ -148,7 +148,7 @@ contains
              call egzpar(q(wlo(1):whi(1),j,k,qtemp), XZ, CPZ)
 
              call egze1( 1.d0, XZ, E1Z)
-             call egze1(-1.d0, XZ, E1Z)
+             call egze1(-1.d0, XZ, E2Z)
              mu(wlo(1):whi(1),j,k) = 0.5d0*(E1Z+E2Z)
 
              xi(wlo(1):whi(1),j,k) = 0.d0
