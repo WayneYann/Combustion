@@ -16,6 +16,11 @@ Blocs	+= $(foreach dir, $(Pdirs), $(BOXLIB_HOME)/Src/$(dir))
 Bpack	+= ../../../Chemistry/src_f90/Make.package
 Blocs	+= ../../../Chemistry/src_f90
 
+ifeq ($(USE_SDCLIB), TRUE)
+  Bpack   += $(SDCLIB_HOME)/Make.package
+  Blocs   += $(SDCLIB_HOME)/src $(SDCLIB_HOME)/include
+endif
+
 MECHDIR = ../../../Chemistry/data
 ifeq (${CHEMISTRY_MODEL}, CHEMH)
   cEXE_sources += chem-H.c
