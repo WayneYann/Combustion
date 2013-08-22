@@ -18,4 +18,3 @@ sdc_sweeper_t* rns_sdc_build_level(SDCAmr& amr, int lev)
 
   return (sdc_sweeper_t*) imex;
 }
-

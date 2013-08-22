@@ -144,6 +144,7 @@ public:
     //
     void dUdt(MultiFab& U, MultiFab& Uprime, Real time, int fill_boundary_type, 
 	      FluxRegister* fine=0, FluxRegister* current=0, Real dt=0.0);
+    void dUdt_SDC(MultiFab& U, MultiFab& Uprime, Real time, Real dt);
     //
     // Compute U1 = U2 + c Uprime.
     //
