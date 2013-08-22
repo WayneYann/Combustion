@@ -13,11 +13,8 @@ sdc_sweeper_t* rns_sdc_build_level(SDCAmr& amr, int lev)
   sdc_nodes_t* nodes = sdc_nodes_create(nnodes, SDC_GAUSS_LOBATTO);
   sdc_imex_t*  imex  = sdc_imex_create(nodes, sdc_feval, NULL, NULL);
 
-  sdc_imex_setup(imex, &amr.encap, &amr.getLevel(lev));
-
   sdc_nodes_destroy(nodes);
-
-  cout << "BUILD WITH" << nnodes << endl;
+  sdc_imex_setup(imex, amr.encaps[lev], &amr.getLevel(lev));
 
   return (sdc_sweeper_t*) imex;
 }
