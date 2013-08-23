@@ -41,7 +41,7 @@ contains
     double precision,  intent(inout) :: dtio, courno
     double precision,  intent(in   ) :: dx(3)
     integer,           intent(in   ) :: istep
-    type(sdc_ctx_t),   intent(inout) :: sdc
+    type(sdc_ctx),     intent(inout) :: sdc
 
     if (istep_first < 0) then
        istep_first = istep
@@ -131,7 +131,7 @@ contains
     type(multifab),    intent(inout) :: U
     double precision,  intent(inout) :: courno
     double precision,  intent(in   ) :: dx(3)
-    type(sdc_ctx_t),   intent(inout) :: sdc
+    type(sdc_ctx),     intent(inout) :: sdc
 
     logical :: update_courno
     double precision :: courno_proc
@@ -223,17 +223,17 @@ contains
   ! SDCLib callbacks
   !
   subroutine single_sdc_feval(Fptr, Uptr, t, state, ctxptr) bind(c)
-    type(c_ptr),       intent(in), value :: Fptr, Uptr, ctxptr
-    type(sdc_state_t), intent(in)        :: state
-    real(c_double),    intent(in), value :: t
+    type(c_ptr),     intent(in), value :: Fptr, Uptr, ctxptr
+    type(sdc_state), intent(in)        :: state
+    real(c_double),  intent(in), value :: t
 
-    type(multifab),  pointer :: U, Uprime
-    type(sdc_ctx_t), pointer :: ctx
+    type(multifab), pointer :: U, Uprime
+    type(sdc_ctx),  pointer :: ctx
 
-    type(sdc_nset_t), pointer :: nset
-    real(c_double),   pointer :: nodes(:)
-    real(c_double)            :: dt_m
-    integer                   :: node
+    type(sdc_nset), pointer :: nset
+    real(c_double), pointer :: nodes(:)
+    real(c_double)          :: dt_m
+    integer                 :: node
 
     call c_f_pointer(Uptr, U)
     call c_f_pointer(Fptr, Uprime)
@@ -254,11 +254,11 @@ contains
   end subroutine single_sdc_feval
 
   subroutine sdc_post_step_cb(Uptr, state, ctxptr) bind(c)
-    type(c_ptr),       intent(in), value :: Uptr, ctxptr
-    type(sdc_state_t), intent(in)        :: state
+    type(c_ptr),     intent(in), value :: Uptr, ctxptr
+    type(sdc_state), intent(in)        :: state
 
-    type(multifab),  pointer :: U
-    type(sdc_ctx_t), pointer :: ctx
+    type(multifab), pointer :: U
+    type(sdc_ctx),  pointer :: ctx
 
     call c_f_pointer(Uptr, U)
     call c_f_pointer(ctxptr, ctx)
@@ -270,17 +270,17 @@ contains
   subroutine multi_sdc_feval_slow(Fptr, Uptr, t, state, ctxptr) bind(c)
     use probin_module, only : advance_method
 
-    type(c_ptr),       intent(in), value :: Fptr, Uptr, ctxptr
-    type(sdc_state_t), intent(in)        :: state
-    real(c_double),    intent(in), value :: t
+    type(c_ptr),     intent(in), value :: Fptr, Uptr, ctxptr
+    type(sdc_state), intent(in)        :: state
+    real(c_double),  intent(in), value :: t
 
-    type(multifab),  pointer :: U, Uprime, Uprime_chem
-    type(sdc_ctx_t), pointer :: ctx
+    type(multifab), pointer :: U, Uprime, Uprime_chem
+    type(sdc_ctx),  pointer :: ctx
 
-    type(sdc_nodes_t), pointer :: nds
-    real(c_double),    pointer :: nodes(:)
-    real(c_double)             :: dt_m
-    integer                    :: node
+    type(sdc_nodes), pointer :: nds
+    real(c_double),  pointer :: nodes(:)
+    real(c_double)           :: dt_m
+    integer                  :: node
 
     call c_f_pointer(Uptr, U)
     call c_f_pointer(Fptr, Uprime)
@@ -307,17 +307,17 @@ contains
 
   subroutine multi_sdc_feval_fast(Fptr, Uptr, t, state, ctxptr) bind(c)
     use probin_module, only : advance_method
-    type(c_ptr),       intent(in), value :: Fptr, Uptr, ctxptr
-    type(sdc_state_t), intent(in)        :: state
-    real(c_double),    intent(in), value :: t
+    type(c_ptr),     intent(in), value :: Fptr, Uptr, ctxptr
+    type(sdc_state), intent(in)        :: state
+    real(c_double),  intent(in), value :: t
 
-    type(multifab),  pointer :: U, Uprime, Uprime_chem
-    type(sdc_ctx_t), pointer :: ctx
+    type(multifab), pointer :: U, Uprime, Uprime_chem
+    type(sdc_ctx),  pointer :: ctx
 
-    type(sdc_nset_t), pointer :: nset
-    real(c_double),   pointer :: nodes(:)
-    real(c_double)            :: dt_m
-    integer                   :: node
+    type(sdc_nset), pointer :: nset
+    real(c_double), pointer :: nodes(:)
+    real(c_double)          :: dt_m
+    integer                 :: node
 
     call c_f_pointer(Uptr, U)
     call c_f_pointer(Fptr, Uprime)
@@ -352,10 +352,10 @@ contains
     use smcdata_module, only : Q
     use probin_module, only : cfl_int, fixed_dt
 
-    type(multifab),    intent(inout) :: U
-    double precision,  intent(inout) :: courno
-    double precision,  intent(in   ) :: dx(3)
-    type(sdc_ctx_t),   intent(inout) :: sdc
+    type(multifab),   intent(inout) :: U
+    double precision, intent(inout) :: courno
+    double precision, intent(in   ) :: dx(3)
+    type(sdc_ctx),    intent(inout) :: sdc
 
     logical :: update_courno
     double precision :: courno_proc
@@ -1003,7 +1003,7 @@ contains
   subroutine sdc_get_q0(U0, sdc)
     use probin_module, only : advance_method
     type(multifab), intent(inout) :: U0
-    type(sdc_ctx_t),intent(inout) :: sdc
+    type(sdc_ctx),  intent(inout) :: sdc
     select case(advance_method)
     case (2)
        call sdc_imex_get_q0(sdc%imex, mfptr(U0))

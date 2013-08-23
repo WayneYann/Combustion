@@ -44,9 +44,9 @@ subroutine smc()
   logical :: dump_plotfile, dump_checkpoint, abort_smc
   real(dp_t) :: write_pf_time
 
-  type(layout)    :: la
-  type(multifab)  :: U, U0
-  type(sdc_ctx_t) :: sdc
+  type(layout)   :: la
+  type(multifab) :: U, U0
+  type(sdc_ctx)  :: sdc
 
   logical :: plot_use_U0
 
