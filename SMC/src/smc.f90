@@ -33,7 +33,7 @@ subroutine smc()
   real(dp_t) :: dt, courno
   real(dp_t) :: dx(3)
 
-  real(dp_t) :: wt0, wt1, wt2, wt_init, wt_advance
+  real(dp_t) :: wt0, wt1, wt2, wt_init, wt_advance, wtw, dwt
 
   integer :: last_plt_written,last_chk_written
   character(len=5)               :: plot_index, check_index
@@ -41,7 +41,7 @@ subroutine smc()
   character(len=256)             :: plot_file_name, check_file_name
   character(len=20), allocatable :: plot_names(:)
 
-  logical :: dump_plotfile, dump_checkpoint, abort_smc
+  logical :: dump_plotfile, dump_checkpoint, abort_smc, walltime_limit_reached
   real(dp_t) :: write_pf_time
 
   type(layout)   :: la
@@ -364,6 +364,23 @@ subroutine smc()
         if (stop_time >= 0.d0) then
            if (time >= stop_time) then
               goto 999
+           end if
+        end if
+
+        ! how many hours of wall time have we run?
+        if (walltime_limit > 0) then
+           if (mod(istep,walltime_int) .eq. 0) then
+              wtw = parallel_wtime()
+              dwt = (wtw - wt0) / 3600.0
+              if (dwt .gt. walltime_limit) then
+                 walltime_limit_reached = .true.
+              else
+                 walltime_limit_reached = .false.
+              end if
+              call parallel_bcast(walltime_limit_reached)
+              if (walltime_limit_reached) then
+                 goto 999
+              end if
            end if
         end if
 

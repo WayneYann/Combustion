@@ -10,6 +10,11 @@
 # category: general SMC
 #-----------------------------------------------------------------------------
 
+# How many hours of wall time to run?
+walltime_limit                      real               -1.
+# check walltime every ? steps
+walltime_int                        integer            10
+
 # General verbosity
 verbose                             integer            0
 
