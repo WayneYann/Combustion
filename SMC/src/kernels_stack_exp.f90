@@ -63,6 +63,8 @@ contains
        dxinv(i) = 1.0d0 / dx(i)
     end do
 
+    rhs = 0.d0
+
     ! ------- BEGIN x-direction -------
 
     do k=lo(3),hi(3)
