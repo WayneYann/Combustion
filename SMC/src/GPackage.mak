@@ -11,17 +11,18 @@ f90sources += initialize.f90
 ifdef EXPAND
   ifdef K_USE_STACK
     f90sources += kernels_stack_exp.f90
+    f90sources += kernels_2d_stack_exp.f90
   else
     f90sources += kernels_exp.f90
   endif
-  f90sources += kernels_2d_exp.f90
 else
   ifdef K_USE_STACK
     f90sources += kernels_stack.f90
+    f90sources += kernels_2d_stack.f90
   else
     f90sources += kernels.f90
+    f90sources += kernels_2d.f90
   endif
-  f90sources += kernels_2d.f90
 endif
 
 f90sources += make_plot_variables.f90

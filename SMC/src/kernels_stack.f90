@@ -2083,7 +2083,7 @@ contains
 
     double precision, dimension(dlo(1):dhi(1),dlo(2):dhi(2),dlo(3):dhi(3)) :: vsp, dpe
     double precision, dimension(dlo(1):dhi(1),dlo(2):dhi(2),dlo(3):dhi(3),nspecies) :: dpy, dxe
-    double precision, dimension(dlo(1):dhi(1),dlo(2):dhi(2),dlo(3):dhi(3),ncons) :: Hg
+    double precision :: Hg(lo(1):hi(1)+1,lo(2):hi(2)+1,lo(3):hi(3)+1,2:ncons)
     ! dxy: diffusion coefficient of X in equation for Y
     ! dpy: diffusion coefficient of p in equation for Y
     ! dxe: diffusion coefficient of X in equation for energy
