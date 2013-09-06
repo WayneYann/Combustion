@@ -161,7 +161,7 @@ contains
 
     !$omp parallel private(i, j, n, iwrk, rho, rhoinv, rwrk) &
     !$omp private(X, Y, h, ei, Tt, Pt, ierr)
-    !$omp do
+    !$omp do collapse(2)
     do j = llo(2),lhi(2)
        do i = llo(1),lhi(1)
 
@@ -232,7 +232,7 @@ contains
 
     !$omp parallel private(i, j, k, n, iwrk, rho, rhoinv, rwrk) &
     !$omp private(X, Y, h, ei, Tt, Pt, ierr)
-    !$omp do
+    !$omp do collapse(2)
     do k = llo(3),lhi(3)
        do j = llo(2),lhi(2)
           do i = llo(1),lhi(1)
@@ -328,7 +328,7 @@ contains
 
     !$omp parallel private(i,j,n,iryn,rho) &
     !$omp private(idom, rhoy_dom, rhoy_under)
-    !$omp do
+    !$omp do collapse(2)
     do j = lo(2),hi(2)
        do i = lo(1),hi(1)
           
@@ -395,7 +395,7 @@ contains
 
     !$omp parallel private(i,j,k,n,iryn,rho) &
     !$omp private(idom, rhoy_dom, rhoy_under)
-    !$omp do
+    !$omp do collapse(2)
     do k = lo(3),hi(3)
        do j = lo(2),hi(2)
           do i = lo(1),hi(1)

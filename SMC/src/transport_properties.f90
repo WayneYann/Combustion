@@ -380,7 +380,7 @@ contains
        allocate(XZ(wlo(1):whi(1),nspecies))
        allocate(CPZ(wlo(1):whi(1),nspecies))
 
-       !$omp do
+       !$omp do collapse(2)
        do k=wlo(3),whi(3)
           do j=wlo(2),whi(2)
 
@@ -460,7 +460,7 @@ contains
           allocate(XZ(wlo(1):whi(1),nspecies))
           allocate(CPZ(wlo(1):whi(1),nspecies))
        
-          !$omp do
+          !$omp do collapse(2)
           do kk=1,kisize
              do j=wlo(2),whi(2)
 
@@ -541,7 +541,7 @@ contains
           allocate(XZ(wlo(1):whi(1),nspecies))
           allocate(CPZ(wlo(1):whi(1),nspecies))
     
-          !$omp do
+          !$omp do collapse(2)
           do k=lo(3),hi(3)
              do jj=1,jisize
 
@@ -624,7 +624,7 @@ contains
           allocate(XZ(np,nspecies))
           allocate(CPZ(np,nspecies))
         
-          !$omp do
+          !$omp do collapse(2)
           do k=lo(3),hi(3)
              do j=lo(2),hi(2)
 
@@ -700,7 +700,8 @@ contains
     integer :: i, j, n, iwrk
     double precision :: Xt(nspecies), Dt(nspecies), Wbar, rwrk
 
-    !$omp parallel do private(i,j,n,Xt,Dt,Wbar,iwrk,rwrk)
+    !$omp parallel private(i,j,n,Xt,Dt,Wbar,iwrk,rwrk)
+    !$omp do collapse(2)
     do    j=wlo(2),whi(2)
        do i=wlo(1),whi(1)
 
@@ -731,7 +732,8 @@ contains
 
        end do
     end do
-    !$omp end parallel do
+    !$omp end do
+    !$omp end parallel
 
   end subroutine tranlib_2d
 
@@ -748,7 +750,8 @@ contains
     integer :: i, j, k, n, iwrk
     double precision :: Xt(nspecies), Dt(nspecies), Wbar, rwrk
 
-    !$omp parallel do private(i,j,k,n,Xt,Dt,Wbar,iwrk,rwrk)
+    !$omp parallel private(i,j,k,n,Xt,Dt,Wbar,iwrk,rwrk)
+    !$omp do collapse(2)
     do    k=wlo(3),whi(3)
        do j=wlo(2),whi(2)
        do i=wlo(1),whi(1)
@@ -782,7 +785,8 @@ contains
        end do
        end do
     end do
-    !$omp end parallel do
+    !$omp end do
+    !$omp end parallel
 
   end subroutine tranlib_3d
 
