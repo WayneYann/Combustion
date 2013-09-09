@@ -14,6 +14,7 @@ ifdef EXPAND
     f90sources += kernels_2d_stack_exp.f90
   else
     f90sources += kernels_exp.f90
+    f90sources += kernels_2d_exp.f90
   endif
 else
   ifdef K_USE_STACK
