@@ -348,9 +348,10 @@ RNS::advance_AD(const MultiFab& Uold, MultiFab& Unew, Real time, Real dt)
 #ifdef USE_SDCLIB
 BEGIN_EXTERN_C
 
-void sdc_feval(void *F, void *Q, double t, sdc_state_t *state, void *ctx)
+void sdc_feval(void *F, void *Q, double t, sdc_state *state, void *vctx)
 {
-  RNS& rns = *((RNS*) ctx);
+  sdc_level_ctx* ctx = (sdc_level_ctx*) vctx;
+  RNS& rns = dynamic_cast<RNS&>(ctx->amr->getLevel(ctx->level));
   MultiFab& U = *((MultiFab*) Q);
   MultiFab& Uprime = *((MultiFab*) F);
   rns.dUdt_SDC(U, Uprime, t, state->dt);
