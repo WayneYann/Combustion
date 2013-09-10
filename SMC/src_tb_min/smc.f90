@@ -56,6 +56,8 @@ subroutine smc()
   call stencil_init()
 
   call chemistry_init()
+  call egz_init(use_bulk_viscosity)
+
   if (verbose .ge. 1) then
      if (parallel_IOProcessor()) then
         print *, ''

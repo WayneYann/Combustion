@@ -10,9 +10,6 @@ module transport_properties
 
   implicit none
 
-  ! eglib parameters
-  integer, save :: ITLS=-1, IFLAG=-1
-
   private
 
   public get_transport_properties
@@ -33,19 +30,6 @@ contains
     logical :: lgco
     integer :: ngq, n, dm, lo(Q%dim), hi(Q%dim), wlo(Q%dim), whi(Q%dim)
     double precision, pointer, dimension(:,:,:,:) :: qp, mup, xip, lamp, dp
-
-    logical, save :: first_call = .true.
-
-    if (first_call) then
-       first_call = .false.
-       if (use_bulk_viscosity) then
-          ITLS  = 1 
-          IFLAG = 5
-       else
-          ITLS  = 1
-          IFLAG = 3
-       end if
-    end if
 
     dm = Q%dim
     ngq = nghost(Q)
@@ -89,7 +73,6 @@ contains
   end subroutine get_transport_properties
 
   subroutine get_trans_prop_3d(lo,hi,ng,q,mu,xi,lam,Ddiag,wlo,whi,gco)
-    use probin_module, only : use_bulk_viscosity
     logical, intent(in) :: gco  ! ghost cells only
     integer, intent(in) :: lo(3), hi(3), ng, wlo(3), whi(3)
     double precision,intent(in )::    q(lo(1)-ng:hi(1)+ng,lo(2)-ng:hi(2)+ng,lo(3)-ng:hi(3)+ng,nprim)
@@ -103,17 +86,14 @@ contains
     double precision, allocatable :: L1Z(:), L2Z(:), DZ(:,:), XZ(:,:), CPZ(:,:), &
          E1Z(:), E2Z(:)
 
-    ! eglib parameters
-    integer, parameter :: ITLS_local=0, IFLAG_local=2
-
     if (.not. gco) then
 
        np = whi(1) - wlo(1) + 1
-
-       call egzini(np, ITLS_local, IFLAG_local)
        
        !$omp parallel private(i,j,k,n,qxn,iwrk) &
        !$omp private(rwrk,Cp,L1Z,L2Z,DZ,XZ,CPZ,E1Z,E2Z)
+
+       call egzini(np)
 
        allocate(L1Z(wlo(1):whi(1)))
        allocate(L2Z(wlo(1):whi(1)))

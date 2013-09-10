@@ -7,7 +7,7 @@ module egz_module
   double precision, parameter :: Ru = 8.314d7
   double precision, parameter :: Patmos = 1.01325d6
 
-  integer, save :: use_bulk_visc = 1
+  logical, save :: use_bulk_visc = .true.
 
   integer, parameter :: nfit=7
   integer, save :: iflag = -1
@@ -47,18 +47,20 @@ module egz_module
   !$omp threadprivate(xtr,ytr,aux,cxi,cint,sumtr,wwtr,dlt,beta,eta,etalg)
   !$omp threadprivate(rn,an,zn,dmi,G,bin,A,np)
 
-  public :: egz_init, egz_close, EGZINI, EGZPAR, EGZE1, EGZE3, EGZK1, EGZK3, EGZL1, EGZVR1
   public :: iflag
+  public :: egz_init, egz_close, EGZINI, EGZPAR, EGZE1, EGZE3, EGZK1, EGZK3, EGZL1, EGZVR1
+  ! egz_init and egz_close should be called outside OMP PARALLEL,
+  ! whereas others are inside
 
 contains
 
   ! This subroutine should be called outside OMP PARALLEL
   subroutine egz_init(use_bulk_visc_in)
-    integer, intent(in) :: use_bulk_visc_in
+    logical, intent(in) :: use_bulk_visc_in
 
     use_bulk_visc = use_bulk_visc_in
 
-    if (use_bulk_visc .ne. 0) then
+    if (use_bulk_visc) then
        iflag = 5
     else
        iflag = 3
@@ -710,7 +712,7 @@ contains
     double precision :: ccc(np), wtfac, bb
     double precision, parameter :: denfac = 2.4d0 * Ru / Patmos
 
-    if (use_bulk_visc .eq. 0) then
+    if (.not. use_bulk_visc) then
        VV = 0.d0
        return
     end if

@@ -91,8 +91,8 @@ ChemDriver::initOnce ()
     
     int neq = nspec+1; 
     BL_FORT_PROC_CALL(CD_INITVODE, cd_initvode)
-	(neq, itol, rtol, atol, order, maxstep, use_ajac, save_ajac, always_new_j, 
-	 stiff, verbose); 
+	(neq, verbose, itol, rtol, atol, order, 
+	 maxstep, use_ajac, save_ajac, always_new_j, stiff); 
 
     // eglib
     int use_bulk_visc = 1;
