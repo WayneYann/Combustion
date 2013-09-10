@@ -66,4 +66,4 @@ amr.plot_int          = 1000    # number of timesteps between plotfiles
 amr.derive_plot_vars = ALL
 
 #PROBIN FILENAME
-amr.probin_file = probin
+amr.probin_file = probin-regt

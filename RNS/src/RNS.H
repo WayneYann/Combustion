@@ -287,6 +287,15 @@ protected:
     
     static RiemannType Riemann;
     static Real        difmag; // for JBB Riemann solver
+
+    static std::string      job_name;
+
+    // for keeping track of the amount of CPU time used -- this will persist
+    // after restarts
+    static Real      previousCPUTimeUsed;
+    static Real      startCPUTime;
+
+    Real getCPUTime();
         
     static class ChemDriver* chemSolve;
 };    

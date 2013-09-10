@@ -79,6 +79,13 @@ int          RNS::do_pressure_ref    = 0;
 int          RNS::do_velocity_ref    = 0;
 int          RNS::do_vorticity_ref   = 0;
 
+std::string  RNS::job_name = "";
+
+// this will be reset upon restart
+Real         RNS::previousCPUTimeUsed = 0.0;
+Real         RNS::startCPUTime = 0.0;
+
+
 void
 RNS::variableCleanUp () 
 {
@@ -211,6 +218,8 @@ RNS::read_params ()
     pp.query("do_pressure_ref"   , do_pressure_ref);
     pp.query("do_velocity_ref"   , do_velocity_ref);
     pp.query("do_vorticity_ref"  , do_vorticity_ref);
+
+    pp.query("job_name",job_name);  
 }
 
 RNS::RNS ()
@@ -789,3 +798,16 @@ RNS::sumDerive (const std::string& name,
 }
 
 
+Real
+RNS::getCPUTime()
+{
+    int numCores = ParallelDescriptor::NProcs();
+#ifdef _OPENMP
+    numCores = numCores*omp_get_max_threads();
+#endif    
+
+    Real T = numCores*(ParallelDescriptor::second() - startCPUTime) + 
+	previousCPUTimeUsed;
+    
+    return T;
+}

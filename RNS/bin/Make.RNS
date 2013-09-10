@@ -34,9 +34,9 @@ else ifeq ($(CHEMISTRY_MODEL), GRI30)
   vpath %.f $(VPATH_LOCATIONS) ${MECHDIR}/gri/PMFs
   vpath %.c $(VPATH_LOCATIONS) ${MECHDIR}/gri
 else ifeq (${CHEMISTRY_MODEL}, LUDME)
-  CHEM_MECHFILE = LuDME.c
-  VPATH_LOCATIONS += ${MECHDIR}/data/Lu/PMFs
-  VPATH_LOCATIONS += ${MECHDIR}/data/Lu
+  cEXE_sources += LuDME.c
+  vpath %.f $(VPATH_LOCATIONS) ${MECHDIR}/Lu/PMFs
+  vpath %.c $(VPATH_LOCATIONS) ${MECHDIR}/Lu
 else ifneq (${CHEMISTRY_MODEL}, NULL)
   $(error "Unknown CHEMISTRY_MODEL: $(CHEMISTRY_MODEL)")
 endif
@@ -45,6 +45,24 @@ include $(Bpack)
 
 INCLUDE_LOCATIONS += $(Blocs)
 VPATH_LOCATIONS   += $(Blocs)
+
+
+all: $(executable) 
+	$(SILENT) $(RM) buildInfo.cpp
+	@echo SUCCESS
+
+
+# job_info support
+CEXE_sources += buildInfo.cpp
+CEXE_headers += $(BOXLIB_HOME)/Tools/C_scripts/buildInfo.H
+INCLUDE_LOCATIONS +=  $(BOXLIB_HOME)/Tools/C_scripts
+
+buildInfo.cpp: $(BOXLIB_HOME)/Tools/C_scripts/make_build_info_cpp
+	$(BOXLIB_HOME)/Tools/C_scripts/make_build_info_cpp "$(BOXLIB_HOME)" \
+            "$(COMP)" "$(FCOMP)" \
+            "AUX=$(CHEMISTRY_MODEL)" \
+            "GIT=$(TOP)" "GIT=$(BOXLIB_HOME)" "GIT=$(SDCLIB_HOME)" 
+
 
 vpath %.c   . $(VPATH_LOCATIONS)
 vpath %.cpp . $(VPATH_LOCATIONS)
@@ -56,8 +74,14 @@ vpath %.f   . $(VPATH_LOCATIONS)
 vpath %.fi  . $(VPATH_LOCATIONS)
 
 
-all: $(executable) 
-	@echo SUCCESS
-
-
 include $(BOXLIB_HOME)/Tools/C_mk/Make.rules
+
+clean::
+	$(SILENT) $(RM) buildInfo.cpp
+
+#-----------------------------------------------------------------------------
+# for debugging.  To see the value of a Makefile variable,
+# e.g. Fmlocs, simply do "make print-Fmlocs".  This will
+# print out the value.
+print-%: ; @echo $* is $($*)
+

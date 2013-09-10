@@ -19,6 +19,8 @@
 #include "RNS.H"
 #include "RNS_F.H"
 
+#include "buildInfo.H"
+
 using std::string;
 
 // I/O routines for RNS
@@ -37,6 +39,21 @@ RNS::restart (Amr&     papa,
     {
 	flux_reg = new FluxRegister(grids,crse_ratio,level,NUM_STATE);
     }
+
+    // get the elapsed CPU time to now;
+    if (level == 0 && ParallelDescriptor::IOProcessor())
+    {
+	// get ellapsed CPU time
+	std::ifstream CPUFile;
+	std::string FullPathCPUFile = parent->theRestartFile();
+	FullPathCPUFile += "/CPUtime";
+	CPUFile.open(FullPathCPUFile.c_str(), std::ios::in);	
+  
+	CPUFile >> previousCPUTimeUsed;
+	CPUFile.close();
+
+	std::cout << "read CPU time: " << previousCPUTimeUsed << "\n";
+    }
 }
 
 void
@@ -46,6 +63,18 @@ RNS::checkPoint(const std::string& dir,
 		bool dump_old_default)
 {
     AmrLevel::checkPoint(dir, os, how, dump_old);
+
+    if (level == 0 && ParallelDescriptor::IOProcessor())
+    {
+	// store ellapsed CPU time
+	std::ofstream CPUFile;
+	std::string FullPathCPUFile = dir;
+	FullPathCPUFile += "/CPUtime";
+	CPUFile.open(FullPathCPUFile.c_str(), std::ios::out);	
+  
+	CPUFile << std::setprecision(15) << getCPUTime();
+	CPUFile.close();
+    }
 }
 
 std::string
@@ -257,7 +286,119 @@ RNS::writePlotFile (const std::string& dir,
         os << (int) Geometry::Coord() << '\n';
         os << "0\n"; // Write bndry data.
 
+
+        // job_info file with details about the run
+	std::ofstream jobInfoFile;
+	std::string FullPathJobInfoFile = dir;
+	FullPathJobInfoFile += "/job_info";
+	jobInfoFile.open(FullPathJobInfoFile.c_str(), std::ios::out);	
+
+	std::string PrettyLine = "===============================================================================\n";
+	std::string OtherLine = "--------------------------------------------------------------------------------\n";
+	std::string SkipSpace = "        ";
+
+	// job information
+	jobInfoFile << PrettyLine;
+	jobInfoFile << " Job Information\n";
+	jobInfoFile << PrettyLine;
+	
+	jobInfoFile << "job name: " << job_name << "\n\n";
+
+	jobInfoFile << "number of MPI processes: " << ParallelDescriptor::NProcs() << "\n";
+#ifdef _OPENMP
+	jobInfoFile << "number of threads:       " << omp_get_max_threads() << "\n";
+#endif
+
+	jobInfoFile << "\n";
+	jobInfoFile << "CPU time used since start of simulation (CPU-hours): " <<
+	  getCPUTime()/3600.0;
+
+	jobInfoFile << "\n\n";
+
+        // plotfile information
+	jobInfoFile << PrettyLine;
+	jobInfoFile << " Plotfile Information\n";
+	jobInfoFile << PrettyLine;
+
+	time_t now = time(0);
+
+	// Convert now to tm struct for local timezone
+	tm* localtm = localtime(&now);
+	jobInfoFile   << "output data / time: " << asctime(localtm);
+
+	char currentDir[FILENAME_MAX];
+	if (getcwd(currentDir, FILENAME_MAX)) {
+	  jobInfoFile << "output dir:         " << currentDir << "\n";
+	}
+
+	jobInfoFile << "\n\n";
+
+        // build information
+	jobInfoFile << PrettyLine;
+	jobInfoFile << " Build Information\n";
+	jobInfoFile << PrettyLine;
+
+	jobInfoFile << "build date:    " << buildInfoGetBuildDate() << "\n";
+	jobInfoFile << "build machine: " << buildInfoGetBuildMachine() << "\n";
+	jobInfoFile << "build dir:     " << buildInfoGetBuildDir() << "\n";
+	jobInfoFile << "BoxLib dir:    " << buildInfoGetBoxlibDir() << "\n";
+
+	jobInfoFile << "\n";
+	
+	jobInfoFile << "COMP:  " << buildInfoGetComp() << "\n";
+	jobInfoFile << "FCOMP: " << buildInfoGetFcomp() << "\n";
+
+	jobInfoFile << "\n";
+
+	jobInfoFile << "Chemistry: " << buildInfoGetAux(1) << "\n";
+
+	jobInfoFile << "\n";
+
+	const char* githash1 = buildInfoGetGitHash(1);
+	const char* githash2 = buildInfoGetGitHash(2);
+	const char* githash3 = buildInfoGetGitHash(3);
+	if (strlen(githash1) > 0) {
+	  jobInfoFile << "Combustion git hash: " << githash1 << "\n";
+	}
+	if (strlen(githash2) > 0) {
+	  jobInfoFile << "BoxLib     git hash: " << githash2 << "\n";
+	}
+	if (strlen(githash3) > 0) {	
+	  jobInfoFile << "SDCLib     git hash: " << githash3 << "\n";
+	}
+
+	jobInfoFile << "\n\n";
+
+	// grid information
+	jobInfoFile << PrettyLine;
+	jobInfoFile << " Grid Information\n";
+	jobInfoFile << PrettyLine;
+
+	for (i = 0; i <= f_lev; i++)
+	  {
+	    jobInfoFile << "level: " << i << "\n";
+	    jobInfoFile << "  number of boxes = " << parent->numGrids(i) << "\n";
+	    jobInfoFile << "  maximum zones   = ";
+	    for (n = 0; n < BL_SPACEDIM; n++)
+	      {
+		jobInfoFile << parent->Geom(i).Domain().length(n) << " ";
+		//jobInfoFile << parent->Geom(i).ProbHi(n) << " ";
+	      }
+	    jobInfoFile << "\n\n";
+	  }
+
+	jobInfoFile << "\n\n";
+
+	// runtime parameters
+	jobInfoFile << PrettyLine;
+	jobInfoFile << " Inputs File Parameters\n";
+	jobInfoFile << PrettyLine;
+	
+	ParmParse::dumpTable(jobInfoFile, true);
+
+	jobInfoFile.close();
     }
+
     // Build the directory to hold the MultiFab at this level.
     // The name is relative to the directory containing the Header file.
     //
