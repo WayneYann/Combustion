@@ -1,9 +1,17 @@
 
 EBASE = RNS
 
+CHEMISTRY_DIR := ../../../Chemistry
+USE_EGZ := TRUE
+USE_WORK_SPACE_MODULE := TRUE
+
 include $(BOXLIB_HOME)/Tools/C_mk/Make.defs
 
 Bdirs 	:= src src/Src_$(DIM)d src/Src_nd src/EOS src/Burner
+
+# Chemistry
+Bdirs += $(CHEMISTRY_DIR)/src_common
+Bdirs += $(CHEMISTRY_DIR)/src_f90
 
 Bpack	+= $(foreach dir, $(Bdirs), $(TOP)/$(dir)/Make.package)
 Blocs	+= $(foreach dir, $(Bdirs), $(TOP)/$(dir))
@@ -12,14 +20,6 @@ Pdirs 	:= C_BaseLib C_AMRLib C_BoundaryLib
 
 Bpack	+= $(foreach dir, $(Pdirs), $(BOXLIB_HOME)/Src/$(dir)/Make.package)
 Blocs	+= $(foreach dir, $(Pdirs), $(BOXLIB_HOME)/Src/$(dir))
-
-CHEMISTRY_DIR := ../../../Chemistry
-USE_EGZ := TRUE
-USE_WORK_SPACE_MODULE := TRUE
-Bpack	+= $(CHEMISTRY_DIR)/src_common/Make.package
-Blocs	+= $(CHEMISTRY_DIR)/src_common
-Bpack	+= $(CHEMISTRY_DIR)/src_f90/Make.package
-Blocs	+= $(CHEMISTRY_DIR)/src_f90
 
 MECHDIR = $(CHEMISTRY_DIR)/data
 ifeq (${CHEMISTRY_MODEL}, CHEMH)
