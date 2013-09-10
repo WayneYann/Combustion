@@ -117,7 +117,7 @@ def flamebox_speed_compare():
     name = 'gl3_dt%e' % dt0
     rt, nad, nr = compare.runtime(name)
     error = compare.error(name, ref, fbox.stop_time,
-                          refratio=1, norm=norm, variable='pressure')
+                          refratio=1, norm=norm, variables=['pressure'])
     errors.append(SpeedTuple('gl3', dt0, error, rt, nad, nr))
 
     for trat, nnodes in fbox.mrruns:
@@ -125,7 +125,7 @@ def flamebox_speed_compare():
       name = 'gl3.%d_dt%e' % (nnodes, dt)
       rt, nad, nr = compare.runtime(name)
       error = compare.error(name, ref, fbox.stop_time,
-                            refratio=1, norm=norm, variable='pressure')
+                            refratio=1, norm=norm, variables=['pressure'])
       errors.append(SpeedTuple('gl3.%d' % nnodes, dt, error, rt, nad, nr))
 
     for trat, nnodes, nrep in fbox.mrreps:
@@ -133,7 +133,7 @@ def flamebox_speed_compare():
       name = 'gl3.%dr%d_dt%e' % (nnodes, nrep, dt)
       rt, nad, nr = compare.runtime(name)
       error = compare.error(name, ref, fbox.stop_time,
-                            refratio=1, norm=norm, variable='pressure')
+                            refratio=1, norm=norm, variables=['pressure'])
       errors.append(SpeedTuple('gl3.%dr%d' % (nnodes, nrep), dt, error, rt, nad, nr))
 
   with open('speed.pkl', 'w') as f:
@@ -147,199 +147,203 @@ def flamebox_speed_plot(interactive=False):
   with open('speed.pkl', 'r') as f:
     speed = pickle.load(f)
 
-    schemes = set([ x.scheme for x in speed ])
+  schemes = set([ x.scheme for x in speed ])
 
-    # runtime vs dt
-    figure()
-    for scheme in schemes:
-        x, y = np.asarray(sorted([ (r.dt, r.runtime) for r in speed 
-                                   if r.scheme == scheme ])).transpose()
-        semilogx(x, y, **pens[scheme])
+  # runtime vs dt
+  figure()
+  for scheme in schemes:
+      x, y = np.asarray(sorted([ (r.dt, r.runtime) for r in speed 
+                                 if r.scheme == scheme ])).transpose()
+      semilogx(x, y, **pens[scheme])
 
-    legend()
-    xlabel('dt')
-    ylabel('runtime')
-    savefig('mrsdc_runtime_vs_dt.eps')
-
-
-    # adv/diff evals vs dt
-    figure()
-    for scheme in schemes:
-        x, y = np.asarray(sorted([ (r.dt, r.ad_evals) for r in speed 
-                                   if r.scheme == scheme ])).transpose()
-        semilogx(x, y, **pens[scheme])
-
-    legend()
-    xlabel('dt')
-    ylabel('number of adv/diff evals')
-    savefig('mrsdc_nfevals_vs_dt.eps')
-
-    pprint(sorted([ (r.scheme, r.dt, r.r_evals, r.ad_evals, r.runtime) for r in speed ]))
-
-    # runtime vs error
-    figure()
-    for scheme in schemes:
-        x, y = np.asarray(sorted([ (r.error, r.runtime) for r in speed 
-                                   if r.scheme == scheme ])).transpose()
-        semilogx(x, y, **pens[scheme])
-
-    legend()
-    xlabel('error')
-    ylabel('runtime')
-    savefig('mrsdc_error_vs_runtime.eps')
+  legend()
+  xlabel('dt')
+  ylabel('runtime')
+  savefig('mrsdc_runtime_vs_dt.eps')
 
 
-    # adv/diff evals vs error
-    figure()
-    for scheme in schemes:
-        x, y = np.asarray(sorted([ (r.error, r.ad_evals) for r in speed 
-                                   if r.scheme == scheme ])).transpose()
-        semilogx(x, y, **pens[scheme])
+  # adv/diff evals vs dt
+  figure()
+  for scheme in schemes:
+      x, y = np.asarray(sorted([ (r.dt, r.ad_evals) for r in speed 
+                                 if r.scheme == scheme ])).transpose()
+      semilogx(x, y, **pens[scheme])
 
-    legend()
-    xlabel('error')
-    ylabel('number of adv/diff evals')
-    savefig('mrsdc_nfevals_vs_error.eps')
+  legend()
+  xlabel('dt')
+  ylabel('number of adv/diff evals')
+  savefig('mrsdc_nfevals_vs_dt.eps')
 
-    # error vs dt
-    figure()
-    for scheme in schemes:
-        x, y = np.asarray(sorted([ (r.dt, r.error) for r in speed 
-                                   if r.scheme == scheme ])).transpose()
-        loglog(x, y, **pens[scheme])
+  pprint(sorted([ (r.scheme, r.dt, r.r_evals, r.ad_evals, r.runtime, r.error) for r in speed ]))
 
-    legend()
-    xlabel('dt')
-    ylabel('error')
-    savefig('mrsdc_error_vs_dt.eps')
+  # runtime vs error
+  figure()
+  for scheme in schemes:
+      x, y = np.asarray(sorted([ (r.error, r.runtime) for r in speed 
+                                 if r.scheme == scheme ])).transpose()
+      semilogx(x, y, **pens[scheme])
 
-    if interactive:
-      show()
+  legend()
+  xlabel('error')
+  ylabel('runtime')
+  savefig('mrsdc_error_vs_runtime.eps')
+
+
+  # adv/diff evals vs error
+  figure()
+  for scheme in schemes:
+      x, y = np.asarray(sorted([ (r.error, r.ad_evals) for r in speed 
+                                 if r.scheme == scheme ])).transpose()
+      semilogx(x, y, **pens[scheme])
+
+  legend()
+  xlabel('error')
+  ylabel('number of adv/diff evals')
+  savefig('mrsdc_nfevals_vs_error.eps')
+
+  # error vs dt
+  figure()
+  for scheme in schemes:
+      x, y = np.asarray(sorted([ (r.dt, r.error) for r in speed 
+                                 if r.scheme == scheme ])).transpose()
+      loglog(x, y, **pens[scheme])
+
+  legend()
+  xlabel('dt')
+  ylabel('error')
+  savefig('mrsdc_error_vs_dt.eps')
+
+  if interactive:
+    show()
 
 ###############################################################################
 # flameball multi-rate convergence tests
+
+fball = Container()
+
+dt = 5e-9
+
+fball.stop_time = dt * 40
+fball.dt_ref    = dt / 4
+fball.dt        = [ 2*dt, dt, dt/2 ]
+fball.nx        = 32
+fball.mrruns    = [ (3, 9, 1), (3, 13, 1), (3, 5, 2) ]
+fball.variables = [
+    'density',
+    'temperature',
+    'x_vel',
+    # 'y_vel',
+    # 'z_vel',
+    'Y(H2)',
+    'Y(O2)',
+    'Y(OH)',
+    'Y(H2O)',
+    'Y(N2)',
+    ]
+
+texvar = {
+    'density': r'$\rho$',
+    'temperature': r'$T$',
+    'x_vel': r'$u_x$',
+    'y_vel': r'$u_y$',
+    'z_vel': r'$u_z$',
+    'Y(H2)': r'$Y({\rm H}_2)$',
+    'Y(O2)': r'$Y({\rm O}_2)$',
+    'Y(OH)': r'$Y({\rm OH})$',
+    'Y(H2O)': r'$Y({\rm H}_2{\rm O})$',
+    'Y(N2)': r'$Y({\rm N}_2)$',
+}
+
 
 @task
 def flameball_mrconv():
   """Convergence tests for the FlameBall example using MRSDC."""
 
   setenv('Combustion/SMC/bin/FlameBall', find_exe=True)
-  rsync()
 
-  jobs = JobQueue(rwd=env.rwd, queue='regular')
+  max_grid_size = 16
+  nprocs        = fbox.nx**3 / max_grid_size**3
 
-  dt0 = 5e-9
-  nx  = 32
+  jobs = JobQueue(queue='regular', walltime="00:10:00", width=nprocs)
 
-  stop_time = 40*dt0
-  nprocs = 1
-
-  #
   # reference run
-  #
-
-  dt     = dt0/4
-  nnodes = 5
-
-  name = 'nx%03d_gl%d_dt%g' % (nx, nnodes, dt)
-  job  = Job(name=name, param_file='inputs-mrconv', rwd='mrconv/'+name, width=nprocs,
-             walltime="01:20:00")
-
+  dt   = fball.dt_ref
+  name = 'gl5_dt%e' % dt
+  job  = Job(name=name, param_file='inputs-mrconv', rwd='mrconv/'+name)
   job.update_params(
-    nx=nx,
-    fixed_dt=dt,
-    stop_time=stop_time,
-    cflfac=-1.0,
-    sdc_nnodes=nnodes,
-    sdc_nnodes_chemistry=-1,
-    sdc_iters=2*nnodes-2,
-    max_grid_size=nx,
-    advance_method=2,
-    )
-
+    advance_method=2, stop_time=fball.stop_time,
+    sdc_nnodes=5, sdc_nnodes_fine=-1, sdc_iters=8, repeat=1,
+    fixed_dt=dt, nx=fball.nx, max_grid_size=max_grid_size)
   jobs.add(job)
 
-  #
   # multi-rate runs
-  #
-
-  for nnodes, dt in product( [ (3, 9), (3, 13) ],
-                             [ 2*dt0, dt0, dt0/2 ] ):
-
-    name = 'nx%03d_gl%d.%d_dt%g' % (nx, nnodes[0], nnodes[1], dt)
-    job  = Job(name=name, param_file='inputs-mrconv', rwd='mrconv/'+name, width=nprocs,
-               walltime="00:40:00")
-
-    job.update_params(
-      nx=nx,
-      fixed_dt=dt,
-      stop_time=stop_time,
-      cflfac=-1.0,
-      sdc_nnodes=nnodes[0],
-      sdc_nnodes_chemistry=nnodes[1],
-      sdc_iters=2*nnodes[0]-2,
-      max_grid_size=nx,
-      advance_method=3,
-      )
-
-    #jobs.add(job)
+  for dt in fball.dt:
+    for coarse, fine, repeat in fball.mrruns:
+      name = 'gl%d.%dr%d_dt%e' % (coarse, fine, repeat, dt)
+      job  = Job(name=name, param_file='inputs-mrconv', rwd='mrconv/'+name)
+      job.update_params(
+        advance_method=2, stop_time=fball.stop_time,
+        sdc_nnodes=coarse, sdc_nnodes_fine=fine, sdc_iters=2*coarse-2, repeat=repeat,
+        fixed_dt=dt, nx=fball.nx, max_grid_size=max_grid_size)
+      jobs.add(job)
 
   jobs.submit_all()
-    
-
-###############################################################################
-# flamebox space/time convergence tests
 
 @task
-def flameball_stconv():
-  """Convergence tests for the FlameBall example."""
+def flameball_mrconv_compare():
+  """Compute flameball errors."""
 
-  setenv('Combustion/SMC/bin/FlameBall', find_exe=True)
+  setenv('Combustion/SMC/bin/FlameBall/mrconv')
 
-  jobs = JobQueue(rwd=env.rwd, queue='regular')
+  ref  = 'gl5_dt%e' % fball.dt_ref
 
-  # convergence runs
-  for nx, dt, nnodes in stconv.runs:
+  errors = {}
+  for dt in fball.dt:
+    for coarse, fine, repeat in fball.mrruns:
+      name = 'gl%d.%dr%d_dt%e' % (coarse, fine, repeat, dt)
+      errors[dt,name,0] = compare.error(name, ref, fball.stop_time,
+                                        refratio=1, norm=0, variables=fball.variables)
+      errors[dt,name,2] = compare.error(name, ref, fball.stop_time,
+                                        refratio=1, norm=2, variables=fball.variables)
+  with open('mrconv.pkl', 'w') as f:
+    pickle.dump(errors, f)
 
-    max_grid_size = min(nx, 32)
-    nprocs        = nx**3 / max_grid_size**3
-    # max_grid_size = nx
-    # nprocs        = 1
+@task
+def flameball_mrconv_tabulate():
+    
+  with open('mrconv.pkl', 'r') as f:
+    errors = pickle.load(f)
 
-    name = 'nx%03d_gl%d_dt%g' % (nx, nnodes, dt)
-    job  = Job(name=name, param_file='inputs-stconv', rwd='stconv/'+name, width=nprocs)
+  for coarse, fine, repeat in fball.mrruns:
+    for i, variable in enumerate(fball.variables):
+      for k, dt in enumerate(fball.dt):
+        name = 'gl%d.%dr%d_dt%e' % (coarse, fine, repeat, dt)
+        l0 = errors[dt,name,0][variable]
+        l2 = errors[dt,name,2][variable]
 
-    wtime = '00:30:00'
-    if nx == 64:
-      wtime = '01:00:00'
-    if nx == 128:
-      wtime = '04:00:00'
-    if nx == 256:
-      wtime = '06:00:00'
+        if i == 0 and k == 0:
+          row = 'GL %d / GL %d $\\times$n %d & ' % (coarse, fine, repeat)
+        else:
+          row = ' & '
+        
+        if k == 0:
+          row += '%s & %.2f & %.3e & & %.3e & \\\\' % (texvar[variable], dt/1e-9, l0, l2)
+        else:
+          name0 = 'gl%d.%dr%d_dt%e' % (coarse, fine, repeat, fball.dt[k-1])
+          e   = fball.dt[k-1] / dt
+          l0r = np.log(errors[fball.dt[k-1],name0,0][variable] / l0) / np.log(e)
+          l2r = np.log(errors[fball.dt[k-1],name0,2][variable] / l2) / np.log(e)
 
+          row += ' & %.2f & %.3e & %.2f & %.3e & %.2f \\\\' % (dt/1e-9, l0, l0r, l2, l2r)
 
-    job.attrs['walltime'] = wtime
-
-    job.update_params(
-      nx=nx,
-      fixed_dt=dt,
-      stop_time=stconv.stop_time,
-      cflfac=None,
-      sdc_nnodes=nnodes,
-      sdc_iters=2*nnodes-1,
-      max_grid_size=max_grid_size,
-      advance_method=2)
-
-    jobs.add(job)
-
-  jobs.submit_all()
+        print row
 
 
 ###############################################################################
 # build, rsync, setenv etc
 
 @task
-def build(bin):
+def build(bin, opts=''):
   """Sync and build according to env.bin."""
 
   setenv(bin=bin)
@@ -347,7 +351,7 @@ def build(bin):
 
   with cd(env.rwd):
     run('rm -f *.exe')
-    run('make -j 4')
+    run('make -j 4 %s' % opts)
 
 
 @task
