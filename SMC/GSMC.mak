@@ -33,7 +33,9 @@ ifeq ($(strip $(SDCLIB_HOME)),)
   endif
 endif
 
-ifneq ($(strip $(SMC_SRC)),src_min)
+ifeq ($(strip $(SMC_SRC)),src_min)
+  USE_EGM := t
+else
   USE_EGZ := t
 endif
 
@@ -66,7 +68,9 @@ ifdef SDCLIB_HOME
   INCLUDE_LOCATIONS += $(SDCLIB_HOME)/include
 endif
 
-# Chemistry
+# Chemistry & Transport
+Fmpack += $(CHEMISTRY_DIR)/src_common/GPackage.mak
+Fmlocs += $(CHEMISTRY_DIR)/src_common
 Fmpack += $(CHEMISTRY_DIR)/F_Src/GPackage.mak
 Fmlocs += $(CHEMISTRY_DIR)/F_Src
 

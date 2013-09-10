@@ -73,6 +73,7 @@ subroutine smc()
   if (use_tranlib) then
      call tranlib_init(nspecies)
   end if
+  call egz_init(use_bulk_viscosity)
 
   if (verbose .ge. 1) then
      if (parallel_IOProcessor()) then

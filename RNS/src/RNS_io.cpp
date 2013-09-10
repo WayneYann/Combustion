@@ -387,7 +387,7 @@ RNS::writePlotFile (const std::string& dir,
 	    jobInfoFile << "\n\n";
 	  }
 
-	jobInfoFile << "\n\n";
+	jobInfoFile << "\n";
 
 	// runtime parameters
 	jobInfoFile << PrettyLine;
