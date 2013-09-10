@@ -7,7 +7,7 @@ module tranlib_module
   integer, allocatable, save :: mciwork(:)
 
   integer, parameter :: maxtp = 3
-  integer, parameter :: LLINKMC = 44, LOUT = 6
+  integer, parameter :: LOUT = 6
 
 !$omp threadprivate(mcwork,mciwork)
 
@@ -36,7 +36,7 @@ contains
     allocate(mcwork(lmcwork))
     allocate(mciwork(lmciwork))
 
-    CALL MCINITCD (LLINKMC, LOUT, lmciwork, lmcwork, mciwork, mcwork, ierr)
+    CALL MCINITCD (LOUT, lmciwork, lmcwork, mciwork, mcwork, ierr)
     if (ierr .gt. 0) then
        WRITE(LOUT,*)' QUITTING BECAUSE MCINIT IFLAG = ', ierr
        stop

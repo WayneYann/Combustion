@@ -1,9 +1,9 @@
-      SUBROUTINE MCINITCD (LINKMC, LOUT, LENIMC, LENRMC, IMCWRK, RMCWRK,
+      SUBROUTINE MCINITCD (LOUT, LENIMC, LENRMC, IMCWRK, RMCWRK,
      1           IFLAG)
 C
 C  START PROLOGUE
 C
-C  SUBROUTINE MCINIT (LINKMC, LOUT, LENIMC, LENRMC, IMCWRK, RMCWRK,
+C  SUBROUTINE MCINIT (LOUT, LENIMC, LENRMC, IMCWRK, RMCWRK,
 C                     IFLAG)
 C  This subroutine reads the transport linkfile from the fitting code
 C  and creates the internal storage and work arrays, IMCWRK(*) and
@@ -12,7 +12,6 @@ C  subroutine is called.  It must be called after the CHEMKIN package
 C  is initialized.
 C
 C  INPUT
-C  LINKMC    - Integer scalar, transport linkfile input unit number.
 C  LOUT      - Integer scalar, formatted output file unit number.
 C  LENIMC    - Integer scalar, minimum dimension of the integer
 C              storage and workspace array IMCWRK(*);
@@ -43,8 +42,12 @@ C*****precision > single
 C      IMPLICIT REAL (A-H, O-Z), INTEGER (I-N)
 C*****END precision > single
 C
-      include 'tranlib_1.H'
-      include 'tranlib_2.H'
+      COMMON /MCMCMC/ RU, PATMOS, SMALL, NKK, NO, NLITE, INLIN, IKTDIF,
+     1                IPVT, NWT, NEPS, NSIG, NDIP, NPOL, NZROT, NLAM,
+     2                NETA, NDIF, NTDIF, NXX, NVIS, NXI, NCP, NCROT,
+     3                NCINT, NBIND, NEOK, NSGM, NAST, NBST, NCST, NXL,
+     4                NR, NWRK, K3
+      COMMON /MCCONS/ VERS, PREC, KERR, LENI, LENR
 C
       DIMENSION IMCWRK(*), RMCWRK(*)
       CHARACTER*16 PRVERS, VERS, PREC, PRDATE, IFMT, RFMT, CFMT, LFMT
@@ -113,12 +116,12 @@ C
       IF (.NOT.IOK .OR. .NOT.ROK) THEN
          IF (.NOT. IOK) WRITE (LOUT, 300) LI
          IF (.NOT. ROK) WRITE (LOUT, 350) LR
-         REWIND (LINKMC)
+c         REWIND (LINKMC)
          IFLAG = 1
          RETURN
       ENDIF
 C
-      REWIND LINKMC
+c      REWIND LINKMC
 C*****linkfile (transport) > binary
 C      LBIN = .TRUE.
 C*****END linkfile (transport) > binary
@@ -335,15 +338,14 @@ C
   300 FORMAT (10X,'IMCWRK MUST BE DIMENSIONED AT LEAST ', I5)
   350 FORMAT (10X,'RMCWRK MUST BE DIMENSIONED AT LEAST ', I5)
       RETURN
-  999 CONTINUE
-      WRITE (LOUT, *) ' Error reading Transport linkfile...'
-      REWIND (LINKMC)
+c  999 CONTINUE
+c      WRITE (LOUT, *) ' Error reading Transport linkfile...'
+c      REWIND (LINKMC)
       IFLAG = NREC
 C
 C     end of SUBROUTINE MCINITCD
       RETURN
       END
-
 
 C     CVS $Revision: 1.2 $ created $Date: 1999/04/01 20:57:49 $
 C
