@@ -68,7 +68,7 @@ subroutine smc()
   call chemistry_init()
   if (use_vode) then
      call vode_init(nspecies+1,vode_verbose,vode_itol,vode_rtol,vode_atol,vode_order,&
-          vode_maxstep,vode_use_ajac,vode_save_ajac,vode_stiff)
+          vode_maxstep,vode_use_ajac,vode_save_ajac,vode_always_new_j,vode_stiff)
   end if
   if (use_tranlib) then
      call tranlib_init(nspecies)

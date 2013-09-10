@@ -13,10 +13,15 @@ Pdirs 	:= C_BaseLib C_AMRLib C_BoundaryLib
 Bpack	+= $(foreach dir, $(Pdirs), $(BOXLIB_HOME)/Src/$(dir)/Make.package)
 Blocs	+= $(foreach dir, $(Pdirs), $(BOXLIB_HOME)/Src/$(dir))
 
-Bpack	+= ../../../Chemistry/src_f90/Make.package
-Blocs	+= ../../../Chemistry/src_f90
+CHEMISTRY_DIR := ../../../Chemistry
+USE_EGZ := TRUE
+USE_WORK_SPACE_MODULE := TRUE
+Bpack	+= $(CHEMISTRY_DIR)/src_common/Make.package
+Blocs	+= $(CHEMISTRY_DIR)/src_common
+Bpack	+= $(CHEMISTRY_DIR)/src_f90/Make.package
+Blocs	+= $(CHEMISTRY_DIR)/src_f90
 
-MECHDIR = ../../../Chemistry/data
+MECHDIR = $(CHEMISTRY_DIR)/data
 ifeq (${CHEMISTRY_MODEL}, CHEMH)
   cEXE_sources += chem-H.c
   vpath %.f $(VPATH_LOCATIONS) ${MECHDIR}/chem-H/PMFs

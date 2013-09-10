@@ -51,41 +51,20 @@ subroutine cd_getspecname(ispec, lname, name)
 end subroutine cd_getspecname
 
 
-subroutine cd_initvode(neq_in, itol_in, rtol_in, atol_in, order_in, maxstep_in, &
-     use_ajac_in, save_ajac_in, always_new_j_in, stiff_in, v_in)
-  use vode_module, only : verbose, neq, itol, rtol, atol, order, maxstep, &
-       use_ajac, save_ajac, always_new_j, stiff, vode_init
+subroutine cd_initvode(neq_in, v_in, itol_in, rtol_in, atol_in, order_in, &
+     maxstep_in, use_ajac_in, save_ajac_in, always_new_j_in, stiff_in)
+  use vode_module, only : vode_init
   implicit none
-  integer, intent(in) :: neq_in, itol_in, order_in, maxstep_in, &
-       use_ajac_in, save_ajac_in, always_new_j_in, stiff_in, v_in
+  integer, intent(in) :: neq_in, v_in, itol_in, order_in, &
+       maxstep_in, use_ajac_in, save_ajac_in, always_new_j_in, stiff_in
   double precision, intent(in) :: rtol_in, atol_in
-  verbose = v_in
-  itol = itol_in
-  rtol = rtol_in
-  atol = atol_in
-  order = order_in
-  maxstep = maxstep_in
-  if (use_ajac_in .ne. 0) then
-     use_ajac = .true.
-  else
-     use_ajac = .false.
-  end if
-  if (save_ajac_in .ne. 0) then
-     save_ajac = .true.
-  else
-     save_ajac = .false.
-  end if
-  if (always_new_j_in .ne. 0) then
-     always_new_j = .true.
-  else
-     always_new_j = .false.
-  end if
-  if (stiff_in .ne. 0) then
-     stiff = .true.
-  else
-     stiff = .false.
-  end if
-  call vode_init(neq_in)
+  logical use_ajac, save_ajac, always_new_j, stiff
+  use_ajac     = (    use_ajac_in .ne. 0)
+  save_ajac    = (   save_ajac_in .ne. 0)
+  always_new_j = (always_new_j_in .ne. 0)
+  stiff        = (       stiff_in .ne. 0)
+  call vode_init(neq_in,v_in,itol_in,rtol_in,atol_in,order_in,&
+       maxstep_in,use_ajac,save_ajac,always_new_j,stiff)
 end subroutine cd_initvode
 
 
@@ -99,7 +78,9 @@ subroutine cd_initeglib(use_bulk_visc_in)
   use egz_module
   implicit none
   integer, intent(in) :: use_bulk_visc_in
-  call egz_init(use_bulk_visc_in)
+  logical :: use_bulk_visc
+  use_bulk_visc = (use_bulk_visc_in .ne. 0)
+  call egz_init(use_bulk_visc)
 end subroutine cd_initeglib
 
 

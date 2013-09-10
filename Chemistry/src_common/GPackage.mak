@@ -1,3 +1,4 @@
+# For F90 BoxLib based codes
 
 fsources += vode.f LinAlg.f math_d.f tranlib_d.f
 
@@ -17,3 +18,11 @@ else
   endif  
 endif
 
+ifdef USE_WORK_SPACE_MODULE
+  # vode, eglib & tranlib all need work space.  
+  # Here, the work spaces are in F90 modules. 
+  f90sources += vode_module.f90 tranlib_module.f90
+  ifndef USE_EGZ
+     f90sources += eglib_module.f90
+  endif
+endif

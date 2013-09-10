@@ -33,12 +33,6 @@ ifeq ($(strip $(SDCLIB_HOME)),)
   endif
 endif
 
-ifeq ($(strip $(SMC_SRC)),src_min)
-  USE_EGM := t
-else
-  USE_EGZ := t
-endif
-
 #-----------------------------------------------------------------------------
 # Fmpack is the list of all the GPackage.mak files that we need to
 # include into the build system to define the list of source files.
@@ -69,6 +63,12 @@ ifdef SDCLIB_HOME
 endif
 
 # Chemistry & Transport
+ifeq ($(strip $(SMC_SRC)),src_min)
+  USE_EGM := t
+else
+  USE_EGZ := t
+endif
+USE_WORK_SPACE_MODULE := t
 Fmpack += $(CHEMISTRY_DIR)/src_common/GPackage.mak
 Fmlocs += $(CHEMISTRY_DIR)/src_common
 Fmpack += $(CHEMISTRY_DIR)/F_Src/GPackage.mak

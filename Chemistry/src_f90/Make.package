@@ -9,13 +9,8 @@ else
   CEXE_sources += ChemDriver.cpp
   
   FEXE_headers += ChemDriver_F.H
-  FEXE_headers += vode.H
   
   f90EXE_sources += ChemDriver_F.f90 
   f90EXE_sources += chemistry_module.f90
-  f90EXE_sources += vode_module.f90
-  f90EXE_sources += egz_module.f90
-  
-  fEXE_sources += vode.f LinAlg.f
 
 endif

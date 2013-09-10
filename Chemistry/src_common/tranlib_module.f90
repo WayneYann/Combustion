@@ -1,7 +1,5 @@
 module tranlib_module
 
-  use bl_error_module
-
   implicit none
 
   integer, save :: lmcwork, lmciwork
@@ -41,7 +39,7 @@ contains
     CALL MCINITCD (LLINKMC, LOUT, lmciwork, lmcwork, mciwork, mcwork, ierr)
     if (ierr .gt. 0) then
        WRITE(LOUT,*)' QUITTING BECAUSE MCINIT IFLAG = ', ierr
-       call bl_error(" ")
+       stop
     end if
 
     !$omp end parallel

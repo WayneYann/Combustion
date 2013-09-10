@@ -4,6 +4,7 @@ module vode_module
 
   integer, save :: verbose, itol, neq, order, maxstep
   integer, save :: MF
+
   logical, save :: use_ajac, save_ajac, always_new_j, stiff
 
   double precision, save :: rtol, atol
@@ -16,15 +17,33 @@ module vode_module
 
 contains
 
-  subroutine vode_init(neq_in)
-
+  subroutine vode_init(neq_in,vode_verbose,vode_itol,vode_rtol,vode_atol,vode_order,&
+       vode_maxstep,vode_use_ajac,vode_save_ajac,vode_always_new_j,vode_stiff)
     implicit none
 
-    integer, intent(in) :: neq_in
+    integer, intent(in) :: neq_in, vode_verbose, vode_itol, vode_order, vode_maxstep
+    logical, intent(in) :: vode_use_ajac,vode_save_ajac,vode_always_new_j,vode_stiff
+    double precision, intent(in) :: vode_rtol,vode_atol
 
-    neq = neq_in
+    neq          = neq_in
+    verbose      = vode_verbose
+    itol         = vode_itol
+    rtol         = vode_rtol
+    atol         = vode_atol
+    order        = vode_order
+    maxstep      = vode_maxstep
+    use_ajac     = vode_use_ajac
+    save_ajac    = vode_save_ajac
+    always_new_j = vode_always_new_j
+    stiff        = vode_stiff
 
-    if (stiff) then
+    if (.not. stiff) then
+
+       MF = 10
+       lvoderwork = 20+16*NEQ
+       lvodeiwork = 30
+
+    else 
 
        if (use_ajac) then
           if (save_ajac) then
@@ -41,12 +60,6 @@ contains
 
        lvodeiwork = 30 + NEQ
 
-    else 
-
-       MF = 10
-       lvoderwork = 20+16*NEQ
-       lvodeiwork = 30
-
     end if
 
     !$omp parallel
@@ -60,6 +73,8 @@ contains
 
     allocate(voderpar(2))
     allocate(vodeipar(1))
+
+    call setfirst(.true.)
     !$omp end parallel
 
   end subroutine vode_init
@@ -68,10 +83,10 @@ contains
   subroutine vode_close()
     neq = -1
     !$omp parallel
-    deallocate(voderwork)
-    deallocate(vodeiwork)
-    deallocate(voderpar)
-    deallocate(vodeipar)
+    if (allocated(voderwork)) deallocate(voderwork)
+    if (allocated(vodeiwork)) deallocate(vodeiwork)
+    if (allocated(voderpar))  deallocate(voderpar)
+    if (allocated(vodeipar))  deallocate(vodeipar)
     !$omp end parallel
   end subroutine vode_close
 
