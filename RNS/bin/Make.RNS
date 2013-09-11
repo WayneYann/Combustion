@@ -21,7 +21,7 @@ Pdirs 	:= C_BaseLib C_AMRLib C_BoundaryLib
 Bpack	+= $(foreach dir, $(Pdirs), $(BOXLIB_HOME)/Src/$(dir)/Make.package)
 Blocs	+= $(foreach dir, $(Pdirs), $(BOXLIB_HOME)/Src/$(dir))
 
-MECHDIR = $(CHEMISTRY_DIR)/data
+MECHDIR = $(TOP)/$(CHEMISTRY_DIR)/data
 ifeq (${CHEMISTRY_MODEL}, CHEMH)
   cEXE_sources += chem-H.c
   vpath %.f $(VPATH_LOCATIONS) ${MECHDIR}/chem-H/PMFs
