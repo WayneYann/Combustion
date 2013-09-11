@@ -214,9 +214,7 @@ subroutine smc()
         write(unit=plot_index,fmt='(i5.5)') istep
         plot_file_name = trim(plot_base_name) // plot_index
 
-        call destroy_smcdata(sdc) ! to save memory
         call make_plotfile(plot_file_name,la,U,plot_names,time,dt,dx,write_pf_time)
-        call build_smcdata(la,sdc)
 
         call write_job_info(plot_file_name, la, write_pf_time)
 
@@ -328,16 +326,12 @@ subroutine smc()
                  call sdc_get_q0(U0, sdc)
               end if
 
-              call destroy_smcdata(sdc) ! to save memory
-
               if (plot_use_U0) then
                  call make_plotfile(plot_file_name,la,U,plot_names,time,dt,dx,write_pf_time,U0)
                  call destroy(U0)
               else
                  call make_plotfile(plot_file_name,la,U,plot_names,time,dt,dx,write_pf_time)
               end if
-
-              call build_smcdata(la,sdc)
 
               call write_job_info(plot_file_name, la, write_pf_time)
 
@@ -419,16 +413,12 @@ subroutine smc()
            call sdc_get_q0(U0, sdc)
         end if
 
-        call destroy_smcdata(sdc)
-        
         if (plot_use_U0) then
            call make_plotfile(plot_file_name,la,U,plot_names,dt,time,dx,write_pf_time,U0)
            call destroy(U0)
         else
            call make_plotfile(plot_file_name,la,U,plot_names,dt,time,dx,write_pf_time)
         end if
-
-        call build_smcdata(la,sdc)
 
         call write_job_info(plot_file_name, la, write_pf_time)
      end if
