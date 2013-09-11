@@ -74,7 +74,7 @@ subroutine rns_initdata(level,time,lo,hi,nscal, &
      state,state_l1,state_l2,state_h1,state_h2, &
      delta,xlo,xhi)
 
-  use eos_module, only : eos_given_PTY
+  use eos_module, only : eos_given_PTX
   use probdata_module
   use meth_params_module, only : NVAR, URHO, UMX, UMY, UEDEN, UTEMP, UFS, NSPEC
   use chemistry_module, only : Patm, nspecies
@@ -131,7 +131,7 @@ subroutine rns_initdata(level,time,lo,hi,nscal, &
               u1t = uinit
               u2t = vinit
               
-              call eos_given_PTY(rhot, et, Yt, Pt, Tt, Xt)
+              call eos_given_PTX(rhot, et, Yt, Pt, Tt, Xt)
 
               state(i,j,URHO ) = state(i,j,URHO ) + 0.25d0*rhot
               state(i,j,UMX  ) = state(i,j,UMX  ) + 0.25d0*rhot*u1t
