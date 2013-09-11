@@ -13,7 +13,6 @@ endif
 Bdirs += $(COMBUSTION_DIR)/LMC/src
 
 # Chemistry
-Bdirs += $(COMBUSTION_DIR)/Chemistry/src_common
 Bdirs += $(COMBUSTION_DIR)/Chemistry/src
 
 #

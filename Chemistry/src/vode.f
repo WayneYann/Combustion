@@ -844,19 +844,19 @@ C
       GO TO (10, 20, 30, 40), ITOL
  10   CONTINUE
       DO 15 I = 1, N
- 15     EWT(I) = max(1.d-12,1.d-4*ABS(YCUR(I)))
+ 15     EWT(I) = RTOL(1)*ABS(YCUR(I)) + ATOL(1)
       RETURN
  20   CONTINUE
       DO 25 I = 1, N
- 25     EWT(I) = max(1.d-12,1.d-4*ABS(YCUR(I)))
+ 25     EWT(I) = RTOL(1)*ABS(YCUR(I)) + ATOL(I)
       RETURN
  30   CONTINUE
       DO 35 I = 1, N
- 35     EWT(I) = max(1.d-12,1.d-4*ABS(YCUR(I)))
+ 35     EWT(I) = RTOL(I)*ABS(YCUR(I)) + ATOL(1)
       RETURN
  40   CONTINUE
       DO 45 I = 1, N
- 45     EWT(I) = max(1.d-12,1.d-4*ABS(YCUR(I)))
+ 45     EWT(I) = RTOL(I)*ABS(YCUR(I)) + ATOL(I)
       RETURN
       END
 

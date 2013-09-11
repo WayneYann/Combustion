@@ -1,7 +1,7 @@
 
 EBASE = RNS
 
-CHEMISTRY_DIR := ../Chemistry
+CHEMISTRY_DIR := ../../../Chemistry
 USE_EGZ := TRUE
 USE_WORK_SPACE_MODULE := TRUE
 
