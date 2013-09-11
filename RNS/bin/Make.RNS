@@ -10,7 +10,9 @@ include $(BOXLIB_HOME)/Tools/C_mk/Make.defs
 Bdirs 	:= src src/Src_$(DIM)d src/Src_nd src/EOS src/Burner
 
 # Chemistry
-Bdirs += $(CHEMISTRY_DIR)/src_common
+ifneq (${CHEMISTRY_MODEL}, NULL)
+  Bdirs += $(CHEMISTRY_DIR)/src_common
+endif
 Bdirs += $(CHEMISTRY_DIR)/src_f90
 
 Bpack	+= $(foreach dir, $(Bdirs), $(TOP)/$(dir)/Make.package)
