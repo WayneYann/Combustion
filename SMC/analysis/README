@@ -19,3 +19,19 @@
    $ fab -H hopper flamebox_speed
    $ fab -H hopper flamebox_speed_compare
    $ fab -H hopper flamebox_speed_plot
+
+** Multirate convergence tests
+
+   This test uses the FlameBall binary to verify that MRSDC works to
+   spec.
+
+   First, sync local sources to the remote host and build the
+   FlameBall executable:
+
+   $ fab -H hopper build:flameball,opts='CONVERGENCE\=t'
+
+   Next, run the convergence tests and compare the results:
+
+   $ fab -H hopper flameball_mrconv
+   $ fab -H hopper flameball_mrconv_compare
+   $ fab -H hopper flameball_mrconv_tabulate
