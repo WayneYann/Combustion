@@ -6,18 +6,18 @@
  stencil_type = "narrow"   ! narrow or S3D
 
  stop_time = {stop_time}
- max_step  = 900000
+ max_step  = {max_step}
  restart   = -1
 
  sdc_iters          = {sdc_iters}
  sdc_nnodes         = {sdc_nnodes}
  sdc_nnodes_fine    = {sdc_nnodes_fine}
- sdc_tol_residual   = 1.d-3
+ sdc_tol_residual   = 1.d-10
  sdc_multirate_type = "local"
  sdc_multirate_repeat = {repeat}
 
- plot_int = 2
- chk_int  = -10
+ plot_int = -1
+ chk_int  = -1
 
  fixed_dt = {fixed_dt}
 

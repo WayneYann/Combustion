@@ -49,20 +49,19 @@ def flamebox_speed():
 
   setenv('Combustion/SMC/bin/FlameInABox', find_exe=True)
 
-  jobs = JobQueue(queue='regular', walltime="01:00:00")
+  jobs = JobQueue(queue='regular', walltime="00:10:00")
 
   max_grid_size = 16
   nprocs        = fbox.nx**3 / max_grid_size**3
 
-  # reference run
-  dt   = fbox.dt_ref
-  name = 'gl3_dt%e' % dt
-  job  = Job(name=name, param_file='inputs-flamebox', rwd='speed/'+name, 
-            width=nprocs, walltime="02:00:00")
-  job.update_params(
-    advance_method=2, stop_time=fbox.stop_time,
-    sdc_nnodes=3, sdc_nnodes_fine=0, sdc_iters=4, repeat=1,
-    fixed_dt=dt, nx=fbox.nx, max_grid_size=max_grid_size)#.add_to(jobs)
+  # # reference run
+  # dt   = fbox.dt_ref
+  # name = 'gl3_dt%e' % dt
+  # job  = Job(name=name, param_file='inputs-flamebox', rwd='speed/'+name, width=nprocs)
+  # job.update_params(
+  #   advance_method=2, stop_time=fbox.stop_time, max_step=int(fbox.stop_time/dt),
+  #   sdc_nnodes=3, sdc_nnodes_fine=0, sdc_iters=4, repeat=1,
+  #   fixed_dt=dt, nx=fbox.nx, max_grid_size=max_grid_size).add_to(jobs)
 
   # timing runs
   for dt0 in fbox.dt:
@@ -70,10 +69,9 @@ def flamebox_speed():
     # single-rate sdc run
     dt   = dt0
     name = 'gl3_dt%e' % dt
-    job = Job(name=name, param_file='inputs-flamebox', rwd='speed/'+name,
-              width=nprocs, walltime="02:00:00")
+    job = Job(name=name, param_file='inputs-flamebox', rwd='speed/'+name, width=nprocs)
     job.update_params(
-      advance_method=2, stop_time=fbox.stop_time,
+      advance_method=2, stop_time=fbox.stop_time, max_step=int(fbox.stop_time/dt),
       sdc_nnodes=3, sdc_nnodes_fine=0, sdc_iters=4, repeat=1,
       fixed_dt=dt, nx=fbox.nx, max_grid_size=max_grid_size).add_to(jobs)
 
@@ -84,7 +82,7 @@ def flamebox_speed():
       job  = Job(name=name, rwd='speed/'+name, param_file='inputs-flamebox',
                  width=nprocs)
       job.update_params(
-        advance_method=3, stop_time=fbox.stop_time,
+        advance_method=3, stop_time=fbox.stop_time, max_step=int(fbox.stop_time/dt),
         sdc_nnodes=3, sdc_nnodes_fine=nnodes, sdc_iters=4, repeat=1,
         fixed_dt=dt, nx=fbox.nx, max_grid_size=max_grid_size).add_to(jobs)
 
@@ -94,7 +92,7 @@ def flamebox_speed():
       job  = Job(name=name, rwd='speed/'+name, param_file='inputs-flamebox',
                  width=nprocs)
       job.update_params(
-        advance_method=3, stop_time=fbox.stop_time,
+        advance_method=3, stop_time=fbox.stop_time, max_step=int(fbox.stop_time/dt),
         sdc_nnodes=3, sdc_nnodes_fine=nnodes, sdc_iters=4, repeat=nrep,
         fixed_dt=dt, nx=fbox.nx, max_grid_size=max_grid_size).add_to(jobs)
 
@@ -390,7 +388,7 @@ def setenv(rwd=None, bin=None, find_exe=False):
     env.scratch     = '/scratch/scratchdirs/memmett/'
     env.scheduler   = 'hopper'
     env.host_string = 'hopper.nersc.gov'
-    env.ffdcompare  = env.scratch + 'AmrPostprocessing/F_Src/ffdcompare.Linux.gfortran.exe'
+    env.ffdcompare  = env.scratch + 'AmrPostprocessing/F_Src/ffdcompare.Linux.Intel.exe'
 
     env.depth   = 6
     env.pernode = 4
