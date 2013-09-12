@@ -51,7 +51,7 @@ contains
 
     ! face variables
     do n=1,NVAR
-       call cellavg2face_1d(U(:,n), Ulo(1), Uhi(1), Qf(:,n), Qflo(1), Qfhi(1))
+       call cellavg2face_1d(Qflo(1),Qfhi(1), U(:,n), Ulo(1),Uhi(1), Qf(:,n), Qflo(1), Qfhi(1))
     end do
     !
     call ctoprim(Qclo,Qchi, Qf, Qflo,Qfhi,QFVAR)

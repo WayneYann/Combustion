@@ -118,10 +118,10 @@ contains
   end subroutine weno5
 
 
-  subroutine cellavg2gausspt_1d(u, ulo, uhi, u1, u2, lo, hi)
-    integer, intent(in) :: ulo, uhi, lo, hi
+  subroutine cellavg2gausspt_1d(lo,hi, u, ulo,uhi, u1, u2, u12lo,u12hi)
+    integer, intent(in) :: lo, hi, ulo, uhi, u12lo, u12hi
     double precision, intent(in) :: u(ulo:uhi)
-    double precision, intent(out) :: u1(lo:hi), u2(lo:hi)
+    double precision :: u1(u12lo:u12hi), u2(u12lo:u12hi)
 
     integer :: i
 
@@ -131,23 +131,21 @@ contains
     end do
   end subroutine cellavg2gausspt_1d
 
-  subroutine cellavg2face_1d(u, ulo, uhi, uf, lo, hi)
-    integer, intent(in) :: ulo, uhi, lo, hi
-    double precision, intent(in) :: u(ulo:uhi)
-    double precision, intent(out) :: uf(lo:hi)
-
+  subroutine cellavg2face_1d(lo, hi, u, ulo, uhi, uf, flo, fhi)
+    integer, intent(in) :: lo, hi, ulo, uhi, flo, fhi
+    double precision, intent(in) ::  u(ulo:uhi)
+    double precision             :: uf(flo:fhi)
     integer :: i
-
     do i=lo,hi
        uf(i) = cc4(-2)*u(i-2) + cc4(-1)*u(i-1) + cc4(0)*u(i) + cc4(1)*u(i+1)
     end do
   end subroutine cellavg2face_1d
 
 
-  subroutine cellavg2gausspt_2d(u, ulo, uhi, ug, lo, hi)
-    integer, intent(in) :: lo(2), hi(2), ulo(2), uhi(2)
-    double precision, intent(in ) :: u (ulo(1):uhi(1),ulo(2):uhi(2))
-    double precision, intent(out) :: ug( lo(1): hi(1), lo(2): hi(2),4)
+  subroutine cellavg2gausspt_2d(lo, hi, u, ulo, uhi, ug, glo, ghi)
+    integer, intent(in) :: lo(2), hi(2), ulo(2), uhi(2), glo(2), ghi(2)
+    double precision, intent(in) :: u (ulo(1):uhi(1),ulo(2):uhi(2))
+    double precision             :: ug(glo(1):ghi(1),glo(2):ghi(2),4)
 
     integer :: i, j, g, gg
     double precision, allocatable :: ugy(:,:,:)
@@ -155,14 +153,15 @@ contains
     allocate(ugy(lo(1)-2:hi(1)+2,lo(2):hi(2),2))
 
     do i=lo(1)-2,hi(1)+2
-       call cellavg2gausspt_1d(u(i,:), ulo(2), uhi(2), ugy(i,:,1), ugy(i,:,2), lo(2), hi(2))
+       call cellavg2gausspt_1d(lo(2),hi(2), u(i,:), ulo(2),uhi(2), &
+            ugy(i,:,1), ugy(i,:,2), ulo(2),uhi(2))
     end do
 
     do g=1,2
        gg = 2*(g-1)
        do j=lo(2),hi(2)
-          call cellavg2gausspt_1d(ugy(:,j,g), lo(1)-2, hi(1)+2, &
-               ug(:,j,gg+1), ug(:,j,gg+2), lo(1), hi(1))
+          call cellavg2gausspt_1d(lo(1),hi(1), ugy(:,j,g), lo(1)-2,hi(1)+2, &
+               ug(:,j,gg+1), ug(:,j,gg+2), lo(1),hi(1))
        end do
     end do
 
