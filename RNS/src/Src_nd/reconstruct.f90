@@ -13,17 +13,18 @@ contains
 
   ! L and R in UL and UR are relative to face
   ! UG1 and UG2 are at two Gauss points
-  subroutine reconstruct(lo, hi, U, Ulo, Uhi, UL, UR, UG1, UG2, U0, dir)
+  subroutine reconstruct(lo, hi, Ulo, Uhi, ULRlo, ULRhi, UGlo, UGhi, U0lo, U0hi, &
+       U, UL, UR, UG1, UG2, U0, dir)
 
     use weno_module, only : weno5
     use eos_module, only : eos_given_ReY, eos_get_eref
 
-    integer, intent(in) :: lo, hi, Ulo, Uhi
+    integer, intent(in) :: lo, hi, Ulo, Uhi, ULRlo, ULRhi, UGlo, UGhi, U0lo, U0hi 
     integer, intent(in), optional :: dir
-    double precision, intent(in),target           :: U (Ulo:Uhi,NVAR)
-    double precision, intent(in),target, optional :: U0(Ulo:Uhi,NVAR)
-    double precision, dimension(lo:hi+1,NVAR), intent(out), optional :: UL, UR
-    double precision, dimension(lo:hi  ,NVAR), intent(out), optional :: UG1, UG2
+    double precision, intent(in),target           :: U ( Ulo: Uhi,NVAR)
+    double precision, intent(in),target, optional :: U0(U0lo:U0hi,NVAR)
+    double precision, dimension(ULRlo:ULRhi,NVAR), optional :: UL, UR
+    double precision, dimension( UGlo: UGhi,NVAR), optional :: UG1, UG2
 
     integer :: i, ii, ivar, m, n, ivel(3), idir, iextra
     double precision :: egv(NCHARV,NCHARV)

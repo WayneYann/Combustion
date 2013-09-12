@@ -32,19 +32,23 @@ subroutine rns_dudt (lo, hi, &
   Uhi(1) = U_h1
   Uhi(2) = U_h2
 
-  if (      xf_l1.ne.lo(1) .or. xf_h1.ne.hi(1)+1 &
-       .or. xf_l2.ne.lo(2) .or. xf_h2.ne.hi(2) ) then
-     print *, 'xflx has wrong size!'
-     stop
-  end if
+  ! if (      xf_l1.ne.lo(1) .or. xf_h1.ne.hi(1)+1 &
+  !      .or. xf_l2.ne.lo(2) .or. xf_h2.ne.hi(2) ) then
+  !    print *, 'xflx has wrong size!'
+  !    stop
+  ! end if
 
-  if (      yf_l1.ne.lo(1) .or. yf_h1.ne.hi(1)   &
-       .or. yf_l2.ne.lo(2) .or. yf_h2.ne.hi(2)+1) then
-     print *, 'yflx has wrong size!'
-     stop
-  end if
+  ! if (      yf_l1.ne.lo(1) .or. yf_h1.ne.hi(1)   &
+  !      .or. yf_l2.ne.lo(2) .or. yf_h2.ne.hi(2)+1) then
+  !    print *, 'yflx has wrong size!'
+  !    stop
+  ! end if
+
+  xflx = 0.d0
+  yflx = 0.d0
 
   call hypterm(lo,hi,U,Ulo,Uhi,xflx,yflx,dx)
+  call difterm(lo,hi,U,Ulo,Uhi,xflx,yflx,dxinv)
 
   do n=1, NVAR
      do j=lo(2),hi(2)
@@ -54,8 +58,6 @@ subroutine rns_dudt (lo, hi, &
         end do
      end do
   end do
-
-!xxxxx  call difterm(lo,hi,U,Ulo,Uhi,fx,fy,dxinv)
 
   if (gravity .ne. 0.d0) then
      do j=lo(2),hi(2)
