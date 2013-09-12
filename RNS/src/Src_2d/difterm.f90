@@ -22,7 +22,7 @@ contains
     double precision, allocatable, target :: U1(:,:,:), U2(:,:,:)
     double precision, allocatable :: Qc(:,:,:), Qf(:,:,:)
     double precision, allocatable :: mu(:), xi(:), lam(:), Ddia(:,:)
-    integer :: i, j, n, m
+    integer :: i, j, n, g
 
     ! ----- compute x-direction flux first -----
 
@@ -40,9 +40,9 @@ contains
        end do
     end do
 
-    do m=1,2
+    do g=1,2
        
-       if (m .eq. 1) then
+       if (g .eq. 1) then
           Uag => U1
        else
           Uag => U2

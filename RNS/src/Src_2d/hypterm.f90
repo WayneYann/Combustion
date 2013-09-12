@@ -43,8 +43,8 @@ contains
     ! Given cell averages, reconstruct in y-direction
     ! Note that they are still averges in x-direction
     do i=tlo(1),thi(1)
-       call reconstruct(tlo(2),thi(2), Ulo(2),Uhi(2), tlo(2),thi(2)+1, tlo(2), thi(2), 0,0,&
-            U, UL=ULy(i,:,:), UR=URy(i,:,:), UG1=UG1y(i,:,:), UG2=UG2y(i,:,:), dir=2)
+       call reconstruct(tlo(2),thi(2), Ulo(2),Uhi(2), tlo(2),thi(2)+1, tlo(2),thi(2), 0,0,&
+            U(i,:,:), UL=ULy(i,:,:), UR=URy(i,:,:), UG1=UG1y(i,:,:), UG2=UG2y(i,:,:), dir=2)
     end do
 
     allocate(UGyL(lo(1):hi(1)+1,NVAR))
