@@ -11,20 +11,20 @@ module riemann_module
 
 contains
 
-  subroutine riemann(lo, hi, UL, UR, flx, dir)
-    integer, intent(in) :: lo, hi
+  subroutine riemann(lo, hi, UL, UR, Ulo, Uhi, flx, flo, fhi, dir)
+    integer, intent(in) :: lo, hi, Ulo, Uhi, flo, fhi
     integer, intent(in), optional :: dir
-    double precision, intent(in ) ::  UL(lo:hi+1,NVAR)
-    double precision, intent(in ) ::  UR(lo:hi+1,NVAR)
-    double precision, intent(out) :: flx(lo:hi+1,NVAR)
+    double precision, intent(in ) ::  UL(Ulo:Uhi,NVAR)
+    double precision, intent(in ) ::  UR(Ulo:Uhi,NVAR)
+    double precision              :: flx(flo:fhi,NVAR)
 
     select case (riemann_solver)
     case (HLL_solver)
-       call riemann_HLL(lo, hi, UL, UR, flx, dir)
+       call riemann_HLL(lo, hi, UL(lo:hi+1,:), UR(lo:hi+1,:), flx(lo:hi+1,:), dir)
     case (JBB_solver)
-       call riemann_JBB(lo, hi, UL, UR, flx, dir)
+       call riemann_JBB(lo, hi, UL(lo:hi+1,:), UR(lo:hi+1,:), flx(lo:hi+1,:), dir)
     case (HLLC_solver)
-       call riemann_HLLC(lo, hi, UL, UR, flx, dir)
+       call riemann_HLLC(lo, hi, UL(lo:hi+1,:), UR(lo:hi+1,:), flx(lo:hi+1,:), dir)
     case default
        print *, 'unknown riemann solver'
        stop
