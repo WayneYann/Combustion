@@ -47,14 +47,14 @@ contains
        call cellavg2cc_1d(U(:,n), Ulo(1), Uhi(1), Qc(:,n), Qclo(1), Qchi(1))
     end do
     !
-    call ctoprim(Qc, Qclo, Qchi, QCVAR)
+    call ctoprim(Qclo,Qchi, Qc, Qclo,Qchi,QCVAR)
 
     ! face variables
     do n=1,NVAR
        call cellavg2face_1d(U(:,n), Ulo(1), Uhi(1), Qf(:,n), Qflo(1), Qfhi(1))
     end do
     !
-    call ctoprim(Qf, Qflo, Qfhi, QFVAR)
+    call ctoprim(Qclo,Qchi, Qf, Qflo,Qfhi,QFVAR)
 
     ! transport coefficients on face
     call get_transport_properties(Qflo,Qfhi, Qf, Qflo,Qfhi,QFVAR, mu, xi, lam, Ddia, Qflo,Qfhi)

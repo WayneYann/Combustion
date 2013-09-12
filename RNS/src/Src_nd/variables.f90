@@ -7,16 +7,16 @@ module variables_module
 
 contains
   
-  subroutine ctoprim(Q, Qlo, Qhi, QVAR)
-    integer, intent(in) :: Qlo(3), Qhi(3), QVAR
+  subroutine ctoprim(lo, hi, Q, Qlo, Qhi, QVAR)
+    integer, intent(in) :: lo(3), hi(3), Qlo(3), Qhi(3), QVAR
     double precision, intent(inout) :: Q(Qlo(1):Qhi(1),Qlo(2):Qhi(2),Qlo(3):Qhi(3),QVAR)
 
     integer :: i,j,k,n,iwrk
     double precision :: rwrk, rhoInv, ek, ei, Yt(NSPEC), Xt(NSPEC), ht(NSPEC)
 
-    do       k = Qlo(3),Qhi(3)
-       do    j = Qlo(2),Qhi(2)
-          do i = Qlo(1),Qhi(1)
+    do       k = lo(3),hi(3)
+       do    j = lo(2),hi(2)
+          do i = lo(1),hi(1)
 
              rhoInv = 1.d0/Q(i,j,k,QRHO)
 
