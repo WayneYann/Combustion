@@ -122,9 +122,7 @@ contains
     integer, intent(in) :: lo, hi, ulo, uhi, u12lo, u12hi
     double precision, intent(in) :: u(ulo:uhi)
     double precision :: u1(u12lo:u12hi), u2(u12lo:u12hi)
-
     integer :: i
-
     do i=lo,hi
        u1(i) = cg1(-2)*u(i-2) + cg1(-1)*u(i-1) + cg1(0)*u(i) + cg1(1)*u(i+1) + cg1(2)*u(i+2)
        u2(i) = cg2(-2)*u(i-2) + cg2(-1)*u(i-1) + cg2(0)*u(i) + cg2(1)*u(i+1) + cg2(2)*u(i+2)
@@ -154,14 +152,14 @@ contains
 
     do i=lo(1)-2,hi(1)+2
        call cellavg2gausspt_1d(lo(2),hi(2), u(i,:), ulo(2),uhi(2), &
-            ugy(i,:,1), ugy(i,:,2), ulo(2),uhi(2))
+            ugy(i,:,1), ugy(i,:,2), lo(2),hi(2))
     end do
 
     do g=1,2
        gg = 2*(g-1)
        do j=lo(2),hi(2)
           call cellavg2gausspt_1d(lo(1),hi(1), ugy(:,j,g), lo(1)-2,hi(1)+2, &
-               ug(:,j,gg+1), ug(:,j,gg+2), lo(1),hi(1))
+               ug(:,j,gg+1), ug(:,j,gg+2), glo(1),ghi(1))
        end do
     end do
 
