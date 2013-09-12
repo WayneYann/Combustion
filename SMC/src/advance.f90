@@ -56,9 +56,9 @@ contains
     case(1)
        call advance_rk3(U,courno,dx)
     case (2)
-       call advance_sdc(U,courno,dx,sdc)
+       call advance_sdc(U,courno,dx,sdc,istep==istep_first)
     case(3,4)
-       call advance_multi_sdc(U,courno,dx,sdc)
+       call advance_multi_sdc(U,courno,dx,sdc,istep==istep_first)
     case default
        call bl_error("Invalid advance_method.")
     end select
@@ -122,7 +122,7 @@ contains
   !
   ! Advance U using single-rate SDC time-stepping
   !
-  subroutine advance_sdc(U, courno, dx, sdc)
+  subroutine advance_sdc(U, courno, dx, sdc, first_step)
 
     use time_module, only : time
     use smcdata_module, only : Q
@@ -132,6 +132,7 @@ contains
     double precision,  intent(inout) :: courno
     double precision,  intent(in   ) :: dx(3)
     type(sdc_ctx),     intent(inout) :: sdc
+    logical,           intent(in   ) :: first_step
 
     logical :: update_courno
     double precision :: courno_proc
@@ -169,8 +170,12 @@ contains
     ! advance (pass control to sdclib)
     !
     call build(bpt_sdc_prep, "sdc_prep")
-    call sdc_imex_set_q0(sdc%imex, mfptr(U))
-    call sdc_imex_spread(sdc%imex, time)
+    if (first_step) then
+       call sdc_imex_set_q0(sdc%imex, mfptr(U))
+       call sdc_imex_spread(sdc%imex, time)
+    else
+       call sdc_imex_spread_qend(sdc%imex)
+    end if
     call destroy(bpt_sdc_prep)
 
     if (sdc%tol_residual > 0.d0) then
@@ -346,7 +351,7 @@ contains
   !
   ! Advance U using multi-rate SDC time-stepping
   !
-  subroutine advance_multi_sdc(U, courno, dx, sdc)
+  subroutine advance_multi_sdc(U, courno, dx, sdc, first_step)
 
     use time_module, only : time
     use smcdata_module, only : Q
@@ -356,6 +361,7 @@ contains
     double precision, intent(inout) :: courno
     double precision, intent(in   ) :: dx(3)
     type(sdc_ctx),    intent(inout) :: sdc
+    logical,          intent(in   ) :: first_step
 
     logical :: update_courno
     double precision :: courno_proc
@@ -396,8 +402,13 @@ contains
     !
     ! advance
     !
-    call sdc_mrex_set_q0(sdc%mrex, mfptr(U))
-    call sdc_mrex_spread(sdc%mrex, time)
+    call build(bpt_sdc_prep, "sdc_prep")
+    if (first_step) then
+       call sdc_mrex_set_q0(sdc%mrex, mfptr(U))
+       call sdc_mrex_spread(sdc%mrex, time)
+    else
+       call sdc_mrex_spread_qend(sdc%mrex)
+    end if
     call destroy(bpt_sdc_prep)
 
     if (sdc%tol_residual > 0.d0) then
