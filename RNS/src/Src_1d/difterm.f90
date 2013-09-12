@@ -57,7 +57,7 @@ contains
     call ctoprim(Qf, Qflo, Qfhi, QFVAR)
 
     ! transport coefficients on face
-    call get_transport_properties(Qf, Qflo, Qfhi, QFVAR, mu, xi, lam, Ddia)
+    call get_transport_properties(Qflo,Qfhi, Qf, Qflo,Qfhi,QFVAR, mu, xi, lam, Ddia, Qflo,Qfhi)
 
     call comp_diff_flux(flx, Qf, mu, xi, lam, Ddia, Qflo, Qfhi, Qc, Qclo, Qchi, dxinv)
 

@@ -11,13 +11,13 @@ module transport_properties
 
 contains
 
-  subroutine get_transport_properties(Q, lo, hi, QVAR, mu, xi, lam, Ddiag)
-    integer, intent(in) :: lo(3), hi(3), QVAR
-    double precision, intent(in ) ::     Q(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),QVAR)
-    double precision, intent(out) ::    mu(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3))
-    double precision, intent(out) ::    xi(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3))
-    double precision, intent(out) ::   lam(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3))
-    double precision, intent(out) :: Ddiag(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),NSPEC)
+  subroutine get_transport_properties(lo, hi, Q, qlo, qhi, QVAR, mu, xi, lam, Ddiag, clo, chi)
+    integer, intent(in) :: lo(3), hi(3), qlo(3), qhi(3), clo(3), chi(3), QVAR
+    double precision, intent(in) ::     Q(qlo(1):qhi(1),qlo(2):qhi(2),qlo(3):qhi(3),QVAR)
+    double precision             ::    mu(clo(1):chi(1),clo(2):chi(2),clo(3):chi(3))
+    double precision             ::    xi(clo(1):chi(1),clo(2):chi(2),clo(3):chi(3))
+    double precision             ::   lam(clo(1):chi(1),clo(2):chi(2),clo(3):chi(3))
+    double precision             :: Ddiag(clo(1):chi(1),clo(2):chi(2),clo(3):chi(3),NSPEC)
 
     integer :: iwrk, i, j, k, n, np
     double precision :: rwrk, Cpt(nspec)
