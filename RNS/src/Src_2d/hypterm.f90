@@ -106,14 +106,14 @@ contains
     ! flux in y-direction for two Gauss points in x-direction
     do i=lo(1), hi(1)
 
-       call riemann(lo(2),hi(2), ULyG1(i,:,:), URyG1(i,:,:), lo(2),hi(2), flux, lo(2),hi(2), dir=2)
+       call riemann(lo(2),hi(2), ULyG1(i,:,:), URyG1(i,:,:), lo(2),hi(2)+1, flux, lo(2),hi(2)+1, dir=2)
        do n=1,NVAR
           do j=lo(2),hi(2)+1
              fy(i,j,n) = fy(i,j,n) + 0.5d0*flux(j,n)
           end do
        end do
 
-       call riemann(lo(2),hi(2), ULyG2(i,:,:), URyG2(i,:,:), lo(2),hi(2), flux, lo(2),hi(2), dir=2)
+       call riemann(lo(2),hi(2), ULyG2(i,:,:), URyG2(i,:,:), lo(2),hi(2)+1, flux, lo(2),hi(2)+1, dir=2)
        do n=1,NVAR
           do j=lo(2),hi(2)+1
              fy(i,j,n) = fy(i,j,n) + 0.5d0*flux(j,n)
