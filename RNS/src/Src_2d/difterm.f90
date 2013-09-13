@@ -136,8 +136,79 @@ contains
 
     ! ----- compute y-direction flux -----
 
+    ! cell-average of ? => cell-avg-in-y and Gauss-point-in-x of d?/dx
+    do n=1,3
+       do j=lo(2)-2,hi(2)+2
+          call cellavg2dergausspt_1d(lo(1),hi(1), U(:,j,n), Ulo(1), Uhi(1), &
+               dU1(:,j,n), dU2(:,j,n), g2lo(1), g2hi(1))
+       end do
+    end do
 
-    !deallocate(.........)
+    ! cell-average => cell-avg-in-y and Gauss-point-in-x
+    do n=1,NVAR
+       do j=lo(2)-3,hi(2)+3
+          call cellavg2gausspt_1d(lo(1),hi(1), U(:,j,n), Ulo(1), Uhi(1), &
+               U1(:,j,n), U2(:,j,n), g3lo(1), g3hi(1))
+       end do
+    end do
+
+    do g=1,2
+       
+       if (g .eq. 1) then
+          Uag  =>  U1
+          dUag => dU1
+       else
+          Uag  =>  U2
+          dUag => dU2
+       end if
+
+       do n=1,3
+          do i=lo(1),hi(1)
+             ! cell-avg-in-y and Gauss-point-in-x => yface and Gauss-point-in-x
+             call cellavg2face_1d(lo(2),hi(2)+1, dUag(i,:,n),g2lo(2),g2hi(2), &
+                  dmom(i,:,n),Qflo(2),Qfhi(2))
+          end do
+       end do
+
+       do n=1,NVAR
+          do i=lo(1),hi(1)
+             ! cell-avg-in-y and Gauss-point-in-x => yface and Gauss-point-in-x
+             call cellavg2face_1d(lo(2),hi(2)+1, Uag(i,:,n),g3lo(2),g3hi(2), &
+                  Qf(i,:,n),Qflo(2),Qfhi(2))
+
+             ! cell-avg-in-y and Gauss-point-in-x => cell-center-in-y and Gauss-point-in-x
+             tlo(1) = i
+             tlo(2) = lo(2)-2
+             thi(1) = i
+             thi(2) = hi(2)+2
+             call cellavg2cc_2d(tlo(1:2),thi(1:2), Uag(:,:,n),g3lo,g3hi, &
+                  Qc(:,:,n),Qclo(1:2),Qchi(1:2))
+          end do
+       end do
+
+       tlo(1:2) = lo(1:2)
+       thi(1) = hi(1)
+       thi(2) = hi(2)+1
+       call ctoprim(tlo,thi, Qf, Qflo,Qfhi,QFVAR)
+
+       ! transport coefficients on face
+       call get_transport_properties(tlo,thi, Qf,Qflo,Qfhi,QFVAR, mu,xi,lam,Ddia,Qflo,Qfhi)
+
+       tlo(2) = lo(2)-2
+       thi(2) = hi(2)+2
+       call ctoprim(tlo,thi, Qc, Qclo,Qchi,QCVAR)
+
+       tlo(1:2) = lo
+       thi(1) = hi(1)
+       thi(2) = hi(2)+1
+       call comp_diff_flux_y(tlo(1:2), thi(1:2), fy, fylo, fyhi, &
+            Qf, mu, xi, lam, Ddia, dmom, Qflo, Qfhi, &
+            Qc, Qclo, Qchi, dxinv, fac)
+
+       Nullify(Uag,dUag)
+    end do
+
+    deallocate(U1,U2,dU1,dU2,Qc,Qf,mu,xi,lam,Ddia,dmom)
 
   end subroutine difterm
 
@@ -168,7 +239,6 @@ contains
 
     do j=lo(2),hi(2)
        do i=lo(1),hi(1)
-
           ! viscous stress
           dudx = dxinv(1)*(FD4(-2)*Qc(i-2,j,QU) + FD4(-1)*Qc(i-1,j,QU) &
                + FD4(0)*Qc(i,j,QU) + FD4(1)*Qc(i+1,j,QU))
@@ -191,10 +261,9 @@ contains
 
           ! compute dpdx
           dlnpdx(i) = dxinv(1) * (FD4(-2)*Qc(i-2,j,QPRES) + FD4(-1)*Qc(i-1,j,QPRES) &
-               + FD4(0)*Qc(i,j,QPRES) + FD4(1)*Qc(i+1,j,QPRES)) * rhoinv
+               + FD4(0)*Qc(i,j,QPRES) + FD4(1)*Qc(i+1,j,QPRES)) / Qf(i,j,QPRES)
+          Vc(i) = 0.d0
        end do
-
-       Vc = 0.d0
 
        do n=1,NSPEC
           UYN = UFS+n-1
@@ -208,7 +277,7 @@ contains
              
              flx(i,j,UYN) = flx(i,j,UYN) + fac*Vd
              Vc(i) = Vc(i) + Vd
-             flx(i,j,UEDEN) = flx(i,j,UYN) + fac*Vd*Qf(i,j,QHN)
+             flx(i,j,UEDEN) = flx(i,j,UEDEN) + fac*Vd*Qf(i,j,QHN)
           end do
        end do
 
@@ -224,5 +293,96 @@ contains
     end do
 
   end subroutine comp_diff_flux_x
+
+
+  subroutine comp_diff_flux_y(lo, hi, flx, flo, fhi, &
+       Qf, mu, xi, lam, Ddia, dmom, Qflo, Qfhi, &
+       Qc, Qclo, Qchi, dxinv, fac)
+
+    use meth_params_module
+    use derivative_stencil_module, only : FD4
+
+    integer, intent(in) :: lo(2), hi(2), flo(2), fhi(2), Qflo(2), Qfhi(2), Qclo(2), Qchi(2)
+    double precision, intent(in) :: dxinv(2), fac
+    double precision, intent(inout) ::  flx( flo(1): fhi(1), flo(2): fhi(2),NVAR)
+    double precision, intent(in   ) ::   Qf(Qflo(1):Qfhi(1),Qflo(2):Qfhi(2),QFVAR)
+    double precision, intent(in   ) ::   mu(Qflo(1):Qfhi(1),Qflo(2):Qfhi(2))
+    double precision, intent(in   ) ::   xi(Qflo(1):Qfhi(1),Qflo(2):Qfhi(2))
+    double precision, intent(in   ) ::  lam(Qflo(1):Qfhi(1),Qflo(2):Qfhi(2))
+    double precision, intent(in   ) :: Ddia(Qflo(1):Qfhi(1),Qflo(2):Qfhi(2),NSPEC)
+    double precision, intent(in   ) :: dmom(Qflo(1):Qfhi(1),Qflo(2):Qfhi(2),3)
+    double precision, intent(in   ) ::   Qc(Qclo(1):Qchi(1),Qclo(2):Qchi(2),QCVAR)
+
+    integer :: i, j, n, UYN, QYN, QXN, QHN
+    double precision :: tauyy, tauxy, dudx, dudy, dvdx, dvdy, divu, rhoinv
+    double precision :: dTdy, dXdy, Vd
+    double precision, allocatable :: dlnpdy(:,:), Vc(:,:)
+    double precision, parameter :: twoThirds = 4.d0/3.d0
+
+    allocate(dlnpdy(lo(1):hi(1),lo(2):hi(2)))
+    allocate(    Vc(lo(1):hi(1),lo(2):hi(2)))
+
+    do j=lo(2),hi(2)
+       do i=lo(1),hi(1)
+          ! viscous stress
+          dudy = dxinv(2)*(FD4(-2)*Qc(i,j-2,QU) + FD4(-1)*Qc(i,j-1,QU) &
+               + FD4(0)*Qc(i,j,QU) + FD4(1)*Qc(i,j+1,QU))
+          dvdy = dxinv(2)*(FD4(-2)*Qc(i,j-2,QV) + FD4(-1)*Qc(i,j-1,QV) &
+               + FD4(0)*Qc(i,j,QV) + FD4(1)*Qc(i,j+1,QV))
+          rhoinv = 1.d0/Qf(i,j,QRHO)
+          dudx = dxinv(1)*rhoinv*(dmom(i,j,2)-Qf(i,j,QU)*dmom(i,j,1))
+          dvdx = dxinv(1)*rhoinv*(dmom(i,j,3)-Qf(i,j,QV)*dmom(i,j,1))
+          divu = dudx + dvdy
+          tauyy = mu(i,j)*(2.d0*dvdy-twoThirds*divu) + xi(i,j)*divu
+          tauxy = mu(i,j)*(dudy+dvdx)
+          flx(i,j,UMX)   = flx(i,j,UMX)   - fac*tauxy
+          flx(i,j,UMY)   = flx(i,j,UMY)   - fac*tauyy
+          flx(i,j,UEDEN) = flx(i,j,UEDEN) - fac*(tauxy*Qf(i,j,QU)+tauyy*Qf(i,j,QV))
+
+          ! thermal conduction
+          dTdy = dxinv(2) * (FD4(-2)*Qc(i,j-2,QTEMP) + FD4(-1)*Qc(i,j-1,QTEMP) &
+               + FD4(0)*Qc(i,j,QTEMP) + FD4(1)*Qc(i,j+1,QTEMP))
+          flx(i,j,UEDEN) = flx(i,j,UEDEN) - fac*lam(i,j)*dTdy
+
+          ! compute dpdx
+          dlnpdy(i,j) = dxinv(2) * (FD4(-2)*Qc(i,j-2,QPRES) + FD4(-1)*Qc(i,j-1,QPRES) &
+               + FD4(0)*Qc(i,j,QPRES) + FD4(1)*Qc(i,j+1,QPRES)) / Qf(i,j,QPRES)
+          Vc(i,j) = 0.d0
+       end do
+    end do
+
+    do n=1,NSPEC
+       UYN = UFS+n-1
+       QYN = QFY+n-1
+       QXN = QFX+n-1
+       QHN = QFH+n-1
+       do j = lo(2), hi(2)
+          do i = lo(1), hi(1)
+             dXdy = dxinv(2) * (FD4(-2)*Qc(i,j-2,QXN) + FD4(-1)*Qc(i,j-1,QXN) &
+                  + FD4(0)*Qc(i,j,QXN) + FD4(1)*Qc(i,j+1,QXN))
+             Vd = -Ddia(i,j,n)*(dXdy + (Qf(i,j,QXN)-Qf(i,j,QYN))*dlnpdy(i,j))
+             
+             flx(i,j,UYN) = flx(i,j,UYN) + fac*Vd
+             Vc(i,j) = Vc(i,j) + Vd
+             flx(i,j,UEDEN) = flx(i,j,UEDEN) + fac*Vd*Qf(i,j,QHN)
+          end do
+       end do
+    end do
+
+    do n=1,NSPEC
+       UYN = UFS+n-1
+       QYN = QFY+n-1
+       QHN = QFH+n-1
+       do j= lo(2), hi(2)
+          do i = lo(1), hi(1)
+             flx(i,j,UYN )  = flx(i,j,UYN  ) - (fac*Qf(i,j,QYN)*Vc(i,j))
+             flx(i,j,UEDEN) = flx(i,j,UEDEN) - (fac*Qf(i,j,QYN)*Vc(i,j))*Qf(i,j,QHN)
+          end do
+       end do
+    end do
+
+    deallocate(dlnpdy,Vc)
+
+  end subroutine comp_diff_flux_y
 
 end module difterm_module
