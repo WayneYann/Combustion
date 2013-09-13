@@ -26,11 +26,11 @@ contains
     double precision, allocatable :: Qc(:,:,:), Qf(:,:,:)
     double precision, allocatable :: mu(:,:), xi(:,:), lam(:,:), Ddia(:,:,:)
     integer :: i, j, n, g
-    integer :: tlo(3), thi(3), Qclo(3), Qchi(3), Qflo(3), Qfhi(3), g2lo(2), g2hi(2)
+    integer :: tlo(3), thi(3), Qclo(3), Qchi(3), Qflo(3), Qfhi(3), g3lo(2), g3hi(2)
 
-    g2lo = lo-2;  g2hi = hi+2
-    allocate(U1(g2lo(1):g2hi(1),g2lo(2):g2hi(2),NVAR))
-    allocate(U2(g2lo(1):g2hi(1),g2lo(2):g2hi(2),NVAR))
+    g3lo = lo-3;  g3hi = hi+3
+    allocate(U1(g3lo(1):g3hi(1),g3lo(2):g3hi(2),NVAR))
+    allocate(U2(g3lo(1):g3hi(1),g3lo(2):g3hi(2),NVAR))
 
     tlo = 1; thi = 1; Qclo = 1;  Qchi = 1;  Qflo = 1;  Qfhi = 1
 
@@ -51,12 +51,12 @@ contains
 
     ! cell-average => cell-avg-in-x and Gauss-point-in-y
     do n=1,NVAR
-       do i=lo(1)-2,hi(1)+2
+       do i=lo(1)-3,hi(1)+3
           call cellavg2gausspt_1d(lo(2),hi(2), U(i,:,n), Ulo(2), Uhi(2), &
-               U1(i,:,:), U2(i,:,:), g2lo(2), g2hi(2))
+               U1(i,:,n), U2(i,:,n), g3lo(2), g3hi(2))
        end do
     end do
-
+    
     do g=1,2
        
        if (g .eq. 1) then
@@ -68,7 +68,7 @@ contains
        do n=1,NVAR
           do j=lo(2),hi(2)
              ! cell-avg-in-x and Gauss-point-in-y => xface and Gauss-point-in-y
-             call cellavg2face_1d(lo(1),hi(1)+1, Uag(:,j,n),g2lo(1),g2hi(1), &
+             call cellavg2face_1d(lo(1),hi(1)+1, Uag(:,j,n),g3lo(1),g3hi(1), &
                   Qf(:,j,n),Qflo(1),Qfhi(1))
 
              ! cell-avg-in-x and Gauss-point-in-y => cell-center-in-x and Gauss-point-in-y
@@ -76,7 +76,7 @@ contains
              tlo(2) = j
              thi(1) = hi(1)+2
              thi(2) = j
-             call cellavg2cc(tlo(1:2),thi(1:2), Uag(:,:,n),g2lo,g2hi, &
+             call cellavg2cc(tlo(1:2),thi(1:2), Uag(:,:,n),g3lo,g3hi, &
                   Qc(:,:,n),Qclo(1:2),Qchi(1:2))
           end do
        end do
@@ -88,7 +88,7 @@ contains
 
        tlo(1) = lo(1)-2
        thi(1) = hi(1)+2
-       call ctoprim(tlo,thi, Qf, Qflo,Qfhi,QFVAR)
+       call ctoprim(tlo,thi, Qc, Qclo,Qchi,QCVAR)
 
        ! transport coefficients on face
        call get_transport_properties(Qflo,Qfhi, Qf,Qflo,Qfhi,QFVAR, mu,xi,lam,Ddia,Qflo,Qfhi)
