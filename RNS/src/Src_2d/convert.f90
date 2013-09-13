@@ -1,14 +1,14 @@
-module convert_module
+module convert_2d_module
 
   implicit none
 
   private
 
-  public :: cellavg2cc
+  public :: cellavg2cc_2d
 
 contains
 
-  subroutine cellavg2cc(lo, hi, ua, alo, ahi, uc, clo, chi)
+  subroutine cellavg2cc_2d(lo, hi, ua, alo, ahi, uc, clo, chi)
     integer, intent(in) :: lo(2), hi(2), alo(2), ahi(2), clo(2), chi(2)
     double precision, intent(in) :: ua(alo(1):ahi(1),alo(2):ahi(2))
     double precision             :: uc(clo(1):chi(1),clo(2):chi(2))
@@ -41,6 +41,6 @@ contains
 
     end if
 
-  end subroutine cellavg2cc
+  end subroutine cellavg2cc_2d
 
-end module convert_module
+end module convert_2d_module
