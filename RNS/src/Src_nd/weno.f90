@@ -40,9 +40,18 @@ module weno_module
   double precision, dimension(-2:1), parameter :: cc4 = &
        (/  -1.d0/12.d0,  7.d0/12.d0,  7.d0/12.d0,  -1.d0/12.d0  /)
 
+  ! given cell averages, compute derivatives at two Gauss point
+  double precision, dimension(-2:2), parameter :: derg1 = &
+       (/ (9.d0+2.d0*sqrt(3.d0))/108.d0,  -(36.d0+13.d0*sqrt(3.d0))/54.d0,  &
+       12.d0*sqrt(3.d0)/27.d0,  (36.d0-13.d0*sqrt(3.d0))/54.d0,  (-9.d0+2.d0*sqrt(3.d0))/108.d0 /)
+  double precision, dimension(-2:2), parameter :: derg2 = &
+       (/ (9.d0-2.d0*sqrt(3.d0))/108.d0,  (-36.d0+13.d0*sqrt(3.d0))/54.d0,  &
+       -12.d0*sqrt(3.d0)/27.d0,  (36.d0+13.d0*sqrt(3.d0))/54.d0,  -(9.d0+2.d0*sqrt(3.d0))/108.d0 /)
+
   private
 
-  public :: weno5, cellavg2gausspt_1d, cellavg2face_1d, cellavg2gausspt_2d
+  public :: weno5, cellavg2gausspt_1d, cellavg2face_1d, cellavg2gausspt_2d, &
+       cellavg2dergausspt_1d
 
 contains
 
@@ -118,10 +127,10 @@ contains
   end subroutine weno5
 
 
-  subroutine cellavg2gausspt_1d(lo,hi, u, ulo,uhi, u1, u2, u12lo,u12hi)
-    integer, intent(in) :: lo, hi, ulo, uhi, u12lo, u12hi
+  subroutine cellavg2gausspt_1d(lo,hi, u, ulo,uhi, u1, u2, glo,ghi)
+    integer, intent(in) :: lo, hi, ulo, uhi, glo, ghi
     double precision, intent(in) :: u(ulo:uhi)
-    double precision :: u1(u12lo:u12hi), u2(u12lo:u12hi)
+    double precision :: u1(glo:ghi), u2(glo:ghi)
     integer :: i
     do i=lo,hi
        u1(i) = cg1(-2)*u(i-2) + cg1(-1)*u(i-1) + cg1(0)*u(i) + cg1(1)*u(i+1) + cg1(2)*u(i+2)
@@ -166,5 +175,17 @@ contains
     deallocate(ugy)
 
   end subroutine cellavg2gausspt_2d
+
+
+  subroutine cellavg2dergausspt_1d(lo, hi, u, ulo, uhi, du1, du2, glo, ghi)
+    integer, intent(in) :: lo, hi, ulo, uhi, glo, ghi
+    double precision, intent(in) :: u(ulo:uhi)
+    double precision :: du1(glo:ghi), du2(glo:ghi)
+    integer :: i
+    do i=lo,hi
+       du1(i) = derg1(-2)*u(i-2) + derg1(-1)*u(i-1) + derg1(0)*u(i) + derg1(1)*u(i+1) + derg1(2)*u(i+2)
+       du2(i) = derg2(-2)*u(i-2) + derg2(-1)*u(i-1) + derg2(0)*u(i) + derg2(1)*u(i+1) + derg2(2)*u(i+2)
+    end do
+  end subroutine cellavg2dergausspt_1d
 
 end module weno_module
