@@ -37,7 +37,7 @@ subroutine rns_grpfill(adv,adv_l1,adv_l2,adv_h1,adv_h2, &
         do j = adv_l2, domlo(2)-1 
            do i = adv_l1,adv_h1
         
-              x = (DBLE(i)+.5d0)*delta(1)+domlo(1)
+              x = (DBLE(i-adv_l1)+.5d0)*delta(1)+xlo(1)
               
               eta = 0.5d0 * (tanh((x + splitx)/sigma)   &
                    &       - tanh((x - splitx)/sigma))
