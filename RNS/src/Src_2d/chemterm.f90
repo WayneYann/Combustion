@@ -31,7 +31,7 @@ contains
 
     call setfirst(.true.)
 
-    !$omp parallel private(i,j,n.g,rhot,rhoinv,ei,Yt)
+    !$omp parallel private(i,j,n,g,rhot,rhoinv,ei,Yt)
     !$omp do collapse(2)
     do j=lo(2),hi(2)
        do i=lo(1),hi(1)

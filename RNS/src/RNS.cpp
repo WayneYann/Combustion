@@ -13,6 +13,10 @@
 #include <string>
 #include <ctime>
 
+#ifdef _OPENMP
+#include <omp.h>
+#endif
+
 using std::cout;
 using std::cerr;
 using std::endl;
@@ -803,7 +807,7 @@ RNS::getCPUTime()
 {
     int numCores = ParallelDescriptor::NProcs();
 #ifdef _OPENMP
-    numCores = numCores*omp_get_max_threads();
+    numCores *= omp_get_max_threads();
 #endif    
 
     Real T = numCores*(ParallelDescriptor::second() - startCPUTime) + 
