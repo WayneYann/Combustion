@@ -1,7 +1,5 @@
 module chemistry_module
 
-  use bl_types
-
   implicit none
 
   integer, save :: nelements   ! number of elements
@@ -26,7 +24,7 @@ contains
 
   subroutine chemistry_init()
     integer :: iwrk, nfit, i, ic, ii
-    double precision :: rwrk, t0
+    double precision :: rwrk, T0
     integer, allocatable :: names(:)
 
     call ckindx(iwrk, rwrk, nelements, nspecies, nreactions, nfit)
@@ -76,7 +74,7 @@ contains
 
 
   subroutine chemistry_close()
-    deallocate(elem_names,spec_names,molecular_weight,inv_mwt)
+    deallocate(elem_names,spec_names,molecular_weight,inv_mwt,std_heat_formation)
   end subroutine chemistry_close
 
 
