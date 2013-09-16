@@ -42,18 +42,6 @@ subroutine rns_dudt (lo, hi, &
   fyhi(1) = yf_h1
   fyhi(2) = yf_h2
   
-  ! if (      xf_l1.ne.lo(1) .or. xf_h1.ne.hi(1)+1 &
-  !      .or. xf_l2.ne.lo(2) .or. xf_h2.ne.hi(2) ) then
-  !    print *, 'xflx has wrong size!'
-  !    stop
-  ! end if
-
-  ! if (      yf_l1.ne.lo(1) .or. yf_h1.ne.hi(1)   &
-  !      .or. yf_l2.ne.lo(2) .or. yf_h2.ne.hi(2)+1) then
-  !    print *, 'yflx has wrong size!'
-  !    stop
-  ! end if
-
   xflx(lo(1):hi(1)+1,:,:) = 0.d0
   yflx(:,lo(2):hi(2)+1,:) = 0.d0
 

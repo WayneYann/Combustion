@@ -235,7 +235,7 @@ contains
     double precision :: tauxx, tauxy, dudx, dudy, dvdx, dvdy, divu, rhoinv
     double precision :: dTdx, dXdx, Vd
     double precision, dimension(lo(1):hi(1)) :: dlnpdx, Vc
-    double precision, parameter :: twoThirds = 4.d0/3.d0
+    double precision, parameter :: twoThirds = 2.d0/3.d0
 
     do j=lo(2),hi(2)
        do i=lo(1),hi(1)
@@ -317,7 +317,7 @@ contains
     double precision :: tauyy, tauxy, dudx, dudy, dvdx, dvdy, divu, rhoinv
     double precision :: dTdy, dXdy, Vd
     double precision, allocatable :: dlnpdy(:,:), Vc(:,:)
-    double precision, parameter :: twoThirds = 4.d0/3.d0
+    double precision, parameter :: twoThirds = 2.d0/3.d0
 
     allocate(dlnpdy(lo(1):hi(1),lo(2):hi(2)))
     allocate(    Vc(lo(1):hi(1),lo(2):hi(2)))
