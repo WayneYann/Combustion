@@ -13,9 +13,10 @@ subroutine rns_grpfill(adv,adv_l1,adv_l2,adv_h1,adv_h2, &
   double precision delta(2), xlo(2), time
   double precision adv(adv_l1:adv_h1,adv_l2:adv_h2,NVAR)
   
-  integer i, j, n, iwrk
-  double precision :: x, vn0, facx, fact, sigma, eta, Pi
+  integer i, j, n, iwrk, ii
+  double precision :: x, xg, facx, fact, sigma, eta, Pi
   double precision rhot,u1t,u2t,Tt,et,Yt(NSPEC),rwrk
+  double precision, parameter :: gp(2) = (/ -1.d0/sqrt(3.d0), 1.d0/sqrt(3.d0) /)
 
   do n = 1,NVAR
      call filcc(adv(adv_l1,adv_l2,n), &
@@ -39,27 +40,36 @@ subroutine rns_grpfill(adv,adv_l1,adv_l2,adv_h1,adv_h2, &
         
               x = (DBLE(i-adv_l1)+.5d0)*delta(1)+xlo(1)
               
-              eta = 0.5d0 * (tanh((x + splitx)/sigma)   &
-                   &       - tanh((x - splitx)/sigma))
+              adv(i,j,:) = 0.d0
 
-              do n=1,nspec
-                 Yt(n) = eta*fuel_Y(n) + (1.d0-eta)*air_Y(n)
-              end do
-              Tt  = eta * T_in + (1.d0-eta) * T_co
-              u1t = 0.d0
-              u2t = eta *vn_in + (1.d0-eta) *vn_co + inflow_vnmag*eta*sin(x*facx)*fact
+              do ii=1,2
+                 xg = x + 0.5d0*delta(1)*gp(ii)
+
+                 eta = 0.5d0 * (tanh((xg + splitx)/sigma)   &
+                      &       - tanh((xg - splitx)/sigma))
+
+                 do n=1,nspec
+                    Yt(n) = eta*fuel_Y(n) + (1.d0-eta)*air_Y(n)
+                 end do
+                 Tt  = eta * T_in + (1.d0-eta) * T_co
+                 u1t = 0.d0
+                 u2t = eta *vn_in + (1.d0-eta) *vn_co &
+                      + inflow_vnmag*eta*sin(xg*facx)*fact
        
-              CALL CKRHOY(pamb,Tt,Yt,IWRK,RWRK,rhot)
-              call CKUBMS(Tt,Yt,IWRK,RWRK,et)
-              adv(i,j,URHO ) = rhot
-              adv(i,j,UMX  ) = rhot*u1t
-              adv(i,j,UMY  ) = rhot*u2t
-              adv(i,j,UEDEN) = rhot*(et + 0.5d0*(u1t**2+u2t**2))
-              adv(i,j,UTEMP) = Tt
-              do n=1, NSPEC
-                 adv(i,j,UFS+n-1) = rhot*Yt(n)
-              end do
+                 CALL CKRHOY(pamb,Tt,Yt,IWRK,RWRK,rhot)
+                 call CKUBMS(Tt,Yt,IWRK,RWRK,et)
+
+                 adv(i,j,URHO ) = adv(i,j,URHO ) + 0.5d0*rhot
+                 adv(i,j,UMX  ) = adv(i,j,UMX  ) + 0.5d0*rhot*u1t
+                 adv(i,j,UMY  ) = adv(i,j,UMY  ) + 0.5d0*rhot*u2t
+                 adv(i,j,UEDEN) = adv(i,j,UEDEN) + 0.5d0*rhot*(et + 0.5d0*(u1t**2+u2t**2))
+                 adv(i,j,UTEMP) = adv(i,j,UTEMP) + 0.5d0*Tt
+                 do n=1, NSPEC
+                    adv(i,j,UFS+n-1) = adv(i,j,UFS+n-1) + rhot*Yt(n)
+                 end do
               
+              end do
+
            end do
         end do
      else
@@ -154,9 +164,10 @@ subroutine rns_denfill(adv,adv_l1,adv_l2,adv_h1,adv_h2, &
   double precision delta(2), xlo(2), time
   double precision adv(adv_l1:adv_h1,adv_l2:adv_h2)
 
-  integer :: i, j, n, iwrk
-  double precision :: x, vn0, facx, fact, sigma, eta, Pi
-  double precision rhot,u1t,u2t,Tt,et,Yt(NSPEC),rwrk
+  integer :: i, j, n, iwrk, ii
+  double precision :: x, xg, sigma, eta
+  double precision rhot,Tt,Yt(NSPEC),rwrk
+  double precision, parameter :: gp(2) = (/ -1.d0/sqrt(3.d0), 1.d0/sqrt(3.d0) /)
   
   call filcc(adv,adv_l1,adv_l2,adv_h1,adv_h2,domlo,domhi,delta,xlo,bc)
 
@@ -164,26 +175,33 @@ subroutine rns_denfill(adv,adv_l1,adv_l2,adv_h1,adv_h2, &
   if (adv_l2.lt.domlo(2)) then
      if (bc(2,1,1).eq.EXT_DIR) then
 
-        Pi = 4.d0*atan(1.d0)
         sigma = 2.5d0*xfrontw*splitx
 
         ! fill the corners too
         do j = adv_l2, domlo(2)-1 
            do i = adv_l1,adv_h1
-        
-              x = (DBLE(i)+.5d0)*delta(1)+domlo(1)
-              
-              eta = 0.5d0 * (tanh((x + splitx)/sigma)   &
-                   &       - tanh((x - splitx)/sigma))
 
-              do n=1,nspec
-                 Yt(n) = eta*fuel_Y(n) + (1.d0-eta)*air_Y(n)
-              end do
-              Tt  = eta * T_in + (1.d0-eta) * T_co
-       
-              CALL CKRHOY(pamb,Tt,Yt,IWRK,RWRK,rhot)
-              adv(i,j) = rhot
+              x = (DBLE(i-adv_l1)+.5d0)*delta(1)+xlo(1)
               
+              adv(i,j) = 0.d0
+
+              do ii=1,2
+
+                 xg = x + 0.5d0*delta(1)*gp(ii)
+
+                 eta = 0.5d0 * (tanh((xg + splitx)/sigma)   &
+                      &       - tanh((xg - splitx)/sigma))
+
+                 do n=1,nspec
+                    Yt(n) = eta*fuel_Y(n) + (1.d0-eta)*air_Y(n)
+                 end do
+                 Tt  = eta * T_in + (1.d0-eta) * T_co
+       
+                 CALL CKRHOY(pamb,Tt,Yt,IWRK,RWRK,rhot)
+                 adv(i,j) = adv(i,j) + 0.5d0*rhot
+              
+              end do
+
            end do
         end do
      else
@@ -298,9 +316,10 @@ subroutine rns_myfill(adv,adv_l1,adv_l2,adv_h1,adv_h2, &
   double precision delta(2), xlo(2), time
   double precision adv(adv_l1:adv_h1,adv_l2:adv_h2)
   
-  integer :: i, j, n, iwrk
-  double precision :: x, vn0, facx, fact, sigma, eta, Pi
-  double precision rhot,u1t,u2t,Tt,et,Yt(NSPEC),rwrk
+  integer :: i, j, n, iwrk, ii
+  double precision :: x, xg, facx, fact, sigma, eta, Pi
+  double precision rhot,u2t,Tt,Yt(NSPEC),rwrk
+  double precision, parameter :: gp(2) = (/ -1.d0/sqrt(3.d0), 1.d0/sqrt(3.d0) /)
 
   call filcc(adv,adv_l1,adv_l2,adv_h1,adv_h2,domlo,domhi,delta,xlo,bc)
 
@@ -317,23 +336,30 @@ subroutine rns_myfill(adv,adv_l1,adv_l2,adv_h1,adv_h2, &
         ! fill the corners too
         do j = adv_l2, domlo(2)-1 
            do i = adv_l1,adv_h1
-        
-              x = (DBLE(i)+.5d0)*delta(1)+domlo(1)
-              
-              eta = 0.5d0 * (tanh((x + splitx)/sigma)   &
-                   &       - tanh((x - splitx)/sigma))
 
-              do n=1,nspec
-                 Yt(n) = eta*fuel_Y(n) + (1.d0-eta)*air_Y(n)
-              end do
-              Tt  = eta * T_in + (1.d0-eta) * T_co
-              u1t = 0.d0
-              u2t = eta *vn_in + (1.d0-eta) *vn_co + inflow_vnmag*eta*sin(x*facx)*fact
+              x = (DBLE(i-adv_l1)+.5d0)*delta(1)+xlo(1)
+              
+              adv(i,j) = 0.d0
+
+              do ii=1,2
+                 xg = x + 0.5d0*delta(1)*gp(ii)
+
+                 eta = 0.5d0 * (tanh((xg + splitx)/sigma)   &
+                      &       - tanh((xg - splitx)/sigma))
+
+                 do n=1,nspec
+                    Yt(n) = eta*fuel_Y(n) + (1.d0-eta)*air_Y(n)
+                 end do
+                 Tt  = eta * T_in + (1.d0-eta) * T_co
+                 u2t = eta *vn_in + (1.d0-eta) *vn_co &
+                      + inflow_vnmag*eta*sin(xg*facx)*fact
        
-              CALL CKRHOY(pamb,Tt,Yt,IWRK,RWRK,rhot)
+                 CALL CKRHOY(pamb,Tt,Yt,IWRK,RWRK,rhot)
 
-              adv(i,j) = rhot*u2t
+                 adv(i,j) = adv(i,j) + 0.5d0*rhot*u2t
               
+              end do
+
            end do
         end do
      else
