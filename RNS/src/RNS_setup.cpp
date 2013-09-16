@@ -259,18 +259,15 @@ RNS::variableSetUp ()
     derive_lst.add("MachNumber",IndexType::TheCellType(),1,
 		   BL_FORT_PROC_CALL(RNS_DERMACHNUMBER,rns_dermachnumber),the_same_box);
     derive_lst.addComponent("MachNumber",desc_lst,State_Type,Density,NUM_STATE);
-    
+
 #if (BL_SPACEDIM > 1)
     //
     // Vorticity
     //
     derive_lst.add("magvort",IndexType::TheCellType(),1,
 		   BL_FORT_PROC_CALL(RNS_DERMAGVORT,rns_dermagvort),grow_box_by_one);
-    // Here we exploit the fact that Xmom = Density + 1
-    //   in order to use the correct interpolation.
-    if (Xmom != Density+1)
-	BoxLib::Error("We are assuming Xmom = Density + 1 in RNS_setup.cpp");
-    derive_lst.addComponent("magvort",desc_lst,State_Type,Density,BL_SPACEDIM+1);
+    derive_lst.addComponent("magvort",desc_lst,State_Type,Density,1);
+    derive_lst.addComponent("magvort",desc_lst,State_Type,Xmom,BL_SPACEDIM);
 #endif
   
     //
@@ -296,14 +293,13 @@ RNS::variableSetUp ()
     //
     // Species mole fractions
     //
+    Array<std::string> var_names_molefrac(NumSpec);
     for (int i = 0; i < NumSpec; i++)
-    {
-	const std::string name = "X("+spec_names[i]+")";
-	derive_lst.add(name,IndexType::TheCellType(),1,
-		       BL_FORT_PROC_CALL(RNS_DERMOLEFRAC,rns_dermolefrac),the_same_box);
-	derive_lst.addComponent(name,desc_lst,State_Type,Density,1);
-	derive_lst.addComponent(name,desc_lst,State_Type,FirstSpec + i,1);
-    }
+        var_names_molefrac[i] = "X("+spec_names[i]+")";
+    derive_lst.add("molefrac",IndexType::TheCellType(),NumSpec,var_names_molefrac,
+		   BL_FORT_PROC_CALL(RNS_DERMOLEFRAC,rns_dermolefrac),the_same_box);
+    derive_lst.addComponent("molefrac",desc_lst,State_Type,Density,1);
+    derive_lst.addComponent("molefrac",desc_lst,State_Type,FirstSpec,NumSpec);
     
     //
     // Velocities

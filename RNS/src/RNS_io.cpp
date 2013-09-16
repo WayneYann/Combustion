@@ -191,7 +191,7 @@ RNS::writePlotFile (const std::string& dir,
                        ostream&       os,
                        VisMF::How     how)
 {
-    int i, n;
+    int i, n, ncomp;
     //
     // The list of indices of State to write to plotfile.
     // first component of pair is state_type,
@@ -221,7 +221,7 @@ RNS::writePlotFile (const std::string& dir,
         if (parent->isDerivePlotVar(it->name()))
 	{
             derive_names.push_back(it->name());
-            num_derive++;
+            num_derive += it->numDerive();
 	}
     }
 
@@ -255,7 +255,8 @@ RNS::writePlotFile (const std::string& dir,
 	      it != derive_names.end(); ++it)
         {
 	    const DeriveRec* rec = derive_lst.get(*it);
-            os << rec->variableName(0) << '\n';
+	    for (i = 0; i < rec->numDerive(); i++)
+                os << rec->variableName(i) << '\n';
         }
 
         os << BL_SPACEDIM << '\n';
@@ -475,10 +476,12 @@ RNS::writePlotFile (const std::string& dir,
 	for (std::list<std::string>::iterator it = derive_names.begin();
 	     it != derive_names.end(); ++it) 
 	{
+	    const DeriveRec* rec = derive_lst.get(*it);
+	    ncomp = rec->numDerive();
 	    MultiFab* derive_dat = derive(*it,cur_time,nGrow);
-	    MultiFab::Copy(plotMF,*derive_dat,0,cnt,1,nGrow);
+	    MultiFab::Copy(plotMF,*derive_dat,0,cnt,ncomp,nGrow);
 	    delete derive_dat;
-	    cnt++;
+	    cnt += ncomp;
 	}
     }
 
