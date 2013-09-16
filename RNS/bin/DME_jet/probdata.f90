@@ -31,7 +31,7 @@ contains
   subroutine init_DME_jet
 
     use meth_params_module, only : NVAR, URHO, UMX, UMY, UEDEN, UTEMP, UFS
-    use chemistry_module, only : nspecies!, get_species_index
+    use chemistry_module, only : nspecies, get_species_index
 
     double precision, dimension(nspecies) :: Xt, Yt
     integer :: iwrk, iN2, iO2, iCH3OCH3, n
@@ -42,12 +42,9 @@ contains
     allocate(fuel_Y(nspecies))
     allocate( air_Y(nspecies))
 
-    iN2 = 39
-    iO2 = 20
-    iCH3OCH3 = 27
-!    iN2 = get_species_index("N2")
-!    iO2 = get_species_index("O2")
-!    iCH3OCH3 = get_species_index("CH3OCH3")
+    iN2 = get_species_index("N2")
+    iO2 = get_species_index("O2")
+    iCH3OCH3 = get_species_index("CH3OCH3")
 
     ! ----- Fuel -----
     Xt = 0.d0
