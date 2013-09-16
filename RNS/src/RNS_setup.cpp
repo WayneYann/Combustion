@@ -296,15 +296,14 @@ RNS::variableSetUp ()
     //
     // Species mole fractions
     //
-    Array<std::string> var_names_molefrac(NumSpec);
     for (int i = 0; i < NumSpec; i++)
     {
-	var_names_molefrac[i] = "X("+spec_names[i]+")";
+	const std::string name = "X("+spec_names[i]+")";
+	derive_lst.add(name,IndexType::TheCellType(),1,
+		       BL_FORT_PROC_CALL(RNS_DERMOLEFRAC,rns_dermolefrac),the_same_box);
+	derive_lst.addComponent(name,desc_lst,State_Type,Density,1);
+	derive_lst.addComponent(name,desc_lst,State_Type,FirstSpec + i,1);
     }
-    derive_lst.add("molefrac",IndexType::TheCellType(),NumSpec, var_names_molefrac,
-		   BL_FORT_PROC_CALL(RNS_DERMOLEFRAC,rns_dermolefrac),the_same_box);
-    derive_lst.addComponent("molefrac",desc_lst,State_Type,Density,1);
-    derive_lst.addComponent("molefrac",desc_lst,State_Type,FirstSpec,NumSpec);
     
     //
     // Velocities
