@@ -65,7 +65,7 @@ subroutine rns_grpfill(adv,adv_l1,adv_l2,adv_h1,adv_h2, &
                  adv(i,j,UEDEN) = adv(i,j,UEDEN) + 0.5d0*rhot*(et + 0.5d0*(u1t**2+u2t**2))
                  adv(i,j,UTEMP) = adv(i,j,UTEMP) + 0.5d0*Tt
                  do n=1, NSPEC
-                    adv(i,j,UFS+n-1) = adv(i,j,UFS+n-1) + rhot*Yt(n)
+                    adv(i,j,UFS+n-1) = adv(i,j,UFS+n-1) + 0.5d0*rhot*Yt(n)
                  end do
               
               end do
