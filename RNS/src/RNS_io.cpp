@@ -54,6 +54,27 @@ RNS::restart (Amr&     papa,
 
 	std::cout << "read CPU time: " << previousCPUTimeUsed << "\n";
     }
+
+    if (level == 0)
+    {
+	// get problem-specific stuff -- note all processors do this,
+	// eliminating the need for a broadcast
+	std::string dir = parent->theRestartFile();
+	
+	char * dir_for_pass = new char[dir.size() + 1];
+	std::copy(dir.begin(), dir.end(), dir_for_pass);
+	dir_for_pass[dir.size()] = '\0';
+	
+	int len = dir.size();
+	
+	Array<int> int_dir_name(len);
+	for (int j = 0; j < len; j++)
+	    int_dir_name[j] = (int) dir_for_pass[j];
+	
+	BL_FORT_PROC_CALL(PROBLEM_RESTART, problem_restart)(int_dir_name.dataPtr(), &len);
+	
+	delete [] dir_for_pass;
+      }
 }
 
 void
@@ -74,6 +95,21 @@ RNS::checkPoint(const std::string& dir,
   
 	CPUFile << std::setprecision(15) << getCPUTime();
 	CPUFile.close();
+
+	// store any problem-specific stuff
+	char * dir_for_pass = new char[dir.size() + 1];
+	std::copy(dir.begin(), dir.end(), dir_for_pass);
+	dir_for_pass[dir.size()] = '\0';
+	
+	int len = dir.size();
+	
+	Array<int> int_dir_name(len);
+	for (int j = 0; j < len; j++)
+	    int_dir_name[j] = (int) dir_for_pass[j];
+
+	BL_FORT_PROC_CALL(PROBLEM_CHECKPOINT, problem_checkpoint)(int_dir_name.dataPtr(), &len); 
+
+	delete [] dir_for_pass;
     }
 }
 
@@ -191,7 +227,7 @@ RNS::writePlotFile (const std::string& dir,
                        ostream&       os,
                        VisMF::How     how)
 {
-    int i, n;
+    int i, n, ncomp;
     //
     // The list of indices of State to write to plotfile.
     // first component of pair is state_type,
@@ -221,7 +257,7 @@ RNS::writePlotFile (const std::string& dir,
         if (parent->isDerivePlotVar(it->name()))
 	{
             derive_names.push_back(it->name());
-            num_derive++;
+            num_derive += it->numDerive();
 	}
     }
 
@@ -255,7 +291,8 @@ RNS::writePlotFile (const std::string& dir,
 	      it != derive_names.end(); ++it)
         {
 	    const DeriveRec* rec = derive_lst.get(*it);
-            os << rec->variableName(0) << '\n';
+	    for (i = 0; i < rec->numDerive(); i++)
+                os << rec->variableName(i) << '\n';
         }
 
         os << BL_SPACEDIM << '\n';
@@ -475,10 +512,12 @@ RNS::writePlotFile (const std::string& dir,
 	for (std::list<std::string>::iterator it = derive_names.begin();
 	     it != derive_names.end(); ++it) 
 	{
+	    const DeriveRec* rec = derive_lst.get(*it);
+	    ncomp = rec->numDerive();
 	    MultiFab* derive_dat = derive(*it,cur_time,nGrow);
-	    MultiFab::Copy(plotMF,*derive_dat,0,cnt,1,nGrow);
+	    MultiFab::Copy(plotMF,*derive_dat,0,cnt,ncomp,nGrow);
 	    delete derive_dat;
-	    cnt++;
+	    cnt += ncomp;
 	}
     }
 

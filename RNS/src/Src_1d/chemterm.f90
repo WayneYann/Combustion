@@ -27,7 +27,7 @@ contains
     allocate(U2(lo(1):hi(1),NVAR))
 
     do n=1,NVAR
-       call cellavg2gausspt_1d(U(:,n), Ulo(1), Uhi(1), U1(:,n), U2(:,n), lo(1), hi(1))
+       call cellavg2gausspt_1d(lo(1),hi(1), U(:,n), Ulo(1),Uhi(1), U1(:,n), U2(:,n), lo(1),hi(1))
     end do
 
     call setfirst(.true.)

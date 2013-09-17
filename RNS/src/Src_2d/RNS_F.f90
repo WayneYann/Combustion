@@ -17,11 +17,11 @@ subroutine rns_dudt (lo, hi, &
   integer, intent(in) :: yf_l1, yf_h1, yf_l2, yf_h2
   double precision, intent(in)    ::    U( U_l1: U_h1, U_l2: U_h2,NVAR)
   double precision, intent(inout) :: dUdt(Ut_l1:Ut_h1,Ut_l2:Ut_h2,NVAR)
-  double precision, intent(  out) :: xflx(xf_l1:xf_h1,xf_l2:xf_h2,NVAR)
-  double precision, intent(  out) :: yflx(yf_l1:yf_h1,yf_l2:yf_h2,NVAR)
+  double precision                :: xflx(xf_l1:xf_h1,xf_l2:xf_h2,NVAR)
+  double precision                :: yflx(yf_l1:yf_h1,yf_l2:yf_h2,NVAR)
   double precision, intent(in) :: dx(2)
 
-  integer :: Ulo(2), Uhi(2), i, j, n
+  integer :: Ulo(2), Uhi(2), fxlo(2), fxhi(2), fylo(2), fyhi(2), i, j, n
   double precision :: dxinv(2)
 
   dxinv(1) = 1.d0/dx(1)
@@ -32,19 +32,21 @@ subroutine rns_dudt (lo, hi, &
   Uhi(1) = U_h1
   Uhi(2) = U_h2
 
-  if (      xf_l1.ne.lo(1) .or. xf_h1.ne.hi(1)+1 &
-       .or. xf_l2.ne.lo(2) .or. xf_h2.ne.hi(2) ) then
-     print *, 'xflx has wrong size!'
-     stop
-  end if
+  fxlo(1) = xf_l1
+  fxlo(2) = xf_l2
+  fxhi(1) = xf_h1
+  fxhi(2) = xf_h2
+  
+  fylo(1) = yf_l1
+  fylo(2) = yf_l2
+  fyhi(1) = yf_h1
+  fyhi(2) = yf_h2
+  
+  xflx(lo(1):hi(1)+1,:,:) = 0.d0
+  yflx(:,lo(2):hi(2)+1,:) = 0.d0
 
-  if (      yf_l1.ne.lo(1) .or. yf_h1.ne.hi(1)   &
-       .or. yf_l2.ne.lo(2) .or. yf_h2.ne.hi(2)+1) then
-     print *, 'yflx has wrong size!'
-     stop
-  end if
-
-  call hypterm(lo,hi,U,Ulo,Uhi,xflx,yflx,dx)
+  call hypterm(lo,hi,U,Ulo,Uhi,xflx,fxlo,fxhi,yflx,fylo,fyhi,dx)
+  call difterm(lo,hi,U,Ulo,Uhi,xflx,fxlo,fxhi,yflx,fylo,fyhi,dxinv)
 
   do n=1, NVAR
      do j=lo(2),hi(2)
@@ -54,8 +56,6 @@ subroutine rns_dudt (lo, hi, &
         end do
      end do
   end do
-
-!xxxxx  call difterm(lo,hi,U,Ulo,Uhi,fx,fy,dxinv)
 
   if (gravity .ne. 0.d0) then
      do j=lo(2),hi(2)

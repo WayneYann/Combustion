@@ -10,7 +10,8 @@ subroutine PROBINIT (init,name,namlen,problo,probhi)
 
   integer untin,i
 
-  namelist /fortin/ prob_type, pertmag, rfire, uinit, vinit, winit
+  namelist /fortin/ pamb, phi_in, T_in, vn_in, T_co, vn_co, splitx, xfrontw, &
+       inflow_period, inflow_vnmag
 
 !
 !     Build "probin" filename -- the name of file containing fortin namelist.
@@ -27,28 +28,27 @@ subroutine PROBINIT (init,name,namlen,problo,probhi)
   do i = 1, namlen
      probin(i:i) = char(name(i))
   end do
-         
-! set namelist defaults
-  prob_type = 1
 
-! problem type 1
-  pertmag = 0.d0
-  rfire   = 0.15d0
-  uinit   = 0.d0
-  vinit   = 0.d0
-  winit   = 0.d0
-
-!     Read namelists
+  pamb = 4.053d7  ! 40 Patm
+  
+  phi_in = 0.2d0   ! mole fraction of CH3OCH3 in fuel
+  T_in   = 400.d0  ! temperature of fuel
+  vn_in  = 5.12d3  ! fuel injection velocity
+  
+  T_co  = 1525.d0   ! temperature of air
+  vn_co = 5.12d2    ! air injection velocity
+  
+  splitx  = 0.00569d0  ! where fuel and air split
+  xfrontw = .2d0       ! controls the width of split
+  
+  inflow_period = 1.d-5 ! period of sinusoidal variation of inflow velocity
+  inflow_vnmag  = 1.d3  ! magnitude of the variation
+  
+  !     Read namelists
   untin = 9
   open(untin,file=probin(1:namlen),form='formatted',status='old')
   read(untin,fortin)
   close(unit=untin)
-
-  center(1) = 0.5d0*(problo(1) + probhi(1))
-  center(2) = 0.5d0*(problo(2) + probhi(2))
-
-  Length(1) = probhi(1) - problo(1)
-  Length(2) = probhi(2) - problo(2)
 
 end subroutine PROBINIT
 
@@ -80,7 +80,7 @@ subroutine rns_initdata(level,time,lo,hi,nscal, &
   use eos_module, only : eos_given_PTX
   use probdata_module
   use meth_params_module, only : NVAR, URHO, UMX, UMY, UEDEN, UTEMP, UFS, NSPEC
-  use chemistry_module, only : Patm, nspecies, get_species_index
+  use chemistry_module, only : Patm, nspecies
 
   implicit none
 
@@ -91,30 +91,27 @@ subroutine rns_initdata(level,time,lo,hi,nscal, &
   double precision state(state_l1:state_h1,state_l2:state_h2,NVAR)
   
   ! local variables
-  integer :: i, j, n, ii, jj, nimages, iii, jjj, iH2, iO2, iN2
-  double precision :: xcen, ycen, xg, yg, r, rfront, xgi, ygi
-  double precision :: pmf_vals(NSPEC+3), Xt(nspec), Yt(nspec)
-  double precision :: rhot, et, Pt, Tt, u1t, u2t, kx, ky, Pi
-
+  integer :: i, j, n, ii, jj
+  double precision :: xcen, ycen, xg, yg
+  double precision Yt(NSPEC)
+  double precision rhot,u1t,u2t,Tt,et, sigma, eta
+  integer :: iwrk
+  double precision :: rwrk
   double precision, parameter :: gp(2) = (/ -1.d0/sqrt(3.d0), 1.d0/sqrt(3.d0) /)
-  
+
   if (nspecies .ne. NSPEC) then
      write(6,*)"nspecies, nspec ", nspecies, NSPEC
      stop
   end if
 
-  iH2 = get_species_index("H2")
-  iO2 = get_species_index("O2")
-  iN2 = get_species_index("N2")
+  if (.not. probdata_initialized) then
+     call init_DME_jet()
+  end if
 
-  Pi = 4.d0*atan(1.d0)
-
-  nimages = 0
-  if (prob_type .eq. 4) nimages = 3
+  sigma = 2.5d0*xfrontw*splitx
 
   do j = state_l2, state_h2
      ycen = xlo(2) + delta(2)*(dble(j-lo(2)) + 0.5d0)
-
 
      do i = state_l1, state_h1
         xcen = xlo(1) + delta(1)*(dble(i-lo(1)) + 0.5d0)
@@ -126,70 +123,18 @@ subroutine rns_initdata(level,time,lo,hi,nscal, &
            do ii = 1, 2
               xg = xcen + 0.5d0*delta(1)*gp(ii)
 
-              if (prob_type .eq. 1) then
-
-                 r = sqrt((xg-center(1))**2 + (yg-center(2))**2)
-                 rfront = rfire - r + 3.011d0 ! 3.011d0 is roughly the surface of fire for pmf.
-              else if (prob_type .eq. 4) then
-
-              else
-                 write(6,*) "Unknown prob_type"
-                 stop
-              end if
-
-              if (prob_type .eq. 1) then
-                 call pmf(rfront,rfront,pmf_vals,n)
-              
-                 if (n .ne. nspec+3) then
-                    write(6,*)"n, nspec ", n, nspec
-                    stop
-                 end if
-              
-                 Xt = pmf_vals(4:)
-              end if
-              
-              if (prob_type .eq. 1) then
-                 Pt  = patm
-                 Tt  = pmf_vals(1)
-                 u1t = uinit
-                 u2t = vinit
-
-              else if (prob_type .eq. 4) then
-                 
-                 Pt = Patm
-                 Tt = 300.0d0
-
-                 Xt = 0.0d0
-                 Xt(iH2) = 0.10d0
-                 Xt(iO2) = 0.25d0
-
-                 do jjj = -nimages, nimages
-                    do iii = -nimages, nimages
-
-                       xgi = xg + iii*Length(1)
-                       ygi = yg + jjj*Length(2)
-                       
-                       r = sqrt(xgi**2+ygi**2)
-                       
-                       Pt = Pt    + 0.1d0*patm * exp(-(r / rfire)**2)
-                       Tt = Tt      + 1100.0d0 * exp(-(r / rfire)**2)
-                       Xt(iH2) = Xt(iH2) + 0.025d0 * exp(-(r / rfire)**2)
-                       Xt(iO2) = Xt(iO2) - 0.050d0 * exp(-(r / rfire)**2)
-                       
-                    end do
-                 end do
-
-                 kx = 2.d0*Pi/Length(1)
-                 ky = 2.d0*Pi/Length(2)
-
-                 u1t =  sin(kx*xg)*cos(ky*yg) * 300.d0
-                 u2t = -cos(kx*xg)*sin(ky*yg) * 300.d0
-              
-                 Xt(iN2) = 1.0d0 - Xt(iH2) - Xt(iO2)
-
-              end if
-              
-              call eos_given_PTX(rhot, et, Yt, Pt, Tt, Xt)
+              eta = 0.5d0 * (tanh((xg + splitx)/sigma)   &
+                   &       - tanh((xg - splitx)/sigma))
+       
+              do n=1,nspecies
+                 Yt(n) = eta*fuel_Y(n) + (1.d0-eta)*air_Y(n)
+              end do
+              Tt  = eta * T_in + (1.d0-eta) * T_co
+              u1t = 0.d0
+              u2t = eta *vn_in + (1.d0-eta) *vn_co
+       
+              CALL CKRHOY(pamb,Tt,Yt,IWRK,RWRK,rhot)
+              call CKUBMS(Tt,Yt,IWRK,RWRK,et)
 
               state(i,j,URHO ) = state(i,j,URHO ) + 0.25d0*rhot
               state(i,j,UMX  ) = state(i,j,UMX  ) + 0.25d0*rhot*u1t
@@ -199,12 +144,12 @@ subroutine rns_initdata(level,time,lo,hi,nscal, &
               do n=1, NSPEC
                  state(i,j,UFS+n-1) = state(i,j,UFS+n-1) + 0.25d0*rhot*Yt(n)
               end do
-              
+
            end do
         end do
 
      end do
   end do
-  
+
 end subroutine rns_initdata
 

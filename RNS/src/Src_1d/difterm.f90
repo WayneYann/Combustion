@@ -47,17 +47,17 @@ contains
        call cellavg2cc_1d(U(:,n), Ulo(1), Uhi(1), Qc(:,n), Qclo(1), Qchi(1))
     end do
     !
-    call ctoprim(Qc, Qclo, Qchi, QCVAR)
+    call ctoprim(Qclo,Qchi, Qc, Qclo,Qchi,QCVAR)
 
     ! face variables
     do n=1,NVAR
-       call cellavg2face_1d(U(:,n), Ulo(1), Uhi(1), Qf(:,n), Qflo(1), Qfhi(1))
+       call cellavg2face_1d(Qflo(1),Qfhi(1), U(:,n), Ulo(1),Uhi(1), Qf(:,n), Qflo(1), Qfhi(1))
     end do
     !
-    call ctoprim(Qf, Qflo, Qfhi, QFVAR)
+    call ctoprim(Qflo,Qfhi, Qf, Qflo,Qfhi,QFVAR)
 
     ! transport coefficients on face
-    call get_transport_properties(Qf, Qflo, Qfhi, QFVAR, mu, xi, lam, Ddia)
+    call get_transport_properties(Qflo,Qfhi, Qf, Qflo,Qfhi,QFVAR, mu, xi, lam, Ddia, Qflo,Qfhi)
 
     call comp_diff_flux(flx, Qf, mu, xi, lam, Ddia, Qflo, Qfhi, Qc, Qclo, Qchi, dxinv)
 
@@ -84,7 +84,7 @@ contains
 
     integer :: i, n, UYN, QYN, QXN, QHN
     double precision :: tauxx, dudx, dTdx, dXdx, Vd
-    double precision, dimension(Qflo(1):Qfhi(1)) :: dlnpdx, rVc
+    double precision, dimension(Qflo(1):Qfhi(1)) :: dlnpdx, Vc
     double precision, parameter :: fourThirds = 4.d0/3.d0
 
     flx(:,URHO) = 0.d0
@@ -110,7 +110,7 @@ contains
 
     end do
 
-    rVc = 0.d0
+    Vc = 0.d0
 
     do n=1,NSPEC
 
@@ -125,8 +125,8 @@ contains
 
           Vd = -Ddia(i,n)*(dXdx + (Qf(i,QXN)-Qf(i,QYN))*dlnpdx(i))
           
-          flx(i,UYN) = Qf(i,QRHO)*Qf(i,QYN)*Vd
-          rVc(i) = rVc(i) + flx(i,UYN)
+          flx(i,UYN) = Vd
+          Vc(i) = Vc(i) + Vd
        end do
     end do
 
@@ -137,7 +137,7 @@ contains
        QHN = QFH+n-1
 
        do i = Qflo(1), Qfhi(1)
-          flx(i,UYN) = flx(i,UYN) - Qf(i,QYN)*rVc(i)
+          flx(i,UYN) = flx(i,UYN) - Qf(i,QYN)*Vc(i)
           flx(i,UEDEN) = flx(i,UEDEN) + flx(i,UYN)*Qf(i,QHN)
        end do
     end do

@@ -133,7 +133,7 @@ subroutine rns_dermagvort(vort,  v_l1,  v_l2,  v_h1,  v_h2,nv, &
   double precision,intent(in )::  dat(dat_l1:dat_h1,dat_l2:dat_h2,nc)
 
   integer          :: i,j
-  double precision :: uy,vx, dxinv(2)
+  double precision :: uy,vx, dxinv(2),rhoinv
   double precision, allocatable :: u(:,:), v(:,:)
 
   dxinv(1) = 1.d0/delta(1)
@@ -144,8 +144,9 @@ subroutine rns_dermagvort(vort,  v_l1,  v_l2,  v_h1,  v_h2,nv, &
 
   do j = lo(2)-1, hi(2)+1
      do i = lo(1)-1, hi(1)+1
-        u(i,j) = dat(i,j,2) / dat(i,j,1)
-        v(i,j) = dat(i,j,3) / dat(i,j,1)
+        rhoinv = 1.d0/dat(i,j,1)
+        u(i,j) = dat(i,j,2) * rhoinv
+        v(i,j) = dat(i,j,3) * rhoinv
      end do
   end do
 

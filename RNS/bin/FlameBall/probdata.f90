@@ -6,8 +6,7 @@ module probdata_module
   double precision, save :: pertmag, rfire
   double precision, save :: uinit, vinit, winit
 
-  double precision, save :: center(3)
-
+  double precision, save :: center(3), Length(3)
 
   ! These determine the refinement criteria
   double precision, save :: denerr,   dengrad
