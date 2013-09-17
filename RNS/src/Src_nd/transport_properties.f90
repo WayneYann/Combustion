@@ -56,7 +56,7 @@ contains
           
           call egze3(Q(lo(1):hi(1),j,k,QTEMP), mu(lo(1):hi(1),j,k))
 
-          CALL egzk3(Q(lo(1):hi(1),j,k,QTEMP), xi(lo(1):hi(1),j,k))
+          call egzk3(Q(lo(1):hi(1),j,k,QTEMP), xi(lo(1):hi(1),j,k))
 
           call egzl1( 1.d0, XZ, L1Z)
           call egzl1(-1.d0, XZ, L2Z)
