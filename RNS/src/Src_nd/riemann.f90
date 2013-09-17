@@ -240,9 +240,9 @@ contains
        ro = max(smalld,ro)
        
        roinv = 1.d0/ro
-       coinv2 = 1.d0/(co*co)
        co = sqrt(abs(gamco*po*roinv))
        co = max(csmall,co)
+       coinv2 = 1.d0/(co*co)
        entho = (reo + po)*roinv*coinv2
        rstar = ro + (pstar - po)*coinv2
        rstar = max(smalld,rstar)
