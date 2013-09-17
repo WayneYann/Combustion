@@ -40,6 +40,7 @@ contains
     double precision, intent(out) :: flx(lo:hi+1,NVAR)
 
     integer :: i, n
+    double precision :: aainv
     double precision, allocatable :: fl(:,:),fr(:,:),alpha_plus(:),alpha_mins(:),alpha_pm(:)
 
     allocate(fl(lo:hi+1,NVAR))
@@ -57,8 +58,9 @@ contains
     call compute_flux_and_alpha(lo, hi, UR, fr, alpha_plus, alpha_mins, dir)
 
     do i = lo, hi+1
-       alpha_pm(i) = alpha_plus(i) * alpha_mins(i) / (alpha_plus(i) + alpha_mins(i))
-       alpha_plus(i) = alpha_plus(i) / (alpha_plus(i) + alpha_mins(i))
+       aainv = 1.d0 / (alpha_plus(i) + alpha_mins(i))
+       alpha_pm(i) = alpha_plus(i) * alpha_mins(i) * aainv
+       alpha_plus(i) = alpha_plus(i) * aainv
        alpha_mins(i) = 1.d0 - alpha_plus(i)
     end do
 
@@ -168,6 +170,7 @@ contains
     double precision :: rstar, cstar, estar, pstar, ustar
     double precision :: ro, uo, po, reo, gamco, co, entho
     double precision :: sgnm, spout, spin, ushock, scr, frac
+    double precision :: wwinv, roinv, coinv2
     
     double precision, parameter :: small  = 1.d-8
 
@@ -210,8 +213,9 @@ contains
        wl = max(wsmall, cl*rl)
        wr = max(wsmall, cr*rr)
 
-       pstar = ((wr*pl + wl*pr) + wl*wr*(vl(1) - vr(1)))/(wl + wr)
-       ustar = ((wl*vl(1) + wr*vr(1)) + (pl - pr))/(wl + wr)
+       wwinv = 1.d0/(wl + wr)
+       pstar = ((wr*pl + wl*pr) + wl*wr*(vl(1) - vr(1)))*wwinv
+       ustar = ((wl*vl(1) + wr*vr(1)) + (pl - pr))*wwinv
        pstar = max(pstar,smallp)
 
        if (ustar .gt. 0.d0) then
@@ -235,10 +239,12 @@ contains
        endif
        ro = max(smalld,ro)
        
-       co = sqrt(abs(gamco*po/ro))
+       roinv = 1.d0/ro
+       coinv2 = 1.d0/(co*co)
+       co = sqrt(abs(gamco*po*roinv))
        co = max(csmall,co)
-       entho = (reo/ro + po/ro)/co**2
-       rstar = ro + (pstar - po)/co**2
+       entho = (reo + po)*roinv*coinv2
+       rstar = ro + (pstar - po)*coinv2
        rstar = max(smalld,rstar)
        estar = reo + (pstar - po)*entho
        cstar = sqrt(abs(gamco*pstar/rstar))

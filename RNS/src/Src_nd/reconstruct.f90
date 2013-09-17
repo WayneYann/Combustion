@@ -30,6 +30,7 @@ contains
     double precision :: egv(NCHARV,NCHARV)
     double precision :: gt, b, d(NSPEC)
     double precision :: rho, rhoInv, p, c, gamc, T, dpdr(NSPEC), dpde, e, ek, H, Y(NSPEC)
+    double precision :: gtinv, cinv
     double precision :: vel(3), vflag(3)
     double precision :: charv(-2:2,NCHARV) ! characteristic variables
     double precision, dimension(NCHARV) :: vp, vm, vg1, vg2
@@ -107,26 +108,28 @@ contains
        H = e + p*rhoInv + ek
 
        gt = dpde*rhoInv
-       b = gt/(c*c)
+       cinv = 1.d0/c
+       b = gt*cinv*cinv
+       gtinv = 1.d0/gt
        do n=1,nspec
-          d(n) = b*(ek - e + dpdr(n)/gt)
+          d(n) = b*(ek - e + dpdr(n)*gtinv)
        end do
 
        ! assemble left vectors
-       egv(1,1) = -0.5d0*(1.d0/c + b*vel(1))
+       egv(1,1) = -0.5d0*(cinv + b*vel(1))
        egv(2,1) = -0.5d0*b*vel(2)
        egv(3,1) = -0.5d0*b*vel(3)
        egv(4,1) =  0.5d0*b
        do n=1,nspec
-          egv(CFS+n-1,1) = 0.5d0*(vel(1)/c + d(n))
+          egv(CFS+n-1,1) = 0.5d0*(vel(1)*cinv + d(n))
        end do
 
-       egv(1,2) =  0.5d0*(1.d0/c - b*vel(1))
+       egv(1,2) =  0.5d0*(cinv - b*vel(1))
        egv(2,2) = -0.5d0*b*vel(2)
        egv(3,2) = -0.5d0*b*vel(3)
        egv(4,2) =  0.5d0*b
        do n=1,nspec
-          egv(CFS+n-1,2) = 0.5d0*(-vel(1)/c + d(n))
+          egv(CFS+n-1,2) = 0.5d0*(-vel(1)*cinv + d(n))
        end do
 
        egv(1,3) = 0.d0
@@ -229,7 +232,7 @@ contains
           egv(1,CFS+n-1) = vel(1)
           egv(2,CFS+n-1) = vel(2)
           egv(3,CFS+n-1) = vel(3)
-          egv(4,CFS+n-1) = e + ek - dpdr(n)/gt
+          egv(4,CFS+n-1) = e + ek - dpdr(n)*gtinv
           do m=1,nspec
              egv(CFS+m-1,CFS+n-1) = 0.d0
           end do
