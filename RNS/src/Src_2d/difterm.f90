@@ -344,7 +344,7 @@ contains
                + FD4(0)*Qc(i,j,QTEMP) + FD4(1)*Qc(i,j+1,QTEMP))
           flx(i,j,UEDEN) = flx(i,j,UEDEN) - fac*lam(i,j)*dTdy
 
-          ! compute dpdx
+          ! compute dpdy
           dlnpdy(i,j) = dxinv(2) * (FD4(-2)*Qc(i,j-2,QPRES) + FD4(-1)*Qc(i,j-1,QPRES) &
                + FD4(0)*Qc(i,j,QPRES) + FD4(1)*Qc(i,j+1,QPRES)) / Qf(i,j,QPRES)
           Vc(i,j) = 0.d0
