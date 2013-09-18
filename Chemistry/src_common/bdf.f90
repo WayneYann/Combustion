@@ -32,8 +32,11 @@ module bdf_module
      type(bdf_params) :: ctx
 
      real(dp) :: dt                       ! current time step
+     real(dp) :: dt_nwt                   ! dt used when building newton iteration matrix
      integer  :: k                        ! current order
      integer  :: n                        ! current step
+     integer  :: age                      ! age of jacobian
+     integer  :: max_age                  ! maximum age of jacobian
 
      real(dp), pointer :: rtol(:)         ! realtive tolerances
      real(dp), pointer :: atol(:)         ! absolute tolerances
@@ -108,8 +111,9 @@ contains
     include 'LinAlg.inc'
 
     integer  :: i, j, k, iter, info, solver_failures
-    real(dp) :: c, dt_adj, dt_hat, error, eta
+    real(dp) :: c, dt_adj, error, eta
 
+    logical :: rebuild
     logical :: verbose = .true.
 
     solver_failures = 0
@@ -120,6 +124,9 @@ contains
     ts%y  = y0
     ts%dt = dt0
     ts%n  = 1
+
+    if (.not. restart) ts%age = 666
+       
 
     do k = 1, 666666666
 
@@ -133,11 +140,14 @@ contains
           ts%k = 1
           ts%t(0:1) = [ t0 + ts%dt, t0 ]
           call nordsieck_update_coeffs(ts)
+
           call ts%f(neq, ts%y, ts%t(0), ts%yd, ts%ctx)
+          ts%nfe = ts%nfe + 1
+
           ts%z(:,0) = ts%y
           ts%z(:,1) = ts%dt * ts%yd
 
-          ts%error_coeff = local_error_coeff(ts%k, ts%t(0:ts%k))
+          call local_error_coeff(ts)
        end if
 
        !
@@ -164,26 +174,41 @@ contains
        ts%e   = 0
        ts%rhs = ts%z0(:,0) - ts%z0(:,1) / ts%l(1)
        dt_adj = ts%dt / ts%l(1)
-       dt_hat = dt_adj
-       ts%y = ts%z0(:,0)
+       ts%y   = ts%z0(:,0)
+
+       if (ts%age > ts%max_age) rebuild = .true.
+
        do iter = 1, ts%max_iters
-          ! build iteration matrix and factor
-          call eye(ts%P)
-          call ts%J(neq, ts%y, ts%t(0), ts%Jac, ts%ctx)
-          ts%P = ts%P - ts%dt * ts%Jac
-          call dgefa(ts%P, neq, neq, ts%ipvt, info)
+
+          if (rebuild) then
+             ! build iteration matrix and factor
+             call eye(ts%P)
+             call ts%J(neq, ts%y, ts%t(0), ts%Jac, ts%ctx)
+             ts%P = ts%P - dt_adj * ts%Jac
+             call dgefa(ts%P, neq, neq, ts%ipvt, info)
+
+             ts%nje    = ts%nje + 1
+             ts%dt_nwt = dt_adj
+             ts%age    = 0
+             rebuild   = .false.
+          end if
 
           ! solve using factorized iteration matrix
           call ts%f(neq, ts%y, ts%t(0), ts%yd, ts%ctx)
-          c = 2 * dt_hat / (dt_adj + dt_hat)
+          ts%nfe = ts%nfe + 1
+
+          c    = 2 * ts%dt_nwt / (dt_adj + ts%dt_nwt)
           ts%b = -c * (ts%y - dt_adj * ts%yd - ts%rhs)
           call dgesl(ts%P, neq, neq, ts%ipvt, ts%b, 0)
 
           ts%e = ts%e + ts%b
+          if (norm(ts%b, ts%ewt) < one) exit
           ts%y = ts%z0(:,0) + ts%e
 
-          if (norm(ts%b, ts%ewt) < one) exit
        end do
+
+       ts%age = ts%age + 1
+
 
        !
        ! retry if the solver didn't converge or the error estimate is too large
@@ -197,9 +222,11 @@ contains
 
        ! if solver failed to converge, shrink dt and try again
        if (iter >= ts%max_iters) then
+          rebuild = .true.
           solver_failures = solver_failures + 1
           eta = 0.25d0
           call rescale_timestep(ts, eta)
+          if (verbose) print *, 'BDF: solver failed'
           cycle
        else
           solver_failures = 0
@@ -245,7 +272,7 @@ contains
 
     end do
 
-    if (verbose) print *, 'BDF: done    : ', ts%n, k
+    if (verbose) print *, 'BDF: done    : ', ts%n, k, ts%nfe, ts%nje
     y1 = ts%y
 
   end subroutine bdf_advance
@@ -276,7 +303,7 @@ contains
     end do
 
     call nordsieck_update_coeffs(ts)
-    ts%error_coeff = local_error_coeff(ts%k, ts%t(0:ts%k))
+    call local_error_coeff(ts)
   end subroutine rescale_timestep
 
   !
@@ -361,20 +388,19 @@ contains
   end subroutine nordsieck_update_coeffs
 
   !
-  ! Return local error coefficient.
+  ! Compute local error coefficient.
   !
   ! See the Est_n(k) equation in Jackson and Sacks-Davis (1980),
   ! section 3, between equations 3.8 and 3.9.  This is the coefficient
   ! that is used in VODE.
   !
-  function local_error_coeff(k, t) result(c)
-    integer,  intent(in) :: k
-    real(dp), intent(in) :: t(0:k)
+  subroutine local_error_coeff(ts)
+    type(bdf_ts), intent(inout) :: ts
     real(dp) :: c
-    c = one - alphahat0(k, t) + alpha0(k)
-    c = abs(alpha0(k) * ( k + one / c ))
-    c = one / c
-  end function local_error_coeff
+    c = one - alphahat0(ts%k, ts%t) + alpha0(ts%k)
+    c = abs(alpha0(ts%k) * ( ts%k + one / c ))
+    ts%error_coeff = one / c
+  end subroutine local_error_coeff
 
   !
   ! Return $\alpha_0$.
@@ -503,13 +529,14 @@ contains
     allocate(ts%b(neq))
     allocate(ts%ipvt(neq))
 
-    ts%max_order = max_order
-    ts%max_steps = 1000000
-    ts%max_iters = 10
-    ts%dt_min    = epsilon(ts%dt_min)
-    ts%eta_min   = 0.1_dp
-    ts%eta_max   = 1.5_dp
+    ts%max_order  = max_order
+    ts%max_steps  = 1000000
+    ts%max_iters  = 10
+    ts%dt_min     = epsilon(ts%dt_min)
+    ts%eta_min    = 0.1_dp
+    ts%eta_max    = 1.5_dp
     ts%eta_thresh = 1.5_dp
+    ts%max_age    = 20
 
     ts%k = -1
     ts%f => f
