@@ -106,8 +106,10 @@ contains
 
     include 'LinAlg.inc'
 
-    integer  :: i, j, step, iter, info
+    integer  :: i, j, step, iter, info, solver_failures
     real(dp) :: t, c, dt, dt_adj, dt_hat, error, eta
+
+    solver_failures = 0
 
     ts%nfe  = 0
     ts%nje  = 0
@@ -185,16 +187,31 @@ contains
        ! retry
        !
 
-       if (iter == ts%max_iters) then
+       if (iter >= ts%max_iters .and. solver_failures > 7) then
+          ! some really funky stuff is going on...
+          stop "BDF SOLVER FAILED LOTS OF TIMES IN A ROW"                 ! XXX: signal an error of some kind
+       end if
+
+       if (iter >= ts%max_iters) then
           ! solver failed to converge, shrink dt and try again
-          ! XXX
+          eta = max(0.25_dp, ts%dt_min / dt)
+          dt  = eta*dt
+          print *, step, error, eta
+          ts%t(0) = t + dt
+          call nordsieck_update_coeffs(ts%k, ts%t(0:ts%k), ts%l(0:ts%k))
+          ts%error_coeff = local_error_coeff(ts%k, ts%t(0:ts%k))
+          call rescale(ts, eta)
+          solver_failures = solver_failures + 1
+          cycle
+       else
+          solver_failures = 0
        end if
 
        error = ts%error_coeff * norm(ts%e, ts%ewt)
        ! print *, step, error
        if (error > one) then
           ! local error is fairly large, shrink dt and try again
-          eta = one / ( (6.d0 * error) ** (one / real(ts%k)) + 1.d-6 )
+          eta = one / ( (6.d0 * error) ** (one / ts%k) + 1.d-6 )
           eta = max(eta, ts%dt_min / dt, ts%eta_min)
           dt = eta*dt
           print *, step, error, eta
@@ -222,7 +239,7 @@ contains
        !
        ! increase step-size
        !
-       eta = one / ( (6.d0 * error) ** (one / real(ts%k)) + 1.d-6 )
+       eta = one / ( (6.d0 * error) ** (one / ts%k) + 1.d-6 )
        eta = max(eta, ts%dt_min / dt, ts%eta_min)
        if (eta > ts%eta_thresh) then
           eta = min(eta, ts%eta_max)
@@ -246,13 +263,10 @@ contains
   subroutine rescale(ts, eta)
     type(bdf_ts), intent(inout) :: ts
     real(dp),     intent(in)    :: eta
-
     integer :: i
-
     do i = 1, ts%k
-       ts%z(:,i) = eta**i * ts%z(:, i)
+       ts%z(:,i) = eta**i * ts%z(:,i)
     end do
-
   end subroutine rescale
 
   !
