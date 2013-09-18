@@ -132,7 +132,7 @@ contains
        if (k == 1 .and. .not. restart) then
           ts%k = 1
           ts%t(0:1) = [ t0 + ts%dt, t0 ]
-          call nordsieck_update_coeffs(ts%k, ts%t(0:ts%k), ts%l(0:ts%k))
+          call nordsieck_update_coeffs(ts)
           call ts%f(neq, ts%y, ts%t(0), ts%yd, ts%ctx)
           ts%z(:,0) = ts%y
           ts%z(:,1) = ts%dt * ts%yd
@@ -275,7 +275,7 @@ contains
        ts%z(:,i) = eta**i * ts%z(:,i)
     end do
 
-    call nordsieck_update_coeffs(ts%k, ts%t(0:ts%k), ts%l(0:ts%k))
+    call nordsieck_update_coeffs(ts)
     ts%error_coeff = local_error_coeff(ts%k, ts%t(0:ts%k))
   end subroutine rescale_timestep
 
@@ -291,17 +291,18 @@ contains
   ! 
   !   2. The step size h_n = t_n - t_{n-1}.
   !
-  subroutine nordsieck_update_coeffs(k, t, l)
-    integer,  intent(in)  :: k
-    real(dp), intent(in)  :: t(0:k)
-    real(dp), intent(out) :: l(0:k)
+  subroutine nordsieck_update_coeffs(ts)
+    type(bdf_ts), intent(inout) :: ts
+    ! integer,  intent(in)  :: k
+    ! real(dp), intent(in)  :: t(0:k)
+    ! real(dp), intent(out) :: l(0:k)
 
     integer :: j
  
-    l(0) = 1
-    l(1) = xi_j(k, t, 1)
-    do j = 2, k
-       l = l + eoshift(l, -1) / xi_j(k, t, j)
+    ts%l(0) = 1
+    ts%l(1) = xi_j(ts%k, ts%t, 1)
+    do j = 2, ts%k
+       ts%l = ts%l + eoshift(ts%l, -1) / xi_j(ts%k, ts%t, j)
     end do
 
   contains
