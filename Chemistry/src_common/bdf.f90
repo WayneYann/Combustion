@@ -22,6 +22,10 @@ module bdf_module
      integer :: max_order                 ! maximum order (1 to 6)
      integer :: max_steps                 ! maximum allowable number of steps
      integer :: max_iters                 ! maximum allowable number of newton iterations
+     real(dp) :: dt_min                   ! minimum allowable step-size
+     real(dp) :: eta_min                  ! minimum allowable step-size shrink factor
+     real(dp) :: eta_max                  ! maximum allowable step-size growth factor
+     real(dp) :: eta_thresh               ! step-size growth threshold
 
      procedure(f_proc), pointer, nopass :: f
      procedure(J_proc), pointer, nopass :: J
@@ -33,18 +37,26 @@ module bdf_module
      real(dp), pointer :: rtol(:)         ! realtive tolerances
      real(dp), pointer :: atol(:)         ! absolute tolerances
 
+     ! jacobian and newton matrices, may be resused
+     real(dp), pointer :: Jac(:,:)        ! jacobian matrix
+     real(dp), pointer :: P(:,:)          ! newton iteration matrix
+
+     ! work-spaces
      real(dp), pointer :: z(:,:)          ! nordsieck histroy array, indexed as (dof, n)
      real(dp), pointer :: z0(:,:)         ! nordsieck predictor array
      real(dp), pointer :: t(:)            ! times, t = [ t_n, t_{n-1}, ..., t_{n-k} ]
      real(dp), pointer :: l(:)            ! predictor/corrector update coefficients
+     real(dp), pointer :: y(:)            ! current y
+     real(dp), pointer :: yd(:)           ! current \dot{y}
+     real(dp), pointer :: rhs(:)          ! solver rhs
+     real(dp), pointer :: e(:)            ! accumulated corrections
+     real(dp), pointer :: ewt(:)          ! cached error weights
+     real(dp), pointer :: b(:)            ! solver work space
+
+     integer,  pointer :: ipvt(:)         ! pivots
      integer,  pointer :: A(:,:)          ! pascal matrix
 
-     real(dp), pointer :: Jac(:,:)        ! jacobian matrix
-     real(dp), pointer :: P(:,:)          ! newton iteration matrix
-     real(dp), pointer :: b(:)            ! rhs workspace
-     real(dp), pointer :: e(:)            ! accumulated correction
-
-     real(dp), pointer :: ewt(:)          ! cached error weights
+     real(dp) :: error_coeff
 
      ! counters
      integer :: nfe                       ! number of function evaluations
@@ -92,30 +104,31 @@ contains
     real(dp),         intent(out)   :: y1(neq)
     logical,          intent(in)    :: restart, reuse
 
-    integer  :: i, j, k, step, iters
-    real(dp) :: t, dt, error, error_coeff
-    real(dp) :: y(neq), yd(neq), rhs(neq)
+    include 'LinAlg.inc'
+
+    integer  :: i, j, step, iter, info
+    real(dp) :: t, c, dt, dt_adj, dt_hat, error, eta
 
     ts%nfe  = 0
     ts%nje  = 0
 
-    y  = y0
-    t  = t0
-    dt = dt0
+    ts%y = y0
+    t    = t0
+    dt   = dt0
 
     do step = 1, ts%max_steps
 
-       call ewts(ts, y, ts%ewt)
+       call ewts(ts, ts%y, ts%ewt)
 
        if (step == 1 .and. .not. restart) then
-          k = 1
-          ts%t(0:1) = [ t, t+dt ]
-          call nordsieck_update_coeffs(k, ts%t(0:k), ts%l(0:k))
-          call ts%f(neq, y, t, yd, ts%ctx)
-          ts%z(:,0) = y
-          ts%z(:,1) = dt * yd
+          ts%k = 1
+          ts%t(0:1) = [ t+dt, t ]
+          call nordsieck_update_coeffs(ts%k, ts%t(0:ts%k), ts%l(0:ts%k))
+          call ts%f(neq, ts%y, t, ts%yd, ts%ctx)
+          ts%z(:,0) = ts%y
+          ts%z(:,1) = dt * ts%yd
 
-          error_coeff = local_error_coeff(k, ts%t(0:k))
+          ts%error_coeff = local_error_coeff(ts%k, ts%t(0:ts%k))
        end if
 
        ! adjust dt
@@ -124,109 +137,123 @@ contains
        ! update coeffs
        ! XXX
 
-       ! predict next nordsieck array
-       ! XXX: blas?
-       do i = 0, k
+       !
+       ! predict
+       !
+       do i = 0, ts%k
           ts%z0(:,i) = 0          
-          do j = i, k
+          do j = i, ts%k
              ts%z0(:,i) = ts%z0(:,i) + ts%A(i,j) * ts%z(:,j)
           end do
        end do
 
+       !
        ! solve y_n - dt f(y_n,t) = y - dt yd for y_n
-       ! XXX: blas?
-       rhs = ts%z0(:,0) - ts%z0(:,1) / ts%l(1)
-       call bdf_solve(ts, neq, y, t+dt, dt/ts%l(1), rhs, restart, reuse, iters)
+       !
+       ! newton iteration general form is:
+       !   solve:   P x = -c G(y(k)) for x
+       !   update:  y(k+1) = y(k) + x
+       ! where
+       !   G(y) = y - dt * f(y,t) - a
+       !
+       ts%e   = 0
+       ts%rhs = ts%z0(:,0) - ts%z0(:,1) / ts%l(1)
+       dt_adj = dt / ts%l(1)
+       dt_hat = dt_adj
+       ts%y = ts%z0(:,0)
+       do iter = 1, ts%max_iters
+          ! build iteration matrix and factor
+          call eye(ts%P)
+          call ts%J(neq, ts%y, t+dt, ts%Jac, ts%ctx)
+          ts%P = ts%P - dt * ts%Jac
+          call dgefa(ts%P, neq, neq, ts%ipvt, info)
 
-       if (iters == ts%max_iters) then
+          ! solve using factorized iteration matrix
+          call ts%f(neq, ts%y, t+dt, ts%yd, ts%ctx)
+          ! XXX: blas
+          c = 2 * dt_hat / (dt_adj + dt_hat)
+          ts%b = -c * (ts%y - dt_adj * ts%yd - ts%rhs)
+          call dgesl(ts%P, neq, neq, ts%ipvt, ts%b, 0)
+
+          ts%e = ts%e + ts%b
+          ts%y = ts%z0(:,0) + ts%e
+
+          if (norm(ts%b, ts%ewt) < one) exit
+       end do
+
+       !
+       ! retry
+       !
+
+       if (iter == ts%max_iters) then
           ! solver failed to converge, shrink dt and try again
           ! XXX
-          print *, 'YAR!'
        end if
 
-       ! check error of accumulated correction
-       error = error_coeff * norm(ts%e, ts%ewt)
-       print *, error
+       error = ts%error_coeff * norm(ts%e, ts%ewt)
+       ! print *, step, error
        if (error > one) then
           ! local error is fairly large, shrink dt and try again
-          ! XXX
+          eta = one / ( (6.d0 * error) ** (one / real(ts%k)) + 1.d-6 )
+          eta = max(eta, ts%dt_min / dt, ts%eta_min)
+          dt = eta*dt
+          print *, step, error, eta
+          ts%t(0) = t + dt
+          call nordsieck_update_coeffs(ts%k, ts%t(0:ts%k), ts%l(0:ts%k))
+          ts%error_coeff = local_error_coeff(ts%k, ts%t(0:ts%k))
+          call rescale(ts, eta)
+          cycle
        end if
 
-       ! update nordsieck array
-       do i = 0, k
-          ! XXX: use ts%e here...
-          ts%z(:,i) = ts%z0(:,i) + (y - ts%z0(:,0)) * ts%l(i)
+       !
+       ! correct
+       !
+
+       do i = 0, ts%k
+          ts%z(:,i) = ts%z0(:,i) + ts%e * ts%l(i)
        end do
 
        t = t + dt
-
        if (t >= t1) exit
+
+       ts%t = eoshift(ts%t, 1)
+       ts%t(0) = t
+
+       !
+       ! increase step-size
+       !
+       eta = one / ( (6.d0 * error) ** (one / real(ts%k)) + 1.d-6 )
+       eta = max(eta, ts%dt_min / dt, ts%eta_min)
+       if (eta > ts%eta_thresh) then
+          eta = min(eta, ts%eta_max)
+          dt = eta*dt
+          print *, step, error, eta
+          ts%t(0) = t + dt
+          call nordsieck_update_coeffs(ts%k, ts%t(0:ts%k), ts%l(0:ts%k))
+          ts%error_coeff = local_error_coeff(ts%k, ts%t(0:ts%k))
+          call rescale(ts, eta)
+       end if
+       
 
     end do
 
-    y1 = y
+    print *, step
+
+    y1 = ts%y
 
   end subroutine bdf_advance
 
-  !
-  ! Solve...
-  !
-  ! XXX: this doesn't save jacobians...
-  !
-  subroutine bdf_solve(ts, neq, y, t, dt, a, restart, reuse, iters)
-    type(bdf_ts),     intent(inout) :: ts
-    integer,          intent(in)    :: neq
-    real(dp),         intent(inout) :: y(neq)
-    real(dp),         intent(in)    :: dt, t, a(neq)
-    logical,          intent(in)    :: restart, reuse
-    integer,          intent(out)   :: iters
+  subroutine rescale(ts, eta)
+    type(bdf_ts), intent(inout) :: ts
+    real(dp),     intent(in)    :: eta
 
-    include 'LinAlg.inc'
+    integer :: i
 
-    integer  :: k, ipvt(neq), info
-    real(dp) :: dt_hat, c, ynew(neq), f(neq)
-
-    real(dp), pointer :: P(:,:), J(:,:), b(:)
-    P => ts%P; J => ts%Jac; b => ts%b
-
-    dt_hat = dt
-
-    ynew = y
-
-    !
-    ! newton iteration
-    !
-    ! general form is:
-    !   solve:   P x = -c G(y(k)) for x
-    !   update:  y(k+1) = y(k) + x
-    ! where
-    !   G(y) = y - dt * f(y,t) - a
-    !
-    ts%e = 0
-    do k = 1, ts%max_iters
-       ! build iteration matrix and factor
-       call eye(P)
-       call ts%J(neq, ynew, t, J, ts%ctx)
-       ! XXX: blas
-       P = P - dt * J
-       c = 2 * dt_hat / (dt + dt_hat)
-       call dgefa(P, neq, neq, ipvt, info)
-
-       ! solve using factorized iteration matrix
-       call ts%f(neq, ynew, t, f, ts%ctx)
-       ! XXX: blas
-       b = -c * (ynew - dt * f - a)
-       call dgesl(P, neq, neq, ipvt, b, 0)
-
-       ts%e = ts%e + b
-       ynew = y + ts%e
-
-       if (norm(b, ts%ewt) < one) exit
+    do i = 1, ts%k
+       ts%z(:,i) = eta**i * ts%z(:, i)
     end do
 
-    y = ynew
-    iters = k
-  end subroutine bdf_solve
+  end subroutine rescale
 
   !
   ! Compute Nordsieck update coefficients l based on times t.
@@ -443,13 +470,22 @@ contains
     allocate(ts%A(0:max_order, 0:max_order))
     allocate(ts%P(neq, neq))
     allocate(ts%Jac(neq, neq))
-    allocate(ts%b(neq))
+    allocate(ts%y(neq))
+    allocate(ts%yd(neq))
+    allocate(ts%rhs(neq))
     allocate(ts%e(neq))
     allocate(ts%ewt(neq))
+    allocate(ts%b(neq))
+    allocate(ts%ipvt(neq))
 
     ts%max_order = max_order
-    ts%max_steps = 10000
+    ts%max_steps = 1000000
     ts%max_iters = 10
+    ts%dt_min    = epsilon(ts%dt_min)
+    ts%eta_min   = 0.1_dp
+    ts%eta_max   = 1.5_dp
+    ts%eta_thresh = 1.5_dp
+
     ts%k = -1
     ts%f => f
     ts%J => J
@@ -473,7 +509,7 @@ contains
 
   subroutine bdf_ts_destroy(ts)
     type(bdf_ts), intent(inout) :: ts
-    deallocate(ts%z,ts%z0,ts%t,ts%l,ts%A,ts%rtol,ts%atol,ts%P,ts%Jac,ts%b,ts%e,ts%ewt)
+    deallocate(ts%z,ts%z0,ts%t,ts%l,ts%A,ts%rtol,ts%atol,ts%P,ts%Jac,ts%y,ts%yd,ts%rhs,ts%e,ts%ewt,ts%b,ts%ipvt)
   end subroutine bdf_ts_destroy
 
   !
