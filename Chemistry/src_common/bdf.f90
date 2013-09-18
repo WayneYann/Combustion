@@ -31,9 +31,10 @@ module bdf_module
      procedure(J_proc), pointer, nopass :: J
      type(bdf_params) :: ctx
 
-     integer :: k                         ! current order
+     real(dp) :: dt                       ! current time step
+     integer  :: k                        ! current order
+     integer  :: n                        ! current step
 
-     real(dp) :: dt                       ! last step-size used
      real(dp), pointer :: rtol(:)         ! realtive tolerances
      real(dp), pointer :: atol(:)         ! absolute tolerances
 
@@ -106,42 +107,43 @@ contains
 
     include 'LinAlg.inc'
 
-    integer  :: i, j, step, iter, info, solver_failures
-    real(dp) :: t, c, dt, dt_adj, dt_hat, error, eta
+    integer  :: i, j, k, iter, info, solver_failures
+    real(dp) :: c, dt_adj, dt_hat, error, eta
+
+    logical :: verbose = .true.
 
     solver_failures = 0
 
     ts%nfe  = 0
     ts%nje  = 0
 
-    ts%y = y0
-    t    = t0
-    dt   = dt0
+    ts%y  = y0
+    ts%dt = dt0
+    ts%n  = 1
 
-    do step = 1, ts%max_steps
+    do k = 1, 666666666
+
+       if (ts%n > ts%max_steps) exit
+
+       if (verbose) print *, 'BDF: stepping: ', ts%n, ts%k, ts%dt
 
        call ewts(ts, ts%y, ts%ewt)
 
-       if (step == 1 .and. .not. restart) then
+       if (k == 1 .and. .not. restart) then
           ts%k = 1
-          ts%t(0:1) = [ t+dt, t ]
+          ts%t(0:1) = [ t0 + ts%dt, t0 ]
           call nordsieck_update_coeffs(ts%k, ts%t(0:ts%k), ts%l(0:ts%k))
-          call ts%f(neq, ts%y, t, ts%yd, ts%ctx)
+          call ts%f(neq, ts%y, ts%t(0), ts%yd, ts%ctx)
           ts%z(:,0) = ts%y
-          ts%z(:,1) = dt * ts%yd
+          ts%z(:,1) = ts%dt * ts%yd
 
           ts%error_coeff = local_error_coeff(ts%k, ts%t(0:ts%k))
        end if
 
-       ! adjust dt
-       ! if (t + dt > t1) dt = t1 - t
-
-       ! update coeffs
-       ! XXX
-
        !
        ! predict
        !
+
        do i = 0, ts%k
           ts%z0(:,i) = 0          
           do j = i, ts%k
@@ -152,27 +154,27 @@ contains
        !
        ! solve y_n - dt f(y_n,t) = y - dt yd for y_n
        !
+
        ! newton iteration general form is:
        !   solve:   P x = -c G(y(k)) for x
        !   update:  y(k+1) = y(k) + x
        ! where
-       !   G(y) = y - dt * f(y,t) - a
-       !
+       !   G(y) = y - dt * f(y,t) - rhs
+
        ts%e   = 0
        ts%rhs = ts%z0(:,0) - ts%z0(:,1) / ts%l(1)
-       dt_adj = dt / ts%l(1)
+       dt_adj = ts%dt / ts%l(1)
        dt_hat = dt_adj
        ts%y = ts%z0(:,0)
        do iter = 1, ts%max_iters
           ! build iteration matrix and factor
           call eye(ts%P)
-          call ts%J(neq, ts%y, t+dt, ts%Jac, ts%ctx)
-          ts%P = ts%P - dt * ts%Jac
+          call ts%J(neq, ts%y, ts%t(0), ts%Jac, ts%ctx)
+          ts%P = ts%P - ts%dt * ts%Jac
           call dgefa(ts%P, neq, neq, ts%ipvt, info)
 
           ! solve using factorized iteration matrix
-          call ts%f(neq, ts%y, t+dt, ts%yd, ts%ctx)
-          ! XXX: blas
+          call ts%f(neq, ts%y, ts%t(0), ts%yd, ts%ctx)
           c = 2 * dt_hat / (dt_adj + dt_hat)
           ts%b = -c * (ts%y - dt_adj * ts%yd - ts%rhs)
           call dgesl(ts%P, neq, neq, ts%ipvt, ts%b, 0)
@@ -184,41 +186,31 @@ contains
        end do
 
        !
-       ! retry
+       ! retry if the solver didn't converge or the error estimate is too large
        !
 
+       ! if solver failed many times, bail...
        if (iter >= ts%max_iters .and. solver_failures > 7) then
-          ! some really funky stuff is going on...
-          stop "BDF SOLVER FAILED LOTS OF TIMES IN A ROW"                 ! XXX: signal an error of some kind
+          ! XXX: signal an error of some kind
+          stop "BDF SOLVER FAILED LOTS OF TIMES IN A ROW"
        end if
 
+       ! if solver failed to converge, shrink dt and try again
        if (iter >= ts%max_iters) then
-          ! solver failed to converge, shrink dt and try again
-          eta = max(0.25_dp, ts%dt_min / dt)
-          dt  = eta*dt
-          print *, step, error, eta
-          ts%t(0) = t + dt
-          call nordsieck_update_coeffs(ts%k, ts%t(0:ts%k), ts%l(0:ts%k))
-          ts%error_coeff = local_error_coeff(ts%k, ts%t(0:ts%k))
-          call rescale(ts, eta)
           solver_failures = solver_failures + 1
+          eta = 0.25d0
+          call rescale_timestep(ts, eta)
           cycle
        else
           solver_failures = 0
        end if
 
        error = ts%error_coeff * norm(ts%e, ts%ewt)
-       ! print *, step, error
+
+       ! if local error is fairly large, shrink dt and try again
        if (error > one) then
-          ! local error is fairly large, shrink dt and try again
           eta = one / ( (6.d0 * error) ** (one / ts%k) + 1.d-6 )
-          eta = max(eta, ts%dt_min / dt, ts%eta_min)
-          dt = eta*dt
-          print *, step, error, eta
-          ts%t(0) = t + dt
-          call nordsieck_update_coeffs(ts%k, ts%t(0:ts%k), ts%l(0:ts%k))
-          ts%error_coeff = local_error_coeff(ts%k, ts%t(0:ts%k))
-          call rescale(ts, eta)
+          call rescale_timestep(ts, eta)
           cycle
        end if
 
@@ -230,44 +222,62 @@ contains
           ts%z(:,i) = ts%z0(:,i) + ts%e * ts%l(i)
        end do
 
-       t = t + dt
-       if (t >= t1) exit
+       if (ts%t(0) >= t1) exit
 
-       ts%t = eoshift(ts%t, 1)
-       ts%t(0) = t
+       ts%t    = eoshift(ts%t, -1)
+       ts%t(0) = ts%t(1) + ts%dt
+       ts%n    = ts%n + 1
 
        !
        ! increase step-size
        !
+
        eta = one / ( (6.d0 * error) ** (one / ts%k) + 1.d-6 )
-       eta = max(eta, ts%dt_min / dt, ts%eta_min)
        if (eta > ts%eta_thresh) then
-          eta = min(eta, ts%eta_max)
-          dt = eta*dt
-          print *, step, error, eta
-          ts%t(0) = t + dt
-          call nordsieck_update_coeffs(ts%k, ts%t(0:ts%k), ts%l(0:ts%k))
-          ts%error_coeff = local_error_coeff(ts%k, ts%t(0:ts%k))
-          call rescale(ts, eta)
+          call rescale_timestep(ts, eta)
        end if
-       
+
+       !
+       ! final adjustments to time step...
+       !
+
+       ! if (t + dt > t1) dt = t1 - t
 
     end do
 
-    print *, step
-
+    if (verbose) print *, 'BDF: done    : ', ts%n, k
     y1 = ts%y
 
   end subroutine bdf_advance
 
-  subroutine rescale(ts, eta)
+  !
+  ! Rescale time-step.
+  !
+  ! This consists of:
+  !   1. bound eta to honor eta_min, eta_max, and dt_min
+  !   2. scale dt and adjust time array t accordingly
+  !   3. rescalel Nordsieck history array
+  !   4. recompute Nordsieck update coefficients
+  !   5. recompute local error coefficient
+  !
+  subroutine rescale_timestep(ts, eta)
     type(bdf_ts), intent(inout) :: ts
-    real(dp),     intent(in)    :: eta
+    real(dp),     intent(inout) :: eta
     integer :: i
+
+    eta = max(eta, ts%dt_min / ts%dt, ts%eta_min)
+    eta = min(eta, ts%eta_max)
+
+    ts%dt   = eta * ts%dt
+    ts%t(0) = ts%t(1) + ts%dt
+
     do i = 1, ts%k
        ts%z(:,i) = eta**i * ts%z(:,i)
     end do
-  end subroutine rescale
+
+    call nordsieck_update_coeffs(ts%k, ts%t(0:ts%k), ts%l(0:ts%k))
+    ts%error_coeff = local_error_coeff(ts%k, ts%t(0:ts%k))
+  end subroutine rescale_timestep
 
   !
   ! Compute Nordsieck update coefficients l based on times t.
@@ -291,7 +301,7 @@ contains
     l(0) = 1
     l(1) = xi_j(k, t, 1)
     do j = 2, k
-       l = l + eoshift(l, 1) / xi_j(k, t, j)
+       l = l + eoshift(l, -1) / xi_j(k, t, j)
     end do
 
   contains
