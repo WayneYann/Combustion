@@ -162,4 +162,11 @@ BL_FORT_PROC_DECL(PROBLEM_CHECKPOINT,problem_checkpoint)(int * int_dir_name, int
 
 BL_FORT_PROC_DECL(PROBLEM_RESTART,problem_restart)(int * int_dir_name, int * len);
 
+/* for plotfiles */
+
+BL_FORT_PROC_DECL(RNS_CTOPRIM, rns_ctoprim)
+    (const int lo[], const int hi[],
+     const BL_FORT_FAB_ARG(cons),
+     BL_FORT_FAB_ARG(prim));
+
 #endif

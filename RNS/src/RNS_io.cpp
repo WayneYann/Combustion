@@ -128,9 +128,12 @@ void
 RNS::setPlotVariables ()
 {
     const Array<std::string>& spec_names = chemSolve->speciesNames();
+    int inext = 0;
 
     if (plot_cons)
     {
+	icomp_cons = 0;
+	inext += NUM_STATE;
 	plot_names.push_back("<rho>");
 	plot_names.push_back("<xmom>");
 #if (BL_SPACEDIM >= 2)
@@ -144,6 +147,26 @@ RNS::setPlotVariables ()
 	for (int i=0; i<NumSpec; i++)
 	{
 	    plot_names.push_back("<rho.Y(" + spec_names[i] + ")>");
+	}
+    }
+
+    if (plot_prim)
+    {
+	icomp_prim = inext;
+	inext += NUM_STATE;
+	plot_names.push_back("density");
+	plot_names.push_back("x_vel");
+#if (BL_SPACEDIM >= 2)
+	plot_names.push_back("y_vel");
+#endif
+#if (BL_SPACEDIM == 3)
+	plot_names.push_back("z_vel");
+#endif
+	plot_names.push_back("pressure");
+	plot_names.push_back("temperature");
+	for (int i=0; i<NumSpec; i++)
+	{
+	    plot_names.push_back("Y(" + spec_names[i] + ")");
 	}
     }
 
@@ -368,16 +391,33 @@ RNS::writePlotFile (const std::string& dir,
     int ngrow = 0;
     MultiFab plotMF(grids,plot_names.size(),ngrow);
 
-    ngrow = 1;
+    ngrow = (plot_divu || plot_magvort) ? 2: 1;
     for (FillPatchIterator fpi(*this, plotMF, ngrow, cur_time, State_Type, 0, NUM_STATE); 
 	 fpi.isValid(); ++fpi) 
     {
+	int i = fpi.index();
+	const Box& bx  = grids[i];
+
 	if (plot_cons)
 	{
-	    plotMF[fpi].copy(fpi());
+	    plotMF[i].copy(fpi(), 0, icomp_cons, NUM_STATE);
 	}
 
-	
+	if (plot_prim)
+	{
+	    const Box& bxp = BoxLib::grow(bx,ngrow-1);
+	    FArrayBox prim(bxp, NUM_STATE);
+	    
+	    BL_FORT_PROC_CALL(RNS_CTOPRIM,rns_ctoprim)
+		(bxp.loVect(), bxp.hiVect(),
+		 BL_TO_FORTRAN(fpi()),
+		 BL_TO_FORTRAN(prim));
+
+	    plotMF[i].copy(prim, 0, icomp_prim, NUM_STATE);
+	}
+
+	const Real *dx = geom.CellSize();
+
     }
 
     //

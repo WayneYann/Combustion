@@ -12,7 +12,7 @@ contains
 
     use meth_params_module, only : NVAR, NSPEC, QCVAR, QFVAR
     use weno_module, only : cellavg2face_1d
-    use convert_module, only : cellavg2cc_1d
+    use convert_1d_module, only : cellavg2cc_1d
     use variables_module, only : ctoprim
     use transport_properties, only : get_transport_properties
 
@@ -44,7 +44,7 @@ contains
  
     ! cell-centered variables
     do n=1,NVAR
-       call cellavg2cc_1d(U(:,n), Ulo(1), Uhi(1), Qc(:,n), Qclo(1), Qchi(1))
+       call cellavg2cc_1d(Qclo(1), Qchi(1), U(:,n), Ulo(1), Uhi(1), Qc(:,n), Qclo(1), Qchi(1))
     end do
     !
     call ctoprim(Qclo,Qchi, Qc, Qclo,Qchi,QCVAR)
