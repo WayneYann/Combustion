@@ -288,12 +288,31 @@ protected:
     static RiemannType Riemann;
     static Real        difmag; // for JBB Riemann solver
 
-    static std::string      job_name;
+    // what to store in plotfiles
+    static int         plot_cons;
+    static int         plot_prim;
+    static int         plot_X;
+    static int         plot_magvel;
+    static int         plot_Mach;
+    static int         plot_divu;
+    static int         plot_magvort;
+    static int         plot_omegadot;
+    static int         plot_dYdt;
+    static int         plot_heatRelease;
+    static int         plot_fuelConsumption;
+    static std::string fuel_name;
+
+    static int icomp_cons, icomp_prim, icomp_X, icomp_magvel, icomp_Mach, icomp_divu, 
+	icomp_magvort, icomp_omegadot,	icomp_dYdt, icomp_heatRelease, icomp_fuelConsumption;
+    static int n_plot_burn, icomp_burn;
+    static std::vector<std::string> plot_names;
+
+    static std::string job_name;
 
     // for keeping track of the amount of CPU time used -- this will persist
     // after restarts
-    static Real      previousCPUTimeUsed;
-    static Real      startCPUTime;
+    static Real        previousCPUTimeUsed;
+    static Real        startCPUTime;
 
     Real getCPUTime();
         

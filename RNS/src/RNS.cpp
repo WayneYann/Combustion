@@ -83,12 +83,39 @@ int          RNS::do_pressure_ref    = 0;
 int          RNS::do_velocity_ref    = 0;
 int          RNS::do_vorticity_ref   = 0;
 
+int          RNS::plot_cons            = 1;
+int          RNS::plot_prim            = 1;
+int          RNS::plot_X               = 0;
+int          RNS::plot_magvel          = 1;
+int          RNS::plot_Mach            = 1;
+int          RNS::plot_divu            = 1;
+int          RNS::plot_magvort         = 1;
+int          RNS::plot_omegadot        = 0;
+int          RNS::plot_dYdt            = 1;
+int          RNS::plot_heatRelease     = 1;
+int          RNS::plot_fuelConsumption = 0;
+std::string  RNS::fuel_name = "";
+
+int          RNS::icomp_cons            = -1;
+int          RNS::icomp_prim            = -1; 
+int          RNS::icomp_X		= -1;
+int          RNS::icomp_magvel		= -1;
+int          RNS::icomp_Mach		= -1;
+int          RNS::icomp_divu		= -1;
+int          RNS::icomp_magvort		= -1;
+int          RNS::icomp_omegadot	= -1;
+int          RNS::icomp_dYdt		= -1;
+int          RNS::icomp_heatRelease	= -1;
+int          RNS::icomp_fuelConsumption = -1;
+int          RNS::n_plot_burn           =  0; 
+int          RNS::icomp_burn            = -1;
+std::vector<std::string> RNS::plot_names;
+
 std::string  RNS::job_name = "";
 
 // this will be reset upon restart
 Real         RNS::previousCPUTimeUsed = 0.0;
 Real         RNS::startCPUTime = 0.0;
-
 
 void
 RNS::variableCleanUp () 
@@ -222,6 +249,19 @@ RNS::read_params ()
     pp.query("do_pressure_ref"   , do_pressure_ref);
     pp.query("do_velocity_ref"   , do_velocity_ref);
     pp.query("do_vorticity_ref"  , do_vorticity_ref);
+
+    pp.query("plot_cons"           , plot_cons           );
+    pp.query("plot_prim"           , plot_prim           );
+    pp.query("plot_X"              , plot_X              );
+    pp.query("plot_magvel"         , plot_magvel         );
+    pp.query("plot_Mach"           , plot_Mach           );
+    pp.query("plot_divu"           , plot_divu           );
+    pp.query("plot_magvort"        , plot_magvort        );
+    pp.query("plot_omegadot"       , plot_omegadot       );
+    pp.query("plot_dYdt"           , plot_dYdt           );
+    pp.query("plot_heatRelease"    , plot_heatRelease    );
+    pp.query("plot_fuelConsumption", plot_fuelConsumption);
+    pp.query("fuel_name"           , fuel_name           );
 
     pp.query("job_name",job_name);  
 }

@@ -127,97 +127,24 @@ RNS::thePlotFileType () const
 void
 RNS::setPlotVariables ()
 {
-    AmrLevel::setPlotVariables();
-    
-    const Array<std::string>& names = chemSolve->speciesNames();
-    
-    ParmParse pp("rns");
-    
-    bool plot_rhoY,plot_massFrac,plot_moleFrac,plot_conc;
-    plot_rhoY=plot_massFrac=plot_moleFrac=plot_conc = false;
-    
-    if (pp.query("plot_massfrac",plot_massFrac))
-    {
-        if (plot_massFrac)
-        {
-            for (int i = 0; i < names.size(); i++)
-            {
-                const std::string name = "Y("+names[i]+")";
-                parent->addDerivePlotVar(name);
-            }
-        }
-        else
-        {
-            for (int i = 0; i < names.size(); i++)
-            {
-                const std::string name = "Y("+names[i]+")";
-                parent->deleteDerivePlotVar(name);
-            }
-        }
-    }
+    const Array<std::string>& spec_names = chemSolve->speciesNames();
 
-    if (pp.query("plot_molefrac",plot_moleFrac))
+    if (plot_cons)
     {
-        if (plot_moleFrac)
+	plot_names.push_back("density");
+	plot_names.push_back("xmom");
+#if (BL_SPACEDIM >= 2)
+	plot_names.push_back("ymom");
+#endif
+#if (BL_SPACEDIM == 3)
+	plot_names.push_back("zmom");
+#endif
+	plot_names.push_back("rho_E");
+	plot_names.push_back("Temp");
+	for (int i=0; i<NumSpec; i++)
 	{
-            parent->addDerivePlotVar("molefrac");
+	    plot_names.push_back("rho.Y(" + spec_names[i] + ")");
 	}
-        else
-	{
-            parent->deleteDerivePlotVar("molefrac");
-	}
-    }
-    
-    if (pp.query("plot_concentration",plot_conc))
-    {
-        if (plot_conc)
-	{
-            parent->addDerivePlotVar("concentration");
-	}
-        else
-	{
-            parent->deleteDerivePlotVar("concentration");
-	}
-    }
-    
-    if (pp.query("plot_rhoY",plot_rhoY))
-    {
-        if (plot_rhoY)
-        {
-            for (int i = 0; i < names.size(); i++)
-            {
-                const std::string name = "rho.Y("+names[i]+")";
-                parent->addStatePlotVar(name);
-            }
-        }
-        else
-        {
-            for (int i = 0; i < names.size(); i++)
-            {
-                const std::string name = "rho.Y("+names[i]+")";
-                parent->deleteStatePlotVar(name);
-            }
-        }
-    }
-
-    if (verbose && ParallelDescriptor::IOProcessor())
-    {
-        std::cout << "\nState Plot Vars: ";
-
-        std::list<std::string>::const_iterator li = parent->statePlotVars().begin(), end = parent->statePlotVars().end();
-
-        for ( ; li != end; ++li)
-            std::cout << *li << ' ';
-        std::cout << '\n';
-
-        std::cout << "\nDerive Plot Vars: ";
-
-        li  = parent->derivePlotVars().begin();
-        end = parent->derivePlotVars().end();
-
-        for ( ; li != end; ++li)
-            std::cout << *li << ' ';
-        std::cout << '\n';
     }
 
 }
@@ -227,42 +154,7 @@ RNS::writePlotFile (const std::string& dir,
                        ostream&       os,
                        VisMF::How     how)
 {
-    int i, n, ncomp;
-    //
-    // The list of indices of State to write to plotfile.
-    // first component of pair is state_type,
-    // second component of pair is component # within the state_type
-    //
-    std::vector<std::pair<int,int> > plot_var_map;
-    for (int typ = 0; typ < desc_lst.size(); typ++)
-    {
-        for (int comp = 0; comp < desc_lst[typ].nComp();comp++)
-	{
-            if (parent->isStatePlotVar(desc_lst[typ].name(comp)) &&
-                desc_lst[typ].getType() == IndexType::TheCellType())
-	    {
-                plot_var_map.push_back(std::pair<int,int>(typ,comp));
-	    }
-	}
-    }
-
-    int num_derive = 0;
-    std::list<std::string> derive_names;
-    const std::list<DeriveRec>& dlist = derive_lst.dlist();
-
-    for (std::list<DeriveRec>::const_iterator it = dlist.begin();
-	 it != dlist.end();
-	 ++it)
-    {
-        if (parent->isDerivePlotVar(it->name()))
-	{
-            derive_names.push_back(it->name());
-            num_derive += it->numDerive();
-	}
-    }
-
-    int n_data_items = plot_var_map.size() + num_derive;
-
+    int i, n;
     Real cur_time = state[State_Type].curTime();
 
     if (level == 0 && ParallelDescriptor::IOProcessor())
@@ -272,27 +164,18 @@ RNS::writePlotFile (const std::string& dir,
         //
         os << thePlotFileType() << '\n';
 
-        if (n_data_items == 0)
+        if (plot_names.size() == 0)
             BoxLib::Error("Must specify at least one valid data item to plot");
 
-        os << n_data_items << '\n';
+        os << plot_names.size() << '\n';
 
 	//
-	// Names of variables -- first state, then derived
+	// Names of variables 
 	//
-	for (i =0; i < plot_var_map.size(); i++)
-        {
-	    int typ = plot_var_map[i].first;
-	    int comp = plot_var_map[i].second;
-	    os << desc_lst[typ].name(comp) << '\n';
-        }
-
-	for ( std::list<std::string>::iterator it = derive_names.begin();
-	      it != derive_names.end(); ++it)
-        {
-	    const DeriveRec* rec = derive_lst.get(*it);
-	    for (i = 0; i < rec->numDerive(); i++)
-                os << rec->variableName(i) << '\n';
+	for (std::vector<string>::iterator it = plot_names.begin();
+	     it != plot_names.end(); ++it)
+	{
+	    os << *it << '\n';
         }
 
         os << BL_SPACEDIM << '\n';
@@ -477,48 +360,24 @@ RNS::writePlotFile (const std::string& dir,
         // The name is relative to the Header file containing this name.
         // It's the name that gets written into the Header.
         //
-        if (n_data_items > 0)
-        {
-            std::string PathNameInHeader = Level;
-            PathNameInHeader += BaseName;
-            os << PathNameInHeader << '\n';
-        }
+	std::string PathNameInHeader = Level;
+	PathNameInHeader += BaseName;
+	os << PathNameInHeader << '\n';
     }
-    //
-    // We combine all of the multifabs -- state, derived, etc -- into one
-    // multifab -- plotMF.
-    // NOTE: we are assuming that each state variable has one component,
-    // but a derived variable is allowed to have multiple components.
-    int       cnt   = 0;
-    const int nGrow = 0;
-    MultiFab  plotMF(grids,n_data_items,nGrow);
-    MultiFab* this_dat = 0;
-    //
-    // Cull data from state variables -- use no ghost cells.
-    //
-    for (i = 0; i < plot_var_map.size(); i++)
+
+    int ngrow = 0;
+    MultiFab plotMF(grids,plot_names.size(),ngrow);
+
+    ngrow = 1;
+    for (FillPatchIterator fpi(*this, plotMF, ngrow, cur_time, State_Type, 0, NUM_STATE); 
+	 fpi.isValid(); ++fpi) 
     {
-	int typ  = plot_var_map[i].first;
-	int comp = plot_var_map[i].second;
-	this_dat = &state[typ].newData();
-	MultiFab::Copy(plotMF,*this_dat,comp,cnt,1,nGrow);
-	cnt++;
-    }
-    //
-    // Cull data from derived variables.
-    // 
-    if (derive_names.size() > 0)
-    {
-	for (std::list<std::string>::iterator it = derive_names.begin();
-	     it != derive_names.end(); ++it) 
+	if (plot_cons)
 	{
-	    const DeriveRec* rec = derive_lst.get(*it);
-	    ncomp = rec->numDerive();
-	    MultiFab* derive_dat = derive(*it,cur_time,nGrow);
-	    MultiFab::Copy(plotMF,*derive_dat,0,cnt,ncomp,nGrow);
-	    delete derive_dat;
-	    cnt += ncomp;
+	    plotMF[fpi].copy(fpi());
 	}
+
+	
     }
 
     //
