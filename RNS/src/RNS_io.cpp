@@ -131,19 +131,19 @@ RNS::setPlotVariables ()
 
     if (plot_cons)
     {
-	plot_names.push_back("density");
-	plot_names.push_back("xmom");
+	plot_names.push_back("<rho>");
+	plot_names.push_back("<xmom>");
 #if (BL_SPACEDIM >= 2)
-	plot_names.push_back("ymom");
+	plot_names.push_back("<ymom>");
 #endif
 #if (BL_SPACEDIM == 3)
-	plot_names.push_back("zmom");
+	plot_names.push_back("<zmom>");
 #endif
-	plot_names.push_back("rho_E");
-	plot_names.push_back("Temp");
+	plot_names.push_back("<rhoE>");
+	plot_names.push_back("<T>");
 	for (int i=0; i<NumSpec; i++)
 	{
-	    plot_names.push_back("rho.Y(" + spec_names[i] + ")");
+	    plot_names.push_back("<rho.Y(" + spec_names[i] + ")>");
 	}
     }
 
