@@ -1,5 +1,5 @@
 # ------------------  INPUTS TO MAIN PROGRAM  -------------------
-max_step  = 1
+max_step  = 1000000
 stop_time = 6.e-5
 
 # for RK
@@ -24,7 +24,7 @@ vode.verbose   = 0
 
 eglib.use_bulk_visc = 0
 
-rns.Riemann    = 1     # 0: HLL,  1: JBB,  2: HLLC
+rns.Riemann    = 0     # 0: HLL,  1: JBB,  2: HLLC
 rns.Treference = 298.0
 
 rns.fuelName      = CH3OCH3
@@ -62,12 +62,12 @@ amr.n_error_buf     = 2 2 2 2 # number of buffer cells in error est
 # CHECKPOINT FILES
 amr.checkpoint_files_output = 1
 amr.check_file              = chk    # root name of checkpoint file
-amr.check_int               = 1000    # number of timesteps between checkpoints
+amr.check_int               = 500    # number of timesteps between checkpoints
 
 # PLOTFILES
 amr.plot_files_output = 1
 amr.plot_file         = plt     # root name of plotfile
-amr.plot_int          = 1000     # number of timesteps between plotfiles
+amr.plot_int          = 500     # number of timesteps between plotfiles
 
 #PROBIN FILENAME
 amr.probin_file = probin
