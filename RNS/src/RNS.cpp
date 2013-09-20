@@ -72,8 +72,17 @@ Real         RNS::Treference    = 298.0;
 
 int          RNS::RK_order      = 2;
 
-RNS::RiemannType RNS::Riemann   = RNS::JBB;
+RNS::RiemannType RNS::Riemann   = RNS::HLL;
 Real             RNS::difmag    = -1.0;
+
+std::string  RNS::fuelName           = "";
+int          RNS::fuelID             = -1;
+std::string  RNS::oxidizerName       = "";
+int          RNS::oxidizerID         = -1;
+std::string  RNS::productName        = "";
+int          RNS::productID          = -1;
+std::string  RNS::flameTracName      = "";
+int          RNS::flameTracID        = -1;
 
 ErrorList    RNS::err_list;
 int          RNS::allow_untagging    = 0;
@@ -82,8 +91,9 @@ int          RNS::do_temperature_ref = 0;
 int          RNS::do_pressure_ref    = 0;
 int          RNS::do_velocity_ref    = 0;
 int          RNS::do_vorticity_ref   = 0;
+int          RNS::do_flametrac_ref   = 0;
 
-int          RNS::plot_cons            = 1;
+int          RNS::plot_cons            = 0;
 int          RNS::plot_prim            = 1;
 int          RNS::plot_X               = 0;
 int          RNS::plot_magvel          = 1;
@@ -94,7 +104,6 @@ int          RNS::plot_omegadot        = 0;
 int          RNS::plot_dYdt            = 1;
 int          RNS::plot_heatRelease     = 1;
 int          RNS::plot_fuelConsumption = 0;
-std::string  RNS::fuel_name = "";
 
 int          RNS::icomp_cons            = -1;
 int          RNS::icomp_prim            = -1; 
@@ -242,6 +251,12 @@ RNS::read_params ()
             }
         }
     }
+
+    pp.query("fuelName"     , fuelName);
+    pp.query("oxidizerName" , oxidizerName);
+    pp.query("productName"  , productName);
+    flameTracName = fuelName;
+    pp.query("flameTracName", flameTracName);
     
     pp.query("allow_untagging"   , allow_untagging);
     pp.query("do_density_ref"    , do_density_ref);
@@ -249,6 +264,7 @@ RNS::read_params ()
     pp.query("do_pressure_ref"   , do_pressure_ref);
     pp.query("do_velocity_ref"   , do_velocity_ref);
     pp.query("do_vorticity_ref"  , do_vorticity_ref);
+    pp.query("do_flametrac_ref"  , do_flametrac_ref);
 
     pp.query("plot_cons"           , plot_cons           );
     pp.query("plot_prim"           , plot_prim           );
@@ -261,7 +277,6 @@ RNS::read_params ()
     pp.query("plot_dYdt"           , plot_dYdt           );
     pp.query("plot_heatRelease"    , plot_heatRelease    );
     pp.query("plot_fuelConsumption", plot_fuelConsumption);
-    pp.query("fuel_name"           , fuel_name           );
 
     pp.query("job_name",job_name);  
 }

@@ -269,6 +269,7 @@ protected:
     static int       do_pressure_ref;
     static int       do_velocity_ref;
     static int       do_vorticity_ref;
+    static int       do_flametrac_ref;
 
     static Real      small_dens;
     static Real      small_temp;
@@ -288,6 +289,16 @@ protected:
     static RiemannType Riemann;
     static Real        difmag; // for JBB Riemann solver
 
+    // species information
+    static std::string  fuelName     ;
+    static int          fuelID       ;
+    static std::string  oxidizerName ;
+    static int          oxidizerID   ;
+    static std::string  productName  ;
+    static int          productID    ;
+    static std::string  flameTracName;
+    static int          flameTracID  ;
+
     // what to store in plotfiles
     static int         plot_cons;
     static int         plot_prim;
@@ -300,7 +311,6 @@ protected:
     static int         plot_dYdt;
     static int         plot_heatRelease;
     static int         plot_fuelConsumption;
-    static std::string fuel_name;
 
     static int icomp_cons, icomp_prim, icomp_X, icomp_magvel, icomp_Mach, icomp_divu, 
 	icomp_magvort, icomp_omegadot,	icomp_dYdt, icomp_heatRelease, icomp_fuelConsumption;

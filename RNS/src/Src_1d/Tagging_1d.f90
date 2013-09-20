@@ -225,3 +225,49 @@
       end
 
 
+! ::: -----------------------------------------------------------
+! ::: This routine will tag high error cells based on the flame tracer
+! ::: 
+! ::: INPUTS/OUTPUTS:
+! ::: 
+! ::: tag      <=  integer tag array
+! ::: lo,hi     => index extent of tag array
+! ::: set       => integer value to tag cell for refinement
+! ::: clear     => integer value to untag cell
+! ::: trac      => flame tracer array
+! ::: np        => number of components in data array (should be 1)
+! ::: domlo,hi  => index extent of problem domain
+! ::: delta     => cell spacing
+! ::: xlo       => physical location of lower left hand
+! :::              corner of tag array
+! ::: problo    => phys loc of lower left corner of prob domain
+! ::: time      => problem evolution time
+! ::: level     => refinement level of this array
+! ::: -----------------------------------------------------------
+      subroutine rns_tracerror(tag,tagl1,tagh1,set,clear, &
+                               trac,tracl1,trach1, &
+                               lo,hi,np,domlo,domhi, &
+                               delta,xlo,problo,time,level)
+      use probdata_module
+      implicit none
+      integer set, clear, np, level
+      integer tagl1,tagh1
+      integer tracl1,trach1
+      integer lo(1), hi(1), domlo(1), domhi(1)
+      integer tag(tagl1:tagh1)
+      double precision trac(tracl1:trach1,np)
+      double precision delta(1), xlo(1), problo(1), time
+
+      double precision ax
+      integer i
+
+!     Tag on regions of high trac
+      if (level .lt. max_tracerr_lev) then
+            do i = lo(1), hi(1)
+               if (trac(i,1) .ge. tracerr) then
+                  tag(i) = set
+               endif
+            enddo
+      endif
+
+      end

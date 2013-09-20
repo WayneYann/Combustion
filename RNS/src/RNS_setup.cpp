@@ -132,6 +132,11 @@ RNS::variableSetUp ()
     
     NUM_STATE = cnt;
 
+    fuelID      = chemSolve->index(     fuelName);
+    oxidizerID  = chemSolve->index( oxidizerName);
+    productID   = chemSolve->index(  productName);
+    flameTracID = chemSolve->index(flameTracName);
+
     int nriemann = NUM_RIEMANN_TYPE;
     int nriemann_F;
 
@@ -143,10 +148,7 @@ RNS::variableSetUp ()
 	BoxLib::Abort("Something is wrong with RiemannType");
     }
 
-    const Real run_strt = ParallelDescriptor::second() ; 
-    
-    int dm = BL_SPACEDIM;
-    
+    int dm = BL_SPACEDIM;    
     int riemann = RNS::Riemann;
 
     BL_FORT_PROC_CALL(SET_METHOD_PARAMS, set_method_params)
@@ -154,13 +156,6 @@ RNS::variableSetUp ()
 	 small_dens, small_temp, small_pres, gamma, gravity, Treference,
 	 riemann, difmag);
     
-    Real run_stop = ParallelDescriptor::second() - run_strt;
-  
-    ParallelDescriptor::ReduceRealMax(run_stop,ParallelDescriptor::IOProcessorNumber());
-    
-    if (ParallelDescriptor::IOProcessor())
-	std::cout << "\nTime in set_method_params: " << run_stop << '\n' ;
-  
     int coord_type = Geometry::Coord();
     const Real* prob_lo   = Geometry::ProbLo();
     const Real* prob_hi   = Geometry::ProbHi();

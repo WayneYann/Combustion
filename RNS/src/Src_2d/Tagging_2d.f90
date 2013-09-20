@@ -264,7 +264,7 @@
 ! ::: lo,hi     => index extent of tag array
 ! ::: set       => integer value to tag cell for refinement
 ! ::: clear     => integer value to untag cell
-! ::: vort       => vorticity array
+! ::: vort      => vorticity array
 ! ::: nd        => number of components in vort array (should be 1)
 ! ::: domlo,hi  => index extent of problem domain
 ! ::: delta     => cell spacing
@@ -313,6 +313,58 @@
                ax = MAX(ax,ABS(vort(i,j,1) - vort(i-1,j,1)))
                ay = MAX(ay,ABS(vort(i,j,1) - vort(i,j-1,1)))
                if ( MAX(ax,ay) .ge. vortgrad) then
+                  tag(i,j) = set
+               endif
+            enddo
+         enddo
+      endif
+      
+      end
+
+
+! ::: -----------------------------------------------------------
+! ::: This routine will tag high error cells based on the flame tracer
+! ::: 
+! ::: INPUTS/OUTPUTS:
+! ::: 
+! ::: tag      <=  integer tag array
+! ::: lo,hi     => index extent of tag array
+! ::: set       => integer value to tag cell for refinement
+! ::: clear     => integer value to untag cell
+! ::: trac      => flame trac array
+! ::: nd        => number of components in trac array (should be 1)
+! ::: domlo,hi  => index extent of problem domain
+! ::: delta     => cell spacing
+! ::: xlo       => physical location of lower left hand
+! :::              corner of tag array
+! ::: problo    => phys loc of lower left corner of prob domain
+! ::: time      => problem evolution time
+! ::: level     => refinement level of this array
+! ::: -----------------------------------------------------------
+      subroutine rns_tracerror(tag,tagl1,tagl2,tagh1,tagh2, &
+                             set,clear, &
+                             trac,tracl1,tracl2,trach1,trach2, &
+                             lo,hi,nd,domlo,domhi, &
+                             delta,xlo,problo,time,level)
+      use probdata_module
+      implicit none
+
+      integer set, clear, nd, level
+      integer tagl1,tagl2,tagh1,tagh2
+      integer tracl1,tracl2,trach1,trach2
+      integer lo(2), hi(2), domlo(2), domhi(2)
+      integer tag(tagl1:tagh1,tagl2:tagh2)
+      double precision trac(tracl1:trach1,tracl2:trach2,nd)
+      double precision delta(2), xlo(2), problo(2), time
+
+      double precision ax,ay
+      integer i, j
+
+!     Tag on regions of high flame tracer
+      if (level .lt. max_tracerr_lev) then
+         do j = lo(2), hi(2)
+            do i = lo(1), hi(1)
+               if (trac(i,j,1) .ge. tracerr) then
                   tag(i,j) = set
                endif
             enddo
