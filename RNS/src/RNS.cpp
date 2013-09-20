@@ -72,7 +72,7 @@ Real         RNS::Treference    = 298.0;
 
 int          RNS::RK_order      = 2;
 
-RNS::RiemannType RNS::Riemann   = RNS::JBB;
+RNS::RiemannType RNS::Riemann   = RNS::HLL;
 Real             RNS::difmag    = -1.0;
 
 std::string  RNS::fuelName           = "";
