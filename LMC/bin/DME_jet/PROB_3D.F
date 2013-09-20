@@ -73,7 +73,7 @@ c     Take fuel mixture from pmf file
       else if (probtype(1:len).eq.BL_PROB_JET_DIFFUSION) then
 
 c     A diffusion flame
-         fuelZone = getZone(domain(1), 0.5*(domnlo(2)+domnhi(2)), domnlo(3))
+         fuelZone = getZone(domnlo(1), 0.5*(domnlo(2)+domnhi(2)), domnlo(3))
          airZone  = getZone(domnhi(1), domnhi(2), domnhi(3))
          num_zones_defined = 2
 
@@ -83,6 +83,7 @@ c     Fuel
          end do 
          Xt(iN2) = fuel_N2_vol_percent*1.d-2
          Xt(fuelID) = 1.d0 - Xt(iN2)            
+
          CALL CKXTY (Xt, IWRK, RWRK, Yt)
 
          do n=1,Nspec
@@ -123,6 +124,7 @@ c     Set density and hmix consistent with data
      &                        rho_bc(zone), DIMARG(b), DIMARG(b),
      &                        T_bc(zone),   DIMARG(b), DIMARG(b),
      &                        Y_bc(0,zone), DIMARG(b), DIMARG(b), Patm)
+
          call FORT_HMIXfromTY(b, b, 
      &                        h_bc(zone),   DIMARG(b), DIMARG(b),
      &                        T_bc(zone),   DIMARG(b), DIMARG(b),
@@ -163,6 +165,7 @@ c    &     .or. (probtype(1:len).eq.BL_PROB_PREMIXED_CONTROLLED_INFLOW) ) then
             getZone = BL_COFLOW
          else
             getZone = BL_FUELPIPE
+         endif
       else
 
          call bl_pd_abort('Unrecognized probtype')
@@ -179,6 +182,8 @@ c ::: -----------------------------------------------------------
       integer RegionID
       REAL_T x, y, z, time, u, v, w, rho, Yl(0:*), T, h, dx(SDIM)
       logical getuv
+      integer b(SDIM)
+      data  b / 1, 1, 1 /
 
 #include <cdwrk.H>
 #include <htdata.H>
@@ -186,7 +191,7 @@ c ::: -----------------------------------------------------------
 #include <probdata.H>
 
       integer n, getZone, zone, len
-      REAL_T eta, xmid, etamax
+      REAL_T eta, eta1, xmid, etamax, Patm, FORT_P1ATMMKS
 
       if (.not. bcinit) then
          call bl_abort('Need to initialize boundary condition function')
@@ -227,25 +232,31 @@ c ::: -----------------------------------------------------------
 
       elseif (probtype(1:len).eq.BL_PROB_JET_DIFFUSION) then
 
-         if (RegionID .eq. BL_ZLO) then
-
-            eta = 0.5d0*(1.d0 - TANH(2.d0*(ABS(y)-blobr)/Tfrontw))
-            do n = 0, Nspec-1
-               Yl(n) = Y_bc(n,BL_FUELPIPE)*eta + (1.d0-eta)*Y_bc(n,BL_COFLOW)
-            end do
-            T = T_bc(BL_FUELPIPE)*eta + (1.d0-eta)*T_bc(BL_COFLOW)
-            
-            if (getuv .eqv. .TRUE.) then
-               eta1 = 0.5d0*(1.d0 - TANH(2.d0*(ABS(y)-splitx)/xfrontw))
-               u = u_bc(BL_FUELPIPE)*eta1 + (1.d0-eta1)*u_bc(BL_COFLOW)
-               v = v_bc(BL_FUELPIPE)*eta1 + (1.d0-eta1)*v_bc(BL_COFLOW)
-               w = w_bc(BL_FUELPIPE)*eta1 + (1.d0-eta1)*w_bc(BL_COFLOW)
-            endif
-
-         else
-            write(6,*) 'No bcfunction instruction for RegionID = ', RegionID
-            call bl_pd_abort(' ')
+         eta = 0.5d0*(1.d0 - TANH(2.d0*(ABS(y)-blobr)/Tfrontw))
+         do n = 0, Nspec-1
+            Yl(n) = Y_bc(n,BL_FUELPIPE)*eta + (1.d0-eta)*Y_bc(n,BL_COFLOW)
+         end do
+         T = T_bc(BL_FUELPIPE)*eta + (1.d0-eta)*T_bc(BL_COFLOW)
+         
+         if (getuv .eqv. .TRUE.) then
+            eta1 = 0.5d0*(1.d0 - TANH(2.d0*(ABS(y)-splitx)/xfrontw))
+            u = u_bc(BL_FUELPIPE)*eta1 + (1.d0-eta1)*u_bc(BL_COFLOW)
+            v = v_bc(BL_FUELPIPE)*eta1 + (1.d0-eta1)*v_bc(BL_COFLOW)
+            w = w_bc(BL_FUELPIPE)*eta1 + (1.d0-eta1)*w_bc(BL_COFLOW)
          endif
+         
+         Patm = pamb / FORT_P1ATMMKS()
+
+         call FORT_RHOfromPTY(b, b, 
+     &                        rho, DIMARG(b), DIMARG(b),
+     &                        T,   DIMARG(b), DIMARG(b),
+     &                        Yl,  DIMARG(b), DIMARG(b), Patm)
+
+         call FORT_HMIXfromTY(b, b, 
+     &                        h,   DIMARG(b), DIMARG(b),
+     &                        T,   DIMARG(b), DIMARG(b),
+     &                        Yl,  DIMARG(b), DIMARG(b))
+
       else
          write(6,*) 'No boundary condition for probtype = ', probtype(1:len)
          write(6,*) 'Available: '
@@ -476,58 +487,18 @@ c                 blend here if needed
                do i = lo(1), hi(1)
                   x = (float(i)+.5)*delta(1)+domnlo(1)
 
-                  if (blobr.lt.0) then
+                  z = domnlo(3)
+                  call bcfunction(BL_ZLO,x,y,z,time,u,v,w,rho,Yl,T,h,delta,.true.)
+                  do n = 1,Nspec
+                     scal(i,j,k,FirstSpec+n-1) = Yl(n)
+                  end do
 
-                     eta = 0.5d0*(1.d0 - TANH(2.d0*(x-splitx)/xfrontw))
-                     
-                     do n=1,Nspec
-                        scal(i,j,k,FirstSpec-1+n) = Y_bc(n-1,airZone)*(1.d0-eta) + eta*Y_bc(n-1,fuelZone)
-                     enddo
-                     scal(i,j,k,Temp) = T_bc(airZone)*(1.d0-eta) + eta*T_bc(fuelZone)
-                     
-                     eta = 0.5d0*(1.d0 - TANH(-2.d0*(y-bloby)/Tfrontw))
-                     do n=1,Nspec
-                        scal(i,j,k,FirstSpec-1+n) = Y_bc(n-1,airZone)*eta
-     &                       + (1.d0-eta)*scal(i,j,k,FirstSpec-1+n)
-                     enddo
-                     scal(i,j,k,Temp) = blobT*eta + (1.d0-eta)*scal(i,j,k,Temp)
-                     
-                     vel(i,j,k,1) = u_bc(airZone)*eta + (1.d0-eta)*u_bc(fuelZone)
-                     vel(i,j,k,2) = v_bc(airZone)*eta + (1.d0-eta)*v_bc(fuelZone)
-                     vel(i,j,k,3) = w_bc(airZone)*eta + (1.d0-eta)*w_bc(fuelZone)
-                     scal(i,j,k,Trac) = 0.d0
+                  scal(i,j,k,Trac) = 0.d0
+                  scal(i,j,k,Temp) = T
 
-                  else
-                     
-                     eta = 0.5d0*(1.d0 - TANH(2.d0*(x-splitx)/xfrontw))
-                     
-                     do n=1,Nspec
-                        scal(i,j,k,FirstSpec-1+n) = Y_bc(n-1,airZone)*(1.d0-eta) + eta*Y_bc(n-1,fuelZone)
-                     enddo
-                     scal(i,j,k,Temp) = T_bc(airZone)*(1.d0-eta) + eta*T_bc(fuelZone)
-                     
-c     Superimpose blob of hot air
-                     r = SQRT((x-blobx)**2 + (y-bloby)**2)
-                     eta = 0.5d0*(1.d0 - TANH(2.d0*(r-blobr)/Tfrontw))
-                     do n=1,Nspec
-                        scal(i,j,k,FirstSpec-1+n) = Y_bc(n-1,airZone)*eta
-     &                       + (1.d0-eta)*scal(i,j,k,FirstSpec-1+n)
-                     enddo
-                     scal(i,j,k,Temp) = blobT*eta + (1.d0-eta)*scal(i,j,k,Temp)
-                     
-                     vel(i,j,k,1) = u_bc(airZone)*eta + (1.d0-eta)*u_bc(fuelZone)
-                     vel(i,j,k,2) = v_bc(airZone)*eta + (1.d0-eta)*v_bc(fuelZone)
-                     vel(i,j,k,3) = w_bc(airZone)*eta + (1.d0-eta)*w_bc(fuelZone)
-                     scal(i,j,k,Trac) = 0.d0
-                     
-                     if (stTh.gt. 0.d0) then
-                        zone = getZone(x,y,z)
-                        call bcfunction(BL_YLO,x,y,z,time,u,v,w,rho,Yl,T,h,delta,.true.)
-                        vel(i,j,k,1) = u
-                        vel(i,j,k,2) = v
-                        vel(i,j,k,3) = w
-                     endif
-                  endif
+                  vel(i,j,k,1) = u
+                  vel(i,j,k,2) = v
+                  vel(i,j,k,3) = w
 
                enddo
             enddo
@@ -1522,7 +1493,7 @@ c ::: -----------------------------------------------------------
 
       integer i, j, k
       integer ilo, ihi, jlo, jhi, klo, khi
-      REAL_T  z, y, x
+      REAL_T  z, y, x, eta1
       REAL_T  u, v, w, rho, Yl(0:maxspec-1), T, h
       REAL_T  cs,sg,r,scaler,scalet
 #if defined(BL_DO_FLCT)
@@ -1559,9 +1530,6 @@ c ::: -----------------------------------------------------------
          allocate(uflct(DIMV(uflct)))
          call INFL_FILL(FLCT_XVEL, DIMS(uflct), uflct, xlo, delta, time,
      $                  bc, domnlo, domnhi)
-         allocate(vflct(DIMV(uflct)))
-         call INFL_FILL(FLCT_YVEL, DIMS(uflct), vflct, xlo, delta, time,
-     $                  bc, domnlo, domnhi)
       endif
 #endif
 
@@ -1577,7 +1545,8 @@ c ::: -----------------------------------------------------------
                   call bcfunction(BL_XLO,x,y,z,time,u,v,w,rho,Yl,T,h,delta,.true.)
 #if defined(BL_DO_FLCT)
                   if (forceLo .and. strmwse_dir .eq. 1) then
-                     xvel(i,j,k) = u + uflct(1,j,k)*turb_scale
+                     eta1 = 0.5d0*(1.d0 - TANH(2.d0*(ABS(y)-splitx)/xfrontw))
+                     xvel(i,j,k) = u + eta1*uflct(1,j,k)*turb_scale
                   else
                      xvel(i,j,k) = u
                   endif
@@ -1599,7 +1568,8 @@ c ::: -----------------------------------------------------------
                   call bcfunction(BL_XHI,x,y,z,time,u,v,w,rho,Yl,T,h,delta,.true.)
 #if defined(BL_DO_FLCT)
                   if (forceHi .and. strmwse_dir .eq. 1) then
-                     xvel(i,j,k) = u + uflct(1,j,k)*turb_scale
+                     eta1 = 0.5d0*(1.d0 - TANH(2.d0*(ABS(y)-splitx)/xfrontw))
+                     xvel(i,j,k) = u + eta1*uflct(1,j,k)*turb_scale
                   else
                      xvel(i,j,k) = u
                   endif
@@ -1621,7 +1591,8 @@ c ::: -----------------------------------------------------------
                   call bcfunction(BL_YLO,x,y,z,time,u,v,w,rho,Yl,T,h,delta,.true.)
 #if defined(BL_DO_FLCT)
                   if (forceLo .and. strmwse_dir .eq. 2) then
-                     xvel(i,j,k) = u + uflct(i,1,k)*turb_scale
+                     eta1 = 0.5d0*(1.d0 - TANH(2.d0*(ABS(y)-splitx)/xfrontw))
+                     xvel(i,j,k) = u + eta1*uflct(i,1,k)*turb_scale
                   else
                      xvel(i,j,k) = u
                   endif
@@ -1643,7 +1614,8 @@ c ::: -----------------------------------------------------------
                   call bcfunction(BL_YHI,x,y,z,time,u,v,w,rho,Yl,T,h,delta,.true.)
 #if defined(BL_DO_FLCT)
                   if (forceHi .and. strmwse_dir .eq. 2) then
-                     xvel(i,j,k) = u + uflct(i,1,k)*turb_scale
+                     eta1 = 0.5d0*(1.d0 - TANH(2.d0*(ABS(y)-splitx)/xfrontw))
+                     xvel(i,j,k) = u + eta1*uflct(i,1,k)*turb_scale
                   else
                      xvel(i,j,k) = u
                   endif
@@ -1665,7 +1637,8 @@ c ::: -----------------------------------------------------------
                   call bcfunction(BL_ZLO,x,y,z,time,u,v,w,rho,Yl,T,h,delta,.true.)
 #if defined(BL_DO_FLCT)
                   if (forceLo .and. strmwse_dir .eq. 3) then
-                     xvel(i,j,k) = u + turb_scale
+                     eta1 = 0.5d0*(1.d0 - TANH(2.d0*(ABS(y)-splitx)/xfrontw))
+                     xvel(i,j,k) = u + eta1*uflct(i,j,1)*turb_scale
                   else
                      xvel(i,j,k) = u
                   endif
@@ -1687,7 +1660,8 @@ c ::: -----------------------------------------------------------
                   call bcfunction(BL_ZHI,x,y,z,time,u,v,w,rho,Yl,T,h,delta,.true.)
 #if defined(BL_DO_FLCT)
                   if (forceHi .and. strmwse_dir .eq. 3) then
-                     xvel(i,j,k) = u + uflct(i,j,1)*turb_scale
+                     eta1 = 0.5d0*(1.d0 - TANH(2.d0*(ABS(y)-splitx)/xfrontw))
+                     xvel(i,j,k) = u + eta1*uflct(i,j,1)*turb_scale
                   else
                      xvel(i,j,k) = u
                   endif
@@ -1702,7 +1676,6 @@ c ::: -----------------------------------------------------------
 #if defined(BL_DO_FLCT)
       if (forceInflow) then
          deallocate(uflct)
-         deallocate(vflct)
       endif
 #endif
 
@@ -1750,7 +1723,7 @@ c ::: -----------------------------------------------------------
       
       integer i, j, k
       integer ilo, ihi, jlo, jhi, klo, khi
-      REAL_T  z, y, x
+      REAL_T  z, y, x, eta1
       REAL_T  u, v, w, rho, Yl(0:maxspec-1), T, h
       REAL_T  cs,sg,r,scaler,scalet
 
@@ -1786,9 +1759,6 @@ c ::: -----------------------------------------------------------
          loFlctArray(strmwse_dir) = 1
          hiFlctArray(strmwse_dir) = 1
          call SET_ARGS(DIMS(vflct), loFlctArray, hiFlctArray)
-         allocate(uflct(DIMV(vflct)))
-         call INFL_FILL(FLCT_XVEL, DIMS(vflct), uflct, xlo, delta, time,
-     $                  bc, domnlo, domnhi)
          allocate(vflct(DIMV(vflct)))
          call INFL_FILL(FLCT_YVEL, DIMS(vflct), vflct, xlo, delta, time,
      $                  bc, domnlo, domnhi)
@@ -1807,7 +1777,8 @@ c ::: -----------------------------------------------------------
                   call bcfunction(BL_XLO,x,y,z,time,u,v,w,rho,Yl,T,h,delta,.true.)
 #if defined(BL_DO_FLCT)
                   if (forceLo .and. strmwse_dir .eq. 1) then
-                     yvel(i,j,k) = v + vflct(1,j,k)*turb_scale
+                     eta1 = 0.5d0*(1.d0 - TANH(2.d0*(ABS(y)-splitx)/xfrontw))
+                     yvel(i,j,k) = v + eta1*vflct(1,j,k)*turb_scale
                   else
                      yvel(i,j,k) = v
                   endif
@@ -1829,7 +1800,8 @@ c ::: -----------------------------------------------------------
                   call bcfunction(BL_XHI,x,y,z,time,u,v,w,rho,Yl,T,h,delta,.true.)
 #if defined(BL_DO_FLCT)
                   if (forceHi .and. strmwse_dir .eq. 1) then
-                     yvel(i,j,k) = v + vflct(1,j,k)*turb_scale
+                     eta1 = 0.5d0*(1.d0 - TANH(2.d0*(ABS(y)-splitx)/xfrontw))
+                     yvel(i,j,k) = v + eta1*vflct(1,j,k)*turb_scale
                   else
                      yvel(i,j,k) = v
                   endif
@@ -1851,7 +1823,8 @@ c ::: -----------------------------------------------------------
                   call bcfunction(BL_YLO,x,y,z,time,u,v,w,rho,Yl,T,h,delta,.true.)
 #if defined(BL_DO_FLCT)
                   if (forceLo .and. strmwse_dir .eq. 2) then
-                     yvel(i,j,k) = v + vflct(i,1,k)*turb_scale
+                     eta1 = 0.5d0*(1.d0 - TANH(2.d0*(ABS(y)-splitx)/xfrontw))
+                     yvel(i,j,k) = v + eta1*vflct(i,1,k)*turb_scale
                   else
                      yvel(i,j,k) = v
                   endif
@@ -1873,7 +1846,8 @@ c ::: -----------------------------------------------------------
                   call bcfunction(BL_YHI,x,y,z,time,u,v,w,rho,Yl,T,h,delta,.true.)
 #if defined(BL_DO_FLCT)
                   if (forceHi .and. strmwse_dir .eq. 2) then
-                     yvel(i,j,k) = v + vflct(i,1,k)*turb_scale
+                     eta1 = 0.5d0*(1.d0 - TANH(2.d0*(ABS(y)-splitx)/xfrontw))
+                     yvel(i,j,k) = v + eta1*vflct(i,1,k)*turb_scale
                   else
                      yvel(i,j,k) = v
                   endif
@@ -1895,7 +1869,8 @@ c ::: -----------------------------------------------------------
                   call bcfunction(BL_ZLO,x,y,z,time,u,v,w,rho,Yl,T,h,delta,.true.)
 #if defined(BL_DO_FLCT)
                   if (forceLo .and. strmwse_dir .eq. 3) then
-                     yvel(i,j,k) = v + vflct(i,j,1)*turb_scale
+                     eta1 = 0.5d0*(1.d0 - TANH(2.d0*(ABS(y)-splitx)/xfrontw))
+                     yvel(i,j,k) = v + eta1*vflct(i,j,1)*turb_scale
                   else
                      yvel(i,j,k) = v
                   endif
@@ -1917,7 +1892,8 @@ c ::: -----------------------------------------------------------
                   call bcfunction(BL_ZHI,x,y,z,time,u,v,w,rho,Yl,T,h,delta,.true.)
 #if defined(BL_DO_FLCT)
                   if (forceHi .and. strmwse_dir .eq. 3) then
-                     yvel(i,j,k) = v + vflct(i,j,1)*turb_scale
+                     eta1 = 0.5d0*(1.d0 - TANH(2.d0*(ABS(y)-splitx)/xfrontw))
+                     yvel(i,j,k) = v + eta1*vflct(i,j,1)*turb_scale
                   else
                      yvel(i,j,k) = v
                   endif
@@ -1931,7 +1907,6 @@ c ::: -----------------------------------------------------------
 
 #if defined(BL_DO_FLCT)
       if (forceInflow) then
-         deallocate(uflct)
          deallocate(vflct)
       endif
 #endif
@@ -1980,7 +1955,7 @@ c ::: -----------------------------------------------------------
       
       integer i, j, k
       integer ilo, ihi, jlo, jhi, klo, khi
-      REAL_T  z, y, x
+      REAL_T  z, y, x, eta1
       REAL_T  u, v, w, rho, Yl(0:maxspec-1), T, h
 #if defined(BL_DO_FLCT)
       integer DIMDEC(wflct)
@@ -2032,7 +2007,8 @@ c ::: -----------------------------------------------------------
                   call bcfunction(BL_XLO,x,y,z,time,u,v,w,rho,Yl,T,h,delta,.true.)
 #if defined(BL_DO_FLCT)
                   if (forceLo .and. strmwse_dir .eq. 1) then
-                     zvel(i,j,k) = w + wflct(1,j,k)*turb_scale
+                     eta1 = 0.5d0*(1.d0 - TANH(2.d0*(ABS(y)-splitx)/xfrontw))
+                     zvel(i,j,k) = w + eta1*wflct(1,j,k)*turb_scale
                   else
                      zvel(i,j,k) = w
                   endif
@@ -2054,7 +2030,8 @@ c ::: -----------------------------------------------------------
                   call bcfunction(BL_XHI,x,y,z,time,u,v,w,rho,Yl,T,h,delta,.true.)
 #if defined(BL_DO_FLCT)
                   if (forceHi .and. strmwse_dir .eq. 1) then
-                     zvel(i,j,k) = w + wflct(1,j,k)*turb_scale
+                     eta1 = 0.5d0*(1.d0 - TANH(2.d0*(ABS(y)-splitx)/xfrontw))
+                     zvel(i,j,k) = w + eta1*wflct(1,j,k)*turb_scale
                   else
                      zvel(i,j,k) = w
                   endif
@@ -2076,7 +2053,8 @@ c ::: -----------------------------------------------------------
                   call bcfunction(BL_YLO,x,y,z,time,u,v,w,rho,Yl,T,h,delta,.true.)
 #if defined(BL_DO_FLCT)
                   if (forceLo .and. strmwse_dir .eq. 2) then
-                     zvel(i,j,k) = w + wflct(i,1,k)*turb_scale
+                     eta1 = 0.5d0*(1.d0 - TANH(2.d0*(ABS(y)-splitx)/xfrontw))
+                     zvel(i,j,k) = w + eta1*wflct(i,1,k)*turb_scale
                   else
                      zvel(i,j,k) = w
                   endif
@@ -2098,7 +2076,8 @@ c ::: -----------------------------------------------------------
                   call bcfunction(BL_YHI,x,y,z,time,u,v,w,rho,Yl,T,h,delta,.true.)
 #if defined(BL_DO_FLCT)
                   if (forceHi .and. strmwse_dir .eq. 2) then
-                     zvel(i,j,k) = w + wflct(i,1,k)*turb_scale
+                     eta1 = 0.5d0*(1.d0 - TANH(2.d0*(ABS(y)-splitx)/xfrontw))
+                     zvel(i,j,k) = w + eta1*wflct(i,1,k)*turb_scale
                   else
                      zvel(i,j,k) = w
                   endif
@@ -2120,7 +2099,8 @@ c ::: -----------------------------------------------------------
                   call bcfunction(BL_ZLO,x,y,z,time,u,v,w,rho,Yl,T,h,delta,.true.)
 #if defined(BL_DO_FLCT)
                   if (forceLo .and. strmwse_dir .eq. 3) then
-                     zvel(i,j,k) = w + wflct(i,j,1)*turb_scale
+                     eta1 = 0.5d0*(1.d0 - TANH(2.d0*(ABS(y)-splitx)/xfrontw))
+                     zvel(i,j,k) = w + eta1*wflct(i,j,1)*turb_scale
                   else
                      zvel(i,j,k) = w
                   endif
@@ -2142,7 +2122,8 @@ c ::: -----------------------------------------------------------
                   call bcfunction(BL_ZHI,x,y,z,time,u,v,w,rho,Yl,T,h,delta,.true.)
 #if defined(BL_DO_FLCT)
                   if (forceHi .and. strmwse_dir .eq. 3) then
-                     zvel(i,j,k) = w + wflct(i,j,1)*turb_scale
+                     eta1 = 0.5d0*(1.d0 - TANH(2.d0*(ABS(y)-splitx)/xfrontw))
+                     zvel(i,j,k) = w + eta1*wflct(i,j,1)*turb_scale
                   else
                      zvel(i,j,k) = w
                   endif

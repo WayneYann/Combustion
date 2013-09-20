@@ -10,8 +10,8 @@ COMBUSTION_DIR = ${TOP}/Combustion
 PRECISION       = DOUBLE
 DEBUG           = TRUE
 DEBUG           = FALSE
-DIM             = 3
 DIM             = 2
+DIM             = 3
 COMP            = g++
 FCOMP           = gfortran
 USE_MPI         = FALSE
@@ -22,8 +22,8 @@ VERBOSE         = FALSE
 
 # Enable SDC code - add .SDC to executable
 # and compile in the #ifdef LMC_SDC
-USE_LMC_SDC = FALSE
 USE_LMC_SDC = TRUE
+USE_LMC_SDC = FALSE
 
 # Enable flctin namelist
 USE_FLCTS       = TRUE
@@ -31,10 +31,10 @@ USE_FLCTS       = TRUE
 USE_PARTICLES   = FALSE
 
 # Enable ht.velocity_plotfile option
-USE_VELOCITY    = FALSE
+#USE_VELOCITY    = FALSE
 
 # Enable time-dependent forcing term
-USE_TDEPFORCING = FALSE
+#USE_TDEPFORCING = FALSE
 
 # Choose model (from list below), and pmf file
 CHEMISTRY_MODEL = LUDME

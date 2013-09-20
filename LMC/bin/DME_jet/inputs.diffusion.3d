@@ -57,14 +57,16 @@ cg.cg_solver=1
 geometry.prob_lo    = -.0009 -.0015 0.0
 geometry.prob_hi    =  .0009  .0015 0.003
 amr.n_cell          = 96 160 160
+amr.n_cell          = 48 80 80
+amr.n_cell          = 24 40 40
 amr.max_grid_size   = 32
 amr.blocking_factor = 16
+amr.blocking_factor = 8
 max_step            = 1000
 
 amr.plot_files_output = 1
 amr.plot_file       = plt
 amr.plot_int        = 5
-amr.plot_int        = 10
 
 amr.checkpoint_files_output = 1
 amr.check_file      = chk
@@ -83,7 +85,7 @@ amr.grid_eff        = 0.7     # what constitutes an efficient grid
 amr.grid_log        = grdlog  # name of grid logging file
 #amr.derive_plot_vars=ALL
 
-amr.probin_file = probin.diffusion
+amr.probin_file = probin.diffusion.3d
 
 # ------------------  INPUTS TO PHYSICS CLASS -------------------
 ns.dt_cutoff       = 5.e-10   # level 0 timestep below which we halt
@@ -200,10 +202,11 @@ fab.format = NATIVE
 #ShowMF_Check_Nans = false
 
 ns.hack_nochem=1
-ns.hack_nospecdiff=1
-ns.init_iter=0
-ns.do_init_proj=0
-ns.num_divu_iters=0
+#ns.hack_nospecdiff=0
+#ns.init_iter=0
+#ns.do_init_proj=1
+#ns.num_divu_iters=0
+#max_step = 0
 
 #ShowMF_Sets = 1D
 #ShowMF_Verbose = t

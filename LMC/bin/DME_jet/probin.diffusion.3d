@@ -33,6 +33,7 @@
   &flctin
   flct_file = "TurbFile_00340"
   forceInflow = .TRUE.
+  numInflPlanesStore = 8
  /
   &control
  /

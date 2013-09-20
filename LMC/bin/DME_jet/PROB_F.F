@@ -272,10 +272,10 @@ c     Don't need to default 'nCompInflow' as it is block data'd to /3/
 c
       forceLo = .TRUE.
       forceHi = .FALSE.
-      strmwse_dir = FLCT_YVEL
+      strmwse_dir = BL_SPACEDIM
       flct_file = ''
       turb_scale = 1.d0
-      nCompInFlow = 2
+      nCompInFlow = BL_SPACEDIM
 #endif
 
       zbase_control = 0.d0
