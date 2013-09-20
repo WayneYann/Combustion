@@ -121,3 +121,18 @@ ChemDriver::decodeStringFromFortran(const int* coded, int length)
         result += coded[i];
     return result;
 }
+
+
+int
+ChemDriver::index(const std::string speciesName) const
+{
+    for (int i = 0; i < mSpeciesNames.size(); i++)
+    {
+	if (speciesName == mSpeciesNames[i])
+	{
+	    return i;
+	}
+    }
+    return -1;
+}
+

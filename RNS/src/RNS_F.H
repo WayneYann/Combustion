@@ -107,6 +107,16 @@ BL_FORT_PROC_DECL(RNS_PRESSERROR,rns_presserror)
      const Real dx[], const Real xlo[], const Real problo[],
      const Real* time, const int* level);
 
+BL_FORT_PROC_DECL(RNS_TRACERROR,rns_tracerror)
+    (int* tag, ARLIM_P(tag_lo), ARLIM_P(tag_hi),
+     const int* tagval, const int* clearval,
+     BL_FORT_FAB_ARG(press),
+     const int lo[], const int hi[],
+     const int* ncomp,
+     const int domlo[], const int domhi[],
+     const Real dx[], const Real xlo[], const Real problo[],
+     const Real* time, const int* level);
+
 BL_FORT_PROC_DECL(RNS_GRPFILL,rns_grpfill)
     (BL_FORT_FAB_ARG(state),
      const int dlo[], const int dhi[],

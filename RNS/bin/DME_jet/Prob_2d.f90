@@ -11,7 +11,7 @@ subroutine PROBINIT (init,name,namlen,problo,probhi)
   integer untin,i
 
   namelist /fortin/ pamb, phi_in, T_in, vn_in, T_co, vn_co, splitx, xfrontw, &
-       inflow_period, inflow_vnmag
+       inflow_period, inflow_vnmag, max_tracerr_lev, tracerr, max_vorterr_lev, vorterr
 
 !
 !     Build "probin" filename -- the name of file containing fortin namelist.
@@ -44,6 +44,12 @@ subroutine PROBINIT (init,name,namlen,problo,probhi)
   inflow_period = 1.d-5 ! period of sinusoidal variation of inflow velocity
   inflow_vnmag  = 1.d3  ! magnitude of the variation
   
+  max_tracerr_lev = -1
+  tracerr = 1.d-8
+
+  max_vorterr_lev = -1
+  vorterr = 5.d4
+
   !     Read namelists
   untin = 9
   open(untin,file=probin(1:namlen),form='formatted',status='old')
