@@ -73,7 +73,7 @@ c     Take fuel mixture from pmf file
       else if (probtype(1:len).eq.BL_PROB_JET_DIFFUSION) then
 
 c     A diffusion flame
-         fuelZone = getZone(domnlo(1), domnlo(2), domnlo(3))
+         fuelZone = getZone(domain(1), 0.5*(domnlo(2)+domnhi(2)), domnlo(3))
          airZone  = getZone(domnhi(1), domnhi(2), domnhi(3))
          num_zones_defined = 2
 
@@ -90,8 +90,8 @@ c     Fuel
          end do
          T_bc(fuelZone) = T_in
          u_bc(fuelZone) = 0.d0
-         v_bc(fuelZone) = V_in
-         w_bc(fuelZone) = 0.d0
+         v_bc(fuelZone) = 0.d0
+         w_bc(fuelZone) = V_in
 
 c     Air
          do n=1,Nspec
@@ -105,10 +105,10 @@ c     Air
             Y_bc(n-1,airZone) = Yt(n)
          end do
          
-         T_bc(airZone) = T_in
+         T_bc(airZone) = T_co
          u_bc(airZone) = 0.d0
-         v_bc(airZone) = V_in
-         w_bc(airZone) = 0.d0
+         v_bc(airZone) = 0.d0
+         w_bc(airZone) = V_co
 
       else
          
@@ -158,6 +158,11 @@ c    &     .or. (probtype(1:len).eq.BL_PROB_PREMIXED_CONTROLLED_INFLOW) ) then
 
          getZone = BL_FUELPIPE
          
+      else if (probtype(1:len).eq.BL_PROB_JET_DIFFUSION) then
+         if (z.gt.domnlo(3)) then
+            getZone = BL_COFLOW
+         else
+            getZone = BL_FUELPIPE
       else
 
          call bl_pd_abort('Unrecognized probtype')
@@ -222,37 +227,19 @@ c ::: -----------------------------------------------------------
 
       elseif (probtype(1:len).eq.BL_PROB_JET_DIFFUSION) then
 
-         if (RegionID .eq. BL_YLO) then
+         if (RegionID .eq. BL_ZLO) then
 
-            zone = getZone(x,y,z)
-            rho = rho_bc(zone)
+            eta = 0.5d0*(1.d0 - TANH(2.d0*(ABS(y)-blobr)/Tfrontw))
             do n = 0, Nspec-1
-               Yl(n) = Y_bc(n,zone)
+               Yl(n) = Y_bc(n,BL_FUELPIPE)*eta + (1.d0-eta)*Y_bc(n,BL_COFLOW)
             end do
-            T = T_bc(zone)
-            h = h_bc(zone)
+            T = T_bc(BL_FUELPIPE)*eta + (1.d0-eta)*T_bc(BL_COFLOW)
             
             if (getuv .eqv. .TRUE.) then
-               u = zero
-               v = zero
-               w = V_in
-
-               if (stTh.ge.0) then
-                  if (ABS(x - splitx).lt.0.5*stTh) then
-                     v = 0.d0
-                  else
-                     if (x .lt. splitx) then
-                        etamax = splitx - 0.5*stTh
-                        eta = (x - domnlo(1)) / etamax
-                        v = V_in * (1.d0 - eta**2)
-                     else
-                        etamax = domnhi(1) - splitx - 0.5*stTh
-                        eta = (domnhi(1) - x) / etamax
-                        v = V_co * (1.d0 - eta**2)
-                     endif
-                  endif
-               endif
-
+               eta1 = 0.5d0*(1.d0 - TANH(2.d0*(ABS(y)-splitx)/xfrontw))
+               u = u_bc(BL_FUELPIPE)*eta1 + (1.d0-eta1)*u_bc(BL_COFLOW)
+               v = v_bc(BL_FUELPIPE)*eta1 + (1.d0-eta1)*v_bc(BL_COFLOW)
+               w = w_bc(BL_FUELPIPE)*eta1 + (1.d0-eta1)*w_bc(BL_COFLOW)
             endif
 
          else
