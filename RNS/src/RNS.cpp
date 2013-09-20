@@ -93,7 +93,7 @@ int          RNS::do_velocity_ref    = 0;
 int          RNS::do_vorticity_ref   = 0;
 int          RNS::do_flametrac_ref   = 0;
 
-int          RNS::plot_cons            = 1;
+int          RNS::plot_cons            = 0;
 int          RNS::plot_prim            = 1;
 int          RNS::plot_X               = 0;
 int          RNS::plot_magvel          = 1;
