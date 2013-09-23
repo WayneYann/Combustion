@@ -1,0 +1,5 @@
+Tests and examples for CCSE's variable step/order BDF implementation.
+
+To run the tests:
+
+$ make tests
