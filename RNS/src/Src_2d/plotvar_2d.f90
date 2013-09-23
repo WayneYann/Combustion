@@ -41,3 +41,4 @@ subroutine rns_ctoprim(lo, hi, &
   call ctoprim(tlo, thi, prim, plo, phi, NVAR)
 
 end subroutine rns_ctoprim
+

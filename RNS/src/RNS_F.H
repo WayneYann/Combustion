@@ -179,4 +179,14 @@ BL_FORT_PROC_DECL(RNS_CTOPRIM, rns_ctoprim)
      const BL_FORT_FAB_ARG(cons),
      BL_FORT_FAB_ARG(prim));
 
+BL_FORT_PROC_DECL(RNS_MAKEPLOTVAR, rns_makeplotvar)
+    (const int lo[], const int hi[], const Real dx[],
+     const BL_FORT_FAB_ARG(prim),
+     BL_FORT_FAB_ARG(plot),
+     const int& npv, const int& icomp_magvel, const int& icomp_Mach, 
+     const int& icomp_divu, const int& icomp_magvort, 
+     const int& icomp_X, const int& icomp_omegadot, const int& icomp_dYdt, 
+     const int& icomp_heatRelease, const int& icomp_fuelConsumption,
+     const int& fuelID);
+
 #endif
