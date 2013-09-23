@@ -29,9 +29,11 @@ subroutine rns_ctoprim(lo, hi, &
   phi(2) = p_h2
   phi(3) = 1
 
+  !$omp parallel do private(n)
   do n=1,NVAR
      call cellavg2cc_2d(lo, hi, cons(:,:,n), clo(1:2), chi(1:2), prim(:,:,n), plo, phi)
   end do
+  !$omp end parallel do
 
   tlo(1:2) = lo
   tlo(3) = 1

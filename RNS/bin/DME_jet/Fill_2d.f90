@@ -18,11 +18,13 @@ subroutine rns_grpfill(adv,adv_l1,adv_l2,adv_h1,adv_h2, &
   double precision rhot,u1t,u2t,Tt,et,Yt(NSPEC),rwrk
   double precision, parameter :: gp(2) = (/ -1.d0/sqrt(3.d0), 1.d0/sqrt(3.d0) /)
 
+  !$omp parallel do private(n)
   do n = 1,NVAR
      call filcc(adv(adv_l1,adv_l2,n), &
           adv_l1,adv_l2,adv_h1,adv_h2, &
           domlo,domhi,delta,xlo,bc(1,1,n))
   enddo
+  !$omp end parallel do
 
 !        YLO
   if (adv_l2.lt.domlo(2)) then
@@ -35,6 +37,8 @@ subroutine rns_grpfill(adv,adv_l1,adv_l2,adv_h1,adv_h2, &
         sigma = 2.5d0*xfrontw*splitx
 
         ! fill the corners too
+        !$omp parallel do private(i,j,n,iwrk,ii,x,xg,eta,rhot,u1t,u2t,Tt,et,Yt,rwrk) &
+        !$omp collapse(2)
         do j = adv_l2, domlo(2)-1 
            do i = adv_l1,adv_h1
         
@@ -72,6 +76,7 @@ subroutine rns_grpfill(adv,adv_l1,adv_l2,adv_h1,adv_h2, &
 
            end do
         end do
+        !$omp end parallel do
      else
         print *,'SHOULD NEVER GET HERE bc(1,1,1) .ne. EXT_DIR) '
         stop
@@ -178,6 +183,8 @@ subroutine rns_denfill(adv,adv_l1,adv_l2,adv_h1,adv_h2, &
         sigma = 2.5d0*xfrontw*splitx
 
         ! fill the corners too
+        !$omp parallel do private(i,j,n,iwrk,ii,x,xg,eta,rhot,Tt,Yt,rwrk) &
+        !$omp collapse(2)
         do j = adv_l2, domlo(2)-1 
            do i = adv_l1,adv_h1
 
@@ -204,6 +211,7 @@ subroutine rns_denfill(adv,adv_l1,adv_l2,adv_h1,adv_h2, &
 
            end do
         end do
+        !$omp end parallel do
      else
         print *,'SHOULD NEVER GET HERE bc(1,1,1) .ne. EXT_DIR) '
         stop
@@ -334,6 +342,8 @@ subroutine rns_myfill(adv,adv_l1,adv_l2,adv_h1,adv_h2, &
         sigma = 2.5d0*xfrontw*splitx
 
         ! fill the corners too
+        !$omp parallel do private(i,j,n,iwrk,ii,x,xg,eta,rhot,u2t,Tt,Yt,rwrk) &
+        !$omp collapse(2)
         do j = adv_l2, domlo(2)-1 
            do i = adv_l1,adv_h1
 
@@ -362,6 +372,7 @@ subroutine rns_myfill(adv,adv_l1,adv_l2,adv_h1,adv_h2, &
 
            end do
         end do
+        !$omp end parallel do
      else
         print *,'SHOULD NEVER GET HERE bc(1,1,1) .ne. EXT_DIR) '
         stop

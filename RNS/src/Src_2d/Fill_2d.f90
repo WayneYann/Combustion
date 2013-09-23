@@ -13,12 +13,14 @@ subroutine rns_grpfill(adv,adv_l1,adv_l2,adv_h1,adv_h2, &
   double precision adv(adv_l1:adv_h1,adv_l2:adv_h2,NVAR)
   
   integer n
-  
+
+  !$omp parallel do private(n)
   do n = 1,NVAR
      call filcc(adv(adv_l1,adv_l2,n), &
           adv_l1,adv_l2,adv_h1,adv_h2, &
           domlo,domhi,delta,xlo,bc(1,1,n))
   enddo
+  !$omp end parallel do
 
   do n = 1, NVAR
 

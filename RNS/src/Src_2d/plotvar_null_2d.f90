@@ -21,15 +21,20 @@ subroutine rns_makeplotvar(lo, hi, dx, &
   integer :: i, j
   double precision :: Yt(NSPEC), v, c, dxinv(2)
 
+  !$omp parallel private(i,j,Yt,v,c,dxinv)
+
   if (icomp_magvel .ge. 0) then
+     !$omp do collapse(2)
      do j=lo(2), hi(2)
         do i=lo(1), hi(1)
            plot(i,j,icomp_magvel) = sqrt(prim(i,j,QU)**2+prim(i,j,QV)**2)
         end do
      end do
+     !$omp end do nowait
   end if
 
   if (icomp_Mach .ge. 0) then
+     !$omp do collapse(2)
      do j=lo(2), hi(2)
         do i=lo(1), hi(1)
            Yt = prim(i,j,QFY:QFY+NSPEC-1)
@@ -42,10 +47,12 @@ subroutine rns_makeplotvar(lo, hi, dx, &
            plot(i,j,icomp_Mach) = v / c
         end do
      end do
+     !$omp end do nowait
   end if
 
   if (icomp_divu .ge. 0) then
      dxinv = 1.d0/dx
+     !$omp do collapse(2)
      do j=lo(2), hi(2)
         do i=lo(1),hi(1)
            plot(i,j,icomp_divu) = 0.5d0 * &
@@ -53,10 +60,12 @@ subroutine rns_makeplotvar(lo, hi, dx, &
                 + (prim(i,j+1,QV)-prim(i,j-1,QV))*dxinv(2) )
         end do
      end do
+     !$omp end do nowait
   end if
 
   if (icomp_magvort .ge. 0) then
      dxinv = 1.d0/dx
+     !$omp do collapse(2)
      do j=lo(2), hi(2)
         do i=lo(1),hi(1)
            plot(i,j,icomp_magvort) = 0.5d0 * &
@@ -64,6 +73,9 @@ subroutine rns_makeplotvar(lo, hi, dx, &
                 + (prim(i,j+1,QU)-prim(i,j-1,QU))*dxinv(2) )
         end do
      end do
+     !$omp end do
   end if
+
+  !$omp end parallel
 
 end subroutine rns_makeplotvar
