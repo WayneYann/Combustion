@@ -319,6 +319,8 @@ protected:
 
     static std::string job_name;
 
+    static int         blocksize[BL_SPACEDIM];
+
     // for keeping track of the amount of CPU time used -- this will persist
     // after restarts
     static Real        previousCPUTimeUsed;

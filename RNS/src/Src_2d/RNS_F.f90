@@ -5,7 +5,7 @@ subroutine rns_dudt (lo, hi, &
      xflx, xf_l1, xf_l2, xf_h1, xf_h2, &
      yflx, yf_l1, yf_l2, yf_h1, yf_h2, &
      dx)
-  use meth_params_module, only : NVAR, gravity, URHO, UMY, UEDEN
+  use meth_params_module, only : NVAR, gravity, URHO, UMY, UEDEN, xblksize, yblksize, nthreads
   use hypterm_module, only : hypterm
   use difterm_module, only : difterm
   implicit none
@@ -21,8 +21,10 @@ subroutine rns_dudt (lo, hi, &
   double precision                :: yflx(yf_l1:yf_h1,yf_l2:yf_h2,NVAR)
   double precision, intent(in) :: dx(2)
 
-  integer :: Ulo(2), Uhi(2), fxlo(2), fxhi(2), fylo(2), fyhi(2), i, j, n
+  integer :: Ulo(2), Uhi(2), fxlo(2), fxhi(2), fylo(2), fyhi(2), tlo(2), thi(2)
+  integer :: i, j, n, blocksize(2), ib, jb, nb(2)
   double precision :: dxinv(2)
+  double precision, allocatable :: bxflx(:,:,:), byflx(:,:,:)
 
   dxinv(1) = 1.d0/dx(1)
   dxinv(2) = 1.d0/dx(2)
@@ -32,22 +34,70 @@ subroutine rns_dudt (lo, hi, &
   Uhi(1) = U_h1
   Uhi(2) = U_h2
 
-  fxlo(1) = xf_l1
-  fxlo(2) = xf_l2
-  fxhi(1) = xf_h1
-  fxhi(2) = xf_h2
-  
-  fylo(1) = yf_l1
-  fylo(2) = yf_l2
-  fyhi(1) = yf_h1
-  fyhi(2) = yf_h2
-  
-  xflx(lo(1):hi(1)+1,:,:) = 0.d0
-  yflx(:,lo(2):hi(2)+1,:) = 0.d0
+  if (nthreads*yblksize .le. hi(2)-lo(2)+1) then
+     blocksize(1) = hi(1) - lo(1) + 1  ! blocking in y-direction only
+  else
+     blocksize(1) = xblksize 
+  end if
+  blocksize(2) = yblksize
 
-  call hypterm(lo,hi,U,Ulo,Uhi,xflx,fxlo,fxhi,yflx,fylo,fyhi,dx)
-  call difterm(lo,hi,U,Ulo,Uhi,xflx,fxlo,fxhi,yflx,fylo,fyhi,dxinv)
+  nb = (hi-lo+blocksize)/blocksize
 
+  !$omp parallel private(fxlo,fxhi,fylo,fyhi,tlo,thi,i,j,n,ib,jb,bxflx,byflx)
+  
+  !$omp do collapse(2)
+  do jb=0,nb(2)-1
+     do ib=0,nb(1)-1
+
+        tlo(1) = lo(1) + ib*blocksize(1)
+        tlo(2) = lo(2) + jb*blocksize(2)
+
+        thi(1) = min(tlo(1)+blocksize(1)-1, hi(1))
+        thi(2) = min(tlo(2)+blocksize(2)-1, hi(2))
+
+        fxlo(1) = tlo(1)
+        fxlo(2) = tlo(2)
+        fxhi(1) = thi(1)+1
+        fxhi(2) = thi(2)
+
+        fylo(1) = tlo(1)
+        fylo(2) = tlo(2)
+        fyhi(1) = thi(1)
+        fyhi(2) = thi(2)+1
+  
+        allocate(bxflx(fxlo(1):fxhi(1),fxlo(2):fxhi(2),NVAR))
+        allocate(byflx(fylo(1):fyhi(1),fylo(2):fyhi(2),NVAR))
+
+        bxflx = 0.d0
+        byflx = 0.d0
+
+        call hypterm(tlo,thi,U,Ulo,Uhi,bxflx,fxlo,fxhi,byflx,fylo,fyhi,dx)
+        call difterm(tlo,thi,U,Ulo,Uhi,bxflx,fxlo,fxhi,byflx,fylo,fyhi,dxinv)
+
+        ! Note that fluxes are on faces.  So don't double count!
+        if (thi(1) .ne. hi(1)) fxhi(1) = fxhi(1) - 1
+        if (thi(2) .ne. hi(2)) fyhi(2) = fyhi(2) - 1
+
+        do n=1,NVAR
+           do j=fxlo(2),fxhi(2)
+              do i=fxlo(1),fxhi(1)
+                 xflx(i,j,n) = bxflx(i,j,n)
+              end do
+           end do
+
+           do j=fylo(2),fyhi(2)
+              do i=fylo(1),fyhi(1)
+                 yflx(i,j,n) = byflx(i,j,n)
+              end do
+           end do
+        end do
+
+        deallocate(bxflx,byflx)
+
+     end do
+  end do
+
+  !$omp do
   do n=1, NVAR
      do j=lo(2),hi(2)
         do i=lo(1),hi(1)
@@ -56,15 +106,20 @@ subroutine rns_dudt (lo, hi, &
         end do
      end do
   end do
+  !$omp end do
 
   if (gravity .ne. 0.d0) then
+     !$omp do collapse(2)
      do j=lo(2),hi(2)
         do i=lo(1),hi(1)
            dUdt(i,j,UMY  ) = dUdt(i,j,UMY  ) + U(i,j,URHO)*gravity
            dUdt(i,j,UEDEN) = dUdt(i,j,UEDEN) + U(i,j,UMY )*gravity
         end do
      end do
+     !$omp end do
   end if
+  
+  !$omp end parallel
 
 end subroutine rns_dudt
 

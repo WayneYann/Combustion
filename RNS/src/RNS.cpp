@@ -121,6 +121,8 @@ std::vector<std::string> RNS::plot_names;
 
 std::string  RNS::job_name = "";
 
+int          RNS::blocksize[] = {D_DECL(2048,2048,2048)};
+
 // this will be reset upon restart
 Real         RNS::previousCPUTimeUsed = 0.0;
 Real         RNS::startCPUTime = 0.0;
