@@ -1528,7 +1528,7 @@ c ::: -----------------------------------------------------------
          hiFlctArray(strmwse_dir) = 1
          call SET_ARGS(DIMS(uflct), loFlctArray, hiFlctArray)
          allocate(uflct(DIMV(uflct)))
-         call INFL_FILL(FLCT_XVEL, DIMS(uflct), uflct, xlo, delta, time,
+         call INFL_FILL(FLCT_XVEL, DIMS(uflct), uflct, xlo, delta, V_in*time,
      $                  bc, domnlo, domnhi)
       endif
 #endif
@@ -1760,7 +1760,7 @@ c ::: -----------------------------------------------------------
          hiFlctArray(strmwse_dir) = 1
          call SET_ARGS(DIMS(vflct), loFlctArray, hiFlctArray)
          allocate(vflct(DIMV(vflct)))
-         call INFL_FILL(FLCT_YVEL, DIMS(vflct), vflct, xlo, delta, time,
+         call INFL_FILL(FLCT_YVEL, DIMS(vflct), vflct, xlo, delta, V_in*time,
      $                  bc, domnlo, domnhi)
       endif
 #endif
@@ -1990,7 +1990,7 @@ c ::: -----------------------------------------------------------
          hiFlctArray(strmwse_dir) = 1
          call SET_ARGS(DIMS(wflct), loFlctArray, hiFlctArray)
          allocate(wflct(DIMV(wflct)))
-         call INFL_FILL(FLCT_ZVEL, DIMS(wflct), wflct, xlo, delta, time,
+         call INFL_FILL(FLCT_ZVEL, DIMS(wflct), wflct, xlo, delta, V_in*time,
      $                  bc, domnlo, domnhi)
       endif
 #endif
