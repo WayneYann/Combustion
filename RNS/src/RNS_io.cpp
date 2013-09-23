@@ -170,6 +170,98 @@ RNS::setPlotVariables ()
 	}
     }
 
+    plot_primplus = 0;
+
+    if (plot_magvel)
+    {
+	plot_primplus = 1;
+	icomp_magvel = inext;
+	inext++;
+	plot_names.push_back("magvel");
+    }
+
+    if (plot_Mach)
+    {
+	plot_primplus = 1;
+	icomp_Mach = inext;
+	inext++;
+	plot_names.push_back("Mach");
+    }
+
+    if (plot_divu)
+    {
+	plot_primplus = 1;
+	icomp_divu = inext;
+	inext++;
+	plot_names.push_back("divu");
+    }
+
+#if (BL_SPACEDIM >= 2)
+    if (plot_magvort)
+    {
+	plot_primplus = 1;
+	icomp_magvort = inext;
+	inext++;
+	plot_names.push_back("magvort");
+    }
+#endif
+
+    if (plot_X)
+    {
+	plot_primplus = 1;
+	icomp_X = inext;
+	inext += NumSpec;
+	for (int i=0; i<NumSpec; i++)
+	{
+	    plot_names.push_back("X(" + spec_names[i] + ")");
+	}	
+    }
+
+    if (plot_omegadot)
+    {
+	plot_primplus = 1;
+	icomp_omegadot = inext;
+	inext += NumSpec;
+	for (int i=0; i<NumSpec; i++)
+	{
+	    plot_names.push_back("rho*omgdot(" + spec_names[i] + ")");
+	}	
+    }
+
+    if (plot_dYdt)
+    {
+	plot_primplus = 1;
+	icomp_dYdt = inext;
+	inext += NumSpec;
+	for (int i=0; i<NumSpec; i++)
+	{
+	    plot_names.push_back("Ydot(" + spec_names[i] + ")");
+	}		
+    }
+
+    if (plot_heatRelease)
+    {
+	plot_primplus = 1;
+	icomp_heatRelease = inext;
+	inext++;
+	plot_names.push_back("HeatRelease");	
+    }
+
+    if (plot_fuelConsumption)
+    {
+	if (fuelID >= 0)
+	{
+	    plot_primplus = 1;
+	    icomp_fuelConsumption = inext;
+	    inext++;
+	    plot_names.push_back("FuelConsumptionRate");
+	}
+	else
+	{
+//	    BoxLib::Warning("plot_fuelConsumption is true, but fuelName is not set correctly.");
+	    plot_fuelConsumption = 0;
+	}
+    }
 }
 
 void
@@ -179,6 +271,7 @@ RNS::writePlotFile (const std::string& dir,
 {
     int i, n;
     Real cur_time = state[State_Type].curTime();
+    int n_plot_vars = plot_names.size();
 
     if (level == 0 && ParallelDescriptor::IOProcessor())
     {
@@ -187,10 +280,10 @@ RNS::writePlotFile (const std::string& dir,
         //
         os << thePlotFileType() << '\n';
 
-        if (plot_names.size() == 0)
+        if (n_plot_vars == 0)
             BoxLib::Error("Must specify at least one valid data item to plot");
 
-        os << plot_names.size() << '\n';
+        os << n_plot_vars << '\n';
 
 	//
 	// Names of variables 
@@ -389,35 +482,48 @@ RNS::writePlotFile (const std::string& dir,
     }
 
     int ngrow = 0;
-    MultiFab plotMF(grids,plot_names.size(),ngrow);
+    MultiFab plotMF(grids,n_plot_vars,ngrow);
 
     ngrow = (plot_divu || plot_magvort) ? 2: 1;
     for (FillPatchIterator fpi(*this, plotMF, ngrow, cur_time, State_Type, 0, NUM_STATE); 
 	 fpi.isValid(); ++fpi) 
     {
 	int i = fpi.index();
-	const Box& bx  = grids[i];
 
 	if (plot_cons)
 	{
 	    plotMF[i].copy(fpi(), 0, icomp_cons, NUM_STATE);
 	}
 
-	if (plot_prim)
+	if (plot_prim || plot_primplus)
 	{
+	    const Box& bx  = grids[i];
+	    const Real* dx = geom.CellSize();
 	    const Box& bxp = BoxLib::grow(bx,ngrow-1);
+
 	    FArrayBox prim(bxp, NUM_STATE);
-	    
+	
 	    BL_FORT_PROC_CALL(RNS_CTOPRIM,rns_ctoprim)
 		(bxp.loVect(), bxp.hiVect(),
 		 BL_TO_FORTRAN(fpi()),
 		 BL_TO_FORTRAN(prim));
 
-	    plotMF[i].copy(prim, 0, icomp_prim, NUM_STATE);
+	    if (plot_prim)
+	    {
+		plotMF[i].copy(prim, 0, icomp_prim, NUM_STATE);
+	    }
+
+	    if (plot_primplus)
+	    {
+		BL_FORT_PROC_CALL(RNS_MAKEPLOTVAR,rns_makeplotvar)
+		    (bx.loVect(), bx.hiVect(), dx,
+		     BL_TO_FORTRAN(prim),
+		     BL_TO_FORTRAN(plotMF[i]),
+		     n_plot_vars, icomp_magvel, icomp_Mach, icomp_divu, icomp_magvort, 
+		     icomp_X, icomp_omegadot, icomp_dYdt, icomp_heatRelease, 
+		     icomp_fuelConsumption, fuelID);
+	    }
 	}
-
-	const Real *dx = geom.CellSize();
-
     }
 
     //

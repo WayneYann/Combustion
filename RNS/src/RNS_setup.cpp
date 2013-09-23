@@ -137,6 +137,16 @@ RNS::variableSetUp ()
     productID   = chemSolve->index(  productName);
     flameTracID = chemSolve->index(flameTracName);
 
+    if (fuelID < 0)
+    {
+	plot_fuelConsumption = 0;
+    }
+
+    if (chemSolve->isNull)
+    {
+	plot_X = plot_omegadot = plot_dYdt = plot_heatRelease = plot_fuelConsumption = 0;
+    }
+
     int nriemann = NUM_RIEMANN_TYPE;
     int nriemann_F;
 

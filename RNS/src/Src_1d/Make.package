@@ -5,9 +5,9 @@ f90EXE_sources += plotvar_$(DIM)d.f90 convert.f90
 f90EXE_sources += hypterm.f90
 
 ifeq (${CHEMISTRY_MODEL}, NULL)
-  f90EXE_sources += difterm_null.f90
+  f90EXE_sources += difterm_null.f90 plotvar_null_$(DIM)d.f90
 else
-  f90EXE_sources += difterm.f90
+  f90EXE_sources += difterm.f90 plotvar_chem_$(DIM)d.f90
 endif
 
 f90EXE_sources += chemterm.f90
