@@ -121,7 +121,11 @@ std::vector<std::string> RNS::plot_names;
 
 std::string  RNS::job_name = "";
 
+#ifdef _OPENMP
+std::vector<int> RNS::blocksize(BL_SPACEDIM, 8);
+#else
 std::vector<int> RNS::blocksize(BL_SPACEDIM, 2048);
+#endif
 
 // this will be reset upon restart
 Real         RNS::previousCPUTimeUsed = 0.0;

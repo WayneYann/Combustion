@@ -123,7 +123,7 @@ subroutine rns_makeplotvar(lo, hi, dx, &
            end do
         end do
        
-        call vckwyr(np, prim(lo(1),j,QRHO), prim(lo(1),j,QTEMP), Y1d, iwrk, rwrk, wdot)
+        call vckwyr(np, prim(lo(1),j,k,QRHO), prim(lo(1),j,k,QTEMP), Y1d, iwrk, rwrk, wdot)
 
         if (icomp_omegadot .ge. 0) then
            do n=1, nspec

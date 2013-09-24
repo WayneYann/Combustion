@@ -25,16 +25,137 @@ subroutine rns_dudt (lo, hi, &
   double precision,intent(out)::zflx(zf_l1:zf_h1,zf_l2:zf_h2,zf_l3:zf_h3,NVAR)
   double precision,intent(in) :: dx(3)
 
-  integer :: Ulo(3), Uhi(3), fxlo(3), fxhi(3), fylo(3), fyhi(3), tlo(3), thi(3)
+  integer :: Ulo(3),Uhi(3),fxlo(3),fxhi(3),fylo(3),fyhi(3),fzlo(3),fzhi(3),tlo(3),thi(3)
   integer :: i, j, k, n, blocksize(3), ib, jb, kb, nb(3)
   double precision :: dxinv(3)
   double precision, allocatable :: bxflx(:,:,:,:), byflx(:,:,:,:), bzflx(:,:,:,:)
 
-  xflx = 0.d0
-  yflx = 0.d0
-  zflx = 0.d0
+  dxinv = 1.d0/dx
 
-  dUdt = 0.d0
+  Ulo(1) = U_l1
+  Ulo(2) = U_l2
+  Ulo(3) = U_l3
+  Uhi(1) = U_h1
+  Uhi(2) = U_h2
+  Uhi(3) = U_h3
+
+  if (nthreads*yblksize*zblksize .le. (hi(2)-lo(2)+1)*(hi(3)-lo(3)+1)) then
+     blocksize(1) = hi(1) - lo(1) + 1  ! blocking in y and z-direction only
+  else
+     blocksize(1) = xblksize 
+  end if
+  blocksize(2) = yblksize
+  blocksize(3) = zblksize
+
+  nb = (hi-lo+blocksize)/blocksize
+
+  !$omp parallel private(fxlo,fxhi,fylo,fyhi,fzlo,fzhi,tlo,thi) &
+  !$omp private(i,j,k,n,ib,jb,kb,bxflx,byflx,bzflx)
+
+  !$omp do collapse(3)
+  do    kb=0,nb(3)-1
+     do jb=0,nb(2)-1
+     do ib=0,nb(1)-1
+
+        tlo(1) = lo(1) + ib*blocksize(1)
+        tlo(2) = lo(2) + jb*blocksize(2)
+        tlo(3) = lo(3) + kb*blocksize(3)
+
+        thi(1) = min(tlo(1)+blocksize(1)-1, hi(1))
+        thi(2) = min(tlo(2)+blocksize(2)-1, hi(2))
+        thi(3) = min(tlo(3)+blocksize(3)-1, hi(3))
+
+        fxlo = tlo
+        fxhi(1) = thi(1)+1
+        fxhi(2) = thi(2)
+        fxhi(3) = thi(3)
+
+        fylo = tlo
+        fyhi(1) = thi(1)
+        fyhi(2) = thi(2)+1
+        fyhi(3) = thi(3)
+
+        fzlo = tlo
+        fzhi(1) = thi(1)
+        fzhi(2) = thi(2)
+        fzhi(3) = thi(3)+1
+  
+        allocate(bxflx(fxlo(1):fxhi(1),fxlo(2):fxhi(2),fxlo(3):fxhi(3),NVAR))
+        allocate(byflx(fylo(1):fyhi(1),fylo(2):fyhi(2),fylo(3):fyhi(3),NVAR))
+        allocate(bzflx(fzlo(1):fzhi(1),fzlo(2):fzhi(2),fzlo(3):fzhi(3),NVAR))
+
+        bxflx = 0.d0
+        byflx = 0.d0
+        bzflx = 0.d0
+
+        call hypterm(tlo,thi,U,Ulo,Uhi,bxflx,fxlo,fxhi,byflx,fylo,fyhi,bzflx,fzlo,fzhi,dx)
+        call difterm(tlo,thi,U,Ulo,Uhi,bxflx,fxlo,fxhi,byflx,fylo,fyhi,bzflx,fzlo,fzhi,dxinv)
+
+        ! Note that fluxes are on faces.  So don't double count!
+        if (thi(1) .ne. hi(1)) fxhi(1) = fxhi(1) - 1
+        if (thi(2) .ne. hi(2)) fyhi(2) = fyhi(2) - 1
+        if (thi(3) .ne. hi(3)) fzhi(3) = fzhi(3) - 1
+
+        do n=1,NVAR
+           do    k=fxlo(3),fxhi(3)
+              do j=fxlo(2),fxhi(2)
+              do i=fxlo(1),fxhi(1)
+                 xflx(i,j,k,n) = bxflx(i,j,k,n)
+              end do
+              end do
+           end do
+
+           do    k=fylo(3),fyhi(3)
+              do j=fylo(2),fyhi(2)
+              do i=fylo(1),fyhi(1)
+                 yflx(i,j,k,n) = byflx(i,j,k,n)
+              end do
+              end do
+           end do
+
+           do    k=fzlo(3),fzhi(3)
+              do j=fzlo(2),fzhi(2)
+              do i=fzlo(1),fzhi(1)
+                 zflx(i,j,k,n) = bzflx(i,j,k,n)
+              end do
+              end do
+           end do
+        end do
+
+        deallocate(bxflx,byflx,bzflx)
+
+     end do
+     end do
+  end do
+
+  !$omp do
+  do n=1, NVAR
+     do    k=lo(3),hi(3)
+        do j=lo(2),hi(2)
+        do i=lo(1),hi(1)
+           dUdt(i,j,k,n) = dxinv(1)*(xflx(i,j,k,n)-xflx(i+1,j,k,n)) &
+                +          dxinv(2)*(yflx(i,j,k,n)-yflx(i,j+1,k,n)) &
+                +          dxinv(3)*(zflx(i,j,k,n)-zflx(i,j,k+1,n))
+        end do
+        end do
+     end do
+  end do
+  !$omp end do
+
+  if (gravity .ne. 0.d0) then
+     !$omp do collapse(2)
+     do    k=lo(3),hi(3)
+        do j=lo(2),hi(2)
+        do i=lo(1),hi(1)
+           dUdt(i,j,k,UMZ  ) = dUdt(i,j,k,UMZ  ) + U(i,j,k,URHO)*gravity
+           dUdt(i,j,k,UEDEN) = dUdt(i,j,k,UEDEN) + U(i,j,k,UMZ )*gravity
+        end do
+        end do
+     end do
+     !$omp end do
+  end if
+  
+  !$omp end parallel
 
 end subroutine rns_dudt
 
