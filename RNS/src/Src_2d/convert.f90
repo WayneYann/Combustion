@@ -34,7 +34,7 @@ contains
 
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
-             uc(i,j) = b*(ua(i-1,j-1)+ua(i+1,j-1)+ua(i-1,j+1)+ua(i+1,j+1)) &
+             uc(i,j) = b*(ua(i,j-1)+ua(i-1,j)+ua(i+1,j)+ua(i,j+1)) &
                   + sevenSixth*ua(i,j)
           end do
        end do
