@@ -1,11 +1,23 @@
 !
 ! BDF (backward differentiation formula) time-stepping routines.
 !
-! 
+! See
+!
+!   1. VODE: A variable-coefficient ODE solver; Brown, Byrne, and
+!      Hindmarsh; SIAM J. Sci. Stat. Comput., vol. 10, no. 5, pp.
+!      1035-1051, 1989.
+!
+!   2. An alternative implementation of variable step-size multistep
+!      formulas for stiff ODES; Jackson and Sacks-Davis; ACM
+!      Trans. Math. Soft., vol. 6, no. 3, pp. 295-318, 1980.
+!
+!   3. A polyalgorithm for the numerical solution of ODEs; Byrne and
+!      Hindmarsh; ACM Trans. Math. Soft., vol. 1, no. 1, pp. 71-96,
+!      1975.
 !
 
-module bdf_module
-  use bdf_params_module
+module bdf
+  use bdf_params
   implicit none
 
   integer, parameter  :: dp   = kind(1.d0)
@@ -29,7 +41,7 @@ module bdf_module
 
      procedure(f_proc), pointer, nopass :: f
      procedure(J_proc), pointer, nopass :: J
-     type(bdf_params) :: ctx
+     type(bdf_ctx) :: ctx
 
      real(dp) :: dt                       ! current time step
      real(dp) :: dt_nwt                   ! dt used when building newton iteration matrix
@@ -37,6 +49,7 @@ module bdf_module
      integer  :: n                        ! current step
      integer  :: age                      ! age of jacobian
      integer  :: max_age                  ! maximum age of jacobian
+     integer  :: k_age                    ! number of steps taken at current order
 
      real(dp), pointer :: rtol(:)         ! realtive tolerances
      real(dp), pointer :: atol(:)         ! absolute tolerances
@@ -65,31 +78,33 @@ module bdf_module
      ! counters
      integer :: nfe                       ! number of function evaluations
      integer :: nje                       ! number of jacobian evaluations
+     integer :: nit                       ! number of non-linear solver iterations
+     integer :: nse                       ! number of non-linear solver errors
 
   end type bdf_ts
 
   interface
      subroutine f_proc(neq, y, t, yd, ctx)
-       import dp, bdf_params
+       import dp, bdf_ctx
        integer,          intent(in)  :: neq
        real(dp),         intent(in)  :: y(neq), t
        real(dp),         intent(out) :: yd(neq)
-       type(bdf_params), intent(in)  :: ctx
+       type(bdf_ctx), intent(in)  :: ctx
      end subroutine f_proc
 
      subroutine J_proc(neq, y, t, J, ctx)
-       import dp, bdf_params
+       import dp, bdf_ctx
        integer,          intent(in)  :: neq
        real(dp),         intent(in)  :: y(neq), t
        real(dp),         intent(out) :: J(neq, neq)
-       type(bdf_params), intent(in)  :: ctx
+       type(bdf_ctx), intent(in)  :: ctx
      end subroutine J_proc
   end interface
 
-  private :: &
-       nordsieck_update_coeffs, &
-       local_error_coeff, alpha0, alphahat0, &
-       ewts, norm, eye, eye_r, eye_i, factorial
+  ! private :: &
+!       nordsieck_update_coeffs, &
+       ! local_error_coeff, alpha0, alphahat0, &
+       ! ewts, norm, eye, eye_r, eye_i, factorial
 
   interface eye
      module procedure eye_r
@@ -110,16 +125,18 @@ contains
 
     include 'LinAlg.inc'
 
-    integer  :: i, j, k, iter, info, solver_failures
+    integer  :: i, j, k, iter, info, nse
     real(dp) :: c, dt_adj, error, eta
 
     logical :: rebuild
     logical :: verbose = .true.
 
-    solver_failures = 0
+    ts%nfe = 0
+    ts%nje = 0
+    ts%nit = 0
+    ts%nse = 0
 
-    ts%nfe  = 0
-    ts%nje  = 0
+    nse = 0
 
     ts%y  = y0
     ts%dt = dt0
@@ -148,6 +165,8 @@ contains
           ts%z(:,1) = ts%dt * ts%yd
 
           call local_error_coeff(ts)
+
+          ts%k_age = 0
        end if
 
        !
@@ -196,15 +215,15 @@ contains
           ! solve using factorized iteration matrix
           call ts%f(neq, ts%y, ts%t(0), ts%yd, ts%ctx)
           ts%nfe = ts%nfe + 1
+          ts%nit = ts%nit + 1
 
           c    = 2 * ts%dt_nwt / (dt_adj + ts%dt_nwt)
-          ts%b = -c * (ts%y - dt_adj * ts%yd - ts%rhs)
+          ts%b = c * (ts%rhs - ts%y + dt_adj * ts%yd)
           call dgesl(ts%P, neq, neq, ts%ipvt, ts%b, 0)
 
           ts%e = ts%e + ts%b
           if (norm(ts%b, ts%ewt) < one) exit
           ts%y = ts%z0(:,0) + ts%e
-
        end do
 
        ts%age = ts%age + 1
@@ -215,7 +234,7 @@ contains
        !
 
        ! if solver failed many times, bail...
-       if (iter >= ts%max_iters .and. solver_failures > 7) then
+       if (iter >= ts%max_iters .and. nse > 7) then
           ! XXX: signal an error of some kind
           stop "BDF SOLVER FAILED LOTS OF TIMES IN A ROW"
        end if
@@ -223,15 +242,17 @@ contains
        ! if solver failed to converge, shrink dt and try again
        if (iter >= ts%max_iters) then
           rebuild = .true.
-          solver_failures = solver_failures + 1
+          ts%nse = ts%nse + 1
+          nse    = nse + 1
           eta = 0.25d0
           call rescale_timestep(ts, eta)
           if (verbose) print *, 'BDF: solver failed'
           cycle
        else
-          solver_failures = 0
+          nse = 0
        end if
 
+       ! this isn't quite right... the error coeff depends on the t array...
        error = ts%error_coeff * norm(ts%e, ts%ewt)
 
        ! if local error is fairly large, shrink dt and try again
@@ -265,6 +286,13 @@ contains
        end if
 
        !
+       ! adjust order
+       !
+
+       ! XXX
+
+
+       !
        ! final adjustments to time step...
        !
 
@@ -272,7 +300,7 @@ contains
 
     end do
 
-    if (verbose) print *, 'BDF: done    : ', ts%n, k, ts%nfe, ts%nje
+    if (verbose) print *, 'BDF: done    : ', ts%n, k, ts%nfe, ts%nje, ts%nit, ts%nse
     y1 = ts%y
 
   end subroutine bdf_advance
@@ -320,18 +348,12 @@ contains
   !
   subroutine nordsieck_update_coeffs(ts)
     type(bdf_ts), intent(inout) :: ts
-    ! integer,  intent(in)  :: k
-    ! real(dp), intent(in)  :: t(0:k)
-    ! real(dp), intent(out) :: l(0:k)
-
     integer :: j
- 
     ts%l(0) = 1
     ts%l(1) = xi_j(ts%k, ts%t, 1)
     do j = 2, ts%k
        ts%l = ts%l + eoshift(ts%l, -1) / xi_j(ts%k, ts%t, j)
     end do
-
   contains
 
     !
@@ -388,7 +410,7 @@ contains
   end subroutine nordsieck_update_coeffs
 
   !
-  ! Compute local error coefficient.
+  ! Return error coefficient (same order).
   !
   ! See the Est_n(k) equation in Jackson and Sacks-Davis (1980),
   ! section 3, between equations 3.8 and 3.9.  This is the coefficient
@@ -436,13 +458,13 @@ contains
   ! function bdf_estimate_dt(ts, f, y0, t0, t1, ctx) result(dt)
   !   type(bdf_ts),     intent(inout) :: ts
   !   real(dp),         intent(in)    :: y0(:), t0, t1
-  !   type(bdf_params), intent(in) :: ctx
+  !   type(bdf_ctx), intent(in) :: ctx
   !   interface 
   !      subroutine f(y, t, yd, ctx)
-  !        import dp, bdf_params
+  !        import dp, bdf_ctx
   !        real(dp), intent(in)  :: y(:), t
   !        real(dp), intent(out) :: yd(:)
-  !        type(bdf_params), intent(in) :: ctx
+  !        type(bdf_ctx), intent(in) :: ctx
   !      end subroutine f
   !   end interface
 
@@ -596,4 +618,4 @@ contains
     end if
   end function factorial
 
-end module bdf_module
+end module bdf
