@@ -278,6 +278,7 @@ RNS::read_params ()
     pp.query("plot_dYdt"           , plot_dYdt           );
     pp.query("plot_heatRelease"    , plot_heatRelease    );
     pp.query("plot_fuelConsumption", plot_fuelConsumption);
+    pp.query("plot_primplus"       , plot_primplus);
 
     pp.query("job_name",job_name);  
 

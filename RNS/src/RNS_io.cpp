@@ -170,96 +170,99 @@ RNS::setPlotVariables ()
 	}
     }
 
-    plot_primplus = 0;
-
-    if (plot_magvel)
+    if (plot_primplus)
     {
-	plot_primplus = 1;
-	icomp_magvel = inext;
-	inext++;
-	plot_names.push_back("magvel");
-    }
+	plot_primplus = 0;
 
-    if (plot_Mach)
-    {
-	plot_primplus = 1;
-	icomp_Mach = inext;
-	inext++;
-	plot_names.push_back("Mach");
-    }
-
-    if (plot_divu)
-    {
-	plot_primplus = 1;
-	icomp_divu = inext;
-	inext++;
-	plot_names.push_back("divu");
-    }
-
-#if (BL_SPACEDIM >= 2)
-    if (plot_magvort)
-    {
-	plot_primplus = 1;
-	icomp_magvort = inext;
-	inext++;
-	plot_names.push_back("magvort");
-    }
-#endif
-
-    if (plot_X)
-    {
-	plot_primplus = 1;
-	icomp_X = inext;
-	inext += NumSpec;
-	for (int i=0; i<NumSpec; i++)
-	{
-	    plot_names.push_back("X(" + spec_names[i] + ")");
-	}	
-    }
-
-    if (plot_omegadot)
-    {
-	plot_primplus = 1;
-	icomp_omegadot = inext;
-	inext += NumSpec;
-	for (int i=0; i<NumSpec; i++)
-	{
-	    plot_names.push_back("rho*omgdot(" + spec_names[i] + ")");
-	}	
-    }
-
-    if (plot_dYdt)
-    {
-	plot_primplus = 1;
-	icomp_dYdt = inext;
-	inext += NumSpec;
-	for (int i=0; i<NumSpec; i++)
-	{
-	    plot_names.push_back("Ydot(" + spec_names[i] + ")");
-	}		
-    }
-
-    if (plot_heatRelease)
-    {
-	plot_primplus = 1;
-	icomp_heatRelease = inext;
-	inext++;
-	plot_names.push_back("HeatRelease");	
-    }
-
-    if (plot_fuelConsumption)
-    {
-	if (fuelID >= 0)
+	if (plot_magvel)
 	{
 	    plot_primplus = 1;
-	    icomp_fuelConsumption = inext;
+	    icomp_magvel = inext;
 	    inext++;
-	    plot_names.push_back("FuelConsumptionRate");
+	    plot_names.push_back("magvel");
 	}
-	else
+	
+	if (plot_Mach)
 	{
+	    plot_primplus = 1;
+	    icomp_Mach = inext;
+	    inext++;
+	    plot_names.push_back("Mach");
+	}
+	
+	if (plot_divu)
+	{
+	    plot_primplus = 1;
+	    icomp_divu = inext;
+	    inext++;
+	    plot_names.push_back("divu");
+	}
+	
+#if (BL_SPACEDIM >= 2)
+	if (plot_magvort)
+	{
+	    plot_primplus = 1;
+	    icomp_magvort = inext;
+	    inext++;
+	    plot_names.push_back("magvort");
+	}
+#endif
+	
+	if (plot_X)
+	{
+	    plot_primplus = 1;
+	    icomp_X = inext;
+	    inext += NumSpec;
+	    for (int i=0; i<NumSpec; i++)
+	    {
+		plot_names.push_back("X(" + spec_names[i] + ")");
+	    }	
+	}
+	
+	if (plot_omegadot)
+	{
+	    plot_primplus = 1;
+	    icomp_omegadot = inext;
+	    inext += NumSpec;
+	    for (int i=0; i<NumSpec; i++)
+	    {
+		plot_names.push_back("rho*omgdot(" + spec_names[i] + ")");
+	    }	
+	}
+	
+	if (plot_dYdt)
+	{
+	    plot_primplus = 1;
+	    icomp_dYdt = inext;
+	    inext += NumSpec;
+	    for (int i=0; i<NumSpec; i++)
+	    {
+		plot_names.push_back("Ydot(" + spec_names[i] + ")");
+	    }		
+	}
+	
+	if (plot_heatRelease)
+	{
+	    plot_primplus = 1;
+	    icomp_heatRelease = inext;
+	    inext++;
+	    plot_names.push_back("HeatRelease");	
+	}
+	
+	if (plot_fuelConsumption)
+	{
+	    if (fuelID >= 0)
+	    {
+		plot_primplus = 1;
+		icomp_fuelConsumption = inext;
+		inext++;
+		plot_names.push_back("FuelConsumptionRate");
+	    }
+	    else
+	    {
 //	    BoxLib::Warning("plot_fuelConsumption is true, but fuelName is not set correctly.");
-	    plot_fuelConsumption = 0;
+		plot_fuelConsumption = 0;
+	    }
 	}
     }
 }
