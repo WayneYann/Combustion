@@ -52,6 +52,8 @@ module bdf
      integer  :: max_age                  ! maximum age of jacobian
      integer  :: k_age                    ! number of steps taken at current order
 
+     real(dp) :: tq(-1:1)                 ! error coefficients (test quality) for orders k-1, k, k+1
+
      real(dp), pointer :: rtol(:)         ! realtive tolerances
      real(dp), pointer :: atol(:)         ! absolute tolerances
 
@@ -73,8 +75,6 @@ module bdf
 
      integer,  pointer :: ipvt(:)         ! pivots
      integer,  pointer :: A(:,:)          ! pascal matrix
-
-     real(dp) :: error_coeff
 
      ! counters
      integer :: nfe                       ! number of function evaluations
@@ -174,8 +174,6 @@ contains
           ts%z(:,0) = ts%y
           ts%z(:,1) = ts%dt * ts%yd
 
-          call local_error_coeff(ts)
-
           ts%k_age = 0
        end if
 
@@ -263,7 +261,7 @@ contains
        end if
 
        ! this isn't quite right... the error coeff depends on the t array...
-       error = ts%error_coeff * norm(ts%e, ts%ewt)
+       error = ts%tq(0) * norm(ts%e, ts%ewt)
 
        ! if local error is fairly large, shrink dt and try again
        if (error > one) then
@@ -342,13 +340,13 @@ contains
     end do
 
     call bdf_ts_update(ts)
-    call local_error_coeff(ts)
   end subroutine rescale_timestep
 
   !
-  ! Compute Nordsieck update coefficients l based on times t.
+  ! Compute Nordsieck update coefficients l and error coefficients (tq).
   !
-  ! See section 5, and in particular eqn. 5.2, of Jackson and Sacks-Davis (1980).
+  ! See section 5, and in particular eqn. 5.2, of Jackson and
+  ! Sacks-Davis (1980).
   !
   ! Note: 
   !
@@ -359,13 +357,42 @@ contains
   !
   subroutine bdf_ts_update(ts)
     type(bdf_ts), intent(inout) :: ts
-    integer :: j
-    ts%l    = 0
+    integer  :: j
+    real(dp) :: c
+
+    ts%l  = 0
+    ts%tq = 0
+
+    ! compute l vector
     ts%l(0) = 1
     ts%l(1) = xi_j(ts%k, ts%h, 1)
     do j = 2, ts%k
        ts%l = ts%l + eoshift(ts%l, -1) / xi_j(ts%k, ts%h, j)
     end do
+
+    ! compute error coefficient: k-1
+    c = 1
+    do j = 1, ts%k-1
+       c = c * xi_j(ts%k, ts%h, j)
+    end do
+    ts%tq(-1) = c / xi_j(ts%k-1, ts%h, 1)
+
+    ! compute error coefficient: k
+    c = one - alphahat0(ts%k, ts%h) + alpha0(ts%k)
+    c = abs(alpha0(ts%k) * ( ts%k + one / c ))
+    ts%tq(0) = one / c
+
+    ! compute error coefficient: k+1
+    c = 1
+    do j = 2, ts%k
+       c = c * sum(ts%h(0:j-1))/sum(ts%h(1:j-1))
+    end do
+    c = 1 + c
+    c = (ts%k+2) * xi_j(ts%k+1, ts%h, 1) * c
+    print *, c
+    ts%tq(1) = -xi_j(ts%k, ts%h, ts%k+1) / c
+
+    print *, xi_j(ts%k+1, ts%h, 1), xi_j(ts%k, ts%h, ts%k+1)
 
   contains
 
@@ -423,21 +450,6 @@ contains
       end do
     end function qd
   end subroutine bdf_ts_update
-
-  !
-  ! Return error coefficient (same order).
-  !
-  ! See the Est_n(k) equation in Jackson and Sacks-Davis (1980),
-  ! section 3, between equations 3.8 and 3.9.  This is the coefficient
-  ! that is used in VODE.
-  !
-  subroutine local_error_coeff(ts)
-    type(bdf_ts), intent(inout) :: ts
-    real(dp) :: c
-    c = one - alphahat0(ts%k, ts%h) + alpha0(ts%k)
-    c = abs(alpha0(ts%k) * ( ts%k + one / c ))
-    ts%error_coeff = one / c
-  end subroutine local_error_coeff
 
   !
   ! Return $\alpha_0$.

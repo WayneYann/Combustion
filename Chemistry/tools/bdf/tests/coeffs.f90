@@ -45,6 +45,11 @@ program test
   print *, 'l', ts%l(0:1)
   call assert(all(ts%l(0:1) == [ 1.d0, 1.d0 ]), "error in l")
 
+  ts%h = 1
+  call bdf_ts_update(ts)
+  print *, 'tq', ts%tq
+  call assert(all(abs(ts%tq - [ 1.d0, 0.5d0, 0.2222222d0]) < tol), "error in l")
+
   print *, "====> order 2"
   ts%k = 2
   call random_number(ts%h)
@@ -59,6 +64,7 @@ program test
   print *, 'l', ts%l(0:3)
   v(0:3) = [ 1.d0, 1.8333333333333d0, 1.d0, 0.1666666666666d0 ]
   call assert(all(abs(ts%l(0:3) - v(0:3)) < tol), "error in l")
+  
 
   ts%h(1) = 4
   call bdf_ts_update(ts)
