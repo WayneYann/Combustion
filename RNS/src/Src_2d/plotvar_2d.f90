@@ -32,10 +32,9 @@ subroutine rns_ctoprim(lo, hi, &
 
   !$omp parallel do private(n)
   do n=1,NVAR
-     call cellavg2cc_2d(lo, hi, cons(:,:,n), clo(1:2), chi(1:2), prim(:,:,n), plo, phi)
+     call cellavg2cc_2d(lo, hi, cons(:,:,n), clo(1:2), chi(1:2), prim(:,:,n), plo(1:2), phi(1:2))
   end do
   !$omp end parallel do
-
 
   blocksize(1) = xblksize
   blocksize(2) = yblksize

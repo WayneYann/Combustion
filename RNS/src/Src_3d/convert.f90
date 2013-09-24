@@ -21,7 +21,7 @@ contains
           do i=lo(1),hi(1)
             uc(i,j,k) = b*(ua(i,j,k-1)+ua(i,j-1,k)+ua(i-1,j,k) &
                  +         ua(i+1,j,k)+ua(i,j+1,k)+ua(i,j,k+1)) &
-                 + 1.25d0*sevenSixth*ua(i,j)
+                 + 1.25d0*ua(i,j,k)
           end do
        end do
     end do
