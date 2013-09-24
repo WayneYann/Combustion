@@ -21,6 +21,8 @@ rns.gamma      =  1.6666666666666667
 rns.Treference =  0.0
 rns.do_density_ref = 1
 
+rns.blocksize =  8  8  8
+
 # >>>>>>>>>>>>>  BC FLAGS <<<<<<<<<<<<<<<<
 # 0 = Interior           3 = Symmetry
 # 1 = Inflow             4 = SlipWall

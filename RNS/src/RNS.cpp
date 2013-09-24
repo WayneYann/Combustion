@@ -121,7 +121,7 @@ std::vector<std::string> RNS::plot_names;
 
 std::string  RNS::job_name = "";
 
-int          RNS::blocksize[] = {D_DECL(2048,2048,2048)};
+std::vector<int> RNS::blocksize(BL_SPACEDIM, 2048);
 
 // this will be reset upon restart
 Real         RNS::previousCPUTimeUsed = 0.0;
@@ -280,6 +280,9 @@ RNS::read_params ()
     pp.query("plot_fuelConsumption", plot_fuelConsumption);
 
     pp.query("job_name",job_name);  
+
+    pp.queryarr("blocksize", blocksize);
+
 }
 
 RNS::RNS ()

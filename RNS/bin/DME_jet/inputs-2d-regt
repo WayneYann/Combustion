@@ -32,6 +32,8 @@ rns.flameTracName = H
 rns.do_flametrac_ref = 1
 rns.do_vorticity_ref = 1
 
+rns.blocksize =  8  8  8
+
 # >>>>>>>>>>>>>  BC FLAGS <<<<<<<<<<<<<<<<
 # 0 = Interior           3 = Symmetry
 # 1 = Inflow             4 = SlipWall
