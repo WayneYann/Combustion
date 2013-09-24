@@ -90,8 +90,8 @@ subroutine rns_initdata(level,time,lo,hi,nscal, &
   double precision state(state_l1:state_h1,state_l2:state_h2,state_l3:state_h3,NVAR)
   
   ! local variables
-  integer :: i, j, k, ncell_x, ncell_y
-  double precision :: xcen,ycen,zcen,ei,pres,presmid,pertheight, Y(2)
+  integer :: i, j, k
+  double precision :: xcen,ycen,r2d,zcen,ei,pres,presmid,pertheight, Y(2)
   double precision :: vx, vy, vz, ek
   double precision, parameter :: ZERO=0.d0, HALF=0.5d0, &
        PI = 3.141592653589793238462643383279502884197d0
@@ -118,9 +118,6 @@ subroutine rns_initdata(level,time,lo,hi,nscal, &
 
   if (prob_type .eq. 0) then
 
-     ncell_x = nint(L_x/delta(1))
-     ncell_y = nint(L_y/delta(2))
-
      presmid  = p0_base - rho_1*center(3)
 
      state(:,:,:,UMX)   = ZERO
@@ -130,9 +127,7 @@ subroutine rns_initdata(level,time,lo,hi,nscal, &
      do k = state_l3, state_h3
         zcen = (k+HALF)*delta(3)
 
-        do j = state_l2, state_h2
-           ycen = (j+HALF)*delta(2)
-           
+        do j = state_l2, state_h2           
            do i = state_l1, state_h1
               if (zcen .lt. center(3)) then
                  pres = p0_base - rho_1*zcen
@@ -149,12 +144,7 @@ subroutine rns_initdata(level,time,lo,hi,nscal, &
         zcen = (k+HALF)*delta(3)
 
         do j = state_l2, state_h2
-
-           if (j .lt. ncell_y/2) then
-              ycen = (j+HALF)*delta(2)
-           else
-              ycen = ((ncell_y-j-1)+HALF)*delta(2)
-           end if
+           ycen = (j+HALF)*delta(2)
 
            if (pertmag .gt. 0.0d0) then
               call random_number(r)
@@ -162,23 +152,15 @@ subroutine rns_initdata(level,time,lo,hi,nscal, &
            end if
 
            do i = state_l1, state_h1
-
-              if (i .lt. ncell_x/2) then
-                 xcen = (i+HALF)*delta(1)
-              else
-                 xcen = ((ncell_x-i-1)+HALF)*delta(1)
-              end if
+              xcen = (i+HALF)*delta(1)
 
               if (pertmag .gt. 0.0d0) then
                  call random_number(r)
                  xcen = xcen + pertmag*(r-0.5d0)*delta(1)
               end if
 
-              ! we explicitly make the perturbation symmetric here
-              ! -- this prevents the RT from bending.
-              pertheight = 0.01d0*0.25d0*( &
-                   cos(2.0d0*PI*xcen/L_x) + cos(2.0d0*PI*(L_x-xcen)/L_x) + &
-                   cos(2.0d0*PI*ycen/L_y) + cos(2.0d0*PI*(L_y-ycen)/L_y) ) + 0.5d0
+              r2d = min(sqrt((xcen-center(1))**2+(ycen-center(2))**2), 0.5d0*L_x)
+              pertheight = 0.5d0 - 0.01d0*cos(2.0d0*PI*r2d/L_x)
               state(i,j,k,URHO) = rho_1 + ((rho_2-rho_1)/2.0d0)* &
                    (1.d0+tanh((zcen-pertheight)/0.005d0))
 
