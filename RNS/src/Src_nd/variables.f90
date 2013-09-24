@@ -11,12 +11,16 @@ contains
     integer, intent(in) :: lo(3), hi(3), Qlo(3), Qhi(3), QVAR
     double precision, intent(inout) :: Q(Qlo(1):Qhi(1),Qlo(2):Qhi(2),Qlo(3):Qhi(3),QVAR)
 
-    integer :: i,j,k,n,iwrk
+    integer :: i,j,k,n,iwrk,pt_index(3)
     double precision :: rwrk, rhoInv, ek, ei, Yt(NSPEC), Xt(NSPEC), ht(NSPEC)
 
     do       k = lo(3),hi(3)
        do    j = lo(2),hi(2)
           do i = lo(1),hi(1)
+
+             pt_index(1) = i
+             pt_index(2) = j
+             pt_index(3) = k
 
              rhoInv = 1.d0/Q(i,j,k,QRHO)
 
@@ -38,7 +42,7 @@ contains
                 Yt(n) = Q(i,j,k,QFY+n-1)
              end do
 
-             call eos_get_T(Q(i,j,k,QTEMP), ei, Yt)
+             call eos_get_T(Q(i,j,k,QTEMP), ei, Yt, pt_index)
 
              call ckpy(Q(i,j,k,QRHO), Q(i,j,k,QTEMP), Yt, iwrk, rwrk, Q(i,j,k,qpres))
 

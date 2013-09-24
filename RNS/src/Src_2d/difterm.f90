@@ -22,8 +22,8 @@ contains
     double precision, intent(inout) :: fx(fxlo(1):fxhi(1),fxlo(2):fxhi(2),NVAR)
     double precision, intent(inout) :: fy(fylo(1):fyhi(1),fylo(2):fyhi(2),NVAR)
 
-    double precision, dimension(:,:,:), pointer ::  Uag => Null()
-    double precision, dimension(:,:,:), pointer :: dUag => Null()
+    double precision, dimension(:,:,:), pointer ::  Uag
+    double precision, dimension(:,:,:), pointer :: dUag
     double precision, allocatable, target ::  U1(:,:,:),  U2(:,:,:)
     double precision, allocatable, target :: dU1(:,:,:), dU2(:,:,:)
     double precision, allocatable :: Qc(:,:,:), Qf(:,:,:), dmom(:,:,:)

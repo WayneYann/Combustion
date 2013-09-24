@@ -106,6 +106,7 @@ contains
     call get_T_given_eY(e, Y, iwrk, rwrk, T, ierr)
     if (ierr .ne. 0) then
        print *, 'EOS: get_T failed, T, e, Y = ', T, e, Y
+       if (present(pt_index)) print *, ' i, j, k =', pt_index
        call flush(6)
        call bl_error("Error: eos_get_T")
     end if
