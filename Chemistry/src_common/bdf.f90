@@ -358,9 +358,9 @@ contains
   !   2. The step size h_n = t_n - t_{n-1}.
   !
   subroutine bdf_ts_update(ts)
-
     type(bdf_ts), intent(inout) :: ts
     integer :: j
+    ts%l    = 0
     ts%l(0) = 1
     ts%l(1) = xi_j(ts%k, ts%h, 1)
     do j = 2, ts%k
@@ -381,7 +381,7 @@ contains
       real(dp) :: xi, mu
 
       if (j == k) then
-         mu = -alpha0(k) / h(0) - qd(k, h) / q(k, h)
+         mu = -alpha0(k) / h(0) - qd(k-1, h) / q(k-1, h)
          xi = one / (mu * h(0))
       else
          xi = sum(h(0:j-1)) / h(0)
@@ -389,7 +389,7 @@ contains
     end function xi_j
 
     !
-    ! Return $q_{k-1}(t_n)$.
+    ! Return $q_{k}(t_n)$.
     !
     function q(k, h) result(r)
       integer,  intent(in) :: k
@@ -397,27 +397,30 @@ contains
       real(dp) :: r
       integer  :: j
       r = 1
-      if (k /= 1) then
-         do j = 1, k-1
+      if (k > 0) then
+         do j = 1, k
             r = r * sum(h(0:j-1))
          end do
       end if
     end function q
 
     !
-    ! Return $\dot{q}_{k-1}(t_n)$.
+    ! Return $\dot{q}_{k}(t_n)$.
     !
     function qd(k, h) result(r)
       integer,  intent(in) :: k
       real(dp), intent(in) :: h(0:k)
-      real(dp) :: r
-      integer  :: j
+      real(dp) :: r, a
+      integer  :: j, i
       r = 0
-      if (k /= 1) then
-         do j = 1, k-1
-            r = r + q(k, h) * sum(h(0:j-1))
+      do i = 1, k
+         a = 1
+         do j = 1, k
+            if (j == i) cycle
+            a = a * sum(h(0:j-1))
          end do
-      end if
+         r = r + a
+      end do
     end function qd
   end subroutine bdf_ts_update
 

@@ -22,38 +22,57 @@ contains
     type(bdf_ctx),    intent(in)  :: ctx
   end subroutine J
 end module feval
-
 program test
   use bdf
   use feval
 
+  double precision, parameter :: tol = 1.d-12
+
   type(bdf_ts)  :: ts
   type(bdf_ctx) :: ctx
   double precision :: rtol(neq), atol(neq)
-  double precision :: a
+  double precision :: a, v(0:6)
 
   rtol = 1
   atol = 1
 
   call bdf_ts_build(ts, neq, f, J, rtol, atol, max_order=6)
 
+  print *, "====> order 1"
   ts%k = 1
-  ts%h = 1
-
+  call random_number(ts%h)
   call bdf_ts_update(ts)
+  print *, 'l', ts%l(0:1)
+  call assert(all(ts%l(0:1) == [ 1.d0, 1.d0 ]), "error in l")
 
-  ! call assert(all(ts%l == [ ]), "error in l")
-  ! print *, ts%l
+  print *, "====> order 2"
+  ts%k = 2
+  call random_number(ts%h)
+  call bdf_ts_update(ts)
+  print *, 'l', ts%l(0:2)
+  call assert(all(ts%l(0:2) == [ 1.d0, 1.5d0, 0.5d0 ]), "error in l")
+
+  print *, "====> order 3"
+  ts%k = 3
+  ts%h = 1
+  call bdf_ts_update(ts)
+  print *, 'l', ts%l(0:3)
+  v(0:3) = [ 1.d0, 1.8333333333333d0, 1.d0, 0.1666666666666d0 ]
+  call assert(all(abs(ts%l(0:3) - v(0:3)) < tol), "error in l")
+
+  ts%h(1) = 4
+  call bdf_ts_update(ts)
+  print *, 'l', ts%l(0:3)
+  v(0:3) = [ 1.d0, 1.8333333333333d0, 0.96d0, 0.12666666666666d0 ]
+  call assert(all(abs(ts%l(0:3) - v(0:3)) < tol), "error in l")
   
+  print *, "====> order 5"
   ts%k = 5
-  ts%h = 0.1d0
-
+  ts%h = 1
   a = -2.2833333333333332d0
-  call assert(abs(alpha0(ts%k)         - a) < 1d-12, "error in alpha0")
-  call assert(abs(alphahat0(ts%k,ts%h) - a) < 1d-12, "error in alphahat0")
-
-  ! call nordsieck_update_coeffs(ts)
-  ! print *, ts%l
+  print *, 'alpha0, alphahat0', a
+  call assert(abs(alpha0(ts%k)         - a) < tol, "error in alpha0")
+  call assert(abs(alphahat0(ts%k,ts%h) - a) < tol, "error in alphahat0")
 
   call bdf_ts_destroy(ts)
 
