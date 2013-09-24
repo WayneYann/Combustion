@@ -43,6 +43,7 @@ module bdf
      procedure(J_proc), pointer, nopass :: J
      type(bdf_ctx) :: ctx
 
+     real(dp) :: t                        ! current time
      real(dp) :: dt                       ! current time step
      real(dp) :: dt_nwt                   ! dt used when building newton iteration matrix
      integer  :: k                        ! current order
@@ -61,7 +62,7 @@ module bdf
      ! work-spaces
      real(dp), pointer :: z(:,:)          ! nordsieck histroy array, indexed as (dof, n)
      real(dp), pointer :: z0(:,:)         ! nordsieck predictor array
-     real(dp), pointer :: t(:)            ! times, t = [ t_n, t_{n-1}, ..., t_{n-k} ]
+     real(dp), pointer :: h(:)            ! time steps, h = [ h_n, h_{n-1}, ..., h_{n-k} ]
      real(dp), pointer :: l(:)            ! predictor/corrector update coefficients
      real(dp), pointer :: y(:)            ! current y
      real(dp), pointer :: yd(:)           ! current \dot{y}
@@ -111,6 +112,14 @@ module bdf
      module procedure eye_i
   end interface
 
+  interface build
+     module procedure bdf_ts_build
+  end interface build
+
+  interface destroy
+     module procedure bdf_ts_destroy
+  end interface destroy
+
 contains
 
   !
@@ -142,9 +151,10 @@ contains
     ts%dt = dt0
     ts%n  = 1
 
+
     if (.not. restart) ts%age = 666
        
-
+    ts%t = t0
     do k = 1, 666666666
 
        if (ts%n > ts%max_steps) exit
@@ -155,10 +165,10 @@ contains
 
        if (k == 1 .and. .not. restart) then
           ts%k = 1
-          ts%t(0:1) = [ t0 + ts%dt, t0 ]
-          call nordsieck_update_coeffs(ts)
+          ts%h = ts%dt
+          call bdf_ts_update(ts)
 
-          call ts%f(neq, ts%y, ts%t(0), ts%yd, ts%ctx)
+          call ts%f(neq, ts%y, ts%t, ts%yd, ts%ctx)
           ts%nfe = ts%nfe + 1
 
           ts%z(:,0) = ts%y
@@ -202,7 +212,7 @@ contains
           if (rebuild) then
              ! build iteration matrix and factor
              call eye(ts%P)
-             call ts%J(neq, ts%y, ts%t(0), ts%Jac, ts%ctx)
+             call ts%J(neq, ts%y, ts%t, ts%Jac, ts%ctx)
              ts%P = ts%P - dt_adj * ts%Jac
              call dgefa(ts%P, neq, neq, ts%ipvt, info)
 
@@ -213,7 +223,7 @@ contains
           end if
 
           ! solve using factorized iteration matrix
-          call ts%f(neq, ts%y, ts%t(0), ts%yd, ts%ctx)
+          call ts%f(neq, ts%y, ts%t, ts%yd, ts%ctx)
           ts%nfe = ts%nfe + 1
           ts%nit = ts%nit + 1
 
@@ -270,10 +280,11 @@ contains
           ts%z(:,i) = ts%z0(:,i) + ts%e * ts%l(i)
        end do
 
-       if (ts%t(0) >= t1) exit
+       if (ts%t >= t1) exit
 
-       ts%t    = eoshift(ts%t, -1)
-       ts%t(0) = ts%t(1) + ts%dt
+       ts%h    = eoshift(ts%h, -1)
+       ts%h(0) = ts%dt
+       ts%t    = ts%t + ts%dt
        ts%n    = ts%n + 1
 
        !
@@ -324,13 +335,13 @@ contains
     eta = min(eta, ts%eta_max)
 
     ts%dt   = eta * ts%dt
-    ts%t(0) = ts%t(1) + ts%dt
+    ts%h(0) = ts%dt
 
     do i = 1, ts%k
        ts%z(:,i) = eta**i * ts%z(:,i)
     end do
 
-    call nordsieck_update_coeffs(ts)
+    call bdf_ts_update(ts)
     call local_error_coeff(ts)
   end subroutine rescale_timestep
 
@@ -346,14 +357,16 @@ contains
   ! 
   !   2. The step size h_n = t_n - t_{n-1}.
   !
-  subroutine nordsieck_update_coeffs(ts)
+  subroutine bdf_ts_update(ts)
+
     type(bdf_ts), intent(inout) :: ts
     integer :: j
     ts%l(0) = 1
-    ts%l(1) = xi_j(ts%k, ts%t, 1)
+    ts%l(1) = xi_j(ts%k, ts%h, 1)
     do j = 2, ts%k
-       ts%l = ts%l + eoshift(ts%l, -1) / xi_j(ts%k, ts%t, j)
+       ts%l = ts%l + eoshift(ts%l, -1) / xi_j(ts%k, ts%h, j)
     end do
+
   contains
 
     !
@@ -361,33 +374,32 @@ contains
     !
     ! Note that $\xi_k$ is actually $\xi_k^*$.
     !
-    function xi_j(k, t, j) result(xi)
+    function xi_j(k, h, j) result(xi)
       integer,  intent(in) :: k, j
-      real(dp), intent(in) :: t(0:k)
+      real(dp), intent(in) :: h(0:k)
 
-      real(dp) :: xi, h, mu
+      real(dp) :: xi, mu
 
-      h = t(0) - t(1)
       if (j == k) then
-         mu = -alpha0(k) / h - qd(k, t) / q(k, t)
-         xi = one / (mu * h)
+         mu = -alpha0(k) / h(0) - qd(k, h) / q(k, h)
+         xi = one / (mu * h(0))
       else
-         xi = (t(0) - t(j)) / h
+         xi = sum(h(0:j-1)) / h(0)
       end if
     end function xi_j
 
     !
     ! Return $q_{k-1}(t_n)$.
     !
-    function q(k, t) result(r)
+    function q(k, h) result(r)
       integer,  intent(in) :: k
-      real(dp), intent(in) :: t(0:k)
+      real(dp), intent(in) :: h(0:k)
       real(dp) :: r
       integer  :: j
       r = 1
       if (k /= 1) then
          do j = 1, k-1
-            r = r * (t(0) - t(j))
+            r = r * sum(h(0:j-1))
          end do
       end if
     end function q
@@ -395,19 +407,19 @@ contains
     !
     ! Return $\dot{q}_{k-1}(t_n)$.
     !
-    function qd(k, t) result(r)
+    function qd(k, h) result(r)
       integer,  intent(in) :: k
-      real(dp), intent(in) :: t(0:k)
+      real(dp), intent(in) :: h(0:k)
       real(dp) :: r
       integer  :: j
       r = 0
       if (k /= 1) then
          do j = 1, k-1
-            r = r + q(k, t) * (t(0) - t(j))
+            r = r + q(k, h) * sum(h(0:j-1))
          end do
       end if
     end function qd
-  end subroutine nordsieck_update_coeffs
+  end subroutine bdf_ts_update
 
   !
   ! Return error coefficient (same order).
@@ -419,7 +431,7 @@ contains
   subroutine local_error_coeff(ts)
     type(bdf_ts), intent(inout) :: ts
     real(dp) :: c
-    c = one - alphahat0(ts%k, ts%t) + alpha0(ts%k)
+    c = one - alphahat0(ts%k, ts%h) + alpha0(ts%k)
     c = abs(alpha0(ts%k) * ( ts%k + one / c ))
     ts%error_coeff = one / c
   end subroutine local_error_coeff
@@ -440,14 +452,14 @@ contains
   !
   ! Return $\hat{\alpha}_{n,0}$.
   !
-  function alphahat0(k, t) result(a0)
+  function alphahat0(k, h) result(a0)
     integer,  intent(in) :: k
-    real(dp), intent(in) :: t(0:k)
+    real(dp), intent(in) :: h(0:k)
     real(dp) :: a0
     integer  :: i
     a0 = -1
     do i = 2, k
-       a0 = a0 - (t(0) - t(1))/(t(0) - t(i))
+       a0 = a0 - h(0) / sum(h(0:i-1))
     end do
   end function alphahat0
 
@@ -539,7 +551,7 @@ contains
     allocate(ts%z(neq, 0:max_order))
     allocate(ts%z0(neq, 0:max_order))
     allocate(ts%l(0:max_order))
-    allocate(ts%t(0:max_order))
+    allocate(ts%h(0:max_order))
     allocate(ts%A(0:max_order, 0:max_order))
     allocate(ts%P(neq, neq))
     allocate(ts%Jac(neq, neq))
@@ -583,7 +595,7 @@ contains
 
   subroutine bdf_ts_destroy(ts)
     type(bdf_ts), intent(inout) :: ts
-    deallocate(ts%z,ts%z0,ts%t,ts%l,ts%A,ts%rtol,ts%atol,ts%P,ts%Jac,ts%y,ts%yd,ts%rhs,ts%e,ts%ewt,ts%b,ts%ipvt)
+    deallocate(ts%z,ts%z0,ts%h,ts%l,ts%A,ts%rtol,ts%atol,ts%P,ts%Jac,ts%y,ts%yd,ts%rhs,ts%e,ts%ewt,ts%b,ts%ipvt)
   end subroutine bdf_ts_destroy
 
   !
