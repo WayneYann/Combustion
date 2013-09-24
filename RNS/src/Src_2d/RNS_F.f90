@@ -15,11 +15,11 @@ subroutine rns_dudt (lo, hi, &
   integer, intent(in) :: Ut_l1, Ut_h1, Ut_l2, Ut_h2
   integer, intent(in) :: xf_l1, xf_h1, xf_l2, xf_h2
   integer, intent(in) :: yf_l1, yf_h1, yf_l2, yf_h2
-  double precision, intent(in)    ::    U( U_l1: U_h1, U_l2: U_h2,NVAR)
-  double precision, intent(inout) :: dUdt(Ut_l1:Ut_h1,Ut_l2:Ut_h2,NVAR)
-  double precision                :: xflx(xf_l1:xf_h1,xf_l2:xf_h2,NVAR)
-  double precision                :: yflx(yf_l1:yf_h1,yf_l2:yf_h2,NVAR)
-  double precision, intent(in) :: dx(2)
+  double precision, intent(in)  ::    U( U_l1: U_h1, U_l2: U_h2,NVAR)
+  double precision, intent(out) :: dUdt(Ut_l1:Ut_h1,Ut_l2:Ut_h2,NVAR)
+  double precision, intent(out) :: xflx(xf_l1:xf_h1,xf_l2:xf_h2,NVAR)
+  double precision, intent(out) :: yflx(yf_l1:yf_h1,yf_l2:yf_h2,NVAR)
+  double precision, intent(in)  :: dx(2)
 
   integer :: Ulo(2), Uhi(2), fxlo(2), fxhi(2), fylo(2), fyhi(2), tlo(2), thi(2)
   integer :: i, j, n, blocksize(2), ib, jb, nb(2)
@@ -246,12 +246,12 @@ subroutine rns_enforce_consistent_Y(lo,hi,U,U_l1,U_l2,U_h1,U_h2)
            
            if (U(i,j,n) .lt. 0.d0) then
               
-              x = U(i,j,n)/U(i,j,URHO)
+              x = U(i,j,n)*rhoInv
               
               ! ! Here we only print the bigger negative values
               ! if (x .lt. -1.d-2) then
               !    print *,'Correcting negative species   ',n-UFS+1
-              !    print *,'   at cell (i)                ',i
+              !    print *,'   at cell (i,j)              ',i,j
               !    print *,'Negative (rho*Y) is           ',U(i,j,n)
               !    print *,'Negative      Y  is           ',x
               !    print *,'Filling from dominant species ',int_dom_spec-UFS+1
@@ -435,9 +435,7 @@ end subroutine rns_enforce_consistent_Y
            
            e = u(i,j,UEDEN)*rhoInv - 0.5d0*(vx**2+vy**2)
            
-           if (NSPEC > 0) then
-              Y = u(i,j,UFS:UFS+NSPEC-1)*rhoInv
-           end if
+           Y = u(i,j,UFS:UFS+NSPEC-1)*rhoInv
            
            call eos_get_c(c,u(i,j,URHO),T,Y)
 

@@ -9,7 +9,7 @@ module probdata_module
   ! RT parameters
   double precision, save :: rho_1, rho_2
   double precision, save :: p0_base
-  double precision, save :: L_x
+  double precision, save :: L_x, L_y
   double precision, save :: pertmag
 
 
