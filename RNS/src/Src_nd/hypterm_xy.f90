@@ -57,7 +57,7 @@ contains
        do i=lo(1)-3,hi(1)+3
           U0y = Ubase(i,lo(2)-1:hi(2)+1,k,:)
           call reconstruct(lo(2),hi(2), & 
-               Uzlo(2),Uzhi(2),   &  ! for Uz
+               Uzlo(2),Uzhi(2),   &  ! for input data array
                lo(2)  ,  hi(2)+1, &  ! for UL & UR
                lo(2)  ,  hi(2),   &  ! for UG1 & UG2
                lo(2)-1,  hi(2)+1, &  ! for U0
@@ -80,7 +80,7 @@ contains
              U0x = Ubase(lo(1)-1:hi(1)+1,j,k,:)
 
              call reconstruct(lo(1),hi(1),  &
-                  lo(1)-3,hi(1)+3,  &  ! for UU
+                  lo(1)-3,hi(1)+3,  &  ! for input data array
                   lo(1)  ,hi(1)+1,  &  ! for UL & UR
                   0,0,              &  ! UG1 & UG2 are not present
                   lo(1)-1,hi(1)+1,  &  ! for U0
@@ -107,7 +107,7 @@ contains
        !
        do j=lo(2), hi(2)+1
           call reconstruct(lo(1),hi(1), &
-               lo(1)-3,hi(1)+3, &  ! for ULy
+               lo(1)-3,hi(1)+3, &  ! for input data array
                0,0,             &  ! UL & UR are not present
                lo(1)  ,hi(1),   &  ! for UG1 & UG2
                lo(1)-1,hi(1)+1, &  ! for U0
@@ -118,7 +118,7 @@ contains
 
           U0x = Ubase(lo(1)-1:hi(1)+1,j,k,:)
           call reconstruct(lo(1),hi(1), &
-               lo(1)-3,hi(1)+3, &  ! for URy
+               lo(1)-3,hi(1)+3, &  ! for input data array
                0,0,             &  ! UL & UR are not present
                lo(1)  ,hi(1),   &  ! for UG1 & UG2
                lo(1)-1,hi(1)+1, &  ! for U0
