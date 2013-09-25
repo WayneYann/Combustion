@@ -48,12 +48,12 @@ contains
     call hypterm_xy(1.d0,tlo,thi,U,tUlo,tUhi,fx,tfxlo,tfxhi,fy,tfylo,tfyhi,tdx,tlo,thi)
 
     if (difmag .gt. 0.0d0) then
-       call add_numerical_viscosity(lo,hi,U,Ulo,Uhi,fx,fxlo,fxhi,fy,fylo,fyhi,dx)
+       call add_artifical_viscocity(lo,hi,U,Ulo,Uhi,fx,fxlo,fxhi,fy,fylo,fyhi,dx)
     end if
 
   end subroutine hypterm
 
-  subroutine add_numerical_viscosity(lo,hi,U,Ulo,Uhi,fx,fxlo,fxhi,fy,fylo,fyhi,dx)
+  subroutine add_artifical_viscocity(lo,hi,U,Ulo,Uhi,fx,fxlo,fxhi,fy,fylo,fyhi,dx)
 
     use meth_params_module, only : NVAR, URHO, UMX, UMY, UTEMP, difmag
 
@@ -115,7 +115,7 @@ contains
     
     deallocate(vx,vy,divv)
 
-  end subroutine add_numerical_viscosity
+  end subroutine add_artifical_viscocity
 
 end module hypterm_module
 
