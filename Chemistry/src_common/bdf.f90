@@ -52,7 +52,7 @@ module bdf
      integer  :: max_age                  ! maximum age of jacobian
      integer  :: k_age                    ! number of steps taken at current order
 
-     real(dp) :: tq(-1:1)                 ! error coefficients (test quality) for orders k-1, k, k+1
+     real(dp) :: tq(-1:2)                 ! error coefficients (test quality) for orders k-1, k, k+1
 
      real(dp), pointer :: rtol(:)         ! realtive tolerances
      real(dp), pointer :: atol(:)         ! absolute tolerances
@@ -343,10 +343,13 @@ contains
   end subroutine rescale_timestep
 
   !
-  ! Compute Nordsieck update coefficients l and error coefficients (tq).
+  ! Compute Nordsieck update coefficients l and error coefficients tq.
   !
-  ! See section 5, and in particular eqn. 5.2, of Jackson and
-  ! Sacks-Davis (1980).
+  ! Regarding the l coefficients, see section 5, and in particular
+  ! eqn. 5.2, of Jackson and Sacks-Davis (1980).
+  !
+  ! Regarding the error coefficients tq, see equations 2.39 to 2.44 of
+  ! Byrne and Hindmarsh (1975).
   !
   ! Note: 
   !
@@ -357,8 +360,9 @@ contains
   !
   subroutine bdf_ts_update(ts)
     type(bdf_ts), intent(inout) :: ts
+
     integer  :: j
-    real(dp) :: c
+    real(dp) :: a0, a0hat, a1, a2, a3, a4, a5, a6, xistar_inv, xi_inv, c
 
     ts%l  = 0
     ts%tq = 0
@@ -370,29 +374,36 @@ contains
        ts%l = ts%l + eoshift(ts%l, -1) / xi_j(ts%k, ts%h, j)
     end do
 
-    ! compute error coefficient: k-1
-    c = 1
-    do j = 1, ts%k-1
-       c = c * xi_j(ts%k, ts%h, j)
-    end do
-    ts%tq(-1) = c / xi_j(ts%k-1, ts%h, 1)
+    ! compute error coefficients (adapted from cvode)
+    a0hat = alphahat0(ts%k, ts%h)
+    a0    = alpha0(ts%k)
 
-    ! compute error coefficient: k
-    c = one - alphahat0(ts%k, ts%h) + alpha0(ts%k)
-    c = abs(alpha0(ts%k) * ( ts%k + one / c ))
-    ts%tq(0) = one / c
+    xistar_inv = one
+    xi_inv     = one
+    if (ts%k > 1) then
+       xi_inv = ts%h(0) / sum(ts%h(0:ts%k-1))
+       xistar_inv = one / xi_j(ts%k, ts%h, ts%k)
+    end if
 
-    ! compute error coefficient: k+1
-    c = 1
-    do j = 2, ts%k
-       c = c * sum(ts%h(0:j-1))/sum(ts%h(1:j-1))
-    end do
-    c = 1 + c
-    c = (ts%k+2) * xi_j(ts%k+1, ts%h, 1) * c
-    print *, c
-    ts%tq(1) = -xi_j(ts%k, ts%h, ts%k+1) / c
+    a1 = one - a0hat + a0
+    a2 = one + ts%k * a1
+    ts%tq(0) = abs(a1 / (a0 * a2))
+    ts%tq(2) = abs(a2 * xistar_inv / (ts%l(ts%k) * xi_inv))
+    if (ts%k > 1) then
+       c  = xistar_inv / ts%l(ts%k)
+       a3 = a0 + one / ts%k
+       a4 = a0hat + xi_inv
+       ts%tq(-1) = abs(c * (one - a4 + a3) / a3)
+    else
+       ts%tq(-1) = one
+    end if
 
-    print *, xi_j(ts%k+1, ts%h, 1), xi_j(ts%k, ts%h, ts%k+1)
+    xi_inv = ts%h(0) / sum(ts%h(0:ts%k))
+    a5 = a0 - one / (ts%k+1)
+    a6 = a0hat - xi_inv
+    ts%tq(1) = abs((one - a6 + a5) / a2 / (xi_inv * (ts%k+2) * a5))
+
+    ! tq[4] = nlscoef / tq[2];
 
   contains
 
