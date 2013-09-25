@@ -48,14 +48,19 @@ program test
   ts%h = 1
   call bdf_ts_update(ts)
   print *, 'tq', ts%tq
-  call assert(all(abs(ts%tq - [ 1.d0, 0.5d0, 0.2222222d0]) < tol), "error in l")
+  call assert(all(abs(ts%tq - [ 1.d0, 0.5d0, 0.2222222222222d0, 2.0d0 ]) < tol), "error in tq")
 
   print *, "====> order 2"
   ts%k = 2
   call random_number(ts%h)
   call bdf_ts_update(ts)
   print *, 'l', ts%l(0:2)
-  call assert(all(ts%l(0:2) == [ 1.d0, 1.5d0, 0.5d0 ]), "error in l")
+  call assert(all(abs(ts%l(0:2) - [ 1.d0, 1.5d0, 0.5d0 ]) < tol), "error in l")
+
+  ts%h = 1
+  call bdf_ts_update(ts)
+  print *, 'tq', ts%tq
+  call assert(all(abs(ts%tq - [ 1.0d0, 0.222222222222222d0, 0.13636363636363638d0, 6.0d0 ]) < tol), "error in tq")
 
   print *, "====> order 3"
   ts%k = 3
@@ -64,13 +69,17 @@ program test
   print *, 'l', ts%l(0:3)
   v(0:3) = [ 1.d0, 1.8333333333333d0, 1.d0, 0.1666666666666d0 ]
   call assert(all(abs(ts%l(0:3) - v(0:3)) < tol), "error in l")
-  
 
   ts%h(1) = 4
   call bdf_ts_update(ts)
   print *, 'l', ts%l(0:3)
   v(0:3) = [ 1.d0, 1.8333333333333d0, 0.96d0, 0.12666666666666d0 ]
   call assert(all(abs(ts%l(0:3) - v(0:3)) < tol), "error in l")
+
+  ts%h = 1
+  call bdf_ts_update(ts)
+  print *, 'tq', ts%tq
+  call assert(all(abs(ts%tq - [ 1.3333333333333d0, 0.13636363636363638d0, 9.6d-2, 24.0d0 ]) < tol), "error in tq")
   
   print *, "====> order 5"
   ts%k = 5
