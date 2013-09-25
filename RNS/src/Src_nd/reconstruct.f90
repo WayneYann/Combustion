@@ -13,7 +13,19 @@ contains
 
   ! L and R in UL and UR are relative to face
   ! UG1 and UG2 are at two Gauss points
-  subroutine reconstruct(lo, hi, Ulo, Uhi, ULRlo, ULRhi, UGlo, UGhi, U0lo, U0hi, &
+  !
+  ! Minimal ranges:
+  !   U         : lo-2:hi+2 if UL & UR are not present; 
+  !               lo-3:hi+3 if UL & UR are present
+  !   UL  & UR  : lo  :hi+1
+  !   UG1 & UG2 : lo  :hi
+  !   U0        : lo  :hi   if UL & UR are not present; 
+  !               lo-1:hi+1 if UL & UR are present
+  subroutine reconstruct(lo, hi, &
+       Ulo, Uhi, &
+       ULRlo, ULRhi, &
+       UGlo, UGhi, &
+       U0lo, U0hi, &
        U, UL, UR, UG1, UG2, U0, dir)
 
     use weno_module, only : weno5
