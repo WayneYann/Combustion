@@ -43,22 +43,31 @@ program test
   double precision :: rtol(neq), atol(neq), dt
   double precision :: y0(neq), t0, y1(neq), t1
 
+  integer :: i
+
   y0 = [ 1.d0, 0.d0, 0.d0 ]
   t0 = 0.d0
   t1 = 0.4d0
 
   rtol = 1.d-4
   atol = [ 1.d-8, 1.d-14, 1.d-6 ]
-  dt   = 1.d-4
+  dt   = 1.d-8
 
   call bdf_ts_build(ts, neq, f, J, rtol, atol, max_order=6)
 
   ts%max_iters = 10
   ts%max_age   = 20
 
-  call bdf_advance(ts, neq, y0, t0, y1, t1, dt, .false., .false.)
+  do i = 1, 11
+     call bdf_advance(ts, neq, y0, t0, y1, t1, dt, i/=1, .false.)
+     print *, t1, y1
+     y0 = y1
+     t0 = t1
+     t1 = 10*t1
+  end do
 
-  print *, y1
+  print *, ts%n, ts%nfe, ts%nje, ts%nit, ts%nse
+
 
   call bdf_ts_destroy(ts)
 

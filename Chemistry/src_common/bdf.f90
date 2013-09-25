@@ -142,19 +142,21 @@ contains
     real(dp) :: c, dt_adj, error, eta(-1:1), etamax
 
     logical :: rebuild
-    logical :: verbose = .true.
+    logical :: verbose = .false.
 
-    ts%nfe = 0
-    ts%nje = 0
-    ts%nit = 0
-    ts%nse = 0
 
     nse = 0
 
-    ts%y  = y0
-    ts%dt = dt0
-    ts%n  = 1
+    if (.not. restart) then
+       ts%nfe = 0
+       ts%nje = 0
+       ts%nit = 0
+       ts%nse = 0
 
+       ts%y  = y0
+       ts%dt = dt0
+       ts%n  = 1
+    end if
 
     if (.not. restart) ts%age = 666
        
@@ -664,10 +666,12 @@ contains
     ts%max_steps  = 1000000
     ts%max_iters  = 10
     ts%dt_min     = epsilon(ts%dt_min)
-    ts%eta_min    = 0.1_dp
-    ts%eta_max    = 1.5_dp
-    ts%eta_thresh = 1.5_dp
-    ts%max_age    = 20
+    ts%eta_min    = 0.2_dp
+    ! ts%eta_max    = 1.5_dp
+    ts%eta_max    = 1000000.0_dp
+    ! ts%eta_thresh = 1.5_dp
+    ts%eta_thresh = 1.1_dp
+    ts%max_age    = 30
 
     ts%k = -1
     ts%f => f
