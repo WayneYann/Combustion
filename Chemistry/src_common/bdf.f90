@@ -52,7 +52,11 @@ module bdf
      integer  :: max_age                  ! maximum age of jacobian
      integer  :: k_age                    ! number of steps taken at current order
 
-     real(dp) :: tq(-1:2)                 ! error coefficients (test quality) for orders k-1, k, k+1
+     real(dp) :: tq(-1:2)                 ! error coefficients (test quality)
+     ! indexed as: tq(-1) for order k-1 error est. coeff.
+     !             tq(0)  for order k error est. coeff.
+     !             tq(1)  for order k+1 error est. coeff.
+     !             tq(2)  for order k+1 error est. coeff. used for second derivative
 
      real(dp), pointer :: rtol(:)         ! realtive tolerances
      real(dp), pointer :: atol(:)         ! absolute tolerances
@@ -102,10 +106,10 @@ module bdf
      end subroutine J_proc
   end interface
 
-  ! private :: &
-!       nordsieck_update_coeffs, &
-       ! local_error_coeff, alpha0, alphahat0, &
-       ! ewts, norm, eye, eye_r, eye_i, factorial
+  private :: &
+!       alpha0, alphahat0, &
+       xi_j, xi_star, &
+       ewts, norm, eye, eye_r, eye_i, factorial
 
   interface eye
      module procedure eye_r
@@ -135,7 +139,7 @@ contains
     include 'LinAlg.inc'
 
     integer  :: i, j, k, iter, info, nse
-    real(dp) :: c, dt_adj, error, eta
+    real(dp) :: c, dt_adj, error, eta(-1:1), etamax
 
     logical :: rebuild
     logical :: verbose = .true.
@@ -252,21 +256,21 @@ contains
           rebuild = .true.
           ts%nse = ts%nse + 1
           nse    = nse + 1
-          eta = 0.25d0
-          call rescale_timestep(ts, eta)
+          eta(0) = 0.25d0
+          call rescale_timestep(ts, eta(0))
           if (verbose) print *, 'BDF: solver failed'
           cycle
        else
           nse = 0
        end if
 
-       ! this isn't quite right... the error coeff depends on the t array...
        error = ts%tq(0) * norm(ts%e, ts%ewt)
 
        ! if local error is fairly large, shrink dt and try again
        if (error > one) then
-          eta = one / ( (6.d0 * error) ** (one / ts%k) + 1.d-6 )
-          call rescale_timestep(ts, eta)
+          eta(0) = one / ( (6.d0 * error) ** (one / ts%k) + 1.d-6 )
+          if (verbose) print *, 'BDF: error tolerance exceeded'
+          call rescale_timestep(ts, eta(0))
           cycle
        end if
 
@@ -286,20 +290,35 @@ contains
        ts%n    = ts%n + 1
 
        !
-       ! increase step-size
+       ! compute eta values for changing step-size and/or order
        !
 
-       eta = one / ( (6.d0 * error) ** (one / ts%k) + 1.d-6 )
-       if (eta > ts%eta_thresh) then
-          call rescale_timestep(ts, eta)
+       eta = 0
+       if (ts%max_order == 1 .or. ts%k_age < ts%k) then
+          eta(0) = one / ( (6.d0 * error) ** (one / ts%k) + 1.d-6 )
+       else
+          if (ts%k > 1) then
+             error   = ts%tq(-1) * norm(ts%z(:,ts%k), ts%ewt)
+             eta(-1) = one / ( (6.d0 * error) ** (one / ts%k) + 1.d-6 )
+          end if
+          if (ts%k < ts%max_order) then
+             c = ts%tq(2) * (ts%h(0) / ts%h(2)) ** (ts%k+1)
+             error  = ts%tq(1) * norm(ts%e + c * ts%z(:,2), ts%ewt)
+             eta(1) = one / ( (10.d0 * error) ** (one / (ts%k+2)) + 1.d-6 )
+          end if
        end if
 
-       !
-       ! adjust order
-       !
+       ts%k_age = ts%k_age + 1
 
-       ! XXX
-
+       etamax = maxval(eta)
+       if (etamax > ts%eta_thresh) then
+          if (etamax == eta(-1)) then
+             call decrease_order(ts)
+          else if (etamax == eta(1)) then
+             call increase_order(ts)
+          end if
+          call rescale_timestep(ts, etamax)
+       end if
 
        !
        ! final adjustments to time step...
@@ -322,7 +341,7 @@ contains
   !   2. scale dt and adjust time array t accordingly
   !   3. rescalel Nordsieck history array
   !   4. recompute Nordsieck update coefficients
-  !   5. recompute local error coefficient
+  !   5. recompute local error coefficients
   !
   subroutine rescale_timestep(ts, eta)
     type(bdf_ts), intent(inout) :: ts
@@ -343,13 +362,60 @@ contains
   end subroutine rescale_timestep
 
   !
+  ! Decrease order.
+  !
+  subroutine decrease_order(ts)
+    type(bdf_ts), intent(inout) :: ts
+    integer  :: j
+    real(dp) :: c(0:ts%k)
+
+    if (ts%k > 2) then
+       c = 0
+       c(2) = 1
+       do j = 1, ts%k-2
+          c = eoshift(c, -1) + c * xi_j(ts%h, j)
+       end do
+
+       do j = 2, ts%k-1
+          ts%z(:,j) = ts%z(:,j) - c(j) * ts%z(:,ts%k)
+       end do
+    end if
+
+    ts%z(:,ts%k) = 0
+    ts%k         = ts%k - 1
+    ts%k_age     = 0
+  end subroutine decrease_order
+
+  !
+  ! Increase order.
+  !
+  subroutine increase_order(ts)
+    type(bdf_ts), intent(inout) :: ts
+    integer  :: j
+    real(dp) :: c(0:ts%k)
+
+    c = 0
+    c(2) = 1
+    do j = 1, ts%k-2
+       c = eoshift(c, -1) + c * xi_j(ts%h, j)
+    end do
+
+    ts%z(:,ts%k+1) = 0
+    do j = 2, ts%k+1
+       ts%z(:,j) = ts%z(:,j) + c(j) * ts%e
+    end do
+
+    ts%k = ts%k + 1
+    ts%k_age = 0
+  end subroutine increase_order
+
+  !
   ! Compute Nordsieck update coefficients l and error coefficients tq.
   !
   ! Regarding the l coefficients, see section 5, and in particular
   ! eqn. 5.2, of Jackson and Sacks-Davis (1980).
   !
-  ! Regarding the error coefficients tq, see equations 2.39 to 2.44 of
-  ! Byrne and Hindmarsh (1975).
+  ! Regarding the error coefficients tq, these have been adapted from cvode.
   !
   ! Note: 
   !
@@ -369,20 +435,23 @@ contains
 
     ! compute l vector
     ts%l(0) = 1
-    ts%l(1) = xi_j(ts%k, ts%h, 1)
-    do j = 2, ts%k
-       ts%l = ts%l + eoshift(ts%l, -1) / xi_j(ts%k, ts%h, j)
-    end do
+    ts%l(1) = xi_j(ts%h, 1)
+    if (ts%k > 1) then
+       do j = 2, ts%k-1
+          ts%l = ts%l + eoshift(ts%l, -1) / xi_j(ts%h, j)
+       end do
+       ts%l = ts%l + eoshift(ts%l, -1) / xi_star(ts%k, ts%h)
+    end if
 
     ! compute error coefficients (adapted from cvode)
     a0hat = alphahat0(ts%k, ts%h)
     a0    = alpha0(ts%k)
 
-    xistar_inv = one
     xi_inv     = one
+    xistar_inv = one
     if (ts%k > 1) then
-       xi_inv = ts%h(0) / sum(ts%h(0:ts%k-1))
-       xistar_inv = one / xi_j(ts%k, ts%h, ts%k)
+       xi_inv     = one / xi_j(ts%h, ts%k)
+       xistar_inv = one / xi_star(ts%k, ts%h)
     end if
 
     a1 = one - a0hat + a0
@@ -405,27 +474,45 @@ contains
 
     ! tq[4] = nlscoef / tq[2];
 
+  end subroutine bdf_ts_update
+
+  !
+  ! Return $\alpha_0$.
+  !
+  function alpha0(k) result(a0)
+    integer,  intent(in) :: k
+    real(dp) :: a0
+    integer  :: i
+    a0 = -1
+    do i = 2, k
+       a0 = a0 - 1._dp/i
+    end do
+  end function alpha0
+
+  !
+  ! Return $\hat{\alpha}_{n,0}$.
+  !
+  function alphahat0(k, h) result(a0)
+    integer,  intent(in) :: k
+    real(dp), intent(in) :: h(0:k)
+    real(dp) :: a0
+    integer  :: i
+    a0 = -1
+    do i = 2, k
+       a0 = a0 - h(0) / sum(h(0:i-1))
+    end do
+  end function alphahat0
+
+  !
+  ! Return $\xi^*_k$.
+  !
+  function xi_star(k, h) result(xi)
+    integer,  intent(in) :: k
+    real(dp), intent(in) :: h(0:)
+    real(dp) :: xi, mu
+    mu = -alpha0(k) / h(0) - qd(k-1, h) / q(k-1, h)
+    xi = one / (mu * h(0))
   contains
-
-    !
-    ! Return $\xi_j$.
-    !
-    ! Note that $\xi_k$ is actually $\xi_k^*$.
-    !
-    function xi_j(k, h, j) result(xi)
-      integer,  intent(in) :: k, j
-      real(dp), intent(in) :: h(0:k)
-
-      real(dp) :: xi, mu
-
-      if (j == k) then
-         mu = -alpha0(k) / h(0) - qd(k-1, h) / q(k-1, h)
-         xi = one / (mu * h(0))
-      else
-         xi = sum(h(0:j-1)) / h(0)
-      end if
-    end function xi_j
-
     !
     ! Return $q_{k}(t_n)$.
     !
@@ -460,34 +547,18 @@ contains
          r = r + a
       end do
     end function qd
-  end subroutine bdf_ts_update
+  end function xi_star
 
   !
-  ! Return $\alpha_0$.
+  ! Return $\xi_j$.
   !
-  function alpha0(k) result(a0)
-    integer,  intent(in) :: k
-    real(dp) :: a0
-    integer  :: i
-    a0 = -1
-    do i = 2, k
-       a0 = a0 - 1._dp/i
-    end do
-  end function alpha0
+  function xi_j(h, j) result(xi)
+    integer,  intent(in) :: j
+    real(dp), intent(in) :: h(0:)
+    real(dp) :: xi
+    xi = sum(h(0:j-1)) / h(0)
+  end function xi_j
 
-  !
-  ! Return $\hat{\alpha}_{n,0}$.
-  !
-  function alphahat0(k, h) result(a0)
-    integer,  intent(in) :: k
-    real(dp), intent(in) :: h(0:k)
-    real(dp) :: a0
-    integer  :: i
-    a0 = -1
-    do i = 2, k
-       a0 = a0 - h(0) / sum(h(0:i-1))
-    end do
-  end function alphahat0
 
   !
   ! Estimate initial step-size.  See sec. 3.2 of Brown, Byrne, and

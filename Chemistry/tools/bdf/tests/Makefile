@@ -9,4 +9,4 @@ BDF = ../../../src_common/bdf.f90 ../../../src_common/LinAlg.f
 	@mkdir -p build
 	$(F90) $(FFLAGS) $^ -o $@
 
-all: coeffs.exe
+all: coeffs.exe t1.exe
