@@ -356,6 +356,8 @@ contains
 
     end do
 
+    Nullify(Ubase)
+
   end subroutine reconstruct
     
 
