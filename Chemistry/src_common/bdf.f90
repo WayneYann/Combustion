@@ -25,6 +25,8 @@ module bdf
   real(dp), parameter :: two  = 2.0_dp
   real(dp), parameter :: half = 0.5_dp
 
+  integer, parameter :: bdf_max_iters = 666666666
+
   integer, parameter :: BDF_ERR_SUCCESS  = 0
   integer, parameter :: BDF_ERR_SOLVER   = 1
   integer, parameter :: BDF_ERR_MAXSTEPS = 2
@@ -39,6 +41,7 @@ module bdf
   !
   type :: bdf_ts
 
+     ! options
      integer :: neq                       ! number of equations (degrees of freedom)
      integer :: max_order                 ! maximum order (1 to 6)
      integer :: max_steps                 ! maximum allowable number of steps
@@ -48,28 +51,22 @@ module bdf
      real(dp) :: eta_min                  ! minimum allowable step-size shrink factor
      real(dp) :: eta_max                  ! maximum allowable step-size growth factor
      real(dp) :: eta_thresh               ! step-size growth threshold
+     integer  :: max_j_age                ! maximum age of jacobian
 
-     procedure(f_proc), pointer, nopass :: f
-     procedure(J_proc), pointer, nopass :: J
+     real(dp), pointer :: rtol(:)         ! realtive tolerances
+     real(dp), pointer :: atol(:)         ! absolute tolerances
+
      type(bdf_ctx) :: ctx
 
+     ! state
      real(dp) :: t                        ! current time
      real(dp) :: dt                       ! current time step
      real(dp) :: dt_nwt                   ! dt used when building newton iteration matrix
      integer  :: k                        ! current order
      integer  :: n                        ! current step
-     integer  :: age                      ! age of jacobian
-     integer  :: max_age                  ! maximum age of jacobian
+     integer  :: j_age                    ! age of jacobian
      integer  :: k_age                    ! number of steps taken at current order
-
      real(dp) :: tq(-1:2)                 ! error coefficients (test quality)
-     ! indexed as: tq(-1) for order k-1 error est. coeff.
-     !             tq(0)  for order k error est. coeff.
-     !             tq(1)  for order k+1 error est. coeff.
-     !             tq(2)  for order k+1 error est. coeff. used for second derivative
-
-     real(dp), pointer :: rtol(:)         ! realtive tolerances
-     real(dp), pointer :: atol(:)         ! absolute tolerances
 
      ! jacobian and newton matrices, may be resused
      real(dp), pointer :: Jac(:,:)        ! jacobian matrix
@@ -89,6 +86,9 @@ module bdf
 
      integer,  pointer :: ipvt(:)         ! pivots
      integer,  pointer :: A(:,:)          ! pascal matrix
+
+     procedure(f_proc), pointer, nopass :: f
+     procedure(J_proc), pointer, nopass :: J
 
      ! counters
      integer :: nfe                       ! number of function evaluations
@@ -167,7 +167,6 @@ contains
 
        ts%k = 1
        ts%h = ts%dt
-       call bdf_ts_update(ts)
 
        call ts%f(neq, ts%y, ts%t, ts%yd, ts%ctx)
        ts%nfe = ts%nfe + 1
@@ -176,7 +175,7 @@ contains
        ts%z(:,1) = ts%dt * ts%yd
 
        ts%k_age = 0
-       ts%age = 666
+       ts%j_age = 666
     end if
        
     !
@@ -184,15 +183,16 @@ contains
     !
 
     ts%t = t0
-    do k = 1, 666666666
+    do k = 1, bdf_max_iters + 1
 
-       if (ts%n > ts%max_steps) then
+       if (ts%n > ts%max_steps .or. k > bdf_max_iters) then
           ierr = BDF_ERR_MAXSTEPS
           return
        end if
 
        if (ts%verbose > 1) print *, 'BDF: stepping: ', ts%n, ts%k, ts%dt
 
+       call bdf_ts_update(ts)
        call ewts(ts, ts%y, ts%ewt)
 
        !
@@ -222,12 +222,12 @@ contains
        dt_adj = ts%dt / ts%l(1)
        ts%y   = ts%z0(:,0)
 
-       if (ts%age > ts%max_age) rebuild = .true.
+       if (ts%j_age > ts%max_j_age) rebuild = .true.
 
        do iter = 1, ts%max_iters
 
+          ! build iteration matrix and factor
           if (rebuild) then
-             ! build iteration matrix and factor
              call eye(ts%P)
              call ts%J(neq, ts%y, ts%t, ts%Jac, ts%ctx)
              ts%P = ts%P - dt_adj * ts%Jac
@@ -235,7 +235,7 @@ contains
 
              ts%nje    = ts%nje + 1
              ts%dt_nwt = dt_adj
-             ts%age    = 0
+             ts%j_age  = 0
              rebuild   = .false.
           end if
 
@@ -253,7 +253,7 @@ contains
           ts%y = ts%z0(:,0) + ts%e
        end do
 
-       ts%age = ts%age + 1
+       ts%j_age = ts%j_age + 1
 
 
        !
@@ -271,8 +271,7 @@ contains
           rebuild = .true.
           ts%nse = ts%nse + 1
           nse    = nse + 1
-          eta(0) = 0.25d0
-          call rescale_timestep(ts, eta(0))
+          call rescale_timestep(ts, 0.25d0)
           if (ts%verbose > 1) print *, 'BDF: solver failed'
           cycle
        else
@@ -289,7 +288,7 @@ contains
        end if
 
        !
-       ! correct
+       ! new solution looks good, correct history
        !
 
        do i = 0, ts%k
@@ -335,25 +334,19 @@ contains
           rescale = etamax
        end if
 
-
        if (ts%t + ts%dt > t1) then
           rescale = (t1 - ts%t) / ts%dt
-          ! print *, rescale, ts%eta_min, ts%eta_max
        end if
 
-       if (rescale /= 0) call rescale_timestep(ts, rescale)
+       if (rescale /= 0) &
+            call rescale_timestep(ts, rescale)
 
     end do
-
-    if (ts%t + ts%dt < t1) then
-       ierr = BDF_ERR_MAXSTEPS
-       return
-    end if
 
     if (ts%verbose > 1) print *, 'BDF: done    : ', ts%n, k, ts%nfe, ts%nje, ts%nit, ts%nse
 
     ierr = BDF_ERR_SUCCESS
-    y1   = ts%y
+    y1   = ts%z(:,0)
 
   end subroutine bdf_advance
 
@@ -364,15 +357,14 @@ contains
   !   1. bound eta to honor eta_min, eta_max, and dt_min
   !   2. scale dt and adjust time array t accordingly
   !   3. rescalel Nordsieck history array
-  !   4. recompute Nordsieck update coefficients
-  !   5. recompute local error coefficients
   !
-  subroutine rescale_timestep(ts, eta)
+  subroutine rescale_timestep(ts, eta_in)
     type(bdf_ts), intent(inout) :: ts
-    real(dp),     intent(inout) :: eta
-    integer :: i
+    real(dp),     intent(in)    :: eta_in
+    real(dp) :: eta
+    integer  :: i
 
-    eta = max(eta, ts%dt_min / ts%dt, ts%eta_min)
+    eta = max(eta_in, ts%dt_min / ts%dt, ts%eta_min)
     eta = min(eta, ts%eta_max)
 
     ts%dt   = eta * ts%dt
@@ -381,8 +373,6 @@ contains
     do i = 1, ts%k
        ts%z(:,i) = eta**i * ts%z(:,i)
     end do
-
-    call bdf_ts_update(ts)
   end subroutine rescale_timestep
 
   !
@@ -440,7 +430,12 @@ contains
   ! eqn. 5.2, of Jackson and Sacks-Davis (1980).
   !
   ! Regarding the error coefficients tq, these have been adapted from
-  ! cvode.
+  ! cvode.  The tq array is indexed as:
+  !
+  !  tq(-1) coeff. for order k-1 error est.
+  !  tq(0)  coeff. for order k error est.
+  !  tq(1)  coeff. for order k+1 error est.
+  !  tq(2)  coeff. for order k+1 error est. (used for second derivative)
   !
   ! Note: 
   !
@@ -571,6 +566,7 @@ contains
     r = sqrt(sum((y * ewt)**2)/size(y))
   end function norm
 
+
   !
   ! Build/destroy BDF time-stepper.
   !
@@ -607,11 +603,9 @@ contains
     ts%verbose    = 0
     ts%dt_min     = epsilon(ts%dt_min)
     ts%eta_min    = 0.2_dp
-    ! ts%eta_max    = 1.5_dp
-    ! ts%eta_max    = 5.0_dp
     ts%eta_max    = 2.0_dp
     ts%eta_thresh = 1.5_dp
-    ts%max_age    = 30
+    ts%max_j_age  = 20
 
     ts%k = -1
     ts%f => f
@@ -625,19 +619,18 @@ contains
        U(k,k+1) = k
     end do
     Uk = U
-
     call eye(ts%A)
     do k = 1, max_order+1
        ts%A  = ts%A + Uk / factorial(k)
        Uk = matmul(U, Uk)
     end do
-
   end subroutine bdf_ts_build
 
   subroutine bdf_ts_destroy(ts)
     type(bdf_ts), intent(inout) :: ts
     deallocate(ts%z,ts%z0,ts%h,ts%l,ts%A,ts%rtol,ts%atol,ts%P,ts%Jac,ts%y,ts%yd,ts%rhs,ts%e,ts%ewt,ts%b,ts%ipvt)
   end subroutine bdf_ts_destroy
+
 
   !
   ! Various misc. helper functions

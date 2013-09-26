@@ -55,9 +55,6 @@ program test
 
   call bdf_ts_build(ts, neq, f, J, rtol, atol, max_order=3)
 
-  ts%max_iters = 10
-  ts%max_age   = 20
-
   do i = 1, 11
      call bdf_advance(ts, neq, y0, t0, y1, t1, dt, i/=1, ierr)
      print *, t1, y1
