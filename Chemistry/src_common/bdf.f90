@@ -25,6 +25,15 @@ module bdf
   real(dp), parameter :: two  = 2.0_dp
   real(dp), parameter :: half = 0.5_dp
 
+  integer, parameter :: BDF_ERR_SUCCESS  = 0
+  integer, parameter :: BDF_ERR_SOLVER   = 1
+  integer, parameter :: BDF_ERR_MAXSTEPS = 2
+
+  character(len=64), parameter :: errors(0:2) = [ &
+       'Success.                                                ', &
+       'Newton solver failed to converge several times in a row.', &
+       'Too many steps were taken.                              ' ]
+
   !
   ! bdf time-stepper
   !
@@ -34,6 +43,7 @@ module bdf
      integer :: max_order                 ! maximum order (1 to 6)
      integer :: max_steps                 ! maximum allowable number of steps
      integer :: max_iters                 ! maximum allowable number of newton iterations
+     integer :: verbose                   ! verbosity level
      real(dp) :: dt_min                   ! minimum allowable step-size
      real(dp) :: eta_min                  ! minimum allowable step-size shrink factor
      real(dp) :: eta_max                  ! maximum allowable step-size growth factor
@@ -129,21 +139,19 @@ contains
   !
   ! Advance system from t0 to t1.
   !
-  subroutine bdf_advance(ts, neq, y0, t0, y1, t1, dt0, restart, reuse)
+  subroutine bdf_advance(ts, neq, y0, t0, y1, t1, dt0, restart, ierr)
     type(bdf_ts),     intent(inout) :: ts
     integer,          intent(in)    :: neq
     real(dp),         intent(in)    :: y0(neq), t0, t1, dt0
     real(dp),         intent(out)   :: y1(neq)
-    logical,          intent(in)    :: restart, reuse
+    logical,          intent(in)    :: restart
+    integer,          intent(out)   :: ierr
 
     include 'LinAlg.inc'
 
     integer  :: i, j, k, iter, info, nse
-    real(dp) :: c, dt_adj, error, eta(-1:1), etamax
-
-    logical :: rebuild
-    logical :: verbose = .false.
-
+    real(dp) :: c, dt_adj, error, eta(-1:1), rescale, etamax
+    logical  :: rebuild
 
     nse = 0
 
@@ -156,32 +164,36 @@ contains
        ts%y  = y0
        ts%dt = dt0
        ts%n  = 1
-    end if
 
-    if (.not. restart) ts%age = 666
+       ts%k = 1
+       ts%h = ts%dt
+       call bdf_ts_update(ts)
+
+       call ts%f(neq, ts%y, ts%t, ts%yd, ts%ctx)
+       ts%nfe = ts%nfe + 1
+
+       ts%z(:,0) = ts%y
+       ts%z(:,1) = ts%dt * ts%yd
+
+       ts%k_age = 0
+       ts%age = 666
+    end if
        
+    !
+    ! stepping loop
+    !
+
     ts%t = t0
     do k = 1, 666666666
 
-       if (ts%n > ts%max_steps) exit
+       if (ts%n > ts%max_steps) then
+          ierr = BDF_ERR_MAXSTEPS
+          return
+       end if
 
-       if (verbose) print *, 'BDF: stepping: ', ts%n, ts%k, ts%dt
+       if (ts%verbose > 1) print *, 'BDF: stepping: ', ts%n, ts%k, ts%dt
 
        call ewts(ts, ts%y, ts%ewt)
-
-       if (k == 1 .and. .not. restart) then
-          ts%k = 1
-          ts%h = ts%dt
-          call bdf_ts_update(ts)
-
-          call ts%f(neq, ts%y, ts%t, ts%yd, ts%ctx)
-          ts%nfe = ts%nfe + 1
-
-          ts%z(:,0) = ts%y
-          ts%z(:,1) = ts%dt * ts%yd
-
-          ts%k_age = 0
-       end if
 
        !
        ! predict
@@ -197,12 +209,13 @@ contains
        !
        ! solve y_n - dt f(y_n,t) = y - dt yd for y_n
        !
-
+       !
        ! newton iteration general form is:
        !   solve:   P x = -c G(y(k)) for x
        !   update:  y(k+1) = y(k) + x
        ! where
        !   G(y) = y - dt * f(y,t) - rhs
+       !
 
        ts%e   = 0
        ts%rhs = ts%z0(:,0) - ts%z0(:,1) / ts%l(1)
@@ -249,8 +262,8 @@ contains
 
        ! if solver failed many times, bail...
        if (iter >= ts%max_iters .and. nse > 7) then
-          ! XXX: signal an error of some kind
-          stop "BDF SOLVER FAILED LOTS OF TIMES IN A ROW"
+          ierr = BDF_ERR_SOLVER
+          return
        end if
 
        ! if solver failed to converge, shrink dt and try again
@@ -260,18 +273,17 @@ contains
           nse    = nse + 1
           eta(0) = 0.25d0
           call rescale_timestep(ts, eta(0))
-          if (verbose) print *, 'BDF: solver failed'
+          if (ts%verbose > 1) print *, 'BDF: solver failed'
           cycle
        else
           nse = 0
        end if
 
-       error = ts%tq(0) * norm(ts%e, ts%ewt)
-
        ! if local error is fairly large, shrink dt and try again
+       error = ts%tq(0) * norm(ts%e, ts%ewt)
        if (error > one) then
           eta(0) = one / ( (6.d0 * error) ** (one / ts%k) + 1.d-6 )
-          if (verbose) print *, 'BDF: error tolerance exceeded'
+          if (ts%verbose > 1) print *, 'BDF: error tolerance exceeded'
           call rescale_timestep(ts, eta(0))
           cycle
        end if
@@ -284,7 +296,7 @@ contains
           ts%z(:,i) = ts%z0(:,i) + ts%e * ts%l(i)
        end do
 
-       if (ts%t >= t1) exit
+       if (ts%t + ts%dt >= t1) exit
 
        ts%h    = eoshift(ts%h, -1)
        ts%h(0) = ts%dt
@@ -312,26 +324,36 @@ contains
 
        ts%k_age = ts%k_age + 1
 
-       etamax = maxval(eta)
+       rescale = 0
+       etamax  = maxval(eta)
        if (etamax > ts%eta_thresh) then
           if (etamax == eta(-1)) then
              call decrease_order(ts)
           else if (etamax == eta(1)) then
              call increase_order(ts)
           end if
-          call rescale_timestep(ts, etamax)
+          rescale = etamax
        end if
 
-       !
-       ! final adjustments to time step...
-       !
 
-       ! if (t + dt > t1) dt = t1 - t
+       if (ts%t + ts%dt > t1) then
+          rescale = (t1 - ts%t) / ts%dt
+          ! print *, rescale, ts%eta_min, ts%eta_max
+       end if
+
+       if (rescale /= 0) call rescale_timestep(ts, rescale)
 
     end do
 
-    if (verbose) print *, 'BDF: done    : ', ts%n, k, ts%nfe, ts%nje, ts%nit, ts%nse
-    y1 = ts%y
+    if (ts%t + ts%dt < t1) then
+       ierr = BDF_ERR_MAXSTEPS
+       return
+    end if
+
+    if (ts%verbose > 1) print *, 'BDF: done    : ', ts%n, k, ts%nfe, ts%nje, ts%nit, ts%nse
+
+    ierr = BDF_ERR_SUCCESS
+    y1   = ts%y
 
   end subroutine bdf_advance
 
@@ -369,7 +391,7 @@ contains
   subroutine decrease_order(ts)
     type(bdf_ts), intent(inout) :: ts
     integer  :: j
-    real(dp) :: c(0:ts%k)
+    real(dp) :: c(0:6)
 
     if (ts%k > 2) then
        c = 0
@@ -394,7 +416,7 @@ contains
   subroutine increase_order(ts)
     type(bdf_ts), intent(inout) :: ts
     integer  :: j
-    real(dp) :: c(0:ts%k)
+    real(dp) :: c(0:6)
 
     c = 0
     c(2) = 1
@@ -417,7 +439,8 @@ contains
   ! Regarding the l coefficients, see section 5, and in particular
   ! eqn. 5.2, of Jackson and Sacks-Davis (1980).
   !
-  ! Regarding the error coefficients tq, these have been adapted from cvode.
+  ! Regarding the error coefficients tq, these have been adapted from
+  ! cvode.
   !
   ! Note: 
   !
@@ -484,10 +507,10 @@ contains
   function alpha0(k) result(a0)
     integer,  intent(in) :: k
     real(dp) :: a0
-    integer  :: i
+    integer  :: j
     a0 = -1
-    do i = 2, k
-       a0 = a0 - 1._dp/i
+    do j = 2, k
+       a0 = a0 - one / j
     end do
   end function alpha0
 
@@ -498,10 +521,10 @@ contains
     integer,  intent(in) :: k
     real(dp), intent(in) :: h(0:k)
     real(dp) :: a0
-    integer  :: i
+    integer  :: j
     a0 = -1
-    do i = 2, k
-       a0 = a0 - h(0) / sum(h(0:i-1))
+    do j = 2, k
+       a0 = a0 - h(0) / sum(h(0:j-1))
     end do
   end function alphahat0
 
@@ -511,44 +534,12 @@ contains
   function xi_star(k, h) result(xi)
     integer,  intent(in) :: k
     real(dp), intent(in) :: h(0:)
-    real(dp) :: xi, mu
-    mu = -alpha0(k) / h(0) - qd(k-1, h) / q(k-1, h)
-    xi = one / (mu * h(0))
-  contains
-    !
-    ! Return $q_{k}(t_n)$.
-    !
-    function q(k, h) result(r)
-      integer,  intent(in) :: k
-      real(dp), intent(in) :: h(0:k)
-      real(dp) :: r
-      integer  :: j
-      r = 1
-      if (k > 0) then
-         do j = 1, k
-            r = r * sum(h(0:j-1))
-         end do
-      end if
-    end function q
-
-    !
-    ! Return $\dot{q}_{k}(t_n)$.
-    !
-    function qd(k, h) result(r)
-      integer,  intent(in) :: k
-      real(dp), intent(in) :: h(0:k)
-      real(dp) :: r, a
-      integer  :: j, i
-      r = 0
-      do i = 1, k
-         a = 1
-         do j = 1, k
-            if (j == i) cycle
-            a = a * sum(h(0:j-1))
-         end do
-         r = r + a
-      end do
-    end function qd
+    real(dp) :: xi, xi_inv(k-1)
+    integer  :: j
+    do j = 1, k-1
+       xi_inv(j) = h(0) / sum(h(0:j-1))
+    end do
+    xi = -one / (alpha0(k) + sum(xi_inv))
   end function xi_star
 
   !
@@ -561,58 +552,6 @@ contains
     xi = sum(h(0:j-1)) / h(0)
   end function xi_j
 
-
-  !
-  ! Estimate initial step-size.  See sec. 3.2 of Brown, Byrne, and
-  ! Hindmarsh.
-  !
-  ! function bdf_estimate_dt(ts, f, y0, t0, t1, ctx) result(dt)
-  !   type(bdf_ts),     intent(inout) :: ts
-  !   real(dp),         intent(in)    :: y0(:), t0, t1
-  !   type(bdf_ctx), intent(in) :: ctx
-  !   interface 
-  !      subroutine f(y, t, yd, ctx)
-  !        import dp, bdf_ctx
-  !        real(dp), intent(in)  :: y(:), t
-  !        real(dp), intent(out) :: yd(:)
-  !        type(bdf_ctx), intent(in) :: ctx
-  !      end subroutine f
-  !   end interface
-
-  !   real(dp) :: dt
-  !   real(dp) :: h, hnew, hl, hu, wrms, yd(size(y0)), ydd(size(y0)), ewt(size(y0))
-  !   integer  :: i, k
-
-  !   hl = 100.0_dp * epsilon(hl) * max(abs(t0), abs(t1))
-  !   hu =   0.1_dp * abs(t0 - t1)
-
-  !   ! reduce hu
-  !   call f(y0, t0, yd, ctx)
-  !   if (any(hu * abs(yd) > 0.1_dp * abs(y0) + ts%atol)) then
-  !      hu = minval((0.1_dp * abs(y0) + ts%atol) / abs(yd))
-  !   end if
-
-  !   h = sqrt(hl*hu)
-  !   if (hu < hl) then
-  !      dt = h
-  !      return
-  !   end if
-
-  !   call bdf_error_weight(ts, y0, ewt)
-  !   do k = 1, 4
-  !      call f(y0 + dt*yd, t0 + dt, ydd, ctx)
-  !      wrms = bdf_norm(half * dt * (ydd - yd) / h, ewt)
-  !      if (wrms*hu**2 > two) then
-  !         hnew = sqrt(two / wrms)
-  !      else
-  !         hnew = sqrt(h * hu)
-  !      end if
-  !      if (hnew/h > half .and. hnew/h < two) exit
-  !      h = hnew
-  !   end do
-  !   dt = half * hnew 
-  ! end function bdf_estimate_dt
-    
   ! 
   ! Pre-compute error weights.
   !
@@ -665,12 +604,13 @@ contains
     ts%max_order  = max_order
     ts%max_steps  = 1000000
     ts%max_iters  = 10
+    ts%verbose    = 0
     ts%dt_min     = epsilon(ts%dt_min)
     ts%eta_min    = 0.2_dp
     ! ts%eta_max    = 1.5_dp
-    ts%eta_max    = 1000000.0_dp
-    ! ts%eta_thresh = 1.5_dp
-    ts%eta_thresh = 1.1_dp
+    ! ts%eta_max    = 5.0_dp
+    ts%eta_max    = 2.0_dp
+    ts%eta_thresh = 1.5_dp
     ts%max_age    = 30
 
     ts%k = -1
