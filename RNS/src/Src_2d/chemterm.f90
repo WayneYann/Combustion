@@ -25,12 +25,17 @@ contains
 
     allocate(UG(lo(1):hi(1),lo(2):hi(2),4,NVAR))
 
+    !$omp parallel private(i,j,n,g,rhot,rhoinv,ei,Yt)
+
+    !$omp do
     do n=1,NVAR
-       call cellavg2gausspt_2d(U(:,:,n), Ulo, Uhi, UG(:,:,:,n), lo, hi)
+       call cellavg2gausspt_2d(lo,hi, U(:,:,n), Ulo,Uhi, UG(:,:,:,n), lo,hi)
     end do
+    !$omp end do
 
     call setfirst(.true.)
 
+    !$omp do collapse(2)
     do j=lo(2),hi(2)
        do i=lo(1),hi(1)
 
@@ -64,6 +69,8 @@ contains
           end do
        end do
     end do
+    !$omp end do
+    !$omp end parallel
 
     deallocate(UG)
 

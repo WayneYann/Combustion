@@ -1,9 +1,19 @@
 
 EBASE = RNS
 
+CHEMISTRY_DIR := ../Chemistry
+USE_EGZ := TRUE
+USE_WORK_SPACE_MODULE := TRUE
+
 include $(BOXLIB_HOME)/Tools/C_mk/Make.defs
 
 Bdirs 	:= src src/Src_$(DIM)d src/Src_nd src/EOS src/Burner
+
+# Chemistry
+ifneq (${CHEMISTRY_MODEL}, NULL)
+  Bdirs += $(CHEMISTRY_DIR)/src_common
+endif
+Bdirs += $(CHEMISTRY_DIR)/src_f90
 
 Bpack	+= $(foreach dir, $(Bdirs), $(TOP)/$(dir)/Make.package)
 Blocs	+= $(foreach dir, $(Bdirs), $(TOP)/$(dir))
@@ -13,16 +23,13 @@ Pdirs 	:= C_BaseLib C_AMRLib C_BoundaryLib
 Bpack	+= $(foreach dir, $(Pdirs), $(BOXLIB_HOME)/Src/$(dir)/Make.package)
 Blocs	+= $(foreach dir, $(Pdirs), $(BOXLIB_HOME)/Src/$(dir))
 
-Bpack	+= ../../../Chemistry/src_f90/Make.package
-Blocs	+= ../../../Chemistry/src_f90
-
 ifeq ($(USE_SDCLIB), TRUE)
   CEXE_sources += RNS_SDC.cpp
   Bpack   += $(SDCLIB_HOME)/Make.package
   Blocs   += $(SDCLIB_HOME)/src $(SDCLIB_HOME)/include
 endif
 
-MECHDIR = ../../../Chemistry/data
+MECHDIR = $(TOP)/$(CHEMISTRY_DIR)/data
 ifeq (${CHEMISTRY_MODEL}, CHEMH)
   cEXE_sources += chem-H.c
   vpath %.f $(VPATH_LOCATIONS) ${MECHDIR}/chem-H/PMFs
@@ -40,9 +47,9 @@ else ifeq ($(CHEMISTRY_MODEL), GRI30)
   vpath %.f $(VPATH_LOCATIONS) ${MECHDIR}/gri/PMFs
   vpath %.c $(VPATH_LOCATIONS) ${MECHDIR}/gri
 else ifeq (${CHEMISTRY_MODEL}, LUDME)
-  CHEM_MECHFILE = LuDME.c
-  VPATH_LOCATIONS += ${MECHDIR}/data/Lu/PMFs
-  VPATH_LOCATIONS += ${MECHDIR}/data/Lu
+  cEXE_sources += LuDME.c
+  vpath %.f $(VPATH_LOCATIONS) ${MECHDIR}/Lu/PMFs
+  vpath %.c $(VPATH_LOCATIONS) ${MECHDIR}/Lu
 else ifneq (${CHEMISTRY_MODEL}, NULL)
   $(error "Unknown CHEMISTRY_MODEL: $(CHEMISTRY_MODEL)")
 endif
@@ -51,6 +58,24 @@ include $(Bpack)
 
 INCLUDE_LOCATIONS += $(Blocs)
 VPATH_LOCATIONS   += $(Blocs)
+
+
+all: $(executable) 
+	$(SILENT) $(RM) buildInfo.cpp
+	@echo SUCCESS
+
+
+# job_info support
+CEXE_sources += buildInfo.cpp
+CEXE_headers += $(BOXLIB_HOME)/Tools/C_scripts/buildInfo.H
+INCLUDE_LOCATIONS +=  $(BOXLIB_HOME)/Tools/C_scripts
+
+buildInfo.cpp: $(BOXLIB_HOME)/Tools/C_scripts/make_build_info_cpp
+	$(BOXLIB_HOME)/Tools/C_scripts/make_build_info_cpp "$(BOXLIB_HOME)" \
+            "$(COMP)" "$(FCOMP)" \
+            "AUX=$(CHEMISTRY_MODEL)" \
+            "GIT=$(TOP)" "GIT=$(BOXLIB_HOME)" "GIT=$(SDCLIB_HOME)" 
+
 
 vpath %.c   . $(VPATH_LOCATIONS)
 vpath %.cpp . $(VPATH_LOCATIONS)
@@ -62,8 +87,14 @@ vpath %.f   . $(VPATH_LOCATIONS)
 vpath %.fi  . $(VPATH_LOCATIONS)
 
 
-all: $(executable) 
-	@echo SUCCESS
-
-
 include $(BOXLIB_HOME)/Tools/C_mk/Make.rules
+
+clean::
+	$(SILENT) $(RM) buildInfo.cpp
+
+#-----------------------------------------------------------------------------
+# for debugging.  To see the value of a Makefile variable,
+# e.g. Fmlocs, simply do "make print-Fmlocs".  This will
+# print out the value.
+print-%: ; @echo $* is $($*)
+

@@ -147,6 +147,7 @@ Real HeatTransfer::P1atm_MKS;
 bool HeatTransfer::plot_reactions;
 bool HeatTransfer::plot_consumption;
 bool HeatTransfer::plot_heat_release;
+static bool plot_rhoydot;
 int  HeatTransfer::do_mcdd;
 int  HeatTransfer::mcdd_NitersMAX;
 Real HeatTransfer::mcdd_relax_factor_T;
@@ -326,6 +327,7 @@ HeatTransfer::Initialize ()
     HeatTransfer::plot_reactions            = false;
     HeatTransfer::plot_consumption          = true;
     HeatTransfer::plot_heat_release         = true;
+    plot_rhoydot                            = false;
     HeatTransfer::do_mcdd                   = 0;
     HeatTransfer::mcdd_transport_model      = "";
     HeatTransfer::mcdd_NitersMAX            = 100;
@@ -8076,6 +8078,10 @@ HeatTransfer::writePlotFile (const std::string& dir,
                              VisMF::How     how)
 {
     if ( ! Amr::Plot_Files_Output() ) return;
+
+    ParmParse pp("ht");
+
+    pp.query("plot_rhoydot",plot_rhoydot);
     //
     // Note that this is really the same as its NavierStokes counterpart,
     // but in order to add diagnostic MultiFabs into the plotfile, code had
@@ -8089,10 +8095,29 @@ HeatTransfer::writePlotFile (const std::string& dir,
     //
     std::vector<std::pair<int,int> > plot_var_map;
     for (int typ = 0; typ < desc_lst.size(); typ++)
+    {
         for (int comp = 0; comp < desc_lst[typ].nComp();comp++)
-            if (parent->isStatePlotVar(desc_lst[typ].name(comp)) &&
-                desc_lst[typ].getType() == IndexType::TheCellType())
-                plot_var_map.push_back(std::pair<int,int>(typ,comp));
+        {
+            const std::string& name = desc_lst[typ].name(comp);
+
+            if (parent->isStatePlotVar(name) && desc_lst[typ].getType() == IndexType::TheCellType())
+            {
+                //
+                // When running SDC we get things of this form in the State.
+                // I want a simple way not to write'm out to plotfiles.
+                //
+                if (name.find("I_R[") != std::string::npos)
+                {
+                    if (plot_rhoydot)
+                        plot_var_map.push_back(std::pair<int,int>(typ,comp));
+                }
+                else
+                {
+                    plot_var_map.push_back(std::pair<int,int>(typ,comp));
+                }
+            }
+        }
+    }
 
     int num_derive = 0;
     std::list<std::string> derive_names;

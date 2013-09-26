@@ -13,6 +13,10 @@
 #include <string>
 #include <ctime>
 
+#ifdef _OPENMP
+#include <omp.h>
+#endif
+
 using std::cout;
 using std::cerr;
 using std::endl;
@@ -68,8 +72,17 @@ Real         RNS::Treference    = 298.0;
 
 int          RNS::RK_order      = 2;
 
-RNS::RiemannType RNS::Riemann   = RNS::JBB;
+RNS::RiemannType RNS::Riemann   = RNS::HLL;
 Real             RNS::difmag    = -1.0;
+
+std::string  RNS::fuelName           = "";
+int          RNS::fuelID             = -1;
+std::string  RNS::oxidizerName       = "";
+int          RNS::oxidizerID         = -1;
+std::string  RNS::productName        = "";
+int          RNS::productID          = -1;
+std::string  RNS::flameTracName      = "";
+int          RNS::flameTracID        = -1;
 
 ErrorList    RNS::err_list;
 int          RNS::allow_untagging    = 0;
@@ -78,6 +91,45 @@ int          RNS::do_temperature_ref = 0;
 int          RNS::do_pressure_ref    = 0;
 int          RNS::do_velocity_ref    = 0;
 int          RNS::do_vorticity_ref   = 0;
+int          RNS::do_flametrac_ref   = 0;
+
+int          RNS::plot_cons            = 0;
+int          RNS::plot_prim            = 1;
+int          RNS::plot_magvel          = 1;
+int          RNS::plot_Mach            = 1;
+int          RNS::plot_divu            = 1;
+int          RNS::plot_magvort         = 1;
+int          RNS::plot_X               = 0;
+int          RNS::plot_omegadot        = 0;
+int          RNS::plot_dYdt            = 1;
+int          RNS::plot_heatRelease     = 1;
+int          RNS::plot_fuelConsumption = 1;
+int          RNS::plot_primplus        = 1;
+
+int          RNS::icomp_cons            = -1;
+int          RNS::icomp_prim            = -1; 
+int          RNS::icomp_magvel		= -1;
+int          RNS::icomp_Mach		= -1;
+int          RNS::icomp_divu		= -1;
+int          RNS::icomp_magvort		= -1;
+int          RNS::icomp_X		= -1;
+int          RNS::icomp_omegadot	= -1;
+int          RNS::icomp_dYdt		= -1;
+int          RNS::icomp_heatRelease	= -1;
+int          RNS::icomp_fuelConsumption = -1;
+std::vector<std::string> RNS::plot_names;
+
+std::string  RNS::job_name = "";
+
+#ifdef _OPENMP
+std::vector<int> RNS::blocksize(BL_SPACEDIM, 8);
+#else
+std::vector<int> RNS::blocksize(BL_SPACEDIM, 2048);
+#endif
+
+// this will be reset upon restart
+Real         RNS::previousCPUTimeUsed = 0.0;
+Real         RNS::startCPUTime = 0.0;
 
 void
 RNS::variableCleanUp () 
@@ -204,6 +256,12 @@ RNS::read_params ()
             }
         }
     }
+
+    pp.query("fuelName"     , fuelName);
+    pp.query("oxidizerName" , oxidizerName);
+    pp.query("productName"  , productName);
+    flameTracName = fuelName;
+    pp.query("flameTracName", flameTracName);
     
     pp.query("allow_untagging"   , allow_untagging);
     pp.query("do_density_ref"    , do_density_ref);
@@ -211,6 +269,25 @@ RNS::read_params ()
     pp.query("do_pressure_ref"   , do_pressure_ref);
     pp.query("do_velocity_ref"   , do_velocity_ref);
     pp.query("do_vorticity_ref"  , do_vorticity_ref);
+    pp.query("do_flametrac_ref"  , do_flametrac_ref);
+
+    pp.query("plot_cons"           , plot_cons           );
+    pp.query("plot_prim"           , plot_prim           );
+    pp.query("plot_magvel"         , plot_magvel         );
+    pp.query("plot_Mach"           , plot_Mach           );
+    pp.query("plot_divu"           , plot_divu           );
+    pp.query("plot_magvort"        , plot_magvort        );
+    pp.query("plot_X"              , plot_X              );
+    pp.query("plot_omegadot"       , plot_omegadot       );
+    pp.query("plot_dYdt"           , plot_dYdt           );
+    pp.query("plot_heatRelease"    , plot_heatRelease    );
+    pp.query("plot_fuelConsumption", plot_fuelConsumption);
+    pp.query("plot_primplus"       , plot_primplus);
+
+    pp.query("job_name",job_name);  
+
+    pp.queryarr("blocksize", blocksize);
+
 }
 
 RNS::RNS ()
@@ -789,3 +866,16 @@ RNS::sumDerive (const std::string& name,
 }
 
 
+Real
+RNS::getCPUTime()
+{
+    int numCores = ParallelDescriptor::NProcs();
+#ifdef _OPENMP
+    numCores *= omp_get_max_threads();
+#endif    
+
+    Real T = numCores*(ParallelDescriptor::second() - startCPUTime) + 
+	previousCPUTimeUsed;
+    
+    return T;
+}

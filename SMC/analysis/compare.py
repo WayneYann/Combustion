@@ -5,7 +5,21 @@ import os
 import re
 from StringIO import StringIO
 
+def memoize(obj):
+    import functools
+    
+    cache = obj.cache = {}
 
+    @functools.wraps(obj)
+    def memoizer(*args, **kwargs):
+        key = str(args) + str(kwargs)
+        if key not in cache:
+            cache[key] = obj(*args, **kwargs)
+        return cache[key]
+    return memoizer
+
+  
+@memoize
 def find_plotfile(rundir, time):
   """Return plotfile with time *time* in run directory *rundir*."""
 
@@ -20,17 +34,18 @@ def find_plotfile(rundir, time):
   return None
 
 
-def compare(p1, p2, variable, norm=0):
+def compare(p1, p2, variables, norm=0):
 
   with cd(env.rwd):
     output = run('%s --infile1 %s --infile2 %s' % (env.ffdcompare, p1, p2), quiet=True)
   
+  err = {}
   for l in output.split('\n'):
     r = l.split()
-    if r and r[0] == variable:
-      return float(r[norm+1])
+    if r and r[0] in variables:
+      err[r[0]] = float(r[norm+1])
 
-  return None
+  return err
 
 
 def runtime(rundir):
@@ -50,10 +65,8 @@ def runtime(rundir):
   return time, nad, nr
 
 
-def error(rundir1, rundir2, time, norm=2, variable='pressure', refratio=1, diff=None):
+def error(rundir1, rundir2, time, norm=2, variables=['pressure'], refratio=1, diff=None):
   """Compute the error of *variable* between runs at time *time*."""
-
-  print 'computing errors:', rundir1, rundir2, time, variable, refratio
 
   p1 = find_plotfile(rundir1, time)
   p2 = find_plotfile(rundir2, time)
@@ -62,10 +75,9 @@ def error(rundir1, rundir2, time, norm=2, variable='pressure', refratio=1, diff=
     print '  plotfiles not found!'
     return None
 
-  err = compare(p1, p2, variable, norm)
+  err = compare(p1, p2, variables, norm)
 
-  print '  p1:', p1
-  print '  p2:', p2
-  print '  l%d:' % norm, err
+  if len(variables) == 1:
+    return err[variables[0]]
 
   return err

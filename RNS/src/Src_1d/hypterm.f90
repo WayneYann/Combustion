@@ -26,9 +26,10 @@ contains
     allocate(UL(lo(1):hi(1)+1,NVAR))
     allocate(UR(lo(1):hi(1)+1,NVAR))
 
-    call reconstruct(lo(1), hi(1), U, Ulo(1), Uhi(1), UL=UL, UR=UR)
-    
-    call riemann(lo(1), hi(1), UL, UR, flx)
+    call reconstruct(lo(1), hi(1), Ulo(1), Uhi(1), lo(1), hi(1)+1, 0,0,0,0, &
+         U, UL=UL, UR=UR)
+
+    call riemann(lo(1),hi(1), UL, UR, lo(1),hi(1)+1, flx, lo(1),hi(1)+1)
     
     deallocate(UL,UR)
 

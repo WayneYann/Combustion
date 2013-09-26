@@ -5,7 +5,7 @@ subroutine rns_dudt (lo, hi, &
      xflx, xf_l1, xf_l2, xf_h1, xf_h2, &
      yflx, yf_l1, yf_l2, yf_h1, yf_h2, &
      dx)
-  use meth_params_module, only : NVAR, gravity, URHO, UMY, UEDEN
+  use meth_params_module, only : NVAR, gravity, URHO, UMY, UEDEN, xblksize, yblksize, nthreads
   use hypterm_module, only : hypterm
   use difterm_module, only : difterm
   implicit none
@@ -15,14 +15,16 @@ subroutine rns_dudt (lo, hi, &
   integer, intent(in) :: Ut_l1, Ut_h1, Ut_l2, Ut_h2
   integer, intent(in) :: xf_l1, xf_h1, xf_l2, xf_h2
   integer, intent(in) :: yf_l1, yf_h1, yf_l2, yf_h2
-  double precision, intent(in)    ::    U( U_l1: U_h1, U_l2: U_h2,NVAR)
-  double precision, intent(inout) :: dUdt(Ut_l1:Ut_h1,Ut_l2:Ut_h2,NVAR)
-  double precision, intent(  out) :: xflx(xf_l1:xf_h1,xf_l2:xf_h2,NVAR)
-  double precision, intent(  out) :: yflx(yf_l1:yf_h1,yf_l2:yf_h2,NVAR)
-  double precision, intent(in) :: dx(2)
+  double precision, intent(in)  ::    U( U_l1: U_h1, U_l2: U_h2,NVAR)
+  double precision, intent(out) :: dUdt(Ut_l1:Ut_h1,Ut_l2:Ut_h2,NVAR)
+  double precision, intent(out) :: xflx(xf_l1:xf_h1,xf_l2:xf_h2,NVAR)
+  double precision, intent(out) :: yflx(yf_l1:yf_h1,yf_l2:yf_h2,NVAR)
+  double precision, intent(in)  :: dx(2)
 
-  integer :: Ulo(2), Uhi(2), i, j, n
+  integer :: Ulo(2), Uhi(2), fxlo(2), fxhi(2), fylo(2), fyhi(2), tlo(2), thi(2)
+  integer :: i, j, n, blocksize(2), ib, jb, nb(2)
   double precision :: dxinv(2)
+  double precision, allocatable :: bxflx(:,:,:), byflx(:,:,:)
 
   dxinv(1) = 1.d0/dx(1)
   dxinv(2) = 1.d0/dx(2)
@@ -32,20 +34,70 @@ subroutine rns_dudt (lo, hi, &
   Uhi(1) = U_h1
   Uhi(2) = U_h2
 
-  if (      xf_l1.ne.lo(1) .or. xf_h1.ne.hi(1)+1 &
-       .or. xf_l2.ne.lo(2) .or. xf_h2.ne.hi(2) ) then
-     print *, 'xflx has wrong size!'
-     stop
+  if (nthreads*yblksize .le. hi(2)-lo(2)+1) then
+     blocksize(1) = hi(1) - lo(1) + 1  ! blocking in y-direction only
+  else
+     blocksize(1) = xblksize 
   end if
+  blocksize(2) = yblksize
 
-  if (      yf_l1.ne.lo(1) .or. yf_h1.ne.hi(1)   &
-       .or. yf_l2.ne.lo(2) .or. yf_h2.ne.hi(2)+1) then
-     print *, 'yflx has wrong size!'
-     stop
-  end if
+  nb = (hi-lo+blocksize)/blocksize
 
-  call hypterm(lo,hi,U,Ulo,Uhi,xflx,yflx,dx)
+  !$omp parallel private(fxlo,fxhi,fylo,fyhi,tlo,thi,i,j,n,ib,jb,bxflx,byflx)
+  
+  !$omp do collapse(2)
+  do jb=0,nb(2)-1
+     do ib=0,nb(1)-1
 
+        tlo(1) = lo(1) + ib*blocksize(1)
+        tlo(2) = lo(2) + jb*blocksize(2)
+
+        thi(1) = min(tlo(1)+blocksize(1)-1, hi(1))
+        thi(2) = min(tlo(2)+blocksize(2)-1, hi(2))
+
+        fxlo(1) = tlo(1)
+        fxlo(2) = tlo(2)
+        fxhi(1) = thi(1)+1
+        fxhi(2) = thi(2)
+
+        fylo(1) = tlo(1)
+        fylo(2) = tlo(2)
+        fyhi(1) = thi(1)
+        fyhi(2) = thi(2)+1
+  
+        allocate(bxflx(fxlo(1):fxhi(1),fxlo(2):fxhi(2),NVAR))
+        allocate(byflx(fylo(1):fyhi(1),fylo(2):fyhi(2),NVAR))
+
+        bxflx = 0.d0
+        byflx = 0.d0
+
+        call hypterm(tlo,thi,U,Ulo,Uhi,bxflx,fxlo,fxhi,byflx,fylo,fyhi,dx)
+        call difterm(tlo,thi,U,Ulo,Uhi,bxflx,fxlo,fxhi,byflx,fylo,fyhi,dxinv)
+
+        ! Note that fluxes are on faces.  So don't double count!
+        if (thi(1) .ne. hi(1)) fxhi(1) = fxhi(1) - 1
+        if (thi(2) .ne. hi(2)) fyhi(2) = fyhi(2) - 1
+
+        do n=1,NVAR
+           do j=fxlo(2),fxhi(2)
+              do i=fxlo(1),fxhi(1)
+                 xflx(i,j,n) = bxflx(i,j,n)
+              end do
+           end do
+
+           do j=fylo(2),fyhi(2)
+              do i=fylo(1),fyhi(1)
+                 yflx(i,j,n) = byflx(i,j,n)
+              end do
+           end do
+        end do
+
+        deallocate(bxflx,byflx)
+
+     end do
+  end do
+
+  !$omp do
   do n=1, NVAR
      do j=lo(2),hi(2)
         do i=lo(1),hi(1)
@@ -54,17 +106,20 @@ subroutine rns_dudt (lo, hi, &
         end do
      end do
   end do
-
-!xxxxx  call difterm(lo,hi,U,Ulo,Uhi,fx,fy,dxinv)
+  !$omp end do
 
   if (gravity .ne. 0.d0) then
+     !$omp do collapse(2)
      do j=lo(2),hi(2)
         do i=lo(1),hi(1)
            dUdt(i,j,UMY  ) = dUdt(i,j,UMY  ) + U(i,j,URHO)*gravity
            dUdt(i,j,UEDEN) = dUdt(i,j,UEDEN) + U(i,j,UMY )*gravity
         end do
      end do
+     !$omp end do
   end if
+  
+  !$omp end parallel
 
 end subroutine rns_dudt
 
@@ -106,6 +161,7 @@ subroutine rns_compute_temp(lo,hi,U,U_l1,U_l2,U_h1,U_h2)
   integer :: i, j
   double precision :: rhoInv, e, vx, vy, Y(NSPEC)
 
+  !$omp parallel do private(i,j,rhoInv,e,vx,vy,Y) collapse(2)
   do j=lo(2),hi(2)
   do i=lo(1),hi(1)
      rhoInv = 1.0d0/U(i,j,URHO)
@@ -119,6 +175,7 @@ subroutine rns_compute_temp(lo,hi,U,U_l1,U_l2,U_h1,U_h2)
      call eos_get_T(U(i,j,UTEMP), e, Y)
   end do
   end do
+  !$omp end parallel do
 end subroutine rns_compute_temp
 
 ! :::
@@ -141,6 +198,8 @@ subroutine rns_enforce_consistent_Y(lo,hi,U,U_l1,U_l2,U_h1,U_h2)
 
   double precision, parameter :: eps = -1.d-16
 
+  !$omp parallel do private(i,j,n,int_dom_spec,any_negative,dom_spec) &
+  !$omp private(x,rhoInv,sumrY,fac) collapse(2)
   do j = lo(2),hi(2)
   do i = lo(1),hi(1)
 
@@ -187,29 +246,29 @@ subroutine rns_enforce_consistent_Y(lo,hi,U,U_l1,U_l2,U_h1,U_h2)
            
            if (U(i,j,n) .lt. 0.d0) then
               
-              x = U(i,j,n)/U(i,j,URHO)
+              x = U(i,j,n)*rhoInv
               
-              ! Here we only print the bigger negative values
-              if (x .lt. -1.d-2) then
-                 print *,'Correcting negative species   ',n-UFS+1
-                 print *,'   at cell (i)                ',i
-                 print *,'Negative (rho*Y) is           ',U(i,j,n)
-                 print *,'Negative      Y  is           ',x
-                 print *,'Filling from dominant species ',int_dom_spec-UFS+1
-                 print *,'  which had Y =               ',&
-                      U(i,j,int_dom_spec) / U(i,j,URHO)
-              end if
+              ! ! Here we only print the bigger negative values
+              ! if (x .lt. -1.d-2) then
+              !    print *,'Correcting negative species   ',n-UFS+1
+              !    print *,'   at cell (i,j)              ',i,j
+              !    print *,'Negative (rho*Y) is           ',U(i,j,n)
+              !    print *,'Negative      Y  is           ',x
+              !    print *,'Filling from dominant species ',int_dom_spec-UFS+1
+              !    print *,'  which had Y =               ',&
+              !         U(i,j,int_dom_spec) / U(i,j,URHO)
+              ! end if
 
               ! Take enough from the dominant species to fill the negative one.
               U(i,j,int_dom_spec) = U(i,j,int_dom_spec) + U(i,j,n)
    
-              ! Test that we didn't make the dominant species negative
-              if (U(i,j,int_dom_spec) .lt. 0.d0) then 
-                 print *,' Just made dominant species negative ',int_dom_spec-UFS+1,' at ',i
-                 print *,'We were fixing species ',n-UFS+1,' which had value ',x
-                 print *,'Dominant species became ',U(i,j,int_dom_spec) / U(i,j,URHO)
-                 call bl_error("Error:: CNSReact_2d.f90 :: ca_enforce_nonnegative_species")
-              end if
+              ! ! Test that we didn't make the dominant species negative
+              ! if (U(i,j,int_dom_spec) .lt. 0.d0) then 
+              !    print *,' Just made dominant species negative ',int_dom_spec-UFS+1,' at ',i
+              !    print *,'We were fixing species ',n-UFS+1,' which had value ',x
+              !    print *,'Dominant species became ',U(i,j,int_dom_spec) / U(i,j,URHO)
+              !    call bl_error("Error:: CNSReact_2d.f90 :: ca_enforce_nonnegative_species")
+              ! end if
 
               ! Now set the negative species to zero
               U(i,j,n) = 0.d0
@@ -222,6 +281,7 @@ subroutine rns_enforce_consistent_Y(lo,hi,U,U_l1,U_l2,U_h1,U_h2)
      
   end do
   end do
+  !$omp end parallel do
 
 end subroutine rns_enforce_consistent_Y
 
@@ -274,6 +334,7 @@ end subroutine rns_enforce_consistent_Y
       mxlen = max(lenx,leny)
 
       if (lenx .eq. mxlen) then
+         !$omp parallel do private(i,j,n,ic,jc,ioff,joff)
          do n = 1, nvar
  
 !           Set coarse grid to zero on overlap
@@ -304,9 +365,11 @@ end subroutine rns_enforce_consistent_Y
             enddo
             
          enddo
+         !$omp end parallel do
 
       else
 
+         !$omp parallel do private(i,j,n,ic,jc,ioff,joff)
          do n = 1, nvar
 
 !           Set coarse grid to zero on overlap
@@ -337,6 +400,7 @@ end subroutine rns_enforce_consistent_Y
             enddo
             
          enddo
+         !$omp end parallel do
 
       end if
 
@@ -359,6 +423,8 @@ end subroutine rns_enforce_consistent_Y
         integer :: i, j
         double precision :: rhoInv, vx, vy, T, e, c, Y(NSPEC)
 
+        !$omp parallel do private(i,j,rhoInv,vx,vy,T,e,c,Y) reduction(min:dt) &
+        !$omp collapse(2)
         do j = lo(2), hi(2)
         do i = lo(1), hi(1)
            rhoInv = 1.d0/u(i,j,URHO)
@@ -369,14 +435,13 @@ end subroutine rns_enforce_consistent_Y
            
            e = u(i,j,UEDEN)*rhoInv - 0.5d0*(vx**2+vy**2)
            
-           if (NSPEC > 0) then
-              Y = u(i,j,UFS:UFS+NSPEC-1)*rhoInv
-           end if
+           Y = u(i,j,UFS:UFS+NSPEC-1)*rhoInv
            
            call eos_get_c(c,u(i,j,URHO),T,Y)
 
            dt = min(dt, dx(1)/(abs(vx)+c+1.d-50), dx(2)/(abs(vy)+c+1.d-50))
         end do
         end do
+        !$omp end parallel do
 
       end subroutine rns_estdt

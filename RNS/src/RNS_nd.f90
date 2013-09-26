@@ -15,7 +15,7 @@ end subroutine get_method_params
 ! ::: 
 subroutine set_method_params(dm,Density,Xmom,Eden,Temp,FirstSpec, &
      NUM_STATE, NumSpec, small_dens_in, small_temp_in, small_pres_in, &
-     gamma_in, grav_in, Tref_in, riemann_in, difmag_in)
+     gamma_in, grav_in, Tref_in, riemann_in, difmag_in, blocksize)
 
   use meth_params_module
   use eos_module
@@ -24,7 +24,7 @@ subroutine set_method_params(dm,Density,Xmom,Eden,Temp,FirstSpec, &
 
   integer, intent(in) :: dm
   integer, intent(in) :: Density, Xmom, Eden, Temp, FirstSpec, NUM_STATE, NumSpec, &
-       riemann_in
+       riemann_in, blocksize(*)
   double precision, intent(in) :: small_dens_in, small_temp_in, small_pres_in, &
        gamma_in, grav_in, Tref_in, difmag_in
   
@@ -86,6 +86,19 @@ subroutine set_method_params(dm,Density,Xmom,Eden,Temp,FirstSpec, &
 
   riemann_solver = riemann_in
   difmag = difmag_in
+
+  xblksize = blocksize(1)
+  if (dm .ge. 2) then
+     yblksize = blocksize(2)
+  end if
+  if (dm .ge. 3) then
+     zblksize = blocksize(3)
+  end if
+
+  nthreads=0
+  !$omp parallel reduction(+:nthreads)
+  nthreads = nthreads + 1
+  !$omp end parallel
 
 end subroutine set_method_params
 

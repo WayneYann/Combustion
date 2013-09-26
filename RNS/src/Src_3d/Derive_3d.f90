@@ -22,7 +22,7 @@ subroutine rns_derpres(p,p_l1,p_l2,p_l3,p_h1,p_h2,p_h3,ncomp_p, &
   !
   ! Compute pressure from the EOS
   !
-  !$OMP PARALLEL DO PRIVATE(i,j,k,n,Y,rhoInv)
+  !$OMP PARALLEL DO PRIVATE(i,j,k,n,Y,rhoInv) collapse(2)
   do k = lo(3),hi(3)
      do j = lo(2),hi(2)
         do i = lo(1),hi(1)
@@ -66,7 +66,7 @@ subroutine rns_dersoundspeed(c,c_l1,c_l2,c_l3,c_h1,c_h2,c_h3,ncomp_c, &
   !
   ! Compute soundspeed from the EOS.
   !
-  !$OMP PARALLEL DO PRIVATE(i,j,k,n,Y,rhoInv)
+  !$OMP PARALLEL DO PRIVATE(i,j,k,n,Y,rhoInv) collapse(2)
   do k = lo(3),hi(3)
      do j = lo(2),hi(2)
         do i = lo(1),hi(1)
@@ -110,7 +110,7 @@ subroutine rns_dermachnumber(mach,mach_l1,mach_l2,mach_l3,mach_h1,mach_h2,mach_h
   !
   ! Compute Mach number of the flow.
   !
-  !$OMP PARALLEL DO PRIVATE(i,j,k,n,c,Y,rhoInv,ux,uy,uz)
+  !$OMP PARALLEL DO PRIVATE(i,j,k,n,c,Y,rhoInv,ux,uy,uz) collapse(2)
   do k = lo(3),hi(3)
      do j = lo(2),hi(2)
         do i = lo(1),hi(1)
@@ -154,7 +154,7 @@ subroutine rns_dermagvort(vort,  v_l1,  v_l2,  v_l3,  v_h1,  v_h2,  v_h3,nv, &
   double precision,intent(in )::  dat(dat_l1:dat_h1,dat_l2:dat_h2,dat_l3:dat_h3,nc)
 
   integer          :: i,j,k
-  double precision :: uy,uz,vx,vz,wx,wy, dxinv(3)
+  double precision :: uy,uz,vx,vz,wx,wy, dxinv(3), rhoInv
   double precision, allocatable :: u(:,:,:), v(:,:,:), w(:,:,:)
 
   allocate(u(lo(1)-1:hi(1)+1, lo(2)-1:hi(2)+1, lo(3)-1:hi(3)+1))
@@ -166,15 +166,16 @@ subroutine rns_dermagvort(vort,  v_l1,  v_l2,  v_l3,  v_h1,  v_h2,  v_h3,nv, &
   !
   ! Convert momentum to velocity.
   !
-  !$OMP PARALLEL PRIVATE(i,j,k,uy,uz,vx,vz,wx,wy)
+  !$OMP PARALLEL PRIVATE(i,j,k,uy,uz,vx,vz,wx,wy,rhoInv)
 
-  !$OMP DO 
+  !$OMP DO COLLAPSE(2)
   do k = lo(3)-1, hi(3)+1
      do j = lo(2)-1, hi(2)+1
         do i = lo(1)-1, hi(1)+1
-           u(i,j,k) = dat(i,j,k,2) / dat(i,j,k,1)
-           v(i,j,k) = dat(i,j,k,3) / dat(i,j,k,1)
-           w(i,j,k) = dat(i,j,k,4) / dat(i,j,k,1)
+           rhoInv = 1.d0/dat(i,j,k,1)
+           u(i,j,k) = dat(i,j,k,2) * rhoInv
+           v(i,j,k) = dat(i,j,k,3) * rhoInv
+           w(i,j,k) = dat(i,j,k,4) * rhoInv
         end do
      end do
   end do
@@ -182,7 +183,7 @@ subroutine rns_dermagvort(vort,  v_l1,  v_l2,  v_l3,  v_h1,  v_h2,  v_h3,nv, &
   !
   ! Calculate vorticity.
   !
-  !$OMP DO 
+  !$OMP DO COLLAPSE(2)
   do k = lo(3), hi(3)
      do j = lo(2), hi(2)
         do i = lo(1), hi(1)
@@ -228,7 +229,7 @@ subroutine rns_derdivu(divu,div_l1,div_l2,div_l3,div_h1,div_h2,div_h3,nd, &
 
   dxinv = 1.d0/delta
 
-  !$OMP PARALLEL DO PRIVATE(i,j,k,ulo,uhi,vlo,vhi,wlo,whi)
+  !$OMP PARALLEL DO PRIVATE(i,j,k,ulo,uhi,vlo,vhi,wlo,whi) COLLAPSE(2)
   do k = lo(3), hi(3)
      do j = lo(2), hi(2)
         do i = lo(1), hi(1)
@@ -268,7 +269,7 @@ subroutine rns_derspec(spec,spec_l1,spec_l2,spec_l3,spec_h1,spec_h2,spec_h3,ns, 
  
   integer i,j,k
   
-  !$OMP PARALLEL DO PRIVATE(i,j,k)
+  !$OMP PARALLEL DO PRIVATE(i,j,k) COLLAPSE(2)
   do k = lo(3), hi(3)
      do j = lo(2), hi(2)
         do i = lo(1), hi(1)
@@ -304,7 +305,7 @@ subroutine rns_dermolefrac(spec,spec_l1,spec_l2,spec_l3,spec_h1,spec_h2,spec_h3,
   integer :: i,j,k
   double precision :: Yt(NSPEC),Xt(NSPEC), rhoInv
 
-  !$OMP PARALLEL DO PRIVATE(i,j,k,rhoInv,Xt,Yt)
+  !$OMP PARALLEL DO PRIVATE(i,j,k,rhoInv,Xt,Yt) COLLAPSE(2)
   do k = lo(3), hi(3)
      do j = lo(2), hi(2)
         do i = lo(1), hi(1)
@@ -344,7 +345,7 @@ subroutine rns_dervel(vel,vel_l1,vel_l2,vel_l3,vel_h1,vel_h2,vel_h3,nv, &
  
   integer i,j,k
 
-  !$OMP PARALLEL DO PRIVATE(i,j,k) 
+  !$OMP PARALLEL DO PRIVATE(i,j,k) COLLAPSE(2)
   do k = lo(3), hi(3)
      do j = lo(2), hi(2)
         do i = lo(1), hi(1)

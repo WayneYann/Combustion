@@ -1079,12 +1079,12 @@ c               FIRST = .TRUE.
 
                      strang_fix = 1
 
-                     if (ISTATE .LE. -1) then
-                        print*,"STRANG VODE; ISTATE .LE. -1",i,j,k
-                     else
-                        print*,"STRANG VODE; negative_Y_test .eq. 1",i,j,k
-                     end if
-                     call flush()
+c                     if (ISTATE .LE. -1) then
+c                        print*,"STRANG VODE; ISTATE .LE. -1",i,j,k
+c                     else
+c                        print*,"STRANG VODE; negative_Y_test .eq. 1",i,j,k
+c                     end if
+c                     call flush()
 
 c     redo
                      do m=1,Nspec
@@ -1399,12 +1399,12 @@ c                  RWRK(dvbr+4) = TT2 - TT1
 
                      strang_fix = 1
 
-                     if (ISTATE .LE. -1) then
-                        print*,"STRANG VODE; ISTATE .LE. -1",i,j,k
-                     else
-                        print*,"STRANG VODE; negative_Y_test .eq. 1",i,j,k
-                     end if
-                     call flush()
+c                     if (ISTATE .LE. -1) then
+c                        print*,"STRANG VODE; ISTATE .LE. -1",i,j,k
+c                     else
+c                        print*,"STRANG VODE; negative_Y_test .eq. 1",i,j,k
+c                     end if
+c                     call flush()
 
 c     redo
                      do m=1,Nspec

@@ -9,9 +9,6 @@ module transport_properties
 
   implicit none
 
-  ! eglib parameters
-  integer, save :: ITLS=-1, IFLAG=-1
-
   private
 
   public get_transport_properties
@@ -20,7 +17,7 @@ contains
 
   subroutine get_transport_properties(Q, mu, xi, lam, Ddiag, ng, ghostcells_only)
 
-    use probin_module, only : use_bulk_viscosity, use_tranlib
+    use probin_module, only : use_tranlib
     use smc_bc_module, only : get_data_lo_hi
 
     type(multifab), intent(in   ) :: Q
@@ -32,19 +29,6 @@ contains
     logical :: lgco
     integer :: ngq, n, dm, lo(Q%dim), hi(Q%dim), wlo(Q%dim), whi(Q%dim)
     double precision, pointer, dimension(:,:,:,:) :: qp, mup, xip, lamp, dp
-
-    logical, save :: first_call = .true.
-
-    if (first_call) then
-       first_call = .false.
-       if (use_bulk_viscosity) then
-          ITLS  = 1 
-          IFLAG = 5
-       else
-          ITLS  = 1
-          IFLAG = 3
-       end if
-    end if
 
     dm = Q%dim
     ngq = nghost(Q)
@@ -116,11 +100,11 @@ contains
 
        np = whi(1) - wlo(1) + 1
 
-       call egzini(np, ITLS, IFLAG)
-       
        !$omp parallel private(i,j,n,qxn,iwrk) &
        !$omp private(rwrk,Cp,L1Z,L2Z,DZ,XZ,CPZ)
-       
+
+       call egzini(np)
+              
        allocate(L1Z(wlo(1):whi(1)))
        allocate(L2Z(wlo(1):whi(1)))
 
@@ -138,7 +122,7 @@ contains
              end do
           end do
           
-          if (iflag > 3) then
+          if (use_bulk_viscosity) then
              do i=wlo(1),whi(1)
                 call ckcpms(q(i,j,qtemp), iwrk, rwrk, Cp)
                 CPZ(i,:) = Cp
@@ -152,7 +136,7 @@ contains
           call egze3(q(wlo(1):whi(1),j,qtemp), mu(wlo(1):whi(1),j))
 
           if (use_bulk_viscosity) then
-             CALL egzk3(q(wlo(1):whi(1),j,qtemp), xi(wlo(1):whi(1),j))
+             call egzk3(q(wlo(1):whi(1),j,qtemp), xi(wlo(1):whi(1),j))
           else
              xi(wlo(1):whi(1),j) = 0.d0
           end if
@@ -193,10 +177,10 @@ contains
           end do
 
           np = whi(1) - wlo(1) + 1
-          call egzini(np, ITLS, IFLAG)
-
           !$omp parallel private(i,j,jj,n,qxn,iwrk) &
           !$omp private(rwrk,Cp,L1Z,L2Z,DZ,XZ,CPZ)
+
+          call egzini(np)
 
           allocate(L1Z(wlo(1):whi(1)))
           allocate(L2Z(wlo(1):whi(1)))
@@ -217,7 +201,7 @@ contains
                 end do
              end do
              
-             if (iflag > 3) then
+             if (use_bulk_viscosity) then
                 do i=wlo(1),whi(1)
                    call ckcpms(q(i,j,qtemp), iwrk, rwrk, Cp)
                    CPZ(i,:) = Cp
@@ -271,10 +255,11 @@ contains
           end do
           
           np = iisize
-          call egzini(np, ITLS, IFLAG)
 
           !$omp parallel private(i,j,ii,n,qxn,iwrk) &
           !$omp private(rwrk,Cp,L1Z,L2Z,DZ,XZ,CPZ,TZ,EZ,KZ)
+
+          call egzini(np)
     
           allocate(TZ(np))
           allocate(EZ(np))
@@ -296,7 +281,7 @@ contains
                 end do
              end do
 
-             if (iflag > 3) then
+             if (use_bulk_viscosity) then
                 do ii=1,np
                    i = iindex(ii)
                    TZ(ii) = q(i,j,qtemp)
@@ -368,11 +353,11 @@ contains
 
        np = whi(1) - wlo(1) + 1
 
-       call egzini(np, ITLS, IFLAG)
-       
        !$omp parallel private(i,j,k,n,qxn,iwrk) &
        !$omp private(rwrk,Cp,L1Z,L2Z,DZ,XZ,CPZ)
-       
+
+       call egzini(np)
+              
        allocate(L1Z(wlo(1):whi(1)))
        allocate(L2Z(wlo(1):whi(1)))
 
@@ -380,7 +365,7 @@ contains
        allocate(XZ(wlo(1):whi(1),nspecies))
        allocate(CPZ(wlo(1):whi(1),nspecies))
 
-       !$omp do
+       !$omp do collapse(2)
        do k=wlo(3),whi(3)
           do j=wlo(2),whi(2)
 
@@ -391,7 +376,7 @@ contains
                 end do
              end do
 
-             if (iflag > 3) then
+             if (use_bulk_viscosity) then
                 do i=wlo(1),whi(1)
                    call ckcpms(q(i,j,k,qtemp), iwrk, rwrk, Cp)
                    CPZ(i,:) = Cp
@@ -448,10 +433,11 @@ contains
           end do
 
           np = whi(1) - wlo(1) + 1
-          call egzini(np, ITLS, IFLAG)
 
           !$omp parallel private(i,j,k,kk,n,qxn,iwrk) &
           !$omp private(rwrk,Cp,L1Z,L2Z,DZ,XZ,CPZ)
+
+          call egzini(np)
     
           allocate(L1Z(wlo(1):whi(1)))
           allocate(L2Z(wlo(1):whi(1)))
@@ -460,7 +446,7 @@ contains
           allocate(XZ(wlo(1):whi(1),nspecies))
           allocate(CPZ(wlo(1):whi(1),nspecies))
        
-          !$omp do
+          !$omp do collapse(2)
           do kk=1,kisize
              do j=wlo(2),whi(2)
 
@@ -473,7 +459,7 @@ contains
                    end do
                 end do
 
-                if (iflag > 3) then
+                if (use_bulk_viscosity) then
                    do i=wlo(1),whi(1)
                       call ckcpms(q(i,j,k,qtemp), iwrk, rwrk, Cp)
                       CPZ(i,:) = Cp
@@ -529,10 +515,11 @@ contains
           end do
 
           np = whi(1) - wlo(1) + 1
-          call egzini(np, ITLS, IFLAG)
 
           !$omp parallel private(i,j,k,jj,n,qxn,iwrk) &
           !$omp private(rwrk,Cp,L1Z,L2Z,DZ,XZ,CPZ)
+
+          call egzini(np)
 
           allocate(L1Z(wlo(1):whi(1)))
           allocate(L2Z(wlo(1):whi(1)))
@@ -541,7 +528,7 @@ contains
           allocate(XZ(wlo(1):whi(1),nspecies))
           allocate(CPZ(wlo(1):whi(1),nspecies))
     
-          !$omp do
+          !$omp do collapse(2)
           do k=lo(3),hi(3)
              do jj=1,jisize
 
@@ -554,7 +541,7 @@ contains
                    end do
                 end do
                 
-                if (iflag > 3) then
+                if (use_bulk_viscosity) then
                    do i=wlo(1),whi(1)
                       call ckcpms(q(i,j,k,qtemp), iwrk, rwrk, Cp)
                       CPZ(i,:) = Cp
@@ -610,10 +597,11 @@ contains
           end do
           
           np = iisize
-          call egzini(np, ITLS, IFLAG)
 
           !$omp parallel private(i,j,k,ii,n,qxn,iwrk) &
           !$omp private(rwrk,Cp,L1Z,L2Z,DZ,XZ,CPZ,TZ,EZ,KZ)
+
+          call egzini(np)
     
           allocate(TZ(np))
           allocate(EZ(np))
@@ -624,7 +612,7 @@ contains
           allocate(XZ(np,nspecies))
           allocate(CPZ(np,nspecies))
         
-          !$omp do
+          !$omp do collapse(2)
           do k=lo(3),hi(3)
              do j=lo(2),hi(2)
 
@@ -636,7 +624,7 @@ contains
                    end do
                 end do
 
-                if (iflag > 3) then
+                if (use_bulk_viscosity) then
                    do ii=1,np
                       i = iindex(ii)
                       TZ(ii) = q(i,j,k,qtemp)
@@ -700,7 +688,8 @@ contains
     integer :: i, j, n, iwrk
     double precision :: Xt(nspecies), Dt(nspecies), Wbar, rwrk
 
-    !$omp parallel do private(i,j,n,Xt,Dt,Wbar,iwrk,rwrk)
+    !$omp parallel private(i,j,n,Xt,Dt,Wbar,iwrk,rwrk)
+    !$omp do collapse(2)
     do    j=wlo(2),whi(2)
        do i=wlo(1),whi(1)
 
@@ -731,7 +720,8 @@ contains
 
        end do
     end do
-    !$omp end parallel do
+    !$omp end do
+    !$omp end parallel
 
   end subroutine tranlib_2d
 
@@ -748,7 +738,8 @@ contains
     integer :: i, j, k, n, iwrk
     double precision :: Xt(nspecies), Dt(nspecies), Wbar, rwrk
 
-    !$omp parallel do private(i,j,k,n,Xt,Dt,Wbar,iwrk,rwrk)
+    !$omp parallel private(i,j,k,n,Xt,Dt,Wbar,iwrk,rwrk)
+    !$omp do collapse(2)
     do    k=wlo(3),whi(3)
        do j=wlo(2),whi(2)
        do i=wlo(1),whi(1)
@@ -782,7 +773,8 @@ contains
        end do
        end do
     end do
-    !$omp end parallel do
+    !$omp end do
+    !$omp end parallel
 
   end subroutine tranlib_3d
 

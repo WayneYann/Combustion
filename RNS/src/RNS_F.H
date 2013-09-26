@@ -41,7 +41,7 @@ BL_FORT_PROC_DECL(SET_METHOD_PARAMS,set_method_params)
      const int& NUM_STATE, const int& NumSpec,
      const Real& small_dens, const Real& small_temp, const Real& small_pres,
      const Real& gamma, const Real& gravity, const Real& Treference,
-     const int& riemann, const Real& difmag);
+     const int& riemann, const Real& difmag, const int* blocksize);
 
 BL_FORT_PROC_DECL(SET_PROBLEM_PARAMS,set_problem_params)
     (const int& dm,
@@ -107,6 +107,16 @@ BL_FORT_PROC_DECL(RNS_PRESSERROR,rns_presserror)
      const Real dx[], const Real xlo[], const Real problo[],
      const Real* time, const int* level);
 
+BL_FORT_PROC_DECL(RNS_TRACERROR,rns_tracerror)
+    (int* tag, ARLIM_P(tag_lo), ARLIM_P(tag_hi),
+     const int* tagval, const int* clearval,
+     BL_FORT_FAB_ARG(press),
+     const int lo[], const int hi[],
+     const int* ncomp,
+     const int domlo[], const int domhi[],
+     const Real dx[], const Real xlo[], const Real problo[],
+     const Real* time, const int* level);
+
 BL_FORT_PROC_DECL(RNS_GRPFILL,rns_grpfill)
     (BL_FORT_FAB_ARG(state),
      const int dlo[], const int dhi[],
@@ -154,5 +164,29 @@ BL_FORT_PROC_DECL(RNS_AVGDOWN,rns_avgdown)
      const BL_FORT_FAB_ARG(fine_fab),
      const BL_FORT_FAB_ARG(fine_vol),
      const int ovlo[], const int ovhi[], const int rat[]);
+
+
+/* problem-specific stuff goes here */
+
+BL_FORT_PROC_DECL(PROBLEM_CHECKPOINT,problem_checkpoint)(int * int_dir_name, int * len);
+
+BL_FORT_PROC_DECL(PROBLEM_RESTART,problem_restart)(int * int_dir_name, int * len);
+
+/* for plotfiles */
+
+BL_FORT_PROC_DECL(RNS_CTOPRIM, rns_ctoprim)
+    (const int lo[], const int hi[],
+     const BL_FORT_FAB_ARG(cons),
+     BL_FORT_FAB_ARG(prim));
+
+BL_FORT_PROC_DECL(RNS_MAKEPLOTVAR, rns_makeplotvar)
+    (const int lo[], const int hi[], const Real dx[],
+     const BL_FORT_FAB_ARG(prim),
+     BL_FORT_FAB_ARG(plot),
+     const int& npv, const int& icomp_magvel, const int& icomp_Mach, 
+     const int& icomp_divu, const int& icomp_magvort, 
+     const int& icomp_X, const int& icomp_omegadot, const int& icomp_dYdt, 
+     const int& icomp_heatRelease, const int& icomp_fuelConsumption,
+     const int& fuelID);
 
 #endif

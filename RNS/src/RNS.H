@@ -282,6 +282,7 @@ protected:
     static int       do_pressure_ref;
     static int       do_velocity_ref;
     static int       do_vorticity_ref;
+    static int       do_flametrac_ref;
 
     static Real      small_dens;
     static Real      small_temp;
@@ -300,6 +301,45 @@ protected:
     
     static RiemannType Riemann;
     static Real        difmag; // for JBB Riemann solver
+
+    // species information
+    static std::string  fuelName     ;
+    static int          fuelID       ;
+    static std::string  oxidizerName ;
+    static int          oxidizerID   ;
+    static std::string  productName  ;
+    static int          productID    ;
+    static std::string  flameTracName;
+    static int          flameTracID  ;
+
+    // what to store in plotfiles
+    static int         plot_cons;
+    static int         plot_prim;
+    static int         plot_magvel;
+    static int         plot_Mach;
+    static int         plot_divu;
+    static int         plot_magvort;
+    static int         plot_X;
+    static int         plot_omegadot;
+    static int         plot_dYdt;
+    static int         plot_heatRelease;
+    static int         plot_fuelConsumption;
+    static int         plot_primplus;
+
+    static int icomp_cons, icomp_prim, icomp_magvel, icomp_Mach, icomp_divu, icomp_magvort, 
+	icomp_X, icomp_omegadot, icomp_dYdt, icomp_heatRelease, icomp_fuelConsumption;
+    static std::vector<std::string> plot_names;
+
+    static std::string job_name;
+
+    static std::vector<int> blocksize;
+
+    // for keeping track of the amount of CPU time used -- this will persist
+    // after restarts
+    static Real        previousCPUTimeUsed;
+    static Real        startCPUTime;
+
+    Real getCPUTime();
         
     static class ChemDriver* chemSolve;
 };    

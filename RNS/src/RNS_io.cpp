@@ -19,6 +19,8 @@
 #include "RNS.H"
 #include "RNS_F.H"
 
+#include "buildInfo.H"
+
 using std::string;
 
 // I/O routines for RNS
@@ -37,6 +39,42 @@ RNS::restart (Amr&     papa,
     {
 	flux_reg = new FluxRegister(grids,crse_ratio,level,NUM_STATE);
     }
+
+    // get the elapsed CPU time to now;
+    if (level == 0 && ParallelDescriptor::IOProcessor())
+    {
+	// get ellapsed CPU time
+	std::ifstream CPUFile;
+	std::string FullPathCPUFile = parent->theRestartFile();
+	FullPathCPUFile += "/CPUtime";
+	CPUFile.open(FullPathCPUFile.c_str(), std::ios::in);	
+  
+	CPUFile >> previousCPUTimeUsed;
+	CPUFile.close();
+
+	std::cout << "read CPU time: " << previousCPUTimeUsed << "\n";
+    }
+
+    if (level == 0)
+    {
+	// get problem-specific stuff -- note all processors do this,
+	// eliminating the need for a broadcast
+	std::string dir = parent->theRestartFile();
+	
+	char * dir_for_pass = new char[dir.size() + 1];
+	std::copy(dir.begin(), dir.end(), dir_for_pass);
+	dir_for_pass[dir.size()] = '\0';
+	
+	int len = dir.size();
+	
+	Array<int> int_dir_name(len);
+	for (int j = 0; j < len; j++)
+	    int_dir_name[j] = (int) dir_for_pass[j];
+	
+	BL_FORT_PROC_CALL(PROBLEM_RESTART, problem_restart)(int_dir_name.dataPtr(), &len);
+	
+	delete [] dir_for_pass;
+      }
 }
 
 void
@@ -46,6 +84,33 @@ RNS::checkPoint(const std::string& dir,
 		bool dump_old_default)
 {
     AmrLevel::checkPoint(dir, os, how, dump_old);
+
+    if (level == 0 && ParallelDescriptor::IOProcessor())
+    {
+	// store ellapsed CPU time
+	std::ofstream CPUFile;
+	std::string FullPathCPUFile = dir;
+	FullPathCPUFile += "/CPUtime";
+	CPUFile.open(FullPathCPUFile.c_str(), std::ios::out);	
+  
+	CPUFile << std::setprecision(15) << getCPUTime();
+	CPUFile.close();
+
+	// store any problem-specific stuff
+	char * dir_for_pass = new char[dir.size() + 1];
+	std::copy(dir.begin(), dir.end(), dir_for_pass);
+	dir_for_pass[dir.size()] = '\0';
+	
+	int len = dir.size();
+	
+	Array<int> int_dir_name(len);
+	for (int j = 0; j < len; j++)
+	    int_dir_name[j] = (int) dir_for_pass[j];
+
+	BL_FORT_PROC_CALL(PROBLEM_CHECKPOINT, problem_checkpoint)(int_dir_name.dataPtr(), &len); 
+
+	delete [] dir_for_pass;
+    }
 }
 
 std::string
@@ -62,99 +127,144 @@ RNS::thePlotFileType () const
 void
 RNS::setPlotVariables ()
 {
-    AmrLevel::setPlotVariables();
-    
-    const Array<std::string>& names = chemSolve->speciesNames();
-    
-    ParmParse pp("rns");
-    
-    bool plot_rhoY,plot_massFrac,plot_moleFrac,plot_conc;
-    plot_rhoY=plot_massFrac=plot_moleFrac=plot_conc = false;
-    
-    if (pp.query("plot_massfrac",plot_massFrac))
-    {
-        if (plot_massFrac)
-        {
-            for (int i = 0; i < names.size(); i++)
-            {
-                const std::string name = "Y("+names[i]+")";
-                parent->addDerivePlotVar(name);
-            }
-        }
-        else
-        {
-            for (int i = 0; i < names.size(); i++)
-            {
-                const std::string name = "Y("+names[i]+")";
-                parent->deleteDerivePlotVar(name);
-            }
-        }
-    }
+    const Array<std::string>& spec_names = chemSolve->speciesNames();
+    int inext = 0;
 
-    if (pp.query("plot_molefrac",plot_moleFrac))
+    if (plot_cons)
     {
-        if (plot_moleFrac)
+	icomp_cons = 0;
+	inext += NUM_STATE;
+	plot_names.push_back("<rho>");
+	plot_names.push_back("<xmom>");
+#if (BL_SPACEDIM >= 2)
+	plot_names.push_back("<ymom>");
+#endif
+#if (BL_SPACEDIM == 3)
+	plot_names.push_back("<zmom>");
+#endif
+	plot_names.push_back("<rhoE>");
+	plot_names.push_back("<T>");
+	for (int i=0; i<NumSpec; i++)
 	{
-            parent->addDerivePlotVar("molefrac");
-	}
-        else
-	{
-            parent->deleteDerivePlotVar("molefrac");
+	    plot_names.push_back("<rho.Y(" + spec_names[i] + ")>");
 	}
     }
-    
-    if (pp.query("plot_concentration",plot_conc))
+
+    if (plot_prim)
     {
-        if (plot_conc)
+	icomp_prim = inext;
+	inext += NUM_STATE;
+	plot_names.push_back("density");
+	plot_names.push_back("x_vel");
+#if (BL_SPACEDIM >= 2)
+	plot_names.push_back("y_vel");
+#endif
+#if (BL_SPACEDIM == 3)
+	plot_names.push_back("z_vel");
+#endif
+	plot_names.push_back("pressure");
+	plot_names.push_back("temperature");
+	for (int i=0; i<NumSpec; i++)
 	{
-            parent->addDerivePlotVar("concentration");
+	    plot_names.push_back("Y(" + spec_names[i] + ")");
 	}
-        else
+    }
+
+    if (plot_primplus)
+    {
+	plot_primplus = 0;
+
+	if (plot_magvel)
 	{
-            parent->deleteDerivePlotVar("concentration");
+	    plot_primplus = 1;
+	    icomp_magvel = inext;
+	    inext++;
+	    plot_names.push_back("magvel");
+	}
+	
+	if (plot_Mach)
+	{
+	    plot_primplus = 1;
+	    icomp_Mach = inext;
+	    inext++;
+	    plot_names.push_back("Mach");
+	}
+	
+	if (plot_divu)
+	{
+	    plot_primplus = 1;
+	    icomp_divu = inext;
+	    inext++;
+	    plot_names.push_back("divu");
+	}
+	
+#if (BL_SPACEDIM >= 2)
+	if (plot_magvort)
+	{
+	    plot_primplus = 1;
+	    icomp_magvort = inext;
+	    inext++;
+	    plot_names.push_back("magvort");
+	}
+#endif
+	
+	if (plot_X)
+	{
+	    plot_primplus = 1;
+	    icomp_X = inext;
+	    inext += NumSpec;
+	    for (int i=0; i<NumSpec; i++)
+	    {
+		plot_names.push_back("X(" + spec_names[i] + ")");
+	    }	
+	}
+	
+	if (plot_omegadot)
+	{
+	    plot_primplus = 1;
+	    icomp_omegadot = inext;
+	    inext += NumSpec;
+	    for (int i=0; i<NumSpec; i++)
+	    {
+		plot_names.push_back("rho*omgdot(" + spec_names[i] + ")");
+	    }	
+	}
+	
+	if (plot_dYdt)
+	{
+	    plot_primplus = 1;
+	    icomp_dYdt = inext;
+	    inext += NumSpec;
+	    for (int i=0; i<NumSpec; i++)
+	    {
+		plot_names.push_back("Ydot(" + spec_names[i] + ")");
+	    }		
+	}
+	
+	if (plot_heatRelease)
+	{
+	    plot_primplus = 1;
+	    icomp_heatRelease = inext;
+	    inext++;
+	    plot_names.push_back("HeatRelease");	
+	}
+	
+	if (plot_fuelConsumption)
+	{
+	    if (fuelID >= 0)
+	    {
+		plot_primplus = 1;
+		icomp_fuelConsumption = inext;
+		inext++;
+		plot_names.push_back("FuelConsumptionRate");
+	    }
+	    else
+	    {
+//	    BoxLib::Warning("plot_fuelConsumption is true, but fuelName is not set correctly.");
+		plot_fuelConsumption = 0;
+	    }
 	}
     }
-    
-    if (pp.query("plot_rhoY",plot_rhoY))
-    {
-        if (plot_rhoY)
-        {
-            for (int i = 0; i < names.size(); i++)
-            {
-                const std::string name = "rho.Y("+names[i]+")";
-                parent->addStatePlotVar(name);
-            }
-        }
-        else
-        {
-            for (int i = 0; i < names.size(); i++)
-            {
-                const std::string name = "rho.Y("+names[i]+")";
-                parent->deleteStatePlotVar(name);
-            }
-        }
-    }
-
-    if (verbose && ParallelDescriptor::IOProcessor())
-    {
-        std::cout << "\nState Plot Vars: ";
-
-        std::list<std::string>::const_iterator li = parent->statePlotVars().begin(), end = parent->statePlotVars().end();
-
-        for ( ; li != end; ++li)
-            std::cout << *li << ' ';
-        std::cout << '\n';
-
-        std::cout << "\nDerive Plot Vars: ";
-
-        li  = parent->derivePlotVars().begin();
-        end = parent->derivePlotVars().end();
-
-        for ( ; li != end; ++li)
-            std::cout << *li << ' ';
-        std::cout << '\n';
-    }
-
 }
 
 void
@@ -163,42 +273,8 @@ RNS::writePlotFile (const std::string& dir,
                        VisMF::How     how)
 {
     int i, n;
-    //
-    // The list of indices of State to write to plotfile.
-    // first component of pair is state_type,
-    // second component of pair is component # within the state_type
-    //
-    std::vector<std::pair<int,int> > plot_var_map;
-    for (int typ = 0; typ < desc_lst.size(); typ++)
-    {
-        for (int comp = 0; comp < desc_lst[typ].nComp();comp++)
-	{
-            if (parent->isStatePlotVar(desc_lst[typ].name(comp)) &&
-                desc_lst[typ].getType() == IndexType::TheCellType())
-	    {
-                plot_var_map.push_back(std::pair<int,int>(typ,comp));
-	    }
-	}
-    }
-
-    int num_derive = 0;
-    std::list<std::string> derive_names;
-    const std::list<DeriveRec>& dlist = derive_lst.dlist();
-
-    for (std::list<DeriveRec>::const_iterator it = dlist.begin();
-	 it != dlist.end();
-	 ++it)
-    {
-        if (parent->isDerivePlotVar(it->name()))
-	{
-            derive_names.push_back(it->name());
-            num_derive++;
-	}
-    }
-
-    int n_data_items = plot_var_map.size() + num_derive;
-
     Real cur_time = state[State_Type].curTime();
+    int n_plot_vars = plot_names.size();
 
     if (level == 0 && ParallelDescriptor::IOProcessor())
     {
@@ -207,26 +283,18 @@ RNS::writePlotFile (const std::string& dir,
         //
         os << thePlotFileType() << '\n';
 
-        if (n_data_items == 0)
+        if (n_plot_vars == 0)
             BoxLib::Error("Must specify at least one valid data item to plot");
 
-        os << n_data_items << '\n';
+        os << n_plot_vars << '\n';
 
 	//
-	// Names of variables -- first state, then derived
+	// Names of variables 
 	//
-	for (i =0; i < plot_var_map.size(); i++)
-        {
-	    int typ = plot_var_map[i].first;
-	    int comp = plot_var_map[i].second;
-	    os << desc_lst[typ].name(comp) << '\n';
-        }
-
-	for ( std::list<std::string>::iterator it = derive_names.begin();
-	      it != derive_names.end(); ++it)
-        {
-	    const DeriveRec* rec = derive_lst.get(*it);
-            os << rec->variableName(0) << '\n';
+	for (std::vector<string>::iterator it = plot_names.begin();
+	     it != plot_names.end(); ++it)
+	{
+	    os << *it << '\n';
         }
 
         os << BL_SPACEDIM << '\n';
@@ -257,7 +325,119 @@ RNS::writePlotFile (const std::string& dir,
         os << (int) Geometry::Coord() << '\n';
         os << "0\n"; // Write bndry data.
 
+
+        // job_info file with details about the run
+	std::ofstream jobInfoFile;
+	std::string FullPathJobInfoFile = dir;
+	FullPathJobInfoFile += "/job_info";
+	jobInfoFile.open(FullPathJobInfoFile.c_str(), std::ios::out);	
+
+	std::string PrettyLine = "===============================================================================\n";
+	std::string OtherLine = "--------------------------------------------------------------------------------\n";
+	std::string SkipSpace = "        ";
+
+	// job information
+	jobInfoFile << PrettyLine;
+	jobInfoFile << " Job Information\n";
+	jobInfoFile << PrettyLine;
+	
+	jobInfoFile << "job name: " << job_name << "\n\n";
+
+	jobInfoFile << "number of MPI processes: " << ParallelDescriptor::NProcs() << "\n";
+#ifdef _OPENMP
+	jobInfoFile << "number of threads:       " << omp_get_max_threads() << "\n";
+#endif
+
+	jobInfoFile << "\n";
+	jobInfoFile << "CPU time used since start of simulation (CPU-hours): " <<
+	  getCPUTime()/3600.0;
+
+	jobInfoFile << "\n\n";
+
+        // plotfile information
+	jobInfoFile << PrettyLine;
+	jobInfoFile << " Plotfile Information\n";
+	jobInfoFile << PrettyLine;
+
+	time_t now = time(0);
+
+	// Convert now to tm struct for local timezone
+	tm* localtm = localtime(&now);
+	jobInfoFile   << "output data / time: " << asctime(localtm);
+
+	char currentDir[FILENAME_MAX];
+	if (getcwd(currentDir, FILENAME_MAX)) {
+	  jobInfoFile << "output dir:         " << currentDir << "\n";
+	}
+
+	jobInfoFile << "\n\n";
+
+        // build information
+	jobInfoFile << PrettyLine;
+	jobInfoFile << " Build Information\n";
+	jobInfoFile << PrettyLine;
+
+	jobInfoFile << "build date:    " << buildInfoGetBuildDate() << "\n";
+	jobInfoFile << "build machine: " << buildInfoGetBuildMachine() << "\n";
+	jobInfoFile << "build dir:     " << buildInfoGetBuildDir() << "\n";
+	jobInfoFile << "BoxLib dir:    " << buildInfoGetBoxlibDir() << "\n";
+
+	jobInfoFile << "\n";
+	
+	jobInfoFile << "COMP:  " << buildInfoGetComp() << "\n";
+	jobInfoFile << "FCOMP: " << buildInfoGetFcomp() << "\n";
+
+	jobInfoFile << "\n";
+
+	jobInfoFile << "Chemistry: " << buildInfoGetAux(1) << "\n";
+
+	jobInfoFile << "\n";
+
+	const char* githash1 = buildInfoGetGitHash(1);
+	const char* githash2 = buildInfoGetGitHash(2);
+	const char* githash3 = buildInfoGetGitHash(3);
+	if (strlen(githash1) > 0) {
+	  jobInfoFile << "Combustion git hash: " << githash1 << "\n";
+	}
+	if (strlen(githash2) > 0) {
+	  jobInfoFile << "BoxLib     git hash: " << githash2 << "\n";
+	}
+	if (strlen(githash3) > 0) {	
+	  jobInfoFile << "SDCLib     git hash: " << githash3 << "\n";
+	}
+
+	jobInfoFile << "\n\n";
+
+	// grid information
+	jobInfoFile << PrettyLine;
+	jobInfoFile << " Grid Information\n";
+	jobInfoFile << PrettyLine;
+
+	for (i = 0; i <= f_lev; i++)
+	  {
+	    jobInfoFile << "level: " << i << "\n";
+	    jobInfoFile << "  number of boxes = " << parent->numGrids(i) << "\n";
+	    jobInfoFile << "  maximum zones   = ";
+	    for (n = 0; n < BL_SPACEDIM; n++)
+	      {
+		jobInfoFile << parent->Geom(i).Domain().length(n) << " ";
+		//jobInfoFile << parent->Geom(i).ProbHi(n) << " ";
+	      }
+	    jobInfoFile << "\n\n";
+	  }
+
+	jobInfoFile << "\n";
+
+	// runtime parameters
+	jobInfoFile << PrettyLine;
+	jobInfoFile << " Inputs File Parameters\n";
+	jobInfoFile << PrettyLine;
+	
+	ParmParse::dumpTable(jobInfoFile, true);
+
+	jobInfoFile.close();
     }
+
     // Build the directory to hold the MultiFab at this level.
     // The name is relative to the directory containing the Header file.
     //
@@ -299,45 +479,53 @@ RNS::writePlotFile (const std::string& dir,
         // The name is relative to the Header file containing this name.
         // It's the name that gets written into the Header.
         //
-        if (n_data_items > 0)
-        {
-            std::string PathNameInHeader = Level;
-            PathNameInHeader += BaseName;
-            os << PathNameInHeader << '\n';
-        }
+	std::string PathNameInHeader = Level;
+	PathNameInHeader += BaseName;
+	os << PathNameInHeader << '\n';
     }
-    //
-    // We combine all of the multifabs -- state, derived, etc -- into one
-    // multifab -- plotMF.
-    // NOTE: we are assuming that each state variable has one component,
-    // but a derived variable is allowed to have multiple components.
-    int       cnt   = 0;
-    const int nGrow = 0;
-    MultiFab  plotMF(grids,n_data_items,nGrow);
-    MultiFab* this_dat = 0;
-    //
-    // Cull data from state variables -- use no ghost cells.
-    //
-    for (i = 0; i < plot_var_map.size(); i++)
+
+    int ngrow = 0;
+    MultiFab plotMF(grids,n_plot_vars,ngrow);
+
+    ngrow = (plot_divu || plot_magvort) ? 2: 1;
+    for (FillPatchIterator fpi(*this, plotMF, ngrow, cur_time, State_Type, 0, NUM_STATE); 
+	 fpi.isValid(); ++fpi) 
     {
-	int typ  = plot_var_map[i].first;
-	int comp = plot_var_map[i].second;
-	this_dat = &state[typ].newData();
-	MultiFab::Copy(plotMF,*this_dat,comp,cnt,1,nGrow);
-	cnt++;
-    }
-    //
-    // Cull data from derived variables.
-    // 
-    if (derive_names.size() > 0)
-    {
-	for (std::list<std::string>::iterator it = derive_names.begin();
-	     it != derive_names.end(); ++it) 
+	int i = fpi.index();
+
+	if (plot_cons)
 	{
-	    MultiFab* derive_dat = derive(*it,cur_time,nGrow);
-	    MultiFab::Copy(plotMF,*derive_dat,0,cnt,1,nGrow);
-	    delete derive_dat;
-	    cnt++;
+	    plotMF[i].copy(fpi(), 0, icomp_cons, NUM_STATE);
+	}
+
+	if (plot_prim || plot_primplus)
+	{
+	    const Box& bx  = grids[i];
+	    const Real* dx = geom.CellSize();
+	    const Box& bxp = BoxLib::grow(bx,ngrow-1);
+
+	    FArrayBox prim(bxp, NUM_STATE);
+	
+	    BL_FORT_PROC_CALL(RNS_CTOPRIM,rns_ctoprim)
+		(bxp.loVect(), bxp.hiVect(),
+		 BL_TO_FORTRAN(fpi()),
+		 BL_TO_FORTRAN(prim));
+
+	    if (plot_prim)
+	    {
+		plotMF[i].copy(prim, 0, icomp_prim, NUM_STATE);
+	    }
+
+	    if (plot_primplus)
+	    {
+		BL_FORT_PROC_CALL(RNS_MAKEPLOTVAR,rns_makeplotvar)
+		    (bx.loVect(), bx.hiVect(), dx,
+		     BL_TO_FORTRAN(prim),
+		     BL_TO_FORTRAN(plotMF[i]),
+		     n_plot_vars, icomp_magvel, icomp_Mach, icomp_divu, icomp_magvort, 
+		     icomp_X, icomp_omegadot, icomp_dYdt, icomp_heatRelease, 
+		     icomp_fuelConsumption, fuelID);
+	    }
 	}
     }
 

@@ -106,6 +106,7 @@ contains
     call get_T_given_eY(e, Y, iwrk, rwrk, T, ierr)
     if (ierr .ne. 0) then
        print *, 'EOS: get_T failed, T, e, Y = ', T, e, Y
+       if (present(pt_index)) print *, ' i, j, k =', pt_index
        call flush(6)
        call bl_error("Error: eos_get_T")
     end if
@@ -174,7 +175,7 @@ contains
     call ckubms(T,Y,iwrk,rwrk,e)
 
     call ckytx(Y, iwrk, rwrk, X)
-    call ckcvbl(T, Y, iwrk, rwrk, Cv)
+    call ckcvbl(T, X, iwrk, rwrk, Cv)
     G = (Cv + Ru) / Cv
 
     C = sqrt(G*P/rho)
@@ -219,7 +220,7 @@ contains
   end subroutine eos_given_ReY
 
 
-  subroutine eos_given_PTY(rho, e, Y, P, T, X, pt_index)
+  subroutine eos_given_PTX(rho, e, Y, P, T, X, pt_index)
     double precision, intent(  out) :: rho, e, Y(nspecies)
     double precision, intent(in   ) :: P, T, X(nspecies)
     integer, optional, intent(in  ) :: pt_index(:)
@@ -228,7 +229,7 @@ contains
     call ckxty (X, iwrk, rwrk, Y)
     call ckrhoy(P,T,Y,iwrk,rwrk,rho)
     call ckubms(T   ,Y,iwrk,rwrk,e)
-  end subroutine eos_given_PTY
+  end subroutine eos_given_PTX
 
 
   pure function eos_get_eref(Y) result(r)

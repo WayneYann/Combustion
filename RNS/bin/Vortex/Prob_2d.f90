@@ -68,7 +68,6 @@ subroutine rns_initdata(level,time,lo,hi,nscal, &
      state,state_l1,state_l2,state_h1,state_h2, &
      delta,xlo,xhi)
 
-  use eos_module, only : eos_given_PTY
   use probdata_module
   use meth_params_module, only : NVAR, URHO, UMX, UMY, UEDEN, UTEMP, UFS, NSPEC
   use chemistry_module, only : Patm, Ru, nspecies

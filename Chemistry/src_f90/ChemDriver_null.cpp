@@ -40,3 +40,9 @@ ChemDriver::~ChemDriver ()
 {
     ;
 }
+
+int
+ChemDriver::index(const std::string speciesName) const
+{
+    return -1;
+}

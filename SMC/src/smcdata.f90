@@ -27,8 +27,8 @@ contains
 
     implicit none
 
-    type(layout), intent(in) :: la
-    type(sdc_ctx_t),  intent(inout) :: sdc
+    type(layout),  intent(in) :: la
+    type(sdc_ctx), intent(inout) :: sdc
     integer :: err
 
     if (advance_method .eq. 1) then ! RK
@@ -60,7 +60,7 @@ contains
 
   subroutine destroy_smcdata(sdc)
     use probin_module, only : advance_method
-    type(sdc_ctx_t), intent(inout) :: sdc
+    type(sdc_ctx), intent(inout) :: sdc
 
     if (advance_method .eq. 1) then ! RK
        call destroy(Unew)

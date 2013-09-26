@@ -6,19 +6,19 @@ module sdcquad_module
 
   implicit none
 
-  type :: sdc_ctx_t
+  type :: sdc_ctx
      real(dp_t) :: dx(3)
 
      logical    :: single_rate, multi_rate
      integer    :: iters = 4
      real(dp_t) :: tol_residual = -1.0d0
 
-     type(mf_encap_t),  pointer :: mfencap
-     type(sdc_encap_t), pointer :: encap
-     type(sdc_nodes_t), pointer :: nodes1, nodes2
-     type(sdc_mrex_t),  pointer :: mrex
-     type(sdc_imex_t),  pointer :: imex
-  end type sdc_ctx_t
+     type(mf_encap),  pointer :: mfencap
+     type(sdc_encap), pointer :: encap
+     type(sdc_nodes), pointer :: nodes1, nodes2
+     type(sdc_mrex),  pointer :: mrex
+     type(sdc_imex),  pointer :: imex
+  end type sdc_ctx
 
 contains
 
@@ -27,7 +27,7 @@ contains
   ! Build/create single-rate SDC object.
   !
   subroutine sdc_build_single_rate(sdc, qtype, nnodes, feval, post)
-    type(sdc_ctx_t), intent(out), target :: sdc
+    type(sdc_ctx), intent(out), target :: sdc
     integer,         intent(in)          :: qtype, nnodes
     type(c_funptr),  intent(in), value   :: feval, post
 
@@ -52,7 +52,7 @@ contains
   subroutine sdc_build_multi_rate(sdc, qtype, nnodes, f1eval, f2eval, post)
     use probin_module, only: sdc_multirate_type, sdc_multirate_repeat, advance_method
 
-    type(sdc_ctx_t), intent(out), target :: sdc
+    type(sdc_ctx), intent(out), target :: sdc
     integer,         intent(in)          :: qtype, nnodes(2)
     type(c_funptr),  intent(in), value   :: f1eval, f2eval, post
     
@@ -112,13 +112,13 @@ contains
   function sdc_get_chemterm(ctx, node_advdif) result(r)
     use probin_module, only : advance_method
 
-    type(sdc_ctx_t), intent(in) :: ctx
+    type(sdc_ctx), intent(in) :: ctx
     integer,         intent(in) :: node_advdif
     type(multifab),  pointer    :: r
 
     integer :: trat, node_chem
 
-    type(sdc_nset_t), pointer :: nset1, nset2
+    type(sdc_nset), pointer :: nset1, nset2
     type(c_ptr),      pointer :: p(:)
 
     call c_f_pointer(ctx%mrex%nsets, p, [ ctx%mrex%ncomps ])
@@ -144,7 +144,7 @@ contains
   ! Set multifab layout, feval context etc
   !
   subroutine sdc_set_layout(sdc, la, nc, ng)
-    type(sdc_ctx_t),  intent(inout) :: sdc
+    type(sdc_ctx),  intent(inout) :: sdc
     type(layout),     intent(in)    :: la
     integer,          intent(in)    :: nc, ng
 
@@ -158,7 +158,7 @@ contains
   ! Setup and allocate SDC object.
   !
   subroutine sdc_setup(sdc, la, nc, ng)
-    type(sdc_ctx_t), intent(inout), target :: sdc
+    type(sdc_ctx), intent(inout), target :: sdc
     type(layout),    intent(in)            :: la
     integer,         intent(in)            :: nc, ng
 
@@ -183,7 +183,7 @@ contains
   ! Destroy SDC object.
   !
   subroutine sdc_destroy(sdc)
-    type(sdc_ctx_t), intent(inout) :: sdc
+    type(sdc_ctx), intent(inout) :: sdc
 
     if (sdc%single_rate) then
        call sdc_imex_destroy(sdc%imex)

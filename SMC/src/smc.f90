@@ -33,7 +33,7 @@ subroutine smc()
   real(dp_t) :: dt, courno
   real(dp_t) :: dx(3)
 
-  real(dp_t) :: wt0, wt1, wt2, wt_init, wt_advance
+  real(dp_t) :: wt0, wt1, wt2, wt_init, wt_advance, wtw, dwt
 
   integer :: last_plt_written,last_chk_written
   character(len=5)               :: plot_index, check_index
@@ -41,12 +41,12 @@ subroutine smc()
   character(len=256)             :: plot_file_name, check_file_name
   character(len=20), allocatable :: plot_names(:)
 
-  logical :: dump_plotfile, dump_checkpoint, abort_smc
+  logical :: dump_plotfile, dump_checkpoint, abort_smc, walltime_limit_reached
   real(dp_t) :: write_pf_time
 
-  type(layout)    :: la
-  type(multifab)  :: U, U0
-  type(sdc_ctx_t) :: sdc
+  type(layout)   :: la
+  type(multifab) :: U, U0
+  type(sdc_ctx)  :: sdc
 
   logical :: plot_use_U0
 
@@ -68,11 +68,12 @@ subroutine smc()
   call chemistry_init()
   if (use_vode) then
      call vode_init(nspecies+1,vode_verbose,vode_itol,vode_rtol,vode_atol,vode_order,&
-          vode_maxstep,vode_use_ajac,vode_save_ajac,vode_stiff)
+          vode_maxstep,vode_use_ajac,vode_save_ajac,vode_always_new_j,vode_stiff)
   end if
   if (use_tranlib) then
      call tranlib_init(nspecies)
   end if
+  call egz_init(use_bulk_viscosity)
 
   if (verbose .ge. 1) then
      if (parallel_IOProcessor()) then
@@ -213,9 +214,7 @@ subroutine smc()
         write(unit=plot_index,fmt='(i5.5)') istep
         plot_file_name = trim(plot_base_name) // plot_index
 
-        call destroy_smcdata(sdc) ! to save memory
         call make_plotfile(plot_file_name,la,U,plot_names,time,dt,dx,write_pf_time)
-        call build_smcdata(la,sdc)
 
         call write_job_info(plot_file_name, la, write_pf_time)
 
@@ -327,16 +326,12 @@ subroutine smc()
                  call sdc_get_q0(U0, sdc)
               end if
 
-              call destroy_smcdata(sdc) ! to save memory
-
               if (plot_use_U0) then
                  call make_plotfile(plot_file_name,la,U,plot_names,time,dt,dx,write_pf_time,U0)
                  call destroy(U0)
               else
                  call make_plotfile(plot_file_name,la,U,plot_names,time,dt,dx,write_pf_time)
               end if
-
-              call build_smcdata(la,sdc)
 
               call write_job_info(plot_file_name, la, write_pf_time)
 
@@ -364,6 +359,23 @@ subroutine smc()
         if (stop_time >= 0.d0) then
            if (time >= stop_time) then
               goto 999
+           end if
+        end if
+
+        ! how many hours of wall time have we run?
+        if (walltime_limit > 0) then
+           if (mod(istep,walltime_int) .eq. 0) then
+              wtw = parallel_wtime()
+              dwt = (wtw - wt0) / 3600.0
+              if (dwt .gt. walltime_limit) then
+                 walltime_limit_reached = .true.
+              else
+                 walltime_limit_reached = .false.
+              end if
+              call parallel_bcast(walltime_limit_reached)
+              if (walltime_limit_reached) then
+                 goto 999
+              end if
            end if
         end if
 
@@ -401,16 +413,12 @@ subroutine smc()
            call sdc_get_q0(U0, sdc)
         end if
 
-        call destroy_smcdata(sdc)
-        
         if (plot_use_U0) then
            call make_plotfile(plot_file_name,la,U,plot_names,dt,time,dx,write_pf_time,U0)
            call destroy(U0)
         else
            call make_plotfile(plot_file_name,la,U,plot_names,dt,time,dx,write_pf_time)
         end if
-
-        call build_smcdata(la,sdc)
 
         call write_job_info(plot_file_name, la, write_pf_time)
      end if

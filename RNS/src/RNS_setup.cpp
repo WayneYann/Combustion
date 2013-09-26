@@ -132,6 +132,21 @@ RNS::variableSetUp ()
     
     NUM_STATE = cnt;
 
+    fuelID      = chemSolve->index(     fuelName);
+    oxidizerID  = chemSolve->index( oxidizerName);
+    productID   = chemSolve->index(  productName);
+    flameTracID = chemSolve->index(flameTracName);
+
+    if (fuelID < 0)
+    {
+	plot_fuelConsumption = 0;
+    }
+
+    if (chemSolve->isNull)
+    {
+	plot_X = plot_omegadot = plot_dYdt = plot_heatRelease = plot_fuelConsumption = 0;
+    }
+
     int nriemann = NUM_RIEMANN_TYPE;
     int nriemann_F;
 
@@ -143,24 +158,14 @@ RNS::variableSetUp ()
 	BoxLib::Abort("Something is wrong with RiemannType");
     }
 
-    const Real run_strt = ParallelDescriptor::second() ; 
-    
-    int dm = BL_SPACEDIM;
-    
+    int dm = BL_SPACEDIM;    
     int riemann = RNS::Riemann;
 
     BL_FORT_PROC_CALL(SET_METHOD_PARAMS, set_method_params)
 	(dm, Density, Xmom, Eden, Temp, FirstSpec, NUM_STATE, NumSpec, 
 	 small_dens, small_temp, small_pres, gamma, gravity, Treference,
-	 riemann, difmag);
+	 riemann, difmag, &blocksize[0]);
     
-    Real run_stop = ParallelDescriptor::second() - run_strt;
-  
-    ParallelDescriptor::ReduceRealMax(run_stop,ParallelDescriptor::IOProcessorNumber());
-    
-    if (ParallelDescriptor::IOProcessor())
-	std::cout << "\nTime in set_method_params: " << run_stop << '\n' ;
-  
     int coord_type = Geometry::Coord();
     const Real* prob_lo   = Geometry::ProbLo();
     const Real* prob_hi   = Geometry::ProbHi();
@@ -259,18 +264,15 @@ RNS::variableSetUp ()
     derive_lst.add("MachNumber",IndexType::TheCellType(),1,
 		   BL_FORT_PROC_CALL(RNS_DERMACHNUMBER,rns_dermachnumber),the_same_box);
     derive_lst.addComponent("MachNumber",desc_lst,State_Type,Density,NUM_STATE);
-    
+
 #if (BL_SPACEDIM > 1)
     //
     // Vorticity
     //
     derive_lst.add("magvort",IndexType::TheCellType(),1,
 		   BL_FORT_PROC_CALL(RNS_DERMAGVORT,rns_dermagvort),grow_box_by_one);
-    // Here we exploit the fact that Xmom = Density + 1
-    //   in order to use the correct interpolation.
-    if (Xmom != Density+1)
-	BoxLib::Error("We are assuming Xmom = Density + 1 in RNS_setup.cpp");
-    derive_lst.addComponent("magvort",desc_lst,State_Type,Density,BL_SPACEDIM+1);
+    derive_lst.addComponent("magvort",desc_lst,State_Type,Density,1);
+    derive_lst.addComponent("magvort",desc_lst,State_Type,Xmom,BL_SPACEDIM);
 #endif
   
     //
@@ -298,10 +300,8 @@ RNS::variableSetUp ()
     //
     Array<std::string> var_names_molefrac(NumSpec);
     for (int i = 0; i < NumSpec; i++)
-    {
-	var_names_molefrac[i] = "X("+spec_names[i]+")";
-    }
-    derive_lst.add("molefrac",IndexType::TheCellType(),NumSpec, var_names_molefrac,
+        var_names_molefrac[i] = "X("+spec_names[i]+")";
+    derive_lst.add("molefrac",IndexType::TheCellType(),NumSpec,var_names_molefrac,
 		   BL_FORT_PROC_CALL(RNS_DERMOLEFRAC,rns_dermolefrac),the_same_box);
     derive_lst.addComponent("molefrac",desc_lst,State_Type,Density,1);
     derive_lst.addComponent("molefrac",desc_lst,State_Type,FirstSpec,NumSpec);

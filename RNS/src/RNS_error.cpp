@@ -58,4 +58,13 @@ RNS::ErrorSetUp ()
 #endif
     }
 
+    if (do_flametrac_ref)
+    {
+	if (flameTracID < 0) 
+	{
+	    BoxLib::Abort("do_flametrac_ref while flameTracName is not set (correctly).");
+	}
+	err_list.add("Y("+flameTracName+")",0,ErrorRec::Special,
+		     BL_FORT_PROC_CALL(RNS_TRACERROR,rns_tracerror));	
+    }
 }
