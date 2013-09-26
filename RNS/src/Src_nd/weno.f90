@@ -51,7 +51,7 @@ module weno_module
   private
 
   public :: weno5, cellavg2gausspt_1d, cellavg2face_1d, cellavg2gausspt_2d, &
-       cellavg2dergausspt_1d
+       cellavg2dergausspt_1d, cellavg2gausspt_3d
 
 contains
 
@@ -188,4 +188,38 @@ contains
     end do
   end subroutine cellavg2dergausspt_1d
 
+
+  subroutine cellavg2gausspt_3d(lo, hi, u, ulo, uhi, ug, glo, ghi)
+    integer, intent(in) :: lo(3), hi(3), ulo(3), uhi(3), glo(3), ghi(3)
+    double precision, intent(in) :: u (ulo(1):uhi(1),ulo(2):uhi(2),ulo(3):uhi(3))
+    double precision             :: ug(glo(1):ghi(1),glo(2):ghi(2),glo(3):ghi(3),8)
+
+    integer :: i, j, k, tlo(2), thi(2)
+    double precision, allocatable :: ugz(:,:,:,:)
+    
+    allocate(ugz(lo(1)-2:hi(1)+2,lo(2)-2:hi(2)+2,lo(3):hi(3),2))
+
+    do j=lo(2)-2,hi(2)+2
+    do i=lo(1)-2,hi(1)+2
+       call cellavg2gausspt_1d(lo(3),hi(3), u(i,j,:), ulo(3),uhi(3), &
+            ugz(i,j,:,1), ugz(i,j,:,2), lo(3),hi(3))
+    end do
+    end do
+
+    tlo(1) = lo(1)-2
+    tlo(2) = lo(2)-2
+    thi(1) = hi(1)+2
+    thi(2) = hi(2)+2
+    do k=lo(3),hi(3)
+       call cellavg2gausspt_2d(lo(1:2), hi(1:2), ugz(:,:,k,1), tlo, thi, &
+            ug(:,:,k,1:4), glo(1:2), ghi(1:2))
+       call cellavg2gausspt_2d(lo(1:2), hi(1:2), ugz(:,:,k,2), tlo, thi, &
+            ug(:,:,k,5:8), glo(1:2), ghi(1:2))
+    end do
+
+    deallocate(ugz)
+
+  end subroutine cellavg2gausspt_3d
+
 end module weno_module
+

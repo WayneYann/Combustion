@@ -1,11 +1,9 @@
-! xxxxxxxxxxxxxxxxxxxxxxx todo
-
 module chemterm_module
 
   use meth_params_module, only : NVAR, URHO, UEDEN, UMX, UMY, UMZ, UTEMP, UFS, NSPEC
   use burner_module, only : burn
   use eos_module, only : eos_get_T
-!xxxxx  use weno_module, only : cellavg2gausspt_2d
+  use weno_module, only : cellavg2gausspt_3d
 
   implicit none
 
@@ -25,16 +23,13 @@ contains
     double precision :: Yt(nspec+1)
     double precision, allocatable :: UG(:,:,:,:,:)
 
-    ! xxxxxxxxxxxxxxx
-    return
-
     allocate(UG(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),8,NVAR))
 
     !$omp parallel private(i,j,k,n,g,rhot,rhoinv,ei,Yt)
 
     !$omp do
     do n=1,NVAR
-!xxxxx       call cellavg2gausspt_2d(lo,hi, U(:,:,n), Ulo,Uhi, UG(:,:,:,n), lo,hi)
+       call cellavg2gausspt_3d(lo,hi, U(:,:,:,n), Ulo,Uhi, UG(:,:,:,:,n), lo,hi)
     end do
     !$omp end do
 
