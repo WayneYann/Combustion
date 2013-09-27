@@ -374,7 +374,7 @@ c ::: -----------------------------------------------------------
       integer i, j, k, n, airZone, fuelZone, getZone, zone
       integer iO2,iH2,iCH4,len
       character*(maxspnml) name
-      REAL_T x, y, z, r, Yl(maxspec), Xl(maxspec), Patm
+      REAL_T x, y, z, ztemp, r, Yl(maxspec), Xl(maxspec), Patm
       REAL_T Xlin(maxspec),alpha,beta,gamma,delt,factor
       REAL_T pmf_vals(maxspec+3), z1, z2, dx, Ly
       REAL_T pert,Lx,FORT_P1ATMMKS,eta,u,v,w,rho,T,h
@@ -477,6 +477,10 @@ c                 blend here if needed
 
       else if ((probtype(1:len).eq.BL_PROB_JET_DIFFUSION)) then
 
+#if 1
+
+c  old init
+
          fuelZone = getZone(domnlo(1), domnlo(2), domnlo(3))
          airZone  = getZone(domnhi(1), domnhi(2), domnhi(3))
 
@@ -503,6 +507,45 @@ c                 blend here if needed
                enddo
             enddo
          enddo
+#else
+
+c new init 
+
+         fuelZone = getZone(domnlo(1), domnlo(2), domnlo(3))
+         airZone  = getZone(domnhi(1), domnhi(2), domnhi(3))
+
+         do k = lo(3), hi(3)
+            z = (float(k)+.5)*delta(3)+domnlo(3)
+            eta = 0.5d0*(1.d0 - TANH(2.d0*(z-blobr)/Tfrontw))
+            do j = lo(2), hi(2)
+               y = (float(j)+.5)*delta(2)+domnlo(2)
+               do i = lo(1), hi(1)
+                  x = (float(i)+.5)*delta(1)+domnlo(1)
+
+                  ztemp = domnlo(3)
+                  call bcfunction(BL_ZLO,x,y,ztemp,time,u,v,w,rho,Yl,T,h,delta,.true.)
+                  do n = 1,Nspec
+                     scal(i,j,k,FirstSpec+n-1) = Yl(n)* eta + (1.d0-eta) *Y_bc(n-1,BL_COFLOW)
+                  end do
+
+                  pert = dexp(-2.d0*((z-1.0d0*blobr)**2 + y**2)/blobr**2)
+
+                  scal(i,j,k,Trac) = 0.d0
+                  scal(i,j,k,Temp) = (T* eta + (1.d0-eta) *900.d0 ) * (1.d0+ 0.5d0*pert)
+
+                  vel(i,j,k,1) = u
+                  vel(i,j,k,2) = v
+                  vel(i,j,k,3) = w
+                  vel(i,j,k,1) = 0.d0
+                  vel(i,j,k,2) = 0.d0
+                  vel(i,j,k,3) = 0.d0
+
+               enddo
+            enddo
+         enddo
+
+
+#endif
       endif
 
       Patm = pamb / FORT_P1ATMMKS()

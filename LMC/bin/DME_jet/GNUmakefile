@@ -1,4 +1,4 @@
-TOP = ../../../..
+TOP =/scratch1/jbb
 BOXLIB_DIR = ${TOP}/BoxLib
 IAMR_DIR = ${TOP}/IAMR
 COMBUSTION_DIR = ${TOP}/Combustion
@@ -22,8 +22,8 @@ VERBOSE         = FALSE
 
 # Enable SDC code - add .SDC to executable
 # and compile in the #ifdef LMC_SDC
-USE_LMC_SDC = TRUE
 USE_LMC_SDC = FALSE
+USE_LMC_SDC = TRUE
 
 # Enable flctin namelist
 USE_FLCTS       = TRUE
@@ -58,9 +58,9 @@ DEFINES += -DTRIGGER_NEW_J
 #DEFINES += -DALWAYS_NEW_J
 #DEFINES += -DSOLN_IS_1D
 
-DEFINES += -DDO_JBB_HACK_TEMP
-DEFINES += -DHACK_TEMP_MIN=273.d0
-DEFINES += -DHACK_TEMP_MAX=1900.d0
+#DEFINES += -DDO_JBB_HACK_TEMP
+#DEFINES += -DHACK_TEMP_MIN=273.d0
+#DEFINES += -DHACK_TEMP_MAX=1900.d0
 
 ifeq ($(DIM), 2)
   DEFINES += -DDO_TEMPERATURE
