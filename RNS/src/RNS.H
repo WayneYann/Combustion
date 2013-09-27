@@ -236,6 +236,10 @@ public:
     static int Density, Xmom, Ymom, Zmom, Eden, Temp;
     static int FirstSpec, LastSpec, NumSpec;
 
+    void avgDown ();
+    void avgDown (int state_indx);
+    void avgDown (MultiFab& S_crse, MultiFab& S_fine);
+
 protected:
 
     static void read_params ();
@@ -247,9 +251,6 @@ protected:
     
     void reflux ();
     
-    void avgDown ();
-    
-    void avgDown (int state_indx);
     
     void buildMetrics ();
     

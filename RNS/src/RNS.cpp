@@ -703,13 +703,11 @@ RNS::avgDown ()
 }
 
 void
-RNS::avgDown (int state_indx)
+RNS::avgDown (MultiFab& S_crse, MultiFab& S_fine)
 {
     if (level == parent->finestLevel()) return;
     
-    RNS& fine_lev = getLevel(level+1);
-    MultiFab&  S_crse   = get_new_data(state_indx);
-    MultiFab&  S_fine   = fine_lev.get_new_data(state_indx);
+    RNS&       fine_lev = getLevel(level+1);
     MultiFab&  fvolume  = fine_lev.volume;
     const int  ncomp    = S_fine.nComp();
     
@@ -748,6 +746,16 @@ RNS::avgDown (int state_indx)
     }
     
     S_crse.copy(crse_S_fine);
+}
+
+
+void
+RNS::avgDown (int state_indx)
+{
+    RNS&       fine_lev = getLevel(level+1);
+    MultiFab&  S_crse   = get_new_data(state_indx);
+    MultiFab&  S_fine   = fine_lev.get_new_data(state_indx);
+    avgDown(S_crse, S_fine);
 }
 
 void
