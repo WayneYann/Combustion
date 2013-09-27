@@ -173,7 +173,15 @@ RNS::variableSetUp ()
     BL_FORT_PROC_CALL(SET_PROBLEM_PARAMS, set_problem_params)
 	(dm,phys_bc.lo(),phys_bc.hi(),prob_lo,prob_hi,Outflow,Symmetry,coord_type);
     
-    Interpolater* interp = &cell_cons_interp;
+    Interpolater* interp;
+    if (do_quartic_interp)
+    {
+	interp = &quartic_interp;
+    }
+    else
+    {
+	interp = &cell_cons_interp;
+    }
     
     // Note that the default is state_data_extrap = false, store_in_checkpoint = true
     // We only need to put these explicitly if we want to do something different,

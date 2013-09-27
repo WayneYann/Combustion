@@ -321,6 +321,8 @@ protected:
 
     static std::vector<int> blocksize;
 
+    static int         do_quartic_interp;
+
     // for keeping track of the amount of CPU time used -- this will persist
     // after restarts
     static Real        previousCPUTimeUsed;

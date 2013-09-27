@@ -1,13 +1,13 @@
-! xxxxxxxxxxxxxxxxxxxxxxx todo
-
 module difterm_module
-  use meth_params_module, only : NVAR
   implicit none
   private
   public :: difterm
 contains
 
   subroutine difterm(lo,hi,U,Ulo,Uhi,fx,fxlo,fxhi,fy,fylo,fyhi,fz,fzlo,fzhi,dxinv)
+
+    use meth_params_module, only : NVAR
+
     integer, intent(in) :: lo(3), hi(3), Ulo(3), Uhi(3), fxlo(3), fxhi(3), &
          fylo(3), fyhi(3), fzlo(3), fzhi(3)
     double precision,intent(in   )::dxinv(3)

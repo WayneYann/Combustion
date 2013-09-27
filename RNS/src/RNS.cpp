@@ -127,6 +127,8 @@ std::vector<int> RNS::blocksize(BL_SPACEDIM, 8);
 std::vector<int> RNS::blocksize(BL_SPACEDIM, 2048);
 #endif
 
+int          RNS::do_quartic_interp   = 1;
+
 // this will be reset upon restart
 Real         RNS::previousCPUTimeUsed = 0.0;
 Real         RNS::startCPUTime = 0.0;
@@ -288,6 +290,7 @@ RNS::read_params ()
 
     pp.queryarr("blocksize", blocksize);
 
+    pp.query("do_quartic_interp", do_quartic_interp);
 }
 
 RNS::RNS ()
