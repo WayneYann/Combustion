@@ -23,6 +23,14 @@ Pdirs 	:= C_BaseLib C_AMRLib C_BoundaryLib
 Bpack	+= $(foreach dir, $(Pdirs), $(BOXLIB_HOME)/Src/$(dir)/Make.package)
 Blocs	+= $(foreach dir, $(Pdirs), $(BOXLIB_HOME)/Src/$(dir))
 
+ifeq ($(USE_SDCLIB), TRUE)
+  DEFINES += -DUSE_SDCLIB
+  CEXE_sources += RNS_SDC.cpp SDCAmr.cpp SDCAmrEncap.cpp
+  CEXE_headers += SDCAmr.H
+  Bpack   += $(SDCLIB_HOME)/Make.package
+  Blocs   += $(SDCLIB_HOME)/src $(SDCLIB_HOME)/include
+endif
+
 MECHDIR = $(TOP)/$(CHEMISTRY_DIR)/data
 ifeq (${CHEMISTRY_MODEL}, CHEMH)
   cEXE_sources += chem-H.c

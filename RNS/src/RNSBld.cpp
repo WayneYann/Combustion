@@ -1,6 +1,7 @@
 
 #include "LevelBld.H"
 #include "RNS.H"
+#include <cmath>
 
 class RNSBld
     :
