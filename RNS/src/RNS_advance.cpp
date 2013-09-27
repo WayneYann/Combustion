@@ -43,7 +43,7 @@ RNS::advance (Real time,
     }
 
     // Advance Advection & Diffusion
-    advance_AD(Uold, Unew, time, dt); 
+    advance_AD(Unew, time, dt); 
 
     if (! chemSolve->isNull)
     {
@@ -90,7 +90,7 @@ RNS::fill_boundary(MultiFab& U, Real time, int type)
 	    
 	    break;
 	    
-        case use_FillCoarsePatch:
+    case use_FillCoarsePatch:  // so that valid region of U will not be touched
 	{
 	    
 	    const Box& domain_box = geom.Domain();
@@ -281,9 +281,11 @@ RNS::advance_chemistry(MultiFab& U, Real dt)
 
 
 void
-RNS::advance_AD(const MultiFab& Uold, MultiFab& Unew, Real time, Real dt)
+RNS::advance_AD(MultiFab& Unew, Real time, Real dt)
 {
     MultiFab Uprime(grids,NUM_STATE,0);
+    MultiFab U0(grids,NUM_STATE,0);
+    MultiFab::Copy(U0, Unew, 0, 0, NUM_STATE, 0);
 
     if (RK_order == 2)
     {
@@ -305,13 +307,13 @@ RNS::advance_AD(const MultiFab& Uold, MultiFab& Unew, Real time, Real dt)
 
 	// Step 1 of RK2
 	dUdt(Unew, Uprime, time, no_fill);
-	update_rk(Unew, Uold, 0.5*dt, Uprime); // Unew = Uold + 0.5*dt*Uprime
+	update_rk(Unew, U0, 0.5*dt, Uprime); // Unew = U0 + 0.5*dt*Uprime
 	post_update(Unew);
 	
 	// Step 2 of RK2
 	int fill_boundary_type = (level == 0) ? use_FillBoundary : use_FillCoarsePatch;
 	dUdt(Unew, Uprime, time+0.5*dt, fill_boundary_type, fine, current, dt);
-	update_rk(Unew, Uold, dt, Uprime); // Unew = Uold + dt*Uprime
+	update_rk(Unew, U0, dt, Uprime); // Unew = U0 + dt*Uprime
 	post_update(Unew);
     }
     else if (RK_order == 3)
@@ -323,17 +325,17 @@ RNS::advance_AD(const MultiFab& Uold, MultiFab& Unew, Real time, Real dt)
 
 	// Step 1 of RK3
 	dUdt(Unew, Uprime, time, no_fill);
-	update_rk(Unew, Uold, dt, Uprime);
+	update_rk(Unew, U0, dt, Uprime);
 	post_update(Unew);	
 
 	// Step 2 of RK3
 	dUdt(Unew, Uprime, time+(1./3.)*dt, fill_boundary_type);
-	update_rk(Utmp, 0.75, Uold, 0.25, Unew, 0.25*dt, Uprime);
+	update_rk(Utmp, 0.75, U0, 0.25, Unew, 0.25*dt, Uprime);
 	post_update(Utmp);	
 	
 	// Step 3 of RK3
 	dUdt(Utmp, Uprime, time+(2./3.)*dt, fill_boundary_type);
-	update_rk(Unew, 1./3., Uold, 2./3., Utmp, (2./3.)*dt, Uprime);
+	update_rk(Unew, 1./3., U0, 2./3., Utmp, (2./3.)*dt, Uprime);
 	post_update(Unew);	
     }
 }

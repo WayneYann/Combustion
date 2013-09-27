@@ -117,7 +117,7 @@ public:
     // do advection and diffusion
     // When it's called, Unew including ghost cells should have the state at t=time.
     //
-    void advance_AD(const MultiFab& Uold, MultiFab& Unew, Real time, Real dt);
+    void advance_AD(MultiFab& Unew, Real time, Real dt);
     //
     // fill boundary 
     //
