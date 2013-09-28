@@ -209,6 +209,13 @@ RNS::dUdt(MultiFab& U, MultiFab& Uprime, Real time, int fill_boundary_type,
     }
 }
 
+void
+RNS::dUdt_SDC(MultiFab& U, MultiFab& Uprime, Real time, Real dt)
+{
+  int fill_boundary_type = (level == 0) ? use_FillBoundary : use_FillCoarsePatch;
+  dUdt(U, Uprime, time, fill_boundary_type, 0, 0, dt);
+}
+
 
 // Compute U1 = U2 + c Uprime.
 void 
@@ -339,3 +346,17 @@ RNS::advance_AD(MultiFab& Unew, Real time, Real dt)
 	post_update(Unew);	
     }
 }
+
+#ifdef USE_SDCLIB
+BEGIN_EXTERN_C
+
+void sdc_feval(void *F, void *Q, double t, sdc_state *state, void *ctx)
+{
+  RNS&      rns    = *((RNS*) ctx);
+  MultiFab& U      = *((MultiFab*) Q);
+  MultiFab& Uprime = *((MultiFab*) F);
+  rns.dUdt_SDC(U, Uprime, t, state->dt);
+}
+
+END_EXTERN_C
+#endif

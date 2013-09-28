@@ -6,11 +6,19 @@
 #include <ErrorList.H>
 #include <FluxRegister.H>
 #include <ChemDriver.H>
+#include <SDCAmr.H>
 
 #include <iostream>
 
 using std::istream;
 using std::ostream;
+
+
+#ifdef USE_SDCLIB
+BEGIN_EXTERN_C
+void sdc_feval(void*, void*, double, sdc_state*, void*);
+END_EXTERN_C
+#endif
 
 enum StateType { State_Type = 0,
                  NUM_STATE_TYPE };
@@ -132,6 +140,7 @@ public:
     //
     void dUdt(MultiFab& U, MultiFab& Uprime, Real time, int fill_boundary_type, 
 	      FluxRegister* fine=0, FluxRegister* current=0, Real dt=0.0);
+    void dUdt_SDC(MultiFab& U, MultiFab& Uprime, Real time, Real dt);
     //
     // Compute U1 = U2 + c Uprime.
     //
@@ -223,6 +232,10 @@ public:
     static int Density, Xmom, Ymom, Zmom, Eden, Temp;
     static int FirstSpec, LastSpec, NumSpec;
 
+    void avgDown ();
+    void avgDown (int state_indx);
+    void avgDown (MultiFab& S_crse, MultiFab& S_fine);
+
 protected:
 
     static void read_params ();
@@ -234,9 +247,6 @@ protected:
     
     void reflux ();
     
-    void avgDown ();
-    
-    void avgDown (int state_indx);
     
     void buildMetrics ();
     

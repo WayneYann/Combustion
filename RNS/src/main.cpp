@@ -21,6 +21,10 @@
 #include <ParallelDescriptor.H>
 #include <AmrLevel.H>
 
+#ifdef USE_SDCLIB
+#include <SDCAmr.H>
+#endif
+
 int main (int argc, char* argv[])
 {
     BoxLib::Initialize(argc,argv);
@@ -53,7 +57,11 @@ int main (int argc, char* argv[])
     if (max_step < 0 && stop_time < 0.0)
 	BoxLib::Abort("Exiting because neither max_step nor stop_time is non-negative.");
 
+#ifndef USE_SDCLIB
     Amr* amrptr = new Amr;
+#else
+    Amr* amrptr = new SDCAmr();
+#endif
 
     int trat = 2;
 
