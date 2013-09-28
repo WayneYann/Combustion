@@ -477,7 +477,7 @@ c                 blend here if needed
 
       else if ((probtype(1:len).eq.BL_PROB_JET_DIFFUSION)) then
 
-#if 1
+#if 0
 
 c  old init
 
@@ -528,17 +528,19 @@ c new init
                      scal(i,j,k,FirstSpec+n-1) = Yl(n)* eta + (1.d0-eta) *Y_bc(n-1,BL_COFLOW)
                   end do
 
-                  pert = dexp(-2.d0*((z-1.0d0*blobr)**2 + y**2)/blobr**2)
+                  pert = dexp(-2.d0*((z-1.0d0*blobr)**2 + (y-blobr)**2)/blobr**2)
+                  pert = pert+ dexp(-2.d0*((z-1.0d0*blobr)**2 + (y+blobr)**2)/blobr**2)
+                  pert = pert+ dexp(-2.d0*((z-2.0d0*blobr)**2 + (y)**2)/blobr**2)
 
                   scal(i,j,k,Trac) = 0.d0
-                  scal(i,j,k,Temp) = (T* eta + (1.d0-eta) *900.d0 ) * (1.d0+ 0.5d0*pert)
+                  scal(i,j,k,Temp) = (T* eta + (1.d0-eta) *900.d0 ) * (1.d0+ 1.d0*pert)
 
                   vel(i,j,k,1) = u
                   vel(i,j,k,2) = v
                   vel(i,j,k,3) = w
-                  vel(i,j,k,1) = 0.d0
-                  vel(i,j,k,2) = 0.d0
-                  vel(i,j,k,3) = 0.d0
+c                 vel(i,j,k,1) = 0.d0
+c                 vel(i,j,k,2) = 0.d0
+c                 vel(i,j,k,3) = 0.d0
 
                enddo
             enddo
