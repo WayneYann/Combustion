@@ -18,15 +18,12 @@ BEGIN_EXTERN_C
 /*
  * Spatial interpolation is done by...
  */
-void mlsdc_amr_interpolate(void *F, void *G, void *vctxF, void *vctxG)
+void mlsdc_amr_interpolate(void *F, void *G, void *ctxF, void *ctxG)
 {
-  sdc_level_ctx* ctxF = (sdc_level_ctx*) vctxF;
-  sdc_level_ctx* ctxG = (sdc_level_ctx*) vctxG;
-  MultiFab& UF        = *((MultiFab*) F);
-  MultiFab& UG        = *((MultiFab*) G);
-  Amr& amr            = *ctxF->amr;
-  AmrLevel& levelF    = amr.getLevel(ctxF->level);
-  AmrLevel& levelG    = amr.getLevel(ctxG->level);
+  MultiFab& UF = *((MultiFab*) F);
+  MultiFab& UG = *((MultiFab*) G);
+  RNS& levelF  = *((RNS*) ctxF);
+  RNS& levelG  = *((RNS*) ctxG);
 
   const DescriptorList& dl = levelF.get_desc_lst();
   BL_ASSERT(dl.size() == 1);
@@ -46,7 +43,6 @@ void mlsdc_amr_interpolate(void *F, void *G, void *vctxF, void *vctxG)
     // cout << fpi.UngrownBox() << endl;
     UF[fpi].copy(fpi());
   }
-
 }
 
 
@@ -55,7 +51,7 @@ void mlsdc_amr_restrict(void *F, void *G, void *ctxF, void *ctxG)
 {
   MultiFab& UF = *((MultiFab*) F);
   MultiFab& UG = *((MultiFab*) G);
-  RNS& levelF  = *((RNS*) ctxF);
+  //  RNS& levelF  = *((RNS*) ctxF);
   RNS& levelG  = *((RNS*) ctxG);
   levelG.avgDown(UG, UF);
 }
@@ -107,13 +103,27 @@ void SDCAmr::timeStep (int  level,
   }
 }
 
+sdc_sweeper* rns_sdc_build_level(int lev)
+{
+  int nnodes0 = 3;
+  int trat    = 2;
+  int nnodes  = 1 + (nnodes0 - 1) * ((int) pow(trat, lev));
+
+  sdc_nodes* nodes = sdc_nodes_create(nnodes, SDC_GAUSS_LOBATTO);
+  sdc_imex*  imex  = sdc_imex_create(nodes, sdc_feval, NULL, NULL);
+
+  sdc_nodes_destroy(nodes);
+  sdc_imex_setup(imex, NULL, NULL);
+
+  return (sdc_sweeper*) imex;
+}
+
 void SDCAmr::rebuild_mlsdc()
 {
   // reset previous and clear sweepers etc
   sdc_mg_reset(&mg);
   for (unsigned int lev=0; lev<=max_level; lev++) {
     if (sweepers[lev] != NULL) {
-      delete sweepers[lev]->nset->ctx;
       sweepers[lev]->destroy(sweepers[lev]);
       delete (mf_encap*) encaps[lev]->ctx;
       delete encaps[lev];
@@ -123,12 +133,12 @@ void SDCAmr::rebuild_mlsdc()
 
   // rebuild
   for (int lev=0; lev<=finest_level; lev++) {
-    sdc_level_ctx* ctx = new sdc_level_ctx;
-    ctx->amr   = this;
-    ctx->level = lev;
+    // sdc_level_ctx* ctx = new sdc_level_ctx;
+    // ctx->amr   = this;
+    // ctx->level = lev;
     encaps[lev]   = build_encap(lev);
-    sweepers[lev] = sdc_sweeper_bld(lev);
-    sweepers[lev]->nset->ctx   = ctx; // XXX: need to free this...
+    sweepers[lev] = rns_sdc_build_level(lev);
+    sweepers[lev]->nset->ctx   = &getLevel(lev);
     sweepers[lev]->nset->encap = encaps[lev];
     sdc_mg_add_level(&mg, sweepers[lev], mlsdc_amr_interpolate, mlsdc_amr_restrict);
   }
@@ -147,13 +157,12 @@ void SDCAmr::rebuild_mlsdc()
 //   rebuild_mlsdc();
 // }
 
-SDCAmr::SDCAmr (sdc_sweeper_bld_f bld)
+SDCAmr::SDCAmr ()
 {
   ParmParse ppsdc("mlsdc");
   if (!ppsdc.query("max_iters", max_iters)) max_iters = 22;
   if (!ppsdc.query("max_trefs", max_trefs)) max_trefs = 3;
 
-  sdc_sweeper_bld = bld;
   sdc_mg_build(&mg, max_level+1);
 
   sweepers.resize(max_level+1);

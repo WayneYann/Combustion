@@ -23,7 +23,6 @@
 
 #ifdef USE_SDCLIB
 #include <SDCAmr.H>
-#include "RNS.H"
 #endif
 
 int main (int argc, char* argv[])
@@ -61,7 +60,7 @@ int main (int argc, char* argv[])
 #ifndef USE_SDCLIB
     Amr* amrptr = new Amr;
 #else
-    Amr* amrptr = new SDCAmr(rns_sdc_build_level);
+    Amr* amrptr = new SDCAmr();
 #endif
 
     int trat = 2;

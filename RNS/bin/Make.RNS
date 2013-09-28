@@ -25,7 +25,7 @@ Blocs	+= $(foreach dir, $(Pdirs), $(BOXLIB_HOME)/Src/$(dir))
 
 ifeq ($(USE_SDCLIB), TRUE)
   DEFINES += -DUSE_SDCLIB
-  CEXE_sources += RNS_SDC.cpp SDCAmr.cpp SDCAmrEncap.cpp
+  CEXE_sources += SDCAmr.cpp SDCAmrEncap.cpp
   CEXE_headers += SDCAmr.H
   Bpack   += $(SDCLIB_HOME)/Make.package
   Blocs   += $(SDCLIB_HOME)/src $(SDCLIB_HOME)/include

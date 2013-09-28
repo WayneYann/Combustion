@@ -1,4 +1,5 @@
 
+#ifdef USE_SDCLIB
 #ifndef _SDCAMR_H_
 #define _SDCAMR_H_
 
@@ -39,10 +40,6 @@ typedef struct {
  * Multigrid SDC+AMR class.
  */
 
-class SDCAmr;
-
-typedef sdc_sweeper* (*sdc_sweeper_bld_f)(int level);
-
 class SDCAmr : public Amr
 {
 public:
@@ -51,11 +48,10 @@ public:
   int max_trefs;                // maximum number of time refinements
 
   sdc_mg mg;
-  sdc_sweeper_bld_f sdc_sweeper_bld;
   vector<sdc_sweeper*> sweepers;
   vector<sdc_encap*>   encaps;
 
-  SDCAmr(sdc_sweeper_bld_f);
+  SDCAmr();
   ~SDCAmr();
 
   sdc_encap* build_encap(int lev);
@@ -82,4 +78,5 @@ public:
 
 };
 
+#endif
 #endif

@@ -6,23 +6,19 @@
 #include <ErrorList.H>
 #include <FluxRegister.H>
 #include <ChemDriver.H>
+#include <SDCAmr.H>
 
 #include <iostream>
 
 using std::istream;
 using std::ostream;
 
+
 #ifdef USE_SDCLIB
-
-#include <SDCAmr.H>
-sdc_sweeper* rns_sdc_build_level(int);
-
 BEGIN_EXTERN_C
 void sdc_feval(void*, void*, double, sdc_state*, void*);
 END_EXTERN_C
-
 #endif
-
 
 enum StateType { State_Type = 0,
                  NUM_STATE_TYPE };
