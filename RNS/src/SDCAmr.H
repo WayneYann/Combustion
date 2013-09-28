@@ -9,15 +9,6 @@
 #include <MultiFab.H>
 #include <Amr.H>
 #include <sdc.h>
-#include <BLFort.H>
-
-BL_FORT_PROC_DECL(SDC_AMR_AVGDOWN,sdc_amr_avgdown)
-    (BL_FORT_FAB_ARG(crse_fab), const int& nc,
-     const BL_FORT_FAB_ARG(crse_vol),
-     const BL_FORT_FAB_ARG(fine_fab),
-     const BL_FORT_FAB_ARG(fine_vol),
-     const int ovlo[], const int ovhi[], const int rat[]);
-
 
 using namespace std;
 
@@ -30,11 +21,6 @@ typedef struct {
   int       ncomp;
   int       ngrow;
 } mf_encap;
-
-typedef struct {
-  Amr *amr;
-  int level;
-} sdc_level_ctx;
 
 /*
  * Multigrid SDC+AMR class.
