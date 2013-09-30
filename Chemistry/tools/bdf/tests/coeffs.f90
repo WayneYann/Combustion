@@ -1,24 +1,17 @@
-module bdf_params
-  type :: bdf_ctx
-  end type bdf_ctx
-end module bdf_params
-
 module feval
   use bdf
   implicit none
   integer, parameter :: neq = 1
 contains
-  subroutine f(neq, y, t, ydot, ctx)
+  subroutine f(neq, y, t, ydot)
     integer,          intent(in)  :: neq
     real(dp),         intent(in)  :: y(neq), t
     real(dp),         intent(out) :: ydot(neq)
-    type(bdf_ctx),    intent(in)  :: ctx
   end subroutine f
-  subroutine J(neq, y, t, pd, ctx)
+  subroutine J(neq, y, t, pd)
     integer,          intent(in)  :: neq
     real(dp),         intent(in)  :: y(neq), t
     real(dp),         intent(out) :: pd(neq,neq)
-    type(bdf_ctx),    intent(in)  :: ctx
   end subroutine J
 end module feval
 
@@ -29,14 +22,13 @@ program test
   double precision, parameter :: tol = 1.d-12
 
   type(bdf_ts)  :: ts
-  type(bdf_ctx) :: ctx
   double precision :: rtol(neq), atol(neq)
   double precision :: a, v(0:6)
 
   rtol = 1
   atol = 1
 
-  call bdf_ts_build(ts, neq, f, J, rtol, atol, max_order=6)
+  call bdf_ts_build(ts, neq, rtol, atol, max_order=6)
 
   print *, "====> order 1"
   ts%k = 1

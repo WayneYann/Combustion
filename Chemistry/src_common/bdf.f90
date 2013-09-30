@@ -17,7 +17,6 @@
 !
 
 module bdf
-  use bdf_params
   implicit none
 
   integer, parameter  :: dp   = kind(1.d0)
@@ -56,8 +55,6 @@ module bdf
      real(dp), pointer :: rtol(:)         ! realtive tolerances
      real(dp), pointer :: atol(:)         ! absolute tolerances
 
-     type(bdf_ctx) :: ctx
-
      ! state
      real(dp) :: t                        ! current time
      real(dp) :: dt                       ! current time step
@@ -87,9 +84,6 @@ module bdf
      integer,  pointer :: ipvt(:)         ! pivots
      integer,  pointer :: A(:,:)          ! pascal matrix
 
-     procedure(f_proc), pointer, nopass :: f
-     procedure(J_proc), pointer, nopass :: J
-
      ! counters
      integer :: nfe                       ! number of function evaluations
      integer :: nje                       ! number of jacobian evaluations
@@ -97,24 +91,6 @@ module bdf
      integer :: nse                       ! number of non-linear solver errors
 
   end type bdf_ts
-
-  interface
-     subroutine f_proc(neq, y, t, yd, ctx)
-       import dp, bdf_ctx
-       integer,          intent(in)  :: neq
-       real(dp),         intent(in)  :: y(neq), t
-       real(dp),         intent(out) :: yd(neq)
-       type(bdf_ctx), intent(in)  :: ctx
-     end subroutine f_proc
-
-     subroutine J_proc(neq, y, t, J, ctx)
-       import dp, bdf_ctx
-       integer,          intent(in)  :: neq
-       real(dp),         intent(in)  :: y(neq), t
-       real(dp),         intent(out) :: J(neq, neq)
-       type(bdf_ctx), intent(in)  :: ctx
-     end subroutine J_proc
-  end interface
 
   private :: &
 !       alpha0, alphahat0, &
@@ -139,13 +115,27 @@ contains
   !
   ! Advance system from t0 to t1.
   !
-  subroutine bdf_advance(ts, neq, y0, t0, y1, t1, dt0, restart, ierr)
+  subroutine bdf_advance(ts, f, Jac, neq, y0, t0, y1, t1, dt0, restart, ierr)
     type(bdf_ts),     intent(inout) :: ts
     integer,          intent(in)    :: neq
     real(dp),         intent(in)    :: y0(neq), t0, t1, dt0
     real(dp),         intent(out)   :: y1(neq)
     logical,          intent(in)    :: restart
     integer,          intent(out)   :: ierr
+    interface
+       subroutine f(neq, y, t, yd)
+         import dp
+         integer,  intent(in)  :: neq
+         real(dp), intent(in)  :: y(neq), t
+         real(dp), intent(out) :: yd(neq)
+       end subroutine f
+       subroutine Jac(neq, y, t, J)
+         import dp
+         integer,  intent(in)  :: neq
+         real(dp), intent(in)  :: y(neq), t
+         real(dp), intent(out) :: J(neq, neq)
+       end subroutine Jac
+    end interface
 
     include 'LinAlg.inc'
 
@@ -168,7 +158,7 @@ contains
        ts%k = 1
        ts%h = ts%dt
 
-       call ts%f(neq, ts%y, ts%t, ts%yd, ts%ctx)
+       call f(neq, ts%y, ts%t, ts%yd)
        ts%nfe = ts%nfe + 1
 
        ts%z(:,0) = ts%y
@@ -229,7 +219,7 @@ contains
           ! build iteration matrix and factor
           if (rebuild) then
              call eye(ts%P)
-             call ts%J(neq, ts%y, ts%t, ts%Jac, ts%ctx)
+             call Jac(neq, ts%y, ts%t, ts%Jac)
              ts%P = ts%P - dt_adj * ts%Jac
              call dgefa(ts%P, neq, neq, ts%ipvt, info)
 
@@ -240,7 +230,7 @@ contains
           end if
 
           ! solve using factorized iteration matrix
-          call ts%f(neq, ts%y, ts%t, ts%yd, ts%ctx)
+          call f(neq, ts%y, ts%t, ts%yd)
           ts%nfe = ts%nfe + 1
           ts%nit = ts%nit + 1
 
@@ -571,12 +561,10 @@ contains
   ! Build/destroy BDF time-stepper.
   !
 
-  subroutine bdf_ts_build(ts, neq, f, J, rtol, atol, max_order)
+  subroutine bdf_ts_build(ts, neq, rtol, atol, max_order)
     type(bdf_ts), intent(inout) :: ts
     integer,      intent(in   ) :: max_order, neq
     real(dp),     intent(in   ) :: rtol(neq), atol(neq)
-    procedure(f_proc)           :: f
-    procedure(J_proc)           :: J
 
     integer :: k, U(max_order+1, max_order+1), Uk(max_order+1, max_order+1)
 
@@ -608,8 +596,7 @@ contains
     ts%max_j_age  = 20
 
     ts%k = -1
-    ts%f => f
-    ts%J => J
+
     ts%rtol = rtol
     ts%atol = atol
 
