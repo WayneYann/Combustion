@@ -103,13 +103,14 @@ RNS::variableSetUp ()
 {
     BL_ASSERT(desc_lst.size() == 0);
 
-    if (chemSolve == 0) 
-    {
-	chemSolve = new ChemDriver();
-    }
-    
     // Get options, set phys_bc
     read_params();
+
+    if (chemSolve == 0) 
+    {
+	chemSolve = new ChemDriver(RNS::use_vode);
+    }
+
     //
     // Set number of state variables and pointers to components
     //
@@ -164,7 +165,7 @@ RNS::variableSetUp ()
     BL_FORT_PROC_CALL(SET_METHOD_PARAMS, set_method_params)
 	(dm, Density, Xmom, Eden, Temp, FirstSpec, NUM_STATE, NumSpec, 
 	 small_dens, small_temp, small_pres, gamma, gravity, Treference,
-	 riemann, difmag, &blocksize[0]);
+	 riemann, difmag, &blocksize[0], use_vode);
     
     int coord_type = Geometry::Coord();
     const Real* prob_lo   = Geometry::ProbLo();

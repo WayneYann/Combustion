@@ -10,9 +10,10 @@ namespace
     void ChemDriver_Finalize() { initialized = false; }
 }
 
-ChemDriver::ChemDriver ()
+ChemDriver::ChemDriver (int use_vode_in)
 {
     isNull = false;
+    use_vode = use_vode_in;
 
     if (!initialized) 
     {
@@ -61,38 +62,62 @@ ChemDriver::initOnce ()
     delete [] spec_name_f;
     
     // vode
-    int  itol = 1;
-    Real rtol = 1.e-10;
-    Real atol = 1.e-10;
-    int  order = 100;  // vode will reduce it to a lower value
-    int  maxstep = 2000;  // max step vode takes
-    int  use_ajac = 1; // use analytic Jacobian
-    int  save_ajac = 1; // reuse analytic Jacobian
-    int  always_new_j = 0;
-    int  stiff = 1;
-    int  verbose = 0;
+    if (use_vode)
+    {
+	int  itol = 1;
+	Real rtol = 1.e-10;
+	Real atol = 1.e-10;
+	int  order = 100;  // vode will reduce it to a lower value
+	int  maxstep = 2000;  // max step vode takes
+	int  use_ajac = 1; // use analytic Jacobian
+	int  save_ajac = 1; // reuse analytic Jacobian
+	int  always_new_j = 0;
+	int  stiff = 1;
+	int  verbose = 0;
+	
+	ParmParse ppv("vode");
+	ppv.query("itol", itol);
+	ppv.query("rtol", rtol);
+	ppv.query("atol", atol);
+	ppv.query("order", order);
+	ppv.query("maxstep", maxstep);
+	ppv.query("use_ajac", use_ajac);
+	ppv.query("save_ajac", save_ajac);
+	ppv.query("always_new_j", always_new_j);
+	ppv.query("stiff", stiff);
+	ppv.query("v", verbose);
+	ppv.query("verbose", verbose);
+	
+	BL_ASSERT(rtol > 0);
+	BL_ASSERT(atol > 0);
+	BL_ASSERT(itol == 1 || itol == 2);
+    
+	int neq = nspec+1; 
+	BL_FORT_PROC_CALL(CD_INITVODE, cd_initvode)
+	    (neq, verbose, itol, rtol, atol, order, 
+	     maxstep, use_ajac, save_ajac, always_new_j, stiff); 
+    }
+    else
+    {
+	Real rtol = 1.e-10;
+	Real atol = 1.e-10;
+	int  order = 2;  
+	int  verbose = 0;
+	int reuse_jac = 1;
 
-    ParmParse ppv("vode");
-    ppv.query("itol", itol);
-    ppv.query("rtol", rtol);
-    ppv.query("atol", atol);
-    ppv.query("order", order);
-    ppv.query("maxstep", maxstep);
-    ppv.query("use_ajac", use_ajac);
-    ppv.query("save_ajac", save_ajac);
-    ppv.query("always_new_j", always_new_j);
-    ppv.query("stiff", stiff);
-    ppv.query("v", verbose);
-    ppv.query("verbose", verbose);
-    
-    BL_ASSERT(rtol > 0);
-    BL_ASSERT(atol > 0);
-    BL_ASSERT(itol == 1 || itol == 2);
-    
-    int neq = nspec+1; 
-    BL_FORT_PROC_CALL(CD_INITVODE, cd_initvode)
-	(neq, verbose, itol, rtol, atol, order, 
-	 maxstep, use_ajac, save_ajac, always_new_j, stiff); 
+	ParmParse ppv("bdf");
+	ppv.query("rtol", rtol);
+	ppv.query("atol", atol);
+	ppv.query("order", order);
+	ppv.query("v", verbose);
+	ppv.query("verbose", verbose);
+	ppv.query("reuse_jac", reuse_jac); 
+
+	int neq = nspec+1; 
+	BL_FORT_PROC_CALL(CD_INITBDF, cd_initbdf)
+	    (neq, verbose, rtol, atol, order, reuse_jac);
+    }
+
 
     // eglib
     int use_bulk_visc = 1;
@@ -108,7 +133,14 @@ ChemDriver::initOnce ()
 ChemDriver::~ChemDriver ()
 {
     BL_FORT_PROC_CALL(CD_CLOSECHEM, cd_closechem)();
-    BL_FORT_PROC_CALL(CD_CLOSEVODE, cd_closevode)();
+    if (use_vode)
+    {
+	BL_FORT_PROC_CALL(CD_CLOSEVODE, cd_closevode)();
+    }
+    else
+    {
+	BL_FORT_PROC_CALL(CD_CLOSEBDF, cd_closebdf)();
+    }
     BL_FORT_PROC_CALL(CD_CLOSEEGLIB, cd_closeeglib)();
 }
 

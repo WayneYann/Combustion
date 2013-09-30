@@ -333,6 +333,8 @@ protected:
 
     static int         do_quartic_interp;
 
+    static int         use_vode;
+
     // for keeping track of the amount of CPU time used -- this will persist
     // after restarts
     static Real        previousCPUTimeUsed;

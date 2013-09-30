@@ -129,6 +129,8 @@ std::vector<int> RNS::blocksize(BL_SPACEDIM, 2048);
 
 int          RNS::do_quartic_interp   = 1;
 
+int          RNS::use_vode            = 1;
+
 // this will be reset upon restart
 Real         RNS::previousCPUTimeUsed = 0.0;
 Real         RNS::startCPUTime = 0.0;

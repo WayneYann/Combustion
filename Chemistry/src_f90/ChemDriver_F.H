@@ -17,6 +17,11 @@ BL_FORT_PROC_DECL(CD_INITVODE, cd_initvode)
     const int& always_new_j, const int& stiff);
 BL_FORT_PROC_DECL(CD_CLOSEVODE, cd_closevode)();
 
+BL_FORT_PROC_DECL(CD_INITBDF, cd_initbdf)
+   (const int& neq, const int& verbose, const Real& rtol, const Real& atol,
+    const int& order, const int& reuse_jac);
+BL_FORT_PROC_DECL(CD_CLOSEBDF, cd_closebdf)();
+
 BL_FORT_PROC_DECL(CD_INITEGLIB, cd_initeglib)
    (const int& use_bulk_visc);
 BL_FORT_PROC_DECL(CD_CLOSEEGLIB, cd_closeeglib)();

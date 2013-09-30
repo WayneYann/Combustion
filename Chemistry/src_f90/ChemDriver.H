@@ -9,7 +9,7 @@ class ChemDriver
 {
 public:
 
-    ChemDriver ();	  
+    ChemDriver (int use_vode);
 
     ~ChemDriver ();
     
@@ -23,7 +23,8 @@ public:
     int index(const std::string speciesName) const;
 
     bool isNull;
-    
+    bool use_vode;
+
 private:
 
     void initOnce ();

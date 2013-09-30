@@ -1,8 +1,6 @@
 module burner_module
 
   use chemistry_module, only : nspecies, spec_names
-  use vode_module, only : verbose, itol, rtol, atol, vode_MF=>MF, always_new_j, &
-       voderwork, vodeiwork, lvoderwork, lvodeiwork, voderpar, vodeipar
 
   implicit none
 
@@ -13,6 +11,22 @@ module burner_module
 contains
 
   subroutine burn(rho, YT, dt)
+    use meth_params_module, only : use_vode
+    double precision, intent(in   ) :: rho, dt
+    double precision, intent(inout) :: YT(nspecies+1)
+
+    if (use_vode) then
+       call burn_vode(rho, YT, dt)
+    else
+       call burn_bdf(rho, YT, dt)
+    end if
+
+  end subroutine burn
+
+
+  subroutine burn_vode(rho, YT, dt)
+    use vode_module, only : verbose, itol, rtol, atol, vode_MF=>MF, always_new_j, &
+         voderwork, vodeiwork, lvoderwork, lvodeiwork, voderpar, vodeipar
     double precision, intent(in   ) :: rho, dt
     double precision, intent(inout) :: YT(nspecies+1)
 
@@ -66,6 +80,35 @@ contains
        call bl_error("ERROR in burn: VODE failed")
     end if
 
-  end subroutine burn
+  end subroutine burn_vode
+
+
+  subroutine burn_bdf(rho_in, YT, dt)
+    use bdf
+    use bdf_data, only : ts, reuse_jac
+    use feval, only : f_rhs, f_jac, rho
+    double precision, intent(in   ) :: rho_in, dt
+    double precision, intent(inout) :: YT(nspecies+1)
+
+    double precision :: t0, t1, y1(nspecies+1)
+    integer :: neq, ierr
+    logical :: reset
+
+    rho = rho_in
+
+    neq = nspecies+1
+    t0 = 0.d0
+    t1 = dt
+
+    reset = .true.
+
+    call bdf_advance(ts, f_rhs, f_jac, neq, YT, t0, y1, t1, dt, reset, reuse_jac, ierr)
+
+    if (ierr .ne. 0) then
+       print *, 'chemsolv: BDF failed'
+       call bl_error("ERROR in burn: BDF failed")       
+    end if
+
+  end subroutine burn_bdf
 
 end module burner_module

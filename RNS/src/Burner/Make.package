@@ -2,5 +2,5 @@
 ifeq (${CHEMISTRY_MODEL}, NULL)
   f90EXE_sources += burner_null.f90
 else
-  f90EXE_sources += burner.f90 chemrhs.f90
+  f90EXE_sources += burner.f90 chemrhs.f90 feval.f90
 endif

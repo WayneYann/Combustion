@@ -9,9 +9,10 @@ namespace
     void ChemDriver_Finalize() { initialized = false; }
 }
 
-ChemDriver::ChemDriver ()
+ChemDriver::ChemDriver (int use_vode_in)
 {
     isNull = true;
+    use_vode = false;
 
     if (!initialized) 
     {
