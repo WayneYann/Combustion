@@ -293,6 +293,8 @@ RNS::read_params ()
     pp.queryarr("blocksize", blocksize);
 
     pp.query("do_quartic_interp", do_quartic_interp);
+
+    pp.query("use_vode", use_vode);
 }
 
 RNS::RNS ()
