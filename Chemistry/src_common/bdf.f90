@@ -115,12 +115,12 @@ contains
   !
   ! Advance system from t0 to t1.
   !
-  subroutine bdf_advance(ts, f, Jac, neq, y0, t0, y1, t1, dt0, restart, ierr)
+  subroutine bdf_advance(ts, f, Jac, neq, y0, t0, y1, t1, dt0, restart, reuse, ierr)
     type(bdf_ts),     intent(inout) :: ts
     integer,          intent(in)    :: neq
     real(dp),         intent(in)    :: y0(neq), t0, t1, dt0
     real(dp),         intent(out)   :: y1(neq)
-    logical,          intent(in)    :: restart
+    logical,          intent(in)    :: restart, reuse
     integer,          intent(out)   :: ierr
     interface
        subroutine f(neq, y, t, yd)
@@ -145,7 +145,7 @@ contains
 
     nse = 0
 
-    if (.not. restart) then
+    if (restart) then
        ts%nfe = 0
        ts%nje = 0
        ts%nit = 0
@@ -165,9 +165,10 @@ contains
        ts%z(:,1) = ts%dt * ts%yd
 
        ts%k_age = 0
-       ts%j_age = 666
+       if (.not. reuse .or. ts%j_age < 0) ts%j_age = ts%max_j_age + 1
+       ! ts%j_age = 66666
     end if
-       
+
     !
     ! stepping loop
     !
@@ -180,7 +181,7 @@ contains
           return
        end if
 
-       if (ts%verbose > 1) print *, 'BDF: stepping: ', ts%n, ts%k, ts%dt
+       if (ts%verbose > 2) print *, 'BDF: stepping: ', ts%n, ts%k, ts%dt
 
        call bdf_ts_update(ts)
        call ewts(ts, ts%y, ts%ewt)
@@ -262,7 +263,7 @@ contains
           ts%nse = ts%nse + 1
           nse    = nse + 1
           call rescale_timestep(ts, 0.25d0)
-          if (ts%verbose > 1) print *, 'BDF: solver failed'
+          if (ts%verbose > 0) print *, 'BDF: solver failed'
           cycle
        else
           nse = 0
@@ -272,7 +273,7 @@ contains
        error = ts%tq(0) * norm(ts%e, ts%ewt)
        if (error > one) then
           eta(0) = one / ( (6.d0 * error) ** (one / ts%k) + 1.d-6 )
-          if (ts%verbose > 1) print *, 'BDF: error tolerance exceeded'
+          if (ts%verbose > 0) print *, 'BDF: error tolerance exceeded'
           call rescale_timestep(ts, eta(0))
           cycle
        end if
@@ -297,7 +298,7 @@ contains
        !
 
        eta = 0
-       if (ts%max_order == 1 .or. ts%k_age < ts%k) then
+       if (ts%max_order == 1 .or. ts%k_age <= ts%k) then
           eta(0) = one / ( (6.d0 * error) ** (one / ts%k) + 1.d-6 )
        else
           if (ts%k > 1) then
@@ -309,9 +310,12 @@ contains
              error  = ts%tq(1) * norm(ts%e + c * ts%z(:,2), ts%ewt)
              eta(1) = one / ( (10.d0 * error) ** (one / (ts%k+2)) + 1.d-6 )
           end if
+          ts%k_age = 0
        end if
 
        ts%k_age = ts%k_age + 1
+
+       if (ts%verbose > 2) print *, ts%k, ts%k_age, eta
 
        rescale = 0
        etamax  = maxval(eta)
@@ -599,6 +603,8 @@ contains
 
     ts%rtol = rtol
     ts%atol = atol
+
+    ts%j_age = -1
 
     ! build pascal matrix A using A = exp(U)
     U = 0

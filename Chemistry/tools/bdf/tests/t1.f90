@@ -46,13 +46,17 @@ program test
   dt   = 1.d-8
 
   call bdf_ts_build(ts, neq, rtol, atol, max_order=3)
+  ! ts%verbose = 1
 
   do i = 1, 11
-     call bdf_advance(ts, f, J, neq, y0, t0, y1, t1, dt, i/=1, ierr)
+     ! call bdf_advance(ts, f, J, neq, y0, t0, y1, t1, dt, i/=1, ierr)
+     !call bdf_advance(ts, f, J, neq, y0, t0, y1, t1, dt, .true., i/=1, ierr)
+     call bdf_advance(ts, f, J, neq, y0, t0, y1, t1, dt, .true., .true., ierr)
      print *, t1, y1
      y0 = y1
      t0 = t1
      t1 = 10*t1
+     dt = 2*ts%dt
   end do
 
   print *, ts%n, ts%nfe, ts%nje, ts%nit, ts%nse
