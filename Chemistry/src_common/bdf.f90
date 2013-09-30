@@ -115,12 +115,12 @@ contains
   !
   ! Advance system from t0 to t1.
   !
-  subroutine bdf_advance(ts, f, Jac, neq, y0, t0, y1, t1, dt0, restart, reuse, ierr)
+  subroutine bdf_advance(ts, f, Jac, neq, y0, t0, y1, t1, dt0, reset, reuse, ierr)
     type(bdf_ts),     intent(inout) :: ts
     integer,          intent(in)    :: neq
     real(dp),         intent(in)    :: y0(neq), t0, t1, dt0
     real(dp),         intent(out)   :: y1(neq)
-    logical,          intent(in)    :: restart, reuse
+    logical,          intent(in)    :: reset, reuse
     integer,          intent(out)   :: ierr
     interface
        subroutine f(neq, y, t, yd)
@@ -145,7 +145,7 @@ contains
 
     nse = 0
 
-    if (restart) then
+    if (reset) then
        ts%nfe = 0
        ts%nje = 0
        ts%nit = 0
