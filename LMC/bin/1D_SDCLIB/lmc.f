@@ -1,6 +1,7 @@
       subroutine lmc()
       use sdclib
       use iso_c_binding
+      use encap
       use feval
 
       implicit none
@@ -16,6 +17,9 @@
       integer num_divu_iters
       integer num_init_iters
       integer ierr
+      integer k
+
+      type(lmc_encap), target :: U0
 
 !     cell-centered, 2 ghost cells
       real*8, allocatable ::   vel_new(:,:)
@@ -61,7 +65,7 @@
 
       character chkfile*(16)
 
-      type(sdc_encap) :: encap
+      type(sdc_encap) :: enc
       type(sdc_imex)  :: imex
       type(sdc_nodes) :: nodes
 
@@ -222,12 +226,15 @@ c     u_bc, T_bc, Y_bc, h_bc, and rho_bc
       end if
 
 !     init sdc stepper
-
+      call lmc_encap_build(enc, nfine, nscal)
       call sdc_nodes_build(nodes, 3, SDC_GAUSS_LOBATTO, ierr)
       call sdc_imex_build(imex, nodes, c_funloc(f1eval), 
      &                    c_funloc(f2eval), c_funloc(f2comp), ierr)
-      
+      call sdc_imex_setup(imex, enc, c_null_ptr, ierr)
+      call sdc_imex_allocate(imex, ierr)
 
+      call lmc_encap_create_simple(U0, nfine, nscal)
+      
 !     initialize boundary conditions
 !     0=interior; 1=inflow; 2=outflow
       bc(0,1) = 1
@@ -393,7 +400,14 @@ c     update pressure and I_R
       call write_check(at_nstep,vel_new,scal_new,press_new,
      $     I_R,divu_new,dx,time,dt,lo,hi)
 
+
 C-- Now advance 
+      U0%vel = vel_new
+      U0%scal = scal_new
+      U0%divu = divu_new
+      print *, size(U0%press), size(press_new)
+      U0%press = press_new
+
       do nsteps_taken = at_nstep, nsteps
 
          if (time.ge.stop_time) exit
@@ -403,19 +417,40 @@ C-- Now advance
          write(6,*)
          write(6,1001 )time,dt
          write(6,*)'STEP = ',nsteps_taken
-         
-         call advance(vel_old,vel_new,scal_old,scal_new,
-     $                I_R,press_old,press_new,
-     $                divu_old,divu_new,beta_old,beta_new,
-     $                beta_for_Y_old,beta_for_Y_new,
-     $                beta_for_Wbar_old,beta_for_Wbar_new,
-     $                dx,dt,lo,hi,bc,delta_chi,nsteps_taken)
 
-c     update state, time
-         vel_old = vel_new
-         scal_old = scal_new
-         divu_old = divu_new
-         press_old = press_new
+         ! vvvvvvvvvvvvvvvvvvvv NEW SDCLIB WAY
+         if (nsteps_taken == at_nstep) then
+            call sdc_imex_set_q0(imex, c_loc(U0))
+            call sdc_imex_spread(imex, time)
+         else
+            call sdc_imex_spread_qend(imex)
+         endif
+
+         do k = 1, 8
+            call sdc_imex_sweep(imex, time, fixed_dt, 0)
+         enddo
+
+         call sdc_imex_get_qend(imex, c_loc(U0))    
+         vel_new = U0%vel
+         scal_new = U0%scal
+         divu_new = U0%divu
+         press_new = U0%press
+         ! ^^^^^^^^^^^^^^^^^^^ NEW SDCLIB WAY
+         
+         ! vvvvvvvvvvvvvvvvvvv OLD WAY 
+c$$$         call advance(vel_old,vel_new,scal_old,scal_new,
+c$$$     $                I_R,press_old,press_new,
+c$$$     $                divu_old,divu_new,beta_old,beta_new,
+c$$$     $                beta_for_Y_old,beta_for_Y_new,
+c$$$     $                beta_for_Wbar_old,beta_for_Wbar_new,
+c$$$     $                dx,dt,lo,hi,bc,delta_chi,nsteps_taken)
+c$$$c     update state, time
+c$$$         vel_old = vel_new
+c$$$         scal_old = scal_new
+c$$$         divu_old = divu_new
+c$$$         press_old = press_new
+         ! ^^^^^^^^^^^^^^^^^^^ OLD WAY 
+
 
          time = time + dt(0)
 
