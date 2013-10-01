@@ -1,7 +1,7 @@
 subroutine chemsolve(lo, hi, &
   uin, il1, il2, ih1, ih2, &
   uou, ol1, ol2, oh1, oh2, &
-  dt, verbose, use_vode)
+  stop_time, dt, verbose, use_vode)
   use chemistry_module, only : nspecies
   implicit none
   integer, intent(in) :: lo(2), hi(2)
@@ -9,7 +9,7 @@ subroutine chemsolve(lo, hi, &
   integer, intent(in) :: ol1, ol2, oh1, oh2
   double precision, intent(in ) :: uin(il1:ih1,il2:ih2,nspecies+2)
   double precision, intent(out) :: uou(ol1:oh1,ol2:oh2,nspecies+2)
-  double precision, intent(in) :: dt
+  double precision, intent(in) :: stop_time, dt
   integer, intent(in) :: verbose, use_vode
 
   integer :: i, j, n
@@ -26,9 +26,9 @@ subroutine chemsolve(lo, hi, &
         rhot = uin(i,j,nspecies+2)
         
         if (use_vode .ne. 0) then
-           call burn_vode(rhot, Yt, dt, verbose)
+           call burn_vode(rhot, Yt, stop_time, dt, verbose)
         else
-           call burn_bdf(rhot, Yt, dt, verbose)           
+           call burn_bdf(rhot, Yt, stop_time, dt, verbose)           
         end if
 
         do n=1,nspecies+1
@@ -42,12 +42,12 @@ subroutine chemsolve(lo, hi, &
 end subroutine chemsolve
 
 
-subroutine burn_vode(rho, YT, dt, verbose)
+subroutine burn_vode(rho, YT, stop_time, dt, verbose)
   use vode_module, only : itol, rtol, atol, vode_MF=>MF, always_new_j, &
        voderwork, vodeiwork, lvoderwork, lvodeiwork, voderpar, vodeipar
   use chemistry_module, only : nspecies, spec_names
   integer, intent(in) :: verbose
-  double precision, intent(in   ) :: rho, dt
+  double precision, intent(in   ) :: rho, stop_time, dt
   double precision, intent(inout) :: YT(nspecies+1)
 
   external f_jac, f_rhs, dvode
@@ -66,7 +66,7 @@ subroutine burn_vode(rho, YT, dt, verbose)
   if (always_new_j) call setfirst(.true.)
   
   MF = vode_MF  ! vode might change its sign!
-  call dvode(f_rhs, nspecies+1, YT, time, dt, itol, rtol, atol, itask, &
+  call dvode(f_rhs, nspecies+1, YT, time, stop_time, itol, rtol, atol, itask, &
        istate, iopt, voderwork, lvoderwork, vodeiwork, lvodeiwork, &
        f_jac, MF, voderpar, vodeipar)
   
@@ -103,12 +103,12 @@ subroutine burn_vode(rho, YT, dt, verbose)
 end subroutine burn_vode
 
 
-subroutine burn_bdf(rho_in, YT, dt, verbose)
+subroutine burn_bdf(rho_in, YT, stop_time, dt, verbose)
   use chemistry_module, only : nspecies
   use bdf
   use bdf_data, only : ts, reuse_jac
   use feval, only : f_rhs, f_jac, rho
-  double precision, intent(in   ) :: rho_in, dt
+  double precision, intent(in   ) :: rho_in, stop_time, dt
   double precision, intent(inout) :: YT(nspecies+1)
   
   double precision :: t0, t1, y1(nspecies+1)
@@ -119,7 +119,7 @@ subroutine burn_bdf(rho_in, YT, dt, verbose)
   
   neq = nspecies+1
   t0 = 0.d0
-  t1 = dt
+  t1 = stop_time
 
   reset = .true.
 

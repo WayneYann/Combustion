@@ -93,7 +93,8 @@ int main (int argc, char* argv[])
 	double strt_time = ParallelDescriptor::second();
 
 	BL_FORT_PROC_CALL(CHEMSOLVE, chemsolve)
-	    (lo, hi, BL_TO_FORTRAN(inData), BL_TO_FORTRAN(outData), dt, verbose, use_vode);
+	    (lo, hi, BL_TO_FORTRAN(inData), BL_TO_FORTRAN(outData), 
+	     stop_time, dt, verbose, use_vode);
 
 	double stop_time = ParallelDescriptor::second();
 
