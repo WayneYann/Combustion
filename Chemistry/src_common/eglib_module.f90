@@ -16,7 +16,6 @@ module eglib_module
 contains
 
   subroutine eglib_init(nspecies, NP, ITLS, IFLAG)
-    use omp_module
     integer, intent(in) :: nspecies, NP, ITLS, IFLAG
 
     if (NP .ne. EGLIB_NP) then
