@@ -130,6 +130,7 @@ std::vector<int> RNS::blocksize(BL_SPACEDIM, 2048);
 int          RNS::do_quartic_interp   = 1;
 
 int          RNS::use_vode            = 1;
+int          RNS::do_cc_burning       = 0;
 
 // this will be reset upon restart
 Real         RNS::previousCPUTimeUsed = 0.0;
@@ -295,6 +296,7 @@ RNS::read_params ()
     pp.query("do_quartic_interp", do_quartic_interp);
 
     pp.query("use_vode", use_vode);
+    pp.query("do_cc_burning", do_cc_burning);
 }
 
 RNS::RNS ()

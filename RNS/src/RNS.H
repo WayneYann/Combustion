@@ -334,6 +334,7 @@ protected:
     static int         do_quartic_interp;
 
     static int         use_vode;
+    static int         do_cc_burning;
 
     // for keeping track of the amount of CPU time used -- this will persist
     // after restarts
