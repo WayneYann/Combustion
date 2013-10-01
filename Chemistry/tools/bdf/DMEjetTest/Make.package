@@ -1,0 +1,6 @@
+FEXE_headers += DMEjet_F.H
+
+CEXE_sources += DMEjet.cpp
+
+f90EXE_sources += DMEjet_f.f90 rhsvode.f90 rhsbdf.f90
+
