@@ -4,7 +4,7 @@ module convert_2d_module
 
   private
 
-  public :: cellavg2cc_2d
+  public :: cellavg2cc_2d, cellcenter2ca_2d
 
 contains
 
@@ -42,5 +42,22 @@ contains
     end if
 
   end subroutine cellavg2cc_2d
+
+  subroutine cellcenter2ca_2d(lo, hi, uc, clo, chi, ua, alo, ahi)
+    integer, intent(in) :: lo(2), hi(2), alo(2), ahi(2), clo(2), chi(2)
+    double precision, intent(in) :: uc(clo(1):chi(1),clo(2):chi(2))
+    double precision             :: ua(alo(1):ahi(1),alo(2):ahi(2))
+    
+    integer :: i, j
+    double precision, parameter :: b = 1.d0/24.d0, fiveSixth=5.d0/6.d0
+
+    do j=lo(2),hi(2)
+       do i=lo(1),hi(1)
+          ua(i,j) = b*(uc(i,j-1)+uc(i-1,j)+uc(i+1,j)+uc(i,j+1)) &
+               + fiveSixth*uc(i,j)
+       end do
+    end do
+
+  end subroutine cellcenter2ca_2d
 
 end module convert_2d_module
