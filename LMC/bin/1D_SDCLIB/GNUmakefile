@@ -22,12 +22,12 @@ REACTION_MECHANISM=CHEMH
 ifeq (${USE_INTEL},TRUE)
   CCOMP := icpc -Wno-deprecated -g -Wunused-variable -DBL_ICC_VERSION=10.1 -DBL_MAJOR_VERSION=10 -DBL_MINOR_VERSION=1 -DBL_FORT_USE_UNDERSCORE
   fCOMP := ifort -warn unused -g -u -fpconstant -fbounds-check
-  XTRALIBS :=  -L/opt/intel/fce/10.1.015/lib -lifcore -lm 
+  # XTRALIBS :=  -L/opt/intel/fce/10.1.015/lib -lifcore -lm 
 else
   fCOMP := gfortran -g -fbounds-check -O1 -Wall -ffixed-line-length-none
   CCOMP := g++ -g -O0 -fno-exceptions -Wall -Wno-sign-compare -DBL_FORT_USE_UNDERSCORE
   cCOMP := gcc -g -O0 -std=c99 -fno-exceptions -Wall -Wno-sign-compare -DBL_FORT_USE_UNDERSCORE -I$(SDCLIB_HOME)/include
-  XTRALIBS :=  -lm -lgfortran
+  # XTRALIBS :=  -lm -lgfortran
 endif
 
 ifeq ($(REACTION_MECHANISM),GRI30)
@@ -58,18 +58,21 @@ f_sources += lmc.f ${chem_sources} prob.f fill_ghost.f \
 
 f_includes += spec.h
 c_sources += main.c
+f90sources += feval.f90
+f90sources += sdc-interfaces.f90
+f90sources += sdc-types.f90
+f90sources += sdclib.f90
 
 include $(SDCLIB_HOME)/Make.package
 c_sources += $(cEXE_sources)
 
 c_objects := $(c_sources:%.c=%.o) 
 f_objects := $(f_sources:%.f=%.o)
+f90_objects := $(f90sources:%.f90=%.o)
 
-${EXEname}: ${f_objects} ${mech_object} ${c_objects} ${f_includes}
-	${CCOMP} -o ${EXEname} ${f_objects} ${mech_object} ${c_objects} ${XTRALIBS}
 
-test.exe: CDc.o driver.o prob.o ${pmf_object} ${mech_object} ${chem_objects}
-	${CCOMP} CDc.o driver.o prob.o ${pmf_object} ${mech_object} ${chem_objects} -o test.exe ${XTRALIBS}
+${EXEname}: ${f_objects} ${f90_objects} ${mech_object} ${c_objects} #${f_includes}
+	${fCOMP} -o ${EXEname} $^
 
 clean:
 	rm -rf ${EXEname} ${f_objects} ${c_objects} Linkeg
@@ -83,9 +86,17 @@ clean:
 %.o: %.f
 	${fCOMP} -c $^ -o $*.o
 
+%.o: %.f90
+	${fCOMP} -c $^ -o $*.o
+
+lmc.o: sdclib.o feval.o
+sdclib.o: sdc-interfaces.o
+sdc-interfaces.o: sdc-types.o
+
 
 MySrcDirs += .
 vpath %.cpp $(MySrcDirs)
 vpath %.c   $(MySrcDirs) $(SDCLIB_HOME)/src
 vpath %.h   $(MySrcDirs)
 vpath %.f   $(MySrcDirs)
+vpath %.f90 $(MySrcDirs) $(SDCLIB_HOME)/src 

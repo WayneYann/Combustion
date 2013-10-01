@@ -1,4 +1,7 @@
       subroutine lmc()
+      use sdclib
+      use iso_c_binding
+      use feval
 
       implicit none
 
@@ -12,6 +15,7 @@
       integer do_initial_projection
       integer num_divu_iters
       integer num_init_iters
+      integer ierr
 
 !     cell-centered, 2 ghost cells
       real*8, allocatable ::   vel_new(:,:)
@@ -56,6 +60,10 @@
       integer l,divu_iter,init_iter
 
       character chkfile*(16)
+
+      type(sdc_encap) :: encap
+      type(sdc_imex)  :: imex
+      type(sdc_nodes) :: nodes
 
       namelist /fortin/ nx,nlevs,rr,subcycling,nsteps,stop_time,
      $                  problo,probhi,chkfile,
@@ -212,6 +220,13 @@ c     u_bc, T_bc, Y_bc, h_bc, and rho_bc
          print*,'Error: grids only specified for nlevs = 2'
          stop
       end if
+
+!     init sdc stepper
+
+      call sdc_nodes_build(nodes, 3, SDC_GAUSS_LOBATTO, ierr)
+      call sdc_imex_build(imex, nodes, c_funloc(f1eval), 
+     &                    c_funloc(f2eval), c_funloc(f2comp), ierr)
+      
 
 !     initialize boundary conditions
 !     0=interior; 1=inflow; 2=outflow
