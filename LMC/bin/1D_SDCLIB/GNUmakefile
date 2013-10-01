@@ -58,7 +58,7 @@ f_sources += lmc.f ${chem_sources} prob.f fill_ghost.f \
 
 f_includes += spec.h
 c_sources += main.c
-f90sources += feval.f90 encap.f90
+f90sources += feval.f90 encap.f90 mod-spec.f90
 f90sources += sdc-interfaces.f90
 f90sources += sdc-types.f90
 f90sources += sdclib.f90
@@ -90,7 +90,7 @@ clean:
 	${fCOMP} -c $^ -o $*.o
 
 encap.o: sdclib.o
-feval.o: encap.o
+feval.o: encap.o mod-spec.o
 lmc.o: sdclib.o feval.o 
 sdclib.o: sdc-interfaces.o
 sdc-interfaces.o: sdc-types.o
