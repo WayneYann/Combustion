@@ -16,7 +16,7 @@ end subroutine get_method_params
 subroutine set_method_params(dm,Density,Xmom,Eden,Temp,FirstSpec, &
      NUM_STATE, NumSpec, small_dens_in, small_temp_in, small_pres_in, &
      gamma_in, grav_in, Tref_in, riemann_in, difmag_in, blocksize, &
-     use_vode_in)
+     use_vode_in, do_cc_burning_in)
 
   use meth_params_module
   use eos_module
@@ -25,7 +25,7 @@ subroutine set_method_params(dm,Density,Xmom,Eden,Temp,FirstSpec, &
 
   integer, intent(in) :: dm
   integer, intent(in) :: Density, Xmom, Eden, Temp, FirstSpec, NUM_STATE, NumSpec, &
-       riemann_in, blocksize(*), use_vode_in
+       riemann_in, blocksize(*), use_vode_in, do_cc_burning_in
   double precision, intent(in) :: small_dens_in, small_temp_in, small_pres_in, &
        gamma_in, grav_in, Tref_in, difmag_in
   
@@ -101,11 +101,8 @@ subroutine set_method_params(dm,Density,Xmom,Eden,Temp,FirstSpec, &
   nthreads = nthreads + 1
   !$omp end parallel
 
-  if (use_vode_in .eq. 0) then
-     use_vode = .false.
-  else
-     use_vode = .true.
-  end if
+  use_vode = (use_vode_in .ne. 0)
+  do_cc_burning = (do_cc_burning_in .ne. 0)
 
 end subroutine set_method_params
 
