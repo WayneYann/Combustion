@@ -1,6 +1,8 @@
 USE_INTEL = FALSE
 EXEname := lmc.exe
 
+SDCLIB_HOME = ../../../../SDCLib
+
 #
 # Choose pmf file
 #
@@ -24,7 +26,7 @@ ifeq (${USE_INTEL},TRUE)
 else
   fCOMP := gfortran -g -fbounds-check -O1 -Wall -ffixed-line-length-none
   CCOMP := g++ -g -O0 -fno-exceptions -Wall -Wno-sign-compare -DBL_FORT_USE_UNDERSCORE
-  cCOMP := gcc -g -O0 -std=c99 -fno-exceptions -Wall -Wno-sign-compare -DBL_FORT_USE_UNDERSCORE
+  cCOMP := gcc -g -O0 -std=c99 -fno-exceptions -Wall -Wno-sign-compare -DBL_FORT_USE_UNDERSCORE -I$(SDCLIB_HOME)/include
   XTRALIBS :=  -lm -lgfortran
 endif
 
@@ -55,19 +57,22 @@ f_sources += lmc.f ${chem_sources} prob.f fill_ghost.f \
              read_check.f write_check.f write_plt.f cn_solve.f ${pmf_source}
 
 f_includes += spec.h
-C_sources += main.cpp
+c_sources += main.c
 
-C_objects := $(C_sources:%.cpp=%.o)
+include $(SDCLIB_HOME)/Make.package
+c_sources += $(cEXE_sources)
+
+c_objects := $(c_sources:%.c=%.o) 
 f_objects := $(f_sources:%.f=%.o)
 
-${EXEname}: ${f_objects} ${mech_object} ${C_objects} ${f_includes}
-	${CCOMP} -o ${EXEname} ${f_objects} ${mech_object} ${C_objects} ${XTRALIBS}
+${EXEname}: ${f_objects} ${mech_object} ${c_objects} ${f_includes}
+	${CCOMP} -o ${EXEname} ${f_objects} ${mech_object} ${c_objects} ${XTRALIBS}
 
 test.exe: CDc.o driver.o prob.o ${pmf_object} ${mech_object} ${chem_objects}
 	${CCOMP} CDc.o driver.o prob.o ${pmf_object} ${mech_object} ${chem_objects} -o test.exe ${XTRALIBS}
 
 clean:
-	\rm -rf ${EXEname} ${f_objects} ${C_objects} Linkeg
+	rm -rf ${EXEname} ${f_objects} ${c_objects} Linkeg
 
 %.o: %.cpp
 	${CCOMP} -c $^ -o $*.o
@@ -81,6 +86,6 @@ clean:
 
 MySrcDirs += .
 vpath %.cpp $(MySrcDirs)
-vpath %.c   $(MySrcDirs)
+vpath %.c   $(MySrcDirs) $(SDCLIB_HOME)/src
 vpath %.h   $(MySrcDirs)
 vpath %.f   $(MySrcDirs)
