@@ -12,6 +12,8 @@ public:
     ChemDriver (int use_vode);
 
     ~ChemDriver ();
+
+    void reset();
     
     //
     // Species info.

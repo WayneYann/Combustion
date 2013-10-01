@@ -10,6 +10,11 @@ namespace
     void ChemDriver_Finalize() { initialized = false; }
 }
 
+void ChemDriver::reset()
+{
+    initialized = false;
+}
+
 ChemDriver::ChemDriver (int use_vode_in)
 {
     isNull = false;

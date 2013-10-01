@@ -25,7 +25,7 @@ static int         verbose = 0;
 static std::string fabin("DMEjet.fab");
 static std::string fabout_vode("vode.fab");
 static std::string fabout_bdf("bdf.fab");
-static Real stop_time = 4.e-9;
+static Real stop_time = 4.e-8;
 static Real dt        = 4.e-10;
 
 int main (int argc, char* argv[])
@@ -97,7 +97,7 @@ int main (int argc, char* argv[])
 
 	double stop_time = ParallelDescriptor::second();
 
-	std::cout << " ... solve time: " << stop_time-strt_time << std::endl;
+	std::cout << " ... solve time: " << stop_time-strt_time << "\n" << std::endl;
 
 	std::string fabout = (use_vode) ? fabout_vode : fabout_bdf;
 	std::ofstream os;
@@ -112,6 +112,8 @@ int main (int argc, char* argv[])
 	    std::cerr << "Error: cannot open file " << fabout <<std::endl;
 	    BoxLib::Abort();
 	}
+
+	chemdriver.reset();
     }
 
     BoxLib::Finalize();
