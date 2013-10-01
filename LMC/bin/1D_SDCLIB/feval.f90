@@ -1,3 +1,9 @@
+!
+! Method-of-lines discretization for LMC.
+!
+! 
+!
+
 module feval
   use iso_c_binding
   use encap
@@ -6,7 +12,10 @@ module feval
 contains
 
 
-  subroutine advection(vel_old, scal_old, press_old, dx, lo, hi, bc)
+  !
+  ! Compute MOL dU/dt for the advection piece of LMC.
+  !
+  subroutine advection(vel_old, scal_old, divu_old, press_old, dx, lo, hi, bc)
     use spec_module
 
     real*8  dx(0:nlevs-1)
@@ -15,25 +24,47 @@ contains
     real*8  press_old(0:nlevs-1,-1:nfine+1)
     real*8    vel_old(0:nlevs-1,-2:nfine+1)
     real*8   scal_old(0:nlevs-1,-2:nfine+1,nscal)
+    real*8   divu_old(0:nlevs-1,-1:nfine)
     integer bc(0:nlevs-1,2)
 
     real*8  dt(0:nlevs-1)
     real*8           gp(0:nlevs-1,-1:nfine)
     real*8       macvel(0:nlevs-1, 0:nfine  )
-    integer i
+    real*8     diff_old(0:nlevs-1,-1:nfine,  nscal)
+    ! real*8     diff_new(0:nlevs-1,-1:nfine,  nscal)
+    ! real*8     diff_hat(0:nlevs-1,-1:nfine,  nscal)
+    ! real*8     diff_tmp(0:nlevs-1,-1:nfine,  nscal)
+    real*8       tforce(0:nlevs-1,-1:nfine,  nscal)
+    real*8 diffdiff_old(0:nlevs-1,-1:nfine)
 
-    dt = 1
+    real*8          aofs(0:nlevs-1, 0:nfine-1,nscal)
+
+    integer i, is, n
+
+    print *,'... projecting'
 
     ! compute cell-centered grad pi from nodal pi
     do i=lo(0)-1,hi(0)+1
        gp(0,i) = (press_old(0,i+1) - press_old(0,i)) / dx(0)
     enddo
 
-    print *,'... predict edge velocities'
-
-    ! compute U^{ADV,*}
+    ! compute edge velocities at current state
+    dt = 0
     call pre_mac_predict(vel_old(0,:),scal_old(0,:,:),gp(0,:), &
          macvel(0,:),dx(0),dt(0),lo(0),hi(0),bc(0,:))
+
+    ! project
+    call macproj(macvel(0,:),scal_old(0,:,Density), &
+         divu_old(0,:),dx,lo(0),hi(0),bc(0,:))
+
+
+    print *,'... computing advective scalar update'
+
+    ! compute advective flux divergence
+    tforce = 0
+    call scal_aofs(scal_old(0,:,:),macvel(0,:),aofs(0,:,:), &
+                       divu_old(0,:),tforce(0,:,:),dx(0),dt(0), &
+                       lo(0),hi(0),bc(0,:))
 
   end subroutine advection
 
@@ -52,6 +83,8 @@ contains
     hi = nx-1
 
     ! call advection()
+
+    ! XXX: set_bc_s, set_bc_v
 
   end subroutine f1eval
 
