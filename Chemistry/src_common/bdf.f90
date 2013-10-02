@@ -51,6 +51,7 @@ module bdf
      real(dp) :: eta_max                  ! maximum allowable step-size growth factor
      real(dp) :: eta_thresh               ! step-size growth threshold
      integer  :: max_j_age                ! maximum age of jacobian
+     integer  :: max_p_age                ! maximum age of newton iteration matrix
 
      real(dp), pointer :: rtol(:)         ! realtive tolerances
      real(dp), pointer :: atol(:)         ! absolute tolerances
@@ -62,6 +63,7 @@ module bdf
      integer  :: k                        ! current order
      integer  :: n                        ! current step
      integer  :: j_age                    ! age of jacobian
+     integer  :: p_age                    ! age of newton iteration matrix
      integer  :: k_age                    ! number of steps taken at current order
      real(dp) :: tq(-1:2)                 ! error coefficients (test quality)
      real(dp) :: tq2save
@@ -89,6 +91,7 @@ module bdf
      ! counters
      integer :: nfe                       ! number of function evaluations
      integer :: nje                       ! number of jacobian evaluations
+     integer :: nlu                       ! number of factorizations
      integer :: nit                       ! number of non-linear solver iterations
      integer :: nse                       ! number of non-linear solver errors
 
@@ -133,23 +136,19 @@ contains
     include 'LinAlg.inc'
 
     integer  :: i, j, k, iter, info, nse
-    real(dp) :: c, dt_adj, error, eta(-1:1), rescale, etamax
-    logical  :: rebuild
+    real(dp) :: c, dt_adj, error, eta(-1:1), rescale, etamax, gamma_rat
+    logical  :: rebuild, refactor
 
     nse = 0
 
     if (reset) then
-       ts%nfe = 0
-       ts%nje = 0
-       ts%nit = 0
-       ts%nse = 0
+       ts%nfe = 0; ts%nje = 0; ts%nlu = 0; ts%nit = 0; ts%nse = 0
 
        ts%y  = y0
        ts%dt = dt0
        ts%n  = 1
-
-       ts%k = 1
-       ts%h = ts%dt
+       ts%k  = 1
+       ts%h  = ts%dt
 
        call f(neq, ts%y, ts%t, ts%yd)
        ts%nfe = ts%nfe + 1
@@ -158,14 +157,20 @@ contains
        ts%z(:,1) = ts%dt * ts%yd
 
        ts%k_age = 0
-       if (.not. reuse .or. ts%j_age < 0) &
-            ts%j_age = ts%max_j_age + 1
+       if (.not. reuse) then
+          ts%j_age = ts%max_j_age + 1
+          ts%p_age = ts%max_p_age + 1
+       else 
+          ts%j_age = 0
+          ts%p_age = 0
+       end if
     end if
 
     !
     ! stepping loop
     !
 
+    nse = 0
     ts%t = t0
     do k = 1, bdf_max_iters + 1
 
@@ -206,39 +211,49 @@ contains
        dt_adj = ts%dt / ts%l(1)
        ts%y   = ts%z0(:,0)
 
-       if (ts%j_age > ts%max_j_age) rebuild = .true.
+       gamma_rat = dt_adj / ts%dt_nwt
+       if (ts%p_age > ts%max_p_age) refactor = .true.
+       if (gamma_rat < 0.7d0 .or. gamma_rat > 1.429d0) refactor = .true.
 
        do iter = 1, ts%max_iters
 
           ! build iteration matrix and factor
-          if (rebuild) then
+          if (refactor) then
+             rebuild = .true.
+             if (nse == 0 .and. ts%j_age < ts%max_j_age) rebuild = .false.
+             if (nse > 0  .and. (gamma_rat < 0.2d0 .or. gamma_rat > 5.d0)) rebuild = .false.
+
+             if (rebuild) then
+                call Jac(neq, ts%y, ts%t, ts%J)
+                ts%nje   = ts%nje + 1
+                ts%j_age = 0
+             end if
+
              call eye(ts%P)
-             call Jac(neq, ts%y, ts%t, ts%J)
              ts%P = ts%P - dt_adj * ts%J
              call dgefa(ts%P, neq, neq, ts%ipvt, info)
-
-             ts%nje    = ts%nje + 1
+             ts%nlu    = ts%nlu + 1
              ts%dt_nwt = dt_adj
-             ts%j_age  = 0
-             rebuild   = .false.
+             ts%p_age  = 0
+             refactor  = .false.
           end if
 
           ! solve using factorized iteration matrix
           call f(neq, ts%y, ts%t, ts%yd)
           ts%nfe = ts%nfe + 1
-          ts%nit = ts%nit + 1
 
           c    = 2 * ts%dt_nwt / (dt_adj + ts%dt_nwt)
           ts%b = c * (ts%rhs - ts%y + dt_adj * ts%yd)
           call dgesl(ts%P, neq, neq, ts%ipvt, ts%b, 0)
+          ts%nit = ts%nit + 1
 
           ts%e = ts%e + ts%b
           if (norm(ts%b, ts%ewt) < one) exit
           ts%y = ts%z0(:,0) + ts%e
        end do
 
+       ts%p_age = ts%p_age + 1
        ts%j_age = ts%j_age + 1
-
 
        !
        ! retry if the solver didn't converge or the error estimate is too large
@@ -252,15 +267,15 @@ contains
 
        ! if solver failed to converge, shrink dt and try again
        if (iter >= ts%max_iters) then
-          rebuild = .true.
+          refactor = .true.
           ts%nse = ts%nse + 1
           nse    = nse + 1
           call rescale_timestep(ts, 0.25d0)
           if (ts%verbose > 1) print *, 'BDF: solver failed'
           cycle
-       else
-          nse = 0
        end if
+
+       nse = 0
 
        ! if local error is fairly large, shrink dt and try again
        error = ts%tq(0) * norm(ts%e, ts%ewt)
@@ -281,19 +296,19 @@ contains
 
        if (ts%t + ts%dt >= t1) exit
 
-       ts%h    = eoshift(ts%h, -1)
-       ts%h(0) = ts%dt
-       ts%t    = ts%t + ts%dt
-       ts%n    = ts%n + 1
+       ts%h     = eoshift(ts%h, -1)
+       ts%h(0)  = ts%dt
+       ts%t     = ts%t + ts%dt
+       ts%n     = ts%n + 1
+       ts%k_age = ts%k_age + 1
 
        !
        ! compute eta values for changing step-size and/or order
        !
 
        eta = 0
-       if (ts%max_order == 1 .or. ts%k_age <= ts%k) then
-          eta(0) = one / ( (6.d0 * error) ** (one / ts%k) + 1.d-6 )
-       else
+       eta(0) = one / ( (6.d0 * error) ** (one / ts%k) + 1.d-6 )
+       if (ts%k_age > ts%k) then
           if (ts%k > 1) then
              error   = ts%tq(-1) * norm(ts%z(:,ts%k), ts%ewt)
              eta(-1) = one / ( (6.d0 * error) ** (one / ts%k) + 1.d-6 )
@@ -305,8 +320,6 @@ contains
           end if
           ts%k_age = 0
        end if
-
-       ts%k_age = ts%k_age + 1
 
        if (ts%verbose > 2) print *, ts%k, ts%k_age, eta
 
@@ -334,8 +347,8 @@ contains
     end do
 
     if (ts%verbose > 0) &
-         print '("BDF: done    : n:",i6,", k: ",i6,", nfe: ",i6,", nje: ",i3,", nse: ",i3,", dt: ",e15.8,", order: ",i2)', &
-         ts%n, k, ts%nfe, ts%nje, ts%nse, ts%dt, ts%k
+         print '("BDF: n:",i6,", fe:",i6,", je: ",i3,", lu: ",i3,", it: ",i3,", se: ",i3,", dt: ",e15.8,", k: ",i2)', &
+         ts%n, ts%nfe, ts%nje, ts%nlu, ts%nit, ts%nse, ts%dt, ts%k
 
     ierr = BDF_ERR_SUCCESS
     y1   = ts%z(:,0)
@@ -388,8 +401,7 @@ contains
     end if
 
     ts%z(:,ts%k) = 0
-    ts%k         = ts%k - 1
-    ts%k_age     = 0
+    ts%k = ts%k - 1
   end subroutine decrease_order
 
   !
@@ -412,7 +424,6 @@ contains
     end do
 
     ts%k = ts%k + 1
-    ts%k_age = 0
   end subroutine increase_order
 
   !
@@ -593,16 +604,18 @@ contains
     ts%verbose    = 0
     ts%dt_min     = epsilon(ts%dt_min)
     ts%eta_min    = 0.2_dp
-    ts%eta_max    = 2.0_dp
-    ts%eta_thresh = 1.5_dp
-    ts%max_j_age  = 20
+    ts%eta_max    = 2.25_dp
+    ts%eta_thresh = 1.50_dp
+    ts%max_j_age  = 50
+    ts%max_p_age  = 20
 
     ts%k = -1
 
     ts%rtol = rtol
     ts%atol = atol
 
-    ts%j_age = -1
+    ts%j_age = 666666666
+    ts%p_age = 666666666
 
     ! build pascal matrix A using A = exp(U)
     U = 0
