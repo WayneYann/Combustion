@@ -86,6 +86,7 @@ subroutine cd_initbdf(neq_in, v_in, rtol_in, atol_in, order_in, reuse_in)
   reuse_jac = (reuse_in .ne. 0)
   !$omp parallel
   call bdf_ts_build(ts, neq_in, rtol, atol, max_order=order_in)
+  ts%verbose = v_in
   !$omp end parallel
 end subroutine cd_initbdf
 

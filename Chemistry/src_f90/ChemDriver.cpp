@@ -106,7 +106,7 @@ ChemDriver::initOnce ()
     {
 	Real rtol = 1.e-10;
 	Real atol = 1.e-10;
-	int  order = 2;  
+	int  order = 6;  
 	int  verbose = 0;
 	int reuse_jac = 1;
 
