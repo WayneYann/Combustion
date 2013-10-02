@@ -73,14 +73,6 @@ program test
   print *, 'tq', ts%tq
   call assert(all(abs(ts%tq - [ 1.3333333333333d0, 0.13636363636363638d0, 9.6d-2, 24.0d0 ]) < tol), "error in tq")
   
-  print *, "====> order 5"
-  ts%k = 5
-  ts%h = 1
-  a = -2.2833333333333332d0
-  print *, 'alpha0, alphahat0', a
-  call assert(abs(alpha0(ts%k)         - a) < tol, "error in alpha0")
-  call assert(abs(alphahat0(ts%k,ts%h) - a) < tol, "error in alphahat0")
-
   call bdf_ts_destroy(ts)
 
 contains

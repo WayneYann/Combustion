@@ -110,6 +110,7 @@ subroutine burn_bdf(rho_in, YT, stop_time, dt, verbose)
   use feval, only : f_rhs, f_jac, rho
   double precision, intent(in   ) :: rho_in, stop_time, dt
   double precision, intent(inout) :: YT(nspecies+1)
+  integer, intent(in) :: verbose
   
   double precision :: t0, t1, y1(nspecies+1)
   integer :: neq, ierr
@@ -123,6 +124,7 @@ subroutine burn_bdf(rho_in, YT, stop_time, dt, verbose)
 
   reset = .true.
 
+  ts%verbose = verbose
   call bdf_advance(ts, f_rhs, f_jac, neq, YT, t0, y1, t1, dt, reset, reuse_jac, ierr)
 
   if (ierr .ne. 0) then

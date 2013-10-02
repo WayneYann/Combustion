@@ -64,9 +64,10 @@ module bdf
      integer  :: j_age                    ! age of jacobian
      integer  :: k_age                    ! number of steps taken at current order
      real(dp) :: tq(-1:2)                 ! error coefficients (test quality)
+     real(dp) :: tq2save
 
      ! jacobian and newton matrices, may be resused
-     real(dp), pointer :: Jac(:,:)        ! jacobian matrix
+     real(dp), pointer :: J(:,:)        ! jacobian matrix
      real(dp), pointer :: P(:,:)          ! newton iteration matrix
 
      ! work-spaces
@@ -77,7 +78,8 @@ module bdf
      real(dp), pointer :: y(:)            ! current y
      real(dp), pointer :: yd(:)           ! current \dot{y}
      real(dp), pointer :: rhs(:)          ! solver rhs
-     real(dp), pointer :: e(:)            ! accumulated corrections
+     real(dp), pointer :: e(:)            ! accumulated correction
+     real(dp), pointer :: e1(:)           ! accumulated correction, previous step
      real(dp), pointer :: ewt(:)          ! cached error weights
      real(dp), pointer :: b(:)            ! solver work space
 
@@ -93,22 +95,13 @@ module bdf
   end type bdf_ts
 
   private :: &
-!       alpha0, alphahat0, &
-       xi_j, xi_star, &
-       ewts, norm, eye, eye_r, eye_i, factorial
+       rescale_timestep, decrease_order, increase_order, &
+       alpha0, alphahat0, xi_j, xi_star, ewts, norm, eye, eye_r, eye_i, factorial
 
   interface eye
      module procedure eye_r
      module procedure eye_i
   end interface
-
-  interface build
-     module procedure bdf_ts_build
-  end interface build
-
-  interface destroy
-     module procedure bdf_ts_destroy
-  end interface destroy
 
 contains
 
@@ -165,8 +158,8 @@ contains
        ts%z(:,1) = ts%dt * ts%yd
 
        ts%k_age = 0
-       if (.not. reuse .or. ts%j_age < 0) ts%j_age = ts%max_j_age + 1
-       ! ts%j_age = 66666
+       if (.not. reuse .or. ts%j_age < 0) &
+            ts%j_age = ts%max_j_age + 1
     end if
 
     !
@@ -181,7 +174,7 @@ contains
           return
        end if
 
-       if (ts%verbose > 2) print *, 'BDF: stepping: ', ts%n, ts%k, ts%dt
+       if (ts%verbose > 1) print *, 'BDF: stepping: ', ts%n, ts%k, ts%dt
 
        call bdf_ts_update(ts)
        call ewts(ts, ts%y, ts%ewt)
@@ -220,8 +213,8 @@ contains
           ! build iteration matrix and factor
           if (rebuild) then
              call eye(ts%P)
-             call Jac(neq, ts%y, ts%t, ts%Jac)
-             ts%P = ts%P - dt_adj * ts%Jac
+             call Jac(neq, ts%y, ts%t, ts%J)
+             ts%P = ts%P - dt_adj * ts%J
              call dgefa(ts%P, neq, neq, ts%ipvt, info)
 
              ts%nje    = ts%nje + 1
@@ -263,7 +256,7 @@ contains
           ts%nse = ts%nse + 1
           nse    = nse + 1
           call rescale_timestep(ts, 0.25d0)
-          if (ts%verbose > 0) print *, 'BDF: solver failed'
+          if (ts%verbose > 1) print *, 'BDF: solver failed'
           cycle
        else
           nse = 0
@@ -273,7 +266,7 @@ contains
        error = ts%tq(0) * norm(ts%e, ts%ewt)
        if (error > one) then
           eta(0) = one / ( (6.d0 * error) ** (one / ts%k) + 1.d-6 )
-          if (ts%verbose > 0) print *, 'BDF: error tolerance exceeded'
+          if (ts%verbose > 1) print *, 'BDF: error tolerance exceeded'
           call rescale_timestep(ts, eta(0))
           cycle
        end if
@@ -306,8 +299,8 @@ contains
              eta(-1) = one / ( (6.d0 * error) ** (one / ts%k) + 1.d-6 )
           end if
           if (ts%k < ts%max_order) then
-             c = ts%tq(2) * (ts%h(0) / ts%h(2)) ** (ts%k+1)
-             error  = ts%tq(1) * norm(ts%e + c * ts%z(:,2), ts%ewt)
+             c = (ts%tq(2) / ts%tq2save) * (ts%h(0) / ts%h(2)) ** (ts%k+1)
+             error  = ts%tq(1) * norm(ts%e - c * ts%e1, ts%ewt)
              eta(1) = one / ( (10.d0 * error) ** (one / (ts%k+2)) + 1.d-6 )
           end if
           ts%k_age = 0
@@ -335,9 +328,14 @@ contains
        if (rescale /= 0) &
             call rescale_timestep(ts, rescale)
 
+       ts%e1 = ts%e
+       ts%tq2save = ts%tq(2)
+
     end do
 
-    if (ts%verbose > 1) print *, 'BDF: done    : ', ts%n, k, ts%nfe, ts%nje, ts%nit, ts%nse
+    if (ts%verbose > 0) &
+         print '("BDF: done    : n:",i6,", k: ",i6,", nfe: ",i6,", nje: ",i3,", nse: ",i3,", dt: ",e15.8,", order: ",i2)', &
+         ts%n, k, ts%nfe, ts%nje, ts%nse, ts%dt, ts%k
 
     ierr = BDF_ERR_SUCCESS
     y1   = ts%z(:,0)
@@ -487,7 +485,6 @@ contains
     ts%tq(1) = abs((one - a6 + a5) / a2 / (xi_inv * (ts%k+2) * a5))
 
     ! tq[4] = nlscoef / tq[2];
-
   end subroutine bdf_ts_update
 
   !
@@ -580,11 +577,12 @@ contains
     allocate(ts%h(0:max_order))
     allocate(ts%A(0:max_order, 0:max_order))
     allocate(ts%P(neq, neq))
-    allocate(ts%Jac(neq, neq))
+    allocate(ts%J(neq, neq))
     allocate(ts%y(neq))
     allocate(ts%yd(neq))
     allocate(ts%rhs(neq))
     allocate(ts%e(neq))
+    allocate(ts%e1(neq))
     allocate(ts%ewt(neq))
     allocate(ts%b(neq))
     allocate(ts%ipvt(neq))
@@ -621,7 +619,9 @@ contains
 
   subroutine bdf_ts_destroy(ts)
     type(bdf_ts), intent(inout) :: ts
-    deallocate(ts%z,ts%z0,ts%h,ts%l,ts%A,ts%rtol,ts%atol,ts%P,ts%Jac,ts%y,ts%yd,ts%rhs,ts%e,ts%ewt,ts%b,ts%ipvt)
+    deallocate(ts%h,ts%l,ts%ewt,ts%rtol,ts%atol)
+    deallocate(ts%y,ts%yd,ts%z,ts%z0,ts%A)
+    deallocate(ts%P,ts%J,ts%rhs,ts%e,ts%e1,ts%b,ts%ipvt)
   end subroutine bdf_ts_destroy
 
 
