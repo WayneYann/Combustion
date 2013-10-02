@@ -30,5 +30,5 @@ ifdef USE_WORK_SPACE_MODULE
   endif
 endif
 
-f90EXE_sources += bdf.f90 bdf_params.f90 bdf_data.f90
+f90EXE_sources += bdf.f90 bdf_data.f90
 
