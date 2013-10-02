@@ -1,9 +1,9 @@
 module chemterm_module
 
-  use meth_params_module, only : NVAR, URHO, UEDEN, UMX, UMY, UMZ, UTEMP, UFS, NSPEC
+  use meth_params_module, only : NVAR, URHO, UEDEN, UMX, UMY, UMZ, UTEMP, UFS, NSPEC, &
+       do_cc_burning
   use burner_module, only : burn
   use eos_module, only : eos_get_T
-  use weno_module, only : cellavg2gausspt_3d
 
   implicit none
 
@@ -14,6 +14,20 @@ module chemterm_module
 contains
 
   subroutine chemterm(lo, hi, U, Ulo, Uhi, dt)
+    integer, intent(in) :: lo(3), hi(3), Ulo(3), Uhi(3)
+    double precision, intent(inout) :: U(Ulo(1):Uhi(1),Ulo(2):Uhi(2),Ulo(3):Uhi(3),NVAR)
+    double precision, intent(in) :: dt
+
+    if (do_cc_burning) then
+       call chemterm_cellcenter(lo, hi, U, Ulo, Uhi, dt)
+    else
+       call chemterm_gauss(lo, hi, U, Ulo, Uhi, dt)
+    end if
+
+  end subroutine chemterm
+
+  subroutine chemterm_gauss(lo, hi, U, Ulo, Uhi, dt)
+    use weno_module, only : cellavg2gausspt_3d
     integer, intent(in) :: lo(3), hi(3), Ulo(3), Uhi(3)
     double precision, intent(inout) :: U(Ulo(1):Uhi(1),Ulo(2):Uhi(2),Ulo(3):Uhi(3),NVAR)
     double precision, intent(in) :: dt
@@ -76,6 +90,91 @@ contains
 
     deallocate(UG)
 
-  end subroutine chemterm
+  end subroutine chemterm_gauss
+
+
+  subroutine chemterm_cellcenter(lo, hi, U, Ulo, Uhi, dt)
+    use convert_3d_module, only : cellavg2cc_3d, cc2cellavg_3d
+    integer, intent(in) :: lo(3), hi(3), Ulo(3), Uhi(3)
+    double precision, intent(inout) :: U(Ulo(1):Uhi(1),Ulo(2):Uhi(2),Ulo(3):Uhi(3),NVAR)
+    double precision, intent(in) :: dt
+
+    integer :: i, j, k, n
+    double precision :: rhot, rhoinv, ei, fac
+    double precision :: Yt(nspec+1)
+    double precision, allocatable :: Ucc(:,:,:,:)
+
+    allocate(Ucc(lo(1)-1:hi(1)+1,lo(2)-1:hi(2)+1,lo(3)-1:hi(3)+1,NVAR))
+
+    !$omp parallel private(i,j,k,n,rhot,rhoinv,ei,fac,Yt)
+
+    !$omp do
+    do n=1,NVAR
+       call cellavg2cc_3d(lo-1,hi+1, U(:,:,:,n), Ulo,Uhi, Ucc(:,:,:,n), lo-1,hi+1)
+    end do
+    !$omp end do
+
+    call setfirst(.true.)
+
+    !$omp do collapse(2)
+    do k=lo(3)-1,hi(3)+1
+       do j=lo(2)-1,hi(2)+1
+          do i=lo(1)-1,hi(1)+1
+
+             rhot = 0.d0
+             do n=1,NSPEC
+                Yt(n) = Ucc(i,j,k,UFS+n-1)
+                rhot = rhot + Yt(n)
+             end do
+             rhoinv = 1.d0/rhot
+                
+             Yt(1:nspec) = Yt(1:nspec) * rhoinv
+             Yt(nspec+1) = Ucc(i,j,k,UTEMP)
+
+             ei = rhoinv*( Ucc(i,j,k,UEDEN) - 0.5d0*rhoinv*(Ucc(i,j,k,UMX)**2 &
+                  + Ucc(i,j,k,UMY)**2 + Ucc(i,j,k,UMZ)**2) )
+
+             call eos_get_T(Yt(nspec+1), ei, Yt(1:nspec))
+       
+             call burn(rhot, Yt, dt)
+
+             do n=1,nspec
+                Ucc(i,j,k,UFS+n-1) = rhot*Yt(n)
+             end do
+             U(i,j,k,UTEMP) = Yt(nspec+1)
+
+          end do
+       end do
+    end do
+    !$omp end do
+
+    !$omp do
+    do n=UFS,UFS+nspec-1
+       call cc2cellavg_3d(lo,hi, Ucc(:,:,:,n), lo-1,hi+1, U(:,:,:,n), Ulo,Uhi)
+    end do
+    !$omp end do
+
+    !$omp do collapse(2)
+    do k=lo(3),hi(3)
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+             rhot = 0.d0
+             do n=1,NSPEC
+                rhot = rhot + U(i,j,k,UFS+n-1)
+             end do
+             fac = U(i,j,k,URHO)/rhot
+             do n=1,NSPEC
+                U(i,j,k,UFS+n-1) = U(i,j,k,UFS+n-1) * fac
+             end do
+          end do
+       end do
+    end do
+    !$omp end do
+
+    !$omp end parallel
+
+    deallocate(Ucc)
+
+  end subroutine chemterm_cellcenter
 
 end module chemterm_module

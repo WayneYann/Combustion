@@ -108,7 +108,7 @@ contains
              thi(1) = hi(1)+2
              thi(2) = j
              call cellavg2cc_2d(tlo(1:2),thi(1:2), Uag(:,:,n),g3lo,g3hi, &
-                  Qc(:,:,n),Qclo(1:2),Qchi(1:2))
+                  Qc(:,:,n),Qclo(1:2),Qchi(1:2),idir=1)
           end do
        end do
 
@@ -182,7 +182,7 @@ contains
              thi(1) = i
              thi(2) = hi(2)+2
              call cellavg2cc_2d(tlo(1:2),thi(1:2), Uag(:,:,n),g3lo,g3hi, &
-                  Qc(:,:,n),Qclo(1:2),Qchi(1:2))
+                  Qc(:,:,n),Qclo(1:2),Qchi(1:2),idir=2)
           end do
        end do
 
