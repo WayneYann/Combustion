@@ -92,19 +92,19 @@ contains
 
 
   subroutine chemterm_cellcenter(lo, hi, U, Ulo, Uhi, dt)
-    use convert_2d_module, only : cellavg2cc_2d, cellcenter2ca_2d
+    use convert_2d_module, only : cellavg2cc_2d, cc2cellavg_2d
     integer, intent(in) :: lo(2), hi(2), Ulo(2), Uhi(2)
     double precision, intent(inout) :: U(Ulo(1):Uhi(1),Ulo(2):Uhi(2),NVAR)
     double precision, intent(in) :: dt
 
     integer :: i, j, n
-    double precision :: rhot, rhoinv, ei
+    double precision :: rhot, rhoinv, ei, fac
     double precision :: Yt(nspec+1)
     double precision, allocatable :: Ucc(:,:,:)
 
     allocate(Ucc(lo(1)-1:hi(1)+1,lo(2)-1:hi(2)+1,NVAR))
 
-    !$omp parallel private(i,j,n,rhot,rhoinv,ei,Yt)
+    !$omp parallel private(i,j,n,rhot,rhoinv,ei,fac,Yt)
 
     !$omp do
     do n=1,NVAR
@@ -136,8 +136,9 @@ contains
           call burn(rhot, Yt, dt)
 
           do n=1,nspec
-             Ucc(i,j,UFS+n-1) = Yt(n)
+             Ucc(i,j,UFS+n-1) = rhot*Yt(n)
           end do
+          U(i,j,UTEMP) = Yt(nspec+1)
 
        end do
     end do
@@ -145,10 +146,20 @@ contains
 
     !$omp do
     do n=UFS,UFS+nspec-1
-       call cellcenter2ca_2d(lo,hi, Ucc(:,:,n), lo-1,hi+1, U(:,:,n), Ulo,Uhi)
-       do j=lo(2),hi(2)
-          do i=lo(1),hi(1)
-             U(i,j,n) = U(i,j,n) * U(i,j,URHO)
+       call cc2cellavg_2d(lo,hi, Ucc(:,:,n), lo-1,hi+1, U(:,:,n), Ulo,Uhi)
+    end do
+    !$omp end do
+
+    !$omp do collapse(2)
+    do j=lo(2),hi(2)
+       do i=lo(1),hi(1)
+          rhot = 0.d0
+          do n=1,NSPEC
+             rhot = rhot + U(i,j,UFS+n-1)
+          end do
+          fac = U(i,j,URHO)/rhot
+          do n=1,NSPEC
+             U(i,j,UFS+n-1) = U(i,j,UFS+n-1) * fac
           end do
        end do
     end do
