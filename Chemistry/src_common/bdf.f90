@@ -99,7 +99,7 @@ module bdf
 
   private :: &
        rescale_timestep, decrease_order, increase_order, &
-       alpha0, alphahat0, xi_j, xi_star, ewts, norm, eye, eye_r, eye_i, factorial
+       alpha0, alphahat0, xi_j, xi_star, xi_star_inv, ewts, norm, eye, eye_r, eye_i, factorial
 
   interface eye
      module procedure eye_r
@@ -135,8 +135,8 @@ contains
 
     include 'LinAlg.inc'
 
-    integer  :: i, j, k, iter, info, nse
-    real(dp) :: c, dt_adj, error, eta(-1:1), rescale, etamax, gamma_rat
+    integer  :: i, j, k, m, n, iter, info, nse
+    real(dp) :: c, dt_adj, error, eta(-1:1), rescale, etamax, gamma_rat, foo
     logical  :: rebuild, refactor
 
     nse = 0
@@ -191,7 +191,9 @@ contains
        do i = 0, ts%k
           ts%z0(:,i) = 0          
           do j = i, ts%k
-             ts%z0(:,i) = ts%z0(:,i) + ts%A(i,j) * ts%z(:,j)
+             do m = 1, neq
+                ts%z0(m,i) = ts%z0(m,i) + ts%A(i,j) * ts%z(m,j)
+             end do
           end do
        end do
 
@@ -206,10 +208,13 @@ contains
        !   G(y) = y - dt * f(y,t) - rhs
        !
 
-       ts%e   = 0
-       ts%rhs = ts%z0(:,0) - ts%z0(:,1) / ts%l(1)
+       foo = 1.0_dp / ts%l(1)
+       do m = 1, neq
+          ts%e(m)   = 0
+          ts%rhs(m) = ts%z0(m,0) - ts%z0(m,1) * foo
+          ts%y(m)   = ts%z0(m,0)
+       end do
        dt_adj = ts%dt / ts%l(1)
-       ts%y   = ts%z0(:,0)
 
        gamma_rat = dt_adj / ts%dt_nwt
        if (ts%p_age > ts%max_p_age) refactor = .true.
@@ -230,8 +235,15 @@ contains
              end if
 
              call eye(ts%P)
-             ts%P = ts%P - dt_adj * ts%J
+
+             do m = 1, neq
+                do n = 1, neq
+                   ts%P(n,m) = ts%P(n,m) - dt_adj * ts%J(n,m)
+                end do
+             end do
+
              call dgefa(ts%P, neq, neq, ts%ipvt, info)
+! lapack      call dgetrf(neq, neq, ts%P, neq, ts%ipvt, info)
              ts%nlu    = ts%nlu + 1
              ts%dt_nwt = dt_adj
              ts%p_age  = 0
@@ -243,13 +255,24 @@ contains
           ts%nfe = ts%nfe + 1
 
           c    = 2 * ts%dt_nwt / (dt_adj + ts%dt_nwt)
-          ts%b = c * (ts%rhs - ts%y + dt_adj * ts%yd)
+          do m = 1, neq
+             ts%b(m) = c * (ts%rhs(m) - ts%y(m) + dt_adj * ts%yd(m))
+          end do
           call dgesl(ts%P, neq, neq, ts%ipvt, ts%b, 0)
+! lapack   call dgetrs ('N', neq, 1, ts%P, neq, ts%ipvt, ts%b, neq, info)
           ts%nit = ts%nit + 1
 
-          ts%e = ts%e + ts%b
-          if (norm(ts%b, ts%ewt) < one) exit
-          ts%y = ts%z0(:,0) + ts%e
+          if (norm(ts%b, ts%ewt) < one) then
+             do m = 1, neq
+                ts%e(m) = ts%e(m) + ts%b(m)
+             end do
+             exit
+          else
+             do m = 1, neq
+                ts%e(m) = ts%e(m) + ts%b(m)
+                ts%y(m) = ts%z0(m,0) + ts%e(m)
+             end do
+          end if
        end do
 
        ts%p_age = ts%p_age + 1
@@ -291,7 +314,9 @@ contains
        !
 
        do i = 0, ts%k
-          ts%z(:,i) = ts%z0(:,i) + ts%e * ts%l(i)
+          do m = 1, neq
+             ts%z(m,i) = ts%z0(m,i) + ts%e(m) * ts%l(i)
+          end do
        end do
 
        if (ts%t + ts%dt >= t1) exit
@@ -463,7 +488,7 @@ contains
        do j = 2, ts%k-1
           ts%l = ts%l + eoshift(ts%l, -1) / xi_j(ts%h, j)
        end do
-       ts%l = ts%l + eoshift(ts%l, -1) / xi_star(ts%k, ts%h)
+       ts%l = ts%l + eoshift(ts%l, -1) * xi_star_inv(ts%k, ts%h)
     end if
 
     ! compute error coefficients (adapted from cvode)
@@ -474,7 +499,7 @@ contains
     xistar_inv = one
     if (ts%k > 1) then
        xi_inv     = one / xi_j(ts%h, ts%k)
-       xistar_inv = one / xi_star(ts%k, ts%h)
+       xistar_inv = xi_star_inv(ts%k, ts%h)
     end if
 
     a1 = one - a0hat + a0
@@ -540,6 +565,22 @@ contains
   end function xi_star
 
   !
+  ! Return 1 / $\xi^*_k$.
+  !
+  function xi_star_inv(k, h) result(xii)
+    integer,  intent(in) :: k
+    real(dp), intent(in) :: h(0:)
+    real(dp) :: xii, hs
+    integer  :: j
+    hs = 0.0_dp
+    xii = -alpha0(k)
+    do j = 0, k-2
+       hs = hs + h(j)
+       xii = xii - h(0) / hs
+    end do
+  end function xi_star_inv
+
+  !
   ! Return $\xi_j$.
   !
   function xi_j(h, j) result(xi)
@@ -554,18 +595,27 @@ contains
   !
   subroutine ewts(ts, y, ewt)
     type(bdf_ts), intent(in)  :: ts
-    real(dp),     intent(in)  :: y(:)
-    real(dp),     intent(out) :: ewt(:)
-    ewt = one / (ts%rtol * abs(y) + ts%atol)
+    real(dp),     intent(in)  :: y(1:)
+    real(dp),     intent(out) :: ewt(1:)
+    integer :: m
+    do m = 1, ts%neq
+       ewt(m) = one / (ts%rtol(m) * abs(y(m)) + ts%atol(m))
+    end do
   end subroutine ewts
 
   !
   ! Compute weighted norm of y.
   !
   function norm(y, ewt) result(r)
-    real(dp), intent(in) :: y(:), ewt(:)
+    real(dp), intent(in) :: y(1:), ewt(1:)
     real(dp) :: r
-    r = sqrt(sum((y * ewt)**2)/size(y))
+    integer :: m, n
+    n = size(y)
+    r = 0.0_dp
+    do m = 1, n
+       r = r + (y(m)*ewt(m))**2
+    end do
+    r = sqrt(r/n)
   end function norm
 
 
@@ -598,6 +648,7 @@ contains
     allocate(ts%b(neq))
     allocate(ts%ipvt(neq))
 
+    ts%neq        = neq
     ts%max_order  = max_order
     ts%max_steps  = 1000000
     ts%max_iters  = 10

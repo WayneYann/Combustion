@@ -308,7 +308,8 @@ c
                b(l) = b(k)
                b(k) = t
    10       continue
-            call vdaxpy(n-k,t,a(k+1,k),1,b(k+1),1)
+c            call vdaxpy(n-k,t,a(k+1,k),1,b(k+1),1)
+            call ccse_daxpy(n-k,t,a(k+1,k),b(k+1))
          enddo
    30    continue
 c
@@ -318,7 +319,8 @@ c
             k = n + 1 - kb
             b(k) = b(k)/a(k,k)
             t = -b(k)
-            call vdaxpy(k-1,t,a(1,k),1,b(1),1)
+c            call vdaxpy(k-1,t,a(1,k),1,b(1),1)
+            call ccse_daxpy(k-1,t,a(1,k),b(1))
          enddo
       go to 100
    50 continue
@@ -435,7 +437,8 @@ c
                   b(l) = b(k)
                   b(k) = t
    10          continue
-               call vdaxpy(lm,t,abd(m+1,k),1,b(k+1),1)
+c               call vdaxpy(lm,t,abd(m+1,k),1,b(k+1),1)
+               call ccse_daxpy(lm,t,abd(m+1,k),b(k+1))
             enddo
    30    continue
 c
@@ -448,7 +451,8 @@ c
             la = m - lm
             lb = k - lm
             t = -b(k)
-            call vdaxpy(lm,t,abd(la,k),1,b(lb),1)
+c            call vdaxpy(lm,t,abd(la,k),1,b(lb),1)
+            call daxpy(lm,t,abd(la,k),b(lb))
          enddo
       goto 100
    50 continue
@@ -644,7 +648,8 @@ c
                   abd(l,j) = abd(mm,j)
                   abd(mm,j) = t
    70          continue
-               call vdaxpy(lm,t,abd(m+1,k),1,abd(mm+1,j),1)
+c               call vdaxpy(lm,t,abd(m+1,k),1,abd(mm+1,j),1)
+               call ccse_daxpy(lm,t,abd(m+1,k),abd(mm+1,j))
             enddo
    90       continue
          goto 110
@@ -749,7 +754,8 @@ c
                   a(l,j) = a(k,j)
                   a(k,j) = t
    20          continue
-               call vdaxpy(n-k,t,a(k+1,k),1,a(k+1,j),1)
+c               call vdaxpy(n-k,t,a(k+1,k),1,a(k+1,j),1)
+               call ccse_daxpy(n-k,t,a(k+1,k),a(k+1,j))
             enddo
          goto 50
    40    continue
@@ -863,3 +869,11 @@ c
    50 CONTINUE
       RETURN
       END
+
+      subroutine ccse_daxpy (n,da,dx,dy)
+      double precision dx(*),dy(*),da
+      integer n, i
+      do i=1,n
+         dy(i) = dy(i) + da*dx(i)
+      enddo
+      end

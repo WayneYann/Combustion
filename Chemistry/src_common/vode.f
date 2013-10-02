@@ -752,7 +752,8 @@ C Load column L + 1 in YH array. ---------------------------------------
 C Add correction terms to YH array. ------------------------------------
       NQP1 = NQ + 1
       DO 370 J = 3, NQP1
-        CALL VDAXPY (N, EL(J), YH(1,LP1), 1, YH(1,J), 1 )
+c        CALL VDAXPY (N, EL(J), YH(1,LP1), 1, YH(1,J), 1 )
+         CALL CCSE_DAXPY (N, EL(J), YH(1,LP1), YH(1,J) )
  370  CONTINUE
       END
 
@@ -927,7 +928,8 @@ C-----------------------------------------------------------------------
         CALL DSCAL (N, CSCALE, Y, 1)
       ENDIF
       DEL = DVNORM (N, Y, EWT)
-      CALL VDAXPY (N, ONE, Y, 1, ACOR, 1)
+c      CALL VDAXPY (N, ONE, Y, 1, ACOR, 1)
+      CALL CCSE_DAXPY (N, ONE, Y, ACOR)
       DO 380 I = 1,N
  380    Y(I) = YH(I,1) + ACOR(I)
 
@@ -3157,7 +3159,8 @@ C-----------------------------------------------------------------------
  470    TAU(I+1) = TAU(I)
       TAU(1) = H
       DO 480 J = 1, L
-        CALL VDAXPY (N, EL(J), ACOR, 1, YH(1,J), 1 )
+c        CALL VDAXPY (N, EL(J), ACOR, 1, YH(1,J), 1 )
+         CALL CCSE_DAXPY (N, EL(J), ACOR, YH(1,J))
  480    CONTINUE
       NQWAIT = NQWAIT - 1
       IF ((L .EQ. LMAX) .OR. (NQWAIT .NE. 1)) GO TO 490
