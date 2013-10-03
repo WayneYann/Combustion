@@ -135,7 +135,7 @@ contains
 
     include 'LinAlg.inc'
 
-    integer  :: i, j, k, m, n, iter, info, nse
+    integer  :: i, k, m, n, iter, info, nse
     real(dp) :: c, dt_adj, error, eta(-1:1), rescale, etamax, gamma_rat, foo
     logical  :: rebuild, refactor
 
@@ -181,21 +181,9 @@ contains
 
        if (ts%verbose > 1) print *, 'BDF: stepping: ', ts%n, ts%k, ts%dt
 
-       call bdf_ts_update(ts)
-       call ewts(ts, ts%y, ts%ewt)
+       call bdf_update(ts)
+       call bdf_predict(ts)
 
-       !
-       ! predict
-       !
-
-       do i = 0, ts%k
-          ts%z0(:,i) = 0          
-          do j = i, ts%k
-             do m = 1, neq
-                ts%z0(m,i) = ts%z0(m,i) + ts%A(i,j) * ts%z(m,j)
-             end do
-          end do
-       end do
 
        !
        ! solve y_n - dt f(y_n,t) = y - dt yd for y_n
@@ -472,7 +460,7 @@ contains
   ! 
   !   2. The step size h_n = t_n - t_{n-1}.
   !
-  subroutine bdf_ts_update(ts)
+  subroutine bdf_update(ts)
     type(bdf_ts), intent(inout) :: ts
 
     integer  :: j
@@ -520,8 +508,22 @@ contains
     a6 = a0hat - xi_inv
     ts%tq(1) = abs((one - a6 + a5) / a2 / (xi_inv * (ts%k+2) * a5))
 
-    ! tq[4] = nlscoef / tq[2];
-  end subroutine bdf_ts_update
+    call ewts(ts, ts%y, ts%ewt)
+  end subroutine bdf_update
+
+  subroutine bdf_predict(ts)
+    type(bdf_ts), intent(inout) :: ts
+    integer :: i, j, m
+    do i = 0, ts%k
+       ts%z0(:,i) = 0          
+       do j = i, ts%k
+          do m = 1, ts%neq
+             ts%z0(m,i) = ts%z0(m,i) + ts%A(i,j) * ts%z(m,j)
+          end do
+       end do
+    end do
+  end subroutine bdf_predict
+
 
   !
   ! Return $\alpha_0$.
