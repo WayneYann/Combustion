@@ -41,11 +41,11 @@ module bdf
   type :: bdf_ts
 
      ! options
-     integer :: neq                       ! number of equations (degrees of freedom)
-     integer :: max_order                 ! maximum order (1 to 6)
-     integer :: max_steps                 ! maximum allowable number of steps
-     integer :: max_iters                 ! maximum allowable number of newton iterations
-     integer :: verbose                   ! verbosity level
+     integer  :: neq                      ! number of equations (degrees of freedom)
+     integer  :: max_order                ! maximum order (1 to 6)
+     integer  :: max_steps                ! maximum allowable number of steps
+     integer  :: max_iters                ! maximum allowable number of newton iterations
+     integer  :: verbose                  ! verbosity level
      real(dp) :: dt_min                   ! minimum allowable step-size
      real(dp) :: eta_min                  ! minimum allowable step-size shrink factor
      real(dp) :: eta_max                  ! maximum allowable step-size growth factor
@@ -68,11 +68,8 @@ module bdf
      real(dp) :: tq(-1:2)                 ! error coefficients (test quality)
      real(dp) :: tq2save
 
-     ! jacobian and newton matrices, may be resused
-     real(dp), pointer :: J(:,:)        ! jacobian matrix
+     real(dp), pointer :: J(:,:)          ! jacobian matrix
      real(dp), pointer :: P(:,:)          ! newton iteration matrix
-
-     ! work-spaces
      real(dp), pointer :: z(:,:)          ! nordsieck histroy array, indexed as (dof, n)
      real(dp), pointer :: z0(:,:)         ! nordsieck predictor array
      real(dp), pointer :: h(:)            ! time steps, h = [ h_n, h_{n-1}, ..., h_{n-k} ]
@@ -84,7 +81,6 @@ module bdf
      real(dp), pointer :: e1(:)           ! accumulated correction, previous step
      real(dp), pointer :: ewt(:)          ! cached error weights
      real(dp), pointer :: b(:)            ! solver work space
-
      integer,  pointer :: ipvt(:)         ! pivots
      integer,  pointer :: A(:,:)          ! pascal matrix
 
@@ -94,17 +90,13 @@ module bdf
      integer :: nlu                       ! number of factorizations
      integer :: nit                       ! number of non-linear solver iterations
      integer :: nse                       ! number of non-linear solver errors
+     integer :: ncse                      ! number of consecutive non-linear solver errors
 
   end type bdf_ts
 
   private :: &
        rescale_timestep, decrease_order, increase_order, &
-       alpha0, alphahat0, xi_j, xi_star, xi_star_inv, ewts, norm, eye, eye_r, eye_i, factorial
-
-  interface eye
-     module procedure eye_r
-     module procedure eye_i
-  end interface
+       alpha0, alphahat0, xi_j, xi_star, xi_star_inv, ewts, norm, eye_r, eye_i, factorial
 
 contains
 
@@ -135,43 +127,18 @@ contains
 
     include 'LinAlg.inc'
 
-    integer  :: k, m, n, iter, info, nse
+    integer  :: k, m, n, iter, info
     real(dp) :: c, dt_adj, error, eta(-1:1), rescale, etamax, dt_rat, inv_l1
     logical  :: rebuild, refactor
 
-    nse = 0
-
-    if (reset) then
-       ts%nfe = 0; ts%nje = 0; ts%nlu = 0; ts%nit = 0; ts%nse = 0
-
-       ts%y  = y0
-       ts%dt = dt0
-       ts%n  = 1
-       ts%k  = 1
-       ts%h  = ts%dt
-
-       call f(neq, ts%y, ts%t, ts%yd)
-       ts%nfe = ts%nfe + 1
-
-       ts%z(:,0) = ts%y
-       ts%z(:,1) = ts%dt * ts%yd
-
-       ts%k_age = 0
-       if (.not. reuse) then
-          ts%j_age = ts%max_j_age + 1
-          ts%p_age = ts%max_p_age + 1
-       else 
-          ts%j_age = 0
-          ts%p_age = 0
-       end if
-    end if
+    if (reset) call bdf_reset(ts, f, y0, dt0, reuse)
 
     !
     ! stepping loop
     !
 
-    nse = 0
     ts%t = t0
+    ts%ncse = 0
     do k = 1, bdf_max_iters + 1
 
        if (ts%n > ts%max_steps .or. k > bdf_max_iters) then
@@ -213,8 +180,8 @@ contains
           ! build iteration matrix and factor
           if (refactor) then
              rebuild = .true.
-             if (nse == 0 .and. ts%j_age < ts%max_j_age) rebuild = .false.
-             if (nse > 0  .and. (dt_rat < 0.2d0 .or. dt_rat > 5.d0)) rebuild = .false.
+             if (ts%ncse == 0 .and. ts%j_age < ts%max_j_age) rebuild = .false.
+             if (ts%ncse > 0  .and. (dt_rat < 0.2d0 .or. dt_rat > 5.d0)) rebuild = .false.
 
              if (rebuild) then
                 call Jac(neq, ts%y, ts%t, ts%J)
@@ -222,7 +189,7 @@ contains
                 ts%j_age = 0
              end if
 
-             call eye(ts%P)
+             call eye_r(ts%P)
 
              do m = 1, neq
                 do n = 1, neq
@@ -271,7 +238,7 @@ contains
        !
 
        ! if solver failed many times, bail...
-       if (iter >= ts%max_iters .and. nse > 7) then
+       if (iter >= ts%max_iters .and. ts%ncse > 7) then
           ierr = BDF_ERR_SOLVER
           return
        end if
@@ -279,14 +246,14 @@ contains
        ! if solver failed to converge, shrink dt and try again
        if (iter >= ts%max_iters) then
           refactor = .true.
-          ts%nse = ts%nse + 1
-          nse    = nse + 1
+          ts%nse  = ts%nse  + 1
+          ts%ncse = ts%ncse + 1
           call rescale_timestep(ts, 0.25d0)
           if (ts%verbose > 1) print *, 'BDF: solver failed'
           cycle
+       else
+          ts%ncse = 0
        end if
-
-       nse = 0
 
        ! if local error is fairly large, shrink dt and try again
        error = ts%tq(0) * norm(ts%e, ts%ewt)
@@ -536,6 +503,50 @@ contains
     ts%k_age = ts%k_age + 1
   end subroutine bdf_correct
 
+  !
+  ! Reset counters, set order to one, init history array.
+  !
+  subroutine bdf_reset(ts, f, y0, dt, reuse)
+    type(bdf_ts),     intent(inout) :: ts
+    real(dp),         intent(in)    :: y0(ts%neq), dt
+    logical,          intent(in)    :: reuse
+    interface
+       subroutine f(neq, y, t, yd)
+         import dp
+         integer,  intent(in)  :: neq
+         real(dp), intent(in)  :: y(neq), t
+         real(dp), intent(out) :: yd(neq)
+       end subroutine f
+    end interface
+
+    ts%nfe = 0
+    ts%nje = 0
+    ts%nlu = 0
+    ts%nit = 0
+    ts%nse = 0
+
+    ts%y  = y0
+    ts%dt = dt
+    ts%n  = 1
+    ts%k  = 1
+    ts%h  = ts%dt
+
+    call f(ts%neq, ts%y, ts%t, ts%yd)
+    ts%nfe = ts%nfe + 1
+
+    ts%z(:,0) = ts%y
+    ts%z(:,1) = ts%dt * ts%yd
+
+    ts%k_age = 0
+    if (.not. reuse) then
+       ts%j_age = ts%max_j_age + 1
+       ts%p_age = ts%max_p_age + 1
+    else 
+       ts%j_age = 0
+       ts%p_age = 0
+    end if
+
+  end subroutine bdf_reset
 
   !
   ! Return $\alpha_0$.
@@ -688,7 +699,7 @@ contains
        U(k,k+1) = k
     end do
     Uk = U
-    call eye(ts%A)
+    call eye_i(ts%A)
     do k = 1, max_order+1
        ts%A  = ts%A + Uk / factorial(k)
        Uk = matmul(U, Uk)
