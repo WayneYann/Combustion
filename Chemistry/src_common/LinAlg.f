@@ -452,7 +452,7 @@ c
             lb = k - lm
             t = -b(k)
 c            call vdaxpy(lm,t,abd(la,k),1,b(lb),1)
-            call daxpy(lm,t,abd(la,k),b(lb))
+            call ccse_daxpy(lm,t,abd(la,k),b(lb))
          enddo
       goto 100
    50 continue
