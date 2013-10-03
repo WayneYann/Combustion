@@ -71,10 +71,10 @@ void SDCAmr::timeStep (int  level,
 
   // set intial conditions...
   for (int lev=0; lev<=finest_level; lev++) {
-    AmrLevel& level = getLevel(lev);
-    const DescriptorList& dl = level.get_desc_lst();
+    AmrLevel& amrlevel = getLevel(lev);
+    const DescriptorList& dl = amrlevel.get_desc_lst();
     for (int st=0; st<dl.size(); st++) {
-      MultiFab& Unew = level.get_new_data(st);
+      MultiFab& Unew = amrlevel.get_new_data(st);
       // XXX: this assumes that the encapsulation is a multifab
       MultiFab& U0   = *((MultiFab*)mg.sweepers[lev]->nset->Q[0]);
       U0.copy(Unew);
@@ -91,10 +91,10 @@ void SDCAmr::timeStep (int  level,
 
   // grab final solution
   for (int lev=0; lev<=finest_level; lev++) {
-    AmrLevel& level = getLevel(lev);
-    const DescriptorList& dl = level.get_desc_lst();
+    AmrLevel& amrlevel = getLevel(lev);
+    const DescriptorList& dl = amrlevel.get_desc_lst();
     for (int st=0; st<dl.size(); st++) {
-      MultiFab& Unew = level.get_new_data(st);
+      MultiFab& Unew = amrlevel.get_new_data(st);
       // XXX: this assumes that the encapsulation is a multifab
       int nnodes = mg.sweepers[lev]->nset->nnodes;
       MultiFab& Uend = *((MultiFab*)mg.sweepers[lev]->nset->Q[nnodes-1]);
