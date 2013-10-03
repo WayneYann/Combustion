@@ -135,8 +135,8 @@ contains
 
     include 'LinAlg.inc'
 
-    integer  :: i, k, m, n, iter, info, nse
-    real(dp) :: c, dt_adj, error, eta(-1:1), rescale, etamax, gamma_rat, foo
+    integer  :: k, m, n, iter, info, nse
+    real(dp) :: c, dt_adj, error, eta(-1:1), rescale, etamax, dt_rat, inv_l1
     logical  :: rebuild, refactor
 
     nse = 0
@@ -196,17 +196,17 @@ contains
        !   G(y) = y - dt * f(y,t) - rhs
        !
 
-       foo = 1.0_dp / ts%l(1)
+       inv_l1 = 1.0_dp / ts%l(1)
        do m = 1, neq
           ts%e(m)   = 0
-          ts%rhs(m) = ts%z0(m,0) - ts%z0(m,1) * foo
+          ts%rhs(m) = ts%z0(m,0) - ts%z0(m,1) * inv_l1
           ts%y(m)   = ts%z0(m,0)
        end do
        dt_adj = ts%dt / ts%l(1)
 
-       gamma_rat = dt_adj / ts%dt_nwt
+       dt_rat = dt_adj / ts%dt_nwt
        if (ts%p_age > ts%max_p_age) refactor = .true.
-       if (gamma_rat < 0.7d0 .or. gamma_rat > 1.429d0) refactor = .true.
+       if (dt_rat < 0.7d0 .or. dt_rat > 1.429d0) refactor = .true.
 
        do iter = 1, ts%max_iters
 
@@ -214,7 +214,7 @@ contains
           if (refactor) then
              rebuild = .true.
              if (nse == 0 .and. ts%j_age < ts%max_j_age) rebuild = .false.
-             if (nse > 0  .and. (gamma_rat < 0.2d0 .or. gamma_rat > 5.d0)) rebuild = .false.
+             if (nse > 0  .and. (dt_rat < 0.2d0 .or. dt_rat > 5.d0)) rebuild = .false.
 
              if (rebuild) then
                 call Jac(neq, ts%y, ts%t, ts%J)
@@ -301,19 +301,8 @@ contains
        ! new solution looks good, correct history
        !
 
-       do i = 0, ts%k
-          do m = 1, neq
-             ts%z(m,i) = ts%z0(m,i) + ts%e(m) * ts%l(i)
-          end do
-       end do
-
-       if (ts%t + ts%dt >= t1) exit
-
-       ts%h     = eoshift(ts%h, -1)
-       ts%h(0)  = ts%dt
-       ts%t     = ts%t + ts%dt
-       ts%n     = ts%n + 1
-       ts%k_age = ts%k_age + 1
+       call bdf_correct(ts)
+       if (ts%t >= t1) exit
 
        !
        ! compute eta values for changing step-size and/or order
@@ -511,6 +500,9 @@ contains
     call ewts(ts, ts%y, ts%ewt)
   end subroutine bdf_update
 
+  !
+  ! Predict (apply Pascal matrix).
+  !
   subroutine bdf_predict(ts)
     type(bdf_ts), intent(inout) :: ts
     integer :: i, j, m
@@ -523,6 +515,26 @@ contains
        end do
     end do
   end subroutine bdf_predict
+
+  !
+  ! Correct (apply l coeffs) and advance step.
+  !
+  subroutine bdf_correct(ts)
+    type(bdf_ts), intent(inout) :: ts
+    integer :: i, m
+
+    do i = 0, ts%k
+       do m = 1, ts%neq
+          ts%z(m,i) = ts%z0(m,i) + ts%e(m) * ts%l(i)
+       end do
+    end do
+
+    ts%h     = eoshift(ts%h, -1)
+    ts%h(0)  = ts%dt
+    ts%t     = ts%t + ts%dt
+    ts%n     = ts%n + 1
+    ts%k_age = ts%k_age + 1
+  end subroutine bdf_correct
 
 
   !
