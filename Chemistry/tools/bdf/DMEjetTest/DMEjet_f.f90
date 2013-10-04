@@ -112,7 +112,7 @@ subroutine burn_bdf(rho_in, YT, stop_time, dt, verbose)
   double precision, intent(inout) :: YT(nspecies+1)
   integer, intent(in) :: verbose
   
-  double precision :: t0, t1, y1(nspecies+1)
+  double precision :: t0, t1, y0(nspecies+1,1), y1(nspecies+1,1)
   integer :: neq, ierr
   logical :: reset
   
@@ -124,8 +124,10 @@ subroutine burn_bdf(rho_in, YT, stop_time, dt, verbose)
 
   reset = .true.
 
+  y0(:,1) = YT
+
   ts%verbose = verbose
-  call bdf_advance(ts, f_rhs, f_jac, neq, YT, t0, y1, t1, dt, reset, reuse_jac, ierr)
+  call bdf_advance(ts, f_rhs, f_jac, neq, 1, y0, t0, y1, t1, dt, reset, reuse_jac, ierr)
 
   if (ierr .ne. 0) then
      print *, 'chemsolv: BDF failed'
