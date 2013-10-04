@@ -33,11 +33,11 @@ program test
 
   type(bdf_ts)  :: ts
   double precision :: rtol(neq), atol(neq), dt
-  double precision :: y0(neq), t0, y1(neq), t1
+  double precision :: y0(neq,1), t0, y1(neq,1), t1
 
   integer :: i, ierr
 
-  y0 = [ 1.d0, 0.d0, 0.d0 ]
+  y0(:,1) = [ 1.d0, 0.d0, 0.d0 ]
   t0 = 0.d0
   t1 = 0.4d0
 
@@ -45,13 +45,13 @@ program test
   atol = [ 1.d-8, 1.d-14, 1.d-6 ]
   dt   = 1.d-8
 
-  call bdf_ts_build(ts, neq, rtol, atol, max_order=3)
+  call bdf_ts_build(ts, neq, 1, rtol, atol, max_order=3)
   ! ts%verbose = 1
 
   do i = 1, 11
      ! call bdf_advance(ts, f, J, neq, y0, t0, y1, t1, dt, i/=1, ierr)
      !call bdf_advance(ts, f, J, neq, y0, t0, y1, t1, dt, .true., i/=1, ierr)
-     call bdf_advance(ts, f, J, neq, y0, t0, y1, t1, dt, .true., .true., ierr)
+     call bdf_advance(ts, f, J, neq, 1, y0, t0, y1, t1, dt, .true., .true., ierr)
      print *, t1, y1
      y0 = y1
      t0 = t1

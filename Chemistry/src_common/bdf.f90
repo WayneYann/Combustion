@@ -40,8 +40,8 @@ module bdf
   !
   type :: bdf_ts
 
-     ! options
-     integer  :: neq                      ! number of equations (degrees of freedom)
+     integer  :: neq                      ! number of equations (degrees of freedom) per point
+     integer  :: npt                      ! number of points
      integer  :: max_order                ! maximum order (1 to 6)
      integer  :: max_steps                ! maximum allowable number of steps
      integer  :: max_iters                ! maximum allowable number of newton iterations
@@ -71,17 +71,17 @@ module bdf
 
      real(dp), pointer :: J(:,:)          ! jacobian matrix
      real(dp), pointer :: P(:,:)          ! newton iteration matrix
-     real(dp), pointer :: z(:,:)          ! nordsieck histroy array, indexed as (dof, n)
-     real(dp), pointer :: z0(:,:)         ! nordsieck predictor array
+     real(dp), pointer :: z(:,:,:)        ! nordsieck histroy array, indexed as (dof, p, n)
+     real(dp), pointer :: z0(:,:,:)       ! nordsieck predictor array
      real(dp), pointer :: h(:)            ! time steps, h = [ h_n, h_{n-1}, ..., h_{n-k} ]
      real(dp), pointer :: l(:)            ! predictor/corrector update coefficients
-     real(dp), pointer :: y(:)            ! current y
-     real(dp), pointer :: yd(:)           ! current \dot{y}
-     real(dp), pointer :: rhs(:)          ! solver rhs
-     real(dp), pointer :: e(:)            ! accumulated correction
-     real(dp), pointer :: e1(:)           ! accumulated correction, previous step
-     real(dp), pointer :: ewt(:)          ! cached error weights
-     real(dp), pointer :: b(:)            ! solver work space
+     real(dp), pointer :: y(:,:)          ! current y
+     real(dp), pointer :: yd(:,:)         ! current \dot{y}
+     real(dp), pointer :: rhs(:,:)        ! solver rhs
+     real(dp), pointer :: e(:,:)          ! accumulated correction
+     real(dp), pointer :: e1(:,:)         ! accumulated correction, previous step
+     real(dp), pointer :: ewt(:,:)        ! cached error weights
+     real(dp), pointer :: b(:,:)          ! solver work space
      integer,  pointer :: ipvt(:)         ! pivots
      integer,  pointer :: A(:,:)          ! pascal matrix
 
@@ -105,11 +105,11 @@ contains
   !
   ! Advance system from t0 to t1.
   !
-  subroutine bdf_advance(ts, f, Jac, neq, y0, t0, y1, t1, dt0, reset, reuse, ierr)
+  subroutine bdf_advance(ts, f, Jac, neq, npt, y0, t0, y1, t1, dt0, reset, reuse, ierr)
     type(bdf_ts),     intent(inout) :: ts
-    integer,          intent(in)    :: neq
-    real(dp),         intent(in)    :: y0(neq), t0, t1, dt0
-    real(dp),         intent(out)   :: y1(neq)
+    integer,          intent(in)    :: neq, npt
+    real(dp),         intent(in)    :: y0(neq,npt), t0, t1, dt0
+    real(dp),         intent(out)   :: y1(neq,npt)
     logical,          intent(in)    :: reset, reuse
     integer,          intent(out)   :: ierr
     interface
@@ -128,7 +128,7 @@ contains
     end interface
 
     integer  :: k
-    real(dp) :: error, eta
+    logical  :: qcycle, qerror
 
     if (reset) call bdf_reset(ts, f, y0, dt0, reuse)
 
@@ -138,28 +138,16 @@ contains
           ierr = BDF_ERR_MAXSTEPS; return
        end if
 
-       call bdf_update(ts)                ! update various coeffs based on time-step history
-       call bdf_predict(ts)               ! predict new nordsieck array
-       call bdf_solve(ts, f, Jac)         ! solve for updated y based on predicted y and yd
+       call bdf_update(ts)                ! update various coeffs (l, tq) based on time-step history
+       call bdf_predict(ts)               ! predict nordsieck array using pascal matrix
+       call bdf_solve(ts, f, Jac)         ! solve for y_n based on predicted y and yd
+       call bdf_check(ts, qcycle, qerror) ! check for solver errors and test error estimate
 
-       ! if solver failed many times, bail
-       if (ts%ncit >= ts%max_iters .and. ts%ncse > 7) then
+       if (qerror) then
           ierr = BDF_ERR_SOLVER; return
        end if
 
-       ! if solver failed to converge, shrink dt and try again
-       if (ts%ncit >= ts%max_iters) then
-          ts%refactor = .true.; ts%nse = ts%nse + 1; ts%ncse = ts%ncse + 1
-          call rescale_timestep(ts, 0.25d0); cycle
-       end if
-       ts%ncse = 0
-
-       ! if local error is too large, shrink dt and try again
-       error = ts%tq(0) * norm(ts%e, ts%ewt)
-       if (error > one) then
-          eta = one / ( (6.d0 * error) ** (one / ts%k) + 1.d-6 )
-          call rescale_timestep(ts, eta); cycle
-       end if
+       if (qcycle) cycle
 
        call bdf_correct(ts)               ! new solution looks good, correct history and advance
        if (ts%t >= t1) exit
@@ -171,7 +159,7 @@ contains
          ts%n, ts%nfe, ts%nje, ts%nlu, ts%nit, ts%nse, ts%dt, ts%k
 
     ierr = BDF_ERR_SUCCESS
-    y1   = ts%z(:,0)
+    y1   = ts%z(:,:,0)
 
   end subroutine bdf_advance
 
@@ -187,7 +175,7 @@ contains
   !  tq(-1) coeff. for order k-1 error est.
   !  tq(0)  coeff. for order k error est.
   !  tq(1)  coeff. for order k+1 error est.
-  !  tq(2)  coeff. for order k+1 error est. (used for second derivative)
+  !  tq(2)  coeff. for order k+1 error est. (used for e_{n-1})
   !
   ! Note: 
   !
@@ -244,8 +232,26 @@ contains
     a6 = a0hat - xi_inv
     ts%tq(1) = abs((one - a6 + a5) / a2 / (xi_inv * (ts%k+2) * a5))
 
-    call ewts(ts, ts%y, ts%ewt)
+    call ewts(ts)
   end subroutine bdf_update
+
+  !
+  ! Predict (apply Pascal matrix).
+  !
+  subroutine bdf_predict(ts)
+    type(bdf_ts), intent(inout) :: ts
+    integer :: i, j, m, p
+    do p = 1, ts%npt
+       do i = 0, ts%k
+          ts%z0(:,i,p) = 0          
+          do j = i, ts%k
+             do m = 1, ts%neq
+                ts%z0(m,i,p) = ts%z0(m,i,p) + ts%A(i,j) * ts%z(m,j,p)
+             end do
+          end do
+       end do
+    end do
+  end subroutine bdf_predict
 
   !
   ! Solve "y_n - dt f(y_n,t) = y - dt yd" for y_n where y and yd are
@@ -276,21 +282,25 @@ contains
 
     include 'LinAlg.inc'
 
-    integer  :: k, m, n, info
+    integer  :: k, m, n, p, info
     real(dp) :: c, dt_adj, dt_rat, inv_l1
-    logical  :: rebuild
-  
+    logical  :: rebuild, iterating(ts%npt)
+
     inv_l1 = 1.0_dp / ts%l(1)
-    do m = 1, ts%neq
-       ts%e(m)   = 0
-       ts%rhs(m) = ts%z0(m,0) - ts%z0(m,1) * inv_l1
-       ts%y(m)   = ts%z0(m,0)
+    do p = 1, ts%npt
+       do m = 1, ts%neq
+          ts%e(m,p)   = 0
+          ts%rhs(m,p) = ts%z0(m,p,0) - ts%z0(m,p,1) * inv_l1
+          ts%y(m,p)   = ts%z0(m,p,0)
+       end do
     end do
     dt_adj = ts%dt / ts%l(1)
 
     dt_rat = dt_adj / ts%dt_nwt
     if (ts%p_age > ts%max_p_age) ts%refactor = .true.
     if (dt_rat < 0.7d0 .or. dt_rat > 1.429d0) ts%refactor = .true.
+
+    iterating = .true.
 
     do k = 1, ts%max_iters
 
@@ -301,7 +311,7 @@ contains
           if (ts%ncse > 0  .and. (dt_rat < 0.2d0 .or. dt_rat > 5.d0)) rebuild = .false.
 
           if (rebuild) then
-             call Jac(ts%neq, ts%y, ts%t, ts%J)
+             call Jac(ts%neq, ts%y(:,1), ts%t, ts%J)
              ts%nje   = ts%nje + 1
              ts%j_age = 0
           end if
@@ -322,54 +332,88 @@ contains
           ts%refactor  = .false.
        end if
 
-       ! solve using factorized iteration matrix
-       call f(ts%neq, ts%y, ts%t, ts%yd)
-       ts%nfe = ts%nfe + 1
+       c = 2 * ts%dt_nwt / (dt_adj + ts%dt_nwt)
 
-       c    = 2 * ts%dt_nwt / (dt_adj + ts%dt_nwt)
-       do m = 1, ts%neq
-          ts%b(m) = c * (ts%rhs(m) - ts%y(m) + dt_adj * ts%yd(m))
-       end do
-       call dgesl(ts%P, ts%neq, ts%neq, ts%ipvt, ts%b, 0)
-       ! lapack   call dgetrs ('N', neq, 1, ts%P, neq, ts%ipvt, ts%b, neq, info)
-       ts%nit = ts%nit + 1
+       do p = 1, ts%npt
+          if (.not. iterating(p)) cycle
 
-       do m = 1, ts%neq
-          ts%e(m) = ts%e(m) + ts%b(m)
-          ts%y(m) = ts%z0(m,0) + ts%e(m)
+          ! solve using factorized iteration matrix
+          call f(ts%neq, ts%y(:,p), ts%t, ts%yd(:,p))
+          ts%nfe = ts%nfe + 1
+
+          do m = 1, ts%neq
+             ts%b(m,p) = c * (ts%rhs(m,p) - ts%y(m,p) + dt_adj * ts%yd(m,p))
+          end do
+          call dgesl(ts%P, ts%neq, ts%neq, ts%ipvt, ts%b(:,p), 0)
+          ! lapack   call dgetrs ('N', neq, 1, ts%P, neq, ts%ipvt, ts%b, neq, info)
+          ts%nit = ts%nit + 1
+
+          do m = 1, ts%neq
+             ts%e(m,p) = ts%e(m,p) + ts%b(m,p)
+             ts%y(m,p) = ts%z0(m,p,0) + ts%e(m,p)
+          end do
+          if (norm(ts%b(:,p), ts%ewt(:,p)) < one) iterating(p) = .false.
        end do
-       if (norm(ts%b, ts%ewt) < one) exit
+
+       if (.not. any(iterating)) exit
+
     end do
 
     ts%ncit = k; ts%p_age = ts%p_age + 1; ts%j_age = ts%j_age + 1
   end subroutine bdf_solve
 
   !
-  ! Predict (apply Pascal matrix).
+  ! Check error estimates.
   !
-  subroutine bdf_predict(ts)
+  subroutine bdf_check(ts, qcycle, qerror)
     type(bdf_ts), intent(inout) :: ts
-    integer :: i, j, m
-    do i = 0, ts%k
-       ts%z0(:,i) = 0          
-       do j = i, ts%k
-          do m = 1, ts%neq
-             ts%z0(m,i) = ts%z0(m,i) + ts%A(i,j) * ts%z(m,j)
-          end do
-       end do
+    logical,      intent(out)   :: qcycle, qerror
+
+    real(dp) :: error, eta
+    integer  :: p
+
+    qcycle = .false.; qerror = .false.
+
+    ! if solver failed many times, bail
+    if (ts%ncit >= ts%max_iters .and. ts%ncse > 7) then
+       qerror = .true.
+       return
+    end if
+
+    ! if solver failed to converge, shrink dt and try again
+    if (ts%ncit >= ts%max_iters) then
+       ts%refactor = .true.; ts%nse = ts%nse + 1; ts%ncse = ts%ncse + 1
+       call rescale_timestep(ts, 0.25d0)
+       qcycle = .true.
+       return
+    end if
+    ts%ncse = 0
+
+    ! if local error is too large, shrink dt and try again
+    do p = 1, ts%npt
+       error = ts%tq(0) * norm(ts%e(:,p), ts%ewt(:,p))
+       if (error > one) then
+          eta = one / ( (6.d0 * error) ** (one / ts%k) + 1.d-6 )
+          call rescale_timestep(ts, eta)
+          qcycle = .true.
+          return
+       end if
     end do
-  end subroutine bdf_predict
+
+  end subroutine bdf_check
 
   !
   ! Correct (apply l coeffs) and advance step.
   !
   subroutine bdf_correct(ts)
     type(bdf_ts), intent(inout) :: ts
-    integer :: i, m
+    integer :: i, m, p
 
-    do i = 0, ts%k
-       do m = 1, ts%neq
-          ts%z(m,i) = ts%z0(m,i) + ts%e(m) * ts%l(i)
+    do p = 1, ts%npt
+       do i = 0, ts%k
+          do m = 1, ts%neq
+             ts%z(m,i,p) = ts%z0(m,i,p) + ts%e(m,p) * ts%l(i)
+          end do
        end do
     end do
 
@@ -387,36 +431,53 @@ contains
     type(bdf_ts), intent(inout) :: ts
     real(dp),     intent(in)    :: t1
 
-    real(dp) :: c, error, eta(-1:1), rescale, etamax
+    real(dp) :: c, error, eta(-1:1), rescale, etamax(ts%npt), etaminmax, delta(ts%npt)
+    integer  :: p
 
-    eta   = 0
-    error = ts%tq(0) * norm(ts%e, ts%ewt)
-
-    ! compute eta(k-1), eta(k), eta(k+1)
-    eta(0) = one / ( (6.d0 * error) ** (one / ts%k) + 1.d-6 )
-    if (ts%k_age > ts%k) then
-       if (ts%k > 1) then
-          error   = ts%tq(-1) * norm(ts%z(:,ts%k), ts%ewt)
-          eta(-1) = one / ( (6.d0 * error) ** (one / ts%k) + 1.d-6 )
-       end if
-       if (ts%k < ts%max_order) then
-          c = (ts%tq(2) / ts%tq2save) * (ts%h(0) / ts%h(2)) ** (ts%k+1)
-          error  = ts%tq(1) * norm(ts%e - c * ts%e1, ts%ewt)
-          eta(1) = one / ( (10.d0 * error) ** (one / (ts%k+2)) + 1.d-6 )
-       end if
-       ts%k_age = 0
-    end if
-
-    ! choose which eta will maximize the time step
     rescale = 0
-    etamax  = maxval(eta)
-    if (etamax > ts%eta_thresh) then
-       if (etamax == eta(-1)) then
+
+    do p = 1, ts%npt
+       ! compute eta(k-1), eta(k), eta(k+1)
+       eta = 0
+       error  = ts%tq(0) * norm(ts%e(:,p), ts%ewt(:,p))
+       eta(0) = one / ( (6.d0 * error) ** (one / ts%k) + 1.d-6 )
+       if (ts%k_age > ts%k) then
+          if (ts%k > 1) then
+             error     = ts%tq(-1) * norm(ts%z(:,p,ts%k), ts%ewt(:,p))
+             eta(-1) = one / ( (6.d0 * error) ** (one / ts%k) + 1.d-6 )
+          end if
+          if (ts%k < ts%max_order) then
+             c = (ts%tq(2) / ts%tq2save) * (ts%h(0) / ts%h(2)) ** (ts%k+1)
+             error  = ts%tq(1) * norm(ts%e(:,p) - c * ts%e1(:,p), ts%ewt(:,p))
+             eta(1) = one / ( (10.d0 * error) ** (one / (ts%k+2)) + 1.d-6 )
+          end if
+          ts%k_age = 0
+       end if
+
+       ! choose which eta will maximize the time step
+       etamax(p) = 0
+       if (eta(-1) > etamax(p)) then
+          etamax(p) = eta(-1)
+          delta(p)  = -1
+       else if (eta(1) > etamax(p)) then
+          etamax(p) = eta(1)
+          delta(p)  = 1
+       else 
+          etamax(p) = eta(0)
+          delta(p)  = 0
+       end if
+    end do
+
+    p = minloc(etamax, dim=1)
+    rescale = 0
+    etaminmax = etamax(p)
+    if (etaminmax > ts%eta_thresh) then
+       if (delta(p) == -1) then
           call decrease_order(ts)
-       else if (etamax == eta(1)) then
+       else if (delta(p) == 1) then
           call increase_order(ts)
        end if
-       rescale = etamax
+       rescale = etaminmax
     end if
 
     if (ts%t + ts%dt > t1) then
@@ -436,7 +497,7 @@ contains
   !
   subroutine bdf_reset(ts, f, y0, dt, reuse)
     type(bdf_ts),     intent(inout) :: ts
-    real(dp),         intent(in)    :: y0(ts%neq), dt
+    real(dp),         intent(in)    :: y0(ts%neq, ts%npt), dt
     logical,          intent(in)    :: reuse
     interface
        subroutine f(neq, y, t, yd)
@@ -446,6 +507,8 @@ contains
          real(dp), intent(out) :: yd(neq)
        end subroutine f
     end interface
+
+    integer :: p
 
     ts%nfe = 0
     ts%nje = 0
@@ -459,11 +522,13 @@ contains
     ts%k  = 1
     ts%h  = ts%dt
 
-    call f(ts%neq, ts%y, ts%t, ts%yd)
-    ts%nfe = ts%nfe + 1
+    do p = 1, ts%npt
+       call f(ts%neq, ts%y(:,p), ts%t, ts%yd(:,p))
+       ts%nfe = ts%nfe + 1
+    end do
 
-    ts%z(:,0) = ts%y
-    ts%z(:,1) = ts%dt * ts%yd
+    ts%z(:,:,0) = ts%y
+    ts%z(:,:,1) = ts%dt * ts%yd
 
     ts%k_age = 0
     if (.not. reuse) then
@@ -497,7 +562,7 @@ contains
     ts%h(0) = ts%dt
 
     do i = 1, ts%k
-       ts%z(:,i) = eta**i * ts%z(:,i)
+       ts%z(:,:,i) = eta**i * ts%z(:,:,i)
     end do
   end subroutine rescale_timestep
 
@@ -517,11 +582,11 @@ contains
        end do
 
        do j = 2, ts%k-1
-          ts%z(:,j) = ts%z(:,j) - c(j) * ts%z(:,ts%k)
+          ts%z(:,:,j) = ts%z(:,:,j) - c(j) * ts%z(:,:,ts%k)
        end do
     end if
 
-    ts%z(:,ts%k) = 0
+    ts%z(:,:,ts%k) = 0
     ts%k = ts%k - 1
   end subroutine decrease_order
 
@@ -539,9 +604,9 @@ contains
        c = eoshift(c, -1) + c * xi_j(ts%h, j)
     end do
 
-    ts%z(:,ts%k+1) = 0
+    ts%z(:,:,ts%k+1) = 0
     do j = 2, ts%k+1
-       ts%z(:,j) = ts%z(:,j) + c(j) * ts%e
+       ts%z(:,:,j) = ts%z(:,:,j) + c(j) * ts%e
     end do
 
     ts%k = ts%k + 1
@@ -606,13 +671,13 @@ contains
   ! 
   ! Pre-compute error weights.
   !
-  subroutine ewts(ts, y, ewt)
-    type(bdf_ts), intent(in)  :: ts
-    real(dp),     intent(in)  :: y(1:)
-    real(dp),     intent(out) :: ewt(1:)
-    integer :: m
-    do m = 1, ts%neq
-       ewt(m) = one / (ts%rtol(m) * abs(y(m)) + ts%atol(m))
+  subroutine ewts(ts)
+    type(bdf_ts), intent(inout) :: ts
+    integer :: m, p
+    do p = 1, ts%npt
+       do m = 1, ts%neq
+          ts%ewt(m,p) = one / (ts%rtol(m) * abs(ts%y(m,p)) + ts%atol(m))
+       end do
     end do
   end subroutine ewts
 
@@ -634,32 +699,33 @@ contains
   !
   ! Build/destroy BDF time-stepper.
   !
-  subroutine bdf_ts_build(ts, neq, rtol, atol, max_order)
+  subroutine bdf_ts_build(ts, neq, npt, rtol, atol, max_order)
     type(bdf_ts), intent(inout) :: ts
-    integer,      intent(in   ) :: max_order, neq
+    integer,      intent(in   ) :: max_order, neq, npt
     real(dp),     intent(in   ) :: rtol(neq), atol(neq)
 
     integer :: k, U(max_order+1, max_order+1), Uk(max_order+1, max_order+1)
 
     allocate(ts%rtol(neq))
     allocate(ts%atol(neq))
-    allocate(ts%z(neq, 0:max_order))
-    allocate(ts%z0(neq, 0:max_order))
+    allocate(ts%z(neq, npt, 0:max_order))
+    allocate(ts%z0(neq, npt, 0:max_order))
     allocate(ts%l(0:max_order))
     allocate(ts%h(0:max_order))
     allocate(ts%A(0:max_order, 0:max_order))
     allocate(ts%P(neq, neq))
     allocate(ts%J(neq, neq))
-    allocate(ts%y(neq))
-    allocate(ts%yd(neq))
-    allocate(ts%rhs(neq))
-    allocate(ts%e(neq))
-    allocate(ts%e1(neq))
-    allocate(ts%ewt(neq))
-    allocate(ts%b(neq))
+    allocate(ts%y(neq, npt))
+    allocate(ts%yd(neq, npt))
+    allocate(ts%rhs(neq, npt))
+    allocate(ts%e(neq, npt))
+    allocate(ts%e1(neq, npt))
+    allocate(ts%ewt(neq, npt))
+    allocate(ts%b(neq, npt))
     allocate(ts%ipvt(neq))
 
     ts%neq        = neq
+    ts%npt        = npt
     ts%max_order  = max_order
     ts%max_steps  = 1000000
     ts%max_iters  = 10

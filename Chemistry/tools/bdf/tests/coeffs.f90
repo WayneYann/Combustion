@@ -28,7 +28,7 @@ program test
   rtol = 1
   atol = 1
 
-  call bdf_ts_build(ts, neq, rtol, atol, max_order=6)
+  call bdf_ts_build(ts, neq, 1, rtol, atol, max_order=6)
 
   print *, "====> order 1"
   ts%k = 1
