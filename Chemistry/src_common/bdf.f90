@@ -459,10 +459,12 @@ contains
        if (eta(-1) > etamax(p)) then
           etamax(p) = eta(-1)
           delta(p)  = -1
-       else if (eta(1) > etamax(p)) then
+       end if
+       if (eta(1) > etamax(p)) then
           etamax(p) = eta(1)
           delta(p)  = 1
-       else 
+       end if
+       if (eta(0) > etamax(p)) then
           etamax(p) = eta(0)
           delta(p)  = 0
        end if
@@ -471,6 +473,7 @@ contains
     p = minloc(etamax, dim=1)
     rescale = 0
     etaminmax = etamax(p)
+    ! print *, ts%k, etamax, etaminmax
     if (etaminmax > ts%eta_thresh) then
        if (delta(p) == -1) then
           call decrease_order(ts)
@@ -732,7 +735,7 @@ contains
     ts%verbose    = 0
     ts%dt_min     = epsilon(ts%dt_min)
     ts%eta_min    = 0.2_dp
-    ts%eta_max    = 2.25_dp
+    ts%eta_max    = 10.0_dp
     ts%eta_thresh = 1.50_dp
     ts%max_j_age  = 50
     ts%max_p_age  = 20
