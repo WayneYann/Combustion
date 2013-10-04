@@ -128,7 +128,7 @@ contains
     include 'LinAlg.inc'
 
     integer  :: k, m, n, iter, info
-    real(dp) :: c, dt_adj, error, eta(-1:1), rescale, etamax, dt_rat, inv_l1
+    real(dp) :: c, dt_adj, error, dt_rat, eta, inv_l1
     logical  :: rebuild, refactor
 
     if (reset) call bdf_reset(ts, f, y0, dt0, reuse)
@@ -142,11 +142,8 @@ contains
     do k = 1, bdf_max_iters + 1
 
        if (ts%n > ts%max_steps .or. k > bdf_max_iters) then
-          ierr = BDF_ERR_MAXSTEPS
-          return
+          ierr = BDF_ERR_MAXSTEPS; return
        end if
-
-       if (ts%verbose > 1) print *, 'BDF: stepping: ', ts%n, ts%k, ts%dt
 
        call bdf_update(ts)
        call bdf_predict(ts)
@@ -230,89 +227,35 @@ contains
           end if
        end do
 
-       ts%p_age = ts%p_age + 1
-       ts%j_age = ts%j_age + 1
-
-       !
-       ! retry if the solver didn't converge or the error estimate is too large
-       !
+       ts%p_age = ts%p_age + 1; ts%j_age = ts%j_age + 1
 
        ! if solver failed many times, bail...
-       if (iter >= ts%max_iters .and. ts%ncse > 7) then
-          ierr = BDF_ERR_SOLVER
-          return
+       if (iter >= ts%max_iters .and. ts%ncse > 7) then 
+          ierr = BDF_ERR_SOLVER; return 
        end if
 
        ! if solver failed to converge, shrink dt and try again
        if (iter >= ts%max_iters) then
-          refactor = .true.
-          ts%nse  = ts%nse  + 1
-          ts%ncse = ts%ncse + 1
+          refactor = .true.; ts%nse = ts%nse + 1; ts%ncse = ts%ncse + 1
           call rescale_timestep(ts, 0.25d0)
-          if (ts%verbose > 1) print *, 'BDF: solver failed'
           cycle
-       else
-          ts%ncse = 0
        end if
+       ts%ncse = 0
 
-       ! if local error is fairly large, shrink dt and try again
+       ! if local error is too large, shrink dt and try again
        error = ts%tq(0) * norm(ts%e, ts%ewt)
        if (error > one) then
-          eta(0) = one / ( (6.d0 * error) ** (one / ts%k) + 1.d-6 )
-          if (ts%verbose > 1) print *, 'BDF: error tolerance exceeded'
-          call rescale_timestep(ts, eta(0))
+          eta = one / ( (6.d0 * error) ** (one / ts%k) + 1.d-6 )
+          call rescale_timestep(ts, eta)
           cycle
        end if
 
-       !
        ! new solution looks good, correct history
-       !
-
        call bdf_correct(ts)
        if (ts%t >= t1) exit
 
-       !
-       ! compute eta values for changing step-size and/or order
-       !
-
-       eta = 0
-       eta(0) = one / ( (6.d0 * error) ** (one / ts%k) + 1.d-6 )
-       if (ts%k_age > ts%k) then
-          if (ts%k > 1) then
-             error   = ts%tq(-1) * norm(ts%z(:,ts%k), ts%ewt)
-             eta(-1) = one / ( (6.d0 * error) ** (one / ts%k) + 1.d-6 )
-          end if
-          if (ts%k < ts%max_order) then
-             c = (ts%tq(2) / ts%tq2save) * (ts%h(0) / ts%h(2)) ** (ts%k+1)
-             error  = ts%tq(1) * norm(ts%e - c * ts%e1, ts%ewt)
-             eta(1) = one / ( (10.d0 * error) ** (one / (ts%k+2)) + 1.d-6 )
-          end if
-          ts%k_age = 0
-       end if
-
-       if (ts%verbose > 2) print *, ts%k, ts%k_age, eta
-
-       rescale = 0
-       etamax  = maxval(eta)
-       if (etamax > ts%eta_thresh) then
-          if (etamax == eta(-1)) then
-             call decrease_order(ts)
-          else if (etamax == eta(1)) then
-             call increase_order(ts)
-          end if
-          rescale = etamax
-       end if
-
-       if (ts%t + ts%dt > t1) then
-          rescale = (t1 - ts%t) / ts%dt
-       end if
-
-       if (rescale /= 0) &
-            call rescale_timestep(ts, rescale)
-
-       ts%e1 = ts%e
-       ts%tq2save = ts%tq(2)
-
+       ! adjust step-size/order
+       call bdf_adjust(ts, t1)
     end do
 
     if (ts%verbose > 0) &
@@ -502,6 +445,57 @@ contains
     ts%n     = ts%n + 1
     ts%k_age = ts%k_age + 1
   end subroutine bdf_correct
+
+  !
+  ! Adjust step-size/order to maximize step-size.
+  !
+  subroutine bdf_adjust(ts, t1)
+    type(bdf_ts), intent(inout) :: ts
+    real(dp),     intent(in)    :: t1
+
+    real(dp) :: c, error, eta(-1:1), rescale, etamax
+
+    eta   = 0
+    error = ts%tq(0) * norm(ts%e, ts%ewt)
+
+    ! compute eta(k-1), eta(k), eta(k+1)
+    eta(0) = one / ( (6.d0 * error) ** (one / ts%k) + 1.d-6 )
+    if (ts%k_age > ts%k) then
+       if (ts%k > 1) then
+          error   = ts%tq(-1) * norm(ts%z(:,ts%k), ts%ewt)
+          eta(-1) = one / ( (6.d0 * error) ** (one / ts%k) + 1.d-6 )
+       end if
+       if (ts%k < ts%max_order) then
+          c = (ts%tq(2) / ts%tq2save) * (ts%h(0) / ts%h(2)) ** (ts%k+1)
+          error  = ts%tq(1) * norm(ts%e - c * ts%e1, ts%ewt)
+          eta(1) = one / ( (10.d0 * error) ** (one / (ts%k+2)) + 1.d-6 )
+       end if
+       ts%k_age = 0
+    end if
+
+    ! choose which eta will maximize the time step
+    rescale = 0
+    etamax  = maxval(eta)
+    if (etamax > ts%eta_thresh) then
+       if (etamax == eta(-1)) then
+          call decrease_order(ts)
+       else if (etamax == eta(1)) then
+          call increase_order(ts)
+       end if
+       rescale = etamax
+    end if
+
+    if (ts%t + ts%dt > t1) then
+       rescale = (t1 - ts%t) / ts%dt
+    end if
+
+    if (rescale /= 0) call rescale_timestep(ts, rescale)
+
+    ! save for next step (needed to compute eta(1))
+    ts%e1 = ts%e
+    ts%tq2save = ts%tq(2)
+
+  end subroutine bdf_adjust
 
   !
   ! Reset counters, set order to one, init history array.
