@@ -7,6 +7,7 @@
 module feval
   use iso_c_binding
   use encap
+  use debug_module
   implicit none
   
 contains
@@ -38,9 +39,8 @@ contains
     real*8       tforce(0:nlevs-1,-1:nfine,  nscal)
     real*8 diffdiff_old(0:nlevs-1,-1:nfine)
 
-    ! XXX: these should be output...
-    real*8          aofv(0:nlevs-1, 0:nfine-1)
-    real*8          aofs(0:nlevs-1, 0:nfine-1,nscal)
+    real*8, intent(inout) :: aofv(0:nlevs-1, 0:nfine-1)
+    real*8, intent(inout) :: aofs(0:nlevs-1, 0:nfine-1,nscal)
 
     integer i, is, n
 
@@ -63,6 +63,8 @@ contains
     call macproj(macvel(0,:),scal_old(0,:,Density), &
          divu_old(0,:),dx,lo(0),hi(0),bc(0,:))
 
+    call dsend(macvel(0,:), .false.)
+
     ! compute scalar advective flux
     print *,'... computing advective scalar flux'
     tforce = 0
@@ -77,8 +79,6 @@ contains
     call vel_edge_states(vel_old(0,:),scal_old(0,:,Density),gp(0,:), &
          macvel(0,:),veledge(0,:),dx(0),dt(0), &
          tforce(0,0,:),lo(0),hi(0),bc(0,:))
-
-    print *, ubound(scal_old), lbound(scal_old), Density, nscal
 
     do i=lo(0),hi(0)
        aofv(0,i) = - ( (macvel(0,i+1)*veledge(0,i+1) - macvel(0,i)*veledge(0,i)) - &
@@ -108,9 +108,16 @@ contains
     bc(0,1) = 1
     bc(0,2) = 2
 
+    call dsend(q%scal(0,:,density), .false.)
+    call dsend(q%press(0,:), .false.)
+    call dsend(q%vel(0,:), .false.)
+
     call advection(f%vel, f%scal, q%vel, q%scal, q%divu, q%press, dx, lo, hi, bc)
 
     ! XXX: set_bc_s, set_bc_v
+
+    call dsend(f%scal(0,:,density), .false.)
+    call dsend(f%vel(0,:), .true.)
 
   end subroutine f1eval
 

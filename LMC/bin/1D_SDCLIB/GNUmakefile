@@ -26,7 +26,7 @@ ifeq (${USE_INTEL},TRUE)
 else
   fCOMP := gfortran -g -fbounds-check -O1 -Wall -ffixed-line-length-none
   CCOMP := g++ -g -O0 -fno-exceptions -Wall -Wno-sign-compare -DBL_FORT_USE_UNDERSCORE
-  cCOMP := gcc -g -O0 -std=c99 -fno-exceptions -Wall -Wno-sign-compare -DBL_FORT_USE_UNDERSCORE -I$(SDCLIB_HOME)/include
+  cCOMP := gcc -g -O0 -std=c99 -fno-exceptions -Wall -Wno-sign-compare -DBL_FORT_USE_UNDERSCORE -I$(SDCLIB_HOME)/include -I$(HOME)/anaconda/include
   # XTRALIBS :=  -lm -lgfortran
 endif
 
@@ -57,11 +57,12 @@ f_sources += lmc.f ${chem_sources} prob.f fill_ghost.f \
              read_check.f write_check.f write_plt.f cn_solve.f ${pmf_source}
 
 f_includes += spec.h
-c_sources += main.c
+c_sources += main.c zmq.c
 f90sources += feval.f90 encap.f90 mod-spec.f90
 f90sources += sdc-interfaces.f90
 f90sources += sdc-types.f90
 f90sources += sdclib.f90
+F90sources = debug.F90
 
 include $(SDCLIB_HOME)/Make.package
 c_sources += $(cEXE_sources)
@@ -69,10 +70,11 @@ c_sources += $(cEXE_sources)
 c_objects := $(c_sources:%.c=%.o) 
 f_objects := $(f_sources:%.f=%.o)
 f90_objects := $(f90sources:%.f90=%.o)
+F90_objects := $(F90sources:%.F90=%.o)
 
 
-${EXEname}: ${f_objects} ${f90_objects} ${mech_object} ${c_objects} #${f_includes}
-	${fCOMP} -o ${EXEname} $^
+${EXEname}: ${f_objects} ${f90_objects} ${F90_objects} ${mech_object} ${c_objects} #${f_includes}
+	${fCOMP} -o ${EXEname} $^ -L$(HOME)/anaconda/lib -lzmq
 
 clean:
 	rm -rf ${EXEname} ${f_objects} ${c_objects} Linkeg
@@ -89,8 +91,11 @@ clean:
 %.o: %.f90
 	${fCOMP} -c $^ -o $*.o
 
+%.o: %.F90
+	${fCOMP} -DZMQ -c $^ -o $*.o 
+
 encap.o: sdclib.o
-feval.o: encap.o mod-spec.o
+feval.o: encap.o mod-spec.o debug.o
 lmc.o: sdclib.o feval.o 
 sdclib.o: sdc-interfaces.o
 sdc-interfaces.o: sdc-types.o
@@ -102,3 +107,4 @@ vpath %.c   $(MySrcDirs) $(SDCLIB_HOME)/src
 vpath %.h   $(MySrcDirs)
 vpath %.f   $(MySrcDirs)
 vpath %.f90 $(MySrcDirs) $(SDCLIB_HOME)/src 
+vpath %.F90 $(MySrcDirs)
