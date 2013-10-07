@@ -102,7 +102,7 @@ contains
 
     reset = .true.
 
-    call bdf_advance(ts, f_rhs, f_jac, neq, YT, t0, y1, t1, dt, reset, reuse_jac, ierr)
+    call bdf_advance(ts, f_rhs, f_jac, neq, 1, YT, t0, y1, t1, dt, reset, reuse_jac, ierr)
 
     if (ierr .ne. 0) then
        print *, 'chemsolv: BDF failed'
