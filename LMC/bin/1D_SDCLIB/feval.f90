@@ -15,7 +15,7 @@ contains
   !
   ! Compute MOL dU/dt for the advection piece of LMC.
   !
-  subroutine advection(vel_old, scal_old, divu_old, press_old, dx, lo, hi, bc)
+  subroutine advection(aofv, aofs, vel_old, scal_old, divu_old, press_old, dx, lo, hi, bc)
     use spec_module
 
     real*8  dx(0:nlevs-1)
@@ -30,6 +30,7 @@ contains
     real*8  dt(0:nlevs-1)
     real*8           gp(0:nlevs-1,-1:nfine)
     real*8       macvel(0:nlevs-1, 0:nfine  )
+    real*8      veledge(0:nlevs-1, 0:nfine  )
     real*8     diff_old(0:nlevs-1,-1:nfine,  nscal)
     ! real*8     diff_new(0:nlevs-1,-1:nfine,  nscal)
     ! real*8     diff_hat(0:nlevs-1,-1:nfine,  nscal)
@@ -37,9 +38,14 @@ contains
     real*8       tforce(0:nlevs-1,-1:nfine,  nscal)
     real*8 diffdiff_old(0:nlevs-1,-1:nfine)
 
+    ! XXX: these should be output...
+    real*8          aofv(0:nlevs-1, 0:nfine-1)
     real*8          aofs(0:nlevs-1, 0:nfine-1,nscal)
 
     integer i, is, n
+
+    aofv = 0
+    aofs = 0
 
     print *,'... projecting'
 
@@ -57,14 +63,28 @@ contains
     call macproj(macvel(0,:),scal_old(0,:,Density), &
          divu_old(0,:),dx,lo(0),hi(0),bc(0,:))
 
-
-    print *,'... computing advective scalar update'
-
-    ! compute advective flux divergence
+    ! compute scalar advective flux
+    print *,'... computing advective scalar flux'
     tforce = 0
     call scal_aofs(scal_old(0,:,:),macvel(0,:),aofs(0,:,:), &
                        divu_old(0,:),tforce(0,:,:),dx(0),dt(0), &
                        lo(0),hi(0),bc(0,:))
+
+    ! compute velocity advective flux 
+    print *,'... computing advective velocity flux'
+
+    ! note that tforce is 0
+    call vel_edge_states(vel_old(0,:),scal_old(0,:,Density),gp(0,:), &
+         macvel(0,:),veledge(0,:),dx(0),dt(0), &
+         tforce(0,0,:),lo(0),hi(0),bc(0,:))
+
+    print *, ubound(scal_old), lbound(scal_old), Density, nscal
+
+    do i=lo(0),hi(0)
+       aofv(0,i) = - ( (macvel(0,i+1)*veledge(0,i+1) - macvel(0,i)*veledge(0,i)) - &
+            0.5d0*(macvel(0,i+1)-macvel(0,i))*(veledge(0,i)+veledge(0,i+1)) ) / dx(0) &
+            - gp(0,i)/scal_old(0,i,Density)
+    enddo
 
   end subroutine advection
 
@@ -74,15 +94,21 @@ contains
     real(c_double), intent(in), value :: t
 
     type(lmc_encap), pointer :: q, f
-    integer :: lo(0:nlevs-1), hi(0:nlevs-1)
+    integer :: lo(0:nlevs-1), hi(0:nlevs-1), bc(0:nlevs-1,2)
+    real(8) :: dx(0:nlevs-1)
     
     call c_f_pointer(qptr, q)
     call c_f_pointer(fptr, f)
 
+    ! sick hacks...
     lo = 0
     hi = nx-1
+    ! dx = (probhi-problo)/dble(nx)
+    dx = (3.5)/dble(nx)
+    bc(0,1) = 1
+    bc(0,2) = 2
 
-    ! call advection()
+    call advection(f%vel, f%scal, q%vel, q%scal, q%divu, q%press, dx, lo, hi, bc)
 
     ! XXX: set_bc_s, set_bc_v
 
