@@ -23,3 +23,6 @@ Bpack   := ./Make.package
 Blocs   := .
 
 include ../Make.RNS
+
+CFLAGS += -I$(HOME)/anaconda/include
+LDFLAGS += -L$(HOME)/anaconda/lib -lzmq

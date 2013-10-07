@@ -8,12 +8,31 @@
 #include <FabArray.H>
 #include <stdio.h>
 
+#include <iostream>
+#include <sstream>
+
 #include "RNS.H"
 #include "RNS_F.H"
 
 using namespace std;
 
 BEGIN_EXTERN_C
+
+void *zmqctx = 0;
+void *dzmq_connect();
+void dzmq_send_buf(void *ptr, const char *buf, int n);
+
+void dzmq_send_mf(MultiFab& U)
+{
+  if (!zmqctx) zmqctx = dzmq_connect();
+
+  for (MFIter mfi(U); mfi.isValid(); ++mfi) {
+    std::ostringstream buf;
+    U[mfi].setFormat(FABio::FAB_IEEE_32);
+    U[mfi].writeOn(buf, 0, 1);
+    dzmq_send_buf(zmqctx, buf.str().c_str(), buf.str().length());
+  }
+}
 
 /*
  * Spatial interpolation is done by...
@@ -54,6 +73,9 @@ void mlsdc_amr_restrict(void *F, void *G, void *ctxF, void *ctxG)
   //  RNS& levelF  = *((RNS*) ctxF);
   RNS& levelG  = *((RNS*) ctxG);
   levelG.avgDown(UG, UF);
+
+  cout << "RESTRICTING" << endl;
+  dzmq_send_mf(UG);
 }
 
 END_EXTERN_C
@@ -68,6 +90,14 @@ void SDCAmr::timeStep (int  level,
   if (level != 0) {
     cout << "NOT ON LEVEL 0" << endl;
   }
+
+
+    // if (plotfile_on_restart && !(restart_file.empty()) )
+    // {
+    //     plotfile_on_restart = 0;
+    //     writePlotFile();
+    // }
+
 
   // set intial conditions...
   for (int lev=0; lev<=finest_level; lev++) {
@@ -101,6 +131,25 @@ void SDCAmr::timeStep (int  level,
       Unew.copy(Uend);
     }
   }
+
+    level_steps[level]++;
+    level_count[level]++;
+
+    if (verbose > 0 && ParallelDescriptor::IOProcessor())
+    {
+        std::cout << "Advanced "
+                  << amr_level[level].countCells()
+                  << " cells at level "
+                  << level
+                  << std::endl;
+    }
+
+
+  if (writePlotNow())
+    {
+        writePlotFile();
+    }
+
 }
 
 sdc_sweeper* rns_sdc_build_level(int lev)
@@ -177,3 +226,6 @@ SDCAmr::~SDCAmr()
 {
   sdc_mg_destroy(&mg);
 }
+
+
+
