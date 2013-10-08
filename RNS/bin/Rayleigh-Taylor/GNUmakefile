@@ -22,13 +22,20 @@ CHEMISTRY_MODEL = NULL
 Bpack   := ./Make.package
 Blocs   := .
 
+ZMQ = $(HOME)/anaconda
+ifdef ZMQ
+  cEXE_sources += zmq.c
+endif
+
+VERBOSE=FALSE
+
 include ../Make.RNS
 
-#ZMQ = $(HOME)/anaconda
 ifdef ZMQ
   CXXFLAGS += -DZMQ
   FFLAGS   += -DZMQ
   CFLAGS   += -DZMQ -I$(ZMQ)/include
   LDFLAGS  += -L$(ZMQ)/lib -lzmq
 endif
+
 

@@ -18,6 +18,8 @@ import re
 tup = "\(" + "([0-9,]+)" + "\)\s*"
 parse_header = re.compile("\(" + 3*tup + "\) (\d+)")
 
+ng = 4
+
 class Acquire(threading.Thread):
     """Listen for data and call 'render_scene' when appropriate.
 
@@ -47,7 +49,7 @@ class Acquire(threading.Thread):
             s = self.socket.recv(flag)
             i = s.find('\n')
             hdr = s[:i]
-            dat = np.fromstring(s[i+1:], np.float32)
+            dat = np.fromstring(s[i+1:])
 
             m = parse_header.search(hdr)
             if m is None:
@@ -80,7 +82,10 @@ class Acquire(threading.Thread):
             # v = self.recv()
             # s = self.recv()
 
-            print "u: shape: ", u.shape, ", max: ", u.max(), ", min: ", u.min()
+            print "u: shape: ", u.shape, \
+              ", max: ", u[ng:-ng-1,ng:-ng].max(), \
+              ", min: ", u[ng:-ng-1,ng:-ng].min(), \
+              ", lo/hi:", lo, hi
             # print "v: shape: ", v.shape, ", max: ", v.max(), ", min: ", v.min()
             # print "s: shape: ", s.shape, ", max: ", s.max(), ", min: ", s.min()
             # print ""
@@ -99,9 +104,11 @@ class MainWindow(QMainWindow):
 
     def render_scene(self, lo, hi, u):
 
-        x = np.arange(lo[0], hi[0]+1, 1.0)
-        y = np.arange(lo[1], hi[1]+1, 1.0)
-        self.ax[0].contourf(x, y, u)
+        # x = np.arange(lo[0], hi[0]+1, 1.0)
+        # y = np.arange(lo[1], hi[1]+1, 1.0)
+        # self.ax[0].contourf(x, y, u.transpose())
+        self.ax[0].cla()
+        self.ax[0].matshow(u.transpose())
 
         # self.ax[0].clear()
         # self.ax[0].imshow(u)

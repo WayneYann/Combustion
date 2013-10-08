@@ -350,11 +350,19 @@ RNS::advance_AD(MultiFab& Unew, Real time, Real dt)
 #ifdef USE_SDCLIB
 BEGIN_EXTERN_C
 
+#ifdef ZMQ
+void dzmq_send_mf(MultiFab& U, int wait);
+#endif
+
 void sdc_feval(void *F, void *Q, double t, sdc_state *state, void *ctx)
 {
   RNS&      rns    = *((RNS*) ctx);
   MultiFab& U      = *((MultiFab*) Q);
   MultiFab& Uprime = *((MultiFab*) F);
+#ifdef ZMQ
+  cout << "FEVAL" << endl;
+  dzmq_send_mf(U, 1);
+#endif
   rns.dUdt_SDC(U, Uprime, t, state->dt);
 }
 
