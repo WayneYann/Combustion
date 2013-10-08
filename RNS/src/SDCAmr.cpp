@@ -1,3 +1,8 @@
+/*
+ * XXX
+ *
+ * 
+ */
 
 #include <SDCAmr.H>
 #include <MultiFab.H>
@@ -18,24 +23,35 @@ using namespace std;
 
 BEGIN_EXTERN_C
 
+#ifdef ZMQ
 void *zmqctx = 0;
 void *dzmq_connect();
 void dzmq_send_buf(void *ptr, const char *buf, int n);
 
-void dzmq_send_mf(MultiFab& U)
+void dzmq_send_mf(MultiFab& U, int wait)
 {
   if (!zmqctx) zmqctx = dzmq_connect();
 
   for (MFIter mfi(U); mfi.isValid(); ++mfi) {
     std::ostringstream buf;
-    U[mfi].setFormat(FABio::FAB_IEEE_32);
     U[mfi].writeOn(buf, 0, 1);
     dzmq_send_buf(zmqctx, buf.str().c_str(), buf.str().length());
   }
+
+  if (wait) {
+    char buf[8];
+    printf("===> paused\n");
+    fgets(buf, 8, stdin);
+  }
 }
+#else
+void dzmq_send_mf(MultiFab& U, int wait) { }
+#endif
 
 /*
- * Spatial interpolation is done by...
+ * Spatial interpolation is done by setting midData of the fine and
+ * coarse RNS levels and subsequently using FillPatchIterator to do
+ * the interpolation for us.
  */
 void mlsdc_amr_interpolate(void *F, void *G, void *ctxF, void *ctxG)
 {
@@ -54,18 +70,27 @@ void mlsdc_amr_interpolate(void *F, void *G, void *ctxF, void *ctxG)
   stateG.setMidData(&UG, time);
   stateF.setMidData(&UF, time);
 
+  cout << "INTERPOLATING: " << UG.max(0) << " " << UG.min(0) << endl;
+
   int ncomp = dl[0].nComp();
   int ngrow = dl[0].nExtra();
 
-  FillPatchIterator fpi(levelF, UF, ngrow, time, 0, 0, ncomp);
-  for (; fpi.isValid(); ++fpi) {
-    // cout << fpi.UngrownBox() << endl;
+  // XXX: this isn't working as expected...
+  for (FillPatchIterator fpi(levelF, UF, ngrow, time, 0, 0, ncomp); fpi.isValid(); ++fpi) {
     UF[fpi].copy(fpi());
   }
+
+  cout << "INTERPOLATING: " << UF.max(0) << " " << UF.min(0) << endl;
+
+  cout << "INTERPOLATING" << endl;
+  dzmq_send_mf(UF, 1);
 }
 
 
-
+/*
+ * Spatial restriction is done by calling the coarse RNS level's
+ * avgDown routine.
+ */
 void mlsdc_amr_restrict(void *F, void *G, void *ctxF, void *ctxG)
 {
   MultiFab& UF = *((MultiFab*) F);
@@ -74,8 +99,8 @@ void mlsdc_amr_restrict(void *F, void *G, void *ctxF, void *ctxG)
   RNS& levelG  = *((RNS*) ctxG);
   levelG.avgDown(UG, UF);
 
-  cout << "RESTRICTING" << endl;
-  dzmq_send_mf(UG);
+  // cout << "RESTRICTING" << endl;
+  // dzmq_send_mf(UG, 1);
 }
 
 END_EXTERN_C
@@ -91,22 +116,13 @@ void SDCAmr::timeStep (int  level,
     cout << "NOT ON LEVEL 0" << endl;
   }
 
-
-    // if (plotfile_on_restart && !(restart_file.empty()) )
-    // {
-    //     plotfile_on_restart = 0;
-    //     writePlotFile();
-    // }
-
-
   // set intial conditions...
   for (int lev=0; lev<=finest_level; lev++) {
     AmrLevel& amrlevel = getLevel(lev);
     const DescriptorList& dl = amrlevel.get_desc_lst();
     for (int st=0; st<dl.size(); st++) {
       MultiFab& Unew = amrlevel.get_new_data(st);
-      // XXX: this assumes that the encapsulation is a multifab
-      MultiFab& U0   = *((MultiFab*)mg.sweepers[lev]->nset->Q[0]);
+      MultiFab& U0   = *((MultiFab*) mg.sweepers[lev]->nset->Q[0]);
       U0.copy(Unew);
     }
   }
@@ -124,32 +140,29 @@ void SDCAmr::timeStep (int  level,
     AmrLevel& amrlevel = getLevel(lev);
     const DescriptorList& dl = amrlevel.get_desc_lst();
     for (int st=0; st<dl.size(); st++) {
-      MultiFab& Unew = amrlevel.get_new_data(st);
-      // XXX: this assumes that the encapsulation is a multifab
       int nnodes = mg.sweepers[lev]->nset->nnodes;
+      MultiFab& Unew = amrlevel.get_new_data(st);
       MultiFab& Uend = *((MultiFab*)mg.sweepers[lev]->nset->Q[nnodes-1]);
       Unew.copy(Uend);
+
+      // cout << "Uend " << lev << endl;
+      // dzmq_send_mf(Uend, 1);
     }
   }
 
-    level_steps[level]++;
-    level_count[level]++;
+  level_steps[level]++;
+  level_count[level]++;
 
-    if (verbose > 0 && ParallelDescriptor::IOProcessor())
-    {
-        std::cout << "Advanced "
-                  << amr_level[level].countCells()
-                  << " cells at level "
-                  << level
-                  << std::endl;
-    }
+  if (verbose > 0 && ParallelDescriptor::IOProcessor()){
+    std::cout << "Advanced "
+              << amr_level[level].countCells()
+              << " cells at level "
+              << level
+              << std::endl;
+  }
 
 
-  if (writePlotNow())
-    {
-        writePlotFile();
-    }
-
+  if (writePlotNow()) writePlotFile();
 }
 
 sdc_sweeper* rns_sdc_build_level(int lev)
@@ -212,6 +225,7 @@ SDCAmr::SDCAmr ()
   if (!ppsdc.query("max_iters", max_iters)) max_iters = 22;
   if (!ppsdc.query("max_trefs", max_trefs)) max_trefs = 3;
 
+  sdc_log_set_stdout(SDC_LOG_DEBUG);
   sdc_mg_build(&mg, max_level+1);
 
   sweepers.resize(max_level+1);
