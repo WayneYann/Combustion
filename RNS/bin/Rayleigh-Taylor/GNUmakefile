@@ -24,5 +24,11 @@ Blocs   := .
 
 include ../Make.RNS
 
-CFLAGS += -I$(HOME)/anaconda/include
-LDFLAGS += -L$(HOME)/anaconda/lib -lzmq
+#ZMQ = $(HOME)/anaconda
+ifdef ZMQ
+  CXXFLAGS += -DZMQ
+  FFLAGS   += -DZMQ
+  CFLAGS   += -DZMQ -I$(ZMQ)/include
+  LDFLAGS  += -L$(ZMQ)/lib -lzmq
+endif
+
