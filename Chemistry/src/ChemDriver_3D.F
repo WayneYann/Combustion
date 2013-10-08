@@ -1125,7 +1125,7 @@ c     convert to temperature
                      c_0(1:Nspec+1) = 0.d0
 
 c     Reset FIRST to .TRUE. to force new Jacobian on each cell
-                     FIRST = .TRUE.
+c                     FIRST = .TRUE.
                      FuncCount(i,j,k) = 0
 
                      TT1save = TT1
@@ -1273,43 +1273,19 @@ c     Reset FIRST to .TRUE. to force new Jacobian on each cell
       REAL_T Patm, dt
       REAL_T diag(DIMV(FuncCount),*)
 
-      integer ITOL, IOPT, ITASK, open_vode_failure_file
-      parameter (IOPT=1, ITASK=1)
-      REAL_T RTOL, ATOL(maxspec+2), ATOLEPS
-      REAL_T spec_scalT, NEWJ_TOL
-      parameter (spec_scalT=twothousand, NEWJ_TOL=one100th)
+      integer open_vode_failure_file
       external conpFY_sdc, CONPJ_FILE, open_vode_failure_file
-      REAL_T TT1, TT2, RU, RUC, P1atm
-      integer i, j, k, m, MF, ISTATE, lout
+      integer i, j, k, m, MF, ISTATE, lout, ITOL
+      integer nsubchem, nsub, node, strang_fix, Niter
       character*(maxspnml) name
-
-      REAL_T rho, rhoInv, h_INIT, Y(maxspec), hmix_ck, Z(maxspec+2), ZP(maxspec+2), Yold(maxspec)
-
-      integer nsubchem, nsub, node
-      REAL_T dtloc, weight, TT1save
-      REAL_T Ct(maxspec),Qt(maxreac), scale
-
-      REAL_T dY(maxspec), rhoYtemp(maxspec),rhoYres(maxspec),sum,HMIX_CGS
-
-      integer strang_fix
-
-C     Needed to compute T from h
-      REAL_T HtoTerrMAX
-      integer HtoTiterMAX, Niter
-      parameter (HtoTerrMAX = BL_REAL_E(7.8,-12))
-      parameter (HtoTiterMAX = 20)
-      REAL_T res(0:HtoTiterMAX-1)
-
-      REAL_T rhooldInv
-
-c     Set IOPT=1 parameter settings for VODE
-      RWRK(dvbr+4) = 0
-      RWRK(dvbr+5) = 0
-c      RWRK(dvbr+6) = ten2minus19
-      RWRK(dvbr+6) = 1.d-25
-      IWRK(dvbi+4) = 0
-      IWRK(dvbi+5) = max_vode_subcycles
-      IWRK(dvbi+6) = 0
+      REAL_T RTOL, ATOL(maxspec+2), ATOLEPS, TT1, TT2, RU, RUC, P1atm
+      REAL_T Y(maxspec), hmix_ck, Z(maxspec+2), ZP(maxspec+2), Yold(maxspec)
+      REAL_T dtloc, weight, TT1save, rho, rhoInv, h_INIT
+      REAL_T Ct(maxspec),Qt(maxreac), scale, sum
+      REAL_T dY(maxspec), rhoYtemp(maxspec),rhoYres(maxspec),HMIX_CGS
+      REAL_T,  parameter :: HtoTerrMAX = BL_REAL_E(7.8,-12)
+      integer, parameter :: HtoTiterMAX = 20, IOPT = 1, ITASK = 1
+      REAL_T res(0:HtoTiterMAX-1), rhooldInv
 
       ITOL    = vode_itol
       RTOL    = vode_rtol
@@ -1320,19 +1296,15 @@ c
 c     Set molecular weights and pressure in area accessible by conpF
 c
       CALL CKRP(IWRK(ckbi), RWRK(ckbr), RU, RUC, P1atm)
-      RWRK(NP) = Patm * P1atm
-      
+
       TT2 = dt
 
       if (do_stiff .eq. 1) then
-c     backward difference solver with finite difference jacobian
-         MF = 22
+         MF = 22  ! Backward difference solver.
       else
-c     Adams integrator
-         MF = 10
+         MF = 10  ! Adams integrator
       endif
 
-c     Set up ATOL
       if (ITOL.eq.2 .or. ITOL.eq.4) then
          ATOL(Nspec+1) = typVal_RhoH*ATOLEPS
          do m=1,Nspec
@@ -1341,7 +1313,18 @@ c     Set up ATOL
       else
          ATOL(1) = ATOLEPS
       end if
+      !
+      ! Force recalculation of jacobian for each XYZ block.
+      !
+      FIRST = .TRUE.
 
+      RWRK(NP) = Patm * P1atm
+
+C!$omp parallel
+
+C!$omp do private(i,j,k,m,TT1,ISTATE,sum,atoln,Ytemp,Yres,newJ_triggered)
+C!$omp&private(scale,bad_soln,Ct,Qt,node,weight,TT1save,TT2,tspecies)
+C!$omp&private(lout,name) schedule(dynamic,1)
       do k=lo(3),hi(3)
          do j=lo(2),hi(2)
             do i=lo(1),hi(1)
@@ -1370,7 +1353,7 @@ c     Set up ATOL
                T_cell = Told(i,j,k)
 
 c     Reset FIRST to .TRUE. to force new Jacobian on each cell
-               FIRST = .TRUE.
+c               FIRST = .TRUE.
                FuncCount(i,j,k) = 0
 
                do node = 1,nsub
@@ -1382,9 +1365,6 @@ c     Reset FIRST to .TRUE. to force new Jacobian on each cell
                   
                   TT1save = TT1
                   TT2 = TT1 + dtloc
-                  
-c     Suggest strongly that VODE do it in one step
-c                  RWRK(dvbr+4) = TT2 - TT1
 
 #if !defined(BL_USE_DOUBLE) || defined(BL_T3E)
                   CALL SVODE
@@ -1446,10 +1426,7 @@ c     Reset FIRST to .TRUE. to force new Jacobian on each cell
                      TT1save = TT1
                      TT2 = TT1 + dtloc
 
-c     Suggest strongly that VODE do it in one step
-c                RWRK(dvbr+4) = TT2 - TT1
-
-#if                             !defined(BL_USE_DOUBLE) || defined(BL_T3E)
+#if !defined(BL_USE_DOUBLE) || defined(BL_T3E)
                      CALL SVODE
 #else
                      CALL DVODE
@@ -1545,6 +1522,10 @@ c     "jbb hack"
          end do
       end do
       end
+C!$omp end do
+
+C!$omp end parallel
+
 c     terminate the DO_TEMPERATURE ifdef
 #endif
 
