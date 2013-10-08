@@ -27,6 +27,7 @@ contains
     double precision :: rwrk, T0
     integer, allocatable :: names(:)
 
+    call ckinit()
     call ckindx(iwrk, rwrk, nelements, nspecies, nreactions, nfit)
 
     allocate(elem_names(nelements))
