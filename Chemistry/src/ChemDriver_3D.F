@@ -1275,7 +1275,7 @@ c                     FIRST = .TRUE.
       integer open_vode_failure_file
       external conpFY_sdc, CONPJ_FILE, open_vode_failure_file
       integer i, j, k, m, MF, ISTATE, lout, ITOL
-      integer nsubchem, nsub, node, strang_fix, Niter
+      integer nsubchem, nsub, node, strang_fix, Niter, nfails
       character*(maxspnml) name
       REAL_T RTOL, ATOL(maxspec+2), ATOLEPS, TT1, TT2, RU, RUC, P1atm
       REAL_T Y(maxspec), hmix_ck, Z(maxspec+2), ZP(maxspec+2), Yold(maxspec)
@@ -1318,6 +1318,8 @@ c
          nsub  = 1
          dtloc = dt
       endif
+
+      nfails = 0
 
 !$omp parallel
       !
@@ -1400,6 +1402,10 @@ c
                      FuncCount(i,j,k)   = 0
                      TT1save            = TT1
                      TT2                = TT1 + dtloc
+
+!$omp critical(failures)
+                     nfails = nfails + 1
+!$omp end critical(failures)
 
 #if !defined(BL_USE_DOUBLE)
                      CALL SVODE
@@ -1494,9 +1500,13 @@ c
             end do
          end do
       end do
-
 !$omp end do
 !$omp end parallel
+
+      if (nfails .gt. 0) then
+         print*, '*** DVODE failures for last chem block: ', nfails; call flush(6)
+      end if
+
       end
 #endif
 #endif
