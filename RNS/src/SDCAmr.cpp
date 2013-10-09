@@ -82,16 +82,17 @@ void mlsdc_amr_interpolate(void *F, void *G, sdc_state *state, void *ctxF, void 
 
     BoxLib::setBC(finefab.box(), levelF.Domain(), 0, 0, ncomp, bcs, bcr);
 
+    Geometry fine_geom(finefab.box());
     map.interp(crsefab, 0, finefab, 0, ncomp, finefab.box(), fine_ratio,
-               levelG.Geom(), levelF.Geom(), bcr, 0, 0);
+               levelG.Geom(), fine_geom, bcr, 0, 0);
 
     UF[mfi].copy(finefab);
   }
 
   levelF.fill_boundary(UF, state->t, RNS::use_FillBoundary);
 
-  cout << "INTERPOLATING: " << UF.max(0) << " " << UF.min(0) << endl;
-  dzmq_send_mf(UF, 1);
+  // cout << "INTERPOLATING: " << UF.max(0) << " " << UF.min(0) << endl;
+  // dzmq_send_mf(UF, 1);
 }
 
 
@@ -111,8 +112,8 @@ void mlsdc_amr_restrict(void *F, void *G, sdc_state *state, void *ctxF, void *ct
   levelG.avgDown(UG, UF);
   if (state->kind == SDC_SOLUTION) levelG.fill_boundary(UG, state->t, RNS::use_FillBoundary);
 
-  cout << "RESTRICTING" << endl;
-  dzmq_send_mf(UG, 1);
+  // cout << "RESTRICTING" << endl;
+  // dzmq_send_mf(UG, 1);
 }
 
 END_EXTERN_C
