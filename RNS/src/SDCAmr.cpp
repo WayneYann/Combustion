@@ -150,10 +150,19 @@ void SDCAmr::timeStep (int  level,
   // spread and iterate (XXX: spread from qend if step>0)
   sdc_mg_spread(&mg, time, dtLevel(0), 0);
   for (int k=0; k<max_iters; k++) {
-    if (verbose > 0 && ParallelDescriptor::IOProcessor())
-      std::cout << "MLSDC iteration: " << k << std::endl;
+    // if (verbose > 0 && ParallelDescriptor::IOProcessor())
+    //   std::cout << "MLSDC iteration: " << k << std::endl;
     sdc_mg_sweep(&mg, time, dt_level[0], 0);
-    // XXX: echo residual...
+    // echo residuals...
+    if (verbose > 0 && ParallelDescriptor::IOProcessor()) {
+
+      for (int lev=0; lev<=finest_level; lev++) {
+        int nnodes = mg.sweepers[lev]->nset->nnodes;
+        MultiFab& R = *((MultiFab*) mg.sweepers[lev]->nset->R[nnodes-2]);
+        cout << "MLSDC iter: " << k << ", level: " << lev 
+             << ", res norm0: " << R.norm0() << ", res norm2: " << R.norm2() << endl;
+      }
+    }
   }
 
   // grab final solution
@@ -239,7 +248,7 @@ SDCAmr::SDCAmr ()
   if (!ppsdc.query("max_iters", max_iters)) max_iters = 22;
   if (!ppsdc.query("max_trefs", max_trefs)) max_trefs = 3;
 
-  //sdc_log_set_stdout(SDC_LOG_DEBUG);
+  //  sdc_log_set_stdout(SDC_LOG_DEBUG);
   sdc_mg_build(&mg, max_level+1);
 
   sweepers.resize(max_level+1);
