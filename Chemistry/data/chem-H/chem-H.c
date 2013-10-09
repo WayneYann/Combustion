@@ -262,6 +262,7 @@ void equilibriumConstants(double * restrict  kc, double * restrict  g_RT, double
 void productionRate(double * restrict  wdot, double * restrict  sc, double T);
 void progressRate(double * restrict  qdot, double * restrict  speciesConc, double T);
 void progressRateFR(double * restrict  q_f, double * restrict  q_r, double * restrict  speciesConc, double T);
+void CKINIT();
 void CKINDX(int * iwrk, double * restrict rwrk, int * mm, int * kk, int * ii, int * nfit );
 void CKXNUM(char * line, int * nexp, int * lout, int * nval, double * restrict  rval, int * kerr, int lenline);
 void CKSNUM(char * line, int * nexp, int * lout, char * kray, int * nn, int * knum, int * nval, double * restrict  rval, int * kerr, int lenline, int lenkray);
@@ -360,6 +361,13 @@ static const double imw[9] = {
     1.0 / 33.006770,  /*HO2 */
     1.0 / 34.014740,  /*H2O2 */
     1.0 / 28.013400};  /*N2 */
+
+
+/* Initializes static database */
+void CKINIT()
+{
+    return;
+}
 
 
 /*A few mechanism parameters */
