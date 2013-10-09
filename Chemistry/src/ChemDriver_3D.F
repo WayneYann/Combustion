@@ -1331,10 +1331,10 @@ c
       !
       ! The following are in /sdc_function/ :
       !
-      !    c_0, c_1, rhoH_INIT, T_cell, rhoY_INIT
+      !   c_0,c_1,rhoH_INIT,T_cell,rhoY_INIT,negative_Y_test
       !
-!$omp do private(i,j,k,strang_fix,negative_Y_test,TT1,ISTATE)
-!$omp&private(rhoYtemp,Z,rho,sum,rhoInv,lout,name,Y,node)
+!$omp do private(i,j,k,strang_fix,TT1,ISTATE,Y,node)
+!$omp&private(rhoYtemp,Z,rho,sum,rhoInv,lout,name)
 !$omp&private(TT1save,TT2,m,Yold,rhooldInv) schedule(dynamic,1)
       do k=lo(3),hi(3)
          do j=lo(2),hi(2)
