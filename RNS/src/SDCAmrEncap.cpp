@@ -11,7 +11,11 @@ BEGIN_EXTERN_C
 void *mf_encap_create(int type, void *encap_ctx)
 {
   mf_encap* ctx = (mf_encap*) encap_ctx;
-  return new MultiFab(*ctx->ba, ctx->ncomp, ctx->ngrow);
+  if (type == SDC_SOLUTION) {
+    return new MultiFab(*ctx->ba, ctx->ncomp, ctx->ngrow);
+  } else {
+    return new MultiFab(*ctx->ba, ctx->ncomp, 0);
+  }
 }
 
 void mf_encap_destroy(void *sol)
@@ -23,21 +27,13 @@ void mf_encap_destroy(void *sol)
 void mf_encap_setval(void *sol, sdc_dtype val)
 {
   MultiFab& mf = *((MultiFab*) sol);
-
-  // XXX: does this set ghost cells too?
-  // wz: No.  To set ghost cells to, do mf.setVal(val,mf.nGrow());
-  mf.setVal(val);
+  mf.setVal(val, mf.nGrow());
 }
 
 void mf_encap_copy(void *dstp, const void *srcp)
 {
   MultiFab& dst = *((MultiFab*) dstp);
   MultiFab& src = *((MultiFab*) srcp);
-
-  // XXX: does this copy ghost cells too?
-  // wz: Yes, if the overlap of dst and src contains ghost cells.  
-  //     dst[mfi] is a FArrayBox, which is derived from BaseFab, 
-  //     which does not have the concept of ghostcells.
   for (MFIter mfi(dst); mfi.isValid(); ++mfi)
     dst[mfi].copy(src[mfi]);
 }
@@ -46,9 +42,6 @@ void mf_encap_saxpy(void *yp, sdc_dtype a, void *xp)
 {
   MultiFab& y = *((MultiFab*) yp);
   MultiFab& x = *((MultiFab*) xp);
-
-  // XXX: does this do ghost cells too?
-  // wz: Yes, if the overlap of x and y contains ghost cells.  
   for (MFIter mfi(y); mfi.isValid(); ++mfi)
     y[mfi].saxpy(a, x[mfi]);
 }
@@ -60,7 +53,7 @@ sdc_encap* SDCAmr::build_encap(int lev)
 {
   const DescriptorList& dl = getLevel(lev).get_desc_lst();
 
-  assert(dl.size() == 1);	// XXX
+  assert(dl.size() == 1);	// valid for RNS
   
   mf_encap* ctx = new mf_encap;
   ctx->ba    = &boxArray(lev);

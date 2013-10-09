@@ -51,17 +51,7 @@ public:
 
   virtual void regrid (int  lbase,
 		       Real time,
-		       bool initial = false) {
-    Amr::regrid(lbase, time, initial);
-    rebuild_mlsdc();
-  }
-
-  virtual void initialInit (Real strt_time, Real stop_time) {
-    Amr::initialInit(strt_time, stop_time);
-    //    rebuild_mlsdc();
-  }
-
-
+		       bool initial = false);
 };
 
 #endif
