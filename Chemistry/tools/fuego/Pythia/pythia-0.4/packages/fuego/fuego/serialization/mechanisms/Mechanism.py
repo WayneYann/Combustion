@@ -122,7 +122,69 @@ class Mechanism(object):
 
 
     def reaction(self, species=None, id=None):
+        if not self._sorted:
+            print '*** WARNING: reactions have not been sorted'
         return self._reactions.find(species, id)
+
+
+    def _sort_reactions(self):
+        n = [0]
+        rs = []
+        rs_unsorted = self._reactions.find()
+        i = 0
+        # troe
+        for r in rs_unsorted:
+            if r not in rs:
+                if r.low and r.troe and not r.rev: 
+                    i+=1
+                    r.id = i
+                    rs.append(r)
+        n.append(i)
+        # sri
+        for r in rs_unsorted:
+            if r not in rs:
+                if r.low and r.sri and not r.rev: 
+                    i+=1
+                    r.id = i
+                    rs.append(r)
+        n.append(i)
+        # lindemann
+        for r in rs_unsorted:
+            if r not in rs:
+                if r.low and not r.rev: 
+                    i+=1
+                    r.id = i
+                    rs.append(r)
+        n.append(i)
+        # three-body:
+        for r in rs_unsorted:
+            if r not in rs:
+                if r.thirdBody and not r.low and not r.rev: 
+                    i+=1
+                    r.id = i
+                    rs.append(r)
+        n.append(i)
+        # simplest case
+        for r in rs_unsorted:
+            if r not in rs:
+                if not r.rev and not r.low and not r.thirdBody: 
+                    i+=1
+                    r.id = i
+                    rs.append(r)
+        n.append(i)
+        # everything else
+        for r in rs_unsorted:
+            if r not in rs:
+                i+=1
+                r.id = i
+                rs.append(r)
+        n.append(i)
+
+        for r in rs:
+            self._reactions.replace2(r,r.id-1,r)
+        self._sorted = True
+
+        return n
 
 
     # other methods  
@@ -143,6 +205,8 @@ class Mechanism(object):
         self._thermoRange = ()
 
         self._info = journal.debug("fuego.serialization")
+
+        self._sorted = False
         
         return
 

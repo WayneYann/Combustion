@@ -27,6 +27,9 @@ class EntitySet:
         self._index[key] = newEntity
         return
 
+    def replace2(self, key, i, newEntity):
+        self._entities[i] = newEntity
+        self._index[key] = newEntity
 
     def size(self):
         return len(self._entities)
