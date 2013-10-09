@@ -22,7 +22,7 @@ CHEMISTRY_MODEL = NULL
 Bpack   := ./Make.package
 Blocs   := .
 
-ZMQ = $(HOME)/anaconda
+#ZMQ = $(HOME)/anaconda
 ifdef ZMQ
   cEXE_sources += zmq.c
 endif

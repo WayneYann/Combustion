@@ -45,10 +45,7 @@ void dzmq_send_mf(MultiFab& U, int level, int wait)
     fgets(buf, 8, stdin);
   }
 }
-#else
-void dzmq_send_mf(MultiFab& U, int wait) { }
 #endif
-
 
 /*
  * Spatial interpolation is done by setting midData of the fine and
@@ -91,10 +88,11 @@ void mlsdc_amr_interpolate(void *F, void *G, sdc_state *state, void *ctxF, void 
   }
 
   levelF.fill_boundary(UF, state->t, RNS::use_FillBoundary);
-  // levelF.fill_boundary(UF, state->t, RNS::use_FillCoarsePatch);
 
-  // cout << "INTERPOLATING: " << UF.max(0) << " " << UF.min(0) << endl;
-  // dzmq_send_mf(UF, levelF.Level(), 1);
+#ifdef ZMQ
+  cout << "INTERPOLATE" << endl;
+  dzmq_send_mf(UF, levelF.Level(), 1);
+#endif
 }
 
 
@@ -109,13 +107,18 @@ void mlsdc_amr_restrict(void *F, void *G, sdc_state *state, void *ctxF, void *ct
   RNS& levelF  = *((RNS*) ctxF);
   RNS& levelG  = *((RNS*) ctxG);
 
-  // XXX: will this do the right thing for FAS corrections?
-  if (state->kind == SDC_SOLUTION) levelF.fill_boundary(UF, state->t, RNS::use_FillBoundary);
-  levelG.avgDown(UG, UF);
-  if (state->kind == SDC_SOLUTION) levelG.fill_boundary(UG, state->t, RNS::use_FillBoundary);
+  if (state->kind == SDC_SOLUTION) 
+    levelF.fill_boundary(UF, state->t, RNS::use_FillBoundary);
 
-  // cout << "RESTRICTING" << endl;
-  // dzmq_send_mf(UG, levelG.Level(), 1);
+  levelG.avgDown(UG, UF);
+
+  if (state->kind == SDC_SOLUTION) 
+    levelG.fill_boundary(UG, state->t, RNS::use_FillBoundary);
+
+#ifdef ZMQ
+  cout << "RESTRICT" << endl;
+  dzmq_send_mf(UG, levelG.Level(), 1);
+#endif
 }
 
 END_EXTERN_C
@@ -127,9 +130,9 @@ void SDCAmr::timeStep (int  level,
                          int  niter,
                          Real stop_time)
 {
-  if (level != 0) {
-    cout << "NOT ON LEVEL 0" << endl;
-  }
+  BL_ASSERT(level == 0);
+
+  if (sweepers[0] == NULL) rebuild_mlsdc();
 
   // set intial conditions...
   for (int lev=0; lev<=finest_level; lev++) {
@@ -144,12 +147,13 @@ void SDCAmr::timeStep (int  level,
     }
   }
 
-  // spread and iterate
+  // spread and iterate (XXX: spread from qend if step>0)
   sdc_mg_spread(&mg, time, dtLevel(0), 0);
   for (int k=0; k<max_iters; k++) {
     if (verbose > 0 && ParallelDescriptor::IOProcessor())
       std::cout << "MLSDC iteration: " << k << std::endl;
     sdc_mg_sweep(&mg, time, dt_level[0], 0);
+    // XXX: echo residual...
   }
 
   // grab final solution
@@ -161,9 +165,6 @@ void SDCAmr::timeStep (int  level,
       MultiFab& Unew = amrlevel.get_new_data(st);
       MultiFab& Uend = *((MultiFab*)mg.sweepers[lev]->nset->Q[nnodes-1]);
       Unew.copy(Uend);
-
-      // cout << "Uend " << lev << endl;
-      // dzmq_send_mf(Uend, 1);
     }
   }
 
@@ -177,7 +178,6 @@ void SDCAmr::timeStep (int  level,
               << level
               << std::endl;
   }
-
 
   if (writePlotNow()) writePlotFile();
 }
@@ -239,7 +239,7 @@ SDCAmr::SDCAmr ()
   if (!ppsdc.query("max_iters", max_iters)) max_iters = 22;
   if (!ppsdc.query("max_trefs", max_trefs)) max_trefs = 3;
 
-  sdc_log_set_stdout(SDC_LOG_DEBUG);
+  //sdc_log_set_stdout(SDC_LOG_DEBUG);
   sdc_mg_build(&mg, max_level+1);
 
   sweepers.resize(max_level+1);
