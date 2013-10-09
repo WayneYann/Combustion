@@ -1295,17 +1295,11 @@ C                          Z(K+1) = RhoH    [MKS]
       
       REAL_T RHO_MKS, H, WDOT_CGS(maxspec), THFAC, HMIX_MKS, RINV_MKS
       REAL_T Y(maxspec), CONC_CGS(maxspec), HMIX_CGS, T
-      integer K,m
+      integer K,m,Niter
 
-C     Needed to compute T from h
-      REAL_T HtoTerrMAX
-      integer HtoTiterMAX, Niter
-      parameter (HtoTerrMAX = BL_REAL_E(7.8,-12))
-      parameter (HtoTiterMAX = 20)
-      REAL_T res(0:HtoTiterMAX-1)
-
-      REAL_T RHO_CGS, RINV_CGS
-
+      REAL_T,  parameter :: HtoTerrMAX = BL_REAL_E(7.8,-12)
+      integer, parameter :: HtoTiterMAX = 20
+      REAL_T res(0:HtoTiterMAX-1), RHO_CGS, RINV_CGS
 C
 C     Variables in Z are:  Z(1:K) = rhoY(K)
 C                          Z(K+1) = RhoH
@@ -1499,45 +1493,42 @@ c     Error condition....dump state and bail out
       subroutine FORT_TfromHYpt(T,Hin,Y,errMax,NiterMAX,res,Niter)
       implicit none
 #include "cdwrk.H"
-      REAL_T T,Y(*),H,Hin
-      REAL_T TMIN,TMAX,errMAX
-      integer NiterMAX,Niter,n,NiterDAMP, Discont_NiterMAX
-      parameter (TMIN=250, TMAX=5000, Discont_NiterMAX=100)
+      REAL_T T,Y(*),Hin,errMax
+
+      integer NiterMAX,Niter,n,NiterDAMP,ihitlo,ihithi,j
       REAL_T  T0,cp,cv,dH,temp,RoverWbar,Wbar,RU,RUC,P1ATM
-      REAL_T res(0:NiterMAX-1),dT, Htarg
-      logical out_of_bounds, converged, soln_bad, stalled, discont
-      REAL_T HMIN,cpMIN,HMAX,cpMAX
-      integer ihitlo,ihithi,j
-      REAL_T old_T, old_H, Tsec, Hsec
+      REAL_T  res(0:NiterMAX-1),dT, Htarg,HMIN,cpMIN,HMAX,cpMAX
+      logical converged, soln_bad, stalled, discont
+      REAL_T  H, old_T, old_H, Tsec, Hsec
 
-      out_of_bounds(temp) = (temp.lt.TMIN-one) .or. (temp.gt.TMAX)
+      integer, parameter :: Discont_NiterMAX = 100
+      REAL_T,  parameter :: TMIN = 250.d0, TMAX = 5000.d0
 
-      NiterDAMP = NiterMAX
       if ((T.GE.TMIN).and.(T.LE.TMAX)) then
          T0 = T
       else
          T0 = half*(TMIN+TMAX)
-         T = T0
+         T  = T0
       end if
-      Niter = 0
-      soln_bad = .FALSE.
-      Htarg = Hin * 1.d4
-      ihitlo = 0
-      ihithi = 0
+
+      NiterDAMP = NiterMAX
+      Niter     = 0
+      soln_bad  = .FALSE.
+      Htarg     = Hin * 1.d4
+      ihitlo    = 0
+      ihithi    = 0
 
       CALL CKHBMS(T,Y,IWRK(ckbi),RWRK(ckbr),H)
 
       old_T = T
       old_H = H
 
-      dH = two*ABS(H - Htarg)/(one + ABS(H) + ABS(Htarg))
+      dH         = two*ABS(H - Htarg)/(one + ABS(H) + ABS(Htarg))
       res(Niter) = dH
-      converged = dH.le.errMAX
-      stalled = .false.
+      converged  = dH.le.errMAX
+      stalled    = .false.
 
-      do while ((.not.converged) .and. 
-     &     (.not.stalled) .and.
-     &     (.not.soln_bad))
+      do while ((.not.converged) .and. (.not.stalled) .and. (.not.soln_bad))
 
          CALL CKCPBS(T,Y,IWRK(ckbi),RWRK(ckbr),cp)
          dT = (Htarg - H)/cp
@@ -1551,10 +1542,10 @@ c     Error condition....dump state and bail out
          else
             T = T + dT
          end if
-         soln_bad = out_of_bounds(T)
+         soln_bad = (T.lt.TMIN-one) .or. (T.gt.TMAX)
          if (soln_bad) then
             Niter = -1
-            goto 100
+            exit
          else
             old_H = H
             CALL CKHBMS(T,Y,IWRK(ckbi),RWRK(ckbr),H)
@@ -1567,11 +1558,8 @@ c     Error condition....dump state and bail out
             if(abs(T-1000.d0).le.1.d-3.and. dH.le.1.d-5)then
               converged = .true.
             else  
-#if 0
-              write(6,*)" missing my test",T,dH
-#endif
               Niter = -2
-              goto 100
+              exit
             endif
          endif
 
@@ -1599,10 +1587,10 @@ c     values.
             do while (.not. stalled)
                dT = - (H - Htarg) * (old_T - T)/(old_H - H)
                Tsec = T + dT
-               soln_bad = out_of_bounds(Tsec)
+               soln_bad = (Tsec.lt.TMIN-one) .or. (Tsec.gt.TMAX)
                if (soln_bad) then
                   Niter = -3
-                  goto 100
+                  exit
                endif
                CALL CKHBMS(Tsec,Y,IWRK(ckbi),RWRK(ckbr),Hsec)
                if ( (Hsec-Htarg)*(Htarg-H) .gt. 0.d0 ) then
@@ -1612,23 +1600,20 @@ c     values.
                H = Hsec
                T = Tsec
                stalled = (2*ABS(old_T-T)/(old_T+T).le.errMAX)
-c               stalled = (ABS(dT).le.errMAX)
                Niter = Niter + 1
                if (Niter.gt.NiterMAX+Discont_NiterMAX) then
                   Niter = -2
-                  goto 100
+                  exit
                endif
             enddo
             converged = .true.
          endif
       end do
 
-      return
+      if (converged) return
 c
 c     Error condition....dump state and bail out
 c
- 100  continue
-
 #if 0
       write(6,997) 'T from (H,Y): failed'
       write(6,997) 'iterations tried = ',Niter
@@ -1645,10 +1630,9 @@ c
       do n = 0,NiterMAX-1
          write(6,998) '  ',res(n)
       end do
-#endif
-
  997  format(a,3(i4,a))
  998  format(a,d21.12)
+#endif
       end
   
       integer function open_vode_failure_file ()

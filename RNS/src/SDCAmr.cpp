@@ -48,12 +48,13 @@ void dzmq_send_mf(MultiFab& U, int wait)
 void dzmq_send_mf(MultiFab& U, int wait) { }
 #endif
 
+
 /*
  * Spatial interpolation is done by setting midData of the fine and
  * coarse RNS levels and subsequently using FillPatchIterator to do
  * the interpolation for us.
  */
-void mlsdc_amr_interpolate(void *F, void *G, void *ctxF, void *ctxG)
+void mlsdc_amr_interpolate(void *F, void *G, sdc_state *state, void *ctxF, void *ctxG)
 {
   MultiFab& UF = *((MultiFab*) F);
   MultiFab& UG = *((MultiFab*) G);
@@ -61,29 +62,37 @@ void mlsdc_amr_interpolate(void *F, void *G, void *ctxF, void *ctxG)
   RNS& levelG  = *((RNS*) ctxG);
 
   const DescriptorList& dl = levelF.get_desc_lst();
-  BL_ASSERT(dl.size() == 1);
-
-  StateData& stateF = levelF.get_state_data(0);
-  StateData& stateG = levelG.get_state_data(0);
-
-  Real time = 0.5 * (stateF.curTime() + stateF.curTime());
-  stateG.setMidData(&UG, time);
-  stateF.setMidData(&UF, time);
-
-  cout << "INTERPOLATING: " << UG.max(0) << " " << UG.min(0) << endl;
-
   int ncomp = dl[0].nComp();
-  int ngrow = dl[0].nExtra();
 
-  // XXX: this isn't working as expected...
-  for (FillPatchIterator fpi(levelF, UF, ngrow, time, 0, 0, ncomp); fpi.isValid(); ++fpi) {
-    UF[fpi].copy(fpi());
+  const IntVect fine_ratio = levelG.fineRatio();
+  const Array<BCRec>& bcs  = dl[0].getBCs();
+
+  levelG.fill_boundary(UG, state->t, RNS::use_FillBoundary);
+
+  // now interpolate to fine
+  for (MFIter mfi(UF); mfi.isValid(); ++mfi) {
+    Interpolater& map = *dl[0].interp();
+
+    Array<BCRec> bcr(ncomp);
+    FArrayBox    finefab(UF[mfi].box(), ncomp);
+    FArrayBox    crsefab(map.CoarseBox(finefab.box(),fine_ratio), ncomp);
+
+    // fill crsefab via copy on intersect
+    for (MFIter mfiC(UG); mfiC.isValid(); ++mfiC) crsefab.copy(UG[mfiC]);
+
+    BoxLib::setBC(finefab.box(), levelF.Domain(), 0, 0, ncomp, bcs, bcr);
+
+    Geometry fine_geom(finefab.box());
+    map.interp(crsefab, 0, finefab, 0, ncomp, finefab.box(), fine_ratio,
+               levelG.Geom(), fine_geom, bcr, 0, 0);
+
+    UF[mfi].copy(finefab);
   }
 
-  cout << "INTERPOLATING: " << UF.max(0) << " " << UF.min(0) << endl;
+  levelF.fill_boundary(UF, state->t, RNS::use_FillBoundary);
 
-  cout << "INTERPOLATING" << endl;
-  dzmq_send_mf(UF, 1);
+  // cout << "INTERPOLATING: " << UF.max(0) << " " << UF.min(0) << endl;
+  // dzmq_send_mf(UF, 1);
 }
 
 
@@ -91,13 +100,17 @@ void mlsdc_amr_interpolate(void *F, void *G, void *ctxF, void *ctxG)
  * Spatial restriction is done by calling the coarse RNS level's
  * avgDown routine.
  */
-void mlsdc_amr_restrict(void *F, void *G, void *ctxF, void *ctxG)
+void mlsdc_amr_restrict(void *F, void *G, sdc_state *state, void *ctxF, void *ctxG)
 {
   MultiFab& UF = *((MultiFab*) F);
   MultiFab& UG = *((MultiFab*) G);
-  //  RNS& levelF  = *((RNS*) ctxF);
+  RNS& levelF  = *((RNS*) ctxF);
   RNS& levelG  = *((RNS*) ctxG);
+
+  // XXX: will this do the right thing for FAS corrections?
+  if (state->kind == SDC_SOLUTION) levelF.fill_boundary(UF, state->t, RNS::use_FillBoundary);
   levelG.avgDown(UG, UF);
+  if (state->kind == SDC_SOLUTION) levelG.fill_boundary(UG, state->t, RNS::use_FillBoundary);
 
   // cout << "RESTRICTING" << endl;
   // dzmq_send_mf(UG, 1);
