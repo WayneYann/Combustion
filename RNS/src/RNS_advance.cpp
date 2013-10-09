@@ -212,8 +212,7 @@ RNS::dUdt(MultiFab& U, MultiFab& Uprime, Real time, int fill_boundary_type,
 void
 RNS::dUdt_SDC(MultiFab& U, MultiFab& Uprime, Real time, Real dt)
 {
-  int fill_boundary_type = (level == 0) ? use_FillBoundary : use_FillCoarsePatch;
-  dUdt(U, Uprime, time, fill_boundary_type, 0, 0, dt);
+  dUdt(U, Uprime, time, use_FillBoundary, 0, 0, dt);
 }
 
 
@@ -351,7 +350,7 @@ RNS::advance_AD(MultiFab& Unew, Real time, Real dt)
 BEGIN_EXTERN_C
 
 #ifdef ZMQ
-void dzmq_send_mf(MultiFab& U, int wait);
+void dzmq_send_mf(MultiFab& U, int level, int wait);
 #endif
 
 void sdc_feval(void *F, void *Q, double t, sdc_state *state, void *ctx)
@@ -360,8 +359,8 @@ void sdc_feval(void *F, void *Q, double t, sdc_state *state, void *ctx)
   MultiFab& U      = *((MultiFab*) Q);
   MultiFab& Uprime = *((MultiFab*) F);
 #ifdef ZMQ
-  cout << "FEVAL" << endl;
-  dzmq_send_mf(U, 1);
+  // cout << "FEVAL" << endl;
+  // dzmq_send_mf(U, rns.Level(), 1);
 #endif
   rns.dUdt_SDC(U, Uprime, t, state->dt);
 }

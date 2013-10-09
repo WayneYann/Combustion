@@ -28,12 +28,13 @@ void *zmqctx = 0;
 void *dzmq_connect();
 void dzmq_send_buf(void *ptr, const char *buf, int n);
 
-void dzmq_send_mf(MultiFab& U, int wait)
+void dzmq_send_mf(MultiFab& U, int level, int wait)
 {
   if (!zmqctx) zmqctx = dzmq_connect();
 
   for (MFIter mfi(U); mfi.isValid(); ++mfi) {
     std::ostringstream buf;
+    buf << level;
     U[mfi].writeOn(buf, 0, 1);
     dzmq_send_buf(zmqctx, buf.str().c_str(), buf.str().length());
   }
@@ -90,9 +91,10 @@ void mlsdc_amr_interpolate(void *F, void *G, sdc_state *state, void *ctxF, void 
   }
 
   levelF.fill_boundary(UF, state->t, RNS::use_FillBoundary);
+  // levelF.fill_boundary(UF, state->t, RNS::use_FillCoarsePatch);
 
   // cout << "INTERPOLATING: " << UF.max(0) << " " << UF.min(0) << endl;
-  // dzmq_send_mf(UF, 1);
+  // dzmq_send_mf(UF, levelF.Level(), 1);
 }
 
 
@@ -113,7 +115,7 @@ void mlsdc_amr_restrict(void *F, void *G, sdc_state *state, void *ctxF, void *ct
   if (state->kind == SDC_SOLUTION) levelG.fill_boundary(UG, state->t, RNS::use_FillBoundary);
 
   // cout << "RESTRICTING" << endl;
-  // dzmq_send_mf(UG, 1);
+  // dzmq_send_mf(UG, levelG.Level(), 1);
 }
 
 END_EXTERN_C
@@ -137,6 +139,8 @@ void SDCAmr::timeStep (int  level,
       MultiFab& Unew = amrlevel.get_new_data(st);
       MultiFab& U0   = *((MultiFab*) mg.sweepers[lev]->nset->Q[0]);
       U0.copy(Unew);
+      RNS& levelF = dynamic_cast<RNS&>(amrlevel);
+      levelF.fill_boundary(U0, time, (lev > 0) ? RNS::use_FillCoarsePatch : RNS::use_FillBoundary);
     }
   }
 
@@ -208,9 +212,6 @@ void SDCAmr::rebuild_mlsdc()
 
   // rebuild
   for (int lev=0; lev<=finest_level; lev++) {
-    // sdc_level_ctx* ctx = new sdc_level_ctx;
-    // ctx->amr   = this;
-    // ctx->level = lev;
     encaps[lev]   = build_encap(lev);
     sweepers[lev] = rns_sdc_build_level(lev);
     sweepers[lev]->nset->ctx   = &getLevel(lev);
@@ -224,13 +225,13 @@ void SDCAmr::rebuild_mlsdc()
     std::cout << "Rebuilt MLSDC: " << mg.nlevels << std::endl;
 }
 
-// void SDCAmr::regrid (int  lbase,
-// 		     Real time,
-// 		     bool initial)
-// {
-//   Amr::regrid(lbase, time, initial);
-//   rebuild_mlsdc();
-// }
+void SDCAmr::regrid (int  lbase,
+		     Real time,
+		     bool initial)
+{
+  Amr::regrid(lbase, time, initial);
+  rebuild_mlsdc();
+}
 
 SDCAmr::SDCAmr ()
 {
