@@ -1110,10 +1110,9 @@ HeatTransfer::set_typical_values (bool restart)
             
             if (ParallelDescriptor::IOProcessor())
             {
-                
                 const std::string tvfile = parent->theRestartFile() + "/" + typical_values_filename;
                 std::ifstream tvis;
-                tvis.open(tvfile.c_str(),std::ios::in);
+                tvis.open(tvfile.c_str(),std::ios::in|std::ios::binary);
                 
                 if (tvis.good()) {
                     FArrayBox tvfab;

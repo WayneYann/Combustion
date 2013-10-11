@@ -1240,10 +1240,9 @@ HeatTransfer::set_typical_values(bool restart)
             
             if (ParallelDescriptor::IOProcessor())
             {
-                
                 const std::string tvfile = parent->theRestartFile() + "/" + typical_values_filename;
                 std::ifstream tvis;
-                tvis.open(tvfile.c_str(),std::ios::in);
+                tvis.open(tvfile.c_str(),std::ios::in|std::ios::binary);
                 
                 if (tvis.good()) {
                     FArrayBox tvfab;
@@ -1339,7 +1338,7 @@ HeatTransfer::reset_typical_values(const MultiFab& S)
     Real thisMin = S.min(i);
     Real newVal = std::abs(thisMax - thisMin);
     if (newVal > 0) {
-      if ( (i>=first_spec && i<=last_spec) || i==RhoH) {
+      if ( (i>=first_spec && i<=last_spec) ) {
         typical_values[i] = newVal / typical_values[Density];
       }
       else {
@@ -1349,7 +1348,8 @@ HeatTransfer::reset_typical_values(const MultiFab& S)
   }
 
   // If typVals specified in inputs, these take precedence componentwise
-  if (parent->levelSteps(0) == 0) {
+  if (parent->levelSteps(0) == 0)
+  {
     for (std::map<std::string,Real>::const_iterator it=typical_values_FileVals.begin(), 
 	   End=typical_values_FileVals.end(); it!=End; ++it) {
       int idx = getChemSolve().index(it->first);
