@@ -1899,7 +1899,7 @@ HeatTransfer::checkPoint (const std::string& dir,
         {
             const std::string tvfile = dir + "/" + typical_values_filename;
             std::ofstream tvos;
-            tvos.open(tvfile.c_str(),std::ios::out);
+            tvos.open(tvfile.c_str(),std::ios::out|std::ios::trunc|std::ios::binary);
             if (!tvos.good())
                 BoxLib::FileOpenFailed(tvfile);
             Box tvbox(IntVect(),(NUM_STATE-1)*BoxLib::BASISV(0));
@@ -9801,7 +9801,7 @@ HeatTransfer::writePlotFile (const std::string& dir,
 	std::string PrettyLine = "===============================================================================\n";
 
 	FullPathJobInfoFile += "/job_info";
-	jobInfoFile.open(FullPathJobInfoFile.c_str(), std::ios::out);	
+	jobInfoFile.open(FullPathJobInfoFile.c_str(), std::ios::out);
 
 	// job information
 	jobInfoFile << PrettyLine;
