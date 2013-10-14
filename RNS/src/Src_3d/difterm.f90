@@ -1,5 +1,6 @@
 module difterm_module
   implicit none
+  double precision, parameter :: twoThirds = 2.d0/3.d0
   private
   public :: difterm
 contains
@@ -318,15 +319,17 @@ contains
                 ! cell-avg-in-x and Gauss-point-in-y => xface and Gauss-point-in-y
                 call cellavg2face_1d(lo(1),hi(1)+1, Uag(:,j,n),g3lo(1),g3hi(1), &
                      Qf(:,j,n),Qflo(1),Qfhi(1))
-
-                ! cell-avg-in-x and Gauss-point-in-y => cell-center-in-x and Gauss-point-in-y
-                tlo(1) = lo(1)-2
-                tlo(2) = j
-                thi(1) = hi(1)+2
-                thi(2) = j
-                call cellavg2cc_3d(tlo,thi, Uag(:,:,n),g3lo,g3hi, &
-                     Qc(:,:,n),Qclo,Qchi,idir=1)
              end do
+          end do
+
+          tlo(1) = lo(1)-2
+          tlo(2) = lo(2)
+          thi(1) = hi(1)+2
+          thi(2) = hi(2)
+          do n=1,NVAR
+             ! cell-avg-in-x and Gauss-point-in-y => cell-center-in-x and Gauss-point-in-y
+             call cellavg2cc_3d(tlo,thi, Uag(:,:,n),g3lo,g3hi, &
+                  Qc(:,:,n),Qclo,Qchi,idir=1)
           end do
 
           tlo(1:2) = lo(1:2)
@@ -419,15 +422,17 @@ contains
                 ! cell-avg-in-y and Gauss-point-in-x => yface and Gauss-point-in-x
                 call cellavg2face_1d(lo(2),hi(2)+1, Uag(i,:,n),g3lo(2),g3hi(2), &
                      Qf(i,:,n),Qflo(2),Qfhi(2))
-
-                ! cell-avg-in-y and Gauss-point-in-x => cell-center-in-y and Gauss-point-in-x
-                tlo(1) = i
-                tlo(2) = lo(2)-2
-                thi(1) = i
-                thi(2) = hi(2)+2
-                call cellavg2cc_3d(tlo,thi, Uag(:,:,n),g3lo,g3hi, &
-                     Qc(:,:,n),Qclo,Qchi,idir=2)
              end do
+          end do
+
+          tlo(1) = lo(1)
+          tlo(2) = lo(2)-2
+          thi(1) = hi(1)
+          thi(2) = hi(2)+2
+          do n=1,NVAR
+             ! cell-avg-in-y and Gauss-point-in-x => cell-center-in-y and Gauss-point-in-x
+             call cellavg2cc_3d(tlo,thi, Uag(:,:,n),g3lo,g3hi, &
+                  Qc(:,:,n),Qclo,Qchi,idir=2)
           end do
 
           tlo(1:2) = lo(1:2)
@@ -483,7 +488,6 @@ contains
     double precision :: dudx, dudy, dudz, dvdx, dvdy, dwdx, dwdz, divu, rhoinv
     double precision :: dTdx, dXdx, Vd
     double precision, dimension(lo(1):hi(1)) :: dlnpdx, Vc
-    double precision, parameter :: twoThirds = 2.d0/3.d0
 
     do j=lo(2),hi(2)
        do i=lo(1),hi(1)
@@ -574,7 +578,6 @@ contains
     double precision :: dudx, dudy, dvdx, dvdy, dvdz, dwdy, dwdz, divu, rhoinv
     double precision :: dTdy, dXdy, Vd
     double precision, allocatable :: dlnpdy(:,:), Vc(:,:)
-    double precision, parameter :: twoThirds = 2.d0/3.d0
 
     allocate(dlnpdy(lo(1):hi(1),lo(2):hi(2)))
     allocate(    Vc(lo(1):hi(1),lo(2):hi(2)))
@@ -665,7 +668,7 @@ contains
     double precision, intent(inout) ::    f(flo:fhi,NVAR)
     double precision, intent(in) :: dxinv(3)
 
-    integer :: k, n
+    integer :: n
     integer :: Qclo(3), Qchi(3), Qflo(3), Qfhi(3), tlo(3), thi(3)
     double precision, allocatable :: Qc(:,:), Qf(:,:)  ! cell-center and face
     double precision, allocatable :: mu(:), xi(:), lam(:), Ddia(:,:)
@@ -750,7 +753,6 @@ contains
     double precision :: dudx, dudz, dvdy, dvdz, dwdx, dwdy, dwdz, divu, rhoinv
     double precision :: dTdz, dXdz, Vd
     double precision, dimension(lo:hi) :: dlnpdz, Vc
-    double precision, parameter :: twoThirds = 2.d0/3.d0
 
     do k=lo,hi
        ! viscous stress
@@ -763,9 +765,55 @@ contains
        rhoinv = 1.d0/Qf(k,QRHO)
        dudx = dxinv(1)*rhoinv*(dmdx(k,2)-Qf(k,QU)*dmdx(k,1))
        dwdx = dxinv(1)*rhoinv*(dmdx(k,3)-Qf(k,QW)*dmdx(k,1))
+       dvdy = dxinv(2)*rhoinv*(dmdy(k,2)-Qf(k,QV)*dmdy(k,1))
+       dwdy = dxinv(2)*rhoinv*(dmdy(k,3)-Qf(k,QW)*dmdy(k,1))
+       divu = dudx + dvdy + dwdz
+       tauxz = mu(k)*(dudz+dwdx)
+       tauyz = mu(k)*(dvdz+dwdy)
+       tauzz = mu(k)*(2.d0*dwdz-twoThirds*divu) + xi(k)*divu
+       flx(k,UMX)   = flx(k,UMX)   - fac*tauxz
+       flx(k,UMY)   = flx(k,UMY)   - fac*tauyz
+       flx(k,UMZ)   = flx(k,UMZ)   - fac*tauzz
+       flx(k,UEDEN) = flx(k,UEDEN) - fac* &
+            (tauxz*Qf(k,QU) + tauyz*Qf(k,QV) + tauzz*Qf(k,QW))
 
+       !thermal conduction
+       dTdz = dxinv(3) * (FD4(-2)*Qc(k-2,QTEMP) + FD4(-1)*Qc(k-1,QTEMP) &
+            + FD4(0)*Qc(k,QTEMP) + FD4(1)*Qc(k+1,QTEMP))
+       flx(k,UEDEN) = flx(k,UEDEN) - fac*lam(k)*dTdz
+
+       ! compute dpdz
+       dlnpdz(k) = dxinv(3) * (FD4(-2)*Qc(k-2,QPRES) + FD4(-1)*Qc(k-1,QPRES) &
+            + FD4(0)*Qc(k,QPRES) + FD4(1)*Qc(k+1,QPRES)) / Qf(k,QPRES)
+       Vc(k) = 0.d0
+    end do
+
+    do n=1,NSPEC
+       UYN = UFS+n-1
+       QYN = QFY+n-1
+       QXN = QFX+n-1
+       QHN = QFH+n-1
+       do k = lo, hi
+          dXdz = dxinv(3) * (FD4(-2)*Qc(k-2,QXN) + FD4(-1)*Qc(k-1,QXN) &
+               + FD4(0)*Qc(k,QXN) + FD4(1)*Qc(k+1,QXN))
+          Vd = -Ddia(k,n)*(dXdz + (Qf(k,QXN)-Qf(k,QYN))*dlnpdz(k))
+             
+          flx(k,UYN) = flx(k,UYN) + fac*Vd
+          Vc(k) = Vc(k) + Vd
+          flx(k,UEDEN) = flx(k,UEDEN) + fac*Vd*Qf(k,QHN)
+       end do
     end do
     
+    do n=1,NSPEC
+       UYN = UFS+n-1
+       QYN = QFY+n-1
+       QHN = QFH+n-1
+       do k = lo, hi
+          flx(k,UYN )  = flx(k,UYN  ) - (fac*Qf(k,QYN)*Vc(k))
+          flx(k,UEDEN) = flx(k,UEDEN) - (fac*Qf(k,QYN)*Vc(k))*Qf(k,QHN)
+       end do
+    end do
+
   end subroutine comp_diff_flux_z
 
 end module difterm_module

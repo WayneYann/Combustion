@@ -98,15 +98,17 @@ contains
              ! cell-avg-in-x and Gauss-point-in-y => xface and Gauss-point-in-y
              call cellavg2face_1d(lo(1),hi(1)+1, Uag(:,j,n),g3lo(1),g3hi(1), &
                   Qf(:,j,n),Qflo(1),Qfhi(1))
-
-             ! cell-avg-in-x and Gauss-point-in-y => cell-center-in-x and Gauss-point-in-y
-             tlo(1) = lo(1)-2
-             tlo(2) = j
-             thi(1) = hi(1)+2
-             thi(2) = j
-             call cellavg2cc_2d(tlo(1:2),thi(1:2), Uag(:,:,n),g3lo,g3hi, &
-                  Qc(:,:,n),Qclo(1:2),Qchi(1:2),idir=1)
           end do
+       end do
+
+       tlo(1) = lo(1)-2
+       tlo(2) = lo(2)
+       thi(1) = hi(1)+2
+       thi(2) = hi(2)
+       ! cell-avg-in-x and Gauss-point-in-y => cell-center-in-x and Gauss-point-in-y
+       do n=1,NVAR
+          call cellavg2cc_2d(tlo(1:2),thi(1:2), Uag(:,:,n),g3lo,g3hi, &
+               Qc(:,:,n),Qclo(1:2),Qchi(1:2),idir=1)
        end do
 
        tlo(1:2) = lo(1:2)
@@ -172,15 +174,17 @@ contains
              ! cell-avg-in-y and Gauss-point-in-x => yface and Gauss-point-in-x
              call cellavg2face_1d(lo(2),hi(2)+1, Uag(i,:,n),g3lo(2),g3hi(2), &
                   Qf(i,:,n),Qflo(2),Qfhi(2))
-
-             ! cell-avg-in-y and Gauss-point-in-x => cell-center-in-y and Gauss-point-in-x
-             tlo(1) = i
-             tlo(2) = lo(2)-2
-             thi(1) = i
-             thi(2) = hi(2)+2
-             call cellavg2cc_2d(tlo(1:2),thi(1:2), Uag(:,:,n),g3lo,g3hi, &
-                  Qc(:,:,n),Qclo(1:2),Qchi(1:2),idir=2)
           end do
+       end do
+
+       tlo(1) = lo(1)
+       tlo(2) = lo(2)-2
+       thi(1) = hi(1)
+       thi(2) = hi(2)+2
+       do n=1,NVAR
+          ! cell-avg-in-y and Gauss-point-in-x => cell-center-in-y and Gauss-point-in-x
+          call cellavg2cc_2d(tlo(1:2),thi(1:2), Uag(:,:,n),g3lo,g3hi, &
+               Qc(:,:,n),Qclo(1:2),Qchi(1:2),idir=2)
        end do
 
        tlo(1:2) = lo(1:2)
