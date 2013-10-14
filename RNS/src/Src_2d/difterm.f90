@@ -49,9 +49,6 @@ contains
     Qflo(1:2) = lo(1:2)
     Qfhi(1:2) = hi(1:2)+1
 
-    Qflo(1:2) = lo(1:2)
-    Qfhi(1:2) = hi(1:2)+1
-
     allocate(Qc  (Qclo(1):Qchi(1),Qclo(2):Qchi(2),QCVAR))
     allocate(Qf  (Qflo(1):Qfhi(1),Qflo(2):Qfhi(2),QFVAR))
     allocate(mu  (Qflo(1):Qfhi(1),Qflo(2):Qfhi(2)))

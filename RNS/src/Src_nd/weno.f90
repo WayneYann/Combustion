@@ -48,10 +48,18 @@ module weno_module
        (/ (9.d0-2.d0*sqrt(3.d0))/108.d0,  (-36.d0+13.d0*sqrt(3.d0))/54.d0,  &
        -12.d0*sqrt(3.d0)/27.d0,  (36.d0+13.d0*sqrt(3.d0))/54.d0,  -(9.d0+2.d0*sqrt(3.d0))/108.d0 /)
 
+
+  interface cellavg2gausspt_2d
+     module procedure cellavg2gausspt_2d_v1
+     module procedure cellavg2gausspt_2d_v2
+  end interface
+
+
   private
 
-  public :: weno5, cellavg2gausspt_1d, cellavg2face_1d, cellavg2gausspt_2d, &
-       cellavg2dergausspt_1d, cellavg2gausspt_3d
+  public :: weno5, cellavg2gausspt_1d, cellavg2gausspt_2d, cellavg2gausspt_2d_v1, &
+       cellavg2gausspt_2d_v2, cellavg2gausspt_3d, &
+       cellavg2dergausspt_1d, cellavg2dergausspt_2d, cellavg2face_1d
 
 contains
 
@@ -138,18 +146,7 @@ contains
     end do
   end subroutine cellavg2gausspt_1d
 
-  subroutine cellavg2face_1d(lo, hi, u, ulo, uhi, uf, flo, fhi)
-    integer, intent(in) :: lo, hi, ulo, uhi, flo, fhi
-    double precision, intent(in) ::  u(ulo:uhi)
-    double precision             :: uf(flo:fhi)
-    integer :: i
-    do i=lo,hi
-       uf(i) = cc4(-2)*u(i-2) + cc4(-1)*u(i-1) + cc4(0)*u(i) + cc4(1)*u(i+1)
-    end do
-  end subroutine cellavg2face_1d
-
-
-  subroutine cellavg2gausspt_2d(lo, hi, u, ulo, uhi, ug, glo, ghi)
+  subroutine cellavg2gausspt_2d_v1(lo, hi, u, ulo, uhi, ug, glo, ghi)
     integer, intent(in) :: lo(2), hi(2), ulo(2), uhi(2), glo(2), ghi(2)
     double precision, intent(in) :: u (ulo(1):uhi(1),ulo(2):uhi(2))
     double precision             :: ug(glo(1):ghi(1),glo(2):ghi(2),4)
@@ -174,19 +171,39 @@ contains
 
     deallocate(ugy)
 
-  end subroutine cellavg2gausspt_2d
+  end subroutine cellavg2gausspt_2d_v1
 
+  subroutine cellavg2gausspt_2d_v2(lo, hi, u, ulo, uhi, u1, u2, u3, u4, glo, ghi)
+    integer, intent(in) :: lo(2), hi(2), ulo(2), uhi(2), glo(2), ghi(2)
+    double precision, intent(in) :: u (ulo(1):uhi(1),ulo(2):uhi(2))
+    double precision             :: u1(glo(1):ghi(1),glo(2):ghi(2))
+    double precision             :: u2(glo(1):ghi(1),glo(2):ghi(2))
+    double precision             :: u3(glo(1):ghi(1),glo(2):ghi(2))
+    double precision             :: u4(glo(1):ghi(1),glo(2):ghi(2))
 
-  subroutine cellavg2dergausspt_1d(lo, hi, u, ulo, uhi, du1, du2, glo, ghi)
-    integer, intent(in) :: lo, hi, ulo, uhi, glo, ghi
-    double precision, intent(in) :: u(ulo:uhi)
-    double precision :: du1(glo:ghi), du2(glo:ghi)
-    integer :: i
-    do i=lo,hi
-       du1(i) = derg1(-2)*u(i-2) + derg1(-1)*u(i-1) + derg1(0)*u(i) + derg1(1)*u(i+1) + derg1(2)*u(i+2)
-       du2(i) = derg2(-2)*u(i-2) + derg2(-1)*u(i-1) + derg2(0)*u(i) + derg2(1)*u(i+1) + derg2(2)*u(i+2)
+    integer :: i, j
+    double precision, allocatable :: ugy(:,:,:)
+    
+    allocate(ugy(lo(1)-2:hi(1)+2,lo(2):hi(2),2))
+
+    do i=lo(1)-2,hi(1)+2
+       call cellavg2gausspt_1d(lo(2),hi(2), u(i,:), ulo(2),uhi(2), &
+            ugy(i,:,1), ugy(i,:,2), lo(2),hi(2))
     end do
-  end subroutine cellavg2dergausspt_1d
+
+    do j=lo(2),hi(2)
+       call cellavg2gausspt_1d(lo(1),hi(1), ugy(:,j,1), lo(1)-2,hi(1)+2, &
+            u1(:,j), u2(:,j), glo(1),ghi(1))
+    end do
+
+    do j=lo(2),hi(2)
+       call cellavg2gausspt_1d(lo(1),hi(1), ugy(:,j,2), lo(1)-2,hi(1)+2, &
+            u3(:,j), u4(:,j), glo(1),ghi(1))
+    end do
+
+    deallocate(ugy)
+
+  end subroutine cellavg2gausspt_2d_v2
 
 
   subroutine cellavg2gausspt_3d(lo, hi, u, ulo, uhi, ug, glo, ghi)
@@ -220,6 +237,81 @@ contains
     deallocate(ugz)
 
   end subroutine cellavg2gausspt_3d
+
+
+  subroutine cellavg2dergausspt_1d(lo, hi, u, ulo, uhi, du1, du2, glo, ghi)
+    integer, intent(in) :: lo, hi, ulo, uhi, glo, ghi
+    double precision, intent(in) :: u(ulo:uhi)
+    double precision :: du1(glo:ghi), du2(glo:ghi)
+    integer :: i
+    do i=lo,hi
+       du1(i) = derg1(-2)*u(i-2) + derg1(-1)*u(i-1) + derg1(0)*u(i) + derg1(1)*u(i+1) + derg1(2)*u(i+2)
+       du2(i) = derg2(-2)*u(i-2) + derg2(-1)*u(i-1) + derg2(0)*u(i) + derg2(1)*u(i+1) + derg2(2)*u(i+2)
+    end do
+  end subroutine cellavg2dergausspt_1d
+
+
+  subroutine cellavg2dergausspt_2d(lo, hi, u, ulo, uhi, du1, du2, du3, du4, dulo, duhi, der_dir)
+    integer, intent(in) :: lo(2), hi(2), ulo(2), uhi(2),dulo(2),duhi(2), der_dir
+    double precision, intent(in) ::   u( ulo(1): uhi(1), ulo(2): uhi(2))
+    double precision             :: du1(dulo(1):duhi(1),dulo(2):duhi(2))
+    double precision             :: du2(dulo(1):duhi(1),dulo(2):duhi(2))
+    double precision             :: du3(dulo(1):duhi(1),dulo(2):duhi(2))
+    double precision             :: du4(dulo(1):duhi(1),dulo(2):duhi(2))
+
+    integer :: i, j
+    double precision, allocatable :: ugy(:,:,:)
+
+    allocate(ugy(lo(1)-2:hi(1)+2,lo(2):hi(2),2))
+
+    if (der_dir .eq. 1) then 
+
+       do i=lo(1)-2,hi(1)+2
+          call cellavg2gausspt_1d(lo(2),hi(2), u(i,:), ulo(2),uhi(2), &
+               ugy(i,:,1), ugy(i,:,2), lo(2),hi(2))
+       end do
+
+       do j=lo(2),hi(2)      ! d./dx
+          call cellavg2dergausspt_1d(lo(1),hi(1), ugy(:,j,1), lo(1)-2,hi(1)+2, &
+               du1(:,j), du2(:,j), dulo(1),duhi(1))
+       end do
+       do j=lo(2),hi(2)      ! d./dx
+          call cellavg2dergausspt_1d(lo(1),hi(1), ugy(:,j,2), lo(1)-2,hi(1)+2, &
+               du3(:,j), du4(:,j), dulo(1),duhi(1))
+       end do
+       
+    else                     ! d./dy
+
+       do i=lo(1)-2,hi(1)+2
+          call cellavg2dergausspt_1d(lo(2),hi(2), u(i,:), ulo(2),uhi(2), &
+               ugy(i,:,1), ugy(i,:,2), lo(2),hi(2))
+       end do       
+
+       do j=lo(2),hi(2)
+          call cellavg2gausspt_1d(lo(1),hi(1), ugy(:,j,1), lo(1)-2,hi(1)+2, &
+               du1(:,j), du2(:,j), dulo(1),duhi(1))
+       end do
+       do j=lo(2),hi(2)
+          call cellavg2gausspt_1d(lo(1),hi(1), ugy(:,j,2), lo(1)-2,hi(1)+2, &
+               du3(:,j), du4(:,j), dulo(1),duhi(1))
+       end do
+
+    end if
+
+    deallocate(ugy)
+
+  end subroutine cellavg2dergausspt_2d
+
+
+  subroutine cellavg2face_1d(lo, hi, u, ulo, uhi, uf, flo, fhi)
+    integer, intent(in) :: lo, hi, ulo, uhi, flo, fhi
+    double precision, intent(in) ::  u(ulo:uhi)
+    double precision             :: uf(flo:fhi)
+    integer :: i
+    do i=lo,hi
+       uf(i) = cc4(-2)*u(i-2) + cc4(-1)*u(i-1) + cc4(0)*u(i) + cc4(1)*u(i+1)
+    end do
+  end subroutine cellavg2face_1d
 
 end module weno_module
 
