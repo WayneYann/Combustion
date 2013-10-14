@@ -612,6 +612,10 @@ c     Get the matrix of elements versus species
       parameter (LOUTCK=6)
 
       logical newJ_triggered, bad_soln
+      !
+      ! Set to .true. if you want to see the 'nfails' output
+      !
+      logical, parameter :: verbose = .false.
 
       ITOL    = vode_itol
       RTOL    = vode_rtol
@@ -765,9 +769,11 @@ c     Get the matrix of elements versus species
                      do m=1,Nspec
                         tspecies(m) = Ytemp(m)
                      end do
+                     if (verbose) then
 !$omp critical(failures)
-                  nfails = nfails + 1
+                        nfails = nfails + 1
 !$omp end critical(failures)
+                     end if
 
 #if !defined(BL_USE_DOUBLE)
                   CALL SVODE
@@ -880,7 +886,7 @@ c     Get the matrix of elements versus species
 !$omp end do
 !$omp end parallel
 
-      if (nfails .gt. 0) then
+      if (verbose .and. nfails .gt. 0) then
          print*, '*** DVODE failures for last chem block: ', nfails; call flush(6)
       end if
 
@@ -1285,6 +1291,10 @@ c                     FIRST = .TRUE.
       REAL_T,  parameter :: HtoTerrMAX = BL_REAL_E(7.8,-12)
       integer, parameter :: HtoTiterMAX = 20, IOPT = 1, ITASK = 1
       REAL_T res(0:HtoTiterMAX-1), rhooldInv
+      !
+      ! Set to .true. if you want to see the 'nfails' output
+      !
+      logical, parameter :: verbose = .false.
 
       ITOL    = vode_itol
       RTOL    = vode_rtol
@@ -1403,9 +1413,11 @@ c
                      TT1save            = TT1
                      TT2                = TT1 + dtloc
 
+                     if (verbose) then
 !$omp critical(failures)
-                     nfails = nfails + 1
+                        nfails = nfails + 1
 !$omp end critical(failures)
+                     end if
 
 #if !defined(BL_USE_DOUBLE)
                      CALL SVODE
@@ -1503,7 +1515,7 @@ c
 !$omp end do
 !$omp end parallel
 
-      if (nfails .gt. 0) then
+      if (verbose .and. nfails .gt. 0) then
          print*, '*** DVODE failures for last chem block: ', nfails; call flush(6)
       end if
 
