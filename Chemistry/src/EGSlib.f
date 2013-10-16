@@ -234,12 +234,12 @@ C-----------------------------------------------------------------------
       DO 120 K=1, NS
          KP1 = K + 1
          DO 110 L=KP1, NS
-            COF1 = -COF(1,K,L)
-            COF2 = -COF(2,K,L)
-            COF3 = -COF(3,K,L)
-            COF4 = -COF(4,K,L)
-            DLK = DEXP( COF1 + COF2*DLT + COF3*DLT2
-     1                       + COF4*DLT3 )
+            COF1 = COF(1,K,L)
+            COF2 = COF(2,K,L)
+            COF3 = COF(3,K,L)
+            COF4 = COF(4,K,L)
+            DLK = DEXP( -(COF1 + COF2*DLT + COF3*DLT2
+     1                       + COF4*DLT3) )
             KL = NS*(K-1) - (K*(K-1))/2 + L
             BIN(KL) = DLK
 110      CONTINUE
