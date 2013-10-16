@@ -151,7 +151,7 @@
       integer DIMDEC(FiGHi)
       REAL_T  FiGHi(DIMV(FiGHi))
 
-      REAL_T, allocatable :: H(:,:,:,:)
+      REAL_T, allocatable :: H(:,:,:,:), AD(:,:,:,:)
 
       integer i, j, k, d, n, elo, ehi
       integer lob(SDIM), hib(SDIM)
@@ -191,7 +191,7 @@ c     Fx(Nspec+1) = untouched
 c     Fx(Nspec+2) = sum[ (species flux).(species enthalpy) ]
 c     Fx(Nspec+3) = extensive heat conduction
 
-c     Comute lambda.Grad(T)
+c     Compute lambda.Grad(T)
       dxInv = 1.d0 / dx(1)
       dyInv = 1.d0 / dx(2)
       dzInv = 1.d0 / dx(3)
@@ -281,17 +281,14 @@ c     Compute enthalpy flux as hi*(Fi+(lambda/cp).Grad(Yi))
 
       allocate(rhoInv(lo(1)-1:hi(1)+1,lo(2)-1:hi(2)+1,lo(3)-1:hi(3)+1))
 
-      rhoInv = 0
-      do n=1,Nspec
-         do k=lo(3)-1,hi(3)+1
-            do j=lo(2)-1,hi(2)+1
-               do i=lo(1)-1,hi(1)+1
-                  rhoInv(i,j,k) = rhoInv(i,j,k) + RhoY(i,j,k,n)
-               enddo
+      do k=lo(3)-1,hi(3)+1
+         do j=lo(2)-1,hi(2)+1
+            do i=lo(1)-1,hi(1)+1
+               rhoInv(i,j,k) = SUM(RhoY(i,j,k,1:Nspec))
+               rhoInv(i,j,k) = 1.0D0/rhoInv(i,j,k)
             enddo
          enddo
       enddo
-      rhoInv(:,:,:) = 1/rhoInv(:,:,:)
 
       do n=1,Nspec
       do k=lo(3),hi(3)
@@ -332,7 +329,7 @@ c     Compute enthalpy flux as hi*(Fi+(lambda/cp).Grad(Yi))
 c     xlo
       if (lo(1).eq.dlo(1)  .and.  Tbc(1,1).eq.EXT_DIR) then
          i = dlo(1)
-         Fx(i:i,lo(2):hi(2),lo(3):hi(3),Nspec+2) = 0.d0
+         Fx(i,lo(2):hi(2),lo(3):hi(3),Nspec+2) = 0.d0
          do n=1,Nspec
             do k=lo(3),hi(3)
                do j=lo(2),hi(2)
@@ -346,7 +343,7 @@ c     xlo
 c     xhi
       if (hi(1).eq.dhi(1)  .and.  Tbc(1,2).eq.EXT_DIR) then
          i = dhi(1)+1
-         Fx(i:i,lo(2):hi(2),lo(3):hi(3),Nspec+2) = 0.d0
+         Fx(i,lo(2):hi(2),lo(3):hi(3),Nspec+2) = 0.d0
          do n=1,Nspec
             do k=lo(3),hi(3)
                do j=lo(2),hi(2)
@@ -360,7 +357,7 @@ c     xhi
 c     ylo
       if (lo(2).eq.dlo(2)  .and.  Tbc(2,1).eq.EXT_DIR) then
          j = dlo(2)
-         Fy(lo(1):hi(1),j:j,lo(3):hi(3),Nspec+2) = 0.d0
+         Fy(lo(1):hi(1),j,lo(3):hi(3),Nspec+2) = 0.d0
          do n=1,Nspec
             do k=lo(3),hi(3)
                do i=lo(1),hi(1)
@@ -374,7 +371,7 @@ c     ylo
 c     yhi
       if (hi(2).eq.dhi(2)  .and.  Tbc(2,2).eq.EXT_DIR) then
          j = dhi(2)+1
-         Fy(lo(1):hi(1),j:j,lo(3):hi(3),Nspec+2) = 0.d0
+         Fy(lo(1):hi(1),j,lo(3):hi(3),Nspec+2) = 0.d0
          do n=1,Nspec
             do k=lo(3),hi(3)
                do i=lo(1),hi(1)
@@ -388,7 +385,7 @@ c     yhi
 c     zlo
       if (lo(3).eq.dlo(3)  .and.  Tbc(3,1).eq.EXT_DIR) then
          k = dlo(3)
-         Fz(lo(1):hi(1),lo(2):hi(2),k:k,Nspec+2) = 0.d0
+         Fz(lo(1):hi(1),lo(2):hi(2),k,Nspec+2) = 0.d0
          do n=1,Nspec
             do j=lo(2),hi(2)
                do i=lo(1),hi(1)
@@ -402,7 +399,7 @@ c     zlo
 c     zhi
       if (hi(3).eq.dhi(3)  .and.  Tbc(3,2).eq.EXT_DIR) then
          k = dhi(3)+1
-         Fz(lo(1):hi(1),lo(2):hi(2),k:k,Nspec+2) = 0.d0
+         Fz(lo(1):hi(1),lo(2):hi(2),k,Nspec+2) = 0.d0
          do n=1,Nspec
             do j=lo(2),hi(2)
                do i=lo(1),hi(1)
@@ -423,34 +420,44 @@ c        away from domain boundary, fix afterward
 c
 c     FIXME: This will fail for r-z since Ax(dlo(1),:)=0
 c
+      !
+      ! Use AD to cut down on some divides.
+      ! Unfortunately it ups memory usage a bit.
+      !
+      allocate(AD(6,lo(1):hi(1),lo(2):hi(2),lo(3):hi(3)))
+
       do k=lo(3),hi(3)
-         do j=lo(2),hi(2)
-            do i=lo(1),hi(1)
-               FiGHi(i,j,k) = 0.d0
-            enddo
-         enddo
+      do j=lo(2),hi(2)
+      do i=lo(1),hi(1)
+         AD(1,i,j,k) = 1.d0/(Ax(i,j,k)*dx(1))
+         AD(2,i,j,k) = 1.d0/(Ax(i+1,j,k)*dx(1))
+         AD(3,i,j,k) = 1.d0/(Ay(i,j,k)*dx(2))
+         AD(4,i,j,k) = 1.d0/(Ay(i,j+1,k)*dx(2))
+         AD(5,i,j,k) = 1.d0/(Az(i,j,k)*dx(3))
+         AD(6,i,j,k) = 1.d0/(Az(i,j,k+1)*dx(3))
       enddo
+      enddo
+      enddo
+
+      FiGHi(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3)) = 0.0D0
+
       do n=1,Nspec
       do k=lo(3),hi(3)
       do j=lo(2),hi(2)
       do i=lo(1),hi(1)
-         AxDxInv_lo = 1.d0/(Ax(i,j,k)*dx(1))
-         AxDxInv_hi = 1.d0/(Ax(i+1,j,k)*dx(1))
-         AyDyInv_lo = 1.d0/(Ay(i,j,k)*dx(2))
-         AyDyInv_hi = 1.d0/(Ay(i,j+1,k)*dx(2))
-         AzDzInv_lo = 1.d0/(Az(i,j,k)*dx(3))
-         AzDzInv_hi = 1.d0/(Az(i,j,k+1)*dx(3))
          FiGHi(i,j,k) = FiGHi(i,j,k) - 0.5d0*
-     &        ( ( H(i+1,j,k,n) - H(i,j,k,n) )*Fx(i+1,j  ,k  ,n)*AxDxInv_hi
-     &        + ( H(i,j,k,n) - H(i-1,j,k,n) )*Fx(i  ,j  ,k  ,n)*AxDxInv_lo
-     &        + ( H(i,j+1,k,n) - H(i,j,k,n) )*Fy(i  ,j+1,k  ,n)*AyDyInv_hi
-     &        + ( H(i,j,k,n) - H(i,j-1,k,n) )*Fy(i  ,j  ,k  ,n)*AyDyInv_lo 
-     &        + ( H(i,j,k+1,n) - H(i,j,k,n) )*Fz(i  ,j  ,k+1,n)*AzDzInv_hi
-     &        + ( H(i,j,k,n) - H(i,j,k-1,n) )*Fz(i  ,j  ,k  ,n)*AzDzInv_lo )
+     &        ( ( H(i+1,j,k,n) - H(i,j,k,n) )*Fx(i+1,j  ,k  ,n)*AD(2,i,j,k)
+     &        + ( H(i,j,k,n) - H(i-1,j,k,n) )*Fx(i  ,j  ,k  ,n)*AD(1,i,j,k)
+     &        + ( H(i,j+1,k,n) - H(i,j,k,n) )*Fy(i  ,j+1,k  ,n)*AD(4,i,j,k)
+     &        + ( H(i,j,k,n) - H(i,j-1,k,n) )*Fy(i  ,j  ,k  ,n)*AD(3,i,j,k)
+     &        + ( H(i,j,k+1,n) - H(i,j,k,n) )*Fz(i  ,j  ,k+1,n)*AD(6,i,j,k)
+     &        + ( H(i,j,k,n) - H(i,j,k-1,n) )*Fz(i  ,j  ,k  ,n)*AD(5,i,j,k) )
       enddo
       enddo
       enddo
       enddo
+
+      deallocate(AD)
 
 c     xlo
       if (fix_xlo) then
