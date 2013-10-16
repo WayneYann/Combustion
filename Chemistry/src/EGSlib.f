@@ -4009,11 +4009,14 @@ C-----------------------------------------------------------------------
       DIMENSION X(NS), BIN(*), WT(NS), AIJ(NS,NS), ETA(NS)
       DIMENSION G(*), BETA(NS)
       PARAMETER (CCC = 5.0D0 / 3.0D0)
+      DOUBLE PRECISION, ALLOCATABLE :: IWT(:)
+      ALLOCATE(IWT(NS))
 C-----------------------------------------------------------------------
 C         EVALUATE THE RHS BETA
 C-----------------------------------------------------------------------
       DO K = 1, NS
          BETA(K) = X(K)
+         IWT(K) = 1.0D0 / WT(K)
       ENDDO
 C-----------------------------------------------------------------------
 C         EVALUATE THE MATRIX H
@@ -4034,11 +4037,12 @@ C-----------------------------------------------------------------------
             AAA = X(I) * X(J) * FAC * BIN(IND) / ( WT(I) + WT(J) )
             G(IND) = AAA * ( AIJ(I,J) - CCC )
             G(III) = G(III) + AAA * 
-     &                      ( AIJ(I,J)*WT(J)/WT(I) + CCC )
+     &                      ( AIJ(I,J)*WT(J)*IWT(I) + CCC )
             G(JJJ) = G(JJJ) + AAA * 
-     &                      ( AIJ(I,J)*WT(I)/WT(J) + CCC )
+     &                      ( AIJ(I,J)*WT(I)*IWT(J) + CCC )
          ENDDO
       ENDDO
+      DEALLOCATE(IWT)
 C-----------------------------------------------------------------------
       RETURN
       END
