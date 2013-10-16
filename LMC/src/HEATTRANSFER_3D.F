@@ -289,11 +289,21 @@ c     Compute enthalpy flux as hi*(Fi+(lambda/cp).Grad(Yi))
 
       allocate(rhoInv(lo(1)-1:hi(1)+1,lo(2)-1:hi(2)+1,lo(3)-1:hi(3)+1))
 
+      rhoInv = 0.0d0
+      do n=1,Nspec
+         do k=lo(3)-1,hi(3)+1
+            do j=lo(2)-1,hi(2)+1
+               do i=lo(1)-1,hi(1)+1
+               rhoInv(i,j,k) = rhoInv(i,j,k) + RhoY(i,j,k,n)
+               enddo
+            enddo
+         enddo
+      enddo
+
 !$omp parallel do private(i,j,k)
       do k=lo(3)-1,hi(3)+1
          do j=lo(2)-1,hi(2)+1
             do i=lo(1)-1,hi(1)+1
-               rhoInv(i,j,k) = SUM(RhoY(i,j,k,1:Nspec))
                rhoInv(i,j,k) = 1.0D0/rhoInv(i,j,k)
             enddo
          enddo
@@ -328,7 +338,6 @@ c     Compute enthalpy flux as hi*(Fi+(lambda/cp).Grad(Yi))
       do k=lo(3),hi(3)+1
       do j=lo(2),hi(2)
       do i=lo(1),hi(1)
-
          gradY = (RhoY(i,j,k,n)*rhoInv(i,j,k) - RhoY(i,j,k-1,n)*rhoInv(i,j,k-1))*dzInv
          Fz(i,j,k,Nspec+2) = Fz(i,j,k,Nspec+2)
      &        + (Fz(i,j,k,n) + rhoDz(i,j,k,Nspec+1)*gradY*Az(i,j,k))*(H(i,j,k,n)+H(i,j,k-1,n))*0.5d0
@@ -455,6 +464,7 @@ c
       FiGHi(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3)) = 0.0D0
 
       do n=1,Nspec
+!$omp parallel do private(i,j,k)
       do k=lo(3),hi(3)
       do j=lo(2),hi(2)
       do i=lo(1),hi(1)
@@ -468,6 +478,7 @@ c
       enddo
       enddo
       enddo
+!$omp end parallel do
       enddo
 
       deallocate(AD)
