@@ -1249,9 +1249,10 @@ c     First, assume away from physical boundaries, then use boundary-aware versi
                      sumFlux = sumFlux + flux(i,j,k,n)
                      RhoYe(n) = 0.5d0*(RhoY(i-1,j,k,n) + RhoY(i,j,k,n))
                      sumRhoYe = sumRhoYe + RhoYe(n)
-                  end do               
+                  end do
+                  sumRhoYe = 1.0D0/sumRhoYe
                   do n=1,Nspec
-                     flux(i,j,k,n) = flux(i,j,k,n) - sumFlux*RhoYe(n)/sumRhoYe
+                     flux(i,j,k,n) = flux(i,j,k,n) - sumFlux*RhoYe(n)*sumRhoYe
                   end do
                end do
             end do
@@ -1268,8 +1269,9 @@ c     xlo
                         sumFlux = sumFlux + flux(i,j,k,n)
                         sumRhoYe = sumRhoYe + RhoY(i-1,j,k,n)
                      enddo
+                     sumRhoYe = 1.0D0/sumRhoYe
                      do n=1,Nspec
-                        flux(i,j,k,n) = flux(i,j,k,n) - sumFlux*RhoY(i-1,j,k,n)/sumRhoYe
+                        flux(i,j,k,n) = flux(i,j,k,n) - sumFlux*RhoY(i-1,j,k,n)*sumRhoYe
                      enddo
                   enddo
                enddo
@@ -1286,8 +1288,9 @@ c     xhi
                         sumFlux = sumFlux + flux(i,j,k,n)
                         sumRhoYe = sumRhoYe + RhoY(i,j,k,n)
                      enddo
+                     sumRhoYe = 1.0D0/sumRhoYe
                      do n=1,Nspec
-                        flux(i,j,k,n) = flux(i,j,k,n) - sumFlux*RhoY(i,j,k,n)/sumRhoYe
+                        flux(i,j,k,n) = flux(i,j,k,n) - sumFlux*RhoY(i,j,k,n)*sumRhoYe
                      enddo
                   enddo
                enddo
@@ -1309,8 +1312,9 @@ c     First, assume away from physical boundaries, then replace with boundary-aw
                      RhoYe(n) = 0.5d0*(RhoY(i,j-1,k,n) + RhoY(i,j,k,n))
                      sumRhoYe = sumRhoYe + RhoYe(n)
                   enddo
+                  sumRhoYe = 1.0D0/sumRhoYe
                   do n=1,Nspec
-                     flux(i,j,k,n) = flux(i,j,k,n) - sumFlux*RhoYe(n)/sumRhoYe
+                     flux(i,j,k,n) = flux(i,j,k,n) - sumFlux*RhoYe(n)*sumRhoYe
                   end do
                end do
             end do
@@ -1327,8 +1331,9 @@ c     ylo
                         sumFlux = sumFlux + flux(i,j,k,n)
                         sumRhoYe = sumRhoYe + RhoY(i,j-1,k,n)
                      enddo
+                     sumRhoYe = 1.0D0/sumRhoYe
                      do n=1,Nspec
-                        flux(i,j,k,n) = flux(i,j,k,n) - sumFlux*RhoY(i,j-1,k,n)/sumRhoYe
+                        flux(i,j,k,n) = flux(i,j,k,n) - sumFlux*RhoY(i,j-1,k,n)*sumRhoYe
                      enddo
                   enddo
                enddo
@@ -1345,8 +1350,9 @@ c     yhi
                         sumFlux = sumFlux + flux(i,j,k,n)
                         sumRhoYe = sumRhoYe + RhoY(i,j,k,n)
                      enddo
+                     sumRhoYe = 1.0D0/sumRhoYe
                      do n=1,Nspec
-                        flux(i,j,k,n) = flux(i,j,k,n) - sumFlux*RhoY(i,j,k,n)/sumRhoYe
+                        flux(i,j,k,n) = flux(i,j,k,n) - sumFlux*RhoY(i,j,k,n)*sumRhoYe
                      enddo
                   enddo
                enddo
@@ -1367,8 +1373,9 @@ c     First, assume away from physical boundaries, then replace with boundary-aw
                      RhoYe(n) = 0.5d0*(RhoY(i,j,k-1,n) + RhoY(i,j,k,n))
                      sumRhoYe = sumRhoYe + RhoYe(n)
                   enddo
+                  sumRhoYe = 1.0D0/sumRhoYe
                   do n=1,Nspec
-                     flux(i,j,k,n) = flux(i,j,k,n) - sumFlux*RhoYe(n)/sumRhoYe
+                     flux(i,j,k,n) = flux(i,j,k,n) - sumFlux*RhoYe(n)*sumRhoYe
                   end do
                end do
             end do
@@ -1385,8 +1392,9 @@ c     zlo
                         sumFlux = sumFlux + flux(i,j,k,n)
                         sumRhoYe = sumRhoYe + RhoY(i,j,k-1,n)
                      enddo
+                     sumRhoYe = 1.0D0/sumRhoYe
                      do n=1,Nspec
-                        flux(i,j,k,n) = flux(i,j,k,n) - sumFlux*RhoY(i,j,k-1,n)/sumRhoYe
+                        flux(i,j,k,n) = flux(i,j,k,n) - sumFlux*RhoY(i,j,k-1,n)*sumRhoYe
                      enddo
                   enddo
                enddo
@@ -1403,8 +1411,9 @@ c     yzi
                         sumFlux = sumFlux + flux(i,j,k,n)
                         sumRhoYe = sumRhoYe + RhoY(i,j,k,n)
                      enddo
+                     sumRhoYe = 1.0D0/sumRhoYe
                      do n=1,Nspec
-                        flux(i,j,k,n) = flux(i,j,k,n) - sumFlux*RhoY(i,j,k,n)/sumRhoYe
+                        flux(i,j,k,n) = flux(i,j,k,n) - sumFlux*RhoY(i,j,k,n)*sumRhoYe
                      enddo
                   enddo
                enddo
