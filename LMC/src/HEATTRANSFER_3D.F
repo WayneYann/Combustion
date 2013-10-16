@@ -196,6 +196,7 @@ c     Compute lambda.Grad(T)
       dyInv = 1.d0 / dx(2)
       dzInv = 1.d0 / dx(3)
 
+!$omp parallel do private(i,j,k)
       do k=lo(3),hi(3)
          do j=lo(2),hi(2)
             do i=lo(1),hi(1)+1
@@ -203,6 +204,9 @@ c     Compute lambda.Grad(T)
             enddo
          enddo
       enddo
+!$omp end parallel do
+
+!$omp parallel do private(i,j,k)
       do k=lo(3),hi(3)
          do j=lo(2),hi(2)+1
             do i=lo(1),hi(1)
@@ -210,6 +214,9 @@ c     Compute lambda.Grad(T)
             enddo
          enddo
       enddo
+!$omp end parallel do
+
+!$omp parallel do private(i,j,k)
       do k=lo(3),hi(3)+1
          do j=lo(2),hi(2)
             do i=lo(1),hi(1)
@@ -217,6 +224,7 @@ c     Compute lambda.Grad(T)
             enddo
          enddo
       enddo
+!$omp end parallel do
 
 c     xlo
       if (lo(1).eq.dlo(1)  .and.  Tbc(1,1).eq.EXT_DIR) then
@@ -281,6 +289,7 @@ c     Compute enthalpy flux as hi*(Fi+(lambda/cp).Grad(Yi))
 
       allocate(rhoInv(lo(1)-1:hi(1)+1,lo(2)-1:hi(2)+1,lo(3)-1:hi(3)+1))
 
+!$omp parallel do private(i,j,k)
       do k=lo(3)-1,hi(3)+1
          do j=lo(2)-1,hi(2)+1
             do i=lo(1)-1,hi(1)+1
@@ -289,6 +298,7 @@ c     Compute enthalpy flux as hi*(Fi+(lambda/cp).Grad(Yi))
             enddo
          enddo
       enddo
+!$omp end parallel do
 
       do n=1,Nspec
       do k=lo(3),hi(3)
@@ -318,6 +328,7 @@ c     Compute enthalpy flux as hi*(Fi+(lambda/cp).Grad(Yi))
       do k=lo(3),hi(3)+1
       do j=lo(2),hi(2)
       do i=lo(1),hi(1)
+
          gradY = (RhoY(i,j,k,n)*rhoInv(i,j,k) - RhoY(i,j,k-1,n)*rhoInv(i,j,k-1))*dzInv
          Fz(i,j,k,Nspec+2) = Fz(i,j,k,Nspec+2)
      &        + (Fz(i,j,k,n) + rhoDz(i,j,k,Nspec+1)*gradY*Az(i,j,k))*(H(i,j,k,n)+H(i,j,k-1,n))*0.5d0
@@ -426,6 +437,7 @@ c
       !
       allocate(AD(6,lo(1):hi(1),lo(2):hi(2),lo(3):hi(3)))
 
+!$omp parallel do private(i,j,k)
       do k=lo(3),hi(3)
       do j=lo(2),hi(2)
       do i=lo(1),hi(1)
@@ -438,6 +450,7 @@ c
       enddo
       enddo
       enddo
+!$omp end parallel do
 
       FiGHi(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3)) = 0.0D0
 
@@ -665,9 +678,9 @@ c     zhi
       REAL_T  bdotxlo, bdotxhi, bdotylo, bdotyhi
       REAL_T  bdotzlo, bdotzhi
 
-      dxsqr = dx(1)**2
-      dysqr = dx(2)**2
-      dzsqr = dx(3)**2
+      dxsqr = 1.0D0/dx(1)**2
+      dysqr = 1.0D0/dx(2)**2
+      dzsqr = 1.0D0/dx(3)**2
 
 !$omp parallel do private(i,j,k,bdotxlo,bdotxhi,bdotylo)
 !$omp&private(bdotyhi,bdotzlo,bdotzhi)
@@ -686,9 +699,9 @@ c     zhi
      &           *(species(i,j,k)-species(i,j,k-1))
             bdotzhi = betaz(i,j,k+1)*(h(i,j,k+1)-h(i,j,k))
      &           *(species(i,j,k+1)-species(i,j,k))
-            rdghdgy(i,j,k) =  half*((bdotxlo + bdotxhi)/dxsqr +
-     &                              (bdotylo + bdotyhi)/dysqr +
-     &                              (bdotzlo + bdotzhi)/dysqr)
+            rdghdgy(i,j,k) =  half*((bdotxlo + bdotxhi)*dxsqr +
+     &                              (bdotylo + bdotyhi)*dysqr +
+     &                              (bdotzlo + bdotzhi)*dysqr)
           enddo
         enddo
       enddo
