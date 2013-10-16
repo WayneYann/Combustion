@@ -306,6 +306,7 @@ protected:
     //
     // advance functions
     //
+    virtual void set_reasonable_grow_cells_for_R(Real time);
     virtual void differential_spec_diffuse_sync (Real dt);
     virtual void compute_differential_diffusion_terms (MultiFab& D,
                                                        MultiFab& DD,
