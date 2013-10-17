@@ -5694,8 +5694,10 @@ HeatTransfer::advance (Real time,
 
       if (verbose && ParallelDescriptor::IOProcessor())
 	std::cout << "DONE WITH R (SDC corrector " << sdc_iter << ")\n";
-
     }
+
+    dpdt.clear();
+    delta_dpdt.clear();
 
     if (verbose && ParallelDescriptor::IOProcessor())
       std::cout << " SDC iterations complete \n";
@@ -6103,8 +6105,15 @@ HeatTransfer::advance_chemistry (MultiFab&       mf_old,
         STemp[Smfi].copy(Stn,first_spec,first_spec,nspecies+3);
       }
 
+      Stn.clear();
+
       mf_new.copy(STemp,first_spec,first_spec,nspecies+3); // Parallel copy.
+
+      STemp.clear();
+
       React_new.copy(rYdotTemp); // Parallel copy.
+
+      rYdotTemp.clear();
 
       if (do_diag) {
         auxDiag["REACTIONS"]->copy(diagTemp); // Parallel copy
@@ -6203,20 +6212,18 @@ HeatTransfer::compute_scalar_advection_fluxes_and_divergence (MultiFab& Force,
     showMF("dd",Gp,"dd_Gp_in_aofs",level);
   }
 
-  FArrayBox tforces, volume, area[BL_SPACEDIM], tvelforces, jdivu;
+  FArrayBox volume, area[BL_SPACEDIM], tvelforces;
   const int  nState          = desc_lst[State_Type].nComp();
   for (FillPatchIterator S_fpi(*this,DivU,HYP_GROW,prev_time,State_Type,0,nState);
        S_fpi.isValid();
        ++S_fpi)
   {
-
     const Box& box = S_fpi.validbox();
     const int i = S_fpi.index();
     const FArrayBox& S = S_fpi();
     const FArrayBox& divu = DivU[S_fpi];
     const FArrayBox& force = Force[S_fpi];
     const Box gbox = S_fpi().box();
-    tforces.resize(gbox,1);
 
     for (int dir = 0; dir < BL_SPACEDIM; dir++)
       geom.GetFaceArea(area[dir],grids,i,dir,GEOM_GROW);
@@ -6297,6 +6304,17 @@ HeatTransfer::compute_scalar_advection_fluxes_and_divergence (MultiFab& Force,
         }
       }
     }
+  }
+
+  DivU.clear();
+  volume.clear();
+  tvelforces.clear();
+  D_TERM(area[0].clear();,area[1].clear();,area[2].clear(););
+
+  if (use_forces_in_trans || (do_mom_diff == 1))
+  {
+      Gp.clear();
+      VelViscTerms.clear();
   }
 
   showMF("sdc",*EdgeState[0],"sdc_ESTATE_x",level,parent->levelSteps(level));
@@ -6631,6 +6649,9 @@ HeatTransfer::mac_sync ()
                         (*fluxNULN[d])[i].mult(h,ebox,0,0,nspecies);
                     }
                 }
+
+                h.clear();
+                eTemp.clear();
 
 		// add the NULN fluxes to the RHS of the (delta h)^sync diffusion solve
 		// afterwards, the entire RHS should be ready
@@ -7288,6 +7309,8 @@ HeatTransfer::reflux ()
         }
     }
 
+    tmp.clear();
+
     // take divergence of advective flux registers into cell-centered RHS
     fr_adv.Reflux(*Vsync,volume,scale,0,0,BL_SPACEDIM,geom);
     fr_adv.Reflux(*Ssync,volume,scale,BL_SPACEDIM,0,NUM_STATE-BL_SPACEDIM,geom);
@@ -7827,6 +7850,11 @@ HeatTransfer::calc_dpdt (Real      time,
         dpdt[i].mult(dpdt_factor,grids[i]);
     }
 
+    rhoRT.clear();
+    gamma.clear();
+    ugradp.clear();
+    p_denom.clear();
+
     if (dpdt.nGrow() > 0)
       {
 	const int nc = 1;
@@ -7878,6 +7906,8 @@ HeatTransfer::calc_dpdt (Real      time,
     dpdt[i].divide(Peos[mfi],vbox,0,0,1);
     dpdt[i].mult(dpdt_factor,vbox);
   }
+
+  Peos.clear();
 
   if (nGrow > 0) {
     const int nc = 1;
