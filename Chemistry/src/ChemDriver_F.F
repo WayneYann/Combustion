@@ -100,6 +100,7 @@ c
       !
       ! Get chemistry mechanism parameters.
       !
+      CALL CKINIT()
       CALL CKINDX(idummy(1),rdummy(1),Nelt,Nspec,Nreac,Nfit)
       !
       ! Set up EGlib workspace.
