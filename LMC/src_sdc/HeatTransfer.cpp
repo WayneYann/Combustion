@@ -4705,6 +4705,8 @@ HeatTransfer::compute_differential_diffusion_fluxes (const Real& time,
         delete visc_op;
     }
 
+    Phi.clear();
+
     if (Phi_crse)
       delete Phi_crse;
 
