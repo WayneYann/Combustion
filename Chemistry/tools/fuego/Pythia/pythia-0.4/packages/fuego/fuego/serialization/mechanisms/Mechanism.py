@@ -137,6 +137,7 @@ class Mechanism(object):
             if r not in rs:
                 if r.low and r.troe and not r.rev: 
                     i+=1
+                    r.orig_id = r.id
                     r.id = i
                     rs.append(r)
         n.append(i)
@@ -145,6 +146,7 @@ class Mechanism(object):
             if r not in rs:
                 if r.low and r.sri and not r.rev: 
                     i+=1
+                    r.orig_id = r.id
                     r.id = i
                     rs.append(r)
         n.append(i)
@@ -153,6 +155,7 @@ class Mechanism(object):
             if r not in rs:
                 if r.low and not r.rev: 
                     i+=1
+                    r.orig_id = r.id
                     r.id = i
                     rs.append(r)
         n.append(i)
@@ -161,6 +164,7 @@ class Mechanism(object):
             if r not in rs:
                 if r.thirdBody and not r.low and not r.rev: 
                     i+=1
+                    r.orig_id = r.id
                     r.id = i
                     rs.append(r)
         n.append(i)
@@ -169,6 +173,7 @@ class Mechanism(object):
             if r not in rs:
                 if not r.rev and not r.low and not r.thirdBody: 
                     i+=1
+                    r.orig_id = r.id
                     r.id = i
                     rs.append(r)
         n.append(i)
@@ -176,6 +181,7 @@ class Mechanism(object):
         for r in rs_unsorted:
             if r not in rs:
                 i+=1
+                r.orig_id = r.id
                 r.id = i
                 rs.append(r)
         n.append(i)
