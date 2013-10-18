@@ -384,6 +384,7 @@ static double troe_a[21],troe_Ts[21], troe_Tss[21], troe_Tsss[21];
 static double sri_a[21], sri_b[21], sri_c[21], sri_d[21], sri_e[21];
 static double activation_units[21], prefactor_units[21], phase_units[21];
 static int is_PD[21], troe_len[21], sri_len[21];
+static int rxn_map[21] = {6,7,8,9,2,3,4,5,0,10,11,12,13,14,15,1,16,17,18,19,20};
 
 struct ReactionData* GetReactionData(int id)
 {
@@ -391,7 +392,7 @@ struct ReactionData* GetReactionData(int id)
         printf("GetReactionData: Bad reaction id = %d",id);
         abort();
     };
-    return &(R[id]);
+    return &(R[rxn_map[id]]);
 }
 
 struct ReactionData* GetDefaultReactionData(int id)
@@ -400,9 +401,36 @@ struct ReactionData* GetDefaultReactionData(int id)
         printf("GetDefaultReactionData: Bad reaction id = %d",id);
         abort();
     };
-    return &(R_DEF[id]);
+    return &(R_DEF[rxn_map[id]]);
 }
 
+void CopyReactionDataToTranspose(int i, const struct ReactionData * rhs)
+{
+    fwd_A[i]    = rhs->fwd_A;
+    fwd_beta[i] = rhs->fwd_beta;
+    fwd_Ea[i]   = rhs->fwd_Ea;
+    low_A[i]    = rhs->low_A;
+    low_beta[i] = rhs->low_beta;
+    low_Ea[i]   = rhs->low_Ea;
+    rev_A[i]    = rhs->rev_A;
+    rev_beta[i] = rhs->rev_beta;
+    rev_Ea[i]   = rhs->rev_Ea;
+    troe_a[i]    = rhs->troe_a;
+    troe_Ts[i]   = rhs->troe_Ts;
+    troe_Tss[i]  = rhs->troe_Tss;
+    troe_Tsss[i] = rhs->troe_Tsss;
+    sri_a[i] = rhs->sri_a;
+    sri_b[i] = rhs->sri_b;
+    sri_c[i] = rhs->sri_c;
+    sri_d[i] = rhs->sri_d;
+    sri_e[i] = rhs->sri_e;
+    activation_units[i] = rhs->activation_units;
+    prefactor_units[i]  = rhs->prefactor_units;
+    phase_units[i]      = rhs->phase_units;
+    is_PD[i]    = rhs->is_PD;
+    troe_len[i] = rhs->troe_len;
+    sri_len[i]  = rhs->sri_len;
+}
 
 void SetReactionData(int id, const struct ReactionData * rhs)
 {
@@ -410,38 +438,8 @@ void SetReactionData(int id, const struct ReactionData * rhs)
         printf("SetReactionData: Bad reaction id = %d",id);
         abort();
     }
-    struct ReactionData* r = &(R[id]);
-
-    r->fwd_A    = rhs->fwd_A;
-    r->fwd_beta = rhs->fwd_beta;
-    r->fwd_Ea   = rhs->fwd_Ea;
-
-    r->low_A    = rhs->low_A;
-    r->low_beta = rhs->low_beta;
-    r->low_Ea   = rhs->low_Ea;
-
-    r->rev_A    = rhs->rev_A;
-    r->rev_beta = rhs->rev_beta;
-    r->rev_Ea   = rhs->rev_Ea;
-
-    r->troe_a    = rhs->troe_a;
-    r->troe_Ts   = rhs->troe_Ts;
-    r->troe_Tss  = rhs->troe_Tss;
-    r->troe_Tsss = rhs->troe_Tsss;
-
-    r->sri_a = rhs->sri_a;
-    r->sri_b = rhs->sri_b;
-    r->sri_c = rhs->sri_c;
-    r->sri_d = rhs->sri_d;
-    r->sri_e = rhs->sri_e;
-
-    r->activation_units = rhs->activation_units;
-    r->prefactor_units  = rhs->prefactor_units;
-    r->phase_units      = rhs->phase_units;
-
-    r->is_PD    = rhs->is_PD;
-    r->troe_len = rhs->troe_len;
-    r->sri_len  = rhs->sri_len;
+    R[rxn_map[id]] = *rhs;
+    CopyReactionDataToTranspose(rxn_map[id],rhs);
 }
 
 /* Initializes static database */
@@ -632,35 +630,9 @@ void CKINIT()
     for (int i=0; i<21; i++)
     {
         R_DEF[i] = R[i];
+        CopyReactionDataToTranspose(i,&(R[i]));
     }
 
-    for (int i=0; i<21; i++)
-    {
-        fwd_A[i]    = R[i].fwd_A;
-        fwd_beta[i] = R[i].fwd_beta;
-        fwd_Ea[i]   = R[i].fwd_Ea;
-        low_A[i]    = R[i].low_A;
-        low_beta[i] = R[i].low_beta;
-        low_Ea[i]   = R[i].low_Ea;
-        rev_A[i]    = R[i].rev_A;
-        rev_beta[i] = R[i].rev_beta;
-        rev_Ea[i]   = R[i].rev_Ea;
-        troe_a[i]    = R[i].troe_a;
-        troe_Ts[i]   = R[i].troe_Ts;
-        troe_Tss[i]  = R[i].troe_Tss;
-        troe_Tsss[i] = R[i].troe_Tsss;
-        sri_a[i] = R[i].sri_a;
-        sri_b[i] = R[i].sri_b;
-        sri_c[i] = R[i].sri_c;
-        sri_d[i] = R[i].sri_d;
-        sri_e[i] = R[i].sri_e;
-        activation_units[i] = R[i].activation_units;
-        prefactor_units[i]  = R[i].prefactor_units;
-        phase_units[i]      = R[i].phase_units;
-        is_PD[i]    = R[i].is_PD;
-        troe_len[i] = R[i].troe_len;
-        sri_len[i]  = R[i].sri_len;
-    }
 }
 
 
