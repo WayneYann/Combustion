@@ -371,7 +371,7 @@ void sdc_f2eval(void *F, void *Q, double t, sdc_state *state, void *ctx)
   MultiFab tmp(U.boxArray(), U.nComp(), U.nGrow());
   // note: Uprime doesn't have ghost cells
   MFCopyAll(tmp, U);
-  rns.fill_boundary(tmp, state->t, use_FillBoundary);
+  rns.fill_boundary(tmp, state->t, RNS::use_FillBoundary);
   rns.advance_chemistry(tmp, 0.0);
   MFCopyAll(Uprime, tmp);
   Uprime.copy(tmp);
@@ -390,7 +390,7 @@ void sdc_f2comp(void *F, void *Q, double t, double dt, void *RHS, sdc_state *sta
   MultiFab& Uprime = *((MultiFab*) F);
   MultiFab& Urhs   = *((MultiFab*) RHS);
   MFCopyAll(U, Urhs);
-  rns.fill_boundary(U, state->t, use_FillBoundary);
+  rns.fill_boundary(U, state->t, RNS::use_FillBoundary);
   rns.advance_chemistry(U, dt);
   Uprime.copy(U);
   Uprime.minus(Urhs, 0, Uprime.nComp(), 0);
