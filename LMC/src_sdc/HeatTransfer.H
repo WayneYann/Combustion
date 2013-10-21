@@ -568,7 +568,6 @@ protected:
     static int nGrowAdvForcing;
     bool       updateFluxReg;
     bool       is_predictor;
-    MultiFab   Forcing;
     MultiFab   Dn;
     MultiFab   Dnp1;
     MultiFab   Dhat;

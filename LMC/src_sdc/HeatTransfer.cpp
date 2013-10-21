@@ -962,7 +962,6 @@ HeatTransfer::HeatTransfer (Amr&            papa,
     if (do_mcdd)
         MCDDOp.define(grids,Domain(),crse_ratio);
 
-    Forcing.define(grids,nspecies+1,nGrowAdvForcing,Fab_allocate);
     Dn.define(grids,nspecies+2,nGrowAdvForcing,Fab_allocate);
     Dhat.define(grids,nspecies+2,nGrowAdvForcing,Fab_allocate);
     Dnp1.define(grids,nspecies+2,nGrowAdvForcing,Fab_allocate);
@@ -1213,7 +1212,6 @@ HeatTransfer::restart (Amr&          papa,
     if (do_mcdd)
         MCDDOp.define(grids,Domain(),crse_ratio);
 
-    Forcing.define(grids,nspecies+1,nGrowAdvForcing,Fab_allocate);
     Dn.define(grids,nspecies+2,nGrowAdvForcing,Fab_allocate);
     Dhat.define(grids,nspecies+2,nGrowAdvForcing,Fab_allocate);
     Dnp1.define(grids,nspecies+2,nGrowAdvForcing,Fab_allocate);
@@ -1807,31 +1805,6 @@ HeatTransfer::initDataOtherTypes ()
     get_new_data(FuncCount_Type).setVal(1);
 
     setThermoPress(state[State_Type].curTime());
-
-#if 0
-    // Evolve chemistry for a short interval to find reasonable values for typVal
-    MultiFab F(grids,nspecies+1,0);
-    F.setVal(0);
-    state[State_Type].allocOldData();
-    Real dt_explicit_chem_evolveDT = 1.e-10;
-    bool use_stiff_solver = false;
-    MultiFab::Copy(get_old_data(State_Type),get_new_data(State_Type),0,0,NUM_STATE,0);
-    if (ParallelDescriptor::IOProcessor()) {
-      std::cout << "Doing explicit advance" << std::endl;
-    }
-    advance_chemistry(get_new_data(State_Type),get_old_data(State_Type),dt_explicit_chem_evolveDT,Forcing,0,use_stiff_solver); // Put results into S_old
-    VisMF::Write(get_old_data(State_Type),"S_chem");
-    if (ParallelDescriptor::IOProcessor()) {
-      std::cout << "Done with explicit advance" << std::endl;
-    }
-    Real normRho = get_new_data(State_Type).norm0(Density);
-    for (int i=0; i<nspecies; ++i) {
-      Real norm = get_old_data(State_Type).norm0(first_spec+i);
-      if (ParallelDescriptor::IOProcessor()) {
-        std::cout << "Comp, norm: " << i << ", " << norm/normRho << std::endl;
-      }
-    }
-#endif
 }
 
 void
@@ -5548,6 +5521,7 @@ HeatTransfer::advance (Real time,
       dt_test = predict_velocity(dt,dummy);  
 
       // create S^{n+1/2} by averaging old and new
+      MultiFab Forcing(grids,nspecies+1,nGrowAdvForcing);
       Forcing.setBndry(1.e30);
       create_mac_rhs(Forcing,nGrowAdvForcing,time+0.5*dt,dt);
       showMF("sdc",Forcing,"sdc_mac_rhs1",level,sdc_iter,parent->levelSteps(level));
@@ -5967,7 +5941,11 @@ HeatTransfer::advance_chemistry (MultiFab&       mf_old,
     {
       const Box& box = mfi.validbox();
       tmp.resize(box,nspecies+1);
-      FArrayBox& f = Forcing[mfi];
+      //
+      // Should this be Force not Forcing?
+      //
+//      FArrayBox& f = Forcing[mfi];
+      const FArrayBox& f = Force[mfi];
       tmp.copy(f,box,0,box,0,nspecies+1);
       tmp.mult(dt);
       FArrayBox& Sold = mf_old[mfi];
