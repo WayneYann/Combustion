@@ -352,7 +352,6 @@ void sdc_f1eval(void *F, void *Q, double t, sdc_state *state, void *ctx)
   RNS&      rns    = *((RNS*) ctx);
   MultiFab& U      = *((MultiFab*) Q);
   MultiFab& Uprime = *((MultiFab*) F);
-
   rns.dUdt(U, Uprime, t, RNS::use_FillBoundary, 0, 0, 0.0);
   // XXX: it might be interesting to track the magnitude of reflux registers
 }
@@ -370,9 +369,9 @@ void sdc_f2eval(void *F, void *Q, double t, sdc_state *state, void *ctx)
   MultiFab& Uprime = *((MultiFab*) F);
 
   MultiFab tmp(U.boxArray(), U.nComp(), U.nGrow());
-
   // note: Uprime doesn't have ghost cells
   MFCopyAll(tmp, U);
+  rns.fill_boundary(tmp, state->t, use_FillBoundary);
   rns.advance_chemistry(tmp, 0.0);
   MFCopyAll(Uprime, tmp);
   Uprime.copy(tmp);
@@ -391,6 +390,7 @@ void sdc_f2comp(void *F, void *Q, double t, double dt, void *RHS, sdc_state *sta
   MultiFab& Uprime = *((MultiFab*) F);
   MultiFab& Urhs   = *((MultiFab*) RHS);
   MFCopyAll(U, Urhs);
+  rns.fill_boundary(U, state->t, use_FillBoundary);
   rns.advance_chemistry(U, dt);
   Uprime.copy(U);
   Uprime.minus(Urhs, 0, Uprime.nComp(), 0);

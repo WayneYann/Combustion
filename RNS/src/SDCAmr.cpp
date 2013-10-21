@@ -1,7 +1,7 @@
 /*
  * XXX
  *
- * 
+ *
  */
 
 #include <SDCAmr.H>
@@ -107,12 +107,12 @@ void mlsdc_amr_restrict(void *F, void *G, sdc_state *state, void *ctxF, void *ct
   RNS& levelF  = *((RNS*) ctxF);
   RNS& levelG  = *((RNS*) ctxG);
 
-  if (state->kind == SDC_SOLUTION) 
+  if (state->kind == SDC_SOLUTION)
     levelF.fill_boundary(UF, state->t, RNS::use_FillBoundary);
 
   levelG.avgDown(UG, UF);
 
-  if (state->kind == SDC_SOLUTION) 
+  if (state->kind == SDC_SOLUTION)
     levelG.fill_boundary(UG, state->t, RNS::use_FillBoundary);
 
 #ifdef ZMQ
@@ -150,7 +150,7 @@ void SDCAmr::timeStep (int  level,
                                 ref_ratio,
                                 dt_min,
                                 dt_level,
-                                stop_time, 
+                                stop_time,
                                 post_regrid_flag);
 
       for (int k=i; k<=finest_level; k++) level_count[k] = 0;
@@ -190,7 +190,7 @@ void SDCAmr::timeStep (int  level,
       for (int lev=0; lev<=finest_level; lev++) {
         int nnodes = mg.sweepers[lev]->nset->nnodes;
         MultiFab& R = *((MultiFab*) mg.sweepers[lev]->nset->R[nnodes-2]);
-        cout << "MLSDC iter: " << k << ", level: " << lev 
+        cout << "MLSDC iter: " << k << ", level: " << lev
              << ", res norm0: " << R.norm0() << ", res norm2: " << R.norm2() << endl;
       }
     }
@@ -278,7 +278,7 @@ SDCAmr::SDCAmr ()
   if (!ppsdc.query("max_iters", max_iters)) max_iters = 22;
   if (!ppsdc.query("max_trefs", max_trefs)) max_trefs = 3;
 
-   sdc_log_set_stdout(SDC_LOG_DEBUG);
+  //sdc_log_set_stdout(SDC_LOG_INFO);
   sdc_mg_build(&mg, max_level+1);
 
   sweepers.resize(max_level+1);
