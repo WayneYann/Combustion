@@ -63,30 +63,6 @@ int main (int argc, char* argv[])
     Amr* amrptr = new SDCAmr();
 #endif
 
-    int trat = 2;
-
-    ParmParse ppsdc("sdc");
-    ppsdc.query("t_ratio", trat);
-
-    int nnodes = trat - 1;
-
-    // SDC is going to provide tnodes in the future.
-    Array<Real> tnodes(nnodes);
-    if (nnodes == 1)
-    {
-	tnodes[0] = 0.5;
-    }
-    else if (nnodes == 2) // Gauss-Lobatto nodes
-    {
-	tnodes[0] = (1.0-1.0/sqrt(5.0))*0.5;
-	tnodes[1] = (1.0+1.0/sqrt(5.0))*0.5;
-    }
-
-    if (nnodes > 0)
-    {
-	amrptr->set_t_nodes(tnodes);
-    }
-
     amrptr->init(strt_time,stop_time);
 
     // If we set the regrid_on_restart flag and if we are *not* going to take

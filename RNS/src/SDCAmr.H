@@ -54,5 +54,11 @@ public:
 		       bool initial = false);
 };
 
+/*
+ * Helpers.
+ */
+
+void MFCopyAll(MultiFab& dst, MultiFab& src);
+
 #endif
 #endif

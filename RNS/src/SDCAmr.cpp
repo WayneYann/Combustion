@@ -28,14 +28,14 @@ void *zmqctx = 0;
 void *dzmq_connect();
 void dzmq_send_buf(void *ptr, const char *buf, int n);
 
-void dzmq_send_mf(MultiFab& U, int level, int wait)
+void dzmq_send_mf(MultiFab& U, int level, int comp, int wait)
 {
   if (!zmqctx) zmqctx = dzmq_connect();
 
   for (MFIter mfi(U); mfi.isValid(); ++mfi) {
     std::ostringstream buf;
     buf << level;
-    U[mfi].writeOn(buf, 0, 1);
+    U[mfi].writeOn(buf, comp, 1);
     dzmq_send_buf(zmqctx, buf.str().c_str(), buf.str().length());
   }
 
@@ -91,7 +91,7 @@ void mlsdc_amr_interpolate(void *F, void *G, sdc_state *state, void *ctxF, void 
 
 #ifdef ZMQ
   cout << "INTERPOLATE" << endl;
-  dzmq_send_mf(UF, levelF.Level(), 1);
+  dzmq_send_mf(UF, levelF.Level(), 0, 1);
 #endif
 }
 
@@ -117,7 +117,7 @@ void mlsdc_amr_restrict(void *F, void *G, sdc_state *state, void *ctxF, void *ct
 
 #ifdef ZMQ
   cout << "RESTRICT" << endl;
-  dzmq_send_mf(UG, levelG.Level(), 1);
+  dzmq_send_mf(UG, levelG.Level(), 0, 1);
 #endif
 }
 
@@ -134,6 +134,35 @@ void SDCAmr::timeStep (int  level,
 
   if (sweepers[0] == NULL) rebuild_mlsdc();
 
+  int lev_top = std::min(finest_level, max_level-1);
+
+  // regrid
+  for (int i=level; i<=lev_top; i++) {
+    const int old_finest = finest_level;
+
+    if (okToRegrid(i)) {
+      regrid(i,time);
+
+      int post_regrid_flag = 1;
+      amr_level[0].computeNewDt(finest_level,
+                                sub_cycle,
+                                n_cycle,
+                                ref_ratio,
+                                dt_min,
+                                dt_level,
+                                stop_time, 
+                                post_regrid_flag);
+
+      for (int k=i; k<=finest_level; k++) level_count[k] = 0;
+
+      // if (old_finest < finest_level)
+      //   for (int k=old_finest+1; k<=finest_level; k++)
+      //     dt_level[k] = dt_level[k-1]/n_cycle[k];
+    }
+    if (old_finest > finest_level) lev_top = std::min(finest_level, max_level-1);
+  }
+
+
   // set intial conditions...
   for (int lev=0; lev<=finest_level; lev++) {
     AmrLevel& amrlevel = getLevel(lev);
@@ -148,14 +177,16 @@ void SDCAmr::timeStep (int  level,
   }
 
   // spread and iterate (XXX: spread from qend if step>0)
+  if (verbose > 0 && ParallelDescriptor::IOProcessor()) {
+    cout << "MLSDC advancing with dt: " << dt_level[0] << endl;
+  }
+
   sdc_mg_spread(&mg, time, dtLevel(0), 0);
   for (int k=0; k<max_iters; k++) {
-    // if (verbose > 0 && ParallelDescriptor::IOProcessor())
-    //   std::cout << "MLSDC iteration: " << k << std::endl;
     sdc_mg_sweep(&mg, time, dt_level[0], 0);
+
     // echo residuals...
     if (verbose > 0 && ParallelDescriptor::IOProcessor()) {
-
       for (int lev=0; lev<=finest_level; lev++) {
         int nnodes = mg.sweepers[lev]->nset->nnodes;
         MultiFab& R = *((MultiFab*) mg.sweepers[lev]->nset->R[nnodes-2]);
@@ -187,8 +218,6 @@ void SDCAmr::timeStep (int  level,
               << level
               << std::endl;
   }
-
-  if (writePlotNow()) writePlotFile();
 }
 
 sdc_sweeper* rns_sdc_build_level(int lev)
@@ -198,10 +227,11 @@ sdc_sweeper* rns_sdc_build_level(int lev)
   int nnodes  = 1 + (nnodes0 - 1) * ((int) pow(trat, lev));
 
   sdc_nodes* nodes = sdc_nodes_create(nnodes, SDC_GAUSS_LOBATTO);
-  sdc_imex*  imex  = sdc_imex_create(nodes, sdc_feval, NULL, NULL);
+  sdc_imex*  imex  = sdc_imex_create(nodes, sdc_f1eval, sdc_f2eval, sdc_f2comp);
 
   sdc_nodes_destroy(nodes);
   sdc_imex_setup(imex, NULL, NULL);
+  sdc_hooks_add(imex->hooks, SDC_HOOK_POST_STEP, sdc_poststep_hook);
 
   return (sdc_sweeper*) imex;
 }
@@ -248,7 +278,7 @@ SDCAmr::SDCAmr ()
   if (!ppsdc.query("max_iters", max_iters)) max_iters = 22;
   if (!ppsdc.query("max_trefs", max_trefs)) max_trefs = 3;
 
-  //  sdc_log_set_stdout(SDC_LOG_DEBUG);
+   sdc_log_set_stdout(SDC_LOG_DEBUG);
   sdc_mg_build(&mg, max_level+1);
 
   sweepers.resize(max_level+1);
@@ -264,5 +294,9 @@ SDCAmr::~SDCAmr()
   sdc_mg_destroy(&mg);
 }
 
-
+void MFCopyAll(MultiFab& dst, MultiFab& src)
+{
+  for (MFIter mfi(dst); mfi.isValid(); ++mfi)
+    dst[mfi].copy(src[mfi]);
+}
 

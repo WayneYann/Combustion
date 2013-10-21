@@ -12,8 +12,18 @@ contains
 
   subroutine burn(rho, YT, dt)
     use meth_params_module, only : use_vode
+    use feval, only : f_rhs, rho_feval => rho
     double precision, intent(in   ) :: rho, dt
     double precision, intent(inout) :: YT(nspecies+1)
+
+    double precision :: YTdot(nspecies+1)
+
+    if (dt == 0.d0) then
+       rho_feval = rho
+       call f_rhs(nspecies+1, YT, 0.d0, YTdot)
+       YT = YTdot
+       return
+    end if
 
     if (use_vode) then
        call burn_vode(rho, YT, dt)
@@ -108,6 +118,8 @@ contains
        print *, 'chemsolv: BDF failed'
        call bl_error("ERROR in burn: BDF failed")       
     end if
+
+    YT = y1
 
   end subroutine burn_bdf
 

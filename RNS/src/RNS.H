@@ -16,7 +16,10 @@ using std::ostream;
 
 #ifdef USE_SDCLIB
 BEGIN_EXTERN_C
-void sdc_feval(void*, void*, double, sdc_state*, void*);
+void sdc_f1eval(void*, void*, double, sdc_state*, void*);
+void sdc_f2eval(void*, void*, double, sdc_state*, void*);
+void sdc_f2comp(void*, void*, double, double, void*, sdc_state*, void*);
+void sdc_poststep_hook(void*, sdc_state*, void*);
 END_EXTERN_C
 #endif
 

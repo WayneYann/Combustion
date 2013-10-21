@@ -209,13 +209,6 @@ RNS::dUdt(MultiFab& U, MultiFab& Uprime, Real time, int fill_boundary_type,
     }
 }
 
-void
-RNS::dUdt_SDC(MultiFab& U, MultiFab& Uprime, Real time, Real dt)
-{
-  dUdt(U, Uprime, time, use_FillBoundary, 0, 0, dt);
-}
-
-
 // Compute U1 = U2 + c Uprime.
 void 
 RNS::update_rk(MultiFab& U1, const MultiFab& U2, Real c, const MultiFab& Uprime)
@@ -282,7 +275,7 @@ RNS::advance_chemistry(MultiFab& U, Real dt)
 	    (lo, hi, BL_TO_FORTRAN(U[i]), dt);
     }
 
-    post_update(U);
+    if (dt > 0.0) post_update(U);
 }
 
 
@@ -349,12 +342,101 @@ RNS::advance_AD(MultiFab& Unew, Real time, Real dt)
 #ifdef USE_SDCLIB
 BEGIN_EXTERN_C
 
-void sdc_feval(void *F, void *Q, double t, sdc_state *state, void *ctx)
+//
+// Compute dU_{AD}/dt.
+//
+void sdc_f1eval(void *F, void *Q, double t, sdc_state *state, void *ctx)
 {
   RNS&      rns    = *((RNS*) ctx);
   MultiFab& U      = *((MultiFab*) Q);
   MultiFab& Uprime = *((MultiFab*) F);
-  rns.dUdt_SDC(U, Uprime, t, state->dt);
+  rns.dUdt(U, Uprime, t, RNS::use_FillBoundary, 0, 0, 0.0);
+  // XXX: it might be interesting to track the magnitude of reflux registers
+}
+
+//void dzmq_send_mf(MultiFab& U, int level, int comp, int wait);
+
+
+//
+// Compute dU_R/dt.
+// 
+// Note that calling advance_chemistry with dt=0.0 puts dU_R/dt into
+// Uprime (see Burner/burn.f90).
+//
+void sdc_f2eval(void *F, void *Q, double t, sdc_state *state, void *ctx)
+{
+  RNS&      rns    = *((RNS*) ctx);
+  MultiFab& U      = *((MultiFab*) Q);
+  MultiFab& Uprime = *((MultiFab*) F);
+
+  MultiFab tmp(U.boxArray(), U.nComp(), U.nGrow());
+
+  if (U.contains_nan()) {
+    std::cout << "f2eval: U HAS NANS" << std::endl;
+  }
+
+  // tmp.setVal(0.0);
+  // tmp.copy(U, RNS::FirstSpec, RNS::FirstSpec, RNS::NumSpec);
+
+  // dzmq_send_mf(U, rns.Level(), 0, 1);
+  // dzmq_send_mf(U, rns.Level(), 10, 1);
+
+  // tmp.copy(U);
+  MFCopyAll(tmp, U);
+
+  rns.advance_chemistry(tmp, 0.0); 
+  MFCopyAll(Uprime, tmp);
+  Uprime.copy(tmp);
+
+  for (int c=0; c<U.nComp(); c++) {
+    if (Uprime.contains_nan(c, 1)) {
+      std::cout << "f2eval: Uprime HAS NANS " << c << std::endl;
+    }
+  }
+
+  //  dzmq_send_mf(Uprime, rns.Level(), 10, 1);
+
+}
+
+//
+// Solve U - dt dU_R/dt (U) = RHS for U.
+//
+// This advances chemistry from 0 to dt using RHS as the initial
+// condition to obtain U.  Then, dU_R/dt is set to (U - RHS) / dt.
+//
+void sdc_f2comp(void *F, void *Q, double t, double dt, void *RHS, sdc_state *state, void *ctx)
+{
+  RNS&      rns    = *((RNS*) ctx);
+  MultiFab& U      = *((MultiFab*) Q);
+  MultiFab& Uprime = *((MultiFab*) F);
+  MultiFab& Urhs   = *((MultiFab*) RHS);
+  for (MFIter mfi(U); mfi.isValid(); ++mfi)
+    U[mfi].copy(Urhs[mfi]);
+
+  MFCopyAll(U, Urhs);
+
+  cout << "f2comp" << endl;
+    if (U.contains_nan()) {
+      std::cout << "U HAS NANS" << std::endl;
+    }
+    
+
+    //    dzmq_send_mf(U, rns.Level(), 0, 1);
+  rns.advance_chemistry(U, dt); 
+  cout << "f2comp done" << endl;
+  Uprime.copy(U);
+  Uprime.minus(Urhs, 0, Uprime.nComp(), 0);
+  Uprime.mult(1./dt);
+  // XXX: it might be interesting to track the difference between
+  // Uprime as calculated above and calling f2eval...
+}
+
+void sdc_poststep_hook(void *Q, sdc_state *state, void *ctx)
+{
+  RNS&      rns    = *((RNS*) ctx);
+  MultiFab& U      = *((MultiFab*) Q);
+
+  rns.post_update(U);
 }
 
 END_EXTERN_C
