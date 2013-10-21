@@ -570,7 +570,6 @@ protected:
     bool       is_predictor;
     MultiFab   Dn;
     MultiFab   Dnp1;
-    MultiFab   Dhat;
     MultiFab   DDn;
     MultiFab   DDnp1;
 };

@@ -963,7 +963,6 @@ HeatTransfer::HeatTransfer (Amr&            papa,
         MCDDOp.define(grids,Domain(),crse_ratio);
 
     Dn.define(grids,nspecies+2,nGrowAdvForcing,Fab_allocate);
-    Dhat.define(grids,nspecies+2,nGrowAdvForcing,Fab_allocate);
     Dnp1.define(grids,nspecies+2,nGrowAdvForcing,Fab_allocate);
     DDn.define(grids,1,nGrowAdvForcing,Fab_allocate);
     DDnp1.define(grids,1,nGrowAdvForcing,Fab_allocate);
@@ -1213,7 +1212,6 @@ HeatTransfer::restart (Amr&          papa,
         MCDDOp.define(grids,Domain(),crse_ratio);
 
     Dn.define(grids,nspecies+2,nGrowAdvForcing,Fab_allocate);
-    Dhat.define(grids,nspecies+2,nGrowAdvForcing,Fab_allocate);
     Dnp1.define(grids,nspecies+2,nGrowAdvForcing,Fab_allocate);
     DDn.define(grids,1,nGrowAdvForcing,Fab_allocate);
     DDnp1.define(grids,1,nGrowAdvForcing,Fab_allocate);
@@ -5614,6 +5612,8 @@ HeatTransfer::advance (Real time,
 	f.plus(r,box,box,0,0,nspecies); // no reactions for RhoH
       }
 
+      MultiFab Dhat(grids,nspecies+2,nGrowAdvForcing);
+
       // advection-diffusion solve with theta=1, theta_enthalpy=-1
       showMF("sdc",Forcing,"sdc_Forcing_before_Dhat",level,sdc_iter,parent->levelSteps(level));
       differential_diffusion_update(Forcing,0,sdc_theta,Dhat,0,DDnp1,-1);
@@ -5646,6 +5646,8 @@ HeatTransfer::advance (Real time,
 	  f.plus(dhat,box,box,0,0,nspecies+1); // add Dhat to RhoY and RHoH
 	  f.plus(a,box,box,first_spec,0,nspecies+1); // add A to RhoY and RhoH
         }
+
+      Dhat.clear();
 
       if (verbose && ParallelDescriptor::IOProcessor())
 	std::cout << "R (SDC corrector " << sdc_iter << ")\n";
