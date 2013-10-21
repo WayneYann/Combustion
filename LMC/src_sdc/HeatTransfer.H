@@ -570,7 +570,6 @@ protected:
     bool       is_predictor;
     MultiFab   Dn;
     MultiFab   DDn;
-    MultiFab   DDnp1;
 };
 
 #endif /*_HeatTransfer_H_*/

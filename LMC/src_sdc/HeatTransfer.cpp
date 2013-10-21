@@ -964,7 +964,6 @@ HeatTransfer::HeatTransfer (Amr&            papa,
 
     Dn.define(grids,nspecies+2,nGrowAdvForcing,Fab_allocate);
     DDn.define(grids,1,nGrowAdvForcing,Fab_allocate);
-    DDnp1.define(grids,1,nGrowAdvForcing,Fab_allocate);
 
     // HACK for debugging
     if (level==0)
@@ -1212,7 +1211,6 @@ HeatTransfer::restart (Amr&          papa,
 
     Dn.define(grids,nspecies+2,nGrowAdvForcing,Fab_allocate);
     DDn.define(grids,1,nGrowAdvForcing,Fab_allocate);
-    DDnp1.define(grids,1,nGrowAdvForcing,Fab_allocate);
 
     // HACK for debugging
     if (level==0)
@@ -5480,6 +5478,7 @@ HeatTransfer::advance (Real time,
     // Note: this was already done for scalars, transport coefficients,
     // and divu in advance_setup
     MultiFab Dnp1(grids,nspecies+2,nGrowAdvForcing);
+    MultiFab DDnp1(grids,1,nGrowAdvForcing);
 
     MultiFab::Copy(Dnp1,Dn,0,0,nspecies+2,nGrowAdvForcing);
     MultiFab::Copy(DDnp1,DDn,0,0,1,nGrowAdvForcing);
@@ -5673,6 +5672,7 @@ HeatTransfer::advance (Real time,
     }
 
     Dnp1.clear();
+    DDnp1.clear();
     dpdt.clear();
     delta_dpdt.clear();
 
