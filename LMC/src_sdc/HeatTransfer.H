@@ -568,8 +568,6 @@ protected:
     static int nGrowAdvForcing;
     bool       updateFluxReg;
     bool       is_predictor;
-    MultiFab   Dn;
-    MultiFab   DDn;
 };
 
 #endif /*_HeatTransfer_H_*/

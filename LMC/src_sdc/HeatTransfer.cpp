@@ -962,9 +962,6 @@ HeatTransfer::HeatTransfer (Amr&            papa,
     if (do_mcdd)
         MCDDOp.define(grids,Domain(),crse_ratio);
 
-    Dn.define(grids,nspecies+2,nGrowAdvForcing,Fab_allocate);
-    DDn.define(grids,1,nGrowAdvForcing,Fab_allocate);
-
     // HACK for debugging
     if (level==0)
         stripBox = getStrip(geom);
@@ -1208,9 +1205,6 @@ HeatTransfer::restart (Amr&          papa,
 
     if (do_mcdd)
         MCDDOp.define(grids,Domain(),crse_ratio);
-
-    Dn.define(grids,nspecies+2,nGrowAdvForcing,Fab_allocate);
-    DDn.define(grids,1,nGrowAdvForcing,Fab_allocate);
 
     // HACK for debugging
     if (level==0)
@@ -5459,10 +5453,14 @@ HeatTransfer::advance (Real time,
     // compute old-time thermodynamic pressure
     setThermoPress(prev_time);  
 
+    MultiFab Dn(grids,nspecies+2,nGrowAdvForcing);
+    MultiFab DDn(grids,1,nGrowAdvForcing);
+
     // Compute Dn and DDn (based on state at tn)
     //  (Note that coeffs at tn and tnp1 were intialized in _setup)
     if (verbose && ParallelDescriptor::IOProcessor())
       std::cout << "Computing Dn and DDn \n";
+
     compute_differential_diffusion_terms(Dn,DDn,prev_time,dt);
     showMF("sdc",Dn,"sdc_Dn",level,parent->levelSteps(level));
     showMF("sdc",DDn,"sdc_DDn",level,parent->levelSteps(level));
@@ -5479,12 +5477,11 @@ HeatTransfer::advance (Real time,
     // and divu in advance_setup
     MultiFab Dnp1(grids,nspecies+2,nGrowAdvForcing);
     MultiFab DDnp1(grids,1,nGrowAdvForcing);
+    MultiFab dpdt(grids,1,nGrowAdvForcing);
+    MultiFab delta_dpdt(grids,1,nGrowAdvForcing);
 
     MultiFab::Copy(Dnp1,Dn,0,0,nspecies+2,nGrowAdvForcing);
     MultiFab::Copy(DDnp1,DDn,0,0,1,nGrowAdvForcing);
-
-    MultiFab dpdt(grids,1,nGrowAdvForcing);
-    MultiFab delta_dpdt(grids,1,nGrowAdvForcing);
 
     dpdt.setVal(0,nGrowAdvForcing);
 
@@ -5671,6 +5668,8 @@ HeatTransfer::advance (Real time,
 	std::cout << "DONE WITH R (SDC corrector " << sdc_iter << ")\n";
     }
 
+    Dn.clear();
+    DDn.clear();
     Dnp1.clear();
     DDnp1.clear();
     dpdt.clear();
