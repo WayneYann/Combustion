@@ -569,7 +569,6 @@ protected:
     bool       updateFluxReg;
     bool       is_predictor;
     MultiFab   Dn;
-    MultiFab   Dnp1;
     MultiFab   DDn;
     MultiFab   DDnp1;
 };

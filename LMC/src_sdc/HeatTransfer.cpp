@@ -963,7 +963,6 @@ HeatTransfer::HeatTransfer (Amr&            papa,
         MCDDOp.define(grids,Domain(),crse_ratio);
 
     Dn.define(grids,nspecies+2,nGrowAdvForcing,Fab_allocate);
-    Dnp1.define(grids,nspecies+2,nGrowAdvForcing,Fab_allocate);
     DDn.define(grids,1,nGrowAdvForcing,Fab_allocate);
     DDnp1.define(grids,1,nGrowAdvForcing,Fab_allocate);
 
@@ -1212,7 +1211,6 @@ HeatTransfer::restart (Amr&          papa,
         MCDDOp.define(grids,Domain(),crse_ratio);
 
     Dn.define(grids,nspecies+2,nGrowAdvForcing,Fab_allocate);
-    Dnp1.define(grids,nspecies+2,nGrowAdvForcing,Fab_allocate);
     DDn.define(grids,1,nGrowAdvForcing,Fab_allocate);
     DDnp1.define(grids,1,nGrowAdvForcing,Fab_allocate);
 
@@ -5481,6 +5479,8 @@ HeatTransfer::advance (Real time,
     // copy old state into new state for Dn and DDn.
     // Note: this was already done for scalars, transport coefficients,
     // and divu in advance_setup
+    MultiFab Dnp1(grids,nspecies+2,nGrowAdvForcing);
+
     MultiFab::Copy(Dnp1,Dn,0,0,nspecies+2,nGrowAdvForcing);
     MultiFab::Copy(DDnp1,DDn,0,0,1,nGrowAdvForcing);
 
@@ -5672,6 +5672,7 @@ HeatTransfer::advance (Real time,
 	std::cout << "DONE WITH R (SDC corrector " << sdc_iter << ")\n";
     }
 
+    Dnp1.clear();
     dpdt.clear();
     delta_dpdt.clear();
 
@@ -7580,7 +7581,7 @@ HeatTransfer::calc_divu (Real      time,
     {
         vtCompT = nspecies + 1;
         vtCompY = 0;
-        mcViscTerms.define(grids,nspecies+2,nGrow,Fab_allocate); // Can probably use DDnp1 here
+        mcViscTerms.define(grids,nspecies+2,nGrow,Fab_allocate);
 
 	// we don't want to update flux registers due to fluxes in divu computation
 	do_reflux_hold = do_reflux;
