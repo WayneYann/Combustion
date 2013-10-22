@@ -6034,7 +6034,8 @@ HeatTransfer::advance_chemistry (MultiFab&       mf_old,
 
       DistributionMapping dm = getFuncCountDM(ba,ngrow);
       MultiFab STemp, fcnCntTemp, rYdotTemp, FTemp;
-      STemp.define(ba, mf_new.nComp(), 0, dm, Fab_allocate);
+//      STemp.define(ba, mf_new.nComp(), 0, dm, Fab_allocate);
+      STemp.define(ba, nspecies+3, 0, dm, Fab_allocate);
       rYdotTemp.define(ba, nspecies, 0, dm, Fab_allocate);
       fcnCntTemp.define(ba, 1, 0, dm, Fab_allocate);
       FTemp.define(ba, Force.nComp(), 0, dm, Fab_allocate);
@@ -6050,11 +6051,12 @@ HeatTransfer::advance_chemistry (MultiFab&       mf_old,
         std::cout << "*** advance_chemistry: FABs in tmp MF: " << STemp.size() << '\n';
       }
 
-      STemp.copy(mf_old,first_spec,first_spec,nspecies+3); // Parallel copy.
+      STemp.copy(mf_old,first_spec,0,nspecies+3); // Parallel copy.
       FTemp.copy(Force); // Parallel copy.
       rYdotTemp.setVal(0);
 
-      for (MFIter Smfi(STemp); Smfi.isValid(); ++Smfi) {
+      for (MFIter Smfi(STemp); Smfi.isValid(); ++Smfi)
+      {
         const FArrayBox& rYo = STemp[Smfi];
         const FArrayBox& rHo = STemp[Smfi];
         const FArrayBox& To  = STemp[Smfi];
@@ -6073,13 +6075,16 @@ HeatTransfer::advance_chemistry (MultiFab&       mf_old,
         BoxArray ba = do_avg_down_chem ? BoxLib::complementIn(bx,cf_grids) : BoxArray(bx);
         for (int i=0; i<ba.size(); ++i)
         {
-          getChemSolve().solveTransient_sdc(rYn,rHn,Tn,rYo,rHo,To,frc,rYdot,fc,ba[i],
-                                            first_spec,RhoH,Temp,dt,Patm,chemDiag,
-                                            use_stiff_solver);
+            const int s_spec = 0;
+            const int s_rhoh = nspecies;
+            const int s_temp = nspecies+2;
+            getChemSolve().solveTransient_sdc(rYn,rHn,Tn,rYo,rHo,To,frc,rYdot,fc,ba[i],
+                                              s_spec,s_rhoh,s_temp,dt,Patm,chemDiag,
+                                              use_stiff_solver);
         }
       }
 
-      mf_new.copy(STemp,first_spec,first_spec,nspecies+3); // Parallel copy.
+      mf_new.copy(STemp,0,first_spec,nspecies+3); // Parallel copy.
 
       STemp.clear();
 
