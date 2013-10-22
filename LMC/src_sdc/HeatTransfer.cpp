@@ -1804,7 +1804,7 @@ HeatTransfer::compute_instantaneous_reaction_rates(MultiFab&       R,
 
     if (hack_nochem) 
       {
-	R.setVal(0.);
+	R.setVal(0);
         R.setBndry(0,0,nspecies);
 	return;
       }
@@ -2165,7 +2165,7 @@ HeatTransfer::post_init (Real stop_time)
                 MultiFab S_tmp(S_new.boxArray(),S_new.nComp(),0);
 
 		MultiFab Forcing_tmp(S_new.boxArray(),nspecies+1,0);
-		Forcing_tmp.setVal(0.);
+		Forcing_tmp.setVal(0);
 
 		getLevel(k).advance_chemistry(S_new,S_tmp,dt_save[k]/2.0,Forcing_tmp,0);
             }
@@ -2826,9 +2826,8 @@ HeatTransfer::compute_enthalpy_fluxes (Real                   time,
     //  required for the temperature equation.  Both the fluxes and the Fi.Grad(Hi) terms are stored
     //  in the class data.
     //
-    const Box& domain = geom.Domain();
-    const BCRec& Tbc = get_desc_lst()[State_Type].getBC(Temp);
-    FArrayBox area[BL_SPACEDIM];
+    const Box&   domain = geom.Domain();
+    const BCRec& Tbc    = get_desc_lst()[State_Type].getBC(Temp);
     //
     // Fill ghost cells for rhoY and Temp.
     //
@@ -2840,6 +2839,8 @@ HeatTransfer::compute_enthalpy_fluxes (Real                   time,
         S[rYfpi].copy(rYfpi(),0,first_spec,nspecies);
         S[rYfpi].copy(Tfpi(),0,Temp,1);
     }
+
+    FArrayBox area[BL_SPACEDIM];
 
     for (MFIter mfi(S); mfi.isValid(); ++mfi)
     {
@@ -4800,9 +4801,10 @@ HeatTransfer::scalar_advection_update (Real dt,
                                        int  first_scalar,
                                        int  last_scalar)
 {
-    // Careful: If here, the sign of aofs is flipped (wrt the usual NS treatment)
-  FArrayBox tmp;
-  MultiFab& S_new = get_new_data(State_Type);
+  //
+  // Careful: If here, the sign of aofs is flipped (wrt the usual NS treatment).
+  //
+  MultiFab&       S_new = get_new_data(State_Type);
   const MultiFab& S_old = get_old_data(State_Type);
   
   for (MFIter mfi(S_new); mfi.isValid(); ++mfi)
@@ -5282,7 +5284,7 @@ HeatTransfer::predict_velocity (Real  dt,
 
 #ifndef NDEBUG
     for (int dir=0; dir<BL_SPACEDIM; ++dir) {
-        u_mac[dir].setVal(0.);
+        u_mac[dir].setVal(0);
     }
     MultiFab Force(grids,BL_SPACEDIM,hyp_grow);
     Force.setVal(0);
@@ -5702,7 +5704,7 @@ HeatTransfer::advance (Real time,
         enthi.mult(R[mfi],0,0,R.nComp());
         
         // Form heat release
-        (*auxDiag["HEATRELEASE"])[mfi].setVal(0.);
+        (*auxDiag["HEATRELEASE"])[mfi].setVal(0);
         for (int j=0; j<R.nComp(); ++j)
 	{
           (*auxDiag["HEATRELEASE"])[mfi].minus(enthi,j,0,1);
@@ -6065,10 +6067,6 @@ HeatTransfer::advance_chemistry (MultiFab&       mf_old,
         FArrayBox& rHn = Stn;
         FArrayBox& Tn  = Stn;
 
-//        FArrayBox& rYn = STemp[Smfi];
-//        FArrayBox& rHn = STemp[Smfi];
-//        FArrayBox& Tn  = STemp[Smfi];
-
         FArrayBox& fc = fcnCntTemp[Smfi];
         const FArrayBox& frc = FTemp[Smfi];
         FArrayBox& rYdot = rYdotTemp[Smfi];
@@ -6093,28 +6091,36 @@ HeatTransfer::advance_chemistry (MultiFab&       mf_old,
 
       rYdotTemp.clear();
 
-      if (do_diag) {
+      if (do_diag)
+      {
         auxDiag["REACTIONS"]->copy(diagTemp); // Parallel copy
+        diagTemp.clear();
       }
 
       MultiFab& FC = get_new_data(FuncCount_Type);
-      if (ngrow == 0) {
-        FC.copy(fcnCntTemp); // Parallel copy.
-      } else {
-        BoxArray ba = BoxArray(FC.boxArray()).grow(ngrow);
-        MultiFab grownFC(ba, 1, 0);
-        for (MFIter mfi(FC); mfi.isValid(); ++mfi) {
-          grownFC[mfi].copy(FC[mfi]);
-        }
-        grownFC.copy(fcnCntTemp); // Parallel copy.        
-        for (MFIter mfi(grownFC); mfi.isValid(); ++mfi) {
-          FC[mfi].copy(grownFC[mfi]);
-        }
+      if (ngrow == 0)
+      {
+          FC.copy(fcnCntTemp); // Parallel copy.
+      }
+      else
+      {
+          BoxArray ba = BoxArray(FC.boxArray()).grow(ngrow);
+          MultiFab grownFC(ba, 1, 0);
+          for (MFIter mfi(FC); mfi.isValid(); ++mfi)
+          {
+              grownFC[mfi].copy(FC[mfi]);
+          }
+          grownFC.copy(fcnCntTemp); // Parallel copy.        
+          for (MFIter mfi(grownFC); mfi.isValid(); ++mfi)
+          {
+              FC[mfi].copy(grownFC[mfi]);
+          }
       }
     }
 
     // Approximate covered crse chemistry (I_R) with averaged down fine I_R from previous time step
-    if (do_avg_down_chem) {
+    if (do_avg_down_chem)
+    {
       MultiFab& fine_React = getLevel(level+1).get_old_data(RhoYdot_Type);
       BoxArray cf_grids = BoxArray(fine_React.boxArray()).coarsen(fine_ratio);
       MultiFab avg_fdist(cf_grids,nspecies,0);
@@ -6168,7 +6174,6 @@ HeatTransfer::compute_scalar_advection_fluxes_and_divergence (MultiFab& Force,
     std::cout << "... computing advection terms\n";
   const Real* dx        = geom.CellSize();
   const Real prev_time = state[State_Type].prevTime();
-
   //
   // Gather info necesary to build transverse velocities
   // (stored internal to Godunov)
@@ -6191,7 +6196,9 @@ HeatTransfer::compute_scalar_advection_fluxes_and_divergence (MultiFab& Force,
   }
 
   FArrayBox volume, area[BL_SPACEDIM], tvelforces;
-  const int  nState          = desc_lst[State_Type].nComp();
+
+  const int nState = desc_lst[State_Type].nComp();
+
   for (FillPatchIterator S_fpi(*this,DivU,HYP_GROW,prev_time,State_Type,0,nState);
        S_fpi.isValid();
        ++S_fpi)
@@ -6201,10 +6208,11 @@ HeatTransfer::compute_scalar_advection_fluxes_and_divergence (MultiFab& Force,
     const FArrayBox& S = S_fpi();
     const FArrayBox& divu = DivU[S_fpi];
     const FArrayBox& force = Force[S_fpi];
-    const Box gbox = S_fpi().box();
 
     for (int dir = 0; dir < BL_SPACEDIM; dir++)
+    {
       geom.GetFaceArea(area[dir],grids,i,dir,GEOM_GROW);
+    }
     geom.GetVolume(volume,grids,i,GEOM_GROW);
 
     if (use_forces_in_trans || (do_mom_diff == 1))
@@ -6217,7 +6225,8 @@ HeatTransfer::compute_scalar_advection_fluxes_and_divergence (MultiFab& Force,
 
       godunov->Sum_tf_gp_visc(tvelforces,0,VelViscTerms[i],0,Gp[i],0,S,Density);
     }
-    else {
+    else
+    {
       tvelforces.resize(BoxLib::grow(grids[i],nGrowAdvForcing),BL_SPACEDIM);
       tvelforces.setVal(0);
     }
@@ -6524,7 +6533,6 @@ HeatTransfer::mac_sync ()
 		// Also, Ssync for species should contain rho^{n+1} * (delta Y)^sync
 		differential_spec_diffuse_sync(dt);
 
-                MultiFab Soln(grids,1,1);
                 const Real cur_time  = state[State_Type].curTime();
                 const Real a = 1.0;     // Passed around, but not used
                 Real rhsscale;          //  -ditto-
@@ -6560,17 +6568,22 @@ HeatTransfer::mac_sync ()
 
                     visc_op->maxOrder(diffusion->maxOrder());
 
-		    // copy rho^{n+1} * (delta Y)^sync into Soln
-                    MultiFab::Copy(Soln,*Ssync,sigma-BL_SPACEDIM,0,1,0);
+                    {
+                        MultiFab Soln(grids,1,1);
 
-		    // divide Soln by rho
-                    for (MFIter Smfi(Soln); Smfi.isValid(); ++Smfi)
-		    {
-		      Soln[Smfi].divide(S_new[Smfi],Smfi.validbox(),Density,0,1);
-		    }
+                        // copy rho^{n+1} * (delta Y)^sync into Soln
+                        MultiFab::Copy(Soln,*Ssync,sigma-BL_SPACEDIM,0,1,0);
 
-		    // compute lambda/cp.Grad(delta Y^sync) and weight
-		    visc_op->compFlux(D_DECL(*fluxSC[0],*fluxSC[1],*fluxSC[2]),Soln);
+                        // divide Soln by rho
+                        for (MFIter Smfi(Soln); Smfi.isValid(); ++Smfi)
+                        {
+                            Soln[Smfi].divide(S_new[Smfi],Smfi.validbox(),Density,0,1);
+                        }
+
+                        // compute lambda/cp.Grad(delta Y^sync) and weight
+                        visc_op->compFlux(D_DECL(*fluxSC[0],*fluxSC[1],*fluxSC[2]),Soln);
+                    }
+
                     for (int d = 0; d < BL_SPACEDIM; ++d)
                         fluxSC[d]->mult(-b/geom.CellSize()[d]);
                     //
@@ -6596,7 +6609,6 @@ HeatTransfer::mac_sync ()
                     delete visc_op;
                 }
 
-                Soln.clear();
                 diffusion->removeFluxBoxesLevel(fluxSC);
                 diffusion->removeFluxBoxesLevel(rhoh_visc);
                 //
@@ -7159,7 +7171,7 @@ HeatTransfer::differential_spec_diffuse_sync (Real dt)
         }
 
         update.resize(box,nspecies);
-	update.setVal(0.);
+	update.setVal(0);
         geom.GetVolume(volume,grids,iGrid,GEOM_GROW);
 
 	// is this right? - I'm not sure what the scaling on SpecDiffusionFluxnp1 is
@@ -7184,7 +7196,6 @@ HeatTransfer::differential_spec_diffuse_sync (Real dt)
 
 	// Ssync = "RHS from diffusion solve" - dt/2) div (delta gamma)
 	(*Ssync)[mfi].copy(update,box,0,box,first_spec-BL_SPACEDIM,nspecies);
-
     }
 
     Rhs.clear();
@@ -7248,9 +7259,7 @@ HeatTransfer::reflux ()
     if (do_reflux_visc)
         fr_visc.Reflux(*Ssync,volume,scale,BL_SPACEDIM,0,NUM_STATE-BL_SPACEDIM,geom);
 
-
     showMF("sdcSync",*Ssync,"sdc_Ssync_after_viscReflux",level);
-
 
     const MultiFab* RhoHalftime = get_rho_half_time();
 
@@ -7591,7 +7600,6 @@ HeatTransfer::calc_divu (Real      time,
         compute_differential_diffusion_terms(mcViscTerms,divu,time,dt);
 
 	do_reflux = do_reflux_hold;
-
     }
 
     MultiFab& S = get_data(State_Type,time);
@@ -7609,7 +7617,7 @@ HeatTransfer::calc_divu (Real      time,
       {
 	// initial projection, set omegadot to zero
 	RhoYdotTmp.define(grids,nspecies,0,Fab_allocate);
-	RhoYdot.setVal(0.);
+	RhoYdot.setVal(0);
       }
       else if (dt > 0)
       {
@@ -7666,8 +7674,9 @@ HeatTransfer::calc_dpdt (Real      time,
   MultiFab Peos(grids,1,nGrow);
   for (FillPatchIterator S_fpi(*this,Peos,nGrow,time,State_Type,pComp,1);
        S_fpi.isValid();
-       ++S_fpi) {
-    Peos[S_fpi].copy(S_fpi());
+       ++S_fpi)
+  {
+      Peos[S_fpi].copy(S_fpi());
   }
 
   for (MFIter mfi(dpdt); mfi.isValid(); ++mfi)
