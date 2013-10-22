@@ -2687,6 +2687,8 @@ HeatTransfer::differential_diffusion_update (MultiFab& Force,
                                 SpecDiffusionFluxn,SpecDiffusionFluxnp1,sigma,&Force,sigma,alpha,
                                 alphaComp,betan,betanp1,betaComp,solve_mode,add_old_time_divFlux);
     }
+
+    diffusion->removeFluxBoxesLevel(betanp1);
     //
     // Remove theta scaling of fluxes, adjust so that the species fluxes sum to zero
     //  and compute - Div(Flux)
@@ -2699,12 +2701,13 @@ HeatTransfer::differential_diffusion_update (MultiFab& Force,
     // Modify/update new-time fluxes to ensure sum of species fluxes = 0
     //
     adjust_spec_diffusion_fluxes(curr_time);
-
+    //
     // AJN FLUXREG
     // We have just performed the correction diffusion solve for Y_m and h
     // If updateFluxReg=T, we update VISCOUS flux registers:
     //   ADD Gamma_{m,AD}^(k+1),
     //   ADD lambda^(k)/cp^(k) grad h_AD^(k+1).
+    //
     if (do_reflux && updateFluxReg)
     {
       for (int d = 0; d < BL_SPACEDIM; d++)
@@ -2727,8 +2730,6 @@ HeatTransfer::differential_diffusion_update (MultiFab& Force,
     }
 
     flux_divergence(Dnew,DComp,SpecDiffusionFluxnp1,0,nComp,-1);
-
-        diffusion->removeFluxBoxesLevel(betanp1);
   }
     
   if (verbose) {
