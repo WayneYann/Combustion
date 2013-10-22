@@ -5967,49 +5967,6 @@ HeatTransfer::advance_chemistry (MultiFab&       mf_old,
     const Real Patm = p_amb / P1atm_MKS;
     FArrayBox* chemDiag = 0;
 
-    if (do_not_use_funccount) {
-      MultiFab tmpfc;
-      tmpfc.define(mf_old.boxArray(), 1, 0, mf_old.DistributionMap(), Fab_allocate);
-      tmpfc.setVal(0);
-
-      for (MFIter Smfi(mf_old); Smfi.isValid(); ++Smfi) {
-        FArrayBox& rYn = mf_new[Smfi];
-        FArrayBox& rHn = mf_new[Smfi];
-        FArrayBox& Tn  = mf_new[Smfi];
-        const FArrayBox& rYo = mf_old[Smfi];
-        const FArrayBox& rHo = mf_old[Smfi];
-        const FArrayBox& To  = mf_old[Smfi];
-        const Box& box = Smfi.validbox(); // FIXME: If ngrow needed, should grow this
-        FArrayBox& fc = tmpfc[Smfi];
-        const FArrayBox& frc = Force[Smfi];
-        FArrayBox& rYdot = React_new[Smfi];
-        if (plot_reactions &&
-            BoxLib::intersect(mf_old.boxArray(),auxDiag["REACTIONS"]->boxArray()).size() != 0) {
-          chemDiag = &( (*auxDiag["REACTIONS"])[Smfi] );
-        }
-        BoxArray ba = do_avg_down_chem ? BoxLib::complementIn(box,cf_grids) : BoxArray(box);
-        for (int i=0; i<ba.size(); ++i) {
-          getChemSolve().solveTransient_sdc(rYn,rHn,Tn,  rYo,rHo,To,  frc, rYdot, fc, ba[i],
-                                            first_spec, RhoH, Temp, dt, Patm, chemDiag, use_stiff_solver);
-        }
-      }
-
-      MultiFab& FC = get_new_data(FuncCount_Type);
-      if (ngrow == 0) {
-        FC.copy(tmpfc); // Parallel copy.
-      } else {
-        BoxArray gba = BoxArray(FC.boxArray()).grow(ngrow);
-        MultiFab grownFC(gba, 1, 0);
-        for (MFIter mfi(FC); mfi.isValid(); ++mfi) {
-          grownFC[mfi].copy(FC[mfi]);
-        }        
-        grownFC.copy(tmpfc); // Parallel copy.
-        for (MFIter mfi(grownFC); mfi.isValid(); ++mfi) {
-          FC[mfi].copy(grownFC[mfi]);
-        }
-      }
-    }
-    else
     {
       //
       // Chop the grids to level out the chemistry work.
@@ -6018,7 +5975,8 @@ HeatTransfer::advance_chemistry (MultiFab&       mf_old,
       BoxArray ba = mf_new.boxArray();
       bool done = false;
 
-      for (int cnt = 1; !done; cnt *= 2) {
+      for (int cnt = 1; !done; cnt *= 2)
+      {
         const int ChunkSize = parent->maxGridSize(level)/cnt;
 
         // Don't let grids get too small. 
@@ -6033,27 +5991,24 @@ HeatTransfer::advance_chemistry (MultiFab&       mf_old,
       }
 
       DistributionMapping dm = getFuncCountDM(ba,ngrow);
-      MultiFab STemp, fcnCntTemp, rYdotTemp, FTemp;
-//      STemp.define(ba, mf_new.nComp(), 0, dm, Fab_allocate);
+      MultiFab STemp, fcnCntTemp, FTemp;
       STemp.define(ba, nspecies+3, 0, dm, Fab_allocate);
-      rYdotTemp.define(ba, nspecies, 0, dm, Fab_allocate);
       fcnCntTemp.define(ba, 1, 0, dm, Fab_allocate);
       FTemp.define(ba, Force.nComp(), 0, dm, Fab_allocate);
 
       MultiFab diagTemp;
       const bool do_diag = plot_reactions && BoxLib::intersect(ba,auxDiag["REACTIONS"]->boxArray()).size() != 0;
-      if (do_diag) {
+      if (do_diag)
+      {
         diagTemp.define(ba, auxDiag["REACTIONS"]->nComp(), 0, dm, Fab_allocate);
         diagTemp.copy(*auxDiag["REACTIONS"]); // Parallel copy
       }
 
-      if (verbose && ParallelDescriptor::IOProcessor()) {
+      if (verbose && ParallelDescriptor::IOProcessor())
         std::cout << "*** advance_chemistry: FABs in tmp MF: " << STemp.size() << '\n';
-      }
 
       STemp.copy(mf_old,first_spec,0,nspecies+3); // Parallel copy.
       FTemp.copy(Force); // Parallel copy.
-      rYdotTemp.setVal(0);
 
       for (MFIter Smfi(STemp); Smfi.isValid(); ++Smfi)
       {
@@ -6067,30 +6022,34 @@ HeatTransfer::advance_chemistry (MultiFab&       mf_old,
         FArrayBox& rHn = STemp[Smfi];
         FArrayBox& Tn  = STemp[Smfi];
 
-        FArrayBox& fc = fcnCntTemp[Smfi];
+        FArrayBox&       fc  = fcnCntTemp[Smfi];
         const FArrayBox& frc = FTemp[Smfi];
-        FArrayBox& rYdot = rYdotTemp[Smfi];
-        chemDiag = (do_diag ? &(diagTemp[Smfi]) : 0);
+        chemDiag             = (do_diag ? &(diagTemp[Smfi]) : 0);
 
         BoxArray ba = do_avg_down_chem ? BoxLib::complementIn(bx,cf_grids) : BoxArray(bx);
+
         for (int i=0; i<ba.size(); ++i)
         {
             const int s_spec = 0;
             const int s_rhoh = nspecies;
             const int s_temp = nspecies+2;
-            getChemSolve().solveTransient_sdc(rYn,rHn,Tn,rYo,rHo,To,frc,rYdot,fc,ba[i],
+            getChemSolve().solveTransient_sdc(rYn,rHn,Tn,rYo,rHo,To,frc,fc,ba[i],
                                               s_spec,s_rhoh,s_temp,dt,Patm,chemDiag,
                                               use_stiff_solver);
         }
       }
 
+      MultiFab::Copy(React_new, mf_old, first_spec, 0, nspecies, 0);
+
       mf_new.copy(STemp,0,first_spec,nspecies+3); // Parallel copy.
 
       STemp.clear();
 
-      React_new.copy(rYdotTemp); // Parallel copy.
+      MultiFab::Subtract(React_new, mf_new, first_spec, 0, nspecies, 0);
 
-      rYdotTemp.clear();
+      React_new.mult(-1/dt);
+
+      MultiFab::Subtract(React_new, Force, 0, 0, nspecies, 0);
 
       if (do_diag)
       {

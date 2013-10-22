@@ -1212,7 +1212,6 @@ c     Reset FIRST to .TRUE. to force new Jacobian on each cell
      &     rhoHold,   DIMS(rhoHold),
      &     Told,      DIMS(Told),
      &     const_src, DIMS(const_src),
-     &     I_R,       DIMS(I_R),
      &     FuncCount, DIMS(FuncCount),
      &     Patm,
      &     dt,
@@ -1232,7 +1231,6 @@ c     Reset FIRST to .TRUE. to force new Jacobian on each cell
       integer DIMDEC(rhoHnew)
       integer DIMDEC(Tnew)
       integer DIMDEC(const_src)
-      integer DIMDEC(I_R)
       integer DIMDEC(FuncCount)
       integer do_diag, do_stiff
       REAL_T rhoYold(DIMV(rhoYold),*)
@@ -1242,7 +1240,6 @@ c     Reset FIRST to .TRUE. to force new Jacobian on each cell
       REAL_T rhoHnew(DIMV(rhoHnew))
       REAL_T Tnew(DIMV(rhoHnew))
       REAL_T const_src(DIMV(const_src),1:Nspec+1)
-      REAL_T I_R(DIMV(I_R),Nspec)
       REAL_T FuncCount(DIMV(FuncCount))
       REAL_T Patm, dt
       REAL_T diag(DIMV(FuncCount),*)
@@ -1500,13 +1497,20 @@ c               RWRK(dvbr+4) = TT2 - TT1
             rhoInv = 1.d0 / rho
 
             if (strang_fix .eq. 1) then
-c     "jbb hack"
-               do m= 1,Nspec
-                  rhoYnew(i,j,m) = Z(m) + (rhoYold(i,j,m) - rhoYtemp(m))*rhooldInv*rho
-               end do
-            else
-               rhoYnew(i,j,1:Nspec) = Z(1:Nspec)
+              !
+              ! We want Z to contain rhoYnew(i,j,k)
+              !
+              do m= 1,Nspec
+                 Z(m) = Z(m) + (rhoYold(i,j,m) - rhoYtemp(m))*rhooldInv*rho
+              end do
             end if
+
+            do m=1,Nspec
+              !
+              ! Finally update rhoYnew
+              !
+              rhoYnew(i,j,m) = Z(m)
+            end do
 
             do m=1,Nspec
                Y(m) = rhoYnew(i,j,m) * rhoInv

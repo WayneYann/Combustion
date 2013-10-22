@@ -1244,7 +1244,6 @@ c                     FIRST = .TRUE.
      &     rhoHold,   DIMS(rhoHold),
      &     Told,      DIMS(Told),
      &     const_src, DIMS(const_src),
-     &     I_R,       DIMS(I_R),
      &     FuncCount, DIMS(FuncCount),
      &     Patm,
      &     dt,
@@ -1263,7 +1262,6 @@ c                     FIRST = .TRUE.
       integer DIMDEC(rhoHnew)
       integer DIMDEC(Tnew)
       integer DIMDEC(const_src)
-      integer DIMDEC(I_R)
       integer DIMDEC(FuncCount)
       integer do_diag, do_stiff
       REAL_T rhoYold(DIMV(rhoYold),*)
@@ -1273,7 +1271,6 @@ c                     FIRST = .TRUE.
       REAL_T rhoHnew(DIMV(rhoHnew))
       REAL_T Tnew(DIMV(rhoHnew))
       REAL_T const_src(DIMV(const_src),1:Nspec+1)
-      REAL_T I_R(DIMV(I_R),Nspec)
       REAL_T FuncCount(DIMV(FuncCount))
       REAL_T Patm, dt
       REAL_T diag(DIMV(FuncCount),*)
@@ -1501,9 +1498,8 @@ c
                end if
 
                do m=1,Nspec
-                  I_R(i,j,k,m) = (Z(m) - rhoYold(i,j,k,m))/dt - c_0(m)
                   !
-                  ! Finally uupdat rhoYnew
+                  ! Finally update rhoYnew
                   !
                   rhoYnew(i,j,k,m) = Z(m)
                end do
