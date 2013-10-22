@@ -1490,24 +1490,29 @@ c
                   rho = rho + Z(m)
                end do
                rhoInv = 1.d0 / rho
-               
+
                if (strang_fix .eq. 1) then
+                  !
+                  ! We want Z to contain rhoYnew(i,j,k)
+                  !
                   do m= 1,Nspec
-                     rhoYnew(i,j,k,m) = Z(m) + (rhoYold(i,j,k,m) - rhoYtemp(m))*rhooldInv*rho
+                     Z(m) = Z(m) + (rhoYold(i,j,k,m) - rhoYtemp(m))*rhooldInv*rho
                   end do
-               else
-                  rhoYnew(i,j,k,1:Nspec) = Z(1:Nspec)
                end if
+
+               do m=1,Nspec
+                  I_R(i,j,k,m) = (Z(m) - rhoYold(i,j,k,m))/dt - c_0(m)
+                  !
+                  ! Finally uupdat rhoYnew
+                  !
+                  rhoYnew(i,j,k,m) = Z(m)
+               end do
 
                do m=1,Nspec
                   Y(m) = rhoYnew(i,j,k,m) * rhoInv
                enddo
                Tnew(i,j,k) = T_cell
                call FORT_TfromHYpt(Tnew(i,j,k),rhoHnew(i,j,k)*rhoInv,Y,HtoTerrMAX,HtoTiterMAX,res,Niter)
-            
-               do m=1,Nspec
-                  I_R(i,j,k,m) = (rhoYnew(i,j,k,m) - rhoYold(i,j,k,m))/dt - c_0(m)
-               end do
 
             end do
          end do

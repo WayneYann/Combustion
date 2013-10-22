@@ -6054,18 +6054,16 @@ HeatTransfer::advance_chemistry (MultiFab&       mf_old,
       FTemp.copy(Force); // Parallel copy.
       rYdotTemp.setVal(0);
 
-      FArrayBox Stn;
       for (MFIter Smfi(STemp); Smfi.isValid(); ++Smfi) {
         const FArrayBox& rYo = STemp[Smfi];
         const FArrayBox& rHo = STemp[Smfi];
         const FArrayBox& To  = STemp[Smfi];
 
         const Box& bx = Smfi.validbox();
-        Stn.resize(bx,STemp.nComp());
-        Stn.copy(STemp[Smfi]);
-        FArrayBox& rYn = Stn;
-        FArrayBox& rHn = Stn;
-        FArrayBox& Tn  = Stn;
+
+        FArrayBox& rYn = STemp[Smfi];
+        FArrayBox& rHn = STemp[Smfi];
+        FArrayBox& Tn  = STemp[Smfi];
 
         FArrayBox& fc = fcnCntTemp[Smfi];
         const FArrayBox& frc = FTemp[Smfi];
@@ -6073,15 +6071,13 @@ HeatTransfer::advance_chemistry (MultiFab&       mf_old,
         chemDiag = (do_diag ? &(diagTemp[Smfi]) : 0);
 
         BoxArray ba = do_avg_down_chem ? BoxLib::complementIn(bx,cf_grids) : BoxArray(bx);
-        for (int i=0; i<ba.size(); ++i) {
-          getChemSolve().solveTransient_sdc(rYn,rHn,Tn,  rYo,rHo,To,  frc, rYdot, fc, ba[i],
-                                            first_spec, RhoH, Temp, dt, Patm, chemDiag, use_stiff_solver);
+        for (int i=0; i<ba.size(); ++i)
+        {
+          getChemSolve().solveTransient_sdc(rYn,rHn,Tn,rYo,rHo,To,frc,rYdot,fc,ba[i],
+                                            first_spec,RhoH,Temp,dt,Patm,chemDiag,
+                                            use_stiff_solver);
         }
-
-        STemp[Smfi].copy(Stn,first_spec,first_spec,nspecies+3);
       }
-
-      Stn.clear();
 
       mf_new.copy(STemp,first_spec,first_spec,nspecies+3); // Parallel copy.
 
