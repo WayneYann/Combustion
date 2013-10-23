@@ -177,34 +177,6 @@ Array<int>  HeatTransfer::mcdd_nu1;
 Array<int>  HeatTransfer::mcdd_nu2;
 Array<Real> HeatTransfer::typical_values;
 
-// Turns out to be handy for debugging
-#if 1
-static
-void dump(const FArrayBox& fab, int comp=-1)
-{
-
-#if BL_SPACEDIM == 2
-    int sComp = comp < 0 ? 0 : comp;
-    int nComp = comp < 0 ? fab.nComp() : 1;
-
-    for (int j=62; j<=62; ++j) {
-        IntVect iv(j,18);
-        cout << j << " ";
-        for (int n=sComp; n<sComp+nComp; ++n) {
-            cout << fab(iv,n) << " ";
-        }
-        cout << endl;
-    }
-#endif
-
-}
-static
-void dump(const MultiFab& mf, int comp=-1)
-{
-    dump(mf[0],comp);
-}
-#endif
-
 ///////////////////////////////
 // SDC Stuff
 
@@ -248,18 +220,18 @@ HTParticleContainer* HeatTransfer::theHTPC () { return HTPC; }
 #endif /*PARTICLES*/
 
 static
-std::string to_upper(const std::string& s)
+std::string
+to_upper (const std::string& s)
 {
-  std::string rtn = s;
-  for (unsigned int i=0; i<rtn.length(); i++)
-  {
-      rtn[i] = toupper(rtn[i]);
-  }
-  return rtn;
+    std::string rtn = s;
+    for (unsigned int i=0; i<rtn.length(); i++)
+    {
+        rtn[i] = toupper(rtn[i]);
+    }
+    return rtn;
 }
 
 static std::map<std::string,FABio::Format> ShowMF_Fab_Format_map;
-
 
 void
 HeatTransfer::Initialize ()
@@ -484,7 +456,7 @@ HeatTransfer::Initialize ()
             for (int i=0; i<ShowMF_set_names.size(); ++i) {
                 cout << ShowMF_set_names[i] << " ";
             }
-            cout << endl;
+            cout << '\n';
         }
 
     }
@@ -645,6 +617,7 @@ levWrite(std::ostream& os, int level, std::string& message)
     return os;
 }
 
+static
 Box
 getStrip(const Geometry& geom)
 {
@@ -684,7 +657,7 @@ showMFsub(const std::string&   mySet,
         junkname = DebugDir + "/" + junkname;
 
         if (ShowMF_Verbose>0 && ParallelDescriptor::IOProcessor()) {
-            cout << "   ******************************  Debug: writing " << junkname << endl;
+            cout << "   ******************************  Debug: writing " << junkname << '\n';
         }
 
         FArrayBox sub(box,mf.nComp());
@@ -739,7 +712,7 @@ showMF(const std::string&   mySet,
         junkname = DebugDir + "/" + junkname;
 
         if (ShowMF_Verbose>0 && ParallelDescriptor::IOProcessor()) {
-            cout << "   ******************************  Debug: writing " << junkname << endl;
+            cout << "   ******************************  Debug: writing " << junkname << '\n';
         }
 
         if (ShowMF_Check_Nans)
@@ -770,7 +743,7 @@ showMCDD(const std::string&   mySet,
         std::string junkname = DebugDir + "/" + name;
 
         if (ShowMF_Verbose>0 && ParallelDescriptor::IOProcessor()) {
-            cout << "   ******************************  Debug: writing " << junkname << endl;
+            cout << "   ******************************  Debug: writing " << junkname << '\n';
         }
         mcddop.Write(junkname);
     }
@@ -1290,18 +1263,18 @@ HeatTransfer::set_typical_values(bool restart)
 
         if (ParallelDescriptor::IOProcessor())
         {
-            cout << "Typical vals: " << endl;
+            cout << "Typical vals: " << '\n';
             cout << "\tVelocity: ";
             for (int i=0; i<BL_SPACEDIM; ++i) {
                 cout << typical_values[i] << " ";
             }
-            cout << endl;
-            cout << "\tDensity: " << typical_values[Density] << endl;
-            cout << "\tTemp: "    << typical_values[Temp]    << endl;
-            cout << "\tRhoH: "    << typical_values[RhoH]    << endl;
+            cout << '\n';
+            cout << "\tDensity: " << typical_values[Density] << '\n';
+            cout << "\tTemp: "    << typical_values[Temp]    << '\n';
+            cout << "\tRhoH: "    << typical_values[RhoH]    << '\n';
             const Array<std::string>& names = getChemSolve().speciesNames();
             for (int i=0; i<nspecies; ++i) {
-                cout << "\tY_" << names[i] << ": " << typical_values[first_spec+i] << endl;
+                cout << "\tY_" << names[i] << ": " << typical_values[first_spec+i] << '\n';
             }
         }
 
@@ -1309,7 +1282,7 @@ HeatTransfer::set_typical_values(bool restart)
         if (do_mcdd && ParallelDescriptor::IOProcessor()) {
             for (int i=BL_SPACEDIM; i<nComp; ++i) {
                 if (i!=Trac && i!=RhoRT && typical_values[i]<=0) {
-                    cout << "component: " << i << " of " << nComp << endl;
+                    cout << "component: " << i << " of " << nComp << '\n';
                     BoxLib::Abort("Must have non-zero typical values");
                 }
             }
@@ -1367,18 +1340,18 @@ HeatTransfer::reset_typical_values(const MultiFab& S)
   FORT_SETTYPICALVALS(typical_values.dataPtr(), &nComp);
 
   if (ParallelDescriptor::IOProcessor()) {
-    cout << "New typical vals: " << endl;
+    cout << "New typical vals: " << '\n';
     cout << "\tVelocity: ";
     for (int i=0; i<BL_SPACEDIM; ++i) {
       cout << typical_values[i] << " ";
     }
-    cout << endl;
-    cout << "\tDensity: " << typical_values[Density] << endl;
-    cout << "\tTemp: "    << typical_values[Temp]    << endl;
-    cout << "\tRhoH: "    << typical_values[RhoH]    << endl;
+    cout << '\n';
+    cout << "\tDensity: " << typical_values[Density] << '\n';
+    cout << "\tTemp: "    << typical_values[Temp]    << '\n';
+    cout << "\tRhoH: "    << typical_values[RhoH]    << '\n';
     const Array<std::string>& names = getChemSolve().speciesNames();
     for (int i=0; i<nspecies; ++i) {
-      cout << "\tY_" << names[i] << ": " << typical_values[first_spec+i] << endl;
+      cout << "\tY_" << names[i] << ": " << typical_values[first_spec+i] << '\n';
     }
   }
 }
@@ -3299,7 +3272,7 @@ HeatTransfer::fill_mcdd_boundary_data(Real time)
 
     if (level != 0)
     {
-        BoxArray cgrids = BoxArray(grids).coarsen(crse_ratio);
+        BoxArray cgrids = grids; cgrids.coarsen(crse_ratio);
         cbr = new BndryRegister();
         cbr->setBoxes(cgrids);
         for (OrientationIter fi; fi; ++fi)
@@ -3351,7 +3324,7 @@ void dumpProfileFab(const FArrayBox& fab,
     IntVect iv2 = box.bigEnd(); iv2[0] = imid;
     iv1[1] = 115; iv2[1]=125;
     Box pb(iv1,iv2);
-    std::cout << "dumping over " << pb << std::endl;
+    std::cout << "dumping over " << pb << '\n';
 
     std::ofstream osf(file.c_str());
     for (IntVect iv = pb.smallEnd(); iv <= pb.bigEnd(); pb.next(iv))
@@ -3359,7 +3332,7 @@ void dumpProfileFab(const FArrayBox& fab,
         osf << iv[1] << " " << (iv[1]+0.5)*3.5/256 << " ";
         for (int n=0; n<fab.nComp(); ++n) 
             osf << fab(iv,n) << " ";
-        osf << std::endl;
+        osf << '\n';
     }
     BoxLib::Abort();
 }
@@ -3395,7 +3368,11 @@ HeatTransfer::compute_mcdd_visc_terms(MultiFab&           vtermsYH,
     if (flux==0)
     {
         for (int dir=0; dir<BL_SPACEDIM; ++dir)
-            fluxLocal.set(dir,new MultiFab(BoxArray(grids).surroundingNodes(dir),nspecies+1,0));
+        {
+            BoxArray ba = grids;
+            ba.surroundingNodes(dir);
+            fluxLocal.set(dir,new MultiFab(ba,nspecies+1,0));
+        }
         tFlux = &fluxLocal;
     }
     else
@@ -3678,7 +3655,7 @@ HeatTransfer::mcdd_fas_cycle(MCDD_MGParams&      p,
                 levWrite(std::cout,mg_level,str)
                     << peak_abs_res << ", "
                     << p.res_abs_tol << ", "
-                    << peak_abs_res_idx << std::endl;
+                    << peak_abs_res_idx << '\n';
             }
         }
         else
@@ -3705,7 +3682,7 @@ HeatTransfer::mcdd_fas_cycle(MCDD_MGParams&      p,
                     levWrite(std::cout,mg_level,str)
                         << p.maxRes_norm << ", "
                         << p.res_redux_tol << ", "
-                        << maxRes_redux_idx << std::endl;
+                        << maxRes_redux_idx << '\n';
                 }
             }
         }
@@ -3728,7 +3705,7 @@ HeatTransfer::mcdd_fas_cycle(MCDD_MGParams&      p,
                         levWrite(std::cout,mg_level,str)
                             << p.maxRes_norm/iterRes_init << ", "
                             << p.res_nu1_rtol << ", "
-                            << maxRes_redux_idx << std::endl;
+                            << maxRes_redux_idx << '\n';
                     }
                 }
             }
@@ -3754,7 +3731,7 @@ HeatTransfer::mcdd_fas_cycle(MCDD_MGParams&      p,
                     std::string str("mcdd - nu1: STALLED - p.maxCor_norm (R1) < p.stalled_tol (R2)  R1,R2:");
                     levWrite(std::cout,mg_level,str)
                         << p.maxCor_norm << ", "
-                        << p.stalled_tol << std::endl;
+                        << p.stalled_tol << '\n';
                 }
             }
         }
@@ -3790,7 +3767,7 @@ HeatTransfer::mcdd_fas_cycle(MCDD_MGParams&      p,
                 std::string str("mcdd - nu1 (lev,iter): (");
                 levWrite(std::cout,mg_level,str)
                     << mg_level
-                    << ", " << iter << ")" << endl;
+                    << ", " << iter << ")" << '\n';
                 str = "                         ";
                 levWrite(std::cout,mg_level,str)
                     << '\t' << "Residual   " 
@@ -3800,7 +3777,7 @@ HeatTransfer::mcdd_fas_cycle(MCDD_MGParams&      p,
                     << '\t' << "Correction "
                     << '\t' << "Corr/typ   "
                     << '\t' << "TypicalVal "
-                    << endl; 
+                    << '\n'; 
                 for (int i=0; i<nComp; ++i) 
                 {
                     int tc = (i<nspecies ? first_spec+i : (whichApp==DDOp::DD_Temp ? Temp : RhoH) );
@@ -3812,14 +3789,14 @@ HeatTransfer::mcdd_fas_cycle(MCDD_MGParams&      p,
                                                      << '\t' <<  p.maxCor[i]
                                                      << '\t' <<  p.maxCor[i]/typical_values[tc]
                                                      << '\t' <<  typical_values[tc]
-                                                     << endl;
+                                                     << '\n';
                 }
-                levWrite(std::cout,mg_level,str) << '\t' << "Index of maximum normalized residual: " << peak_abs_res_idx << endl; 
-                levWrite(std::cout,mg_level,str) << '\t' << "Index of maximum residual reduction: " << maxRes_redux_idx << endl; 
+                levWrite(std::cout,mg_level,str) << '\t' << "Index of maximum normalized residual: " << peak_abs_res_idx << '\n'; 
+                levWrite(std::cout,mg_level,str) << '\t' << "Index of maximum residual reduction: " << maxRes_redux_idx << '\n'; 
                 if (max_cor_norm_idx>=0)
-                    levWrite(std::cout,mg_level,str) << '\t' << "Index of maximum normalized correction: " << max_cor_norm_idx << endl << endl; 
+                    levWrite(std::cout,mg_level,str) << '\t' << "Index of maximum normalized correction: " << max_cor_norm_idx << '\n' << '\n'; 
                 else
-                    levWrite(std::cout,mg_level,str) << '\t' << "residual eval only - no correction" << endl<< endl; 
+                    levWrite(std::cout,mg_level,str) << '\t' << "residual eval only - no correction" << '\n'<< '\n'; 
             }
         }
     }  // nu1 iters
@@ -4082,7 +4059,7 @@ HeatTransfer::mcdd_fas_cycle(MCDD_MGParams&      p,
                     levWrite(std::cout,mg_level,str)
                         << peak_abs_res << ", "
                         << p.res_abs_tol << ", "
-                        << peak_abs_res_idx << std::endl;
+                        << peak_abs_res_idx << '\n';
                 }
             }
             else
@@ -4109,7 +4086,7 @@ HeatTransfer::mcdd_fas_cycle(MCDD_MGParams&      p,
                         levWrite(std::cout,mg_level,str)
                             << peak_abs_res << ", "
                             << p.res_abs_tol << ", "
-                            << peak_abs_res_idx << std::endl;
+                            << peak_abs_res_idx << '\n';
                     }
                 }
                 else
@@ -4122,7 +4099,7 @@ HeatTransfer::mcdd_fas_cycle(MCDD_MGParams&      p,
                             levWrite(std::cout,mg_level,str)
                                 << p.maxRes_norm << ", "
                                 << p.res_redux_tol << ", "
-                                << maxRes_redux_idx << std::endl;
+                                << maxRes_redux_idx << '\n';
                         }
                     }
                 }
@@ -4146,7 +4123,7 @@ HeatTransfer::mcdd_fas_cycle(MCDD_MGParams&      p,
                             levWrite(std::cout,mg_level,str)
                                 << p.maxRes_norm/iterRes_init << ", "
                                 << p.res_nu2_rtol << ", "
-                                << maxRes_redux_idx << std::endl;
+                                << maxRes_redux_idx << '\n';
                         }
                     }
                 }
@@ -4172,7 +4149,7 @@ HeatTransfer::mcdd_fas_cycle(MCDD_MGParams&      p,
                         std::string str("mcdd - nu2: STALLED - p.maxCor_norm (R1) < p.stalled_tol (R2)  R1,R2:");
                         levWrite(std::cout,mg_level,str)
                             << p.maxCor_norm << ", "
-                            << p.stalled_tol << std::endl;
+                            << p.stalled_tol << '\n';
                     }
                 }
             }
@@ -4208,7 +4185,7 @@ HeatTransfer::mcdd_fas_cycle(MCDD_MGParams&      p,
                     std::string str("mcdd - nu1 (lev,iter): (");
                     levWrite(std::cout,mg_level,str)
                         << mg_level
-                        << ", " << iter << ")" << endl;
+                        << ", " << iter << ")" << '\n';
                     str = "                         ";
                     levWrite(std::cout,mg_level,str)
                         << '\t' << "Residual   " 
@@ -4218,7 +4195,7 @@ HeatTransfer::mcdd_fas_cycle(MCDD_MGParams&      p,
                         << '\t' << "Correction "
                         << '\t' << "Corr/typ   "
                         << '\t' << "TypicalVal "
-                        << endl; 
+                        << '\n'; 
                     for (int i=0; i<nComp; ++i) 
                     {
                         int tc = (i<nspecies ? first_spec+i : (whichApp==DDOp::DD_Temp ? Temp : RhoH) );
@@ -4230,14 +4207,14 @@ HeatTransfer::mcdd_fas_cycle(MCDD_MGParams&      p,
                                                          << '\t' <<  p.maxCor[i]
                                                          << '\t' <<  p.maxCor[i]/typical_values[tc]
                                                          << '\t' <<  typical_values[tc]
-                                                         << endl;
+                                                         << '\n';
                     }
-                    levWrite(std::cout,mg_level,str) << '\t' << "Index of maximum normalized residual: " << peak_abs_res_idx << endl; 
-                    levWrite(std::cout,mg_level,str) << '\t' << "Index of maximum residual reduction: " << maxRes_redux_idx << endl; 
+                    levWrite(std::cout,mg_level,str) << '\t' << "Index of maximum normalized residual: " << peak_abs_res_idx << '\n'; 
+                    levWrite(std::cout,mg_level,str) << '\t' << "Index of maximum residual reduction: " << maxRes_redux_idx << '\n'; 
                     if (max_cor_norm_idx>=0)
-                        levWrite(std::cout,mg_level,str) << '\t' << "Index of maximum normalized correction: " << max_cor_norm_idx << endl<< endl; 
+                        levWrite(std::cout,mg_level,str) << '\t' << "Index of maximum normalized correction: " << max_cor_norm_idx << '\n'<< '\n'; 
                     else
-                        levWrite(std::cout,mg_level,str) << '\t' << "residual eval only - no correction" << endl<< endl; 
+                        levWrite(std::cout,mg_level,str) << '\t' << "residual eval only - no correction" << '\n'<< '\n'; 
                 }
             }
         } // nu2 iters
@@ -4346,8 +4323,11 @@ HeatTransfer::mcdd_update(Real time,
 
     PArray<MultiFab> fluxn(BL_SPACEDIM,PArrayManage);
     for (int dir=0; dir<BL_SPACEDIM; ++dir)
-        fluxn.set(dir,new MultiFab(BoxArray(grids).surroundingNodes(dir),
-                                   nspecies+1,0));
+    {
+        BoxArray ba = grids;
+        ba.surroundingNodes(dir);
+        fluxn.set(dir,new MultiFab(ba,nspecies+1,0));
+    }
 
     // Load boundary data in operator for old time, compute L(told)
     fill_mcdd_boundary_data(time);
@@ -4419,8 +4399,11 @@ HeatTransfer::mcdd_update(Real time,
 
     PArray<MultiFab> fluxnp1(BL_SPACEDIM,PArrayManage);
     for (int dir=0; dir<BL_SPACEDIM; ++dir)
-        fluxnp1.set(dir,new MultiFab(BoxArray(grids).surroundingNodes(dir),
-                                     nspecies+1,nGrow)); //stack H on Y's
+    {
+        BoxArray ba = grids;
+        ba.surroundingNodes(dir);
+        fluxnp1.set(dir,new MultiFab(ba,nspecies+1,nGrow)); //stack H on Y's
+    }
 
     // Fill the boundary data for the solve (all the levels)
     fill_mcdd_boundary_data(time+dt);
@@ -4456,7 +4439,7 @@ HeatTransfer::mcdd_update(Real time,
             levWrite(std::cout,-1,str)
                 << p.iter << ", "
                 << p.maxRes_norm << ", "
-                << p.maxCor_norm << ") " << std::endl;
+                << p.maxCor_norm << ") " << '\n';
         }
 
         if (update_mcdd_coeffs && p.status==HT_InProgress)
@@ -4465,7 +4448,7 @@ HeatTransfer::mcdd_update(Real time,
 
             if (ParallelDescriptor::IOProcessor()) {
                 std::string str("mcdd - updating transport coeffs ...");
-                levWrite(std::cout,-1,str) << endl;
+                levWrite(std::cout,-1,str) << '\n';
             }
 
             MCDDOp.setCoefficients(YTHR,dCompST,YTHR,dCompSY);
@@ -4475,14 +4458,14 @@ HeatTransfer::mcdd_update(Real time,
 
     if (ParallelDescriptor::IOProcessor()) {
         if (p.status == HT_InProgress) {
-            std::cout << "**************** mcdd solver failed after " << mcdd_numcycles << " V-cycles!!" << std::endl;
+            std::cout << "**************** mcdd solver failed after " << mcdd_numcycles << " V-cycles!!" << '\n';
 
-            cout << "Residual redux (R,Ri,R/Ri): " << endl;
+            cout << "Residual redux (R,Ri,R/Ri): " << '\n';
             for (int i=0; i<nspecies+1; ++i) {
                 cout << i << " "
                      << p.maxRes[i] << " "
                      << p.maxRes_initial[i] << " "
-                     << p.maxRes[i]/p.maxRes_initial[i] << endl;
+                     << p.maxRes[i]/p.maxRes_initial[i] << '\n';
             }
         }
     }
@@ -5171,7 +5154,8 @@ HeatTransfer::set_htt_hmixTYP ()
             if (k!=finest_level) 
             {
                 AmrLevel& htf = getLevel(k+1);
-                BoxArray baf = BoxArray(htf.boxArray()).coarsen(parent->refRatio(k));
+                BoxArray baf = htf.boxArray();
+                baf.coarsen(parent->refRatio(k));
                 for (MFIter mfi(hmix); mfi.isValid(); ++mfi)
                 {
                     baf.intersections(ba[mfi.index()],isects);
@@ -5307,7 +5291,7 @@ HeatTransfer::predict_velocity (Real  dt,
         getForce(tforces,i,1,Xvel,BL_SPACEDIM,prev_time,(*rho_ptime)[i]);
 #elif MOREGENGETFORCE
 	if (ParallelDescriptor::IOProcessor() && getForceVerbose)
-	    std::cout << "---" << std::endl << "A - Predict velocity:" << std::endl << " Calling getForce..." << std::endl;
+	    std::cout << "---" << '\n' << "A - Predict velocity:" << '\n' << " Calling getForce..." << '\n';
         getForce(tforces,i,1,Xvel,BL_SPACEDIM,prev_time,U_fpi(),S_fpi(),0);
 #else
 	getForce(tforces,i,1,Xvel,BL_SPACEDIM,(*rho_ptime)[i]);
@@ -5925,202 +5909,203 @@ HeatTransfer::advance_chemistry (MultiFab&       mf_old,
                                  int             nCompF,
                                  bool            use_stiff_solver)
 {
-  const Real strt_time = ParallelDescriptor::second();
-  bool do_avg_down_chem = avg_down_chem
-    && level < parent->finestLevel()
-    && getLevel(level+1).state[RhoYdot_Type].hasOldData();
+    const Real strt_time = ParallelDescriptor::second();
 
-  MultiFab& React_new = get_new_data(RhoYdot_Type);
-  React_new.setVal(0);
+    const bool do_avg_down_chem = avg_down_chem
+        && level < parent->finestLevel()
+        && getLevel(level+1).state[RhoYdot_Type].hasOldData();
 
-  if (hack_nochem)
-  {
-
-    // set new = old + dt * force
-    FArrayBox tmp;
-
-    for (MFIter mfi(mf_old); mfi.isValid(); ++mfi)
+    if (hack_nochem)
     {
-      const Box& box = mfi.validbox();
-      tmp.resize(box,nspecies+1);
-      const FArrayBox& f = Force[mfi];
-      tmp.copy(f,box,0,box,0,nspecies+1);
-      tmp.mult(dt);
-      FArrayBox& Sold = mf_old[mfi];
-      FArrayBox& Snew = mf_new[mfi];
-      Snew.copy(Sold,box,first_spec,box,first_spec,nspecies+1);
-      Snew.plus(tmp,box,box,0,first_spec,nspecies+1);
-      Snew.copy(Sold,box,Temp,box,Temp,1);
-    }
-  }
-  else
-  {
-    int ngrow = React_new.nGrow();
+        FArrayBox tmp;
 
-    BoxArray cf_grids;
-    if (do_avg_down_chem) {
-      cf_grids = BoxArray(getLevel(level+1).boxArray()).coarsen(fine_ratio);
-    }
-
-    Real p_amb, dpdt_factor;
-    FORT_GETPAMB(&p_amb, &dpdt_factor);
-    const Real Patm = p_amb / P1atm_MKS;
-    FArrayBox* chemDiag = 0;
-
-    {
-      //
-      // Chop the grids to level out the chemistry work.
-      //
-      const int NProcs = ParallelDescriptor::NProcs();
-      BoxArray ba = mf_new.boxArray();
-      bool done = false;
-
-      for (int cnt = 1; !done; cnt *= 2)
-      {
-        const int ChunkSize = parent->maxGridSize(level)/cnt;
-
-        // Don't let grids get too small. 
-        if (ChunkSize < 16) break;
-        
-        IntVect chunk(D_DECL(ChunkSize,ChunkSize,ChunkSize));        
-        for (int j = BL_SPACEDIM-1; j >=0  && ba.size() < 3*NProcs; j--) {
-          chunk[j] /= 2;
-          ba.maxSize(chunk);
-          if (ba.size() >= 3*NProcs) done = true;
-        }
-      }
-
-      DistributionMapping dm = getFuncCountDM(ba,ngrow);
-      MultiFab STemp, fcnCntTemp, FTemp;
-      STemp.define(ba, nspecies+3, 0, dm, Fab_allocate);
-      fcnCntTemp.define(ba, 1, 0, dm, Fab_allocate);
-      FTemp.define(ba, Force.nComp(), 0, dm, Fab_allocate);
-
-      MultiFab diagTemp;
-      const bool do_diag = plot_reactions && BoxLib::intersect(ba,auxDiag["REACTIONS"]->boxArray()).size() != 0;
-      if (do_diag)
-      {
-        diagTemp.define(ba, auxDiag["REACTIONS"]->nComp(), 0, dm, Fab_allocate);
-        diagTemp.copy(*auxDiag["REACTIONS"]); // Parallel copy
-      }
-
-      if (verbose && ParallelDescriptor::IOProcessor())
-        std::cout << "*** advance_chemistry: FABs in tmp MF: " << STemp.size() << '\n';
-
-      STemp.copy(mf_old,first_spec,0,nspecies+3); // Parallel copy.
-      FTemp.copy(Force); // Parallel copy.
-
-      for (MFIter Smfi(STemp); Smfi.isValid(); ++Smfi)
-      {
-        const FArrayBox& rYo = STemp[Smfi];
-        const FArrayBox& rHo = STemp[Smfi];
-        const FArrayBox& To  = STemp[Smfi];
-
-        const Box& bx = Smfi.validbox();
-
-        FArrayBox& rYn = STemp[Smfi];
-        FArrayBox& rHn = STemp[Smfi];
-        FArrayBox& Tn  = STemp[Smfi];
-
-        FArrayBox&       fc  = fcnCntTemp[Smfi];
-        const FArrayBox& frc = FTemp[Smfi];
-        chemDiag             = (do_diag ? &(diagTemp[Smfi]) : 0);
-
-        BoxArray ba = do_avg_down_chem ? BoxLib::complementIn(bx,cf_grids) : BoxArray(bx);
-
-        for (int i=0; i<ba.size(); ++i)
+        for (MFIter mfi(mf_old); mfi.isValid(); ++mfi)
         {
-            const int s_spec = 0;
-            const int s_rhoh = nspecies;
-            const int s_temp = nspecies+2;
-            getChemSolve().solveTransient_sdc(rYn,rHn,Tn,rYo,rHo,To,frc,fc,ba[i],
-                                              s_spec,s_rhoh,s_temp,dt,Patm,chemDiag,
-                                              use_stiff_solver);
+            const Box& box = mfi.validbox();
+            tmp.resize(box,nspecies+1);
+            const FArrayBox& f = Force[mfi];
+            tmp.copy(f,box,0,box,0,nspecies+1);
+            tmp.mult(dt);
+            FArrayBox& Sold = mf_old[mfi];
+            FArrayBox& Snew = mf_new[mfi];
+            Snew.copy(Sold,box,first_spec,box,first_spec,nspecies+1);
+            Snew.plus(tmp,box,box,0,first_spec,nspecies+1);
+            Snew.copy(Sold,box,Temp,box,Temp,1);
         }
-      }
-
-      MultiFab::Copy(React_new, mf_old, first_spec, 0, nspecies, 0);
-
-      mf_new.copy(STemp,0,first_spec,nspecies+3); // Parallel copy.
-
-      STemp.clear();
-
-      MultiFab::Subtract(React_new, mf_new, first_spec, 0, nspecies, 0);
-
-      React_new.mult(-1/dt);
-
-      MultiFab::Subtract(React_new, Force, 0, 0, nspecies, 0);
-
-      if (do_diag)
-      {
-        auxDiag["REACTIONS"]->copy(diagTemp); // Parallel copy
-        diagTemp.clear();
-      }
-
-      MultiFab& FC = get_new_data(FuncCount_Type);
-      if (ngrow == 0)
-      {
-          FC.copy(fcnCntTemp); // Parallel copy.
-      }
-      else
-      {
-          BoxArray ba = BoxArray(FC.boxArray()).grow(ngrow);
-          MultiFab grownFC(ba, 1, 0);
-          for (MFIter mfi(FC); mfi.isValid(); ++mfi)
-          {
-              grownFC[mfi].copy(FC[mfi]);
-          }
-          grownFC.copy(fcnCntTemp); // Parallel copy.        
-          for (MFIter mfi(grownFC); mfi.isValid(); ++mfi)
-          {
-              FC[mfi].copy(grownFC[mfi]);
-          }
-      }
     }
-
-    // Approximate covered crse chemistry (I_R) with averaged down fine I_R from previous time step
-    if (do_avg_down_chem)
+    else
     {
-      MultiFab& fine_React = getLevel(level+1).get_old_data(RhoYdot_Type);
-      BoxArray cf_grids = BoxArray(fine_React.boxArray()).coarsen(fine_ratio);
-      MultiFab avg_fdist(cf_grids,nspecies,0);
-      NavierStokes::avgDown(cf_grids,fine_React.boxArray(),avg_fdist,fine_React,
-                            level,level+1,0,nspecies,fine_ratio);
-      React_new.copy(avg_fdist);
+        BoxArray cf_grids;
+
+        if (do_avg_down_chem)
+        {
+            cf_grids = getLevel(level+1).boxArray(); cf_grids.coarsen(fine_ratio);
+        }
+
+        Real p_amb, dpdt_factor;
+        FORT_GETPAMB(&p_amb, &dpdt_factor);
+
+        const Real Patm      = p_amb / P1atm_MKS;
+        MultiFab&  React_new = get_new_data(RhoYdot_Type);
+        const int  ngrow     = React_new.nGrow();
+        //
+        // Chop the grids to level out the chemistry work.
+        //
+        const int NProcs = ParallelDescriptor::NProcs();
+        BoxArray  ba     = mf_new.boxArray();
+        bool      done   = false;
+
+        for (int cnt = 1; !done; cnt *= 2)
+        {
+            const int ChunkSize = parent->maxGridSize(level)/cnt;
+
+            if (ChunkSize < 16)
+                //
+                // Don't let grids get too small.
+                //
+                break;
+        
+            IntVect chunk(D_DECL(ChunkSize,ChunkSize,ChunkSize));
+
+            for (int j = BL_SPACEDIM-1; j >=0  && ba.size() < 3*NProcs; j--)
+            {
+                chunk[j] /= 2;
+                ba.maxSize(chunk);
+                if (ba.size() >= 3*NProcs) done = true;
+            }
+        }
+
+        DistributionMapping dm = getFuncCountDM(ba,ngrow);
+
+        MultiFab diagTemp;
+        MultiFab STemp(ba, nspecies+3, 0, dm);
+        MultiFab fcnCntTemp(ba, 1, 0, dm);
+        MultiFab FTemp(ba, Force.nComp(), 0, dm);
+
+        const bool do_diag = plot_reactions && BoxLib::intersect(ba,auxDiag["REACTIONS"]->boxArray()).size() != 0;
+
+        if (do_diag)
+        {
+            diagTemp.define(ba, auxDiag["REACTIONS"]->nComp(), 0, dm, Fab_allocate);
+            diagTemp.copy(*auxDiag["REACTIONS"]); // Parallel copy
+        }
+
+        if (verbose && ParallelDescriptor::IOProcessor())
+            std::cout << "*** advance_chemistry: FABs in tmp MF: " << STemp.size() << '\n';
+
+        STemp.copy(mf_old,first_spec,0,nspecies+3); // Parallel copy.
+        FTemp.copy(Force);                          // Parallel copy.
+
+        for (MFIter Smfi(STemp); Smfi.isValid(); ++Smfi)
+        {
+            const FArrayBox& rYo      = STemp[Smfi];
+            const FArrayBox& rHo      = STemp[Smfi];
+            const FArrayBox& To       = STemp[Smfi];
+            FArrayBox&       rYn      = STemp[Smfi];
+            FArrayBox&       rHn      = STemp[Smfi];
+            FArrayBox&       Tn       = STemp[Smfi];
+            const Box&       bx       = Smfi.validbox();
+            FArrayBox&       fc       = fcnCntTemp[Smfi];
+            const FArrayBox& frc      = FTemp[Smfi];
+            FArrayBox*       chemDiag = (do_diag ? &(diagTemp[Smfi]) : 0);
+
+            BoxArray ba = do_avg_down_chem ? BoxLib::complementIn(bx,cf_grids) : BoxArray(bx);
+
+            for (int i = 0; i < ba.size(); ++i)
+            {
+                const int s_spec = 0, s_rhoh = nspecies, s_temp = nspecies+2;
+
+                getChemSolve().solveTransient_sdc(rYn,rHn,Tn,rYo,rHo,To,frc,fc,ba[i],
+                                                  s_spec,s_rhoh,s_temp,dt,Patm,chemDiag,
+                                                  use_stiff_solver);
+            }
+        }
+
+        mf_new.copy(STemp,0,first_spec,nspecies+3); // Parallel copy.
+
+        STemp.clear();
+        //
+        // Set React_new (I_R).
+        //
+        MultiFab::Copy(React_new, mf_old, first_spec, 0, nspecies, 0);
+
+        MultiFab::Subtract(React_new, mf_new, first_spec, 0, nspecies, 0);
+
+        React_new.mult(-1/dt);
+
+        MultiFab::Subtract(React_new, Force, 0, 0, nspecies, 0);
+
+        if (do_diag)
+        {
+            auxDiag["REACTIONS"]->copy(diagTemp); // Parallel copy
+            diagTemp.clear();
+        }
+
+        MultiFab& FC = get_new_data(FuncCount_Type);
+        if (ngrow == 0)
+        {
+            FC.copy(fcnCntTemp); // Parallel copy.
+        }
+        else
+        {
+            BoxArray ba = FC.boxArray(); ba.grow(ngrow);
+            MultiFab grownFC(ba, 1, 0);
+            for (MFIter mfi(FC); mfi.isValid(); ++mfi)
+            {
+                grownFC[mfi].copy(FC[mfi]);
+            }
+            grownFC.copy(fcnCntTemp); // Parallel copy.        
+            for (MFIter mfi(grownFC); mfi.isValid(); ++mfi)
+            {
+                FC[mfi].copy(grownFC[mfi]);
+            }
+        }
+        //
+        // Approximate covered crse chemistry (I_R) with averaged down fine I_R from previous time step.
+        //
+        if (do_avg_down_chem)
+        {
+            MultiFab& fine_React = getLevel(level+1).get_old_data(RhoYdot_Type);
+            BoxArray cf_grids = fine_React.boxArray(); cf_grids.coarsen(fine_ratio);
+            MultiFab avg_fdist(cf_grids,nspecies,0);
+            NavierStokes::avgDown(cf_grids,fine_React.boxArray(),avg_fdist,fine_React,
+                                  level,level+1,0,nspecies,fine_ratio);
+            React_new.copy(avg_fdist);
+        }
+        //
+        // Ensure consistent grow cells.
+        //
+        if (ngrow > 0)
+        {
+            for (MFIter mfi(React_new); mfi.isValid(); ++mfi)
+            {
+                FArrayBox& R   = React_new[mfi];
+                const Box& box = mfi.validbox();
+                FORT_VISCEXTRAP(R.dataPtr(),ARLIM(R.loVect()),ARLIM(R.hiVect()),
+                                box.loVect(),box.hiVect(),&nspecies);
+            }
+            React_new.FillBoundary(0,nspecies);
+            //
+            // Note: this is a special periodic fill in that we want to
+            // preserve the extrapolated grow values when periodic --
+            // usually we preserve only valid data.  The scheme relies on
+            // the fact that there is computable data in the "non-periodic"
+            // grow cells (produced via VISCEXTRAP above)
+            //
+            geom.FillPeriodicBoundary(React_new,0,nspecies,true);
+        }
     }
 
-    // Ensure consistent grow cells
-    if (ngrow > 0)
+    if (verbose)
     {
-      for (MFIter mfi(React_new); mfi.isValid(); ++mfi)
-      {
-        FArrayBox& R = React_new[mfi];
-        const Box& box = mfi.validbox();
-        FORT_VISCEXTRAP(R.dataPtr(),ARLIM(R.loVect()),ARLIM(R.hiVect()),
-                        box.loVect(),box.hiVect(),&nspecies);
-      }
-      React_new.FillBoundary(0,nspecies);
-      //
-      // Note: this is a special periodic fill in that we want to
-      // preserve the extrapolated grow values when periodic --
-      // usually we preserve only valid data.  The scheme relies on
-      // the fact that there is computable data in the "non-periodic"
-      // grow cells (produced via VISCEXTRAP above)
-      //
-      geom.FillPeriodicBoundary(React_new,0,nspecies,true);
+        const int IOProc   = ParallelDescriptor::IOProcessorNumber();
+        Real      run_time = ParallelDescriptor::second() - strt_time;
+
+        ParallelDescriptor::ReduceRealMax(run_time,IOProc);
+
+        if (ParallelDescriptor::IOProcessor())
+            std::cout << "HeatTransfer::advance_chemistry time: " << run_time << '\n';
     }
-  }
-
-  if (verbose)
-  {
-    const int IOProc   = ParallelDescriptor::IOProcessorNumber();
-    Real      run_time = ParallelDescriptor::second() - strt_time;
-
-    ParallelDescriptor::ReduceRealMax(run_time,IOProc);
-
-    if (ParallelDescriptor::IOProcessor())
-      std::cout << "HeatTransfer::advance_chemistry time: " << run_time << '\n';
-  }
 }
 
 void
@@ -6917,8 +6902,11 @@ HeatTransfer::mcdd_diffuse_sync(Real dt)
     const int dCompH = nspecies;
     PArray<MultiFab> fluxpre(BL_SPACEDIM,PArrayManage);
     for (int dir=0; dir<BL_SPACEDIM; ++dir)
-        fluxpre.set(dir,new MultiFab(BoxArray(grids).surroundingNodes(dir),
-                                     nspecies+1,0));
+    {
+        BoxArray ba = grids;
+        ba.surroundingNodes(dir);
+        fluxpre.set(dir,new MultiFab(ba, nspecies+1,0));
+    }
     
     // Rhs = Ssync + dt*theta*L(phi_presync) + (rhoY)_presync
     compute_mcdd_visc_terms(Rhs,time,nGrow,DDOp::DD_RhoH,&fluxpre);
@@ -6949,8 +6937,11 @@ HeatTransfer::mcdd_diffuse_sync(Real dt)
 
     PArray<MultiFab> fluxpost(BL_SPACEDIM,PArrayManage);
     for (int dir=0; dir<BL_SPACEDIM; ++dir)
-        fluxpost.set(dir,new MultiFab(BoxArray(grids).surroundingNodes(dir),
-                                      nspecies+1,nGrow)); //stack H on Y's
+    {
+        BoxArray ba = grids;
+        ba.surroundingNodes(dir);
+        fluxpost.set(dir,new MultiFab(ba,nspecies+1,nGrow)); //stack H on Y's
+    }
     
     // Solve the system
     //mcdd_solve(Rhs,dCompY,dCompH,fluxpost,dCompY,dCompH,dt);
