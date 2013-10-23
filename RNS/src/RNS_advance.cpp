@@ -347,20 +347,26 @@ BEGIN_EXTERN_C
 //
 // Compute dU_{AD}/dt.
 //
+// XXX: it might be interesting to track the magnitude of reflux
+// registers.
+//
 void sdc_f1eval(void *F, void *Q, double t, sdc_state *state, void *ctx)
 {
   RNS&      rns    = *((RNS*) ctx);
   MultiFab& U      = *((MultiFab*) Q);
   MultiFab& Uprime = *((MultiFab*) F);
+
   rns.dUdt(U, Uprime, t, RNS::use_FillBoundary, 0, 0, 0.0);
-  // XXX: it might be interesting to track the magnitude of reflux registers
 }
 
 //
 // Compute dU_R/dt.
 //
-// Note that calling advance_chemistry with dt=0.0 puts dU_R/dt into
-// Uprime (see Burner/burn.f90).
+// Note:
+//
+//   * Uprime doesn't have ghost cells
+//
+//   * Calling advance_chemistry with dt=0.0 puts dU_R/dt into tmp.
 //
 void sdc_f2eval(void *F, void *Q, double t, sdc_state *state, void *ctx)
 {
@@ -369,12 +375,11 @@ void sdc_f2eval(void *F, void *Q, double t, sdc_state *state, void *ctx)
   MultiFab& Uprime = *((MultiFab*) F);
 
   MultiFab tmp(U.boxArray(), U.nComp(), U.nGrow());
-  // note: Uprime doesn't have ghost cells
-  MFCopyAll(tmp, U);
+
+  MultiFab::Copy(tmp, U, 0, 0, U.nComp(), U.nGrow());
   rns.fill_boundary(tmp, state->t, RNS::use_FillBoundary);
   rns.advance_chemistry(tmp, 0.0);
-  MFCopyAll(Uprime, tmp);
-  Uprime.copy(tmp);
+  MultiFab::Copy(Uprime, tmp, 0, 0, U.nComp(), 0);
 }
 
 //
@@ -383,26 +388,33 @@ void sdc_f2eval(void *F, void *Q, double t, sdc_state *state, void *ctx)
 // This advances chemistry from 0 to dt using RHS as the initial
 // condition to obtain U.  Then, dU_R/dt is set to (U - RHS) / dt.
 //
+// XXX: it might be interesting to track the difference between Uprime
+// as calculated above and calling f2eval...
+//
 void sdc_f2comp(void *F, void *Q, double t, double dt, void *RHS, sdc_state *state, void *ctx)
 {
   RNS&      rns    = *((RNS*) ctx);
   MultiFab& U      = *((MultiFab*) Q);
   MultiFab& Uprime = *((MultiFab*) F);
   MultiFab& Urhs   = *((MultiFab*) RHS);
-  MFCopyAll(U, Urhs);
+
+  //MultiFab::Copy(U, Urhs, 0, 0, U.nComp(), U.nGrow());
+  MultiFab::Copy(U, Urhs, 0, 0, U.nComp(), 0);
+  // XXX: apparently Urhs doesn't have ghost cells, not sure if it should or not...
+
   rns.fill_boundary(U, state->t, RNS::use_FillBoundary);
   rns.advance_chemistry(U, dt);
+
   Uprime.copy(U);
   Uprime.minus(Urhs, 0, Uprime.nComp(), 0);
   Uprime.mult(1./dt);
-  // XXX: it might be interesting to track the difference between
-  // Uprime as calculated above and calling f2eval...
 }
 
 void sdc_poststep_hook(void *Q, sdc_state *state, void *ctx)
 {
   RNS&      rns    = *((RNS*) ctx);
   MultiFab& U      = *((MultiFab*) Q);
+
   rns.post_update(U);
 }
 
