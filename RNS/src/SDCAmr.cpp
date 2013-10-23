@@ -59,20 +59,25 @@ void mlsdc_amr_interpolate(void *F, void *G, sdc_state *state, void *ctxF, void 
   RNS&      levelF  = *((RNS*) ctxF);
   RNS&      levelG  = *((RNS*) ctxG);
 
-  const DescriptorList& dl = levelF.get_desc_lst();
-  const int ncomp = dl[0].nComp();
+  const IntVect         ratio = levelG.fineRatio();
+  const DescriptorList& dl    = levelF.get_desc_lst();
+  const Array<BCRec>&   bcs   = dl[0].getBCs();
+  const int             ncomp = dl[0].nComp();
+  Interpolater&         map   = *dl[0].interp();
 
-  const IntVect fine_ratio = levelG.fineRatio();
-  const Array<BCRec>& bcs  = dl[0].getBCs();
+  Array<BCRec>          bcr(ncomp);
 
   // make a coarse version (UC) of the fine multifab (UF)
-  BoxArray fineba = UF.boxArray();
-  BoxArray crseba = fineba.coarsen(fine_ratio);
-  //  MultiFab UC(crseba.grow(2), ncomp, 0);
-  MultiFab UC(crseba.grow(4), ncomp, 0);
+  BoxArray crseba(UF.size());
+  for (int i=0; i<crseba.size(); i++)
+    crseba.set(i, map.CoarseBox(UF.fabbox(i), ratio));
+  MultiFab UC(crseba, ncomp, 0);
 
+#ifndef NDEBUG
   UC.setVal(NAN);
   UF.setVal(NAN);
+#endif
+
   // parallel copy UG to UC
   levelG.fill_boundary(UG, state->t, RNS::use_FillBoundary); // XXX
   UC.copy(UG);
@@ -82,48 +87,13 @@ void mlsdc_amr_interpolate(void *F, void *G, sdc_state *state, void *ctxF, void 
 
   // now that UF is completely contained within UC, cycle through each
   // FAB in UF and interpolate from the corresponding FAB in UC
-  Interpolater& map = *dl[0].interp();
-
   for (MFIter mfi(UF); mfi.isValid(); ++mfi) {
-
-    Array<BCRec> bcr(ncomp);
     BoxLib::setBC(UF[mfi].box(), levelF.Domain(), 0, 0, ncomp, bcs, bcr);
     Geometry fine_geom(UF[mfi].box());
     Geometry crse_geom(UC[mfi].box());
 
-    cout << "coarse box:" << UC[mfi].box() << endl;
-    cout << "coarse box:" << map.CoarseBox(UF[mfi].box(),fine_ratio) << endl;
-    cout << "fine   box:" << UF[mfi].box() << endl;
-
-
-
-
-    map.interp(UC[mfi], 0, UF[mfi], 0, ncomp, UF[mfi].box(), fine_ratio,
+    map.interp(UC[mfi], 0, UF[mfi], 0, ncomp, UF[mfi].box(), ratio,
                crse_geom, fine_geom, bcr, 0, 0);
-
-    // copy into fine multifab
-    // UF[mfi].copy(finefab);
-
-
-    // // create a grown finefab and corresponding coarse version of the same
-    // FArrayBox finefab(BoxLib::grow(UF[mfi].box(), UF.nGrow()), ncomp);
-    // FArrayBox crsefab(map.CoarseBox(finefab.box(),fine_ratio), ncomp);
-
-    // // XXX: don't think this crsefab mumbo jumbo is necessary
-
-    // // fill crsefab via copy on intersect
-    // for (MFIter mfiC(UC); mfiC.isValid(); ++mfiC) crsefab.copy(UC[mfiC]);
-
-    // // now interp to finefab
-    // Array<BCRec> bcr(ncomp);
-    // BoxLib::setBC(finefab.box(), levelF.Domain(), 0, 0, ncomp, bcs, bcr);
-    // Geometry fine_geom(finefab.box());
-
-    // map.interp(crsefab, 0, finefab, 0, ncomp, finefab.box(), fine_ratio,
-    //            levelG.Geom(), fine_geom, bcr, 0, 0);
-
-    // // copy into fine multifab
-    // UF[mfi].copy(finefab);
   }
 
   levelF.fill_boundary(UF, state->t, RNS::use_FillBoundary);
