@@ -423,6 +423,7 @@ C-- Now advance
             call sdc_imex_set_q0(imex, c_loc(U0))
             call sdc_imex_spread(imex, time)
          else
+            print *, 'SPREADING FROM QEND'
             call sdc_imex_spread_qend(imex)
          endif
 
