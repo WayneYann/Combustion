@@ -37,9 +37,7 @@
 #include <VISCOPERATOR_F.H>
 #include <DERIVE_F.H>
 
-
 static Box stripBox; // used for debugging
-
 
 using std::cout;
 using std::endl;
@@ -938,7 +936,6 @@ HeatTransfer::HeatTransfer (Amr&            papa,
     // HACK for debugging
     if (level==0)
         stripBox = getStrip(geom);
-
 }
 
 HeatTransfer::~HeatTransfer ()
@@ -1057,7 +1054,6 @@ HeatTransfer::init_once ()
         pp.get(ppStr.c_str(),typical_values_FileVals[otherKeys[i]]);
       }
     }
-
     //
     // Get universal gas constant from Fortran.
     //
@@ -1084,10 +1080,8 @@ HeatTransfer::init_once ()
     
     if (!ydot_good)
         BoxLib::Error("HeatTransfer::init_once(): need RhoYdot_Type if do_chemistry");
-    
-    const StateDescriptor& ydot_cell = desc_lst[RhoYdot_Type];
-    int nydot = ydot_cell.nComp();
-    if (nydot < nspecies)
+
+    if (desc_lst[RhoYdot_Type].nComp() < nspecies)
         BoxLib::Error("HeatTransfer::init_once(): RhoYdot_Type needs nspecies components");
     //
     // Enforce Le = 1, unless !unity_Le
@@ -1776,11 +1770,11 @@ HeatTransfer::compute_instantaneous_reaction_rates(MultiFab&       R,
 {
 
     if (hack_nochem) 
-      {
+    {
 	R.setVal(0);
         R.setBndry(0,0,nspecies);
 	return;
-      }
+    }
 
     Real p_amb, dpdt_factor;
     FORT_GETPAMB(&p_amb, &dpdt_factor);
@@ -1793,10 +1787,10 @@ HeatTransfer::compute_instantaneous_reaction_rates(MultiFab&       R,
         R.setBndry(0,0,nspecies);
     }
     
-    int sCompRhoH = RhoH;
-    int sCompRhoY = first_spec;
-    int sCompT    = Temp;
-    int sCompRhoYdot = 0;
+    const int sCompRhoH    = RhoH;
+    const int sCompRhoY    = first_spec;
+    const int sCompT       = Temp;
+    const int sCompRhoYdot = 0;
     
     for (MFIter mfi(S); mfi.isValid(); ++mfi)
     {
@@ -1808,7 +1802,6 @@ HeatTransfer::compute_instantaneous_reaction_rates(MultiFab&       R,
 
         getChemSolve().reactionRateRhoY(rhoYdot,rhoY,rhoH,T,Patm,box,sCompRhoY,sCompRhoH,sCompT,sCompRhoYdot);
     }
-    
     
     if ((nGrow>0) && (how == HT_EXTRAP_GROW_CELLS))
     {
@@ -2521,18 +2514,18 @@ HeatTransfer::avgDown ()
 
     crse_P_fine_BA.coarsen(fine_ratio);
 
+    MultiFab crse_P_fine(crse_P_fine_BA,1,0);
+
+    for (MFIter mfi(P_fine); mfi.isValid(); ++mfi)
     {
-        MultiFab crse_P_fine(crse_P_fine_BA,1,0);
+        const int i = mfi.index();
 
-        for (MFIter mfi(P_fine); mfi.isValid(); ++mfi)
-        {
-            const int i = mfi.index();
-
-            injectDown(crse_P_fine_BA[i],crse_P_fine[i],P_fine[i],fine_ratio);
-        }
-
-        P_crse.copy(crse_P_fine);  // Parallel copy
+        injectDown(crse_P_fine_BA[i],crse_P_fine[i],P_fine[i],fine_ratio);
     }
+
+    P_crse.copy(crse_P_fine);  // Parallel copy
+
+    crse_P_fine.clear();
     //
     // Next average down divu and dSdT at new time.
     //
@@ -5145,24 +5138,22 @@ HeatTransfer::set_htt_hmixTYP ()
         isects.reserve(27);
         for (int k = 0; k <= finest_level; k++)
         {
-            AmrLevel& ht = getLevel(k);
-            const MultiFab& S = ht.get_new_data(State_Type);
+            AmrLevel&       ht = getLevel(k);
+            const MultiFab& S  = ht.get_new_data(State_Type);
             const BoxArray& ba = ht.boxArray();
             MultiFab hmix(ba,1,0);
             MultiFab::Copy(hmix,S,RhoH,0,1,0);
             MultiFab::Divide(hmix,S,Density,0,1,0);
-            if (k!=finest_level) 
+            if (k != finest_level) 
             {
                 AmrLevel& htf = getLevel(k+1);
-                BoxArray baf = htf.boxArray();
+                BoxArray  baf = htf.boxArray();
                 baf.coarsen(parent->refRatio(k));
                 for (MFIter mfi(hmix); mfi.isValid(); ++mfi)
                 {
                     baf.intersections(ba[mfi.index()],isects);
                     for (int i = 0; i < isects.size(); i++)
-                    {
                         hmix[mfi].setVal(0,isects[i].second,0,1);
-                    }
                 }
             }
             htt_hmixTYP = std::max(htt_hmixTYP,hmix.norm0(0));
@@ -6310,551 +6301,554 @@ HeatTransfer::mac_sync ()
     // Eq (18) is missing Y_m^{n+1,p} * (delta rho)^sync in the RHS
     // and Eq (19) is missing the h^{n+1,p} * (delta rho)^sync in the RHS.
     //
-    MultiFab*  DeltaSsync     = 0;
+    MultiFab*  DeltaSsync = 0;
     //
     // Compute the corrective pressure used to compute U^{ADV,corr} in mac_sync_compute
     //
     mac_projector->mac_sync_solve(level,dt,Rh,fine_ratio);
 
-    if (do_reflux)
-    {
-        MultiFab& S_new = get_new_data(State_Type);
+    if (!do_reflux) return;
 
-	Array<SYNC_SCHEME> sync_scheme(NUM_STATE,ReAdvect);
+    MultiFab& S_new = get_new_data(State_Type);
 
-        if (do_mom_diff == 1)
-          for (int i=0; i<BL_SPACEDIM; ++i)
+    Array<SYNC_SCHEME> sync_scheme(NUM_STATE,ReAdvect);
+
+    if (do_mom_diff == 1)
+        for (int i=0; i<BL_SPACEDIM; ++i)
             sync_scheme[i] = UseEdgeState;
 
-        for (int i=BL_SPACEDIM; i<NUM_STATE; ++i)
-            sync_scheme[i] = UseEdgeState;
+    for (int i=BL_SPACEDIM; i<NUM_STATE; ++i)
+        sync_scheme[i] = UseEdgeState;
         
-        Array<int> incr_sync(NUM_STATE,0);
-        for (int i=0; i<sync_scheme.size(); ++i)
-            if (sync_scheme[i] == ReAdvect)
-                incr_sync[i] = 1;
+    Array<int> incr_sync(NUM_STATE,0);
+    for (int i=0; i<sync_scheme.size(); ++i)
+        if (sync_scheme[i] == ReAdvect)
+            incr_sync[i] = 1;
+    //
+    // After solving for mac_sync_phi in mac_sync_solve(), we
+    // can now do the sync advect step in mac_sync_compute().
+    // This consists of two steps
+    //
+    // 1. compute U^{ADV,corr} as the gradient of mac_sync_phi
+    // 2. add -D^MAC ( U^{ADV,corr} * rho * q)^{n+1/2} ) to flux registers
+    //
 
-	//
-	// After solving for mac_sync_phi in mac_sync_solve(), we
-	// can now do the sync advect step in mac_sync_compute().
-	// This consists of two steps
-	//
-	// 1. compute U^{ADV,corr} as the gradient of mac_sync_phi
-	// 2. add -D^MAC ( U^{ADV,corr} * rho * q)^{n+1/2} ) to flux registers
-	//
-
-	// velocities
-        if (do_mom_diff == 0) 
-        {
-            mac_projector->mac_sync_compute(level,u_mac,Vsync,Ssync,Rh,
-                                            (level > 0) ? &getAdvFluxReg(level) : 0,
-                                            advectionType,prev_time,
-                                            prev_pres_time,dt,NUM_STATE,
-                                            be_cn_theta,
-                                            modify_reflux_normal_vel,
-                                            do_mom_diff,
-                                            incr_sync);
-        }
-        else
-        {
-            for (int comp=0; comp<BL_SPACEDIM; ++comp)
-            {
-                if (sync_scheme[comp]==UseEdgeState)
-                {
-                    mac_projector->mac_sync_compute(level,Vsync,comp,
-                                                    comp,EdgeState, comp,Rh,
-                                                    (level>0 ? &getAdvFluxReg(level):0),
-                                                    advectionType,modify_reflux_normal_vel,dt);
-                }
-            }
-        }
-
-        showMF("sdcSync",*Ssync,"sdc_Ssync_no_Ucorr",level,parent->levelSteps(level));
-        showMF("sdcSync",*EdgeState[0],"sdc_ESTATE_x_no_Ucorr",level,parent->levelSteps(level));
-        showMF("sdcSync",*EdgeState[1],"sdc_ESTATE_y_no_Ucorr",level,parent->levelSteps(level));
-
-	// scalars
-        for (int comp=BL_SPACEDIM; comp<NUM_STATE; ++comp)
+    // velocities
+    if (do_mom_diff == 0) 
+    {
+        mac_projector->mac_sync_compute(level,u_mac,Vsync,Ssync,Rh,
+                                        (level > 0) ? &getAdvFluxReg(level) : 0,
+                                        advectionType,prev_time,
+                                        prev_pres_time,dt,NUM_STATE,
+                                        be_cn_theta,
+                                        modify_reflux_normal_vel,
+                                        do_mom_diff,
+                                        incr_sync);
+    }
+    else
+    {
+        for (int comp=0; comp<BL_SPACEDIM; ++comp)
         {
             if (sync_scheme[comp]==UseEdgeState)
             {
-                int s_ind = comp - BL_SPACEDIM;
-                //
-                // This routine does a sync advect step for a single 
-                // scalar component. The half-time edge states are passed in.
-                // This routine is useful when the edge states are computed
-                // in a physics-class-specific manner. (For example, as they are
-                // in the calculation of div rho U h = div U sum_l (rho Y)_l h_l(T)).
-                //
-                mac_projector->mac_sync_compute(level,Ssync,comp,s_ind,
-                                                EdgeState,comp,Rh,
+                mac_projector->mac_sync_compute(level,Vsync,comp,
+                                                comp,EdgeState, comp,Rh,
                                                 (level>0 ? &getAdvFluxReg(level):0),
                                                 advectionType,modify_reflux_normal_vel,dt);
             }
         }
+    }
+
+    showMF("sdcSync",*Ssync,"sdc_Ssync_no_Ucorr",level,parent->levelSteps(level));
+    showMF("sdcSync",*EdgeState[0],"sdc_ESTATE_x_no_Ucorr",level,parent->levelSteps(level));
+    showMF("sdcSync",*EdgeState[1],"sdc_ESTATE_y_no_Ucorr",level,parent->levelSteps(level));
+    //
+    // Scalars.
+    //
+    for (int comp=BL_SPACEDIM; comp<NUM_STATE; ++comp)
+    {
+        if (sync_scheme[comp]==UseEdgeState)
+        {
+            int s_ind = comp - BL_SPACEDIM;
+            //
+            // This routine does a sync advect step for a single 
+            // scalar component. The half-time edge states are passed in.
+            // This routine is useful when the edge states are computed
+            // in a physics-class-specific manner. (For example, as they are
+            // in the calculation of div rho U h = div U sum_l (rho Y)_l h_l(T)).
+            //
+            mac_projector->mac_sync_compute(level,Ssync,comp,s_ind,
+                                            EdgeState,comp,Rh,
+                                            (level>0 ? &getAdvFluxReg(level):0),
+                                            advectionType,modify_reflux_normal_vel,dt);
+        }
+    }
         
-        showMF("sdcSync",*Ssync,"sdc_Ssync_after_Ucorr",level,parent->levelSteps(level));
-        showMF("sdcSync",*EdgeState[0],"sdc_ESTATE_x_no_Ucorr",level,parent->levelSteps(level));
-        showMF("sdcSync",*EdgeState[1],"sdc_ESTATE_y_no_Ucorr",level,parent->levelSteps(level));
-        Ssync->mult(dt,Ssync->nGrow());
+    showMF("sdcSync",*Ssync,"sdc_Ssync_after_Ucorr",level,parent->levelSteps(level));
+    showMF("sdcSync",*EdgeState[0],"sdc_ESTATE_x_no_Ucorr",level,parent->levelSteps(level));
+    showMF("sdcSync",*EdgeState[1],"sdc_ESTATE_y_no_Ucorr",level,parent->levelSteps(level));
+    Ssync->mult(dt,Ssync->nGrow());
 
-        sync_setup(DeltaSsync);
+    sync_setup(DeltaSsync);
+    //
+    // For all conservative variables Q (other than density)
+    // set DeltaSsync = q^{n+1,p} * (delta rho)^sync
+    // subtract q^{n+1,p} * (delta rho)^sync from Ssync
+    //
+    FArrayBox delta_ssync;
 
-        //
-        // For all conservative variables Q (other than density)
-	// set DeltaSsync = q^{n+1,p} * (delta rho)^sync
-	// subtract q^{n+1,p} * (delta rho)^sync from Ssync
-        //
-        for (MFIter mfi(S_new); mfi.isValid(); ++mfi)
+    for (MFIter mfi(S_new); mfi.isValid(); ++mfi)
+    {
+        const int  i   = mfi.index();
+        const Box& grd = grids[i];
+
+        int iconserved = -1;
+
+        for (int istate = BL_SPACEDIM; istate < NUM_STATE; istate++)
         {
-            const int  i   = mfi.index();
-            const Box& grd = grids[i];
-
-            int iconserved = -1;
-
-            for (int istate = BL_SPACEDIM; istate < NUM_STATE; istate++)
+            if (istate != Density && advectionType[istate] == Conservative)
             {
-                if (istate != Density && advectionType[istate] == Conservative)
-                {
-                    iconserved++;
-             
-		    FArrayBox delta_ssync;
-                    delta_ssync.resize(grd,1);
-                    delta_ssync.copy(S_new[i],grd,istate,grd,0,1); // delta_ssync = (rho*q)^{n+1,p}
-                    delta_ssync.divide(S_new[i],grd,Density,0,1); // delta_ssync = q^{n+1,p}
-                    FArrayBox& s_sync = (*Ssync)[i]; // Ssync = RHS of Eq (18), (19) without the q^{n+1,p} * (delta rho)^sync terms
-                    delta_ssync.mult(s_sync,grd,Density-BL_SPACEDIM,0,1); // delta_ssync = q^{n+1,p} * (delta rho)^sync
-                    (*DeltaSsync)[i].copy(delta_ssync,grd,0,grd,iconserved,1); // DeltaSsync = q^{n+1,p} * (delta rho)^sync
-                    s_sync.minus(delta_ssync,grd,0,istate-BL_SPACEDIM,1); // Ssync = Ssync - q^{n+1,p} * (delta rho)^sync
-                }
+                iconserved++;
+                delta_ssync.resize(grd,1);
+                delta_ssync.copy(S_new[i],grd,istate,grd,0,1); // delta_ssync = (rho*q)^{n+1,p}
+                delta_ssync.divide(S_new[i],grd,Density,0,1); // delta_ssync = q^{n+1,p}
+                FArrayBox& s_sync = (*Ssync)[i]; // Ssync = RHS of Eq (18), (19) without the q^{n+1,p} * (delta rho)^sync terms
+                delta_ssync.mult(s_sync,grd,Density-BL_SPACEDIM,0,1); // delta_ssync = q^{n+1,p} * (delta rho)^sync
+                (*DeltaSsync)[i].copy(delta_ssync,grd,0,grd,iconserved,1); // DeltaSsync = q^{n+1,p} * (delta rho)^sync
+                s_sync.minus(delta_ssync,grd,0,istate-BL_SPACEDIM,1); // Ssync = Ssync - q^{n+1,p} * (delta rho)^sync
             }
         }
-        //
-        // Now, increment density.
-        //
-        for (MFIter mfi(S_new); mfi.isValid(); ++mfi)
+    }
+
+    delta_ssync.clear();
+    //
+    // Now, increment density.
+    //
+    for (MFIter mfi(S_new); mfi.isValid(); ++mfi)
+    {
+        const int i = mfi.index();
+        S_new[i].plus((*Ssync)[i],grids[i],Density-BL_SPACEDIM,Density,1);
+    }
+
+    make_rho_curr_time();
+
+    const int numscal = NUM_STATE - BL_SPACEDIM;
+    //
+    // Set do_diffuse_sync to 0 for debugging reasons only.
+    //
+    if (do_mom_diff == 1)
+    {
+        for (MFIter Vsyncmfi(*Vsync); Vsyncmfi.isValid(); ++Vsyncmfi)
         {
-            const int i = mfi.index();
-            S_new[i].plus((*Ssync)[i],grids[i],Density-BL_SPACEDIM,Density,1);
+            const int i    = Vsyncmfi.index();
+            const Box vbox = (*rho_ctime).box(i);
+
+            D_TERM((*Vsync)[i].divide((*rho_ctime)[i],vbox,0,Xvel,1);,
+                   (*Vsync)[i].divide((*rho_ctime)[i],vbox,0,Yvel,1);,
+                   (*Vsync)[i].divide((*rho_ctime)[i],vbox,0,Zvel,1););
         }
-        make_rho_curr_time();
+    }
 
-        const int numscal = NUM_STATE - BL_SPACEDIM;
-        //
-        // Set do_diffuse_sync to 0 for debugging reasons only.
-        //
-        if (do_mom_diff == 1)
+    if (do_diffuse_sync)
+    {
+        MultiFab** beta;
+        diffusion->allocFluxBoxesLevel(beta);
+        if (is_diffusive[Xvel])
         {
-            for (MFIter Vsyncmfi(*Vsync); Vsyncmfi.isValid(); ++Vsyncmfi)
-            {
-                const int i    = Vsyncmfi.index();
-                const Box vbox = (*rho_ctime).box(i);
-
-                D_TERM((*Vsync)[i].divide((*rho_ctime)[i],vbox,0,Xvel,1);,
-                       (*Vsync)[i].divide((*rho_ctime)[i],vbox,0,Yvel,1);,
-                       (*Vsync)[i].divide((*rho_ctime)[i],vbox,0,Zvel,1););
-            }
+            int rho_flag = (do_mom_diff == 0) ? 1 : 3;
+            getViscosity(beta, cur_time);
+            diffusion->diffuse_Vsync(Vsync,dt,be_cn_theta,Rh,rho_flag,beta,0);
         }
-
-        if (do_diffuse_sync)
-        {
-	    MultiFab** beta;
-	    diffusion->allocFluxBoxesLevel(beta);
-            if (is_diffusive[Xvel])
-            {
-                int rho_flag = (do_mom_diff == 0) ? 1 : 3;
-                getViscosity(beta, cur_time);
-                diffusion->diffuse_Vsync(Vsync,dt,be_cn_theta,Rh,rho_flag,beta,0);
-            }
 	    
-	    if (!unity_Le 
-		&& nspecies>0 
-		&& do_add_nonunityLe_corr_to_rhoh_adv_flux 
-		&& !do_mcdd)
-	    {
-		//
-		// Diffuse the species syncs such that sum(SpecDiffSyncFluxes) = 0
-	        // After exiting, SpecDiffusionFluxnp1 should contain rhoD grad (delta Y)^sync
-		// Also, Ssync for species should contain rho^{n+1} * (delta Y)^sync
-		differential_spec_diffuse_sync(dt);
+        if (!unity_Le 
+            && nspecies>0 
+            && do_add_nonunityLe_corr_to_rhoh_adv_flux 
+            && !do_mcdd)
+        {
+            //
+            // Diffuse the species syncs such that sum(SpecDiffSyncFluxes) = 0
+            // After exiting, SpecDiffusionFluxnp1 should contain rhoD grad (delta Y)^sync
+            // Also, Ssync for species should contain rho^{n+1} * (delta Y)^sync
+            //
+            differential_spec_diffuse_sync(dt);
 
-                const Real cur_time  = state[State_Type].curTime();
-                const Real a = 1.0;     // Passed around, but not used
-                Real rhsscale;          //  -ditto-
-                const int rho_flag = 2; // FIXME: Messy assumption
-                MultiFab *alpha=0;      //  -ditto-
-                MultiFab **fluxSC, **fluxNULN, **rhoh_visc;
-                diffusion->allocFluxBoxesLevel(fluxSC,0,1);
-                diffusion->allocFluxBoxesLevel(fluxNULN,0,nspecies);
-                diffusion->allocFluxBoxesLevel(rhoh_visc,0,1);
+            const Real cur_time  = state[State_Type].curTime();
+            const Real a = 1.0;     // Passed around, but not used
+            Real rhsscale;          //  -ditto-
+            const int rho_flag = 2; // FIXME: Messy assumption
+            MultiFab *alpha=0;      //  -ditto-
+            MultiFab **fluxSC, **fluxNULN, **rhoh_visc;
+            diffusion->allocFluxBoxesLevel(fluxSC,0,1);
+            diffusion->allocFluxBoxesLevel(fluxNULN,0,nspecies);
+            diffusion->allocFluxBoxesLevel(rhoh_visc,0,1);
 
-                const int nGrow    = 1; // Size to grow fil-patched fab for T below
-                const int dataComp = 0; // coeffs loaded into 0-comp for all species
+            const int nGrow    = 1; // Size to grow fil-patched fab for T below
+            const int dataComp = 0; // coeffs loaded into 0-comp for all species
                   
-		// get lambda/cp
-                getDiffusivity(rhoh_visc, cur_time, RhoH, 0, 1);
+            // get lambda/cp
+            getDiffusivity(rhoh_visc, cur_time, RhoH, 0, 1);
 
-		// compute lambda/cp grad (delta Y_m^sync)
-                for (int comp = 0; comp < nspecies; ++comp)
+            MultiFab Soln(grids,1,1);
+
+            // compute lambda/cp grad (delta Y_m^sync)
+            for (int comp = 0; comp < nspecies; ++comp)
+            {
+                const Real b     = be_cn_theta;
+                const int  sigma = first_spec + comp;
+                //
+                //  start by getting lambda/cp.Grad(delta Y^sync)
+                //   (note: neg of usual diff flux)
+                //
+                ViscBndry      visc_bndry;
+                ABecLaplacian* visc_op;
+
+                visc_op = diffusion->getViscOp(sigma,a,b,cur_time,
+                                               visc_bndry,Rh,
+                                               rho_flag,&rhsscale,rhoh_visc,dataComp,
+                                               alpha,dataComp);
+
+                visc_op->maxOrder(diffusion->maxOrder());
+
+                // copy rho^{n+1} * (delta Y)^sync into Soln
+                MultiFab::Copy(Soln,*Ssync,sigma-BL_SPACEDIM,0,1,0);
+
+                // divide Soln by rho
+                for (MFIter Smfi(Soln); Smfi.isValid(); ++Smfi)
                 {
-                    const Real b     = be_cn_theta;
-                    const int  sigma = first_spec + comp;
-                    //
-                    //  start by getting lambda/cp.Grad(delta Y^sync)
-                    //   (note: neg of usual diff flux)
-                    //
-                    ViscBndry      visc_bndry;
-                    ABecLaplacian* visc_op;
-
-                    visc_op = diffusion->getViscOp(sigma,a,b,cur_time,
-                                                   visc_bndry,Rh,
-                                                   rho_flag,&rhsscale,rhoh_visc,dataComp,
-                                                   alpha,dataComp);
-
-                    visc_op->maxOrder(diffusion->maxOrder());
-
-                    {
-                        MultiFab Soln(grids,1,1);
-
-                        // copy rho^{n+1} * (delta Y)^sync into Soln
-                        MultiFab::Copy(Soln,*Ssync,sigma-BL_SPACEDIM,0,1,0);
-
-                        // divide Soln by rho
-                        for (MFIter Smfi(Soln); Smfi.isValid(); ++Smfi)
-                        {
-                            Soln[Smfi].divide(S_new[Smfi],Smfi.validbox(),Density,0,1);
-                        }
-
-                        // compute lambda/cp.Grad(delta Y^sync) and weight
-                        visc_op->compFlux(D_DECL(*fluxSC[0],*fluxSC[1],*fluxSC[2]),Soln);
-                    }
-
-                    for (int d = 0; d < BL_SPACEDIM; ++d)
-                        fluxSC[d]->mult(-b/geom.CellSize()[d]);
-                    //
-                    // Here, get fluxNULN = (lambda/cp - rho.D)Grad(delta Ysync)
-                    //                    = lambda/cp.Grad(delta Ysync) + SpecSyncDiffFlux
-                    //
-                    for (int d = 0; d < BL_SPACEDIM; ++d)
-                    {
-                        MFIter SDF_mfi(*SpecDiffusionFluxnp1[d]);
-
-                        for ( ; SDF_mfi.isValid(); ++SDF_mfi)
-                        {
-                            FArrayBox& fluxSC_fab   = (*fluxSC[d])[SDF_mfi];
-                            FArrayBox& fluxNULN_fab = (*fluxNULN[d])[SDF_mfi];
-                            FArrayBox& SDF_fab = (*SpecDiffusionFluxnp1[d])[SDF_mfi];
-                            const Box& ebox    = SDF_mfi.validbox();
-			    // copy in (delta Gamma)^sync
-                            fluxNULN_fab.copy(SDF_fab,ebox,comp,ebox,comp,1);
-			    // add in (lambda/cp) grad (delta Y^sync)
-                            fluxNULN_fab.plus(fluxSC_fab,ebox,0,comp,1);
-                        }
-                    }
-                    delete visc_op;
+                    Soln[Smfi].divide(S_new[Smfi],Smfi.validbox(),Density,0,1);
                 }
 
-                diffusion->removeFluxBoxesLevel(fluxSC);
-                diffusion->removeFluxBoxesLevel(rhoh_visc);
-                //
-                // Multiply fluxi by h_i (let FLXDIV routine below sum up the fluxes)
-                //
-                FArrayBox eTemp, h, volume;
+                // compute lambda/cp.Grad(delta Y^sync) and weight
+                visc_op->compFlux(D_DECL(*fluxSC[0],*fluxSC[1],*fluxSC[2]),Soln);
 
-                for (FillPatchIterator Tnew_fpi(*this,S_new,nGrow,cur_time,State_Type,Temp,1);
-                     Tnew_fpi.isValid();
-                     ++Tnew_fpi)
+                for (int d = 0; d < BL_SPACEDIM; ++d)
+                    fluxSC[d]->mult(-b/geom.CellSize()[d]);
+                //
+                // Here, get fluxNULN = (lambda/cp - rho.D)Grad(delta Ysync)
+                //                    = lambda/cp.Grad(delta Ysync) + SpecSyncDiffFlux
+                //
+                for (int d = 0; d < BL_SPACEDIM; ++d)
                 {
-                    const int i    = Tnew_fpi.index();
-                    const Box& box = Tnew_fpi.validbox();
+                    MFIter SDF_mfi(*SpecDiffusionFluxnp1[d]);
 
-                    for (int d = 0; d < BL_SPACEDIM; ++d)
+                    for ( ; SDF_mfi.isValid(); ++SDF_mfi)
                     {
-                        const Box ebox = BoxLib::surroundingNodes(box,d);
-                        eTemp.resize(ebox,1);
-                        FPLoc bc_lo = fpi_phys_loc(get_desc_lst()[State_Type].getBC(Temp).lo(d));
-                        FPLoc bc_hi = fpi_phys_loc(get_desc_lst()[State_Type].getBC(Temp).hi(d));
-                        
-                        center_to_edge_fancy(Tnew_fpi(),eTemp,BoxLib::grow(box,BoxLib::BASISV(d)),
-                                             0,0,1,geom.Domain(),bc_lo,bc_hi);
-                        
-                        h.resize(ebox,nspecies);
-                        getChemSolve().getHGivenT(h,eTemp,ebox,0,0);
-
-			// multiply fluxNULN by h_m
-                        (*fluxNULN[d])[i].mult(h,ebox,0,0,nspecies);
+                        FArrayBox& fluxSC_fab   = (*fluxSC[d])[SDF_mfi];
+                        FArrayBox& fluxNULN_fab = (*fluxNULN[d])[SDF_mfi];
+                        FArrayBox& SDF_fab = (*SpecDiffusionFluxnp1[d])[SDF_mfi];
+                        const Box& ebox    = SDF_mfi.validbox();
+                        // copy in (delta Gamma)^sync
+                        fluxNULN_fab.copy(SDF_fab,ebox,comp,ebox,comp,1);
+                        // add in (lambda/cp) grad (delta Y^sync)
+                        fluxNULN_fab.plus(fluxSC_fab,ebox,0,comp,1);
                     }
                 }
+                delete visc_op;
+            }
 
-                h.clear();
-                eTemp.clear();
+            Soln.clear();
 
-		// add the NULN fluxes to the RHS of the (delta h)^sync diffusion solve
-		// afterwards, the entire RHS should be ready
-                for (MFIter Ssync_mfi(*Ssync); Ssync_mfi.isValid(); ++Ssync_mfi)
+            diffusion->removeFluxBoxesLevel(fluxSC);
+            diffusion->removeFluxBoxesLevel(rhoh_visc);
+            //
+            // Multiply fluxi by h_i (let FLXDIV routine below sum up the fluxes)
+            //
+            FArrayBox eTemp, h, volume;
+
+            for (FillPatchIterator Tnew_fpi(*this,S_new,nGrow,cur_time,State_Type,Temp,1);
+                 Tnew_fpi.isValid();
+                 ++Tnew_fpi)
+            {
+                const int i    = Tnew_fpi.index();
+                const Box& box = Tnew_fpi.validbox();
+
+                for (int d = 0; d < BL_SPACEDIM; ++d)
                 {
-                    const int i      = Ssync_mfi.index();
-                    FArrayBox& syncn = (*Ssync)[i];
-                    const FArrayBox& synco = (*Ssync)[i];
-                    const Box& box = Ssync_mfi.validbox();
+                    const Box ebox = BoxLib::surroundingNodes(box,d);
+                    eTemp.resize(ebox,1);
+                    FPLoc bc_lo = fpi_phys_loc(get_desc_lst()[State_Type].getBC(Temp).lo(d));
+                    FPLoc bc_hi = fpi_phys_loc(get_desc_lst()[State_Type].getBC(Temp).hi(d));
+                        
+                    center_to_edge_fancy(Tnew_fpi(),eTemp,BoxLib::grow(box,BoxLib::BASISV(d)),
+                                         0,0,1,geom.Domain(),bc_lo,bc_hi);
+                        
+                    h.resize(ebox,nspecies);
+                    getChemSolve().getHGivenT(h,eTemp,ebox,0,0);
 
-                    geom.GetVolume(volume,grids,i,GEOM_GROW);
-                    //
-                    // Multiply by dt*dt, one to make it extensive, and one because
-                    // Ssync multiplied above by dt, need same units here.
-                    //
-                    const Real mult = dt*dt;
-                    const int sigmaRhoH = RhoH - BL_SPACEDIM; // RhoH comp in Ssync
+                    // multiply fluxNULN by h_m
+                    (*fluxNULN[d])[i].mult(h,ebox,0,0,nspecies);
+                }
+            }
+
+            h.clear();
+            eTemp.clear();
+            //
+            // Add the NULN fluxes to the RHS of the (delta h)^sync diffusion solve
+            // afterwards, the entire RHS should be ready.
+            //
+            for (MFIter Ssync_mfi(*Ssync); Ssync_mfi.isValid(); ++Ssync_mfi)
+            {
+                const int i      = Ssync_mfi.index();
+                FArrayBox& syncn = (*Ssync)[i];
+                const FArrayBox& synco = (*Ssync)[i];
+                const Box& box = Ssync_mfi.validbox();
+
+                geom.GetVolume(volume,grids,i,GEOM_GROW);
+                //
+                // Multiply by dt*dt, one to make it extensive, and one because
+                // Ssync multiplied above by dt, need same units here.
+                //
+                const Real mult = dt*dt;
+                const int sigmaRhoH = RhoH - BL_SPACEDIM; // RhoH comp in Ssync
 		    
-                    FORT_INCRWEXTFLXDIV(box.loVect(), box.hiVect(),
-                                        (*fluxNULN[0])[i].dataPtr(),
-                                        ARLIM((*fluxNULN[0])[i].loVect()),
-                                        ARLIM((*fluxNULN[0])[i].hiVect()),
-                                        (*fluxNULN[1])[i].dataPtr(),
-                                        ARLIM((*fluxNULN[1])[i].loVect()),
-                                        ARLIM((*fluxNULN[1])[i].hiVect()),
+                FORT_INCRWEXTFLXDIV(box.loVect(), box.hiVect(),
+                                    (*fluxNULN[0])[i].dataPtr(),
+                                    ARLIM((*fluxNULN[0])[i].loVect()),
+                                    ARLIM((*fluxNULN[0])[i].hiVect()),
+                                    (*fluxNULN[1])[i].dataPtr(),
+                                    ARLIM((*fluxNULN[1])[i].loVect()),
+                                    ARLIM((*fluxNULN[1])[i].hiVect()),
 #if BL_SPACEDIM == 3
-                                        (*fluxNULN[2])[i].dataPtr(),
-                                        ARLIM((*fluxNULN[2])[i].loVect()),
-                                        ARLIM((*fluxNULN[2])[i].hiVect()),
+                                    (*fluxNULN[2])[i].dataPtr(),
+                                    ARLIM((*fluxNULN[2])[i].loVect()),
+                                    ARLIM((*fluxNULN[2])[i].hiVect()),
 #endif
-                                        synco.dataPtr(sigmaRhoH),
-                                        ARLIM(synco.loVect()),
-                                        ARLIM(synco.hiVect()),
-                                        syncn.dataPtr(sigmaRhoH),
-                                        ARLIM(syncn.loVect()),
-                                        ARLIM(syncn.hiVect()),
-                                        volume.dataPtr(),
-                                        ARLIM(volume.loVect()),
-                                        ARLIM(volume.hiVect()),
-                                        &nspecies, &mult);
-                }
-
-                diffusion->removeFluxBoxesLevel(fluxNULN);
-            }
-            else if (nspecies>0 && do_mcdd)
-            {
-                mcdd_diffuse_sync(dt);
+                                    synco.dataPtr(sigmaRhoH),
+                                    ARLIM(synco.loVect()),
+                                    ARLIM(synco.hiVect()),
+                                    syncn.dataPtr(sigmaRhoH),
+                                    ARLIM(syncn.loVect()),
+                                    ARLIM(syncn.hiVect()),
+                                    volume.dataPtr(),
+                                    ARLIM(volume.loVect()),
+                                    ARLIM(volume.hiVect()),
+                                    &nspecies, &mult);
             }
 
-	    MultiFab **flux;
-            diffusion->allocFluxBoxesLevel(flux);
+            diffusion->removeFluxBoxesLevel(fluxNULN);
+        }
+        else if (nspecies>0 && do_mcdd)
+        {
+            mcdd_diffuse_sync(dt);
+        }
 
-            showMF("sdcSync",*Ssync,"sdc_Sync_preDiff",level,parent->levelSteps(level));
+        MultiFab **flux;
+        diffusion->allocFluxBoxesLevel(flux);
 
-            for (sigma = 0; sigma < numscal; sigma++)
-            {
-                int rho_flag = 0;
-                int do_viscsyncflux = do_reflux;
-		const int state_ind = BL_SPACEDIM + sigma;
-		//
-		// To diffuse, or not?
-		// (1) Density, no
-		// (2) RhoH...if diffusive
-		// (3) Trac...if diffusive
-		// (4) Spec:
-		//    (a) if Le==1, and spec diffusive
-		//    (b) if Le!=1, do differential diffusion instead, done above
-		// (5) Temp, no (set instead by RhoH to Temp)
-                //
-		const bool is_spec = state_ind<=last_spec && state_ind>=first_spec;
-                int do_it
-		    =  state_ind!=Density 
-		    && state_ind!=Temp
-		    && is_diffusive[state_ind]
-		    && !(is_spec && !unity_Le)
-		    && !(do_mcdd && (is_spec || state_ind==RhoH));
+        showMF("sdcSync",*Ssync,"sdc_Sync_preDiff",level,parent->levelSteps(level));
+
+        for (sigma = 0; sigma < numscal; sigma++)
+        {
+            int rho_flag = 0;
+            int do_viscsyncflux = do_reflux;
+            const int state_ind = BL_SPACEDIM + sigma;
+            //
+            // To diffuse, or not?
+            // (1) Density, no
+            // (2) RhoH...if diffusive
+            // (3) Trac...if diffusive
+            // (4) Spec:
+            //    (a) if Le==1, and spec diffusive
+            //    (b) if Le!=1, do differential diffusion instead, done above
+            // (5) Temp, no (set instead by RhoH to Temp)
+            //
+            const bool is_spec = state_ind<=last_spec && state_ind>=first_spec;
+            int do_it
+                =  state_ind!=Density 
+                && state_ind!=Temp
+                && is_diffusive[state_ind]
+                && !(is_spec && !unity_Le)
+                && !(do_mcdd && (is_spec || state_ind==RhoH));
 		
-		if (do_it && (is_spec || state_ind==RhoH))
-		    rho_flag = 2;
+            if (do_it && (is_spec || state_ind==RhoH))
+                rho_flag = 2;
 
-                if (do_it)
-                {
-                    MultiFab* alpha = 0;
-                    getDiffusivity(beta, cur_time, state_ind, 0, 1);
+            if (do_it)
+            {
+                MultiFab* alpha = 0;
+                getDiffusivity(beta, cur_time, state_ind, 0, 1);
                     
-		    // on entry, Ssync = RHS for (delta h)^sync diffusive solve
-		    // on exit, Ssync = rho^{n+1} * (delta h)^sync
-		    // on exit, flux = coeff * grad phi
-		    diffusion->diffuse_Ssync(Ssync,sigma,dt,be_cn_theta,Rh,
-					     rho_flag,flux,0,beta,0,alpha,0);
-		    if (do_viscsyncflux && level > 0)
-		    {
-		      for (MFIter mfi(*Ssync); mfi.isValid(); ++mfi)
-			{
-			    const int i=mfi.index();
-			    for (int d=0; d<BL_SPACEDIM; ++d)
-			      getViscFluxReg().FineAdd((*flux[d])[i],d,i,0,state_ind,1,dt);
-			}
-		    }
-                }
-            }
-            diffusion->removeFluxBoxesLevel(flux);
-	    diffusion->removeFluxBoxesLevel(beta);
-        }
-        showMF("sdcSync",*Ssync,"sdc_Sync_postDiff",level,parent->levelSteps(level));
-        //
-        // For all conservative variables Q (other than density)
-        // increment sync by (sync_for_rho)*q_presync.
-	// Before this loop, Ssync holds rho^{n+1} (delta phi)^sync
-	// DeltaSsync holds (delta rho)^sync phi^p
-        //
-        for (MFIter mfi(*Ssync); mfi.isValid(); ++mfi)
-        {
-            const int i = mfi.index();
-
-            int iconserved = -1;
-
-            for (int istate = BL_SPACEDIM; istate < NUM_STATE; istate++)
-            {
-                if (istate != Density && advectionType[istate] == Conservative)
+                // on entry, Ssync = RHS for (delta h)^sync diffusive solve
+                // on exit, Ssync = rho^{n+1} * (delta h)^sync
+                // on exit, flux = coeff * grad phi
+                diffusion->diffuse_Ssync(Ssync,sigma,dt,be_cn_theta,Rh,
+                                         rho_flag,flux,0,beta,0,alpha,0);
+                if (do_viscsyncflux && level > 0)
                 {
-                    iconserved++;
-
-                    (*Ssync)[i].plus((*DeltaSsync)[i],grids[i],iconserved,istate-BL_SPACEDIM,1);
+                    for (MFIter mfi(*Ssync); mfi.isValid(); ++mfi)
+                    {
+                        const int i=mfi.index();
+                        for (int d=0; d<BL_SPACEDIM; ++d)
+                            getViscFluxReg().FineAdd((*flux[d])[i],d,i,0,state_ind,1,dt);
+                    }
                 }
             }
         }
-        sync_cleanup(DeltaSsync);
-        showMF("sdcSync",*Ssync,"sdc_Sync_post_add_QdRho",level,parent->levelSteps(level));
-        //
-        // Increment the state (for all but rho, since that was done above)
-        //
-        for (MFIter mfi(S_new); mfi.isValid(); ++mfi)
-        {
-            const int i = mfi.index();
+        diffusion->removeFluxBoxesLevel(flux);
+        diffusion->removeFluxBoxesLevel(beta);
+    }
+    showMF("sdcSync",*Ssync,"sdc_Sync_postDiff",level,parent->levelSteps(level));
+    //
+    // For all conservative variables Q (other than density)
+    // increment sync by (sync_for_rho)*q_presync.
+    // Before this loop, Ssync holds rho^{n+1} (delta phi)^sync
+    // DeltaSsync holds (delta rho)^sync phi^p
+    //
+    for (MFIter mfi(*Ssync); mfi.isValid(); ++mfi)
+    {
+        const int i = mfi.index();
 
-            for (int sigma = 0; sigma < numscal; sigma++)
+        int iconserved = -1;
+
+        for (int istate = BL_SPACEDIM; istate < NUM_STATE; istate++)
+        {
+            if (istate != Density && advectionType[istate] == Conservative)
             {
-                if (!(BL_SPACEDIM+sigma == Density))
-                {
-                    S_new[i].plus((*Ssync)[i],grids[i],sigma,BL_SPACEDIM+sigma,1);
-                }
+                iconserved++;
+
+                (*Ssync)[i].plus((*DeltaSsync)[i],grids[i],iconserved,istate-BL_SPACEDIM,1);
             }
         }
-        //
-        // Recompute temperature and rho R T after the mac_sync.
-        //
-        RhoH_to_Temp(S_new);
-        setThermoPress(cur_time);
-        showMF("sdcSync",S_new,"sdc_Snew_postSync",level,parent->levelSteps(level));
-        //
-        // Get boundary conditions.
-        //
-        Real mult = 1.0;
-        Array<int*>         sync_bc(grids.size());
-        Array< Array<int> > sync_bc_array(grids.size());
-        for (int i = 0; i < ngrids; i++)
+    }
+    sync_cleanup(DeltaSsync);
+    showMF("sdcSync",*Ssync,"sdc_Sync_post_add_QdRho",level,parent->levelSteps(level));
+    //
+    // Increment the state (for all but rho, since that was done above)
+    //
+    for (MFIter mfi(S_new); mfi.isValid(); ++mfi)
+    {
+        const int i = mfi.index();
+
+        for (int sigma = 0; sigma < numscal; sigma++)
         {
-            sync_bc_array[i] = getBCArray(State_Type,i,Density,numscal);
-            sync_bc[i]       = sync_bc_array[i].dataPtr();
+            if (!(BL_SPACEDIM+sigma == Density))
+            {
+                S_new[i].plus((*Ssync)[i],grids[i],sigma,BL_SPACEDIM+sigma,1);
+            }
         }
+    }
+    //
+    // Recompute temperature and rho R T after the mac_sync.
+    //
+    RhoH_to_Temp(S_new);
+    setThermoPress(cur_time);
+    showMF("sdcSync",S_new,"sdc_Snew_postSync",level,parent->levelSteps(level));
+    //
+    // Get boundary conditions.
+    //
+    Real mult = 1.0;
+    Array<int*>         sync_bc(grids.size());
+    Array< Array<int> > sync_bc_array(grids.size());
+    for (int i = 0; i < ngrids; i++)
+    {
+        sync_bc_array[i] = getBCArray(State_Type,i,Density,numscal);
+        sync_bc[i]       = sync_bc_array[i].dataPtr();
+    }
+    //
+    // Interpolate the sync correction to the finer levels.
+    //
+    IntVect ratio = IntVect::TheUnitVector();
+    for (int lev = level+1; lev <= finest_level; lev++)
+    {
+        ratio                   *= parent->refRatio(lev-1);
+        HeatTransfer& fine_level = getLevel(lev);
+        MultiFab& S_new_lev      = fine_level.get_new_data(State_Type);
         //
-        // Interpolate the sync correction to the finer levels.
+        // New way of interpolating syncs to make sure mass is conserved
+        // and to ensure freestream preservation for species & temperature.
         //
-        IntVect ratio = IntVect::TheUnitVector();
-        for (int lev = level+1; lev <= finest_level; lev++)
-        {
-            ratio                   *= parent->refRatio(lev-1);
-            HeatTransfer& fine_level = getLevel(lev);
-            MultiFab& S_new_lev      = fine_level.get_new_data(State_Type);
-            //
-            // New way of interpolating syncs to make sure mass is conserved
-            // and to ensure freestream preservation for species & temperature.
-            //
-            const BoxArray& fine_grids = S_new_lev.boxArray();
-            const int nghost           = S_new_lev.nGrow();
-            MultiFab increment(fine_grids, numscal, nghost);
-            increment.setVal(0,nghost);
-            //
-            // Note: we use the lincc_interp (which_interp==3) for density,
-            // rho*h and rho*Y, cell_cons_interp for everything else. Doing
-            // so is needed for freestream preservation of Y and T.  The setting
-            // which_interp=5 calls the lincc_interp, but then follows with a
-            // "protection" step to be sure that all the components but the
-            // first and the last have their sync adjusted to try to preserve
-            // positivity after the sync is applied.  The density sync is then
-            // adjusted to be the sum of the species syncs.
-            //
-            // HACK note: Presently, the species mass syncs are redistributed 
-            //            without consequence to the enthalpy sync.  Clearly
-            //            the species carry enthalphy, so the enthalph sync should
-            //            be adjusted as well.  Note yet sure how to do this correctly.
-            //            Punt for now...
-            //
-            const SyncInterpType which_interp = CellConsProt_T;
+        const BoxArray& fine_grids = S_new_lev.boxArray();
+        const int nghost           = S_new_lev.nGrow();
+        MultiFab increment(fine_grids, numscal, nghost);
+        increment.setVal(0,nghost);
+        //
+        // Note: we use the lincc_interp (which_interp==3) for density,
+        // rho*h and rho*Y, cell_cons_interp for everything else. Doing
+        // so is needed for freestream preservation of Y and T.  The setting
+        // which_interp=5 calls the lincc_interp, but then follows with a
+        // "protection" step to be sure that all the components but the
+        // first and the last have their sync adjusted to try to preserve
+        // positivity after the sync is applied.  The density sync is then
+        // adjusted to be the sum of the species syncs.
+        //
+        // HACK note: Presently, the species mass syncs are redistributed 
+        //            without consequence to the enthalpy sync.  Clearly
+        //            the species carry enthalphy, so the enthalph sync should
+        //            be adjusted as well.  Note yet sure how to do this correctly.
+        //            Punt for now...
+        //
+        const SyncInterpType which_interp = CellConsProt_T;
 
-            const int nComp = 2+nspecies;
+        const int nComp = 2+nspecies;
 
+        SyncInterp(*Ssync, level, increment, lev, ratio, 
+                   Density-BL_SPACEDIM, Density-BL_SPACEDIM, nComp, 1, mult, 
+                   sync_bc.dataPtr(), which_interp, Density);
+
+        if (have_trac)
             SyncInterp(*Ssync, level, increment, lev, ratio, 
-                       Density-BL_SPACEDIM, Density-BL_SPACEDIM, nComp, 1, mult, 
-                       sync_bc.dataPtr(), which_interp, Density);
-
-            if (have_trac)
-                SyncInterp(*Ssync, level, increment, lev, ratio, 
-                           Trac-BL_SPACEDIM, Trac-BL_SPACEDIM, 1, 1, mult, 
-                           sync_bc.dataPtr());
-
-            if (have_rhort)
-                SyncInterp(*Ssync, level, increment, lev, ratio, 
-                           RhoRT-BL_SPACEDIM, RhoRT-BL_SPACEDIM, 1, 1, mult, 
-                           sync_bc.dataPtr());
-
-            SyncInterp(*Ssync, level, increment, lev, ratio, 
-                       Temp-BL_SPACEDIM, Temp-BL_SPACEDIM, 1, 1, mult, 
+                       Trac-BL_SPACEDIM, Trac-BL_SPACEDIM, 1, 1, mult, 
                        sync_bc.dataPtr());
 
-            if (do_set_rho_to_species_sum)
-            {
-                increment.setVal(0,Density-BL_SPACEDIM,1,0);
+        if (have_rhort)
+            SyncInterp(*Ssync, level, increment, lev, ratio, 
+                       RhoRT-BL_SPACEDIM, RhoRT-BL_SPACEDIM, 1, 1, mult, 
+                       sync_bc.dataPtr());
 
-                for (int istate = first_spec; istate <= last_spec; istate++)
-                { 
-                    for (MFIter mfi(increment); mfi.isValid(); ++mfi)
-                    {
-                        int i = mfi.index();
-                        increment[i].plus(increment[i],fine_grids[i],
-					  istate-BL_SPACEDIM,Density-BL_SPACEDIM,1);
-                    }
+        SyncInterp(*Ssync, level, increment, lev, ratio, 
+                   Temp-BL_SPACEDIM, Temp-BL_SPACEDIM, 1, 1, mult, 
+                   sync_bc.dataPtr());
+
+        if (do_set_rho_to_species_sum)
+        {
+            increment.setVal(0,Density-BL_SPACEDIM,1,0);
+
+            for (int istate = first_spec; istate <= last_spec; istate++)
+            { 
+                for (MFIter mfi(increment); mfi.isValid(); ++mfi)
+                {
+                    int i = mfi.index();
+                    increment[i].plus(increment[i],fine_grids[i],
+                                      istate-BL_SPACEDIM,Density-BL_SPACEDIM,1);
                 }
             }
-
-            for (MFIter mfi(increment); mfi.isValid(); ++mfi)
-            {
-                int i = mfi.index();
-                S_new_lev[i].plus(increment[i],fine_grids[i],0,Density,numscal);
-            }
-            fine_level.make_rho_curr_time();
-            fine_level.incrRhoAvg(increment,Density-BL_SPACEDIM,1.0);
-            //
-            // Recompute temperature and rho R T after interpolation of the mac_sync correction
-            //   of the individual quantities rho, Y, T.
-            //
-            RhoH_to_Temp(S_new_lev);
-            fine_level.setThermoPress(cur_time);
         }
+
+        for (MFIter mfi(increment); mfi.isValid(); ++mfi)
+        {
+            int i = mfi.index();
+            S_new_lev[i].plus(increment[i],fine_grids[i],0,Density,numscal);
+        }
+        fine_level.make_rho_curr_time();
+        fine_level.incrRhoAvg(increment,Density-BL_SPACEDIM,1.0);
         //
-        // Average down Trac = rho R T after interpolation of the mac_sync correction
+        // Recompute temperature and rho R T after interpolation of the mac_sync correction
         //   of the individual quantities rho, Y, T.
         //
-        for (int lev = finest_level-1; lev >= level; lev--)
-        {
-            HeatTransfer&   fine_lev = getLevel(lev+1);
-            const BoxArray& fgrids   = fine_lev.grids;
-            
-            HeatTransfer&   crse_lev = getLevel(lev);
-            const BoxArray& cgrids   = crse_lev.grids;
-            const IntVect&  fratio   = crse_lev.fine_ratio;
-            
-            MultiFab& S_crse = crse_lev.get_new_data(State_Type);
-            MultiFab& S_fine = fine_lev.get_new_data(State_Type);
-
-            const int pComp = (have_rhort ? RhoRT : Trac);
-            crse_lev.NavierStokes::avgDown(cgrids,fgrids,S_crse,S_fine,
-                                           lev,lev+1,pComp,1,fratio);
-        }
-        showMF("sdcSync",S_new,"sdc_Snew_postInterpAvgSync",level,parent->levelSteps(level));
+        RhoH_to_Temp(S_new_lev);
+        fine_level.setThermoPress(cur_time);
     }
+    //
+    // Average down Trac = rho R T after interpolation of the mac_sync correction
+    //   of the individual quantities rho, Y, T.
+    //
+    for (int lev = finest_level-1; lev >= level; lev--)
+    {
+        HeatTransfer&   fine_lev = getLevel(lev+1);
+        const BoxArray& fgrids   = fine_lev.grids;
+            
+        HeatTransfer&   crse_lev = getLevel(lev);
+        const BoxArray& cgrids   = crse_lev.grids;
+        const IntVect&  fratio   = crse_lev.fine_ratio;
+            
+        MultiFab&       S_crse   = crse_lev.get_new_data(State_Type);
+        MultiFab&       S_fine   = fine_lev.get_new_data(State_Type);
+
+        const int pComp = (have_rhort ? RhoRT : Trac);
+        crse_lev.NavierStokes::avgDown(cgrids,fgrids,S_crse,S_fine,
+                                       lev,lev+1,pComp,1,fratio);
+    }
+    showMF("sdcSync",S_new,"sdc_Snew_postInterpAvgSync",level,parent->levelSteps(level));
 
     if (verbose)
     {
@@ -7096,14 +7090,13 @@ HeatTransfer::differential_spec_diffuse_sync (Real dt)
 
     // need to correct SpecDiffusionFluxnp1 to contain rhoD grad (delta Y)^sync
     adjust_spec_diffusion_fluxes(cur_time);
-
-    // need to correct Ssync to contain rho^{n+1} * (delta Y)^sync
+    //
+    // Need to correct Ssync to contain rho^{n+1} * (delta Y)^sync.
     // Do this by setting
     // Ssync = "RHS from diffusion solve" + (dt/2)*div(delta Gamma)
     //
     // Recompute update with adjusted diffusion fluxes
-    // 
-
+    //
     FArrayBox update, volume, efab[BL_SPACEDIM];
 
     for (MFIter mfi(*Ssync); mfi.isValid(); ++mfi)
@@ -7524,10 +7517,9 @@ HeatTransfer::calc_divu (Real      time,
 			 bool      is_divu_iter)
 {
     const int nGrow = 0;
-    MultiFab mcViscTerms;
-    int vtCompY;
-    int vtCompT;
-    bool do_reflux_hold;
+
+    int       vtCompY, vtCompT;
+    MultiFab  mcViscTerms;
 
     if (do_mcdd)
     {
@@ -7543,7 +7535,7 @@ HeatTransfer::calc_divu (Real      time,
         mcViscTerms.define(grids,nspecies+2,nGrow,Fab_allocate);
 
 	// we don't want to update flux registers due to fluxes in divu computation
-	do_reflux_hold = do_reflux;
+	bool do_reflux_hold = do_reflux;
 	do_reflux = false;
 
 	// DD is computed and stored in divu, but we don't need it and overwrite
@@ -7552,34 +7544,32 @@ HeatTransfer::calc_divu (Real      time,
 
 	do_reflux = do_reflux_hold;
     }
-
-    MultiFab& S = get_data(State_Type,time);
-
-    MultiFab RhoYdotTmp;
-
-    // if divu_iter, pressure iter, or the first time step use RhoYdot_Type
-    bool use_IR = (time == 0 && dt > 0);
-
-    MultiFab& RhoYdot = (use_IR) ? get_new_data(RhoYdot_Type) : RhoYdotTmp;
+    //
+    // If divu_iter, pressure iter, or the first time step use RhoYdot_Type.
+    //
+    MultiFab   RhoYdotTmp;
+    MultiFab&  S       = get_data(State_Type,time);
+    const bool use_IR  = (time == 0 && dt > 0);
+    MultiFab&  RhoYdot = (use_IR) ? get_new_data(RhoYdot_Type) : RhoYdotTmp;
 
     if (!use_IR)
     {
-      if (time == 0)
-      {
-	// initial projection, set omegadot to zero
-	RhoYdotTmp.define(grids,nspecies,0,Fab_allocate);
-	RhoYdot.setVal(0);
-      }
-      else if (dt > 0)
-      {
-	// a regular time step, but not the first one, use instantaneous omegadot
-	RhoYdotTmp.define(grids,nspecies,0,Fab_allocate);
-	compute_instantaneous_reaction_rates(RhoYdot,S,nGrow);
-      }
-      else
-      {
-	BoxLib::Abort("bad divu_logic - shouldn't be here");
-      }
+        if (time == 0)
+        {
+            // initial projection, set omegadot to zero
+            RhoYdot.define(grids,nspecies,0,Fab_allocate);
+            RhoYdot.setVal(0);
+        }
+        else if (dt > 0)
+        {
+            // a regular time step, but not the first one, use instantaneous omegadot
+            RhoYdot.define(grids,nspecies,0,Fab_allocate);
+            compute_instantaneous_reaction_rates(RhoYdot,S,nGrow);
+        }
+        else
+        {
+            BoxLib::Abort("bad divu_logic - shouldn't be here");
+        }
     }
     
     for (MFIter mfi(S); mfi.isValid(); ++mfi)
