@@ -27,20 +27,18 @@ contains
     double precision, allocatable, dimension(:,:,:,:) :: dUdx1, dUdx2, dUdx3, dUdx4
     double precision, allocatable, dimension(:,:,:,:) :: dUdy1, dUdy2, dUdy3, dUdy4
 
-    return
-
     Uzlo(1) = lo(1)-3
     Uzlo(2) = lo(2)-3
     Uzlo(3) = lo(3)
-    Uzhi(1) = hi(1)-3
-    Uzhi(2) = hi(2)-3
+    Uzhi(1) = hi(1)+3
+    Uzhi(2) = hi(2)+3
     Uzhi(3) = hi(3)
 
     dUdzlo(1) = lo(1)-2
     dUdzlo(2) = lo(2)-2
     dUdzlo(3) = lo(3)
-    dUdzhi(1) = hi(1)-2
-    dUdzhi(2) = hi(2)-2
+    dUdzhi(1) = hi(1)+2
+    dUdzhi(2) = hi(2)+2
     dUdzhi(3) = hi(3)
 
     allocate(  UZ1(  Uzlo(1):  Uzhi(1),  Uzlo(2):  Uzhi(2),  Uzlo(3):  Uzhi(3),NVAR))
@@ -68,6 +66,7 @@ contains
 
     call diff_xy(lo,hi, UZ1,Uzlo,Uzhi, dUdz1,dUdzlo,dUdzhi, &
          fx, fxlo, fxhi, fy, fylo, fyhi, dxinv)
+
     call diff_xy(lo,hi, UZ2,Uzlo,Uzhi, dUdz2,dUdzlo,dUdzhi, &
          fx, fxlo, fxhi, fy, fylo, fyhi, dxinv)
 
@@ -77,7 +76,7 @@ contains
 
     Uxylo(1:2) = lo(1:2)
     Uxylo(3) = lo(3)-3
-    Uxyhi(1:2) = lo(1:2)
+    Uxyhi(1:2) = hi(1:2)
     Uxyhi(3) = hi(3)+3
     
     dUdxylo(1:2) = lo(1:2)
@@ -100,19 +99,19 @@ contains
 
     ! d./dx
     n = 1  ! rho
-    do k=lo(3)-3,hi(3)+3
+    do k=lo(3)-2,hi(3)+2
        call cellavg2dergausspt_2d(lo(1:2),hi(1:2), U(:,:,k,URHO), Ulo(1:2), Uhi(1:2), &
             dUdx1(:,:,k,n), dUdx2(:,:,k,n), dUdx3(:,:,k,n), dUdx4(:,:,k,n), &
             dUdxylo(1:2), dUdxyhi(1:2), 1)
     end do
     n = 2  ! my
-    do k=lo(3)-3,hi(3)+3
+    do k=lo(3)-2,hi(3)+2
        call cellavg2dergausspt_2d(lo(1:2),hi(1:2), U(:,:,k,UMY), Ulo(1:2), Uhi(1:2), &
             dUdx1(:,:,k,n), dUdx2(:,:,k,n), dUdx3(:,:,k,n), dUdx4(:,:,k,n), &
             dUdxylo(1:2), dUdxyhi(1:2), 1)
     end do
     n = 3  ! mz
-    do k=lo(3)-3,hi(3)+3
+    do k=lo(3)-2,hi(3)+2
        call cellavg2dergausspt_2d(lo(1:2),hi(1:2), U(:,:,k,UMZ), Ulo(1:2), Uhi(1:2), &
             dUdx1(:,:,k,n), dUdx2(:,:,k,n), dUdx3(:,:,k,n), dUdx4(:,:,k,n), &
             dUdxylo(1:2), dUdxyhi(1:2), 1)
@@ -120,19 +119,19 @@ contains
  
     ! d./dy
     n = 1  ! rho
-    do k=lo(3)-3,hi(3)+3
+    do k=lo(3)-2,hi(3)+2
        call cellavg2dergausspt_2d(lo(1:2),hi(1:2), U(:,:,k,URHO), Ulo(1:2), Uhi(1:2), &
             dUdy1(:,:,k,n), dUdy2(:,:,k,n), dUdy3(:,:,k,n), dUdy4(:,:,k,n), &
             dUdxylo(1:2), dUdxyhi(1:2), 2)
     end do
     n = 2  ! mx
-    do k=lo(3)-3,hi(3)+3
+    do k=lo(3)-2,hi(3)+2
        call cellavg2dergausspt_2d(lo(1:2),hi(1:2), U(:,:,k,UMX), Ulo(1:2), Uhi(1:2), &
             dUdy1(:,:,k,n), dUdy2(:,:,k,n), dUdy3(:,:,k,n), dUdy4(:,:,k,n), &
             dUdxylo(1:2), dUdxyhi(1:2), 2)
     end do
     n = 3  ! mz
-    do k=lo(3)-3,hi(3)+3
+    do k=lo(3)-2,hi(3)+2
        call cellavg2dergausspt_2d(lo(1:2),hi(1:2), U(:,:,k,UMZ), Ulo(1:2), Uhi(1:2), &
             dUdy1(:,:,k,n), dUdy2(:,:,k,n), dUdy3(:,:,k,n), dUdy4(:,:,k,n), &
             dUdxylo(1:2), dUdxyhi(1:2), 2)
@@ -251,7 +250,7 @@ contains
 
        ! ----- compute x-direction flux first -----
 
-       ! cell-average of ? => cell-avg-in-x and Gauss-point-in-y of d?/dy
+       ! cell-average => cell-avg-in-x and Gauss-point-in-y of d?/dy
        do n=1,3
           do i=lo(1)-2,hi(1)+2
              call cellavg2dergausspt_1d(lo(2),hi(2), U(i,:,k,n), Ulo(2), Uhi(2), &
@@ -282,10 +281,9 @@ contains
        n = 3  ! mz 
        do i=lo(1)-2,hi(1)+2
           call cellavg2gausspt_1d(lo(2),hi(2), dUdz(i,:,k,UMZ), dUdzlo(2), dUdzhi(2), &
-               dUdz1(i,:,3), dUdz2(i,:,3), g2lo(2), g2hi(2))
+               dUdz1(i,:,n), dUdz2(i,:,n), g2lo(2), g2hi(2))
        end do
        
-
        do g=1,2
           
           if (g .eq. 1) then
@@ -356,7 +354,7 @@ contains
 
        ! ----- compute y-direction flux -----
        
-       ! cell-average of ? => cell-avg-in-y and Gauss-point-in-x of d?/dx
+       ! cell-average => cell-avg-in-y and Gauss-point-in-x of d?/dx
        do n=1,3
           do j=lo(2)-2,hi(2)+2
              call cellavg2dergausspt_1d(lo(1),hi(1), U(:,j,k,n), Ulo(1), Uhi(1), &
@@ -373,22 +371,22 @@ contains
        end do
 
        n = 1 ! rho
-       do j=lo(2)-3,hi(2)+3
+       do j=lo(2)-2,hi(2)+2
           call cellavg2gausspt_1d(lo(1),hi(1), dUdz(:,j,k,URHO), dUdzlo(1), dUdzhi(1), &
                dUdz1(:,j,n), dUdz2(:,j,n), g2lo(1), g2hi(1))
        end do
        !
        n = 2 ! my 
-       do j=lo(2)-3,hi(2)+3
+       do j=lo(2)-2,hi(2)+2
           call cellavg2gausspt_1d(lo(1),hi(1), dUdz(:,j,k,UMY), dUdzlo(1), dUdzhi(1), &
                dUdz1(:,j,n), dUdz2(:,j,n), g2lo(1), g2hi(1))
        end do
        n = 3 ! mz
-       do j=lo(2)-3,hi(2)+3
+       do j=lo(2)-2,hi(2)+2
           call cellavg2gausspt_1d(lo(1),hi(1), dUdz(:,j,k,UMZ), dUdzlo(1), dUdzhi(1), &
                dUdz1(:,j,n), dUdz2(:,j,n), g2lo(1), g2hi(1))
        end do
-       
+
        do g=1,2
           
           if (g .eq. 1) then
@@ -506,7 +504,7 @@ contains
           divu = dudx + dvdy + dwdz
           tauxx = mu(i,j)*(2.d0*dudx-twoThirds*divu) + xi(i,j)*divu
           tauxy = mu(i,j)*(dudy+dvdx)
-          tauxz = mu(i,j)*(dudz+dWdx)
+          tauxz = mu(i,j)*(dudz+dwdx)
           flx(i,j,k,UMX)   = flx(i,j,k,UMX)   - fac*tauxx
           flx(i,j,k,UMY)   = flx(i,j,k,UMY)   - fac*tauxy
           flx(i,j,k,UMZ)   = flx(i,j,k,UMZ)   - fac*tauxz
