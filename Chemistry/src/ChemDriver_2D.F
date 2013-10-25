@@ -1518,10 +1518,6 @@ c               RWRK(dvbr+4) = TT2 - TT1
             Tnew(i,j) = T_cell
             call FORT_TfromHYpt(Tnew(i,j),rhoHnew(i,j)*rhoInv,Y,HtoTerrMAX,HtoTiterMAX,res,Niter)
             
-            do m=1,Nspec
-               I_R(i,j,m) = (rhoYnew(i,j,m) - rhoYold(i,j,m))/dt - c_0(m)
-            end do
-            
          end do
       end do
       end
