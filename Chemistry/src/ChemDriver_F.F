@@ -1523,6 +1523,7 @@ c
 c     Error condition....dump state and bail out
 c
 #if 0
+      print*, 'errMax: ', errMax
       write(6,997) 'T from (H,Y): failed'
       write(6,997) 'iterations tried = ',Niter
       write(6,998) 'initial T = ',T0
