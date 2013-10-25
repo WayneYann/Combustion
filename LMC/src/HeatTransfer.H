@@ -550,6 +550,7 @@ protected:
     void set_htt_hmixTYP ();
 
     void set_typical_values(bool restart);
+    void reset_typical_values(const MultiFab& S);
     
     virtual void checkPoint (const std::string& dir,
                              std::ostream&      os,
@@ -651,6 +652,8 @@ protected:
     static int         calcDiffusivity_count;
     static Real        new_T_threshold;
     static Array<Real> typical_values;
+    static int         reset_typical_vals_int;
+    static std::map<std::string,Real> typical_values_FileVals;
 
     static bool        do_curvature_sample;
 
