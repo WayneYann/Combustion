@@ -7,3 +7,6 @@ plt?????
 d/
 f/
 o/
+*.pyc
+plt*
+
