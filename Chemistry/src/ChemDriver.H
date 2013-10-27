@@ -45,7 +45,6 @@ public:
                             const FArrayBox&  rhoHold,
                             const FArrayBox&  Told,
                             const FArrayBox&  const_src,
-                            FArrayBox&        I_R,
                             FArrayBox&        FuncCount,
                             const Box&        box,
                             int               sComprhoY,

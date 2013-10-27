@@ -8,14 +8,14 @@ COMBUSTION_DIR = ${TOP}/Combustion
 #
 
 PRECISION       = DOUBLE
-DEBUG           = TRUE
 DEBUG           = FALSE
+DEBUG           = TRUE
 DIM             = 2
 DIM             = 3
 COMP            = g++
 FCOMP           = gfortran
-USE_MPI         = FALSE
 USE_MPI         = TRUE
+USE_MPI         = FALSE
 USE_OMP         = FALSE
 USE_F90_SOLVERS = TRUE
 VERBOSE         = FALSE
@@ -61,7 +61,3 @@ DEFINES += -DTRIGGER_NEW_J
 #DEFINES += -DDO_JBB_HACK_TEMP
 #DEFINES += -DHACK_TEMP_MIN=273.d0
 #DEFINES += -DHACK_TEMP_MAX=1900.d0
-
-ifeq ($(DIM), 2)
-  DEFINES += -DDO_TEMPERATURE
-endif

@@ -363,7 +363,6 @@ extern "C" {
 			   const Real* rhoHold, ARLIM_P(rhoHolo), ARLIM_P(rhoHohi),
 			   const Real* Told, ARLIM_P(Tolo), ARLIM_P(Tohi),
 			   const Real* const_src, ARLIM_P(cslo), ARLIM_P(cshi),
-			   Real* I_R, ARLIM_P(I_Rlo), ARLIM_P(I_Rhi),
 			   Real* FuncCount, ARLIM_P(FuncCountlo), ARLIM_P(FuncCounthi),
 			   const Real* p, const Real* dt, Real* diag, 
                            const int* do_diag, const int* do_stiff);
