@@ -59,24 +59,23 @@ const int* fabhi = (fab).hiVect();                    \
 const Real* fabdat = (fab).dataPtr(comp);
 
 #ifdef BL_USE_FLOAT
-#  define Real_MIN FLT_MIN
-#  define Real_MAX FLT_MAX
+const Real Real_MIN = FLT_MIN;
+const Real Real_MAX = FLT_MAX;
 #else
-#  define Real_MIN DBL_MIN
-#  define Real_MAX DBL_MAX
+const Real Real_MIN = DBL_MIN;
+const Real Real_MAX = DBL_MAX;
 #endif
 
-#define GEOM_GROW   1
-#define HYP_GROW    3
-#define PRESS_GROW  1
-#define DIVU_GROW   1
-#define DSDT_GROW   1
-#define bogus_value 1.e20
-#define DQRAD_GROW  1
-#define YDOT_GROW   1
-#define HYPF_GROW   1
-
-const int LinOp_grow = 1;
+const int  GEOM_GROW   = 1;
+const int  HYP_GROW    = 3;
+const int  PRESS_GROW  = 1;
+const int  DIVU_GROW   = 1;
+const int  DSDT_GROW   = 1;
+const Real bogus_value =  1.e20;
+const int  DQRAD_GROW  = 1;
+const int  YDOT_GROW   = 1;
+const int  HYPF_GROW   = 1;
+const int  LinOp_grow  = 1;
 
 static const std::string typical_values_filename("typical_values.fab");
 
