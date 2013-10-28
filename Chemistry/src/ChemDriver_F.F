@@ -1060,6 +1060,7 @@ c     1 N/(m.m) = 0.1 dyne/(cm.cm)
       integer coded(*)
       integer names(maxspec*maxspnml)
       integer j, str_len
+      str_len = 0
       call CKSYMS(names, maxspnml)
       do j = 1, maxspnml
          coded(j) = names(maxspnml*(i-1)+j)
