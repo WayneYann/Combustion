@@ -183,6 +183,8 @@ Real HeatTransfer::mcdd_res_abs_tol;
 Real HeatTransfer::mcdd_stalled_tol;
 Real HeatTransfer::mcdd_advance_temp;
 Real HeatTransfer::new_T_threshold;
+int  HeatTransfer::reset_typical_vals_int=-1;
+std::map<std::string,Real> HeatTransfer::typical_values_FileVals;
 
 std::string                                HeatTransfer::turbFile;
 ChemDriver*                                HeatTransfer::chemSolve;
@@ -314,6 +316,9 @@ HeatTransfer::Initialize ()
 
     HeatTransfer::do_add_nonunityLe_corr_to_rhoh_adv_flux = 1;
     HeatTransfer::do_curvature_sample       = false;
+
+    HeatTransfer::reset_typical_vals_int    = -1;
+    HeatTransfer::typical_values_FileVals.clear();
 
 #ifdef PARTICLES
     timestamp_dir                    = "Timestamps";
@@ -952,13 +957,29 @@ HeatTransfer::init_once ()
                             &var_cond, &constant_lambda_val,
                             &var_diff, &constant_rhoD_val,
                             &prandtl,  &schmidt, &unity_Le);
-
     //
     // make space for typical values
     //
-    typical_values.resize(NUM_STATE,1); // One is reasonable, not great
+    typical_values.resize(NUM_STATE,-1); // -ve means don't use for anything
     typical_values[RhoH] = typical_RhoH_value_default;
 
+    ParmParse pp("ht");
+
+    const Array<std::string>& speciesNames = getChemSolve().speciesNames();
+
+    for (int i=0; i<nspecies; ++i) {
+      const std::string ppStr = std::string("typValY_") + speciesNames[i];
+      if (pp.countval(ppStr.c_str())>0) {
+        pp.get(ppStr.c_str(),typical_values_FileVals[speciesNames[i]]);
+      }
+    }
+    std::string otherKeys[4] = {"Temp", "RhoH", "Vel", "Trac"};
+    for (int i=0; i<4; ++i) {
+      const std::string ppStr(std::string("typVal_")+otherKeys[i]);
+      if (pp.countval(ppStr.c_str())>0) {
+        pp.get(ppStr.c_str(),typical_values_FileVals[otherKeys[i]]);
+      }
+    }
     //
     // Get universal gas constant from Fortran.
     //
@@ -1011,8 +1032,6 @@ HeatTransfer::init_once ()
 
     if (verbose && ParallelDescriptor::IOProcessor())
         std::cout << "HeatTransfer::init_once(): num_state_type = " << num_state_type << '\n';
-
-    ParmParse pp("ht");
 
     pp.query("plot_reactions",plot_reactions);
     if (plot_reactions)
@@ -1105,7 +1124,7 @@ HeatTransfer::set_typical_values (bool restart)
 
             BL_ASSERT(nComp==NUM_STATE);
             for (int i=0; i<nComp; ++i) {
-                typical_values[i] = 0;
+                typical_values[i] = -1;
             }
             
             if (ParallelDescriptor::IOProcessor())
@@ -1130,47 +1149,137 @@ HeatTransfer::set_typical_values (bool restart)
         }
 	else { // not restart
 
-	  // Check fortan common values, if non-zero override
+	  // Check fortan common values, override values set above if fortran values > 0
 	  Array<Real> tvTmp(nComp,0);
 	  FORT_GETTYPICALVALS(tvTmp.dataPtr(), &nComp);
 	  ParallelDescriptor::ReduceRealMax(tvTmp.dataPtr(),nComp);
-
+        
 	  for (int i=0; i<nComp; ++i) {
-            if (tvTmp[i]!=0) {
+            if (tvTmp[i]>0) {
 	      typical_values[i] = tvTmp[i];
             }
 	  }
 	}
 
-	FORT_SETTYPICALVALS(typical_values.dataPtr(), &nComp);
+        // If typVals specified in inputs, these take precedence componentwise
+        for (std::map<std::string,Real>::const_iterator it=typical_values_FileVals.begin(), 
+               End=typical_values_FileVals.end(); it!=End; ++it) {
+          int idx = getChemSolve().index(it->first);
+          if (idx>=0) {
+            typical_values[first_spec+idx] = it->second;
+          } else {
+            if (it->first == "Temp") {
+              typical_values[Temp] = it->second;
+            }
+            else if (it->first == "RhoH") {
+              typical_values[RhoH] = it->second;
+            }
+            else if (it->first == "Trac") {
+              typical_values[Trac] = it->second;
+            }
+            else if (it->first == "Vel") {
+              for (int d=0; d<BL_SPACEDIM; ++d) {
+                typical_values[d] = it->second;
+              }
+            }
+          }
+        }
+
+        FORT_SETTYPICALVALS(typical_values.dataPtr(), &nComp);
 
         if (ParallelDescriptor::IOProcessor())
         {
-            cout << "Typical vals: " << endl;
+            cout << "Typical vals: " << '\n';
             cout << "\tVelocity: ";
             for (int i=0; i<BL_SPACEDIM; ++i) {
                 cout << typical_values[i] << " ";
             }
-            cout << endl;
-            cout << "\tDensity: " << typical_values[Density] << endl;
-            cout << "\tTemp: "    << typical_values[Temp]    << endl;
-            cout << "\tRhoH: "    << typical_values[RhoH]    << endl;
+            cout << '\n';
+            cout << "\tDensity: " << typical_values[Density] << '\n';
+            cout << "\tTemp: "    << typical_values[Temp]    << '\n';
+            cout << "\tRhoH: "    << typical_values[RhoH]    << '\n';
             const Array<std::string>& names = getChemSolve().speciesNames();
             for (int i=0; i<nspecies; ++i) {
-                cout << "\tY_" << names[i] << ": " << typical_values[first_spec+i] << endl;
+                cout << "\tY_" << names[i] << ": " << typical_values[first_spec+i] << '\n';
             }
         }
-            
+
         // Verify good values for Density, Temp, RhoH, Y -- currently only needed for mcdd problems
         if (do_mcdd && ParallelDescriptor::IOProcessor()) {
             for (int i=BL_SPACEDIM; i<nComp; ++i) {
-                if (i!=Trac && i!=RhoRT && typical_values[i]==0) {
-                    cout << "component: " << i << " of " << nComp << endl;
+                if (i!=Trac && i!=RhoRT && typical_values[i]<=0) {
+                    cout << "component: " << i << " of " << nComp << '\n';
                     BoxLib::Abort("Must have non-zero typical values");
                 }
             }
         }
     }
+}
+
+void
+HeatTransfer::reset_typical_values(const MultiFab& S)
+{
+  // NOTE: Assumes that this level has valid data everywhere
+  int nComp = typical_values.size();
+  BL_ASSERT(nComp = S.nComp());
+  for (int i=0; i<nComp; ++i) {
+    Real thisMax = S.max(i);
+    Real thisMin = S.min(i);
+    Real newVal = std::abs(thisMax - thisMin);
+    if (newVal > 0) {
+      if ( (i>=first_spec && i<=last_spec) ) {
+        typical_values[i] = newVal / typical_values[Density];
+      }
+      else {
+        typical_values[i] = newVal;
+      }
+    }
+  }
+
+  // If typVals specified in inputs, these take precedence componentwise
+  if (parent->levelSteps(0) == 0)
+  {
+    for (std::map<std::string,Real>::const_iterator it=typical_values_FileVals.begin(), 
+	   End=typical_values_FileVals.end(); it!=End; ++it) {
+      int idx = getChemSolve().index(it->first);
+      if (idx>=0) {
+	typical_values[first_spec+idx] = it->second;
+      } else {
+	if (it->first == "Temp") {
+	  typical_values[Temp] = it->second;
+	}
+	else if (it->first == "RhoH") {
+	  typical_values[RhoH] = it->second;
+	}
+	else if (it->first == "Trac") {
+	  typical_values[Trac] = it->second;
+	}
+	else if (it->first == "Vel") {
+	  for (int d=0; d<BL_SPACEDIM; ++d) {
+	    typical_values[d] = it->second;
+	  }
+	}
+      }
+    }
+  }
+
+  FORT_SETTYPICALVALS(typical_values.dataPtr(), &nComp);
+
+  if (ParallelDescriptor::IOProcessor()) {
+    cout << "New typical vals: " << '\n';
+    cout << "\tVelocity: ";
+    for (int i=0; i<BL_SPACEDIM; ++i) {
+      cout << typical_values[i] << " ";
+    }
+    cout << '\n';
+    cout << "\tDensity: " << typical_values[Density] << '\n';
+    cout << "\tTemp: "    << typical_values[Temp]    << '\n';
+    cout << "\tRhoH: "    << typical_values[RhoH]    << '\n';
+    const Array<std::string>& names = getChemSolve().speciesNames();
+    for (int i=0; i<nspecies; ++i) {
+      cout << "\tY_" << names[i] << ": " << typical_values[first_spec+i] << '\n';
+    }
+  }
 }
 
 Real
@@ -5578,6 +5687,15 @@ HeatTransfer::advance (Real time,
     }
 
     advance_setup(time,dt,iteration,ncycle);
+
+    if (level==0 && reset_typical_vals_int>0)
+    {
+      int L0_steps = parent->levelSteps(0);
+      if (L0_steps>0 && L0_steps%reset_typical_vals_int==0)
+      {
+        reset_typical_values(get_old_data(State_Type));
+      }
+    }
 
     if (do_check_divudt)
         checkTimeStep(dt);

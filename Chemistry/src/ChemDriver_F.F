@@ -1060,6 +1060,7 @@ c     1 N/(m.m) = 0.1 dyne/(cm.cm)
       integer coded(*)
       integer names(maxspec*maxspnml)
       integer j, str_len
+      str_len = 0
       call CKSYMS(names, maxspnml)
       do j = 1, maxspnml
          coded(j) = names(maxspnml*(i-1)+j)
@@ -1228,42 +1229,6 @@ C
 
       END
 
-#if defined (LMC_SDC) && defined (DO_TEMPERATURE)
-
-      subroutine conpJY(NY, TIME, Y, ML, MU, PD, NROWPD, RPAR, IPAR)
-      implicit none
-      integer NY, ML, MU, NROWPD, IPAR(*)
-      REAL_T TIME, Y(NY), RPAR(*), PD(NROWPD,NY)
-#include "cdwrk.H"
-#include "conp.H"
-#include "vode.H"
-
-      REAL_T C(maxspec), T
-      integer I, J, consP
-      parameter (consP=1)
-
-      T = Y(Nspec+1)
-C     molar concentration in cgs
-      C(1:Nspec) = Y(1:Nspec) * RPAR(NWTI:NWTI+Nspec-1) * 1.d-3;
-      call DWDOT(PD, C, T, consP)
-      do J=1,Nspec
-         do I=1,Nspec
-            PD(I,J) = PD(I,J)*RPAR(NWTI+J-1)*RPAR(NWT+I-1)
-         enddo
-      enddo
-      J = Nspec + 1
-      do I=1,Nspec
-         PD(I,J) = PD(I,J)*RPAR(NWT+I-1)*1.d3
-      enddo
-      I = Nspec + 1
-      do J=1,Nspec
-         PD(I,J) = PD(I,J)*RPAR(NWTI+J-1)*1.d-3
-      enddo
-      NFE = NFE + 1
-      END
-
-#else
-
       subroutine conpJY(N, TN, Y, SAVF, NFE, FTEM, ML,
      &                  MU, PD, NRPD, RPAR, IPAR)
       implicit none
@@ -1280,10 +1245,7 @@ C     molar concentration in cgs
       call bl_abort("conpJY: SHOULD NOT BE HERE!")
       END
 
-#endif
-
 #ifdef LMC_SDC
-#ifndef DO_TEMPERATURE
       subroutine conpFY_sdc(N, TIME, Z, ZP, RPAR, IPAR)
 C
 C     Variables in Z are:  Z(1:K) = rhoY(K) [MKS]
@@ -1328,60 +1290,6 @@ C                          Z(K+1) = RhoH
          ZP(k) = WDOT_CGS(k) * RPAR(NWT+k-1) * THFAC + c_0(k)
       end do
       END
-#else
-      subroutine conpFY_sdc(N, TIME, Z, ZP, RPAR, IPAR)
-C
-C     Variables in Z are:  Z(1:K) = rhoY(K) [MKS]
-C                          Z(K+1) = Temp    [K]
-      implicit none
-#include "cdwrk.H"
-#include "conp.H"
-      REAL_T TIME, Z(NEQ), ZP(NEQ), RPAR(*)
-      integer N, IPAR(*)
-      
-      REAL_T RHO_MKS, H, WDOT_CGS(maxspec), RINV_MKS
-      REAL_T Y(maxspec), CONC_CGS(maxspec)
-      REAL_T CPB_CGS, ENTHALPY_CGS(maxspec), SUM, THFAC, RHO_CGS
-      integer K,m
-
-C     Needed to compute T from h
-      REAL_T HtoTerrMAX
-      integer HtoTiterMAX, Niter
-      parameter (HtoTerrMAX = BL_REAL_E(7.8,-12))
-      parameter (HtoTiterMAX = 20)
-      REAL_T res(0:HtoTiterMAX-1)
-      REAL_T HMIX_MKS
-
-
-      RHO_MKS = 0.d0
-      do K=1,Nspec
-         RHO_MKS = RHO_MKS + Z(K)
-      enddo
-      RINV_MKS = 1.d0 / RHO_MKS
-      
-      do K=1,Nspec
-         CONC_CGS(K) = Z(K)*RPAR(NWTI+K-1)*1.d-3
-         Y(K) = Z(K) * RINV_MKS
-         if (Y(K) .lt. -1.d-3) then
-            negative_Y_test = 1
-         end if
-      enddo
-
-      call CKWC(Z(Nspec+1),CONC_CGS,IWRK,RWRK,WDOT_CGS)
-      call CKHMS(Z(Nspec+1),IPAR(ckbi), RPAR(ckbr), ENTHALPY_CGS)
-
-      ZP(Nspec+1) = c_0(Nspec+1)
-      THFAC = 1.d3/thickFacCH
-      do k= 1, Nspec
-         ZP(k) = WDOT_CGS(k) * RPAR(NWT+k-1) * THFAC + c_0(k)
-         ZP(Nspec+1) = ZP(Nspec+1) -  ZP(k) * ENTHALPY_CGS(k) * 1.d-4
-      end do
-
-      call CKCPBS(Z(Nspec+1),Y,IPAR(ckbi),RPAR(ckbr),CPB_CGS)
-      CALL CKRHOY(RPAR(NP),Z(Nspec+1),Y,IPAR(ckbi),RPAR(ckbr),RHO_CGS)
-      ZP(Nspec+1) = ZP(Nspec+1) / (RHO_CGS * CPB_CGS * 1.d-1)
-      END
-#endif
 #endif
 
       integer function TfromeYpt(T,ein,Y,errMax,NiterMAX,res)
@@ -1616,6 +1524,7 @@ c
 c     Error condition....dump state and bail out
 c
 #if 0
+      print*, 'errMax: ', errMax
       write(6,997) 'T from (H,Y): failed'
       write(6,997) 'iterations tried = ',Niter
       write(6,998) 'initial T = ',T0

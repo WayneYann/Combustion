@@ -106,24 +106,24 @@ contains
   ! Advance system from t0 to t1.
   !
   subroutine bdf_advance(ts, f, Jac, neq, npt, y0, t0, y1, t1, dt0, reset, reuse, ierr)
-    type(bdf_ts),     intent(inout) :: ts
-    integer,          intent(in)    :: neq, npt
-    real(dp),         intent(in)    :: y0(neq,npt), t0, t1, dt0
-    real(dp),         intent(out)   :: y1(neq,npt)
-    logical,          intent(in)    :: reset, reuse
-    integer,          intent(out)   :: ierr
+    type(bdf_ts), intent(inout) :: ts
+    integer,      intent(in   ) :: neq, npt
+    real(dp),     intent(in   ) :: y0(neq,npt), t0, t1, dt0
+    real(dp),     intent(  out) :: y1(neq,npt)
+    logical,      intent(in   ) :: reset, reuse
+    integer,      intent(  out) :: ierr
     interface
-       subroutine f(neq, y, t, yd)
+       subroutine f(neq, npt, y, t, yd)
          import dp
-         integer,  intent(in)  :: neq
-         real(dp), intent(in)  :: y(neq), t
-         real(dp), intent(out) :: yd(neq)
+         integer,  intent(in   ) :: neq, npt
+         real(dp), intent(in   ) :: y(neq,npt), t
+         real(dp), intent(  out) :: yd(neq,npt)
        end subroutine f
        subroutine Jac(neq, y, t, J)
          import dp
-         integer,  intent(in)  :: neq
-         real(dp), intent(in)  :: y(neq), t
-         real(dp), intent(out) :: J(neq, neq)
+         integer,  intent(in   ) :: neq
+         real(dp), intent(in   ) :: y(neq), t
+         real(dp), intent(  out) :: J(neq, neq)
        end subroutine Jac
     end interface
 
@@ -177,11 +177,11 @@ contains
   !  tq(1)  coeff. for order k+1 error est.
   !  tq(2)  coeff. for order k+1 error est. (used for e_{n-1})
   !
-  ! Note: 
+  ! Note:
   !
   !   1. The input vector t = [ t_n, t_{n-1}, ... t_{n-k} ] where we
   !      are advancing from step n-1 to step n.
-  ! 
+  !
   !   2. The step size h_n = t_n - t_{n-1}.
   !
   subroutine bdf_update(ts)
@@ -243,10 +243,10 @@ contains
     integer :: i, j, m, p
     do p = 1, ts%npt
        do i = 0, ts%k
-          ts%z0(:,i,p) = 0          
+          ts%z0(:,p,i) = 0
           do j = i, ts%k
              do m = 1, ts%neq
-                ts%z0(m,i,p) = ts%z0(m,i,p) + ts%A(i,j) * ts%z(m,j,p)
+                ts%z0(m,p,i) = ts%z0(m,p,i) + ts%A(i,j) * ts%z(m,p,j)
              end do
           end do
        end do
@@ -266,17 +266,17 @@ contains
   subroutine bdf_solve(ts, f, Jac)
     type(bdf_ts), intent(inout) :: ts
     interface
-       subroutine f(neq, y, t, yd)
+       subroutine f(neq, npt, y, t, yd)
          import dp
-         integer,  intent(in)  :: neq
-         real(dp), intent(in)  :: y(neq), t
-         real(dp), intent(out) :: yd(neq)
+         integer,  intent(in   ) :: neq, npt
+         real(dp), intent(in   ) :: y(neq,npt), t
+         real(dp), intent(  out) :: yd(neq,npt)
        end subroutine f
        subroutine Jac(neq, y, t, J)
          import dp
-         integer,  intent(in)  :: neq
-         real(dp), intent(in)  :: y(neq), t
-         real(dp), intent(out) :: J(neq, neq)
+         integer,  intent(in   ) :: neq
+         real(dp), intent(in   ) :: y(neq), t
+         real(dp), intent(  out) :: J(neq, neq)
        end subroutine Jac
     end interface
 
@@ -334,13 +334,13 @@ contains
 
        c = 2 * ts%dt_nwt / (dt_adj + ts%dt_nwt)
 
+       call f(ts%neq, ts%npt, ts%y, ts%t, ts%yd)
+       ts%nfe = ts%nfe + 1
+
        do p = 1, ts%npt
           if (.not. iterating(p)) cycle
 
           ! solve using factorized iteration matrix
-          call f(ts%neq, ts%y(:,p), ts%t, ts%yd(:,p))
-          ts%nfe = ts%nfe + 1
-
           do m = 1, ts%neq
              ts%b(m,p) = c * (ts%rhs(m,p) - ts%y(m,p) + dt_adj * ts%yd(m,p))
           end do
@@ -412,7 +412,7 @@ contains
     do p = 1, ts%npt
        do i = 0, ts%k
           do m = 1, ts%neq
-             ts%z(m,i,p) = ts%z0(m,i,p) + ts%e(m,p) * ts%l(i)
+             ts%z(m,p,i) = ts%z0(m,p,i) + ts%e(m,p) * ts%l(i)
           end do
        end do
     end do
@@ -473,7 +473,6 @@ contains
     p = minloc(etamax, dim=1)
     rescale = 0
     etaminmax = etamax(p)
-    ! print *, ts%k, etamax, etaminmax
     if (etaminmax > ts%eta_thresh) then
        if (delta(p) == -1) then
           call decrease_order(ts)
@@ -499,19 +498,17 @@ contains
   ! Reset counters, set order to one, init Nordsieck history array.
   !
   subroutine bdf_reset(ts, f, y0, dt, reuse)
-    type(bdf_ts),     intent(inout) :: ts
-    real(dp),         intent(in)    :: y0(ts%neq, ts%npt), dt
-    logical,          intent(in)    :: reuse
+    type(bdf_ts), intent(inout) :: ts
+    real(dp),     intent(in   ) :: y0(ts%neq, ts%npt), dt
+    logical,      intent(in   ) :: reuse
     interface
-       subroutine f(neq, y, t, yd)
+       subroutine f(neq, npt, y, t, yd)
          import dp
-         integer,  intent(in)  :: neq
-         real(dp), intent(in)  :: y(neq), t
-         real(dp), intent(out) :: yd(neq)
+         integer,  intent(in   ) :: neq, npt
+         real(dp), intent(in   ) :: y(neq,npt), t
+         real(dp), intent(  out) :: yd(neq,npt)
        end subroutine f
     end interface
-
-    integer :: p
 
     ts%nfe = 0
     ts%nje = 0
@@ -523,12 +520,13 @@ contains
     ts%dt = dt
     ts%n  = 1
     ts%k  = 1
-    ts%h  = ts%dt
 
-    do p = 1, ts%npt
-       call f(ts%neq, ts%y(:,p), ts%t, ts%yd(:,p))
-       ts%nfe = ts%nfe + 1
-    end do
+    ts%h        = ts%dt
+    ts%dt_nwt   = ts%dt
+    ts%refactor = .true.
+
+    call f(ts%neq, ts%npt, ts%y, ts%t, ts%yd)
+    ts%nfe = ts%nfe + 1
 
     ts%z(:,:,0) = ts%y
     ts%z(:,:,1) = ts%dt * ts%yd
@@ -537,7 +535,7 @@ contains
     if (.not. reuse) then
        ts%j_age = ts%max_j_age + 1
        ts%p_age = ts%max_p_age + 1
-    else 
+    else
        ts%j_age = 0
        ts%p_age = 0
     end if
@@ -554,7 +552,8 @@ contains
   !
   subroutine rescale_timestep(ts, eta_in)
     type(bdf_ts), intent(inout) :: ts
-    real(dp),     intent(in)    :: eta_in
+    real(dp),     intent(in   ) :: eta_in
+
     real(dp) :: eta
     integer  :: i
 
@@ -671,7 +670,7 @@ contains
     xi = sum(h(0:j-1)) / h(0)
   end function xi_j
 
-  ! 
+  !
   ! Pre-compute error weights.
   !
   subroutine ewts(ts)
@@ -683,6 +682,14 @@ contains
        end do
     end do
   end subroutine ewts
+
+  subroutine print_y(ts)
+    type(bdf_ts), intent(in) :: ts
+    integer :: p
+    do p = 1, ts%npt
+       print *, ts%y(:,p)
+    end do
+  end subroutine print_y
 
   !
   ! Compute weighted norm of y.
@@ -744,6 +751,10 @@ contains
 
     ts%rtol = rtol
     ts%atol = atol
+
+    ts%J  = 0
+    ts%P  = 0
+    ts%yd = 0
 
     ts%j_age = 666666666
     ts%p_age = 666666666
