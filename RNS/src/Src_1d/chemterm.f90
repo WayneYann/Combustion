@@ -18,63 +18,51 @@ contains
     double precision, intent(inout) :: U(Ulo(1):Uhi(1),NVAR)
     double precision, intent(in) :: dt
 
-    integer :: i, n
-    double precision :: rho1, rho2, rhoinv, ei
-    double precision :: YT1(nspec+1), YT2(nspec+1)
-    double precision, allocatable :: U1(:,:), U2(:,:)
+    integer :: i, n, g
+    logical :: force_new_J
+    double precision :: rho(2), rhoinv, ei
+    double precision :: YT(nspec+1,2)
+    double precision, allocatable :: UG(:,:,:)
 
-    allocate(U1(lo(1):hi(1),NVAR))
-    allocate(U2(lo(1):hi(1),NVAR))
+    allocate(UG(lo(1):hi(1),NVAR,2))
 
     do n=1,NVAR
-       call cellavg2gausspt_1d(lo(1),hi(1), U(:,n), Ulo(1),Uhi(1), U1(:,n), U2(:,n), lo(1),hi(1))
+       call cellavg2gausspt_1d(lo(1),hi(1), U(:,n), Ulo(1),Uhi(1), UG(:,n,1), UG(:,n,2), lo(1),hi(1))
     end do
-
-    call setfirst(.true.)
-
+    
+    force_new_J = .true.  ! always recompute Jacobina when a new FAB starts
+    
     do i=lo(1),hi(1)
 
-       ! Guass point 1
-       rho1 = 0.d0
-       do n=UFS,UFS+nspec-1
-          YT1(n-UFS+1) = U1(i,n)
-          rho1 = rho1 + U1(i,n)
-       end do
-       rhoinv = 1.d0/rho1
+       do g=1,2
 
-       YT1(1:nspec) = YT1(1:nspec) * rhoinv
-       YT1(nspec+1) = U1(i,UTEMP)
+          rho(g) = 0.d0
+          do n=UFS,UFS+nspec-1
+             YT(n-UFS+1,g) = UG(i,n,g)
+             rho(g) = rho(g) + UG(i,n,g)
+          end do
+          rhoinv = 1.d0/rho(g)
 
-       ei = rhoinv*( U1(i,UEDEN) - 0.5d0*rhoinv*U1(i,UMX)**2 )
+          YT(1:nspec,g) = YT(1:nspec,g) * rhoinv
+          YT(nspec+1,g) = UG(i,UTEMP,g)
 
-       call eos_get_T(YT1(nspec+1), ei, YT1(1:nspec))
+          ei = rhoinv*( UG(i,UEDEN,g) - 0.5d0*rhoinv*UG(i,UMX,g)**2 )
+
+          call eos_get_T(YT(nspec+1,g), ei, YT(1:nspec,g))
        
-       call burn(rho1, YT1, dt)
-
-       ! Guass point 2
-       rho2 = 0.d0
-       do n=UFS,UFS+nspec-1
-          YT2(n-UFS+1) = U2(i,n)
-          rho2 = rho2 + U2(i,n)
        end do
-       rhoinv = 1.d0/rho2
 
-       YT2(1:nspec) = YT2(1:nspec) * rhoinv
-       YT2(nspec+1) = U2(i,UTEMP)
+       call burn(2, rho, YT, dt, force_new_J)
 
-       ei = rhoinv*( U2(i,UEDEN) - 0.5d0*rhoinv*U2(i,UMX)**2 )
-
-       call eos_get_T(YT2(nspec+1), ei, YT2(1:nspec))
-       
-       call burn(rho2, YT2, dt)
+       force_new_J = .false.
 
        do n=1,nspec
-          U(i,UFS+n-1) = 0.5d0*(rho1*YT1(n) + rho2*YT2(n))
+          U(i,UFS+n-1) = 0.5d0*(rho(1)*YT(n,1) + rho(2)*YT(n,2))
        end do
 
     end do
 
-    deallocate(U1, U2)
+    deallocate(UG)
 
   end subroutine chemterm
 

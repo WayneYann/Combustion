@@ -74,18 +74,18 @@ subroutine cd_closevode()
 end subroutine cd_closevode
 
 
-subroutine cd_initbdf(neq_in, v_in, rtol_in, atol_in, order_in, reuse_in)
+subroutine cd_initbdf(neq_in, npt_in, v_in, rtol_in, atol_in, order_in, reuse_in)
   use bdf, only : bdf_ts_build
   use bdf_data, only : ts, reuse_jac
   implicit none
-  integer, intent(in) :: neq_in, v_in, order_in, reuse_in
+  integer, intent(in) :: neq_in, npt_in, v_in, order_in, reuse_in
   double precision, intent(in) :: rtol_in, atol_in
   double precision :: rtol(neq_in), atol(neq_in)
   rtol = rtol_in
   atol = atol_in
   reuse_jac = (reuse_in .ne. 0)
   !$omp parallel
-  call bdf_ts_build(ts, neq_in, 1, rtol, atol, max_order=order_in)
+  call bdf_ts_build(ts, neq_in, npt_in, rtol, atol, max_order=order_in)
   ts%verbose = v_in
   !$omp end parallel
 end subroutine cd_initbdf
