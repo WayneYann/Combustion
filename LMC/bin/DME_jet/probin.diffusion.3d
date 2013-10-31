@@ -13,8 +13,8 @@
   flametracval = 1.e-8
   max_trac_lev = 4
 
-  max_temp_lev = -1
-  tempgrad = 10.
+  max_temp_lev = 3
+  tempgrad = 80.
 
   blobr = -1.
 

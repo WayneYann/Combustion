@@ -768,12 +768,14 @@ c ::: -----------------------------------------------------------
 
       if (level.lt.max_trac_lev) then
          do k = lo(3), hi(3)
-            do j = lo(2), hi(2)
-               do i = lo(1), hi(1)
-                  tag(i,j,k) = merge(set,tag(i,j,k),
-     &                 ftrac(i,j,k,1).gt.flametracval)
+            if ( k.lt.10 ) then
+               do j = lo(2), hi(2)
+                  do i = lo(1), hi(1)
+                     tag(i,j,k) = merge(set,tag(i,j,k),
+     &                    ftrac(i,j,k,1).gt.flametracval)
+                  enddo
                enddo
-            enddo
+            endif
          enddo
       endif
 
@@ -884,15 +886,15 @@ c
          do k = lo(3), hi(3)
             do j = lo(2), hi(2)
                do i = lo(1), hi(1)
-c                 ax = abs(temperature(i+1,j,k,1) - temperature(i,j,k,1))
-c                 ay = abs(temperature(i,j+1,k,1) - temperature(i,j,k,1))
-c                 az = abs(temperature(i,j,k+1,1) - temperature(i,j,k,1))
-c                 ax = MAX(ax,abs(temperature(i,j,k,1) - temperature(i-1,j,k,1)))
-c                 ay = MAX(ay,abs(temperature(i,j,k,1) - temperature(i,j-1,k,1)))
-c                 az = MAX(az,abs(temperature(i,j,k,1) - temperature(i,j,k-1,1)))
-c                 aerr = max(ax,ay,az)
-c                 tag(i,j,k) = merge(set,tag(i,j,k),aerr.ge.tempgrad)
-                  tag(i,j,k) = merge(set,tag(i,j,k),temperature(i,j,k,1).lt.temperr)
+                  ax = abs(temperature(i+1,j,k,1) - temperature(i,j,k,1))
+                  ay = abs(temperature(i,j+1,k,1) - temperature(i,j,k,1))
+                  az = abs(temperature(i,j,k+1,1) - temperature(i,j,k,1))
+                  ax = MAX(ax,abs(temperature(i,j,k,1) - temperature(i-1,j,k,1)))
+                  ay = MAX(ay,abs(temperature(i,j,k,1) - temperature(i,j-1,k,1)))
+                  az = MAX(az,abs(temperature(i,j,k,1) - temperature(i,j,k-1,1)))
+                  aerr = max(ax,ay,az)
+                  tag(i,j,k) = merge(set,tag(i,j,k),aerr.ge.tempgrad)
+c                 tag(i,j,k) = merge(set,tag(i,j,k),temperature(i,j,k,1).lt.temperr)
                enddo
             enddo
          enddo
@@ -941,12 +943,14 @@ c ::: -----------------------------------------------------------
 
       if (level .lt. max_vort_lev) then
          do k = lo(3), hi(3)
+            if ( k.lt.10 ) then
             do j = lo(2), hi(2)
                do i = lo(1), hi(1)
                   tag(i,j,k) = merge(set,tag(i,j,k),
      &                         ABS(vort(i,j,k,1)).ge.vorterr*2.d0**level)
                enddo
             enddo
+            endif
          enddo
       end if
 
@@ -1573,6 +1577,7 @@ c ::: -----------------------------------------------------------
          hiFlctArray(strmwse_dir) = 1
          call SET_ARGS(DIMS(uflct), loFlctArray, hiFlctArray)
          allocate(uflct(DIMV(uflct)))
+         uflct = 1.e200
          call INFL_FILL(FLCT_XVEL, DIMS(uflct), uflct, xlo, delta, V_in*time,
      $                  bc, domnlo, domnhi)
       endif
@@ -1805,6 +1810,7 @@ c ::: -----------------------------------------------------------
          hiFlctArray(strmwse_dir) = 1
          call SET_ARGS(DIMS(vflct), loFlctArray, hiFlctArray)
          allocate(vflct(DIMV(vflct)))
+         vflct = 1.e200
          call INFL_FILL(FLCT_YVEL, DIMS(vflct), vflct, xlo, delta, V_in*time,
      $                  bc, domnlo, domnhi)
       endif
@@ -2035,6 +2041,7 @@ c ::: -----------------------------------------------------------
          hiFlctArray(strmwse_dir) = 1
          call SET_ARGS(DIMS(wflct), loFlctArray, hiFlctArray)
          allocate(wflct(DIMV(wflct)))
+         wflct = 1.e200
          call INFL_FILL(FLCT_ZVEL, DIMS(wflct), wflct, xlo, delta, V_in*time,
      $                  bc, domnlo, domnhi)
       endif
@@ -2146,6 +2153,14 @@ c ::: -----------------------------------------------------------
                   if (forceLo .and. strmwse_dir .eq. 3) then
                      eta1 = 0.5d0*(1.d0 - TANH(2.d0*(ABS(y)-splitx)/xfrontw))
                      zvel(i,j,k) = w + eta1*wflct(i,j,1)*turb_scale
+                     if (i.eq.-1 .and. j.eq.479 .and. k.eq.-1) then
+                        print *,'LO_ZVEL ( -1,479,-1): ',w, wflct(i,j,1), zvel(i,j,k)
+                        call flush(6)
+                     end if
+                     if (i.eq.511 .and. j.eq.479 .and. k.eq.-1) then
+                        print *,'HI_ZVEL (511,479,-1): ',w, wflct(i,j,1), zvel(i,j,k)
+                        call flush(6)
+                     end if
                   else
                      zvel(i,j,k) = w
                   endif
