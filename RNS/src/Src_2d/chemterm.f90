@@ -59,7 +59,7 @@ contains
              rhot(g) = 0.d0
              do n=1,NSPEC
                 Yt(n,g) = UG(i,j,g,UFS+n-1)
-                rhot(n) = rhot(g) + Yt(n,g)
+                rhot(g) = rhot(g) + Yt(n,g)
              end do
              rhoinv = 1.d0/rhot(g)
 
