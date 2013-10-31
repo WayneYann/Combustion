@@ -117,35 +117,22 @@ contains
     logical, intent(in) :: force_new_J
 
     double precision :: t0, t1, y1(nspecies+1,np)
-    integer :: neq, npt, g, ierr
+    integer :: neq, np_bdf, i, ierr
     logical :: reset, reuse_J
 
     neq = nspecies+1
-    npt = ts%npt
+    np_bdf = ts%npt
     t0 = 0.d0
     t1 = dt
 
     reset = .true.
 
-    if (npt .eq. np) then
+    if (mod(np,np_bdf) .ne. 0) then
 
-       rho(1:np) = rho_in
+       print *, "ERROR: Either np or np_bdf has wrong value", np, np_bdf
+       call bl_error("ERROR: either np ot np_bdf has wrong value")
 
-       if (force_new_J) then
-          reuse_J = .false.
-       else
-          reuse_J = reuse_jac
-       end if
-
-       call bdf_advance(ts, f_rhs, f_jac, neq, npt, YT, t0, y1, t1, dt, &
-            reset, reuse_J, ierr)
-
-       if (ierr .ne. 0) then
-          print *, 'chemsolv: BDF failed'
-          call bl_error("ERROR in burn: BDF failed")       
-       end if
-
-    else if (npt .eq. 1) then
+    else
 
        if (force_new_J) then
           reuse_J = .false.
@@ -153,13 +140,13 @@ contains
           reuse_J = reuse_jac
        end if
 
-       do g = 1, np
+       do i = 1, np, np_bdf
+          
+          rho(1:np_bdf) = rho_in(i:i+np_bdf-1)
 
-          rho(1) = rho_in(g)
-
-          call bdf_advance(ts, f_rhs, f_jac, neq, npt, YT(:,g), t0, y1(:,g), t1, dt, &
-               reset, reuse_J, ierr)
-
+          call bdf_advance(ts, f_rhs, f_jac, neq, np_bdf, YT(:,i:i+np_bdf-1), t0,  &
+               y1(:,i:i+np_bdf-1), t1, dt, reset, reuse_J, ierr)
+          
           reuse_J = reuse_jac
           
           if (ierr .ne. 0) then
@@ -169,9 +156,6 @@ contains
 
        end do
 
-    else
-       print *, "ERROR: BDF ts%npt has wrong value"
-       call bl_error("ERROR: BDF ts%npt has wrong value")
     end if
 
     YT = y1
