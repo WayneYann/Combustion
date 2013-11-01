@@ -768,14 +768,12 @@ c ::: -----------------------------------------------------------
 
       if (level.lt.max_trac_lev) then
          do k = lo(3), hi(3)
-            if ( k.lt.10 ) then
                do j = lo(2), hi(2)
                   do i = lo(1), hi(1)
                      tag(i,j,k) = merge(set,tag(i,j,k),
      &                    ftrac(i,j,k,1).gt.flametracval)
                   enddo
                enddo
-            endif
          enddo
       endif
 
@@ -2153,14 +2151,6 @@ c ::: -----------------------------------------------------------
                   if (forceLo .and. strmwse_dir .eq. 3) then
                      eta1 = 0.5d0*(1.d0 - TANH(2.d0*(ABS(y)-splitx)/xfrontw))
                      zvel(i,j,k) = w + eta1*wflct(i,j,1)*turb_scale
-                     if (i.eq.-1 .and. j.eq.479 .and. k.eq.-1) then
-                        print *,'LO_ZVEL ( -1,479,-1): ',w, wflct(i,j,1), zvel(i,j,k)
-                        call flush(6)
-                     end if
-                     if (i.eq.511 .and. j.eq.479 .and. k.eq.-1) then
-                        print *,'HI_ZVEL (511,479,-1): ',w, wflct(i,j,1), zvel(i,j,k)
-                        call flush(6)
-                     end if
                   else
                      zvel(i,j,k) = w
                   endif
