@@ -2,14 +2,14 @@ module chemterm_module
 
   use meth_params_module, only : NVAR, URHO, UEDEN, UMX, UMY, UMZ, UTEMP, UFS, NSPEC, &
        do_cc_burning
-  use burner_module, only : burn
+  use burner_module, only : burn, compute_rhodYdt
   use eos_module, only : eos_get_T
 
   implicit none
 
   private
 
-  public :: chemterm
+  public :: chemterm, dUdt_chem
 
 contains
 
@@ -183,5 +183,87 @@ contains
     deallocate(Ucc)
 
   end subroutine chemterm_cellcenter
+
+
+  subroutine dUdt_chem(lo, hi, U, Ulo, Uhi, Ut, Utlo, Uthi)
+    use weno_module, only : cellavg2gausspt_3d
+    integer, intent(in) :: lo(3), hi(3), Ulo(3), Uhi(3), Utlo(3), Uthi(3)
+    double precision, intent(in ) ::  U( Ulo(1): Uhi(1), Ulo(2): Uhi(2), Ulo(3): Uhi(3),NVAR)
+    double precision, intent(out) :: Ut(Utlo(1):Uthi(1),Utlo(2):Uthi(2),Utlo(3):Uthi(3),NVAR)
+
+    integer :: i, j, k, n, g, np
+    double precision :: rhoinv, ei
+    double precision :: rho(lo(1):hi(1)), T(lo(1):hi(1))
+    double precision :: Ytmp(nspec)
+    double precision :: Y(lo(1):hi(1),nspec), rdYdt(lo(1):hi(1),nspec)
+    double precision, allocatable :: UG(:,:,:,:,:)
+
+    np = hi(1)-lo(1)+1
+
+    allocate(UG(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),8,NVAR))
+
+    !$omp parallel private(i,j,k,n,g,rhoinv,ei,rho,T,Ytmp,Y,rdYdt)
+
+    !$omp do
+    do n=1,NVAR
+       do k=lo(3),hi(3)
+       do j=lo(2),hi(2)
+       do i=lo(1),hi(1)
+          Ut(i,j,k,n) = 0.d0
+       end do
+       end do
+       end do
+    end do
+    !$omp end do
+
+    !$omp do
+    do n=1,NVAR
+       call cellavg2gausspt_3d(lo,hi, U(:,:,:,n), Ulo,Uhi, UG(:,:,:,:,n), lo,hi)
+    end do
+    !$omp end do
+
+    !$omp do collapse(2)
+    do g=1,4
+       do k=lo(3),hi(3)
+       do j=lo(2),hi(2)
+
+          do i=lo(1),hi(1)
+             rho(i) = 0.d0
+             do n=1,nspec
+                Y(i,n) = UG(i,j,k,g,UFS+n-1)
+                rho(i) = rho(i) + Y(i,n)
+             end do
+             rhoinv = 1.d0/rho(i)
+             
+             do n=1,nspec
+                Y(i,n) = Y(i,n) * rhoinv
+                Ytmp(n) = Y(i,n)
+             end do
+
+             ei = rhoinv*( UG(i,j,k,g,UEDEN) - 0.5d0*rhoinv*(UG(i,j,k,g,UMX)**2 &
+                  + UG(i,j,k,g,UMY)**2 + UG(i,j,k,g,UMZ)**2) )
+
+             T(i) = UG(i,j,k,g,UTEMP)
+             call eos_get_T(T(i), ei, Ytmp)
+          end do
+
+          call compute_rhodYdt(np,rho,Y,T,rdYdt)
+
+          do n=1,nspec
+             do i=lo(1),hi(1)
+                Ut(i,j,k,UFS+n-1) = Ut(i,j,k,UFS+n-1) + 0.25d0*rdYdt(i,n)
+             end do
+          end do
+
+       end do
+       end do
+    end do
+    !$omp end do
+
+    !$omp end parallel 
+
+    deallocate(UG)
+
+  end subroutine dUdt_chem
 
 end module chemterm_module

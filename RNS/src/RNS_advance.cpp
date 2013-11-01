@@ -214,6 +214,25 @@ RNS::dUdt_AD(MultiFab& U, MultiFab& Uprime, Real time, int fill_boundary_type,
     }
 }
 
+
+void
+RNS::dUdt_chemistry(const MultiFab& U, MultiFab& Uprime)
+{
+    BL_ASSERT( ! chemSolve->isNull );
+
+    for (MFIter mfi(U); mfi.isValid(); ++mfi)
+    {
+	const int   i = mfi.index();
+	const Box& bx = mfi.validbox();
+	const int* lo = bx.loVect();
+	const int* hi = bx.hiVect();
+
+	BL_FORT_PROC_CALL(RNS_DUDT_CHEM, rns_dudt_chem)
+	    (lo, hi, BL_TO_FORTRAN(U[i]), BL_TO_FORTRAN(Uprime[i]));
+    }
+}
+
+
 // Compute U1 = U2 + c Uprime.
 void
 RNS::update_rk(MultiFab& U1, const MultiFab& U2, Real c, const MultiFab& Uprime)
@@ -383,12 +402,8 @@ void sdc_f2eval(void *F, void *Q, double t, sdc_state *state, void *ctx)
 	return;
     }
     
-    MultiFab tmp(U.boxArray(), U.nComp(), U.nGrow());
-    
-    MultiFab::Copy(tmp, U, 0, 0, U.nComp(), U.nGrow());
-    rns.fill_boundary(tmp, state->t, RNS::use_FillBoundary);
-    rns.advance_chemistry(tmp, 0.0);
-    MultiFab::Copy(Uprime, tmp, 0, 0, U.nComp(), 0);
+    rns.fill_boundary(U, state->t, RNS::use_FillBoundary);
+    rns.dUdt_chemistry(U, Uprime);
 }
 
 //

@@ -121,7 +121,7 @@ public:
 			  int  ncycle);
     //
     // do chemistry
-    // When it's called, ghost cells of U should have already been filled properly.
+    // When it's called, 2 ghost cells of U should have already been filled properly.
     //
     void advance_chemistry(MultiFab& U, Real dt);
     // 
@@ -140,11 +140,15 @@ public:
     static const int use_FillBoundary      = 3;
     static const int set_PhysBoundary      = 4;
     //
-    // Given U, compute Uprime (i.e., dUdt)
+    // Given U, compute Uprime (i.e., dUdt) for AD 
     //
     void dUdt_AD(MultiFab& U, MultiFab& Uprime, Real time, int fill_boundary_type, 
 	      FluxRegister* fine=0, FluxRegister* current=0, Real dt=0.0);
-    void dUdt_chemistry(MultiFab& U, MultiFab& Uprime, Real time, Real dt);
+    //
+    // Given U, compute Uprime (i.e., dUdt) for chemistry
+    // When it's called, 2 ghost cells of U should have already been filled properly.
+    //    
+    void dUdt_chemistry(const MultiFab& U, MultiFab& Uprime);
     //
     // Compute U1 = U2 + c Uprime.
     //

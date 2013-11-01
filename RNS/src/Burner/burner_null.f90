@@ -18,5 +18,15 @@ contains
 
   end subroutine burn
 
+
+  subroutine compute_rhodYdt(np, rho, T, Y, rdYdt)
+    integer, intent(in) :: np
+    double precision, intent(in) :: rho(np), T(np), Y(np,nspecies)
+    double precision, intent(out) :: rdYdt(np,nspecies)
+
+    return
+
+  end subroutine compute_rhodYdt
+
 end module burner_module
 
