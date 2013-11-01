@@ -712,7 +712,7 @@ RNS::avgDown ()
 }
 
 void
-RNS::avgDown (MultiFab& S_crse, MultiFab& S_fine)
+RNS::avgDown (MultiFab& S_crse, const MultiFab& S_fine)
 {
     if (level == parent->finestLevel()) return;
     

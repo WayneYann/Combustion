@@ -82,63 +82,66 @@ RNS::fill_boundary(MultiFab& U, Real time, int type)
 
     switch (type)
     {
-        case use_FillPatchIterator:
-
-	    for (FillPatchIterator fpi(*this, U, NUM_GROW, time, State_Type, 0, NUM_STATE);
-		 fpi.isValid(); ++fpi)
-	    {
-		U[fpi].copy(fpi());
-	    }
-
-	    break;
+    case use_FillPatchIterator:
+	
+	for (FillPatchIterator fpi(*this, U, NUM_GROW, time, State_Type, 0, NUM_STATE);
+	     fpi.isValid(); ++fpi)
+	{
+	    U[fpi].copy(fpi());
+	}
+	
+	break;
 
     case use_FillCoarsePatch:  // so that valid region of U will not be touched
+    {
+	const Box& domain_box = geom.Domain();
+	BoxArray grids_g(grids);
+	for (int ibox=0; ibox<grids_g.size(); ibox++)
 	{
-
-	    const Box& domain_box = geom.Domain();
-	    BoxArray grids_g(grids);
-	    for (int ibox=0; ibox<grids_g.size(); ibox++)
-	    {
-		const Box b = BoxLib::grow(grids_g[ibox], NUM_GROW) & domain_box;
-		grids_g.set(ibox, b);
-	    }
-
-	    MultiFab Utmp(grids_g, NUM_STATE, 0);
-	    FillCoarsePatch(Utmp, 0, time, State_Type, 0, NUM_STATE);
-
-	    for (MFIter mfi(U); mfi.isValid(); ++mfi)
-	    {
-		int i = mfi.index();
-
-		const Box& vbox = grids[i];
-		const Box& gbox = Utmp[i].box();
-		const BoxArray& ba = BoxLib::boxComplement(gbox, vbox);
-
-		for (int ibox=0; ibox<ba.size(); ibox++)
-		{
-		    U[i].copy(Utmp[i], ba[ibox]);
-		}
-	    }
-
-	    // no break; so it will go to next case and call FillBoundary
-
+	    const Box b = BoxLib::grow(grids_g[ibox], NUM_GROW) & domain_box;
+	    grids_g.set(ibox, b);
 	}
 
-        case use_FillBoundary:
-
-	    U.FillBoundary();
-	    geom.FillPeriodicBoundary(U, true);
-	    for (MFIter mfi(U); mfi.isValid(); ++mfi)
+	MultiFab Utmp(grids_g, NUM_STATE, 0);
+	FillCoarsePatch(Utmp, 0, time, State_Type, 0, NUM_STATE);
+	
+	for (MFIter mfi(U); mfi.isValid(); ++mfi)
+	{
+	    int i = mfi.index();
+	    
+	    const Box& vbox = grids[i];
+	    const Box& gbox = Utmp[i].box();
+	    const BoxArray& ba = BoxLib::boxComplement(gbox, vbox);
+	    
+	    for (int ibox=0; ibox<ba.size(); ibox++)
 	    {
-		setPhysBoundaryValues(U[mfi],
-				      State_Type,
-				      time,
-				      0,
-				      0,
-				      NUM_STATE);
+		U[i].copy(Utmp[i], ba[ibox]);
 	    }
+	}	
+    }
 
-	    break;
+    // no break; so it will go to next case and call FillBoundary
+
+    case use_FillBoundary:
+	
+	U.FillBoundary();
+	geom.FillPeriodicBoundary(U, true);
+
+	// no break; so it will go to next case and set physical boundaries
+
+    case set_PhysBoundary:
+
+	for (MFIter mfi(U); mfi.isValid(); ++mfi)
+	{
+	    setPhysBoundaryValues(U[mfi],
+				  State_Type,
+				  time,
+				  0,
+				  0,
+				  NUM_STATE);
+	}
+	
+	break;
     }
 }
 

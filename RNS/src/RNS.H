@@ -138,6 +138,7 @@ public:
     static const int use_FillPatchIterator = 1;
     static const int use_FillCoarsePatch   = 2;
     static const int use_FillBoundary      = 3;
+    static const int set_PhysBoundary      = 4;
     //
     // Given U, compute Uprime (i.e., dUdt)
     //
@@ -237,7 +238,7 @@ public:
 
     void avgDown ();
     void avgDown (int state_indx);
-    void avgDown (MultiFab& S_crse, MultiFab& S_fine);
+    void avgDown (MultiFab& S_crse, const MultiFab& S_fine);
 
     static class ChemDriver* chemSolve;
 
