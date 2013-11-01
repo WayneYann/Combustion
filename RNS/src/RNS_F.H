@@ -4,7 +4,7 @@
 #define _RNS_F_H_
 #include <BLFort.H>
 
-BL_FORT_PROC_DECL(RNS_DUDT,rns_dudt)
+BL_FORT_PROC_DECL(RNS_DUDT_AD,rns_dudt_ad)
     (const int lo[], const int hi[],
      const BL_FORT_FAB_ARG(U),
      BL_FORT_FAB_ARG(dUdt),

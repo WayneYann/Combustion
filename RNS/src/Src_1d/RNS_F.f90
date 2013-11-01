@@ -1,5 +1,5 @@
 
-subroutine rns_dudt (lo, hi, &
+subroutine rns_dudt_ad (lo, hi, &
      U, U_l1, U_h1, &
      dUdt, Ut_l1, Ut_h1, &
      flux, f_l1, f_h1, &
@@ -54,7 +54,7 @@ subroutine rns_dudt (lo, hi, &
      end do
   end if
 
-end subroutine rns_dudt
+end subroutine rns_dudt_ad
 
 ! :::
 ! ::: ------------------------------------------------------------------

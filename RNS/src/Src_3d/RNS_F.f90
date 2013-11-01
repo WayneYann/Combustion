@@ -1,5 +1,5 @@
 
-subroutine rns_dudt (lo, hi, &
+subroutine rns_dudt_ad (lo, hi, &
      U   , U_l1, U_l2, U_l3, U_h1, U_h2, U_h3, &
      dUdt,Ut_l1,Ut_l2,Ut_l3,Ut_h1,Ut_h2,Ut_h3, &
      xflx,xf_l1,xf_l2,xf_l3,xf_h1,xf_h2,xf_h3, &
@@ -157,7 +157,7 @@ subroutine rns_dudt (lo, hi, &
   
   !$omp end parallel
 
-end subroutine rns_dudt
+end subroutine rns_dudt_ad
 
 ! :::
 ! ::: ------------------------------------------------------------------
