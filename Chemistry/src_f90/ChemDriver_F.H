@@ -18,7 +18,7 @@ BL_FORT_PROC_DECL(CD_INITVODE, cd_initvode)
 BL_FORT_PROC_DECL(CD_CLOSEVODE, cd_closevode)();
 
 BL_FORT_PROC_DECL(CD_INITBDF, cd_initbdf)
-   (const int& neq, const int& verbose, const Real& rtol, const Real& atol,
+   (const int& neq, const int& npt, const int& verbose, const Real& rtol, const Real& atol,
     const int& order, const int& reuse_jac);
 BL_FORT_PROC_DECL(CD_CLOSEBDF, cd_closebdf)();
 

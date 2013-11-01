@@ -1,36 +1,46 @@
 module feval
   use bdf
   implicit none
-  double precision :: rho
+  double precision :: rho(8)
   !$omp threadprivate(rho)
 contains
 
-  subroutine f_rhs(neq, y, t, ydot)
+  subroutine f_rhs(neq, npt, y, t, ydot)
     use chemistry_module, only : molecular_weight, nspecies
-    integer,       intent(in)  :: neq
-    real(dp),      intent(in)  :: y(neq), t
-    real(dp),      intent(out) :: ydot(neq)
+    integer,       intent(in)  :: neq, npt
+    real(dp),      intent(in)  :: y(neq,npt), t
+    real(dp),      intent(out) :: ydot(neq,npt)
 
-    integer :: iwrk, i
-    double precision :: rwrk, Temp, cv, u(nspecies), Tdot, rYdot, rhoInv
+    integer :: iwrk, i, n
+    double precision :: rwrk, cv, u(nspecies), Tdot, rYdot, rhoInv
+    double precision :: Temp(npt), Ytmp(npt,nspecies), Ydottmp(npt,nspecies)
 
-    Temp = y(neq)
-
-    call ckwyr(rho, Temp, y, iwrk, rwrk, ydot)
-
-    call ckcvbs(Temp, y, iwrk, rwrk, cv)
-
-    call ckums(Temp, iwrk, rwrk, u)
-
-    rhoInv = 1.d0/rho
-    Tdot = 0.d0
-    do i=1,nspecies
-       rYdot = ydot(i) * molecular_weight(i)
-       Tdot = Tdot + u(i)* rYdot
-       ydot(i) = rYdot * rhoInv
+    do i=1,npt
+       do n=1,nspecies
+          Ytmp(i,n) = y(n,i)
+       end do
+       Temp(i) = y(neq,i)
     end do
 
-    ydot(neq) = -Tdot/(rho*cv)
+    call vckwyr(npt, rho, Temp, Ytmp, iwrk, rwrk, ydottmp)
+
+    do i=1,npt
+
+       call ckcvbs(Temp(i), y(1,i), iwrk, rwrk, cv)
+
+       call ckums(Temp(i), iwrk, rwrk, u)
+
+       rhoInv = 1.d0/rho(i)
+       Tdot = 0.d0
+       do n=1,nspecies
+          rYdot = ydottmp(i,n) * molecular_weight(n)
+          Tdot = Tdot + u(n)* rYdot
+          ydot(n,i) = rYdot * rhoInv
+       end do
+
+       ydot(neq,i) = -Tdot/(rho(i)*cv)
+
+    end do
 
   end subroutine f_rhs
 
@@ -47,9 +57,9 @@ contains
 
     Temp = y(neq)
 
-    rhoinv = 1.d0/rho
+    rhoinv = 1.d0/rho(1)
     
-    call ckytcr(rho, Temp, y, iwrk, rwrk, C)
+    call ckytcr(rho(1), Temp, y, iwrk, rwrk, C)
     call DWDOT(PD, C, Temp, consP)
     
     do j=1,neq-1
@@ -57,7 +67,7 @@ contains
           pd(i,j) = pd(i,j) * molecular_weight(i) * inv_mwt(j)
        end do
        i=neq
-       pd(i,j) = pd(i,j) * inv_mwt(j) * rho
+       pd(i,j) = pd(i,j) * inv_mwt(j) * rho(1)
     end do
     
     j = neq

@@ -33,13 +33,14 @@ contains
     double precision, intent(in) :: dt
 
     integer :: i, j, n, g
-    double precision :: rhot, rhoinv, ei
-    double precision :: Yt(nspec+1)
+    logical :: force_new_J
+    double precision :: rhot(4), rhoinv, ei
+    double precision :: Yt(nspec+1,4)
     double precision, allocatable :: UG(:,:,:,:)
 
     allocate(UG(lo(1):hi(1),lo(2):hi(2),4,NVAR))
 
-    !$omp parallel private(i,j,n,g,rhot,rhoinv,ei,Yt)
+    !$omp parallel private(i,j,n,g,rhot,rhoinv,ei,Yt,force_new_J)
 
     !$omp do
     do n=1,NVAR
@@ -47,40 +48,43 @@ contains
     end do
     !$omp end do
 
-    call setfirst(.true.)
+    force_new_J = .true.  ! always recompute Jacobina when a new FAB starts
 
     !$omp do collapse(2)
     do j=lo(2),hi(2)
        do i=lo(1),hi(1)
 
-          do n=1,nspec
-             U(i,j,UFS+n-1) = 0.d0
-          end do
-
           do g=1,4
 
-             rhot = 0.d0
+             rhot(g) = 0.d0
              do n=1,NSPEC
-                Yt(n) = UG(i,j,g,UFS+n-1)
-                rhot = rhot + Yt(n)
+                Yt(n,g) = UG(i,j,g,UFS+n-1)
+                rhot(g) = rhot(g) + Yt(n,g)
              end do
-             rhoinv = 1.d0/rhot
+             rhoinv = 1.d0/rhot(g)
 
-             Yt(1:nspec) = Yt(1:nspec) * rhoinv
-             Yt(nspec+1) = UG(i,j,g,UTEMP)
+             Yt(1:nspec,g) = Yt(1:nspec,g) * rhoinv
+             Yt(nspec+1,g) = UG(i,j,g,UTEMP)
 
              ei = rhoinv*( UG(i,j,g,UEDEN) - 0.5d0*rhoinv*(UG(i,j,g,UMX)**2 &
                   + UG(i,j,g,UMY)**2) )
 
-             call eos_get_T(Yt(nspec+1), ei, Yt(1:nspec))
+             call eos_get_T(Yt(nspec+1,g), ei, Yt(1:nspec,g))
        
-             call burn(rhot, Yt, dt)
-
-             do n=1,nspec
-                U(i,j,UFS+n-1) = U(i,j,UFS+n-1) + 0.25d0 * rhot*Yt(n)
-             end do
-
           end do
+
+          call burn(4, rhot, Yt, dt, force_new_J)
+
+          force_new_J = .false.
+
+          do n=1,nspec
+             U(i,j,UFS+n-1) = 0.d0
+             do g=1,4
+                U(i,j,UFS+n-1) = U(i,j,UFS+n-1) + rhot(g)*Yt(n,g)
+             end do
+             U(i,j,UFS+n-1) = U(i,j,UFS+n-1) * 0.25d0
+          end do
+
        end do
     end do
     !$omp end do
@@ -98,13 +102,14 @@ contains
     double precision, intent(in) :: dt
 
     integer :: i, j, n
-    double precision :: rhot, rhoinv, ei, fac
+    logical :: force_new_J
+    double precision :: rhot(1), rhoinv, ei, fac
     double precision :: Yt(nspec+1)
     double precision, allocatable :: Ucc(:,:,:)
 
     allocate(Ucc(lo(1)-1:hi(1)+1,lo(2)-1:hi(2)+1,NVAR))
 
-    !$omp parallel private(i,j,n,rhot,rhoinv,ei,fac,Yt)
+    !$omp parallel private(i,j,n,rhot,rhoinv,ei,fac,Yt,force_new_J)
 
     !$omp do
     do n=1,NVAR
@@ -112,7 +117,7 @@ contains
     end do
     !$omp end do
 
-    call setfirst(.true.)
+    force_new_J = .true.  ! always recompute Jacobina when a new FAB starts
 
     !$omp do collapse(2)
     do j=lo(2)-1,hi(2)+1
@@ -121,9 +126,9 @@ contains
           rhot = 0.d0
           do n=1,NSPEC
              Yt(n) = Ucc(i,j,UFS+n-1)
-             rhot = rhot + Yt(n)
+             rhot(1) = rhot(1) + Yt(n)
           end do
-          rhoinv = 1.d0/rhot
+          rhoinv = 1.d0/rhot(1)
 
           Yt(1:nspec) = Yt(1:nspec) * rhoinv
           Yt(nspec+1) = Ucc(i,j,UTEMP)
@@ -133,10 +138,12 @@ contains
 
           call eos_get_T(Yt(nspec+1), ei, Yt(1:nspec))
        
-          call burn(rhot, Yt, dt)
+          call burn(1, rhot, Yt, dt, force_new_J)
+
+          force_new_J = .false.
 
           do n=1,nspec
-             Ucc(i,j,UFS+n-1) = rhot*Yt(n)
+             Ucc(i,j,UFS+n-1) = rhot(1)*Yt(n)
           end do
           U(i,j,UTEMP) = Yt(nspec+1)
 
@@ -155,9 +162,9 @@ contains
        do i=lo(1),hi(1)
           rhot = 0.d0
           do n=1,NSPEC
-             rhot = rhot + U(i,j,UFS+n-1)
+             rhot(1) = rhot(1) + U(i,j,UFS+n-1)
           end do
-          fac = U(i,j,URHO)/rhot
+          fac = U(i,j,URHO)/rhot(1)
           do n=1,NSPEC
              U(i,j,UFS+n-1) = U(i,j,UFS+n-1) * fac
           end do

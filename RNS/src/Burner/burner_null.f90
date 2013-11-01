@@ -8,9 +8,11 @@ module burner_module
 
 contains
 
-  subroutine burn(rho, YT, dt)
-    double precision, intent(in   ) :: rho, dt
+  subroutine burn(np, rho, YT, dt, force_new_J)
+    integer, intent(in) :: np
+    double precision, intent(in   ) :: rho(*), dt
     double precision, intent(inout) :: YT(*)
+    logical, intent(in) :: force_new_J
 
     return
 
@@ -18,7 +20,3 @@ contains
 
 end module burner_module
 
-
-subroutine setfirst(frst)
-  logical, intent(in) :: frst
-end subroutine setfirst

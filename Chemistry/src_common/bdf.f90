@@ -241,8 +241,8 @@ contains
   subroutine bdf_predict(ts)
     type(bdf_ts), intent(inout) :: ts
     integer :: i, j, m, p
-    do p = 1, ts%npt
-       do i = 0, ts%k
+    do i = 0, ts%k
+       do p = 1, ts%npt
           ts%z0(:,p,i) = 0
           do j = i, ts%k
              do m = 1, ts%neq
@@ -409,8 +409,8 @@ contains
     type(bdf_ts), intent(inout) :: ts
     integer :: i, m, p
 
-    do p = 1, ts%npt
-       do i = 0, ts%k
+    do i = 0, ts%k
+       do p = 1, ts%npt
           do m = 1, ts%neq
              ts%z(m,p,i) = ts%z0(m,p,i) + ts%e(m,p) * ts%l(i)
           end do

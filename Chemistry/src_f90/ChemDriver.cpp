@@ -109,18 +109,32 @@ ChemDriver::initOnce ()
 	int  order = 6;  
 	int  verbose = 0;
 	int reuse_jac = 1;
+	int multipoint = 1;
 
-	ParmParse ppv("bdf");
-	ppv.query("rtol", rtol);
-	ppv.query("atol", atol);
-	ppv.query("order", order);
-	ppv.query("v", verbose);
-	ppv.query("verbose", verbose);
-	ppv.query("reuse_jac", reuse_jac); 
+	ParmParse ppb("bdf");
+	ppb.query("rtol", rtol);
+	ppb.query("atol", atol);
+	ppb.query("order", order);
+	ppb.query("v", verbose);
+	ppb.query("verbose", verbose);
+	ppb.query("reuse_jac", reuse_jac); 
+	ppb.query("multipoint", multipoint);
+
+	int npt = 1;
+	if (multipoint)
+	{
+#if (BL_SPACEDIM == 1)
+	    npt = 2;
+#elif (BL_SPACEDIM == 2)
+	    npt = 4;
+#else
+	    npt = 8;
+#endif
+	}
 
 	int neq = nspec+1; 
 	BL_FORT_PROC_CALL(CD_INITBDF, cd_initbdf)
-	    (neq, verbose, rtol, atol, order, reuse_jac);
+	    (neq, npt, verbose, rtol, atol, order, reuse_jac);
     }
 
 
