@@ -370,16 +370,22 @@ void sdc_f1eval(void *F, void *Q, double t, sdc_state *state, void *ctx)
 //
 void sdc_f2eval(void *F, void *Q, double t, sdc_state *state, void *ctx)
 {
-  RNS&      rns    = *((RNS*) ctx);
-  MultiFab& U      = *((MultiFab*) Q);
-  MultiFab& Uprime = *((MultiFab*) F);
+    RNS&      rns    = *((RNS*) ctx);
+    MultiFab& U      = *((MultiFab*) Q);
+    MultiFab& Uprime = *((MultiFab*) F);
 
-  MultiFab tmp(U.boxArray(), U.nComp(), U.nGrow());
-
-  MultiFab::Copy(tmp, U, 0, 0, U.nComp(), U.nGrow());
-  rns.fill_boundary(tmp, state->t, RNS::use_FillBoundary);
-  rns.advance_chemistry(tmp, 0.0);
-  MultiFab::Copy(Uprime, tmp, 0, 0, U.nComp(), 0);
+    if (rns.chemSolve->isNull)
+    {
+	Uprime.setVal(0.0);
+	return;
+    }
+    
+    MultiFab tmp(U.boxArray(), U.nComp(), U.nGrow());
+    
+    MultiFab::Copy(tmp, U, 0, 0, U.nComp(), U.nGrow());
+    rns.fill_boundary(tmp, state->t, RNS::use_FillBoundary);
+    rns.advance_chemistry(tmp, 0.0);
+    MultiFab::Copy(Uprime, tmp, 0, 0, U.nComp(), 0);
 }
 
 //
@@ -393,21 +399,27 @@ void sdc_f2eval(void *F, void *Q, double t, sdc_state *state, void *ctx)
 //
 void sdc_f2comp(void *F, void *Q, double t, double dt, void *RHS, sdc_state *state, void *ctx)
 {
-  RNS&      rns    = *((RNS*) ctx);
-  MultiFab& U      = *((MultiFab*) Q);
-  MultiFab& Uprime = *((MultiFab*) F);
-  MultiFab& Urhs   = *((MultiFab*) RHS);
+    RNS&      rns    = *((RNS*) ctx);
+    MultiFab& U      = *((MultiFab*) Q);
+    MultiFab& Uprime = *((MultiFab*) F);
+    MultiFab& Urhs   = *((MultiFab*) RHS);
 
-  //MultiFab::Copy(U, Urhs, 0, 0, U.nComp(), U.nGrow());
-  MultiFab::Copy(U, Urhs, 0, 0, U.nComp(), 0);
-  // XXX: apparently Urhs doesn't have ghost cells, not sure if it should or not...
-
-  rns.fill_boundary(U, state->t, RNS::use_FillBoundary);
-  rns.advance_chemistry(U, dt);
-
-  Uprime.copy(U);
-  Uprime.minus(Urhs, 0, Uprime.nComp(), 0);
-  Uprime.mult(1./dt);
+    if (rns.chemSolve->isNull)
+    {
+	Uprime.setVal(0.0);
+	return;
+    }
+    
+    //MultiFab::Copy(U, Urhs, 0, 0, U.nComp(), U.nGrow());
+    MultiFab::Copy(U, Urhs, 0, 0, U.nComp(), 0);
+    // XXX: apparently Urhs doesn't have ghost cells, not sure if it should or not...
+    
+    rns.fill_boundary(U, state->t, RNS::use_FillBoundary);
+    rns.advance_chemistry(U, dt);
+    
+    Uprime.copy(U);
+    Uprime.minus(Urhs, 0, Uprime.nComp(), 0);
+    Uprime.mult(1./dt);
 }
 
 void sdc_poststep_hook(void *Q, sdc_state *state, void *ctx)

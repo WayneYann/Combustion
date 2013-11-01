@@ -239,6 +239,8 @@ public:
     void avgDown (int state_indx);
     void avgDown (MultiFab& S_crse, MultiFab& S_fine);
 
+    static class ChemDriver* chemSolve;
+
 protected:
 
     static void read_params ();
@@ -345,8 +347,6 @@ protected:
     static Real        startCPUTime;
 
     Real getCPUTime();
-        
-    static class ChemDriver* chemSolve;
 };    
 
 //
