@@ -4,14 +4,14 @@ module burner_module
 
   private
 
-  public :: burn
+  public :: burn, compute_rhodYdt
 
 contains
 
   subroutine burn(np, rho, YT, dt, force_new_J)
     integer, intent(in) :: np
-    double precision, intent(in   ) :: rho(*), dt
-    double precision, intent(inout) :: YT(*)
+    double precision :: rho(*), dt
+    double precision :: YT(*)
     logical, intent(in) :: force_new_J
 
     return
@@ -21,8 +21,8 @@ contains
 
   subroutine compute_rhodYdt(np, rho, T, Y, rdYdt)
     integer, intent(in) :: np
-    double precision, intent(in) :: rho(np), T(np), Y(np,nspecies)
-    double precision, intent(out) :: rdYdt(np,nspecies)
+    double precision :: rho(np), T(np), Y(*)
+    double precision :: rdYdt(*)
 
     return
 
