@@ -1,13 +1,13 @@
 module burner_module
 
-  use chemistry_module, only : nspecies, spec_names
+  use chemistry_module, only : nspecies, spec_names, molecular_weight
   use meth_params_module, only : use_vode
 
   implicit none
 
   private
 
-  public :: burn
+  public :: burn, compute_rhodYdt
 
 contains
 
@@ -161,5 +161,24 @@ contains
     YT = y1
 
   end subroutine burn_bdf
+
+
+  subroutine compute_rhodYdt(np, rho, T, Y, rdYdt)
+    integer, intent(in) :: np
+    double precision, intent(in) :: rho(np), T(np), Y(np,nspecies)
+    double precision, intent(out) :: rdYdt(np,nspecies)
+
+    integer :: i, n, iwrk
+    double precision :: rwrk
+
+    call vckwyr(np, rho, T, Y, iwrk, rwrk, rdYdt)
+
+    do n=1,nspecies
+       do i=1,np
+          rdYdt(i,n) = rdYdt(i,n) * molecular_weight(n)
+       end do
+    end do
+
+  end subroutine compute_rhodYdt
 
 end module burner_module

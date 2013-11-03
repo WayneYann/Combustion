@@ -3,9 +3,11 @@ max_step  = 2000
 stop_time = 0.2
 
 # for RK
-amr.multi_level_sdc = 0 
-sdc.t_ratio         = 1
-rns.RK_order        = 2   # 3 works with amr.max_level=0 only
+rns.RK_order = 2   # 3 works with amr.max_level=0 only
+
+# for SDC
+mlsdc.max_iters = 4
+mlsdc.max_trefs = 3
 
 # PROBLEM SIZE & GEOMETRY
 geometry.is_periodic = 0 0 0

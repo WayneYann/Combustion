@@ -1,5 +1,5 @@
 
-subroutine rns_dudt (lo, hi, &
+subroutine rns_dudt_ad (lo, hi, &
      U, U_l1, U_l2, U_h1, U_h2, &
      dUdt, Ut_l1, Ut_l2, Ut_h1, Ut_h2, &
      xflx, xf_l1, xf_l2, xf_h1, xf_h2, &
@@ -121,7 +121,7 @@ subroutine rns_dudt (lo, hi, &
   
   !$omp end parallel
 
-end subroutine rns_dudt
+end subroutine rns_dudt_ad
 
 ! :::
 ! ::: ------------------------------------------------------------------
@@ -144,6 +144,32 @@ subroutine rns_advchem(lo,hi,U,U_l1,U_l2,U_h1,U_h2,dt)
   Uhi(2) = U_h2
   call chemterm(lo, hi, U, Ulo, Uhi, dt)
 end subroutine rns_advchem
+
+! :::
+! ::: ------------------------------------------------------------------
+! :::
+
+subroutine rns_dUdt_chem(lo,hi,U,U_l1,U_l2,U_h1,U_h2,Ut,Ut_l1,Ut_l2,Ut_h1,Ut_h2)
+  use meth_params_module, only : NVAR
+  use chemterm_module, only : dUdt_chem
+  implicit none
+  integer, intent(in) :: lo(2), hi(2)
+  integer, intent(in) ::  U_l1, U_h1, Ut_l1, Ut_h1, U_l2, U_h2, Ut_l2, Ut_h2
+  double precision, intent(in ) ::  U( U_l1: U_h1, U_l2: U_h2,NVAR)
+  double precision, intent(out) :: Ut(Ut_l1:Ut_h1,Ut_l2:Ut_h2,NVAR)
+
+  integer :: Ulo(2), Uhi(2), Utlo(2), Uthi(2)
+
+  Ulo(1) = U_l1
+  Ulo(2) = U_l2
+  Uhi(1) = U_h1
+  Uhi(2) = U_h2
+  Utlo(1) = Ut_l1
+  Utlo(2) = Ut_l2
+  Uthi(1) = Ut_h1
+  Uthi(2) = Ut_h2
+  call dUdt_chem(lo, hi, U, Ulo, Uhi, Ut, Utlo, Uthi)
+end subroutine rns_dUdt_chem
 
 ! :::
 ! ::: ------------------------------------------------------------------

@@ -75,18 +75,19 @@ void mlsdc_amr_interpolate(void *F, void *G, sdc_state *state, void *ctxF, void 
 
 #ifndef NDEBUG
   UC.setVal(NAN);
-  UF.setVal(NAN);
+  UF.setVal(NAN,UF.nGrow());
 #endif
 
-  // parallel copy UG to UC
-  levelG.fill_boundary(UG, state->t, RNS::use_FillBoundary); // XXX
   UC.copy(UG);
-  levelG.fill_boundary(UC, state->t, RNS::use_FillBoundary);
+  levelG.fill_boundary(UC, state->t, RNS::set_PhysBoundary);
 
   BL_ASSERT(UC.contains_nan() == false);
 
   // now that UF is completely contained within UC, cycle through each
   // FAB in UF and interpolate from the corresponding FAB in UC
+#ifdef _OPENMP
+#pragma omp parallel for
+#endif
   for (MFIter mfi(UF); mfi.isValid(); ++mfi) {
     BoxLib::setBC(UF[mfi].box(), levelF.Domain(), 0, 0, ncomp, bcs, bcr);
     Geometry fine_geom(UF[mfi].box());
@@ -96,7 +97,7 @@ void mlsdc_amr_interpolate(void *F, void *G, sdc_state *state, void *ctxF, void 
                crse_geom, fine_geom, bcr, 0, 0);
   }
 
-  levelF.fill_boundary(UF, state->t, RNS::use_FillBoundary);
+  levelF.fill_boundary(UF, state->t, RNS::set_PhysBoundary);
 
   BL_ASSERT(UF.contains_nan() == false);
 
@@ -297,6 +298,10 @@ SDCAmr::SDCAmr ()
 
   for (unsigned int i=0; i<=max_level; i++)
     sweepers[i] = NULL;
+
+  if (maxLevel()>0 && nProper()<4) {
+      BoxLib::Abort("For AMR runs, set amr.n_proper to at least 4.");
+  }
 }
 
 

@@ -82,70 +82,73 @@ RNS::fill_boundary(MultiFab& U, Real time, int type)
 
     switch (type)
     {
-        case use_FillPatchIterator:
-
-	    for (FillPatchIterator fpi(*this, U, NUM_GROW, time, State_Type, 0, NUM_STATE);
-		 fpi.isValid(); ++fpi)
-	    {
-		U[fpi].copy(fpi());
-	    }
-
-	    break;
+    case use_FillPatchIterator:
+	
+	for (FillPatchIterator fpi(*this, U, NUM_GROW, time, State_Type, 0, NUM_STATE);
+	     fpi.isValid(); ++fpi)
+	{
+	    U[fpi].copy(fpi());
+	}
+	
+	break;
 
     case use_FillCoarsePatch:  // so that valid region of U will not be touched
+    {
+	const Box& domain_box = geom.Domain();
+	BoxArray grids_g(grids);
+	for (int ibox=0; ibox<grids_g.size(); ibox++)
 	{
-
-	    const Box& domain_box = geom.Domain();
-	    BoxArray grids_g(grids);
-	    for (int ibox=0; ibox<grids_g.size(); ibox++)
-	    {
-		const Box b = BoxLib::grow(grids_g[ibox], NUM_GROW) & domain_box;
-		grids_g.set(ibox, b);
-	    }
-
-	    MultiFab Utmp(grids_g, NUM_STATE, 0);
-	    FillCoarsePatch(Utmp, 0, time, State_Type, 0, NUM_STATE);
-
-	    for (MFIter mfi(U); mfi.isValid(); ++mfi)
-	    {
-		int i = mfi.index();
-
-		const Box& vbox = grids[i];
-		const Box& gbox = Utmp[i].box();
-		const BoxArray& ba = BoxLib::boxComplement(gbox, vbox);
-
-		for (int ibox=0; ibox<ba.size(); ibox++)
-		{
-		    U[i].copy(Utmp[i], ba[ibox]);
-		}
-	    }
-
-	    // no break; so it will go to next case and call FillBoundary
-
+	    const Box b = BoxLib::grow(grids_g[ibox], NUM_GROW) & domain_box;
+	    grids_g.set(ibox, b);
 	}
 
-        case use_FillBoundary:
-
-	    U.FillBoundary();
-	    geom.FillPeriodicBoundary(U, true);
-	    for (MFIter mfi(U); mfi.isValid(); ++mfi)
+	MultiFab Utmp(grids_g, NUM_STATE, 0);
+	FillCoarsePatch(Utmp, 0, time, State_Type, 0, NUM_STATE);
+	
+	for (MFIter mfi(U); mfi.isValid(); ++mfi)
+	{
+	    int i = mfi.index();
+	    
+	    const Box& vbox = grids[i];
+	    const Box& gbox = Utmp[i].box();
+	    const BoxArray& ba = BoxLib::boxComplement(gbox, vbox);
+	    
+	    for (int ibox=0; ibox<ba.size(); ibox++)
 	    {
-		setPhysBoundaryValues(U[mfi],
-				      State_Type,
-				      time,
-				      0,
-				      0,
-				      NUM_STATE);
+		U[i].copy(Utmp[i], ba[ibox]);
 	    }
+	}	
+    }
 
-	    break;
+    // no break; so it will go to next case and call FillBoundary
+
+    case use_FillBoundary:
+	
+	U.FillBoundary();
+	geom.FillPeriodicBoundary(U, true);
+
+	// no break; so it will go to next case and set physical boundaries
+
+    case set_PhysBoundary:
+
+	for (MFIter mfi(U); mfi.isValid(); ++mfi)
+	{
+	    setPhysBoundaryValues(U[mfi],
+				  State_Type,
+				  time,
+				  0,
+				  0,
+				  NUM_STATE);
+	}
+	
+	break;
     }
 }
 
 
 void
-RNS::dUdt(MultiFab& U, MultiFab& Uprime, Real time, int fill_boundary_type,
-	  FluxRegister* fine, FluxRegister* current, Real dt)
+RNS::dUdt_AD(MultiFab& U, MultiFab& Uprime, Real time, int fill_boundary_type,
+	     FluxRegister* fine, FluxRegister* current, Real dt)
 {
     FArrayBox  flux[BL_SPACEDIM];
     MultiFab fluxes[BL_SPACEDIM];
@@ -173,7 +176,7 @@ RNS::dUdt(MultiFab& U, MultiFab& Uprime, Real time, int fill_boundary_type,
 	    flux[idim].resize(BoxLib::surroundingNodes(bx,idim),NUM_STATE);
 	}
 
-	BL_FORT_PROC_CALL(RNS_DUDT,rns_dudt)
+	BL_FORT_PROC_CALL(RNS_DUDT_AD,rns_dudt_ad)
 	    (bx.loVect(), bx.hiVect(),
 	     BL_TO_FORTRAN(U[i]),
 	     BL_TO_FORTRAN(Uprime[i]),
@@ -210,6 +213,25 @@ RNS::dUdt(MultiFab& U, MultiFab& Uprime, Real time, int fill_boundary_type,
 	}
     }
 }
+
+
+void
+RNS::dUdt_chemistry(const MultiFab& U, MultiFab& Uprime)
+{
+    BL_ASSERT( ! chemSolve->isNull );
+
+    for (MFIter mfi(U); mfi.isValid(); ++mfi)
+    {
+	const int   i = mfi.index();
+	const Box& bx = mfi.validbox();
+	const int* lo = bx.loVect();
+	const int* hi = bx.hiVect();
+
+	BL_FORT_PROC_CALL(RNS_DUDT_CHEM, rns_dudt_chem)
+	    (lo, hi, BL_TO_FORTRAN(U[i]), BL_TO_FORTRAN(Uprime[i]));
+    }
+}
+
 
 // Compute U1 = U2 + c Uprime.
 void
@@ -307,13 +329,13 @@ RNS::advance_AD(MultiFab& Unew, Real time, Real dt)
 	}
 
 	// Step 1 of RK2
-	dUdt(Unew, Uprime, time, no_fill);
+	dUdt_AD(Unew, Uprime, time, no_fill);
 	update_rk(Unew, U0, 0.5*dt, Uprime); // Unew = U0 + 0.5*dt*Uprime
 	post_update(Unew);
 
 	// Step 2 of RK2
 	int fill_boundary_type = (level == 0) ? use_FillBoundary : use_FillCoarsePatch;
-	dUdt(Unew, Uprime, time+0.5*dt, fill_boundary_type, fine, current, dt);
+	dUdt_AD(Unew, Uprime, time+0.5*dt, fill_boundary_type, fine, current, dt);
 	update_rk(Unew, U0, dt, Uprime); // Unew = U0 + dt*Uprime
 	post_update(Unew);
     }
@@ -325,17 +347,17 @@ RNS::advance_AD(MultiFab& Unew, Real time, Real dt)
 	MultiFab Utmp(grids,NUM_STATE,NUM_GROW);
 
 	// Step 1 of RK3
-	dUdt(Unew, Uprime, time, no_fill);
+	dUdt_AD(Unew, Uprime, time, no_fill);
 	update_rk(Unew, U0, dt, Uprime);
 	post_update(Unew);
 
 	// Step 2 of RK3
-	dUdt(Unew, Uprime, time+(1./3.)*dt, fill_boundary_type);
+	dUdt_AD(Unew, Uprime, time+(1./3.)*dt, fill_boundary_type);
 	update_rk(Utmp, 0.75, U0, 0.25, Unew, 0.25*dt, Uprime);
 	post_update(Utmp);
 
 	// Step 3 of RK3
-	dUdt(Utmp, Uprime, time+(2./3.)*dt, fill_boundary_type);
+	dUdt_AD(Utmp, Uprime, time+(2./3.)*dt, fill_boundary_type);
 	update_rk(Unew, 1./3., U0, 2./3., Utmp, (2./3.)*dt, Uprime);
 	post_update(Unew);
     }
@@ -356,7 +378,7 @@ void sdc_f1eval(void *F, void *Q, double t, sdc_state *state, void *ctx)
   MultiFab& U      = *((MultiFab*) Q);
   MultiFab& Uprime = *((MultiFab*) F);
 
-  rns.dUdt(U, Uprime, t, RNS::use_FillBoundary, 0, 0, 0.0);
+  rns.dUdt_AD(U, Uprime, t, RNS::use_FillBoundary, 0, 0, 0.0);
 }
 
 //
@@ -370,16 +392,18 @@ void sdc_f1eval(void *F, void *Q, double t, sdc_state *state, void *ctx)
 //
 void sdc_f2eval(void *F, void *Q, double t, sdc_state *state, void *ctx)
 {
-  RNS&      rns    = *((RNS*) ctx);
-  MultiFab& U      = *((MultiFab*) Q);
-  MultiFab& Uprime = *((MultiFab*) F);
+    RNS&      rns    = *((RNS*) ctx);
+    MultiFab& U      = *((MultiFab*) Q);
+    MultiFab& Uprime = *((MultiFab*) F);
 
-  MultiFab tmp(U.boxArray(), U.nComp(), U.nGrow());
-
-  MultiFab::Copy(tmp, U, 0, 0, U.nComp(), U.nGrow());
-  rns.fill_boundary(tmp, state->t, RNS::use_FillBoundary);
-  rns.advance_chemistry(tmp, 0.0);
-  MultiFab::Copy(Uprime, tmp, 0, 0, U.nComp(), 0);
+    if (rns.chemSolve->isNull)
+    {
+	Uprime.setVal(0.0);
+	return;
+    }
+    
+    rns.fill_boundary(U, state->t, RNS::use_FillBoundary);
+    rns.dUdt_chemistry(U, Uprime);
 }
 
 //
@@ -393,21 +417,27 @@ void sdc_f2eval(void *F, void *Q, double t, sdc_state *state, void *ctx)
 //
 void sdc_f2comp(void *F, void *Q, double t, double dt, void *RHS, sdc_state *state, void *ctx)
 {
-  RNS&      rns    = *((RNS*) ctx);
-  MultiFab& U      = *((MultiFab*) Q);
-  MultiFab& Uprime = *((MultiFab*) F);
-  MultiFab& Urhs   = *((MultiFab*) RHS);
+    RNS&      rns    = *((RNS*) ctx);
+    MultiFab& U      = *((MultiFab*) Q);
+    MultiFab& Uprime = *((MultiFab*) F);
+    MultiFab& Urhs   = *((MultiFab*) RHS);
 
-  //MultiFab::Copy(U, Urhs, 0, 0, U.nComp(), U.nGrow());
-  MultiFab::Copy(U, Urhs, 0, 0, U.nComp(), 0);
-  // XXX: apparently Urhs doesn't have ghost cells, not sure if it should or not...
-
-  rns.fill_boundary(U, state->t, RNS::use_FillBoundary);
-  rns.advance_chemistry(U, dt);
-
-  Uprime.copy(U);
-  Uprime.minus(Urhs, 0, Uprime.nComp(), 0);
-  Uprime.mult(1./dt);
+    if (rns.chemSolve->isNull)
+    {
+	Uprime.setVal(0.0);
+	return;
+    }
+    
+    //MultiFab::Copy(U, Urhs, 0, 0, U.nComp(), U.nGrow());
+    MultiFab::Copy(U, Urhs, 0, 0, U.nComp(), 0);
+    // XXX: apparently Urhs doesn't have ghost cells, not sure if it should or not...
+    
+    rns.fill_boundary(U, state->t, RNS::use_FillBoundary);
+    rns.advance_chemistry(U, dt);
+    
+    Uprime.copy(U);
+    Uprime.minus(Urhs, 0, Uprime.nComp(), 0);
+    Uprime.mult(1./dt);
 }
 
 void sdc_poststep_hook(void *Q, sdc_state *state, void *ctx)

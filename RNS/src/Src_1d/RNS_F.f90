@@ -1,5 +1,5 @@
 
-subroutine rns_dudt (lo, hi, &
+subroutine rns_dudt_ad (lo, hi, &
      U, U_l1, U_h1, &
      dUdt, Ut_l1, Ut_h1, &
      flux, f_l1, f_h1, &
@@ -54,7 +54,7 @@ subroutine rns_dudt (lo, hi, &
      end do
   end if
 
-end subroutine rns_dudt
+end subroutine rns_dudt_ad
 
 ! :::
 ! ::: ------------------------------------------------------------------
@@ -75,6 +75,28 @@ subroutine rns_advchem(lo,hi,U,U_l1,U_h1,dt)
   Uhi(1) = U_h1
   call chemterm(lo, hi, U, Ulo, Uhi, dt)
 end subroutine rns_advchem
+
+! :::
+! ::: ------------------------------------------------------------------
+! :::
+
+subroutine rns_dUdt_chem(lo,hi,U,U_l1,U_h1,Ut,Ut_l1,Ut_h1)
+  use meth_params_module, only : NVAR
+  use chemterm_module, only : dUdt_chem
+  implicit none
+  integer, intent(in) :: lo(1), hi(1)
+  integer, intent(in) ::  U_l1,  U_h1, Ut_l1,  Ut_h1
+  double precision, intent(in ) ::  U( U_l1: U_h1,NVAR)
+  double precision, intent(out) :: Ut(Ut_l1:Ut_h1,NVAR)
+
+  integer :: Ulo(1), Uhi(1), Utlo(1), Uthi(1)
+
+  Ulo(1) = U_l1
+  Uhi(1) = U_h1
+  Utlo(1) = Ut_l1
+  Uthi(1) = Ut_h1
+  call dUdt_chem(lo, hi, U, Ulo, Uhi, Ut, Utlo, Uthi)
+end subroutine rns_dUdt_chem
 
 ! :::
 ! ::: ------------------------------------------------------------------
