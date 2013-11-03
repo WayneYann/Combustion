@@ -533,7 +533,7 @@ c new init
                   pert = pert+ dexp(-2.d0*((z-2.0d0*blobr)**2 + (y)**2)/blobr**2)
 
                   scal(i,j,k,Trac) = 0.d0
-                  scal(i,j,k,Temp) = (T* eta + (1.d0-eta) *900.d0 ) * (1.d0+ 1.d0*pert)
+                  scal(i,j,k,Temp) = (T* eta + (1.d0-eta) *T_co) * (1.d0+ 1.d0*pert)
 
                   vel(i,j,k,1) = u
                   vel(i,j,k,2) = v
@@ -941,14 +941,12 @@ c ::: -----------------------------------------------------------
 
       if (level .lt. max_vort_lev) then
          do k = lo(3), hi(3)
-            if ( k.lt.10 ) then
             do j = lo(2), hi(2)
                do i = lo(1), hi(1)
                   tag(i,j,k) = merge(set,tag(i,j,k),
      &                         ABS(vort(i,j,k,1)).ge.vorterr*2.d0**level)
                enddo
             enddo
-            endif
          enddo
       end if
 
