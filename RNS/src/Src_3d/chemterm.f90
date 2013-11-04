@@ -63,7 +63,7 @@ contains
                    rhot(g) = rhot(g) + Yt(n,g)
                 end do
                 rhoinv = 1.d0/rhot(g)
-                
+
                 Yt(1:nspec,g) = Yt(1:nspec,g) * rhoinv
                 Yt(nspec+1,g) = UG(i,j,k,g,UTEMP)
 
@@ -71,7 +71,7 @@ contains
                      + UG(i,j,k,g,UMY)**2 + UG(i,j,k,g,UMZ)**2) )
 
                 call eos_get_T(Yt(nspec+1,g), ei, Yt(1:nspec,g))
-       
+
              end do
 
              call burn(8, rhot, Yt, dt, force_new_J)
@@ -132,7 +132,7 @@ contains
                 rhot(1) = rhot(1) + Yt(n)
              end do
              rhoinv = 1.d0/rhot(1)
-                
+
              Yt(1:nspec) = Yt(1:nspec) * rhoinv
              Yt(nspec+1) = Ucc(i,j,k,UTEMP)
 
@@ -140,7 +140,7 @@ contains
                   + Ucc(i,j,k,UMY)**2 + Ucc(i,j,k,UMZ)**2) )
 
              call eos_get_T(Yt(nspec+1), ei, Yt(1:nspec))
-       
+
              call burn(1, rhot, Yt, dt, force_new_J)
 
              force_new_J = .false.
@@ -234,7 +234,7 @@ contains
                 rho(i) = rho(i) + Y(i,n)
              end do
              rhoinv = 1.d0/rho(i)
-             
+
              do n=1,nspec
                 Y(i,n) = Y(i,n) * rhoinv
                 Ytmp(n) = Y(i,n)
@@ -247,7 +247,7 @@ contains
              call eos_get_T(T(i), ei, Ytmp)
           end do
 
-          call compute_rhodYdt(np,rho,Y,T,rdYdt)
+          call compute_rhodYdt(np,rho,T,Y,rdYdt)
 
           do n=1,nspec
              do i=lo(1),hi(1)
@@ -260,7 +260,7 @@ contains
     end do
     !$omp end do
 
-    !$omp end parallel 
+    !$omp end parallel
 
     deallocate(UG)
 

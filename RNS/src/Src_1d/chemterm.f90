@@ -29,9 +29,9 @@ contains
     do n=1,NVAR
        call cellavg2gausspt_1d(lo(1),hi(1), U(:,n), Ulo(1),Uhi(1), UG(:,n,1), UG(:,n,2), lo(1),hi(1))
     end do
-    
+
     force_new_J = .true.  ! always recompute Jacobina when a new FAB starts
-    
+
     do i=lo(1),hi(1)
 
        do g=1,2
@@ -49,7 +49,7 @@ contains
           ei = rhoinv*( UG(i,UEDEN,g) - 0.5d0*rhoinv*UG(i,UMX,g)**2 )
 
           call eos_get_T(YT(nspec+1,g), ei, YT(1:nspec,g))
-       
+
        end do
 
        call burn(2, rho, YT, dt, force_new_J)
@@ -114,7 +114,7 @@ contains
           call eos_get_T(T(i), ei, Ytmp)
        end do
 
-       call compute_rhodYdt(np, rho,Y,T,rdYdt)
+       call compute_rhodYdt(np, rho,T,Y,rdYdt)
 
        do n=1,nspec
           do i=lo(1),hi(1)
