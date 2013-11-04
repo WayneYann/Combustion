@@ -191,7 +191,7 @@ void SDCAmr::timeStep (int  level,
 
   sdc_mg_spread(&mg, time, dtLevel(0), 0);
   for (int k=0; k<max_iters; k++) {
-    sdc_mg_sweep(&mg, time, dt_level[0], 0);
+    sdc_mg_sweep(&mg, time, dt_level[0], (k==max_iters-1) ? SDC_MG_LAST_SWEEP : 0);
 
     // echo residuals...
     if (verbose > 0 && ParallelDescriptor::IOProcessor()) {
@@ -204,7 +204,7 @@ void SDCAmr::timeStep (int  level,
     }
   }
 
-  // grab final solution
+  // copy final solution from SDCLib to 'new data'
   for (int lev=0; lev<=finest_level; lev++) {
     AmrLevel& amrlevel = getLevel(lev);
     const DescriptorList& dl = amrlevel.get_desc_lst();
@@ -259,7 +259,7 @@ void SDCAmr::rebuild_mlsdc()
 
   // rebuild
   for (int lev=0; lev<=finest_level; lev++) {
-    encaps[lev]   = build_encap(lev);
+    encaps[lev] = build_encap(lev);
     sweepers[lev] = rns_sdc_build_level(lev);
     sweepers[lev]->nset->ctx   = &getLevel(lev);
     sweepers[lev]->nset->encap = encaps[lev];

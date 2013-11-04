@@ -34,6 +34,9 @@ void mf_encap_copy(void *dstp, const void *srcp)
 {
   MultiFab& dst = *((MultiFab*) dstp);
   MultiFab& src = *((MultiFab*) srcp);
+#ifdef _OPENMP
+#pragma omp parallel for
+#endif
   for (MFIter mfi(dst); mfi.isValid(); ++mfi)
     dst[mfi].copy(src[mfi]);
 }
@@ -42,6 +45,9 @@ void mf_encap_saxpy(void *yp, sdc_dtype a, void *xp)
 {
   MultiFab& y = *((MultiFab*) yp);
   MultiFab& x = *((MultiFab*) xp);
+#ifdef _OPENMP
+#pragma omp parallel for
+#endif
   for (MFIter mfi(y); mfi.isValid(); ++mfi)
     y[mfi].saxpy(a, x[mfi]);
 }
