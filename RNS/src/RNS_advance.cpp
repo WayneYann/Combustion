@@ -396,13 +396,14 @@ void sdc_f2eval(void *F, void *Q, double t, sdc_state *state, void *ctx)
   MultiFab& U      = *((MultiFab*) Q);
   MultiFab& Uprime = *((MultiFab*) F);
 
-  if (rns.chemSolve->isNull) {
-    Uprime.setVal(0.0);
-    return;
-  }
+  Uprime.setVal(0.0);
+
+  if (rns.chemSolve->isNull) return;
 
   rns.fill_boundary(U, state->t, RNS::use_FillBoundary);
+  BL_ASSERT(U.contains_nan() == false);
   rns.dUdt_chemistry(U, Uprime);
+  BL_ASSERT(Uprime.contains_nan() == false);
 }
 
 //
@@ -421,14 +422,18 @@ void sdc_f2comp(void *F, void *Q, double t, double dt, void *RHS, sdc_state *sta
   MultiFab& Uprime = *((MultiFab*) F);
   MultiFab& Urhs   = *((MultiFab*) RHS);
 
+  BL_ASSERT(Urhs.contains_nan() == false);
+
   MultiFab::Copy(U, Urhs, 0, 0, U.nComp(), U.nGrow());
 
   if (rns.chemSolve->isNull) {
-    Uprime.setVal(0.0);
+   Uprime.setVal(0.0);
     return;
   }
 
   rns.fill_boundary(U, state->t, RNS::use_FillBoundary);
+
+  BL_ASSERT(U.contains_nan() == false);
   rns.advance_chemistry(U, dt);
 
   Uprime.copy(U);

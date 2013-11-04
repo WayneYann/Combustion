@@ -85,9 +85,9 @@ void mlsdc_amr_interpolate(void *F, void *G, sdc_state *state, void *ctxF, void 
 
   // now that UF is completely contained within UC, cycle through each
   // FAB in UF and interpolate from the corresponding FAB in UC
-#ifdef _OPENMP
-#pragma omp parallel for
-#endif
+// #ifdef _OPENMP
+// #pragma omp parallel for
+// #endif
   for (MFIter mfi(UF); mfi.isValid(); ++mfi) {
     BoxLib::setBC(UF[mfi].box(), levelF.Domain(), 0, 0, ncomp, bcs, bcr);
     Geometry fine_geom(UF[mfi].box());
@@ -178,9 +178,9 @@ void SDCAmr::timeStep (int  level,
     for (int st=0; st<dl.size(); st++) {
       MultiFab& Unew = amrlevel.get_new_data(st);
       MultiFab& U0   = *((MultiFab*) mg.sweepers[lev]->nset->Q[0]);
-      U0.copy(Unew);
-      RNS& levelF = dynamic_cast<RNS&>(amrlevel);
-      levelF.fill_boundary(U0, time, (lev > 0) ? RNS::use_FillCoarsePatch : RNS::use_FillBoundary);
+      U0.setVal(NAN, U0.nGrow());
+      MultiFab::Copy(U0, Unew, 0, 0, U0.nComp(), U0.nGrow());
+      BL_ASSERT(U0.contains_nan() == false);
     }
   }
 
@@ -212,7 +212,9 @@ void SDCAmr::timeStep (int  level,
       int nnodes = mg.sweepers[lev]->nset->nnodes;
       MultiFab& Unew = amrlevel.get_new_data(st);
       MultiFab& Uend = *((MultiFab*)mg.sweepers[lev]->nset->Q[nnodes-1]);
-      Unew.copy(Uend);
+      // Unew.copy(Uend);
+      MultiFab::Copy(Unew, Uend, 0, 0, Uend.nComp(), Uend.nGrow());
+
     }
   }
 
@@ -286,10 +288,7 @@ SDCAmr::SDCAmr ()
   if (!ppsdc.query("max_iters", max_iters)) max_iters = 22;
   if (!ppsdc.query("max_trefs", max_trefs)) max_trefs = 3;
 
-  if (verbose > 1 && ParallelDescriptor::IOProcessor())
-    sdc_log_set_stdout(SDC_LOG_DEBUG);
-  if (verbose > 0 && ParallelDescriptor::IOProcessor())
-    sdc_log_set_stdout(SDC_LOG_INFO);
+  sdc_log_set_stdout(SDC_LOG_DEBUG);
   sdc_mg_build(&mg, max_level+1);
   sdc_hooks_add(mg.hooks, SDC_HOOK_POST_TRANS, sdc_poststep_hook);
 
