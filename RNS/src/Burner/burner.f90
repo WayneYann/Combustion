@@ -46,7 +46,7 @@ contains
     logical, intent(in) :: force_new_J
 
     external f_jac, f_rhs, dvode
-    
+
     ! vode stuff
     integer, parameter :: itask=1, iopt=1
     integer :: MF, istate, ifail
@@ -61,17 +61,17 @@ contains
     do g = 1, np
 
        voderpar(1) = rho(g)
-       
+
        istate = 1
        time = 0.d0
-       
+
        if (always_new_j) call setfirst(.true.)
-       
+
        MF = vode_MF  ! vode might change its sign!
        call dvode(f_rhs, nspecies+1, YT(:,g), time, dt, itol, rtol, atol, itask, &
             istate, iopt, voderwork, lvoderwork, vodeiwork, lvodeiwork, &
             f_jac, MF, voderpar, vodeipar)
-       
+
        if (verbose .ge. 1) then
           write(6,*) '......dvode done:'
           write(6,*) ' last successful step size = ',voderwork(11)
@@ -95,7 +95,7 @@ contains
              call flush(6)
           end if
        end if
-       
+
        if (istate < 0) then
           print *, 'chemsolv: VODE failed'
           print *, 'istate = ', istate, ' time =', time
@@ -117,7 +117,7 @@ contains
     logical, intent(in) :: force_new_J
 
     double precision :: t0, t1, y1(nspecies+1,np)
-    integer :: neq, np_bdf, i, ierr
+    integer :: neq, np_bdf, i, p, ierr
     logical :: reset, reuse_J
 
     neq = nspecies+1
@@ -141,17 +141,25 @@ contains
        end if
 
        do i = 1, np, np_bdf
-          
+
           rho(1:np_bdf) = rho_in(i:i+np_bdf-1)
 
           call bdf_advance(ts, f_rhs, f_jac, neq, np_bdf, YT(:,i:i+np_bdf-1), t0,  &
                y1(:,i:i+np_bdf-1), t1, dt, reset, reuse_J, ierr)
-          
+
           reuse_J = reuse_jac
-          
+
           if (ierr .ne. 0) then
-             print *, 'chemsolv: BDF failed'
-             call bl_error("ERROR in burn: BDF failed")       
+             print *, 'chemsolv: BDF failed:', errors(ierr)
+             print *, 'BDF rtol:', minval(ts%rtol), maxval(ts%rtol)
+             print *, 'BDF atol:', minval(ts%atol), maxval(ts%atol)
+             print *, 'BDF y:'
+             do p = 1, ts%npt
+                print *, p, ts%y(:,p)
+             end do
+             print *, 'BDF y0:'
+             print *, YT(:,i:i+np_bdf-1)
+             call bl_error("ERROR in burn: BDF failed")
           end if
 
        end do
