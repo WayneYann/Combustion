@@ -11,7 +11,7 @@ BEGIN_EXTERN_C
 void *mf_encap_create(int type, void *encap_ctx)
 {
   mf_encap* ctx = (mf_encap*) encap_ctx;
-  if (type == SDC_SOLUTION) {
+  if (type == SDC_SOLUTION || type == SDC_WORK) {
     return new MultiFab(*ctx->ba, ctx->ncomp, ctx->ngrow);
   } else {
     return new MultiFab(*ctx->ba, ctx->ncomp, 0);
@@ -54,7 +54,7 @@ sdc_encap* SDCAmr::build_encap(int lev)
   const DescriptorList& dl = getLevel(lev).get_desc_lst();
 
   assert(dl.size() == 1);	// valid for RNS
-  
+
   mf_encap* ctx = new mf_encap;
   ctx->ba    = &boxArray(lev);
   ctx->ncomp = dl[0].nComp();
