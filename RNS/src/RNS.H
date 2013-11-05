@@ -60,7 +60,7 @@ public:
 			    std::ostream&      os,
 			    VisMF::How         how,
 			    bool               dump_old);
-  
+
     /*A string written as the first item in writePlotFile() at
       level zero. It is so we can distinguish between different
       types of plot files. For RNS it has the form: RNS-Vnnn
@@ -90,7 +90,7 @@ public:
     //Initialize grid data at problem start-up.
     //
     virtual void initData ();
-    
+
     //
     //Get problem metrics.
     //
@@ -124,13 +124,13 @@ public:
     // When it's called, 2 ghost cells of U should have already been filled properly.
     //
     void advance_chemistry(MultiFab& U, Real dt);
-    // 
+    //
     // do advection and diffusion
     // When it's called, Unew including ghost cells should have the state at t=time.
     //
     void advance_AD(MultiFab& Unew, Real time, Real dt);
     //
-    // fill boundary 
+    // fill boundary
     //
     void fill_boundary(MultiFab& U, Real time, int type);
     // choices for "type" in fill_boundary:
@@ -140,14 +140,14 @@ public:
     static const int use_FillBoundary      = 3;
     static const int set_PhysBoundary      = 4;
     //
-    // Given U, compute Uprime (i.e., dUdt) for AD 
+    // Given U, compute Uprime (i.e., dUdt) for AD
     //
-    void dUdt_AD(MultiFab& U, MultiFab& Uprime, Real time, int fill_boundary_type, 
+    void dUdt_AD(MultiFab& U, MultiFab& Uprime, Real time, int fill_boundary_type,
 	      FluxRegister* fine=0, FluxRegister* current=0, Real dt=0.0);
     //
     // Given U, compute Uprime (i.e., dUdt) for chemistry
     // When it's called, 2 ghost cells of U should have already been filled properly.
-    //    
+    //
     void dUdt_chemistry(const MultiFab& U, MultiFab& Uprime);
     //
     // Compute U1 = U2 + c Uprime.
@@ -202,7 +202,7 @@ public:
     //Do work after regrid().
     //
     virtual void post_regrid (int lbase,
-			      int new_finest);   
+			      int new_finest);
     //
     //Do work after a restart().
     //
@@ -219,7 +219,7 @@ public:
 			   int          tagval,
 			   Real         time,
 			   int          n_error_buf = 0, int ngrow = 0);
-    
+
     // Returns a MultiFab containing the derived data for this level.
     // The user is responsible for deleting this pointer when done
     // with it.  If ngrow>0 the MultiFab is built on the appropriately
@@ -227,18 +227,19 @@ public:
     MultiFab* derive (const std::string& name,
 		      Real               time,
 		      int                ngrow);
-    
+
     // This version of derive() fills the dcomp'th component of mf with the derived quantity.
     void derive (const std::string& name,
 		 Real               time,
 		 MultiFab&          mf,
 		 int                dcomp);
-    
+
     static int numGrow();
-    
+
     static int NUM_STATE;
     static int Density, Xmom, Ymom, Zmom, Eden, Temp;
     static int FirstSpec, LastSpec, NumSpec;
+    static int verbose;
 
     void avgDown ();
     void avgDown (int state_indx);
@@ -249,21 +250,21 @@ public:
 protected:
 
     static void read_params ();
-  
+
     RNS& getLevel (int lev);
-  
+
     FluxRegister& getFluxReg ();
     FluxRegister& getFluxReg (int lev);
-    
+
     void reflux ();
-    
-    
+
+
     void buildMetrics ();
-    
+
     // integrate derived quantities over domain
-    
+
     Real sumDerive (const std::string& name, Real time);
-    
+
     //
     // The data.
     //
@@ -274,14 +275,13 @@ protected:
     // Static data members.
     //
     static bool      dump_old;
-    static int       verbose;
     static Real      cfl;
     static Real      init_shrink;
     static Real      change_max;
     static int       do_reflux;
     static BCRec     phys_bc;
     static int       NUM_GROW;
-    
+
     static ErrorList err_list;
     static int       allow_untagging;
     static int       do_density_ref;
@@ -305,7 +305,7 @@ protected:
 		       JBB,
 		       HLLC,
 		       NUM_RIEMANN_TYPE };
-    
+
     static RiemannType Riemann;
     static Real        difmag; // for JBB Riemann solver
 
@@ -333,7 +333,7 @@ protected:
     static int         plot_fuelConsumption;
     static int         plot_primplus;
 
-    static int icomp_cons, icomp_prim, icomp_magvel, icomp_Mach, icomp_divu, icomp_magvort, 
+    static int icomp_cons, icomp_prim, icomp_magvel, icomp_Mach, icomp_divu, icomp_magvort,
 	icomp_X, icomp_omegadot, icomp_dYdt, icomp_heatRelease, icomp_fuelConsumption;
     static std::vector<std::string> plot_names;
 
@@ -352,7 +352,7 @@ protected:
     static Real        startCPUTime;
 
     Real getCPUTime();
-};    
+};
 
 //
 // Inlines.

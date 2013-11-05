@@ -100,13 +100,6 @@ void mlsdc_amr_interpolate(void *F, void *G, sdc_state *state, void *ctxF, void 
   levelF.fill_boundary(UF, state->t, RNS::set_PhysBoundary);
 
   BL_ASSERT(UF.contains_nan() == false);
-
-#ifdef ZMQ
-  cout << "INTERPOLATE" << endl;
-  dzmq_send_mf(UG, levelG.Level(), 0, 0);
-  dzmq_send_mf(UF, levelF.Level(), 0, 0);
-  dzmq_send_mf(UC, levelF.Level()+1, 0, 1);
-#endif
 }
 
 
@@ -194,12 +187,17 @@ void SDCAmr::timeStep (int  level,
     sdc_mg_sweep(&mg, time, dt_level[0], (k==max_iters-1) ? SDC_MG_LAST_SWEEP : 0);
 
     // echo residuals...
-    if (verbose > 0 && ParallelDescriptor::IOProcessor()) {
+    if (verbose > 0) {
       for (int lev=0; lev<=finest_level; lev++) {
-        int nnodes = mg.sweepers[lev]->nset->nnodes;
-        MultiFab& R = *((MultiFab*) mg.sweepers[lev]->nset->R[nnodes-2]);
-        cout << "MLSDC iter: " << k << ", level: " << lev
-             << ", res norm0: " << R.norm0() << ", res norm2: " << R.norm2() << endl;
+        int       nnodes = mg.sweepers[lev]->nset->nnodes;
+        MultiFab& R      = *((MultiFab*) mg.sweepers[lev]->nset->R[nnodes-2]);
+	double    r0     = R.norm0();
+	double    r2     = R.norm2();
+
+	if (ParallelDescriptor::IOProcessor()) {
+	  cout << "MLSDC iter: " << k << ", level: " << lev
+	       << ", res norm0: " << r0 << ", res norm2: " << r2 << endl;
+	}
       }
     }
   }
@@ -288,7 +286,7 @@ SDCAmr::SDCAmr ()
   if (!ppsdc.query("max_iters", max_iters)) max_iters = 22;
   if (!ppsdc.query("max_trefs", max_trefs)) max_trefs = 3;
 
-  sdc_log_set_stdout(SDC_LOG_DEBUG);
+  // sdc_log_set_stdout(SDC_LOG_DEBUG);
   sdc_mg_build(&mg, max_level+1);
   sdc_hooks_add(mg.hooks, SDC_HOOK_POST_TRANS, sdc_poststep_hook);
 

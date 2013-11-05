@@ -378,6 +378,10 @@ void sdc_f1eval(void *F, void *Q, double t, sdc_state *state, void *ctx)
   MultiFab& U      = *((MultiFab*) Q);
   MultiFab& Uprime = *((MultiFab*) F);
 
+  if (rns.verbose > 0 && ParallelDescriptor::IOProcessor()) {
+    cout << "MLSDC evaluating adv/diff:  level: " << rns.Level() << ", node: " << state->node << endl;
+  }
+
   rns.dUdt_AD(U, Uprime, t, RNS::use_FillBoundary, 0, 0, 0.0);
 }
 
@@ -399,6 +403,10 @@ void sdc_f2eval(void *F, void *Q, double t, sdc_state *state, void *ctx)
   Uprime.setVal(0.0);
 
   if (rns.chemSolve->isNull) return;
+
+  if (rns.verbose > 0 && ParallelDescriptor::IOProcessor()) {
+    cout << "MLSDC evaluating chemistry: level: " << rns.Level() << ", node: " << state->node << endl;
+  }
 
   rns.fill_boundary(U, state->t, RNS::use_FillBoundary);
   BL_ASSERT(U.contains_nan() == false);
@@ -423,12 +431,15 @@ void sdc_f2comp(void *F, void *Q, double t, double dt, void *RHS, sdc_state *sta
   MultiFab& Urhs   = *((MultiFab*) RHS);
 
   BL_ASSERT(Urhs.contains_nan() == false);
-
   MultiFab::Copy(U, Urhs, 0, 0, U.nComp(), U.nGrow());
 
   if (rns.chemSolve->isNull) {
    Uprime.setVal(0.0);
     return;
+  }
+
+  if (rns.verbose > 0 && ParallelDescriptor::IOProcessor()) {
+    cout << "MLSDC advancing  chemistry: level: " << rns.Level() << ", node: " << state->node << endl;
   }
 
   rns.fill_boundary(U, state->t, RNS::use_FillBoundary);
