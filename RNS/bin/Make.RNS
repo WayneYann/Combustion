@@ -29,6 +29,7 @@ ifeq ($(USE_SDCLIB), TRUE)
   CEXE_headers += SDCAmr.H
   Bpack   += $(SDCLIB_HOME)/Make.package
   Blocs   += $(SDCLIB_HOME)/src $(SDCLIB_HOME)/include
+  optionsSuffix = $(DIM)d.SDC.$(machineSuffix)
 endif
 
 MECHDIR = $(TOP)/$(CHEMISTRY_DIR)/data
