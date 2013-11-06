@@ -290,8 +290,12 @@ SDCAmr::SDCAmr ()
   for (unsigned int i=0; i<=max_level; i++)
     sweepers[i] = NULL;
 
-  if (maxLevel()>0 && nProper()<4) {
-      BoxLib::Abort("For AMR runs, set amr.n_proper to at least 4.");
+  if (max_level > 0) {
+      for (int i=0; i<=max_level; i++) {
+	  if (blockingFactor(i) < 4) {
+	      BoxLib::Abort("For AMR runs, set blocking_factor to at least 4.");
+	  }
+      }
   }
 }
 
