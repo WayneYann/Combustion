@@ -1,5 +1,5 @@
 /*
- * XXX
+ * Multilevel SDC + AMR controller.
  */
 
 #include <SDCAmr.H>
@@ -126,45 +126,31 @@ END_EXTERN_C
 
 
 void SDCAmr::timeStep (int  level,
-                         Real time,
-                         int  iteration,
-                         int  niter,
-                         Real stop_time)
+		       Real time,
+		       int  iteration,
+		       int  niter,
+		       Real stop_time)
 {
   BL_ASSERT(level == 0);
 
   if (sweepers[0] == NULL) rebuild_mlsdc();
-
   int lev_top = std::min(finest_level, max_level-1);
 
   // regrid
   for (int i=level; i<=lev_top; i++) {
     const int old_finest = finest_level;
-
     if (okToRegrid(i)) {
       regrid(i,time);
-
-      int post_regrid_flag = 1;
-      amr_level[0].computeNewDt(finest_level,
-                                sub_cycle,
-                                n_cycle,
-                                ref_ratio,
-                                dt_min,
-                                dt_level,
-                                stop_time,
-                                post_regrid_flag);
-
-      for (int k=i; k<=finest_level; k++) level_count[k] = 0;
-
-      // if (old_finest < finest_level)
-      //   for (int k=old_finest+1; k<=finest_level; k++)
-      //     dt_level[k] = dt_level[k-1]/n_cycle[k];
+      amr_level[0].computeNewDt(finest_level, sub_cycle, n_cycle, ref_ratio,
+                                dt_min, dt_level, stop_time, 1);
+      for (int k=i; k<=finest_level; k++)
+	level_count[k] = 0;
     }
-    if (old_finest > finest_level) lev_top = std::min(finest_level, max_level-1);
+    if (old_finest > finest_level)
+      lev_top = std::min(finest_level, max_level-1);
   }
 
-
-  // set intial conditions...
+  // set intial conditions
   for (int lev=0; lev<=finest_level; lev++) {
     AmrLevel& amrlevel = getLevel(lev);
     const DescriptorList& dl = amrlevel.get_desc_lst();
@@ -182,11 +168,21 @@ void SDCAmr::timeStep (int  level,
     cout << "MLSDC advancing with dt: " << dt_level[0] << endl;
   }
 
+  // set times
+  for (int lev=0; lev<=finest_level; lev++) {
+    AmrLevel& amrlevel = getLevel(lev);
+    const DescriptorList& dl = amrlevel.get_desc_lst();
+    for (int st=0; st<dl.size(); st++) {
+      amrlevel.get_state_data(st).setTimeLevel(time+dt_level[0], dt_level[0], dt_level[0]);
+    }
+  }
+
+
   sdc_mg_spread(&mg, time, dtLevel(0), 0);
   for (int k=0; k<max_iters; k++) {
     sdc_mg_sweep(&mg, time, dt_level[0], (k==max_iters-1) ? SDC_MG_LAST_SWEEP : 0);
 
-    // echo residuals...
+    // echo residuals
     if (verbose > 0) {
       for (int lev=0; lev<=finest_level; lev++) {
         int       nnodes = mg.sweepers[lev]->nset->nnodes;
@@ -210,9 +206,7 @@ void SDCAmr::timeStep (int  level,
       int nnodes = mg.sweepers[lev]->nset->nnodes;
       MultiFab& Unew = amrlevel.get_new_data(st);
       MultiFab& Uend = *((MultiFab*)mg.sweepers[lev]->nset->Q[nnodes-1]);
-      // Unew.copy(Uend);
       MultiFab::Copy(Unew, Uend, 0, 0, Uend.nComp(), Uend.nGrow());
-
     }
   }
 
