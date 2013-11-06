@@ -1,8 +1,7 @@
-module debug_module
+module debug
   use iso_c_binding, only: c_ptr, c_int, c_null_ptr, c_double, c_associated
   implicit none
 
-  logical, save :: debug = .false.
   type(c_ptr), save :: default_zmq_context = c_null_ptr
 
 #ifdef ZMQ
@@ -28,7 +27,6 @@ module debug_module
        import :: c_ptr
        type(c_ptr), intent(in), value :: ptr
      end subroutine dzmq_close
-
   end interface
 #endif
 
@@ -38,11 +36,11 @@ contains
     real(8), intent(in) :: q(:)
     logical, intent(in) :: wait
 
+#ifdef ZMQ
     if (.not. c_associated(default_zmq_context)) then
        default_zmq_context = dzmq_connect()
     end if
 
-#ifdef ZMQ    
     call dzmq_send(default_zmq_context, q/maxval(abs(q)), size(q))
 
     if (wait) then
@@ -50,7 +48,6 @@ contains
        read  (*,*)
     end if
 #endif
-
   end subroutine dsend
 
-end module debug_module
+end module debug

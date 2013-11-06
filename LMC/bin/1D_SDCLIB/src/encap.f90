@@ -2,7 +2,7 @@ module encap
   use sdclib
   implicit none
   type :: lmc_encap
-      real(8), pointer :: vel(:,:), scal(:,:,:), divu(:,:), press(:,:)
+      real(8), pointer :: vel(:), scal(:,:), divu(:), press(:)
   end type lmc_encap
   type :: lmc_encap_ctx
      integer :: nfine, nscal
@@ -33,10 +33,10 @@ contains
   subroutine lmc_encap_create_simple(sol, nfine, nscal)
     type(lmc_encap), intent(inout) :: sol
     integer,         intent(in)    :: nfine, nscal
-    allocate(sol%vel(0:0,-2:nfine+1))
-    allocate(sol%scal(0:0,-2:nfine+1,nscal))
-    allocate(sol%divu(0:0,-1:nfine))
-    allocate(sol%press(0:0,-1:nfine+1))
+    allocate(sol%vel(-2:nfine+1))
+    allocate(sol%scal(-2:nfine+1,0:nscal))
+    ! allocate(sol%divu(-1:nfine))
+    allocate(sol%press(-1:nfine+1))
   end subroutine lmc_encap_create_simple
 
   type(c_ptr) function lmc_encap_create(type, ctxptr) &
@@ -56,7 +56,7 @@ contains
     type(c_ptr), intent(in), value :: solptr
     type(lmc_encap), pointer :: sol
     call c_f_pointer(solptr, sol)
-    deallocate(sol%vel,sol%scal,sol%divu,sol%press)
+    deallocate(sol%vel,sol%scal,sol%press)
     deallocate(sol)
   end subroutine lmc_encap_destroy
 
@@ -79,7 +79,7 @@ contains
     call c_f_pointer(solptr, sol)
     sol%vel = val
     sol%scal = val
-    sol%divu = val
+    ! sol%divu = val
     sol%press = val
   end subroutine lmc_encap_setval
 
@@ -91,7 +91,7 @@ contains
     call c_f_pointer(srcptr, src)
     dst%vel = src%vel
     dst%scal = src%scal
-    dst%divu = src%divu
+    ! dst%divu = src%divu
     dst%press = src%press
   end subroutine lmc_encap_copy
 
@@ -104,7 +104,7 @@ contains
     call c_f_pointer(xptr, x)
     y%vel = a * x%vel + y%vel
     y%scal = a * x%scal + y%scal
-    y%divu = a * x%divu + y%divu
+    ! y%divu = a * x%divu + y%divu
     y%press = a * x%press + y%press
   end subroutine lmc_encap_saxpy
 
