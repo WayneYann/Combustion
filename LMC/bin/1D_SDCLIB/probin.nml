@@ -1,0 +1,7 @@
+&prbin
+
+  nx = 256
+  nsteps = 10
+  dt = 1.d-10
+
+/

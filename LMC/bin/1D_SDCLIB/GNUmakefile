@@ -1,16 +1,15 @@
-USE_INTEL = FALSE
-EXEname := lmc.exe
-
 SDCLIB_HOME = ../../../../SDCLib
 
 #
-# Choose pmf file
+# Choose PMF source
 #
 #pmf_source := ../../../Chemistry/data/gri/PMFs/gri30_070.f
-pmf_source := ../../../Chemistry/data/chem-H/PMFs/chemHSoln_seed_0.00.f
+pmf_source = chemHSoln_seed_0.00.f
 #pmf_source := ../../../Chemistry/data/Lu/PMFs/LuDME_0700.f
+
 #
 # Choose reaction mechanism
+#
 # Use GRI30 for pmf_source := gri30_070.f
 # Use CHEMH for pmf_source := chemHSoln_seed_0.00.f
 # Use LUDME for pmf_source := LuDME_0700.f
@@ -19,92 +18,89 @@ pmf_source := ../../../Chemistry/data/chem-H/PMFs/chemHSoln_seed_0.00.f
 REACTION_MECHANISM=CHEMH
 #REACTION_MECHANISM=LUDME
 
-ifeq (${USE_INTEL},TRUE)
-  CCOMP := icpc -Wno-deprecated -g -Wunused-variable -DBL_ICC_VERSION=10.1 -DBL_MAJOR_VERSION=10 -DBL_MINOR_VERSION=1 -DBL_FORT_USE_UNDERSCORE
-  fCOMP := ifort -warn unused -g -u -fpconstant -fbounds-check
-  # XTRALIBS :=  -L/opt/intel/fce/10.1.015/lib -lifcore -lm 
-else
-  fCOMP := gfortran -g -fbounds-check -O1 -Wall -ffixed-line-length-none
-  CCOMP := g++ -g -O0 -fno-exceptions -Wall -Wno-sign-compare -DBL_FORT_USE_UNDERSCORE
-  cCOMP := gcc -g -O0 -std=c99 -fno-exceptions -Wall -Wno-sign-compare -DBL_FORT_USE_UNDERSCORE -I$(SDCLIB_HOME)/include -I$(HOME)/anaconda/include
-  # XTRALIBS :=  -lm -lgfortran
-endif
+CC = /home/memmett/gcc-4.7/bin/gcc
+FC = /home/memmett/gcc-4.7/bin/gfortran
+
+CFLAGS = -g -O0 -std=c99 -Wall -Wno-sign-compare -fno-exceptions -DBL_FORT_USE_UNDERSCORE
+FFLAGS = -g -O1 -cpp -Wall -fbounds-check -Wno-unused-dummy-argument
+
+FFLAGS  += -Ibuild -Jbuild
+CFLAGS  += -I$(SDCLIB_HOME)/include
+
+# FFLAGS  += -DZMQ
+# CFLAGS  += -I$(HOME)/anaconda/include
+# LDFLAGS += -L$(HOME)/anaconda/lib -lzmq
+# csources   += zmq.c
 
 ifeq ($(REACTION_MECHANISM),GRI30)
   mech_source += ../../../Chemistry/data/gri/grimech30.c
 endif
 ifeq ($(REACTION_MECHANISM),CHEMH)
-  mech_source += ../../../Chemistry/data/chem-H/chem-H.c
+  mech_source += chem-H.c
 endif
 ifeq ($(REACTION_MECHANISM),LUDME)
   mech_source += ../../../Chemistry/data/Lu/LuDME.c
 endif
 
-chem_sources := CD.f ../../../Chemistry/src/vode.f ../../../Chemistry/src/EGini.f ../../../Chemistry/src/EGSlib.f
+#chem_sources = CD.f vode.f EGini.f EGSlib.f
+chem_sources = vode.f EGini.f EGSlib.f
 
-pmf_object := $(pmf_source:%.f=%.o)
-mech_object := $(mech_source:%.c=%.o)
-chem_objects := $(chem_sources:%.f=%.o)
+f90sources += main.f90 feval.f90 encap.f90 debug.f90 probin.f90 lmc.f90 kernels.f90
+f90sources += sdc-interfaces.f90 sdc-types.f90 sdclib.f90
 
-f_sources += lmc.f ${chem_sources} prob.f fill_ghost.f \
-             calc_divu.f get_temp_visc_terms.f get_spec_visc_terms.f \
-             get_vel_visc_terms.f \
-             get_rhoh_visc_terms.f project.f strang_chem.f \
-             pre_mac_predict.f compute_pthermo.f add_dpdt.f \
-             mac_proj.f scal_aofs.f mkslopes.f \
-             update_rho.f \
-             rhoh_to_temp.f advance.f vel_edge_states.f update_vel.f \
-             read_check.f write_check.f write_plt.f cn_solve.f ${pmf_source}
+csources += sdc-hooks.c
+csources += sdc-imex-sweep.c
+csources += sdc-imex.c
+csources += sdc-logging.c
+csources += sdc-mat.c
+csources += sdc-mg-sweep.c
+csources += sdc-mg.c
+csources += sdc-mrex-sweep.c
+csources += sdc-mrex.c
+csources += sdc-nset.c
+csources += sdc-poly.c
+csources += sdc-print.c
+csources += sdc-quadrature.c
+csources += sdc-sweeper.c
+csources += sdc-wrappers.c
 
-f_includes += spec.h
-c_sources += main.c zmq.c
-f90sources += feval.f90 encap.f90 mod-spec.f90
 f90sources += sdc-interfaces.f90
-f90sources += sdc-types.f90
 f90sources += sdclib.f90
-F90sources = debug.F90
+f90sources += sdc-types.f90
 
-include $(SDCLIB_HOME)/Make.package
-c_sources += $(cEXE_sources)
+csources += $(mech_source)
+fsources += $(pmf_source) $(chem_sources)
 
-c_objects := $(c_sources:%.c=%.o) 
-f_objects := $(f_sources:%.f=%.o)
-f90_objects := $(f90sources:%.f90=%.o)
-F90_objects := $(F90sources:%.F90=%.o)
+OBJ = $(addprefix build/,$(csources:%.c=%.o) $(fsources:%.f=%.o) $(f90sources:%.f90=%.o))
 
-
-${EXEname}: ${f_objects} ${f90_objects} ${F90_objects} ${mech_object} ${c_objects} #${f_includes}
-	${fCOMP} -o ${EXEname} $^ -L$(HOME)/anaconda/lib -lzmq
+lmc.exe: $(OBJ)
+	$(FC) -o $@ $^ $(LDFLAGS)
 
 clean:
-	rm -rf ${EXEname} ${f_objects} ${c_objects} Linkeg
+	rm -rf *.exe build
 
-%.o: %.cpp
-	${CCOMP} -c $^ -o $*.o
+# dependencies
+build/lmc.o:     build/probin.o
+build/main.o:    build/feval.o build/lmc.o build/probin.o
+build/kernels.o: build/probin.o build/lmc.o
+build/encap.o:   build/sdclib.o
+build/feval.o:   build/encap.o build/debug.o build/lmc.o build/probin.o build/kernels.o
+build/sdclib.o:         build/sdc-interfaces.o
+build/sdc-interfaces.o: build/sdc-types.o
 
-%.o: %.c
-	${cCOMP} -c $^ -o $*.o
+# rules
+build/%.o: %.c
+	@mkdir -p build
+	$(CC) $(CFLAGS) -c $< -o $@
 
-%.o: %.f
-	${fCOMP} -c $^ -o $*.o
+build/%.o: %.f
+	@mkdir -p build
+	$(FC) $(FFLAGS) -c $< -o $@
 
-%.o: %.f90
-	${fCOMP} -c $^ -o $*.o
+build/%.o: %.f90
+	@mkdir -p build
+	$(FC) $(FFLAGS) -c $< -o $@
 
-%.o: %.F90
-	${fCOMP} -DZMQ -c $^ -o $*.o 
-
-encap.o: sdclib.o
-feval.o: encap.o mod-spec.o debug.o
-lmc.o: sdclib.o feval.o 
-sdclib.o: sdc-interfaces.o
-sdc-interfaces.o: sdc-types.o
-
-
-MySrcDirs += .
-vpath %.cpp $(MySrcDirs)
-vpath %.c   $(MySrcDirs) $(SDCLIB_HOME)/src
-vpath %.h   $(MySrcDirs)
-vpath %.f   $(MySrcDirs)
-vpath %.f90 $(MySrcDirs) $(SDCLIB_HOME)/src 
-vpath %.F90 $(MySrcDirs)
+vpath %.c   src $(SDCLIB_HOME)/src ../../../Chemistry/data/chem-H/
+vpath %.f   src ../../../Chemistry/src ../../../Chemistry/data/chem-H/PMFs
+vpath %.f90 src $(SDCLIB_HOME)/src
