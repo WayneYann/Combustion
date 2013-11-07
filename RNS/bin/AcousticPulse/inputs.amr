@@ -14,7 +14,7 @@ geometry.is_periodic = 1 1 1
 geometry.coord_sys   = 0  # 0 => cart, 1 => RZ  2=>spherical
 geometry.prob_lo     =   0.0d0   0.0d0   0.0d0
 geometry.prob_hi     =   1.0d0   1.0d0   1.0d0
-amr.n_cell           =   128     128     128
+amr.n_cell           =   16     16     16
 
 rns.Riemann    = 0     # 0: HLL,  1: JBB,  2: HLLC
 rns.gamma      = 1.4
@@ -29,8 +29,8 @@ rns.lo_bc       =  0   0   0
 rns.hi_bc       =  0   0   0
 
 # TIME STEP CONTROL
-rns.cfl            = 0.5     # cfl number for hyperbolic system
-rns.init_shrink    = 0.1     # scale back initial timestep
+rns.cfl            = 0.8     # cfl number for hyperbolic system
+rns.init_shrink    = 1.0     # scale back initial timestep
 rns.change_max     = 1.05    # scale back initial timestep
 rns.dt_cutoff      = 5.e-20  # level 0 timestep below which we halt
 
@@ -39,13 +39,13 @@ rns.v              = 1       # verbosity in RNS.cpp
 amr.v              = 1       # verbosity in Amr.cpp
 amr.grid_log       = grdlog  # name of grid logging file
 
-# REFINEMENT / REGRIDDING 
-rns.do_density_ref  = 1
-amr.max_level       = 0       # maximum level number allowed
+# REFINEMENT / REGRIDDING
+rns.do_density_ref  = 1 
+amr.max_level       = 1       # maximum level number allowed
 amr.ref_ratio       = 2 2 2 2 # refinement ratio
 amr.regrid_int      = 2 2 2 2 # how often to regrid
-amr.blocking_factor = 16      # must be >=4 for MLSDC
-amr.max_grid_size   = 64
+amr.blocking_factor = 4      # must be >=4 for MLSDC
+amr.max_grid_size   = 8
 amr.n_error_buf     = 2 2 2 2 # number of buffer cells in error est
 amr.grid_eff        = 0.7     # what constitutes an efficient grid
 
