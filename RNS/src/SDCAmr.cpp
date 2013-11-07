@@ -156,8 +156,13 @@ void SDCAmr::timeStep (int  level,
     const DescriptorList& dl = amrlevel.get_desc_lst();
     for (int st=0; st<dl.size(); st++) {
       MultiFab& Unew = amrlevel.get_new_data(st);
+      RNS *rns = dynamic_cast<RNS*>(&amrlevel);
+      int fill_boundary_type = (lev == 0) ? RNS::use_FillBoundary : RNS::use_FillCoarsePatch;
+      rns->fill_boundary(Unew, time, fill_boundary_type);
       MultiFab& U0   = *((MultiFab*) mg.sweepers[lev]->nset->Q[0]);
+#ifndef NDEBUG
       U0.setVal(NAN, U0.nGrow());
+#endif
       MultiFab::Copy(U0, Unew, 0, 0, U0.nComp(), U0.nGrow());
       BL_ASSERT(U0.contains_nan() == false);
     }

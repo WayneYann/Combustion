@@ -78,7 +78,7 @@ RNS::fill_boundary(MultiFab& U, Real time, int type)
 {
     if (type == no_fill) return;
 
-    BL_ASSERT( level > 0 || type == use_FillBoundary );
+    BL_ASSERT( level > 0 || type >= use_FillBoundary );
 
     switch (type)
     {
