@@ -4,4 +4,8 @@
   nsteps = 10
   dt = 1.d-10
 
+  flame_offset = -2.4
+
+!  v_in = 1
+
 /

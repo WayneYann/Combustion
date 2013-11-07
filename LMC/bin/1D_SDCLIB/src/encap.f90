@@ -34,7 +34,7 @@ contains
     type(lmc_encap), intent(inout) :: sol
     integer,         intent(in)    :: nfine, nscal
     allocate(sol%vel(-2:nfine+1))
-    allocate(sol%scal(-2:nfine+1,0:nscal))
+    allocate(sol%scal(-2:nfine+1,nscal))
     ! allocate(sol%divu(-1:nfine))
     allocate(sol%press(-1:nfine+1))
   end subroutine lmc_encap_create_simple

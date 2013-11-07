@@ -37,11 +37,10 @@ program sdclmc
   call lmc_encap_create_simple(U0, nx, nscal)
 
   ! initial condition
-  ! U0%vel = vel_new
-  ! U0%scal = scal_new
-  ! U0%divu = divu_new
-  ! print *, size(U0%press), size(press_new)
-  ! U0%press = press_new
+  call init_data(U0%vel, U0%scal, dx, lo, hi, bc)
+
+  ! XXX: initial projection, initial divu and pressure
+
 
   call sdc_imex_set_q0(imex, c_loc(U0))
   call sdc_imex_spread(imex, t)

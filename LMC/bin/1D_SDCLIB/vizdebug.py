@@ -26,7 +26,7 @@ class Acquire(threading.Thread):
         super(Acquire, self).__init__()
         self.stop = threading.Event()
         self.viewer = None
-        
+
 
     def recv(self, flag=0):
 
@@ -54,7 +54,8 @@ class Acquire(threading.Thread):
             self.viewer.state['rho'] = rho
             self.viewer.state['p']   = self.recv()
             self.viewer.state['v']   = self.recv()
-            self.viewer.state['macv']  = self.recv()            
+            self.viewer.state['divu']   = self.recv()
+            self.viewer.state['macv']  = self.recv()
             self.viewer.state['f_rho'] = self.recv()
             self.viewer.state['f_v']   = self.recv()
 
@@ -96,6 +97,9 @@ class MainWindow():
         x, y = pad, 200+2*pad
         if 'v' in state:
             self.plot(state['v'], x, y, w-2*pad, h-2*pad, color=(255,0,0))
+
+        if 'divu' in state:
+            self.plot(state['divu'], x, y, w-2*pad, h-2*pad, color=(255,0,255))
 
         if 'macv' in state:
             self.plot(state['macv'], x, y, w-2*pad, h-2*pad, color=(0,255,0))

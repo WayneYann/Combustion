@@ -27,10 +27,10 @@ FFLAGS = -g -O1 -cpp -Wall -fbounds-check -Wno-unused-dummy-argument
 FFLAGS  += -Ibuild -Jbuild
 CFLAGS  += -I$(SDCLIB_HOME)/include
 
-# FFLAGS  += -DZMQ
-# CFLAGS  += -I$(HOME)/anaconda/include
-# LDFLAGS += -L$(HOME)/anaconda/lib -lzmq
-# csources   += zmq.c
+# FFLAGS   += -DZMQ
+# CFLAGS   += -I$(HOME)/anaconda/include
+# LDFLAGS  += -L$(HOME)/anaconda/lib -lzmq
+# csources += zmq.c
 
 ifeq ($(REACTION_MECHANISM),GRI30)
   mech_source += ../../../Chemistry/data/gri/grimech30.c
@@ -69,7 +69,7 @@ f90sources += sdclib.f90
 f90sources += sdc-types.f90
 
 csources += $(mech_source)
-fsources += $(pmf_source) $(chem_sources)
+fsources += chem.f $(pmf_source) $(chem_sources)
 
 OBJ = $(addprefix build/,$(csources:%.c=%.o) $(fsources:%.f=%.o) $(f90sources:%.f90=%.o))
 
