@@ -9,10 +9,6 @@
 #include <AmrLevel.H>
 #include <Interpolater.H>
 #include <FabArray.H>
-#include <stdio.h>
-
-#include <iostream>
-#include <sstream>
 
 #include "RNS.H"
 #include "RNS_F.H"
@@ -24,30 +20,6 @@
 using namespace std;
 
 BEGIN_EXTERN_C
-
-#ifdef ZMQ
-void *zmqctx = 0;
-void *dzmq_connect();
-void dzmq_send_buf(void *ptr, const char *buf, int n);
-
-void dzmq_send_mf(MultiFab& U, int level, int comp, int wait)
-{
-  if (!zmqctx) zmqctx = dzmq_connect();
-
-  for (MFIter mfi(U); mfi.isValid(); ++mfi) {
-    std::ostringstream buf;
-    buf << level;
-    U[mfi].writeOn(buf, comp, 1);
-    dzmq_send_buf(zmqctx, buf.str().c_str(), buf.str().length());
-  }
-
-  if (wait) {
-    char buf[8];
-    printf("===> paused\n");
-    fgets(buf, 8, stdin);
-  }
-}
-#endif
 
 /*
  * Spatial interpolation between MultiFabs.
