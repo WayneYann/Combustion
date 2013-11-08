@@ -50,7 +50,7 @@ RNS::advance (Real time,
     if (! chemSolve->isNull)
     {
 	// fill boundary for chemistry
-	fill_boundary_type = (level == 0) ? use_FillBoundary : use_FillCoarsePatch;
+	fill_boundary_type = use_FillCoarsePatch;
 	fill_boundary(Unew, time+dt, fill_boundary_type);
 
 	// do another half-dt chemistry
@@ -74,11 +74,12 @@ RNS::advance (Real time,
 
 
 void
-RNS::fill_boundary(MultiFab& U, Real time, int type)
+RNS::fill_boundary(MultiFab& U, Real time, int type_in)
 {
-    if (type == no_fill) return;
+    if (type_in == no_fill) return;
 
-    BL_ASSERT( level > 0 || type >= use_FillBoundary );
+    int type = type_in;
+    if (level == 0 && type_in == use_FillCoarsePatch) type = use_FillBoundary;
 
     switch (type)
     {
@@ -334,7 +335,7 @@ RNS::advance_AD(MultiFab& Unew, Real time, Real dt)
 	post_update(Unew);
 
 	// Step 2 of RK2
-	int fill_boundary_type = (level == 0) ? use_FillBoundary : use_FillCoarsePatch;
+	int fill_boundary_type = use_FillCoarsePatch;
 	dUdt_AD(Unew, Uprime, time+0.5*dt, fill_boundary_type, fine, current, dt);
 	update_rk(Unew, U0, dt, Uprime); // Unew = U0 + dt*Uprime
 	post_update(Unew);
