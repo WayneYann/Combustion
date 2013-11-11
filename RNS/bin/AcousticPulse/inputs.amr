@@ -12,9 +12,9 @@ mlsdc.max_trefs = 3
 # PROBLEM SIZE & GEOMETRY
 geometry.is_periodic = 1 1 1
 geometry.coord_sys   = 0  # 0 => cart, 1 => RZ  2=>spherical
-geometry.prob_lo     =   0.0d0   0.0d0   0.0d0
-geometry.prob_hi     =   1.0d0   1.0d0   1.0d0
-amr.n_cell           =   16     16     16
+geometry.prob_lo     =   0.0     0.0     0.0
+geometry.prob_hi     =   1.0     1.0     1.0
+amr.n_cell           =   16      16      16
 
 rns.Riemann    = 0     # 0: HLL,  1: JBB,  2: HLLC
 rns.gamma      = 1.4

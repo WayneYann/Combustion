@@ -7,6 +7,8 @@ module probdata_module
   double precision, parameter :: rho0   = 1.4d0
   double precision, parameter :: drho0  = 1.4d-1
 
+  integer, save :: idir = 0
+
   double precision, save :: center(3)
 
   ! These determine the refinement criteria
