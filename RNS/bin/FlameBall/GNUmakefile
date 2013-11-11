@@ -18,6 +18,10 @@ USE_OMP    = FALSE
 
 CHEMISTRY_MODEL = LIDRYER
 
+# Is this a convergence test?  For convergence tests, T is computed to higher accuracy,
+# and iterative routines in EGLIB are not used. 
+CONVERGENCE = FALSE
+
 Bpack   := ./Make.package
 Blocs   := .
 
