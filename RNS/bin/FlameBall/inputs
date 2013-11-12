@@ -24,7 +24,7 @@ vode.verbose   = 0
 
 eglib.use_bulk_visc = 1
 
-rns.Riemann    = 1     # 0: HLL,  1: JBB,  2: HLLC
+rns.Riemann    = 0     # 0: HLL,  1: JBB,  2: HLLC
 rns.Treference = 298.0
 
 # >>>>>>>>>>>>>  BC FLAGS <<<<<<<<<<<<<<<<
@@ -36,7 +36,7 @@ rns.lo_bc       =  0   0   0
 rns.hi_bc       =  0   0   0
 
 # TIME STEP CONTROL
-rns.cfl            = 0.5     # cfl number for hyperbolic system
+rns.cfl            = 0.1     # cfl number for hyperbolic system
 rns.init_shrink    = 0.1     # scale back initial timestep
 rns.change_max     = 1.05    # scale back initial timestep
 rns.dt_cutoff      = 5.e-20  # level 0 timestep below which we halt
