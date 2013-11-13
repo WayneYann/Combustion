@@ -63,7 +63,7 @@ contains
        end do
 
        if (dm .ne. 3) then
-          call bl_error("Only 3D is supported in get_transport_properties")
+          call get_trans_prop_2d(lo,hi,ngq,qp,mup,xip,lamp,dp,wlo,whi,lgco)
        else
           call get_trans_prop_3d(lo,hi,ngq,qp,mup,xip,lamp,dp,wlo,whi,lgco)
        end if
@@ -71,6 +71,92 @@ contains
     end do
 
   end subroutine get_transport_properties
+
+  subroutine get_trans_prop_2d(lo,hi,ng,q,mu,xi,lam,Ddiag,wlo,whi,gco)
+    logical, intent(in) :: gco  ! ghost cells only
+    integer, intent(in) :: lo(3), hi(3), ng, wlo(3), whi(3)
+    double precision,intent(in )::    q(lo(1)-ng:hi(1)+ng,lo(2)-ng:hi(2)+ng,nprim)
+    double precision,intent(out)::   mu(lo(1)-ng:hi(1)+ng,lo(2)-ng:hi(2)+ng)
+    double precision,intent(out)::   xi(lo(1)-ng:hi(1)+ng,lo(2)-ng:hi(2)+ng)
+    double precision,intent(out)::  lam(lo(1)-ng:hi(1)+ng,lo(2)-ng:hi(2)+ng)
+    double precision,intent(out)::Ddiag(lo(1)-ng:hi(1)+ng,lo(2)-ng:hi(2)+ng,nspecies)
+
+    integer :: i, j, n, np, qxn, iwrk
+    double precision :: rwrk, Cp(nspecies)
+    double precision, allocatable :: L1Z(:), L2Z(:), DZ(:,:), XZ(:,:), CPZ(:,:), &
+         E1Z(:), E2Z(:)
+
+    if (.not. gco) then
+
+       np = whi(1) - wlo(1) + 1
+       
+       !$omp parallel private(i,j,n,qxn,iwrk) &
+       !$omp private(rwrk,Cp,L1Z,L2Z,DZ,XZ,CPZ,E1Z,E2Z)
+
+       call egzini(np)
+
+       allocate(L1Z(wlo(1):whi(1)))
+       allocate(L2Z(wlo(1):whi(1)))
+
+       allocate(DZ(wlo(1):whi(1),nspecies))
+       allocate(XZ(wlo(1):whi(1),nspecies))
+       allocate(CPZ(wlo(1):whi(1),nspecies))
+
+       allocate(E1Z(wlo(1):whi(1)))
+       allocate(E2Z(wlo(1):whi(1)))
+       
+       !$omp do
+       do j=wlo(2),whi(2)
+
+          do n=1,nspecies
+             qxn = qx1+n-1
+             do i=wlo(1),whi(1)
+                XZ(i,n) = q(i,j,qxn)
+             end do
+          end do
+
+          if (iflag > 3) then
+             do i=wlo(1),whi(1)
+                call ckcpms(q(i,j,qtemp), iwrk, rwrk, Cp)
+                CPZ(i,:) = Cp
+             end do
+          else
+             CPZ = 0.d0
+          end if
+          
+          call egzpar(q(wlo(1):whi(1),j,qtemp), XZ, CPZ)
+          
+          call egze1( 1.d0, XZ, E1Z)
+          call egze1(-1.d0, XZ, E2Z)
+          mu(wlo(1):whi(1),j) = 0.5d0*(E1Z+E2Z)
+          
+          xi(wlo(1):whi(1),j) = 0.d0
+          
+          call egzl1( 1.d0, XZ, L1Z)
+          call egzl1(-1.d0, XZ, L2Z)
+          lam(wlo(1):whi(1),j) = 0.5d0*(L1Z+L2Z)
+          
+          call EGZVR1(q(wlo(1):whi(1),j,qtemp), DZ)
+          do n=1,nspecies
+             do i=wlo(1),whi(1)
+                Ddiag(i,j,n) = DZ(i,n)
+             end do
+          end do
+          
+       end do
+       !$omp end do
+       
+       deallocate(L1Z, L2Z, DZ, XZ, CPZ, E1Z, E2Z)
+       !$omp end parallel
+
+    else ! ghost cells only 
+
+       call bl_error("transport_properties: Should not be there")
+
+    end if
+
+  end subroutine get_trans_prop_2d
+
 
   subroutine get_trans_prop_3d(lo,hi,ng,q,mu,xi,lam,Ddiag,wlo,whi,gco)
     logical, intent(in) :: gco  ! ghost cells only
