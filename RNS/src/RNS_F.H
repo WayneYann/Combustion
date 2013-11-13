@@ -171,6 +171,11 @@ BL_FORT_PROC_DECL(RNS_AVGDOWN,rns_avgdown)
      const BL_FORT_FAB_ARG(fine_vol),
      const int ovlo[], const int ovhi[], const int rat[]);
 
+BL_FORT_PROC_DECL(RNS_SUM_CONS, rns_sum_cons)
+    (const BL_FORT_FAB_ARG(state),
+     const BL_FORT_FAB_ARG(msk),
+     const BL_FORT_FAB_ARG(vol),
+     Real* s);
 
 /* problem-specific stuff goes here */
 

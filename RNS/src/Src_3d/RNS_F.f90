@@ -362,6 +362,37 @@ subroutine rns_enforce_consistent_Y(lo,hi,U,U_l1,U_l2,U_l3,U_h1,U_h2,U_h3)
 end subroutine rns_enforce_consistent_Y
 
 
+subroutine rns_sum_cons ( &
+     U  ,U_l1,U_l2,U_l3,U_h1,U_h2,U_h3, &
+     msk,m_l1,m_l2,m_l3,m_h1,m_h2,m_h3, &
+     vol,v_l1,v_l2,v_l3,v_h1,v_h2,v_h3, &
+     s)
+  use meth_params_module, only : NVAR
+  implicit none
+  
+  integer, intent(in) :: U_l1,U_l2,U_l3,U_h1,U_h2,U_h3
+  integer, intent(in) :: m_l1,m_l2,m_l3,m_h1,m_h2,m_h3
+  integer, intent(in) :: v_l1,v_l2,v_l3,v_h1,v_h2,v_h3
+  double precision, intent(in) :: U  (U_l1:U_h1,U_l2:U_h2,U_l3:U_h3,NVAR)
+  double precision, intent(in) :: msk(m_l1:m_h1,m_l2:m_h2,m_l3:m_h3)
+  double precision, intent(in) :: vol(v_l1:v_h1,v_l2:v_h2,v_l3:v_h3)
+  double precision, intent(inout) :: s(5)
+
+  integer :: i, j, k, n
+
+  do n=1,5
+     do k=m_l3,m_h3
+        do j=m_l2,m_h2
+           do i=m_l1,m_h1
+              s(n) = s(n) + msk(i,j,k)*vol(i,j,k)*U(i,j,k,n)
+           end do
+        end do
+     end do
+  end do
+
+end subroutine rns_sum_cons
+
+
 ! :: ----------------------------------------------------------
 ! :: Volume-weight average the fine grid data onto the coarse
 ! :: grid.  Overlap is given in coarse grid coordinates.

@@ -265,6 +265,9 @@ protected:
 
     Real sumDerive (const std::string& name, Real time);
 
+    void sum_conserved_variables ();
+    void volWgtSumCons(Array<Real>& s);
+
     //
     // The data.
     //
