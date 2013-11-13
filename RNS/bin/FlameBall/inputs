@@ -3,9 +3,10 @@ max_step  = 10000
 stop_time = 1.e-4
 
 # for RK
-amr.multi_level_sdc = 0 
-sdc.t_ratio         = 1
 rns.RK_order        = 3   # 3 works with amr.max_level=0 only
+
+# for SDC
+mlsdc.max_iters = 4
 
 # PROBLEM SIZE & GEOMETRY
 geometry.is_periodic = 1 1 1
@@ -42,7 +43,7 @@ rns.change_max     = 1.05    # scale back initial timestep
 rns.dt_cutoff      = 5.e-20  # level 0 timestep below which we halt
 
 # DIAGNOSTICS & VERBOSITY
-rns.v              = 1       # verbosity in Castro.cpp
+rns.v              = 1       # verbosity in RNS.cpp
 amr.v              = 1       # verbosity in Amr.cpp
 amr.grid_log       = grdlog  # name of grid logging file
 
