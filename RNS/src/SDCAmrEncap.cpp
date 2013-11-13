@@ -48,9 +48,10 @@ void mf_encap_saxpy(void *yp, sdc_dtype a, void *xp)
 // #ifdef _OPENMP
 // #pragma omp parallel for
 // #endif
+  BL_ASSERT(y.boxArray() == x.boxArray());
+
   for (MFIter mfi(y); mfi.isValid(); ++mfi)
     y[mfi].saxpy(a, x[mfi]);
-  // MultiFab::Copy(dst, src, 0, 0, src.nComp(), src.nGrow());
 }
 
 END_EXTERN_C

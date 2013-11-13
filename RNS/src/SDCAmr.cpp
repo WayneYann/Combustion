@@ -26,10 +26,10 @@ BEGIN_EXTERN_C
  */
 void mlsdc_amr_interpolate(void *F, void *G, sdc_state *state, void *ctxF, void *ctxG)
 {
-  MultiFab& UF      = *((MultiFab*) F);
-  MultiFab& UG      = *((MultiFab*) G);
-  RNS&      levelF  = *((RNS*) ctxF);
-  RNS&      levelG  = *((RNS*) ctxG);
+  MultiFab& UF     = *((MultiFab*) F);
+  MultiFab& UG     = *((MultiFab*) G);
+  RNS&      levelF = *((RNS*) ctxF);
+  RNS&      levelG = *((RNS*) ctxG);
 
   const IntVect         ratio = levelG.fineRatio();
   const DescriptorList& dl    = levelF.get_desc_lst();
@@ -38,15 +38,17 @@ void mlsdc_amr_interpolate(void *F, void *G, sdc_state *state, void *ctxF, void 
   Interpolater&         map   = *dl[0].interp();
   Array<BCRec>          bcr(ncomp);
 
+  RNS_SETNAN(UF);
+
   // make a coarse version (UC) of the fine multifab (UF)
   BoxArray crseba(UF.size());
   for (int i=0; i<crseba.size(); i++)
     crseba.set(i, map.CoarseBox(UF.fabbox(i), ratio));
   MultiFab UC(crseba, ncomp, 0);
 
-  RNS_SETNAN(UC); RNS_SETNAN(UF);
+  RNS_SETNAN(UC);
   UC.copy(UG);
-  levelG.fill_boundary(UC, state->t, RNS::set_PhysBoundary);
+  levelG.fill_boundary(UC, state->t, RNS::use_FillBoundary);
   RNS_ASSERTNONAN(UC);
 
   // now that UF is completely contained within UC, cycle through each
@@ -54,6 +56,7 @@ void mlsdc_amr_interpolate(void *F, void *G, sdc_state *state, void *ctxF, void 
 // #ifdef _OPENMP
 // #pragma omp parallel for
 // #endif
+
   for (MFIter mfi(UF); mfi.isValid(); ++mfi) {
     BoxLib::setBC(UF[mfi].box(), levelF.Domain(), 0, 0, ncomp, bcs, bcr);
     Geometry fine_geom(UF[mfi].box());
@@ -63,8 +66,8 @@ void mlsdc_amr_interpolate(void *F, void *G, sdc_state *state, void *ctxF, void 
                crse_geom, fine_geom, bcr, 0, 0);
   }
 
-  levelF.fill_boundary(UF, state->t, RNS::set_PhysBoundary);
 
+  levelF.fill_boundary(UF, state->t, RNS::set_PhysBoundary);
   RNS_ASSERTNONAN(UF);
 }
 
@@ -88,6 +91,7 @@ void mlsdc_amr_restrict(void *F, void *G, sdc_state *state, void *ctxF, void *ct
     levelG.fill_boundary(UG, state->t, RNS::use_FillBoundary);
 }
 
+
 END_EXTERN_C
 
 
@@ -98,51 +102,61 @@ void SDCAmr::timeStep(int level,
 		      Real stop_time )
 {
   BL_ASSERT(level == 0);
+  double dt = dt_level[0];
 
   // build sdc hierarchy
   if (sweepers[0] == NULL) rebuild_mlsdc();
 
-  // // regrid
-  // int lev_top = min(finest_level, max_level-1);
-  // for (int i=level; i<=lev_top; i++) {
-  //   const int post_regrid_flag = 1;
-  //   const int old_finest = finest_level;
+  // vector<MultiFab*> Unew, U0, Uend;
+  // vector<RNS*>      rns;
 
-  //   regrid(i,time);
-  //   amr_level[0].computeNewDt(finest_level, sub_cycle, n_cycle, ref_ratio,
-  // 			      dt_min, dt_level, stop_time, post_regrid_flag);
-  //   for (int k=i; k<=finest_level; k++)
-  //     level_count[k] = 0;
-  //   if (old_finest > finest_level)
-  //     lev_top = min(finest_level, max_level-1);
+  // for (int lev=0; lev<=finest_level; lev++) {
+  //   Unew[lev] = &getLevel(lev).get_new_data(0);
+  //   // U0.push_back(*((MultiFab*) mg.sweepers[lev]->nset->Q[0]));
   // }
+
+
+  // regrid
+  int lev_top = min(finest_level, max_level-1);
+  for (int i=level; i<=lev_top; i++) {
+    const int post_regrid_flag = 1;
+    const int old_finest = finest_level;
+
+    regrid(i,time);
+    amr_level[0].computeNewDt(finest_level, sub_cycle, n_cycle, ref_ratio,
+  			      dt_min, dt_level, stop_time, post_regrid_flag);
+
+    for (int k=i; k<=finest_level; k++) level_count[k] = 0;
+    if (old_finest > finest_level) lev_top = min(finest_level, max_level-1);
+  }
+
+  _time_step ++;
+
+  // note: since we never use 'old data', any calls to fill patch
+  // iterator will always use 'new data'.
 
   // set intial conditions and times
   for (int lev=0; lev<=finest_level; lev++) {
-    AmrLevel& amrlevel = getLevel(lev);
-    const DescriptorList& dl = amrlevel.get_desc_lst();
-    for (int st=0; st<dl.size(); st++) {
-      MultiFab& Unew = amrlevel.get_new_data(st);
-      MultiFab& U0   = *((MultiFab*) mg.sweepers[lev]->nset->Q[0]);
-      RNS*      rns  = dynamic_cast<RNS*>(&amrlevel);
+    MultiFab& Unew = getLevel(lev).get_new_data(0);
+    MultiFab& U0   = *((MultiFab*) mg.sweepers[lev]->nset->Q[0]);
+    MultiFab::Copy(U0, Unew, 0, 0, U0.nComp(), U0.nGrow());
+    getLevel(lev).get_state_data(0).setTimeLevel(time+dt, dt, dt);
+  }
 
-      RNS_SETNAN(U0);
-      rns->fill_boundary(Unew, time, RNS::use_FillCoarsePatch);
-      MultiFab::Copy(U0, Unew, 0, 0, U0.nComp(), U0.nGrow());
-      RNS_ASSERTNONAN(U0);
-
-      amrlevel.get_state_data(st).setTimeLevel(time+dt_level[0], dt_level[0], dt_level[0]);
-    }
+  for (int lev=0; lev<=finest_level; lev++) {
+    RNS&      rns  = *dynamic_cast<RNS*>(&getLevel(lev));
+    MultiFab& U0   = *((MultiFab*) mg.sweepers[lev]->nset->Q[0]);
+    rns.fill_boundary(U0, time, RNS::use_FillCoarsePatch);
   }
 
   // spread and iterate (XXX: spread from qend if step>0)
   if (verbose > 0 && ParallelDescriptor::IOProcessor()) {
-    cout << "MLSDC advancing with dt: " << dt_level[0] << endl;
+    cout << "MLSDC advancing with dt: " << dt << endl;
   }
 
-  sdc_mg_spread(&mg, time, dtLevel(0), 0);
+  sdc_mg_spread(&mg, time, dt, 0);
   for (int k=0; k<max_iters; k++) {
-    sdc_mg_sweep(&mg, time, dt_level[0], (k==max_iters-1) ? SDC_MG_LAST_SWEEP : 0);
+    sdc_mg_sweep(&mg, time, dt, (k==max_iters-1) ? SDC_MG_LAST_SWEEP : 0);
 
     // echo residuals
     if (verbose > 0) {
@@ -162,18 +176,10 @@ void SDCAmr::timeStep(int level,
 
   // copy final solution from SDCLib to 'new data'
   for (int lev=0; lev<=finest_level; lev++) {
-    AmrLevel& amrlevel = getLevel(lev);
-    const DescriptorList& dl = amrlevel.get_desc_lst();
-    for (int st=0; st<dl.size(); st++) {
-      int nnodes = mg.sweepers[lev]->nset->nnodes;
-      MultiFab& Unew = amrlevel.get_new_data(st);
-      MultiFab& Uend = *((MultiFab*) mg.sweepers[lev]->nset->Q[nnodes-1]);
-      //MultiFab::Copy(Unew, Uend, 0, 0, Uend.nComp(), Uend.nGrow());
-      MultiFab::Copy(Unew, Uend, 0, 0, Uend.nComp(), 0);
-      cout << "MIN/MAX " << lev << " " << scientific << Unew.min(0) << " " << Unew.max(0) << endl;
-      cout << Unew.boxArray() << endl;
-      cout << Uend.boxArray() << endl;
-    }
+    int       nnodes = mg.sweepers[lev]->nset->nnodes;
+    MultiFab& Unew   = getLevel(lev).get_new_data(0);
+    MultiFab& Uend   = *((MultiFab*) mg.sweepers[lev]->nset->Q[nnodes-1]);
+    MultiFab::Copy(Unew, Uend, 0, 0, Uend.nComp(), 0);
   }
 
   level_steps[level]++;
@@ -246,7 +252,7 @@ void SDCAmr::regrid(int  lbase, Real time, bool initial)
 SDCAmr::SDCAmr ()
 {
   ParmParse ppsdc("mlsdc");
-  if (!ppsdc.query("max_iters", max_iters)) max_iters = 22;
+  if (!ppsdc.query("max_iters", max_iters)) max_iters = 8;
   if (!ppsdc.query("max_trefs", max_trefs)) max_trefs = 3;
   if (!ppsdc.query("nnodes0",   nnodes0))   nnodes0 = 3;
   if (!ppsdc.query("trat",      trat))      trat = 2;
