@@ -379,7 +379,7 @@ void sdc_f1eval(void *F, void *Q, double t, sdc_state *state, void *ctx)
   MultiFab& U      = *((MultiFab*) Q);
   MultiFab& Uprime = *((MultiFab*) F);
 
-  if (rns.verbose > 0 && ParallelDescriptor::IOProcessor()) {
+  if (rns.verbose > 1 && ParallelDescriptor::IOProcessor()) {
     cout << "MLSDC evaluating adv/diff:  level: " << rns.Level() << ", node: " << state->node << endl;
   }
 
@@ -405,7 +405,7 @@ void sdc_f2eval(void *F, void *Q, double t, sdc_state *state, void *ctx)
 
   if (rns.chemSolve->isNull) return;
 
-  if (rns.verbose > 0 && ParallelDescriptor::IOProcessor()) {
+  if (rns.verbose > 1 && ParallelDescriptor::IOProcessor()) {
     cout << "MLSDC evaluating chemistry: level: " << rns.Level() << ", node: " << state->node << endl;
   }
 
@@ -439,7 +439,7 @@ void sdc_f2comp(void *F, void *Q, double t, double dt, void *RHS, sdc_state *sta
     return;
   }
 
-  if (rns.verbose > 0 && ParallelDescriptor::IOProcessor()) {
+  if (rns.verbose > 1 && ParallelDescriptor::IOProcessor()) {
     cout << "MLSDC advancing  chemistry: level: " << rns.Level() << ", node: " << state->node << endl;
   }
 
