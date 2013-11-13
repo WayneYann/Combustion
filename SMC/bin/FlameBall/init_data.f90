@@ -44,7 +44,8 @@ contains
 
     use variables_module, only : irho, imx,imy,imz,iene,iry1,ncons, iH2, iO2, iN2
     use chemistry_module, only : nspecies, patm
-    use probin_module, only : prob_type, pertmag, rfire, Tinit, uinit, vinit, winit, prob_dim
+    use probin_module, only : prob_type, pertmag, rfire, Tinit, uinit, vinit, winit, &
+         prob_dim, cellshift
 
     integer,          intent(in   ) :: lo(3),hi(3),ng,dm,dim3
     double precision, intent(in   ) :: dx(dm),phlo(dm),phhi(dm)
@@ -93,14 +94,14 @@ contains
     !$omp private(ii,jj,kk)
     do k=lo(3),hi(3)
        if (dm.eq.3) then
-          z = phlo(3) + dx(3)*(k+0.5d0)
+          z = phlo(3) + dx(3)*(k+cellshift)
        else
           z = 0.d0
        end if
        do j=lo(2),hi(2)
-          y = phlo(2) + dx(2)*(j+0.5d0)
+          y = phlo(2) + dx(2)*(j+cellshift)
           do i=lo(1),hi(1)
-             x = phlo(1) + dx(1)*(i+0.5d0)
+             x = phlo(1) + dx(1)*(i+cellshift)
 
              r = sqrt(x**2+y**2+z**2)
 
@@ -188,12 +189,12 @@ contains
                       do ii = -nimages, nimages
 
                          if (dm.eq.3) then
-                            z = phlo(3) + dx(3)*(k+0.5d0) + kk * (phhi(3) - phlo(3))
+                            z = phlo(3) + dx(3)*(k+cellshift) + kk * (phhi(3) - phlo(3))
                          else
                             z = 0.d0
                          end if
-                         y = phlo(2) + dx(2)*(j+0.5d0) + jj * (phhi(2) - phlo(2))
-                         x = phlo(1) + dx(1)*(i+0.5d0) + ii * (phhi(1) - phlo(1))
+                         y = phlo(2) + dx(2)*(j+cellshift) + jj * (phhi(2) - phlo(2))
+                         x = phlo(1) + dx(1)*(i+cellshift) + ii * (phhi(1) - phlo(1))
                          r = sqrt(x**2+y**2+z**2)
                          
                          ! Tt = (1400.0d0-300.0d0)/2.0d0*tanh((rfire-r)*20.0d0) + (1400.0d0+300.0d0)/2.0d0
@@ -231,10 +232,10 @@ contains
                          if (prob_dim .eq. 2 .or. dm.eq.2) then
                             z = 0.d0
                          else
-                            z = phlo(3) + dx(3)*(k+0.5d0) + kk * (phhi(3) - phlo(3))
+                            z = phlo(3) + dx(3)*(k+cellshift) + kk * (phhi(3) - phlo(3))
                          end if
-                         y = phlo(2) + dx(2)*(j+0.5d0) + jj * (phhi(2) - phlo(2))
-                         x = phlo(1) + dx(1)*(i+0.5d0) + ii * (phhi(1) - phlo(1))
+                         y = phlo(2) + dx(2)*(j+cellshift) + jj * (phhi(2) - phlo(2))
+                         x = phlo(1) + dx(1)*(i+cellshift) + ii * (phhi(1) - phlo(1))
                          r = sqrt(x**2+y**2+z**2)
                          
                          Pt = Pt    + 0.1d0*patm * exp(-(r / rfire)**2)
@@ -257,12 +258,12 @@ contains
                    kz = 0.d0
                 end if
 
-                x = phlo(1) + dx(1)*(i+0.5d0)
-                y = phlo(2) + dx(2)*(j+0.5d0)
+                x = phlo(1) + dx(1)*(i+cellshift)
+                y = phlo(2) + dx(2)*(j+cellshift)
                 if (prob_dim .eq. 2 .or. dm.eq.2) then
                    z = 0.d0
                 else
-                   z = phlo(3) + dx(3)*(k+0.5d0)
+                   z = phlo(3) + dx(3)*(k+cellshift)
                 end if
 
                 u1t =  sin(kx*x)*cos(ky*y)*cos(kz*z) * 300.d0
