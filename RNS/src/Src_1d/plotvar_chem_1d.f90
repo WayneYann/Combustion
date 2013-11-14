@@ -14,7 +14,7 @@ subroutine rns_makeplotvar(lo, hi, dx, &
   integer, intent(in) :: pm_l1, pm_h1
   integer, intent(in) :: pt_l1, pt_h1
   integer, intent(in) :: npv, icomp_magvel, icomp_Mach, icomp_divu, icomp_magvort, &
-       icomp_X, icomp_omegadot,	icomp_dYdt, icomp_heatRelease, icomp_fuelConsumption, &
+       icomp_X, icomp_omegadot, icomp_dYdt, icomp_heatRelease, icomp_fuelConsumption, &
        fuelID
   double precision, intent(in   ) :: prim(pm_l1:pm_h1,NVAR) 
   double precision, intent(inout) :: plot(pt_l1:pt_h1,0:npv-1) 
