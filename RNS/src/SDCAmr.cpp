@@ -1,5 +1,44 @@
 /*
  * Multilevel SDC + AMR controller.
+ *
+ * When RNS is compiled with USE_SDCLIB=TRUE, the time-stepping is
+ * done using the multi-level SDC (MLSDC) algorithm, with IMEX
+ * sweepers on each level (hydrodynamics are explicit, chemistry is
+ * implicit).  The MLSDC algorithm is implemented in C in SDCLib (in
+ * SDCLib MLSDC is called multi-grid SDC).
+ *
+ * The interface between SDCLib and RNS is (mostly) contained in
+ * SDCAmr (derived from Amr) and SDCAmrEncap.
+ *
+ * Note that in MLSDC, there is no concept of "sub-cycling" fine
+ * levels.  As such, the "timeStep" method defined in SDCAmr is only
+ * called on the coarsest level, and it essentially passes control to
+ * SDCLib to advance the solution.
+ *
+ * SDCLib handles interpolation and restriction in time.  SDCLib also
+ * takes care of allocating multifabs at each SDC node.  As such the
+ * traditional Amr concepts of "old data", "new data", and defining an
+ * "advance" routine no longer apply.  In order to reuse as much of
+ * the existing Amr code as possible, SDCAmr puts the solution
+ * obtained from SDCLib into the "new data" state (this means all the
+ * logic to write plotfiles etc still works), but never defines "old
+ * data" or any "mid data".
+ *
+ * Some notes:
+ *
+ * 1. Since we never use 'old data', any calls to fill patch iterator
+ *    will always use 'new data', regardless of any 'time' information
+ *    set on the state data.
+ *
+ * Known issues:
+ *
+ * 1. Currently the fine levels are very high order: we need to tweak
+ *    the integration and interpolation matrices.
+ *
+ * 2. The SDC hierarchy is currently not depth limited.
+ *
+ * 3. We're using Gauss-Lobatto nodes, but Gauss-Radau would probably
+ *    be better for chemistry.
  */
 
 #include <SDCAmr.H>
@@ -47,8 +86,8 @@ void mlsdc_amr_interpolate(void *F, void *G, sdc_state *state, void *ctxF, void 
   MultiFab UC(crseba, ncomp, 0);
 
   RNS_SETNAN(UC);
+  levelG.fill_boundary(UG, state->t, RNS::use_FillBoundary);
   UC.copy(UG);
-  levelG.fill_boundary(UC, state->t, RNS::use_FillBoundary);
   RNS_ASSERTNONAN(UC);
 
   // now that UF is completely contained within UC, cycle through each
@@ -56,7 +95,6 @@ void mlsdc_amr_interpolate(void *F, void *G, sdc_state *state, void *ctxF, void 
 // #ifdef _OPENMP
 // #pragma omp parallel for
 // #endif
-
   for (MFIter mfi(UF); mfi.isValid(); ++mfi) {
     BoxLib::setBC(UF[mfi].box(), levelF.Domain(), 0, 0, ncomp, bcs, bcr);
     Geometry fine_geom(UF[mfi].box());
@@ -66,11 +104,9 @@ void mlsdc_amr_interpolate(void *F, void *G, sdc_state *state, void *ctxF, void 
                crse_geom, fine_geom, bcr, 0, 0);
   }
 
-
   levelF.fill_boundary(UF, state->t, RNS::set_PhysBoundary);
   RNS_ASSERTNONAN(UF);
 }
-
 
 /*
  * Spatial restriction between MultiFabs.  Called by SDCLib.
@@ -79,42 +115,28 @@ void mlsdc_amr_restrict(void *F, void *G, sdc_state *state, void *ctxF, void *ct
 {
   MultiFab& UF      = *((MultiFab*) F);
   MultiFab& UG      = *((MultiFab*) G);
-  RNS&      levelF  = *((RNS*) ctxF);
   RNS&      levelG  = *((RNS*) ctxG);
 
-  if (state->kind == SDC_SOLUTION)
-    levelF.fill_boundary(UF, state->t, RNS::use_FillBoundary);
-
   levelG.avgDown(UG, UF);
-
   if (state->kind == SDC_SOLUTION)
     levelG.fill_boundary(UG, state->t, RNS::use_FillBoundary);
 }
 
-
 END_EXTERN_C
 
-
-void SDCAmr::timeStep(int level,
-		      Real time,
-		      int /* iteration */,
-		      int /* niter */,
-		      Real stop_time )
+/*
+ * Take one SDC+AMR time step.
+ *
+ * This is only called on the coarsest SDC+AMR level.
+ */
+void SDCAmr::timeStep(int level, Real time,
+		      int /* iteration */, int /* niter */,
+		      Real stop_time)
 {
   BL_ASSERT(level == 0);
-  double dt = dt_level[0];
 
   // build sdc hierarchy
   if (sweepers[0] == NULL) rebuild_mlsdc();
-
-  // vector<MultiFab*> Unew, U0, Uend;
-  // vector<RNS*>      rns;
-
-  // for (int lev=0; lev<=finest_level; lev++) {
-  //   Unew[lev] = &getLevel(lev).get_new_data(0);
-  //   // U0.push_back(*((MultiFab*) mg.sweepers[lev]->nset->Q[0]));
-  // }
-
 
   // regrid
   int lev_top = min(finest_level, max_level-1);
@@ -130,10 +152,13 @@ void SDCAmr::timeStep(int level,
     if (old_finest > finest_level) lev_top = min(finest_level, max_level-1);
   }
 
-  _time_step ++;
+  rebuild_mlsdc();
 
-  // note: since we never use 'old data', any calls to fill patch
-  // iterator will always use 'new data'.
+  // echo
+  double dt = dt_level[0];
+  if (verbose > 0 && ParallelDescriptor::IOProcessor()) {
+    cout << "MLSDC advancing with dt: " << dt << endl;
+  }
 
   // set intial conditions and times
   for (int lev=0; lev<=finest_level; lev++) {
@@ -143,22 +168,18 @@ void SDCAmr::timeStep(int level,
     getLevel(lev).get_state_data(0).setTimeLevel(time+dt, dt, dt);
   }
 
+  // fill fine boundaries using coarse data
   for (int lev=0; lev<=finest_level; lev++) {
     RNS&      rns  = *dynamic_cast<RNS*>(&getLevel(lev));
     MultiFab& U0   = *((MultiFab*) mg.sweepers[lev]->nset->Q[0]);
     rns.fill_boundary(U0, time, RNS::use_FillCoarsePatch);
   }
 
-  // spread and iterate (XXX: spread from qend if step>0)
-  if (verbose > 0 && ParallelDescriptor::IOProcessor()) {
-    cout << "MLSDC advancing with dt: " << dt << endl;
-  }
-
+  // spread and iterate
   sdc_mg_spread(&mg, time, dt, 0);
   for (int k=0; k<max_iters; k++) {
     sdc_mg_sweep(&mg, time, dt, (k==max_iters-1) ? SDC_MG_LAST_SWEEP : 0);
 
-    // echo residuals
     if (verbose > 0) {
       for (int lev=0; lev<=finest_level; lev++) {
         int       nnodes = mg.sweepers[lev]->nset->nnodes;
@@ -174,7 +195,7 @@ void SDCAmr::timeStep(int level,
     }
   }
 
-  // copy final solution from SDCLib to 'new data'
+  // copy final solution from sdclib to new_data
   for (int lev=0; lev<=finest_level; lev++) {
     int       nnodes = mg.sweepers[lev]->nset->nnodes;
     MultiFab& Unew   = getLevel(lev).get_new_data(0);
@@ -186,6 +207,10 @@ void SDCAmr::timeStep(int level,
   level_count[level]++;
 }
 
+
+/*
+ * Build single SDC level.
+ */
 sdc_sweeper* SDCAmr::build_mlsdc_level(int lev)
 {
   int first_refinement_level, nnodes;
@@ -211,6 +236,11 @@ sdc_sweeper* SDCAmr::build_mlsdc_level(int lev)
   return (sdc_sweeper*) imex;
 }
 
+/*
+ * Rebuild MLSDC hierarchy.
+ *
+ * Note that XXX.
+ */
 void SDCAmr::rebuild_mlsdc()
 {
   // reset previous and clear sweepers etc
@@ -243,12 +273,9 @@ void SDCAmr::rebuild_mlsdc()
   }
 }
 
-void SDCAmr::regrid(int  lbase, Real time, bool initial)
-{
-  Amr::regrid(lbase, time, initial);
-  rebuild_mlsdc();
-}
-
+/*
+ * Initialize SDC multigrid sweeper, set parameters.
+ */
 SDCAmr::SDCAmr ()
 {
   ParmParse ppsdc("mlsdc");
@@ -260,6 +287,7 @@ SDCAmr::SDCAmr ()
   // sdc_log_set_stdout(SDC_LOG_DEBUG);
   sdc_mg_build(&mg, max_level+1);
   sdc_hooks_add(mg.hooks, SDC_HOOK_POST_TRANS, sdc_poststep_hook);
+  // sdc_hooks_add(mg.hooks, SDC_HOOK_POST_FAS,   sdc_postfas_hook);
 
   sweepers.resize(max_level+1);
   encaps.resize(max_level+1);
