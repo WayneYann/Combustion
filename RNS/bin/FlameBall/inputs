@@ -3,15 +3,16 @@ max_step  = 10000
 stop_time = 1.e-4
 
 # for RK
-amr.multi_level_sdc = 0 
-sdc.t_ratio         = 1
 rns.RK_order        = 3   # 3 works with amr.max_level=0 only
+
+# for SDC
+mlsdc.max_iters = 4
 
 # PROBLEM SIZE & GEOMETRY
 geometry.is_periodic = 1 1 1
 geometry.coord_sys   = 0  # 0 => cart, 1 => RZ  2=>spherical
-geometry.prob_lo     =  -0.05d0  -0.05d0  -0.05d0
-geometry.prob_hi     =   0.05d0   0.05d0   0.05d0
+geometry.prob_lo     =  -0.05    -0.05    -0.05  
+geometry.prob_hi     =   0.05     0.05     0.05  
 amr.n_cell           =   128     128     128
 
 vode.rtol      = 1.e-10
@@ -24,7 +25,7 @@ vode.verbose   = 0
 
 eglib.use_bulk_visc = 1
 
-rns.Riemann    = 1     # 0: HLL,  1: JBB,  2: HLLC
+rns.Riemann    = 0     # 0: HLL,  1: JBB,  2: HLLC
 rns.Treference = 298.0
 
 # >>>>>>>>>>>>>  BC FLAGS <<<<<<<<<<<<<<<<
@@ -36,13 +37,13 @@ rns.lo_bc       =  0   0   0
 rns.hi_bc       =  0   0   0
 
 # TIME STEP CONTROL
-rns.cfl            = 0.5     # cfl number for hyperbolic system
+rns.cfl            = 0.1     # cfl number for hyperbolic system
 rns.init_shrink    = 0.1     # scale back initial timestep
 rns.change_max     = 1.05    # scale back initial timestep
 rns.dt_cutoff      = 5.e-20  # level 0 timestep below which we halt
 
 # DIAGNOSTICS & VERBOSITY
-rns.v              = 1       # verbosity in Castro.cpp
+rns.v              = 1       # verbosity in RNS.cpp
 amr.v              = 1       # verbosity in Amr.cpp
 amr.grid_log       = grdlog  # name of grid logging file
 

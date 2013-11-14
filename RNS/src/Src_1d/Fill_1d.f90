@@ -28,7 +28,7 @@ subroutine rns_grpfill(adv,adv_l1,adv_h1, &
      end if
      
      !        XHI
-     if ( bc(1,2,n).eq.EXT_DIR .and. adv_l1.lt.domlo(1)) then
+     if ( bc(1,2,n).eq.EXT_DIR .and. adv_h1.gt.domhi(1)) then
         print *,'grpfill: SHOULD NEVER GET HERE bc(1,2,n) .eq. EXT_DIR) '
         stop
      end if
@@ -58,7 +58,7 @@ subroutine rns_regfill(adv,adv_l1,adv_h1,domlo,domhi,delta,xlo,time,bc)
   end if
   
   !     XHI
-  if ( bc(1,2,1).eq.EXT_DIR .and. adv_l1.lt.domlo(1)) then
+  if ( bc(1,2,1).eq.EXT_DIR .and. adv_h1.gt.domhi(1)) then
      print *,'regfill: SHOULD NEVER GET HERE bc(1,2,1) .eq. EXT_DIR) '
      stop
   end if
@@ -86,7 +86,7 @@ subroutine rns_denfill(adv,adv_l1,adv_h1,domlo,domhi,delta,xlo,time,bc)
   end if
   
   !     XHI
-  if ( bc(1,2,1).eq.EXT_DIR .and. adv_l1.lt.domlo(1)) then
+  if ( bc(1,2,1).eq.EXT_DIR .and. adv_h1.gt.domhi(1)) then
      print *,'denfill: SHOULD NEVER GET HERE bc(1,2,1) .eq. EXT_DIR) '
      stop
   end if
@@ -114,7 +114,7 @@ subroutine rns_mxfill(adv,adv_l1,adv_h1,domlo,domhi,delta,xlo,time,bc)
   end if
   
   !     XHI
-  if ( bc(1,2,1).eq.EXT_DIR .and. adv_l1.lt.domlo(1)) then
+  if ( bc(1,2,1).eq.EXT_DIR .and. adv_h1.gt.domhi(1)) then
      print *,'mxfill: SHOULD NEVER GET HERE bc(1,2,1) .eq. EXT_DIR) '
      stop
   end if

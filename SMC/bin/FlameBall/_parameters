@@ -12,3 +12,6 @@ winit                   real            138.1d0
 
 # parameters for prob_type 4
 prob_dim                integer         2
+
+# For cell i, x = prob_lo_x + dx*(i+shift)
+cellshift               real            0.0d0

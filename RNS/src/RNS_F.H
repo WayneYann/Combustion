@@ -31,12 +31,6 @@ BL_FORT_PROC_DECL(RNS_ENFORCE_CONSISTENT_Y,rns_enforce_consistent_y)
     (const int lo[], const int hi[],
      BL_FORT_FAB_ARG(U));
 
-BL_FORT_PROC_DECL(FILCC,filcc)
-                (const Real * q, ARLIM_P(q_lo), ARLIM_P(q_hi),
-                 const int * domlo, const int * domhi,
-                 const Real * dx_crse, const Real * xlo,
-                 const int * bc);
-
 BL_FORT_PROC_DECL(GET_METHOD_PARAMS,get_method_params)
     (const int* ngrow, const int* nriemann);
 
@@ -171,6 +165,11 @@ BL_FORT_PROC_DECL(RNS_AVGDOWN,rns_avgdown)
      const BL_FORT_FAB_ARG(fine_vol),
      const int ovlo[], const int ovhi[], const int rat[]);
 
+BL_FORT_PROC_DECL(RNS_SUM_CONS, rns_sum_cons)
+    (const BL_FORT_FAB_ARG(state),
+     const BL_FORT_FAB_ARG(msk),
+     const BL_FORT_FAB_ARG(vol),
+     Real* s);
 
 /* problem-specific stuff goes here */
 

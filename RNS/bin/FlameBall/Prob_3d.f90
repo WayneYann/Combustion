@@ -98,7 +98,23 @@ subroutine rns_initdata(level,time,lo,hi,nscal, &
   double precision :: pmf_vals(NSPEC+3), Xt(nspec), Yt(nspec)
   double precision :: rhot, et, Pt, Tt, u1t, u2t, u3t, kx, ky, kz, Pi
 
-  double precision, parameter :: gp(2) = (/ -1.d0/sqrt(3.d0), 1.d0/sqrt(3.d0) /)
+!  integer, parameter :: ngp = 2
+!  double precision, parameter :: gp(2) = (/ -1.d0/sqrt(3.d0), 1.d0/sqrt(3.d0) /)
+!  double precision, parameter :: wgp(2) = (/ 1.d0, 1.d0 /)
+!
+!  integer, parameter :: ngp = 3
+!  double precision, parameter :: gp(3) = (/ -sqrt(0.6d0), 0.d0, sqrt(0.6d0) /)
+!  double precision, parameter :: wgp(3) = (/ 5.d0/9.d0, 8.d0/9.d0, 5.d0/9.d0 /)  
+!
+  integer, parameter :: ngp = 4
+  double precision, parameter :: gp(4) = (/  &
+       -sqrt((3.d0+2.d0*sqrt(1.2d0))/7.d0), -sqrt((3.d0-2.d0*sqrt(1.2d0))/7.d0), &
+       +sqrt((3.d0-2.d0*sqrt(1.2d0))/7.d0),  sqrt((3.d0+2.d0*sqrt(1.2d0))/7.d0) /)
+  double precision, parameter :: wgp(4) = (/ &
+       (18.d0-sqrt(30.d0))/36.d0, (18.d0+sqrt(30.d0))/36.d0, &
+       (18.d0+sqrt(30.d0))/36.d0, (18.d0-sqrt(30.d0))/36.d0 /)
+
+  double precision :: w
   
   if (nspecies .ne. NSPEC) then
      write(6,*)"nspecies, nspec ", nspecies, NSPEC
@@ -126,11 +142,11 @@ subroutine rns_initdata(level,time,lo,hi,nscal, &
 
            state(i,j,k,:) = 0.d0
 
-           do kk = 1, 2
+           do kk = 1, ngp
               zg = zcen + 0.5d0*delta(3)*gp(kk)
-              do jj = 1, 2
+              do jj = 1, ngp
                  yg = ycen + 0.5d0*delta(2)*gp(jj)
-                 do ii = 1, 2
+                 do ii = 1, ngp
                     xg = xcen + 0.5d0*delta(1)*gp(ii)
 
                     if (prob_type .eq. 1) then
@@ -204,15 +220,17 @@ subroutine rns_initdata(level,time,lo,hi,nscal, &
               
                     call eos_given_PTX(rhot, et, Yt, Pt, Tt, Xt)
 
-                    state(i,j,k,URHO ) = state(i,j,k,URHO ) + 0.125d0*rhot
-                    state(i,j,k,UMX  ) = state(i,j,k,UMX  ) + 0.125d0*rhot*u1t
-                    state(i,j,k,UMY  ) = state(i,j,k,UMY  ) + 0.125d0*rhot*u2t
-                    state(i,j,k,UMZ  ) = state(i,j,k,UMZ  ) + 0.125d0*rhot*u3t
-                    state(i,j,k,UEDEN) = state(i,j,k,UEDEN) + 0.125d0*rhot* &
+                    w = wgp(ii)*wgp(jj)*wgp(kk)*0.125d0
+
+                    state(i,j,k,URHO ) = state(i,j,k,URHO ) + w*rhot
+                    state(i,j,k,UMX  ) = state(i,j,k,UMX  ) + w*rhot*u1t
+                    state(i,j,k,UMY  ) = state(i,j,k,UMY  ) + w*rhot*u2t
+                    state(i,j,k,UMZ  ) = state(i,j,k,UMZ  ) + w*rhot*u3t
+                    state(i,j,k,UEDEN) = state(i,j,k,UEDEN) + w*rhot* &
                          (et + 0.5d0*(u1t**2+u2t**2+u3t**2))
-                    state(i,j,k,UTEMP) = state(i,j,k,UTEMP) + 0.125d0*Tt
+                    state(i,j,k,UTEMP) = state(i,j,k,UTEMP) + w*Tt
                     do n=1, NSPEC
-                       state(i,j,k,UFS+n-1) = state(i,j,k,UFS+n-1) + 0.125d0*rhot*Yt(n)
+                       state(i,j,k,UFS+n-1) = state(i,j,k,UFS+n-1) + w*rhot*Yt(n)
                     end do
               
                  end do

@@ -300,7 +300,7 @@ RNS::advance_chemistry(MultiFab& U, Real dt)
 	    (lo, hi, BL_TO_FORTRAN(U[i]), dt);
     }
 
-    if (dt > 0.0) post_update(U);
+    post_update(U);
 }
 
 

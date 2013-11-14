@@ -39,7 +39,7 @@ subroutine rns_initdata(level,time,lo,hi,nscal, &
 
   use eos_module, only : gamma_const, eos_get_T
   use probdata_module
-  use meth_params_module, only : NVAR, URHO, UMX, UMY, UEDEN, UTEMP, UFS, NSPEC
+  use meth_params_module, only : NVAR, URHO, UEDEN, UTEMP, UFS, NSPEC
 
   implicit none
 

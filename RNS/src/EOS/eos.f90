@@ -228,7 +228,7 @@ contains
     double precision :: rwrk
     call ckxty (X, iwrk, rwrk, Y)
     call ckrhoy(P,T,Y,iwrk,rwrk,rho)
-    call ckubms(T   ,Y,iwrk,rwrk,e)
+    call ckubms(T,Y,iwrk,rwrk,e)
   end subroutine eos_given_PTX
 
 

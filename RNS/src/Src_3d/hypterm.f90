@@ -22,7 +22,7 @@ contains
     double precision,intent(inout)::fy(fylo(1):fyhi(1),fylo(2):fyhi(2),fylo(3):fyhi(3),NVAR)
     double precision,intent(inout)::fz(fzlo(1):fzhi(1),fzlo(2):fzhi(2),fzlo(3):fzhi(3),NVAR)
 
-    integer :: tlo4(4), thi4(4), tlo(3), thi(3), i, j, k, n, g
+    integer :: tlo4(4), thi4(4), tlo(3), thi(3), i, j
     double precision, dimension(:,:,:,:), allocatable :: Ulz, URz, UG1z, UG2z
 
     allocate( ULz(lo(1)-3:hi(1)+3,lo(2)-3:hi(2)+3,lo(3):hi(3)+1,NVAR))

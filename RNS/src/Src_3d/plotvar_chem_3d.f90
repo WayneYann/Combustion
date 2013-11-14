@@ -14,7 +14,7 @@ subroutine rns_makeplotvar(lo, hi, dx, &
   integer, intent(in) :: pm_l1, pm_h1, pm_l2, pm_h2, pm_l3, pm_h3
   integer, intent(in) :: pt_l1, pt_h1, pt_l2, pt_h2, pt_l3, pt_h3
   integer, intent(in) :: npv, icomp_magvel, icomp_Mach, icomp_divu, icomp_magvort, &
-       icomp_X, icomp_omegadot,	icomp_dYdt, icomp_heatRelease, icomp_fuelConsumption, &
+       icomp_X, icomp_omegadot, icomp_dYdt, icomp_heatRelease, icomp_fuelConsumption, &
        fuelID
   double precision,intent(in   )::prim(pm_l1:pm_h1,pm_l2:pm_h2,pm_l3:pm_h3,NVAR) 
   double precision,intent(inout)::plot(pt_l1:pt_h1,pt_l2:pt_h2,pt_l3:pt_h3,0:npv-1) 

@@ -229,6 +229,32 @@ subroutine rns_enforce_consistent_Y(lo,hi,U,U_l1,U_h1)
 end subroutine rns_enforce_consistent_Y
 
 
+subroutine rns_sum_cons ( &
+     U  ,U_l1,U_h1, &
+     msk,m_l1,m_h1, &
+     vol,v_l1,v_h1, &
+     s)
+  use meth_params_module, only : NVAR
+  implicit none
+  
+  integer, intent(in) :: U_l1,U_h1
+  integer, intent(in) :: m_l1,m_h1
+  integer, intent(in) :: v_l1,v_h1
+  double precision, intent(in) :: U  (U_l1:U_h1,NVAR)
+  double precision, intent(in) :: msk(m_l1:m_h1)
+  double precision, intent(in) :: vol(v_l1:v_h1)
+  double precision, intent(inout) :: s(3)
+
+  integer :: i, n
+
+  do n=1,3
+     do i=m_l1,m_h1
+        s(n) = s(n) + msk(i)*vol(i)*U(i,n)
+     end do
+  end do
+
+end subroutine rns_sum_cons
+
 
 ! :: ----------------------------------------------------------
 ! :: Volume-weight average the fine grid data onto the coarse

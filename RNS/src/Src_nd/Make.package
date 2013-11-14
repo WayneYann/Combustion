@@ -2,7 +2,12 @@
 ifeq (${CHEMISTRY_MODEL}, NULL)
   f90EXE_sources += variables_null.f90
 else
-  f90EXE_sources += variables.f90 transport_properties.f90 derivative_stencil.f90
+  f90EXE_sources += variables.f90 derivative_stencil.f90
+  ifeq ($(CONVERGENCE), TRUE)
+    f90EXE_sources += trans_prop_conv.f90
+  else
+    f90EXE_sources += transport_properties.f90
+  endif
 endif
 
 f90EXE_sources += reconstruct.f90 weno.f90 riemann.f90

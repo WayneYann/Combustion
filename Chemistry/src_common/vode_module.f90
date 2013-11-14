@@ -7,7 +7,7 @@ module vode_module
 
   logical, save :: use_ajac, save_ajac, always_new_j, stiff
 
-  double precision, save :: rtol, atol
+  double precision, save :: rtol(1), atol(1)
 
   double precision, allocatable, save :: voderwork(:), voderpar(:)
   integer, allocatable, save :: vodeiwork(:), vodeipar(:)
@@ -28,8 +28,8 @@ contains
     neq          = neq_in
     verbose      = vode_verbose
     itol         = vode_itol
-    rtol         = vode_rtol
-    atol         = vode_atol
+    rtol(1)      = vode_rtol
+    atol(1)      = vode_atol
     order        = vode_order
     maxstep      = vode_maxstep
     use_ajac     = vode_use_ajac
