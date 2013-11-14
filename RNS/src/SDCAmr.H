@@ -61,9 +61,9 @@ public:
                         int  niter,
                         Real stop_time);
 
-  virtual void regrid (int  lbase,
-		       Real time,
-		       bool initial = false);
+  // virtual void regrid (int  lbase,
+  // 		       Real time,
+  // 		       bool initial = false);
 };
 
 #ifdef ZMQ

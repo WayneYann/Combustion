@@ -4,12 +4,12 @@
 
 interface
   subroutine dgefa(a, lda, n, ipvt, info)
-    integer, intent(in) :: lda, n
-    integer, intent(out) :: info, ipvt(n)
-    double precision, intent(inout) :: a(lda, n)
+    integer:: lda, n
+    integer :: info, ipvt(*)
+    double precision :: a(lda, *)
   end subroutine dgefa
   subroutine dgesl(a, lda, n, ipvt, b, job)
-    integer, intent(in)             :: lda, n, job, ipvt(n)
-    double precision, intent(inout) :: a(lda,n), b(n)
+    integer :: lda, n, job, ipvt(*)
+    double precision :: a(lda,n), b(*)
   end subroutine dgesl
 end interface

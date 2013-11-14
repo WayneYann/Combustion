@@ -27,14 +27,21 @@ using std::string;
 
 #include <Utility.H>
 #include <CONSTANTS.H>
-#include <RNS.H>
-#include <RNS_F.H>
 #include <Derive_F.H>
 #include <VisMF.H>
 #include <TagBox.H>
 #include <ParmParse.H>
+
 #include <ChemDriver.H>
 
+#include <RNS.H>
+#include <RNS_F.H>
+
+#ifndef NDEBUG
+static int  sum_int = 1;
+#else
+static int  sum_int = -1;
+#endif
 static Real fixed_dt     = -1.0;
 static Real initial_dt   = -1.0;
 static Real dt_cutoff    = 0.0;
@@ -161,6 +168,7 @@ RNS::read_params ()
     pp.query("change_max",change_max);
     pp.query("fixed_dt",fixed_dt);
     pp.query("initial_dt",initial_dt);
+    pp.query("sum_int",sum_int);
     pp.query("do_reflux",do_reflux);
     do_reflux = (do_reflux ? 1 : 0);
     pp.get("dt_cutoff",dt_cutoff);
@@ -646,9 +654,12 @@ RNS::post_restart ()
 void
 RNS::postCoarseTimeStep (Real cumtime)
 {
-    //
-    // Only level 0 calls this routine.
-    //
+    if (sum_int <= 0) return;
+
+    int nstep = parent->levelSteps(0);
+    if (nstep % sum_int == 0) {
+	sum_conserved_variables();
+    }
 }
 
 void
@@ -840,48 +851,6 @@ RNS::derive (const std::string& name,
 {
     AmrLevel::derive(name,time,mf,dcomp);
 }
-
-Real
-RNS::sumDerive (const std::string& name,
-		Real           time)
-{
-    Real sum     = 0.0;
-    MultiFab* mf = derive(name, time, 0);
-    
-    BL_ASSERT(!(mf == 0));
-    
-    BoxArray baf;
-    
-    if (level < parent->finestLevel())
-    {
-	baf = parent->boxArray(level+1);
-	baf.coarsen(fine_ratio);
-    }
-    
-    for (MFIter mfi(*mf); mfi.isValid(); ++mfi)
-    {
-	FArrayBox& fab = (*mf)[mfi];
-	
-	if (level < parent->finestLevel())
-        {
-	    std::vector< std::pair<int,Box> > isects = baf.intersections(grids[mfi.index()]);
-	    
-	    for (int ii = 0; ii < isects.size(); ii++)
-            {
-		fab.setVal(0,isects[ii].second,0);
-            }
-        }
-      
-	sum += fab.sum(0);
-    }
-    
-    delete mf;
-    
-    ParallelDescriptor::ReduceRealSum(sum);
-    
-    return sum;
-}
-
 
 Real
 RNS::getCPUTime()

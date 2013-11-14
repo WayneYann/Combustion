@@ -3,15 +3,16 @@ max_step  = 1000000
 stop_time = 0.038
 
 # for RK
-amr.multi_level_sdc = 0 
-sdc.t_ratio         = 1
 rns.RK_order        = 3   # 3 works with amr.max_level=0 only
+
+# for SDC
+mlsdc.max_iters = 4
 
 # PROBLEM SIZE & GEOMETRY
 geometry.is_periodic = 0 1 0
 geometry.coord_sys   = 0  # 0 => cart, 1 => RZ  2=>spherical
-geometry.prob_lo     =   0.0d0   0.0d0      0.0d0
-geometry.prob_hi     =   1.0d0   0.05d0     1.0d0
+geometry.prob_lo     =   0.0     0.0        0.0  
+geometry.prob_hi     =   1.0     0.05       1.0  
 amr.n_cell           =   640     32         1
 
 rns.Riemann    =  2     # 0: HLL,  1: JBB,  2: HLLC
@@ -33,7 +34,7 @@ rns.change_max     = 1.05    # scale back initial timestep
 rns.dt_cutoff      = 5.e-20  # level 0 timestep below which we halt
 
 # DIAGNOSTICS & VERBOSITY
-rns.v              = 1       # verbosity in Castro.cpp
+rns.v              = 1       # verbosity in RNS.cpp
 amr.v              = 1       # verbosity in Amr.cpp
 amr.grid_log       = grdlog  # name of grid logging file
 
