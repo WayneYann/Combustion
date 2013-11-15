@@ -188,8 +188,10 @@ void SDCAmr::timeStep(int level, Real time,
 	double    r2     = R.norm2();
 
 	if (ParallelDescriptor::IOProcessor()) {
+	  std::ios_base::fmtflags ff = cout.flags();
 	  cout << "MLSDC iter: " << k << ", level: " << lev
 	       << ", res norm0: " << scientific << r0 << ", res norm2: " << r2 << endl;
+	  cout.flags(ff);
 	}
       }
     }
