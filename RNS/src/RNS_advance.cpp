@@ -76,6 +76,8 @@ RNS::advance (Real time,
 void
 RNS::fill_boundary(MultiFab& U, Real time, int type_in)
 {
+    BL_PROFILE("RNS::fill_boundary()");
+
     if (type_in == no_fill) return;
 
     int type = type_in;
@@ -152,6 +154,8 @@ void
 RNS::dUdt_AD(MultiFab& U, MultiFab& Uprime, Real time, int fill_boundary_type,
 	     FluxRegister* fine, FluxRegister* current, Real dt)
 {
+    BL_PROFILE("RNS::dUdt_AD()");
+
     FArrayBox  flux[BL_SPACEDIM];
     MultiFab fluxes[BL_SPACEDIM];
     if (do_reflux && fine)
@@ -220,6 +224,8 @@ RNS::dUdt_AD(MultiFab& U, MultiFab& Uprime, Real time, int fill_boundary_type,
 void
 RNS::dUdt_chemistry(const MultiFab& U, MultiFab& Uprime)
 {
+    BL_PROFILE("RNS::dUdt_chemistry()");
+
     BL_ASSERT( ! chemSolve->isNull );
 
     for (MFIter mfi(U); mfi.isValid(); ++mfi)
@@ -288,6 +294,8 @@ RNS::post_update(MultiFab& U)
 void
 RNS::advance_chemistry(MultiFab& U, Real dt)
 {
+    BL_PROFILE("RNS::advance_chemistry()");
+
     BL_ASSERT( ! chemSolve->isNull );
 
     for (MFIter mfi(U); mfi.isValid(); ++mfi)

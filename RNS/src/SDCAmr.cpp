@@ -67,6 +67,8 @@ BEGIN_EXTERN_C
 //             different physical boundary conditions
 void mlsdc_amr_interpolate(void *F, void *G, sdc_state *state, void *ctxF, void *ctxG)
 {
+  BL_PROFILE("MLSDC_AMR_INTERPOLATE()");
+
   MultiFab& UF     = *((MultiFab*) F);
   MultiFab& UG     = *((MultiFab*) G);
   RNS&      levelF = *((RNS*) ctxF);
@@ -196,6 +198,8 @@ void mlsdc_amr_interpolate(void *F, void *G, sdc_state *state, void *ctxF, void 
  */
 void mlsdc_amr_restrict(void *F, void *G, sdc_state *state, void *ctxF, void *ctxG)
 {
+  BL_PROFILE("MLSDC_AMR_RESTRICT()");
+
   MultiFab& UF      = *((MultiFab*) F);
   MultiFab& UG      = *((MultiFab*) G);
   RNS&      levelG  = *((RNS*) ctxG);
@@ -216,6 +220,8 @@ void SDCAmr::timeStep(int level, Real time,
 		      int /* iteration */, int /* niter */,
 		      Real stop_time)
 {
+  BL_PROFILE("SDCAmr::timeStep()");
+
   BL_ASSERT(level == 0);
 
   // build sdc hierarchy
@@ -260,6 +266,9 @@ void SDCAmr::timeStep(int level, Real time,
 
   // spread and iterate
   sdc_mg_spread(&mg, time, dt, 0);
+
+  BL_PROFILE_VAR("SDCAmr::timeStep-iters", sdc_iters);
+
   for (int k=0; k<max_iters; k++) {
     sdc_mg_sweep(&mg, time, dt, (k==max_iters-1) ? SDC_MG_LAST_SWEEP : 0);
 
@@ -280,6 +289,8 @@ void SDCAmr::timeStep(int level, Real time,
     }
   }
 
+  BL_PROFILE_VAR_STOP(sdc_iters);
+
   // copy final solution from sdclib to new_data
   for (int lev=0; lev<=finest_level; lev++) {
     int       nnodes = mg.sweepers[lev]->nset->nnodes;
@@ -298,6 +309,8 @@ void SDCAmr::timeStep(int level, Real time,
  */
 sdc_sweeper* SDCAmr::build_mlsdc_level(int lev)
 {
+  BL_PROFILE("SDCAmr::build_mlsdc_level()");
+
   int first_refinement_level, nnodes;
 
   if (finest_level - max_trefs > 1)
@@ -328,6 +341,8 @@ sdc_sweeper* SDCAmr::build_mlsdc_level(int lev)
  */
 void SDCAmr::rebuild_mlsdc()
 {
+  BL_PROFILE("SDCAmr::rebuild_mlsdc()");
+
   // reset previous and clear sweepers etc
   sdc_mg_reset(&mg);
   for (unsigned int lev=0; lev<=max_level; lev++) {
