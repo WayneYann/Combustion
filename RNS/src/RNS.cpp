@@ -138,6 +138,7 @@ int          RNS::do_quartic_interp   = 1;
 
 int          RNS::use_vode            = 1;
 int          RNS::do_cc_burning       = 0;
+int          RNS::split_burning       = 0;
 
 // this will be reset upon restart
 Real         RNS::previousCPUTimeUsed = 0.0;
@@ -305,6 +306,7 @@ RNS::read_params ()
 
     pp.query("use_vode", use_vode);
     pp.query("do_cc_burning", do_cc_burning);
+    pp.query("split_burning", split_burning);
 }
 
 RNS::RNS ()

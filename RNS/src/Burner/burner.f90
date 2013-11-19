@@ -1,13 +1,17 @@
 module burner_module
 
-  use chemistry_module, only : nspecies, spec_names, molecular_weight
+  use chemistry_module, only : nspecies, spec_names, molecular_weight, inv_mwt
   use meth_params_module, only : use_vode
 
   implicit none
 
+  double precision, allocatable, save :: Jac(:,:), A(:,:)
+  integer, allocatable, save :: ipvt(:)
+  !$omp threadprivate(burn_linear_allocated,Jac,A,ipvt) 
+
   private
 
-  public :: burn, compute_rhodYdt
+  public :: burn, compute_rhodYdt, init_burn_linear, burn_linear
 
 contains
 
@@ -188,5 +192,44 @@ contains
     end do
 
   end subroutine compute_rhodYdt
+
+
+  subroutine init_burn_linear(rho0, Y0, dt)
+    double precision, intent(in) :: rho0, Y0(nspecies+1), dt
+
+    integer :: i, j, iwrk, info
+    double precision :: C(nspecies)
+    double precision :: rwrk
+    integer, parameter :: consP = 0
+    
+    if (.not. allocated(Jac)) then
+       allocate(Jac(nspecies+1,nspecies+1))
+       allocate(A(nspecies,nspecies))
+       allocate(ipvt(nspecies))
+    end if
+
+    call ckytcr(rho0, Y0(nspecies+1), Y0, iwrk, rwrk, C)
+    call DWDOT(Jac, C, Y0(nspecies+1), consP)
+
+    do j=1,nspecies
+       do i=1,nspecies
+          Jac(i,j) = Jac(i,j) * molecular_weight(i) * inv_mwt(j)
+          A(i,j) = -dt*Jac(i,j)
+       end do
+    end do
+
+    do i=1,nspecies
+       A(i,i) = 1.d0 + A(i,i)
+    end do
+    
+    call dgefa(A, nspecies, nspecies, ipvt, info)
+
+  end subroutine init_burn_linear
+
+
+  subroutine burn_linear(dY)
+    double precision, intent(inout) :: dY(nspecies)
+    call dgesl(A, nspecies, nspecies, ipvt, dY, 0)
+  end subroutine burn_linear
 
 end module burner_module
