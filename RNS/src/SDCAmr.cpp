@@ -63,6 +63,8 @@ BEGIN_EXTERN_C
 /*
  * Spatial interpolation between MultiFabs.  Called by SDCLib.
  */
+// xxxxx TODO: need to distinguish correction from solution, because they have 
+//             different physical boundary conditions
 void mlsdc_amr_interpolate(void *F, void *G, sdc_state *state, void *ctxF, void *ctxG)
 {
   MultiFab& UF     = *((MultiFab*) F);
@@ -77,17 +79,98 @@ void mlsdc_amr_interpolate(void *F, void *G, sdc_state *state, void *ctxF, void 
   Interpolater&         map   = *dl[0].interp();
   Array<BCRec>          bcr(ncomp);
 
+  const Geometry& geomG = levelG.Geom();
+  const Geometry& geomF = levelF.Geom();
+
   RNS_SETNAN(UF);
 
   // make a coarse version (UC) of the fine multifab (UF)
-  BoxArray crseba(UF.size());
-  for (int i=0; i<crseba.size(); i++)
-    crseba.set(i, map.CoarseBox(UF.fabbox(i), ratio));
-  MultiFab UC(crseba, ncomp, 0);
+  BoxArray ba_C(UF.size());
+  for (int i=0; i<ba_C.size(); i++)
+    ba_C.set(i, map.CoarseBox(UF.fabbox(i), ratio));
 
+  MultiFab UC(ba_C, ncomp, 0);
   RNS_SETNAN(UC);
-  levelG.fill_boundary(UG, state->t, RNS::use_FillBoundary);
-  UC.copy(UG);
+
+  bool touch = false;
+  bool touch_periodic = false;
+  const Box& crse_domain_box = levelG.Domain();
+  if (geomG.isAnyPeriodic()) {
+      for (int i=0; i < ba_C.size(); i++) {
+	  if (! crse_domain_box.contains(ba_C[i])) {
+	      touch = true;
+	      for (int idim=0; idim<BL_SPACEDIM; idim++) {
+		  if (geomG.isPeriodic(i)   ||
+		      ba_C[i].bigEnd(idim) > crse_domain_box.bigEnd(idim) ||
+		      ba_C[i].smallEnd(idim) < crse_domain_box.smallEnd(idim) ) 
+		  {
+		      touch_periodic = true;
+		      break;
+		  }
+	      }
+	  }
+	  if (touch_periodic) break;
+      }
+  }
+  else {
+      for (int i=0; i < ba_C.size(); i++) {
+	  if (! crse_domain_box.contains(ba_C[i])) {
+	      touch = true;
+	      break;
+	  }
+      }      
+  }
+
+  if (!touch) {
+    // If level F does not touch physical boundaries, then AMR levels are 
+    // properly nested so that the valid rgions of UC are contained inside 
+    // the valid regions of UG.  So FabArray::copy is all we need.
+    UC.copy(UG);
+  }
+  else if (touch_periodic) {
+      // This case is more complicated because level F might touch only one 
+      // of the periodic boundaries.
+      Box box_C = ba_C.minimalBox();
+      int ng_C = box_C.bigEnd(0) - crse_domain_box.bigEnd(0);
+      int ng_G = UG.nGrow();
+      const BoxArray& ba_G = UG.boxArray();
+
+      MultiFab* UG_safe;
+      MultiFab UGG;
+      if (ng_C > ng_G) {
+	  UGG.define(ba_G, ncomp, ng_C, Fab_allocate);
+	  MultiFab::Copy(UGG, UG, 0, 0, ncomp, 0);
+	  UG_safe = &UGG;
+      }
+      else {
+	  UG_safe = &UG;
+      }
+
+      // set periodic and physical boundaries
+      levelG.fill_boundary(*UG_safe, state->t, RNS::set_PhysBoundary); 
+
+      // We cannot do FabArray::copy() directly on UG because it copies only form 
+      // valid regions.  So we need to make the ghost cells of UG valid.
+      BoxArray ba_G2(UG.size());
+      for (int i=0; i<ba_G2.size(); i++) {
+	  ba_G2.set(i, BoxLib::grow(ba_G[i],ng_C));
+      }
+      
+      MultiFab UG2(ba_G2, ncomp, 0);
+      for (MFIter mfi(UG2); mfi.isValid(); ++mfi)
+      {
+	  int i = mfi.index();
+	  UG2[i].copy((*UG_safe)[i]);  // Fab to Fab copy
+      }
+
+      UC.copy(UG2);
+
+  }
+  else {
+    UC.copy(UG);
+    levelG.fill_boundary(UC, state->t, RNS::set_PhysBoundary);
+  }
+
   RNS_ASSERTNONAN(UC);
 
   // now that UF is completely contained within UC, cycle through each

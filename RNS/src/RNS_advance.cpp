@@ -126,11 +126,12 @@ RNS::fill_boundary(MultiFab& U, Real time, int type_in)
     case use_FillBoundary:
 
 	U.FillBoundary();
-	geom.FillPeriodicBoundary(U, true);
 
 	// no break; so it will go to next case and set physical boundaries
 
     case set_PhysBoundary:
+
+	geom.FillPeriodicBoundary(U, true);
 
 	for (MFIter mfi(U); mfi.isValid(); ++mfi)
 	{
