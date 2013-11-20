@@ -12,10 +12,13 @@ void *mf_encap_create(int type, void *encap_ctx)
 {
   RNSEncapCtx* ctx   = (RNSEncapCtx*) encap_ctx;
   RNSEncap*    encap = new RNSEncap;
+  encap->flux = 0;
   if (type == SDC_SOLUTION || type == SDC_WORK) {
-    encap->U = new MultiFab(*ctx->ba, ctx->ncomp, ctx->ngrow);
+    encap->U    = new MultiFab(*ctx->ba, ctx->ncomp, ctx->ngrow);
   } else {
-    encap->U = new MultiFab(*ctx->ba, ctx->ncomp, 0);
+    encap->U    = new MultiFab(*ctx->ba, ctx->ncomp, 0);
+    if (ctx->level > 0)
+      encap->flux = new FluxRegister(*ctx->ba, ctx->rr, ctx->level, ctx->ncomp);
   }
   return encap;
 }
@@ -24,6 +27,8 @@ void mf_encap_destroy(void *Qptr)
 {
   RNSEncap* Q = (RNSEncap*) Qptr;
   delete Q->U;
+  if (Q->flux != NULL)
+    delete Q->flux;
   delete Q;
 }
 
@@ -72,8 +77,10 @@ sdc_encap* SDCAmr::build_encap(int lev)
 
   RNSEncapCtx* ctx = new RNSEncapCtx;
   ctx->ba    = &boxArray(lev);
+  ctx->rr    = refRatio(lev);
   ctx->ncomp = dl[0].nComp();
   ctx->ngrow = dl[0].nExtra();
+  ctx->level = lev;
 
   sdc_encap* encap = new sdc_encap;
   encap->create  = mf_encap_create;
@@ -88,6 +95,7 @@ sdc_encap* SDCAmr::build_encap(int lev)
 
 void SDCAmr::destroy_encap(int lev)
 {
+  // XXX: memory leaks here?
   delete (RNSEncapCtx*) encaps[lev]->ctx;
   delete encaps[lev];
 }

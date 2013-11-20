@@ -7,6 +7,7 @@
 #define END_EXTERN_C   }
 
 #include <MultiFab.H>
+#include <FluxRegister.H>
 #include <Amr.H>
 #include <sdc.h>
 
@@ -26,11 +27,13 @@ using namespace std;
 
 typedef struct {
   const BoxArray* ba;
-  int ncomp, ngrow;
+  IntVect rr;
+  int ncomp, ngrow, level;
 } RNSEncapCtx;
 
 typedef struct {
   MultiFab* U;
+  FluxRegister* flux;
 } RNSEncap;
 
 /*
