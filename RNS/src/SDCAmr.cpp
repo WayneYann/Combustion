@@ -63,8 +63,12 @@ BEGIN_EXTERN_C
 /*
  * Spatial interpolation between MultiFabs.  Called by SDCLib.
  */
+// xxxxx TODO: need to distinguish correction from solution, because they have
+//             different physical boundary conditions
 void mlsdc_amr_interpolate(void *Fp, void *Gp, sdc_state *state, void *ctxF, void *ctxG)
 {
+  BL_PROFILE("MLSDC_AMR_INTERPOLATE()");
+
   RNSEncap& F      = *((RNSEncap*) Fp);
   RNSEncap& G      = *((RNSEncap*) Gp);
   MultiFab& UF     = *F.U;
@@ -79,17 +83,98 @@ void mlsdc_amr_interpolate(void *Fp, void *Gp, sdc_state *state, void *ctxF, voi
   Interpolater&         map   = *dl[0].interp();
   Array<BCRec>          bcr(ncomp);
 
+  const Geometry& geomG = levelG.Geom();
+  const Geometry& geomF = levelF.Geom();
+
   RNS_SETNAN(UF);
 
   // make a coarse version (UC) of the fine multifab (UF)
-  BoxArray crseba(UF.size());
-  for (int i=0; i<crseba.size(); i++)
-    crseba.set(i, map.CoarseBox(UF.fabbox(i), ratio));
-  MultiFab UC(crseba, ncomp, 0);
+  BoxArray ba_C(UF.size());
+  for (int i=0; i<ba_C.size(); i++)
+    ba_C.set(i, map.CoarseBox(UF.fabbox(i), ratio));
 
+  MultiFab UC(ba_C, ncomp, 0);
   RNS_SETNAN(UC);
-  levelG.fill_boundary(UG, state->t, RNS::use_FillBoundary);
-  UC.copy(UG);
+
+  bool touch = false;
+  bool touch_periodic = false;
+  const Box& crse_domain_box = levelG.Domain();
+  if (geomG.isAnyPeriodic()) {
+      for (int i=0; i < ba_C.size(); i++) {
+	  if (! crse_domain_box.contains(ba_C[i])) {
+	      touch = true;
+	      for (int idim=0; idim<BL_SPACEDIM; idim++) {
+		  if (geomG.isPeriodic(i)   ||
+		      ba_C[i].bigEnd(idim) > crse_domain_box.bigEnd(idim) ||
+		      ba_C[i].smallEnd(idim) < crse_domain_box.smallEnd(idim) )
+		  {
+		      touch_periodic = true;
+		      break;
+		  }
+	      }
+	  }
+	  if (touch_periodic) break;
+      }
+  }
+  else {
+      for (int i=0; i < ba_C.size(); i++) {
+	  if (! crse_domain_box.contains(ba_C[i])) {
+	      touch = true;
+	      break;
+	  }
+      }
+  }
+
+  if (!touch) {
+    // If level F does not touch physical boundaries, then AMR levels are
+    // properly nested so that the valid rgions of UC are contained inside
+    // the valid regions of UG.  So FabArray::copy is all we need.
+    UC.copy(UG);
+  }
+  else if (touch_periodic) {
+      // This case is more complicated because level F might touch only one
+      // of the periodic boundaries.
+      Box box_C = ba_C.minimalBox();
+      int ng_C = box_C.bigEnd(0) - crse_domain_box.bigEnd(0);
+      int ng_G = UG.nGrow();
+      const BoxArray& ba_G = UG.boxArray();
+
+      MultiFab* UG_safe;
+      MultiFab UGG;
+      if (ng_C > ng_G) {
+	  UGG.define(ba_G, ncomp, ng_C, Fab_allocate);
+	  MultiFab::Copy(UGG, UG, 0, 0, ncomp, 0);
+	  UG_safe = &UGG;
+      }
+      else {
+	  UG_safe = &UG;
+      }
+
+      // set periodic and physical boundaries
+      levelG.fill_boundary(*UG_safe, state->t, RNS::set_PhysBoundary);
+
+      // We cannot do FabArray::copy() directly on UG because it copies only form
+      // valid regions.  So we need to make the ghost cells of UG valid.
+      BoxArray ba_G2(UG.size());
+      for (int i=0; i<ba_G2.size(); i++) {
+	  ba_G2.set(i, BoxLib::grow(ba_G[i],ng_C));
+      }
+
+      MultiFab UG2(ba_G2, ncomp, 0);
+      for (MFIter mfi(UG2); mfi.isValid(); ++mfi)
+      {
+	  int i = mfi.index();
+	  UG2[i].copy((*UG_safe)[i]);  // Fab to Fab copy
+      }
+
+      UC.copy(UG2);
+
+  }
+  else {
+    UC.copy(UG);
+    levelG.fill_boundary(UC, state->t, RNS::set_PhysBoundary);
+  }
+
   RNS_ASSERTNONAN(UC);
 
   // now that UF is completely contained within UC, cycle through each
@@ -115,6 +200,8 @@ void mlsdc_amr_interpolate(void *Fp, void *Gp, sdc_state *state, void *ctxF, voi
  */
 void mlsdc_amr_restrict(void *Fp, void *Gp, sdc_state *state, void *ctxF, void *ctxG)
 {
+  BL_PROFILE("MLSDC_AMR_RESTRICT()");
+
   RNSEncap& F      = *((RNSEncap*) Fp);
   RNSEncap& G      = *((RNSEncap*) Gp);
   MultiFab& UF     = *F.U;
@@ -137,6 +224,8 @@ void SDCAmr::timeStep(int level, Real time,
 		      int /* iteration */, int /* niter */,
 		      Real stop_time)
 {
+  BL_PROFILE("SDCAmr::timeStep()");
+
   BL_ASSERT(level == 0);
 
   // build sdc hierarchy
@@ -183,6 +272,9 @@ void SDCAmr::timeStep(int level, Real time,
 
   // spread and iterate
   sdc_mg_spread(&mg, time, dt, 0);
+
+  BL_PROFILE_VAR("SDCAmr::timeStep-iters", sdc_iters);
+
   for (int k=0; k<max_iters; k++) {
     sdc_mg_sweep(&mg, time, dt, (k==max_iters-1) ? SDC_MG_LAST_SWEEP : 0);
 
@@ -206,6 +298,8 @@ void SDCAmr::timeStep(int level, Real time,
     }
   }
 
+  BL_PROFILE_VAR_STOP(sdc_iters);
+
   // copy final solution from sdclib to new_data
   for (int lev=0; lev<=finest_level; lev++) {
     int       nnodes = mg.sweepers[lev]->nset->nnodes;
@@ -226,6 +320,8 @@ void SDCAmr::timeStep(int level, Real time,
  */
 sdc_sweeper* SDCAmr::build_mlsdc_level(int lev)
 {
+  BL_PROFILE("SDCAmr::build_mlsdc_level()");
+
   int first_refinement_level, nnodes;
 
   if (finest_level - max_trefs > 1)
@@ -256,6 +352,8 @@ sdc_sweeper* SDCAmr::build_mlsdc_level(int lev)
  */
 void SDCAmr::rebuild_mlsdc()
 {
+  BL_PROFILE("SDCAmr::rebuild_mlsdc()");
+
   // reset previous and clear sweepers etc
   sdc_mg_reset(&mg);
   for (unsigned int lev=0; lev<=max_level; lev++) {

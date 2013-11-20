@@ -28,6 +28,11 @@
 int main (int argc, char* argv[])
 {
     BoxLib::Initialize(argc,argv);
+
+    BL_PROFILE_VAR("main()", pmain);
+
+    BL_PROFILE_VAR("main-init", pmain_init);
+
     Real dRunTime1 = ParallelDescriptor::second();
 
     std::cout << std::setprecision(10);
@@ -76,7 +81,9 @@ int main (int argc, char* argv[])
 	//
 	amrptr->RegridOnly(amrptr->cumTime());
     }
-    
+
+    BL_PROFILE_VAR_STOP(pmain_init);
+
     int istep = 0;
     int walltime_limit_reached = 0;
     while ( amrptr->okToContinue()                            &&
@@ -145,6 +152,8 @@ int main (int argc, char* argv[])
 	
 	std::cout << buf << std::endl;
     }
+
+    BL_PROFILE_VAR_STOP(pmain); 
     
     BoxLib::Finalize();
     return 0;

@@ -344,6 +344,7 @@ protected:
 
     static int         use_vode;
     static int         do_cc_burning;
+    static int         split_burning;
 
     // for keeping track of the amount of CPU time used -- this will persist
     // after restarts

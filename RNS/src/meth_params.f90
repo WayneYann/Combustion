@@ -35,6 +35,6 @@ module meth_params_module
   integer, save :: nthreads=1
 
   logical, save :: use_vode
-  logical, save :: do_cc_burning
+  logical, save :: do_cc_burning, split_burning
 
 end module meth_params_module
