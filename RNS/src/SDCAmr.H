@@ -26,9 +26,12 @@ using namespace std;
 
 typedef struct {
   const BoxArray* ba;
-  int       ncomp;
-  int       ngrow;
-} mf_encap;
+  int ncomp, ngrow;
+} RNSEncapCtx;
+
+typedef struct {
+  MultiFab* U;
+} RNSEncap;
 
 /*
  * Multigrid SDC+AMR class.

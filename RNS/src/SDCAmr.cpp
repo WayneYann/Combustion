@@ -5,7 +5,7 @@
  * done using the multi-level SDC (MLSDC) algorithm, with IMEX
  * sweepers on each level (hydrodynamics are explicit, chemistry is
  * implicit).  The MLSDC algorithm is implemented in C in SDCLib (in
- * SDCLib MLSDC is called multi-grid SDC).
+ * SDCLib multi-level SDC is called multi-grid SDC).
  *
  * The interface between SDCLib and RNS is (mostly) contained in
  * SDCAmr (derived from Amr) and SDCAmrEncap.
@@ -63,10 +63,12 @@ BEGIN_EXTERN_C
 /*
  * Spatial interpolation between MultiFabs.  Called by SDCLib.
  */
-void mlsdc_amr_interpolate(void *F, void *G, sdc_state *state, void *ctxF, void *ctxG)
+void mlsdc_amr_interpolate(void *Fp, void *Gp, sdc_state *state, void *ctxF, void *ctxG)
 {
-  MultiFab& UF     = *((MultiFab*) F);
-  MultiFab& UG     = *((MultiFab*) G);
+  RNSEncap& F      = *((RNSEncap*) Fp);
+  RNSEncap& G      = *((RNSEncap*) Gp);
+  MultiFab& UF     = *F.U;
+  MultiFab& UG     = *G.U;
   RNS&      levelF = *((RNS*) ctxF);
   RNS&      levelG = *((RNS*) ctxG);
 
@@ -111,11 +113,13 @@ void mlsdc_amr_interpolate(void *F, void *G, sdc_state *state, void *ctxF, void 
 /*
  * Spatial restriction between MultiFabs.  Called by SDCLib.
  */
-void mlsdc_amr_restrict(void *F, void *G, sdc_state *state, void *ctxF, void *ctxG)
+void mlsdc_amr_restrict(void *Fp, void *Gp, sdc_state *state, void *ctxF, void *ctxG)
 {
-  MultiFab& UF      = *((MultiFab*) F);
-  MultiFab& UG      = *((MultiFab*) G);
-  RNS&      levelG  = *((RNS*) ctxG);
+  RNSEncap& F      = *((RNSEncap*) Fp);
+  RNSEncap& G      = *((RNSEncap*) Gp);
+  MultiFab& UF     = *F.U;
+  MultiFab& UG     = *G.U;
+  RNS&      levelG = *((RNS*) ctxG);
 
   levelG.avgDown(UG, UF);
   if (state->kind == SDC_SOLUTION)
@@ -163,7 +167,8 @@ void SDCAmr::timeStep(int level, Real time,
   // set intial conditions and times
   for (int lev=0; lev<=finest_level; lev++) {
     MultiFab& Unew = getLevel(lev).get_new_data(0);
-    MultiFab& U0   = *((MultiFab*) mg.sweepers[lev]->nset->Q[0]);
+    RNSEncap& Q0   = *((RNSEncap*) mg.sweepers[lev]->nset->Q[0]);
+    MultiFab& U0   = *Q0.U;
     MultiFab::Copy(U0, Unew, 0, 0, U0.nComp(), U0.nGrow());
     getLevel(lev).get_state_data(0).setTimeLevel(time+dt, dt, dt);
   }
@@ -171,7 +176,8 @@ void SDCAmr::timeStep(int level, Real time,
   // fill fine boundaries using coarse data
   for (int lev=0; lev<=finest_level; lev++) {
     RNS&      rns  = *dynamic_cast<RNS*>(&getLevel(lev));
-    MultiFab& U0   = *((MultiFab*) mg.sweepers[lev]->nset->Q[0]);
+    RNSEncap& Q0   = *((RNSEncap*) mg.sweepers[lev]->nset->Q[0]);
+    MultiFab& U0   = *Q0.U;
     rns.fill_boundary(U0, time, RNS::use_FillCoarsePatch);
   }
 
@@ -183,9 +189,12 @@ void SDCAmr::timeStep(int level, Real time,
     if (verbose > 0) {
       for (int lev=0; lev<=finest_level; lev++) {
         int       nnodes = mg.sweepers[lev]->nset->nnodes;
-        MultiFab& R      = *((MultiFab*) mg.sweepers[lev]->nset->R[nnodes-2]);
+	RNSEncap& R0     = *((RNSEncap*) mg.sweepers[lev]->nset->R[nnodes-2]);
+        MultiFab& R      = *R0.U;
 	double    r0     = R.norm0();
 	double    r2     = R.norm2();
+
+	// dzmq_send_mf(R, lev, 0, lev==finest_level);
 
 	if (ParallelDescriptor::IOProcessor()) {
 	  std::ios_base::fmtflags ff = cout.flags();
@@ -201,7 +210,9 @@ void SDCAmr::timeStep(int level, Real time,
   for (int lev=0; lev<=finest_level; lev++) {
     int       nnodes = mg.sweepers[lev]->nset->nnodes;
     MultiFab& Unew   = getLevel(lev).get_new_data(0);
-    MultiFab& Uend   = *((MultiFab*) mg.sweepers[lev]->nset->Q[nnodes-1]);
+    RNSEncap& Qend   = *((RNSEncap*) mg.sweepers[lev]->nset->Q[nnodes-1]);
+    MultiFab& Uend   = *Qend.U;
+
     MultiFab::Copy(Unew, Uend, 0, 0, Uend.nComp(), 0);
   }
 

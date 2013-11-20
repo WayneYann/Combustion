@@ -370,14 +370,13 @@ BEGIN_EXTERN_C
 //
 // Compute dU_{AD}/dt.
 //
-// XXX: it might be interesting to track the magnitude of reflux
-// registers.
-//
-void sdc_f1eval(void *F, void *Q, double t, sdc_state *state, void *ctx)
+void sdc_f1eval(void *Fp, void *Qp, double t, sdc_state *state, void *ctx)
 {
   RNS&      rns    = *((RNS*) ctx);
-  MultiFab& U      = *((MultiFab*) Q);
-  MultiFab& Uprime = *((MultiFab*) F);
+  RNSEncap& Q      = *((RNSEncap*) Qp);
+  RNSEncap& F      = *((RNSEncap*) Fp);
+  MultiFab& U      = *Q.U;
+  MultiFab& Uprime = *F.U;
 
   if (rns.verbose > 1 && ParallelDescriptor::IOProcessor()) {
     cout << "MLSDC evaluating adv/diff:  level: " << rns.Level() << ", node: " << state->node << endl;
@@ -395,11 +394,13 @@ void sdc_f1eval(void *F, void *Q, double t, sdc_state *state, void *ctx)
 //
 //   * Calling advance_chemistry with dt=0.0 puts dU_R/dt into tmp.
 //
-void sdc_f2eval(void *F, void *Q, double t, sdc_state *state, void *ctx)
+void sdc_f2eval(void *Fp, void *Qp, double t, sdc_state *state, void *ctx)
 {
   RNS&      rns    = *((RNS*) ctx);
-  MultiFab& U      = *((MultiFab*) Q);
-  MultiFab& Uprime = *((MultiFab*) F);
+  RNSEncap& Q      = *((RNSEncap*) Qp);
+  RNSEncap& F      = *((RNSEncap*) Fp);
+  MultiFab& U      = *Q.U;
+  MultiFab& Uprime = *F.U;
 
   Uprime.setVal(0.0);
 
@@ -424,12 +425,15 @@ void sdc_f2eval(void *F, void *Q, double t, sdc_state *state, void *ctx)
 // XXX: it might be interesting to track the difference between Uprime
 // as calculated above and calling f2eval...
 //
-void sdc_f2comp(void *F, void *Q, double t, double dt, void *RHS, sdc_state *state, void *ctx)
+void sdc_f2comp(void *Fp, void *Qp, double t, double dt, void *RHSp, sdc_state *state, void *ctx)
 {
   RNS&      rns    = *((RNS*) ctx);
-  MultiFab& U      = *((MultiFab*) Q);
-  MultiFab& Uprime = *((MultiFab*) F);
-  MultiFab& Urhs   = *((MultiFab*) RHS);
+  RNSEncap& Q      = *((RNSEncap*) Qp);
+  RNSEncap& F      = *((RNSEncap*) Fp);
+  RNSEncap& RHS    = *((RNSEncap*) RHSp);
+  MultiFab& U      = *Q.U;
+  MultiFab& Uprime = *F.U;
+  MultiFab& Urhs   = *RHS.U;
 
   BL_ASSERT(Urhs.contains_nan() == false);
   MultiFab::Copy(U, Urhs, 0, 0, U.nComp(), U.nGrow());
@@ -453,10 +457,11 @@ void sdc_f2comp(void *F, void *Q, double t, double dt, void *RHS, sdc_state *sta
   Uprime.mult(1./dt);
 }
 
-void sdc_poststep_hook(void *Q, sdc_state *state, void *ctx)
+void sdc_poststep_hook(void *Qp, sdc_state *state, void *ctx)
 {
-  RNS&      rns    = *((RNS*) ctx);
-  MultiFab& U      = *((MultiFab*) Q);
+  RNS&      rns = *((RNS*) ctx);
+  RNSEncap& Q   = *((RNSEncap*) Qp);
+  MultiFab& U   = *Q.U;
 
   rns.post_update(U);
 }

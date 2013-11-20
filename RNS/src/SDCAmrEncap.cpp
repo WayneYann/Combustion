@@ -10,48 +10,56 @@ BEGIN_EXTERN_C
 
 void *mf_encap_create(int type, void *encap_ctx)
 {
-  mf_encap* ctx = (mf_encap*) encap_ctx;
+  RNSEncapCtx* ctx   = (RNSEncapCtx*) encap_ctx;
+  RNSEncap*    encap = new RNSEncap;
   if (type == SDC_SOLUTION || type == SDC_WORK) {
-    return new MultiFab(*ctx->ba, ctx->ncomp, ctx->ngrow);
+    encap->U = new MultiFab(*ctx->ba, ctx->ncomp, ctx->ngrow);
   } else {
-    return new MultiFab(*ctx->ba, ctx->ncomp, 0);
+    encap->U = new MultiFab(*ctx->ba, ctx->ncomp, 0);
   }
+  return encap;
 }
 
-void mf_encap_destroy(void *sol)
+void mf_encap_destroy(void *Qptr)
 {
-  MultiFab* mf = (MultiFab*) sol;
-  delete mf;
+  RNSEncap* Q = (RNSEncap*) Qptr;
+  delete Q->U;
+  delete Q;
 }
 
-void mf_encap_setval(void *sol, sdc_dtype val)
+void mf_encap_setval(void *Qptr, sdc_dtype val)
 {
-  MultiFab& mf = *((MultiFab*) sol);
-  mf.setVal(val, mf.nGrow());
+  RNSEncap& Q = *((RNSEncap*) Qptr);
+  MultiFab& U = *Q.U;
+  U.setVal(val, U.nGrow());
 }
 
 void mf_encap_copy(void *dstp, const void *srcp)
 {
-  MultiFab& dst = *((MultiFab*) dstp);
-  MultiFab& src = *((MultiFab*) srcp);
-  MultiFab::Copy(dst, src, 0, 0, dst.nComp(), dst.nGrow());
+  RNSEncap& Qdst = *((RNSEncap*) dstp);
+  RNSEncap& Qsrc = *((RNSEncap*) srcp);
+  MultiFab& Udst = *Qdst.U;
+  MultiFab& Usrc = *Qsrc.U;
+  MultiFab::Copy(Udst, Usrc, 0, 0, Udst.nComp(), Udst.nGrow());
 #ifndef NDEBUG
-  BL_ASSERT(src.contains_nan() == false);
-  BL_ASSERT(dst.contains_nan() == false);
+  BL_ASSERT(Usrc.contains_nan() == false);
+  BL_ASSERT(Udst.contains_nan() == false);
 #endif
 }
 
 void mf_encap_saxpy(void *yp, sdc_dtype a, void *xp)
 {
-  MultiFab& y = *((MultiFab*) yp);
-  MultiFab& x = *((MultiFab*) xp);
+  RNSEncap& Qy = *((RNSEncap*) yp);
+  RNSEncap& Qx = *((RNSEncap*) xp);
+  MultiFab& Uy = *Qy.U;
+  MultiFab& Ux = *Qx.U;
 // #ifdef _OPENMP
 // #pragma omp parallel for
 // #endif
-  BL_ASSERT(y.boxArray() == x.boxArray());
+  BL_ASSERT(Uy.boxArray() == Ux.boxArray());
 
-  for (MFIter mfi(y); mfi.isValid(); ++mfi)
-    y[mfi].saxpy(a, x[mfi]);
+  for (MFIter mfi(Uy); mfi.isValid(); ++mfi)
+    Uy[mfi].saxpy(a, Ux[mfi]);
 }
 
 END_EXTERN_C
@@ -62,7 +70,7 @@ sdc_encap* SDCAmr::build_encap(int lev)
   const DescriptorList& dl = getLevel(lev).get_desc_lst();
   assert(dl.size() == 1);	// valid for RNS
 
-  mf_encap* ctx = new mf_encap;
+  RNSEncapCtx* ctx = new RNSEncapCtx;
   ctx->ba    = &boxArray(lev);
   ctx->ncomp = dl[0].nComp();
   ctx->ngrow = dl[0].nExtra();
@@ -80,7 +88,7 @@ sdc_encap* SDCAmr::build_encap(int lev)
 
 void SDCAmr::destroy_encap(int lev)
 {
-  delete (mf_encap*) encaps[lev]->ctx;
+  delete (RNSEncapCtx*) encaps[lev]->ctx;
   delete encaps[lev];
 }
 
