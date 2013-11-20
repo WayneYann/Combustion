@@ -1302,7 +1302,7 @@ HeatTransfer::reset_typical_values (const MultiFab& S)
     //
     const int nComp = typical_values.size();
 
-    BL_ASSERT(nComp = S.nComp());
+    BL_ASSERT(nComp == S.nComp());
 
     for (int i=0; i<nComp; ++i)
     {
