@@ -290,24 +290,24 @@ c     NOTE: scal converts result from assumed cgs to MKS (1 erg/s.cm^3 = .1 J/s.
       integer i,j,k,n
       REAL_T TIME,P1atm,RU,RUC
 
-      TIME = 0.
+      TIME = zero
       CALL CKRP(IWRK(ckbi), RWRK(ckbr), RU, RUC, P1atm)
       RWRK(NP) = Patm * P1atm
-
+      !
+      ! Note that c_0,c_1,rhoh_INIT & T_cell are thread-private.
+      !
+!$omp parallel do private(i,j,k,n,Zt,Zdott)
       do k=lo(3),hi(3)
          do j=lo(2),hi(2)
             do i=lo(1),hi(1)
                c_0(1:Nspec+1) = zero
                c_1(1:Nspec+1) = zero
-               rhoh_INIT = RhoH(i,j,k)
-               T_cell = T(i,j,k)
-               
-               Zt(Nspec+1) = RhoH(i,j,k)
-
+               rhoh_INIT      = RhoH(i,j,k)
+               T_cell         = T(i,j,k)
+               Zt(Nspec+1)    = RhoH(i,j,k)
                do n=1,Nspec
                   Zt(n) = RhoY(i,j,k,n)
                end do
-               
                call conpFY_sdc(NEQ,TIME,Zt,Zdott,RWRK,IWRK)
                do n=1,Nspec
                   RhoYdot(i,j,k,n) = Zdott(n)
@@ -315,6 +315,7 @@ c     NOTE: scal converts result from assumed cgs to MKS (1 erg/s.cm^3 = .1 J/s.
             end do
          end do
       end do
+!$omp end parallel do
       end
 #endif
 
