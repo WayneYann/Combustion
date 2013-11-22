@@ -2840,7 +2840,7 @@ HeatTransfer::adjust_spec_diffusion_fluxes (Real time)
         }
     }
 
-    if (verbose)
+    if (verbose > 1)
     {
         const int IOProc   = ParallelDescriptor::IOProcessorNumber();
         Real      run_time = ParallelDescriptor::second() - strt_time;
@@ -3335,7 +3335,7 @@ HeatTransfer::getViscTerms (MultiFab& visc_terms,
         geom.FillPeriodicBoundary(visc_terms,0,num_comp,true);
     }
 
-    if (verbose)
+    if (verbose > 1)
     {
         const int IOProc   = ParallelDescriptor::IOProcessorNumber();
         Real      run_time = ParallelDescriptor::second() - strt_time;
@@ -5239,7 +5239,7 @@ HeatTransfer::compute_rhoRT (const MultiFab& S,
 	getChemSolve().getPGivenRTY(p[i],state,state,state,box,sCompR,sCompT,sCompY,pComp);
     }
 
-    if (verbose)
+    if (verbose > 1)
     {
         const int IOProc   = ParallelDescriptor::IOProcessorNumber();
         Real      run_time = ParallelDescriptor::second() - strt_time;
@@ -5477,7 +5477,7 @@ HeatTransfer::predict_velocity (Real  dt,
 
     ParallelDescriptor::ReduceRealMin(tempdt);
 
-    if (verbose)
+    if (verbose > 1)
     {
         const int IOProc   = ParallelDescriptor::IOProcessorNumber();
         Real      run_time = ParallelDescriptor::second() - strt_time;
