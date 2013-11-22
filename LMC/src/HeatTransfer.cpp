@@ -1063,6 +1063,13 @@ HeatTransfer::init_once ()
     
     pp.query("new_T_threshold",new_T_threshold);
 
+#ifdef BL_COMM_PROFILING
+    auxDiag_names["COMMPROF"].resize(3);
+    auxDiag_names["COMMPROF"][0] = "mpiRank";
+    auxDiag_names["COMMPROF"][1] = "proximityRank";
+    auxDiag_names["COMMPROF"][2] = "proximityOrder";
+#endif
+
     init_once_done = 1;
 }
 
@@ -6055,6 +6062,17 @@ HeatTransfer::advance (Real time,
             }
         }
     }
+
+#ifdef BL_COMM_PROFILING
+    for (MFIter mfi(*auxDiag["COMMPROF"]); mfi.isValid(); ++mfi)
+    {
+      int rank(ParallelDescriptor::MyProc());
+      (*auxDiag["COMMPROF"])[mfi].setVal(rank, 0);
+      (*auxDiag["COMMPROF"])[mfi].setVal(DistributionMapping::ProximityMap(rank),   1);
+      (*auxDiag["COMMPROF"])[mfi].setVal(DistributionMapping::ProximityOrder(rank), 2);
+    }
+#endif
+
     //
     // Deactivate hook in FillPatch so that old data really is old data again.
     //
