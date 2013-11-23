@@ -923,7 +923,7 @@ c     Get the matrix of elements versus species
       character*(maxspnml) name
       REAL_T RTOL, ATOL(maxspec+2), ATOLEPS, TT1, TT2, RU, RUC, P1atm
       REAL_T Y(maxspec), hmix_ck, Z(maxspec+2), ZP(maxspec+2), Yold(maxspec)
-      REAL_T dtloc, TT1save, rho, rhoInv, h_INIT
+      REAL_T dtloc, weight, TT1save, rho, rhoInv, h_INIT
       REAL_T Ct(maxspec),Qt(maxreac), scale, sum
       REAL_T rhoYtemp(maxspec),rhoYres(maxspec),HMIX_CGS
       REAL_T,  parameter :: HtoTerrMAX = BL_REAL_E(7.8,-12)
@@ -980,7 +980,7 @@ c     Get the matrix of elements versus species
       !   c_0,c_1,rhoH_INIT,T_cell,rhoY_INIT,negative_Y_test
       !
 !$omp do private(i,j,k,strang_fix,TT1,ISTATE,Y,node)
-!$omp&private(rhoYtemp,Z,rho,sum,rhoInv,lout,name)
+!$omp&private(rhoYtemp,Z,rho,sum,rhoInv,lout,name,weight)
 !$omp&private(TT1save,TT2,m,Yold,rhooldInv) schedule(dynamic,1)
       do k=lo(3),hi(3)
          do j=lo(2),hi(2)
@@ -1000,7 +1000,22 @@ c     Get the matrix of elements versus species
                T_cell             = Told(i,j,k)
                FuncCount(i,j,k)   = 0
 
+               if (do_diag.eq.1) then
+                  FuncCount(i,j,k) = 0
+                  CALL CKYTCP(RWRK(NP),T_cell,Z(1),IWRK(ckbi),RWRK(ckbr),Ct)
+                  CALL CKQC(T_cell,Ct,IWRK(ckbi),RWRK(ckbr),Qt)
+                  do m=1,Nreac
+                     diag(i,j,k,m) = diag(i,j,k,m)+half*dtloc*Qt(m)*million
+                  enddo
+               endif
+
                do node = 1,nsub
+                  if (node.lt.nsub) then
+                     weight = one
+                  else
+                     weight = half
+                  endif
+
                   TT2     = TT1 + dtloc                  
                   TT1save = TT1
 
@@ -1114,7 +1129,16 @@ c     Get the matrix of elements versus species
                      end if
                   end if
                   
-                  TT1              = TT2
+                  TT1 = TT2
+
+                  if (do_diag.eq.1) then
+                     CALL CKYTCP(RWRK(NP),T_cell,Z(1),IWRK(ckbi),RWRK(ckbr),Ct)
+                     CALL CKQC(T_cell,Ct,IWRK(ckbi),RWRK(ckbr),Qt)
+                     do m=1,Nreac
+                        diag(i,j,k,m) = diag(i,j,k,m)+weight*dtloc*Qt(m)*million
+                     enddo
+                  endif
+
                   FuncCount(i,j,k) = FuncCount(i,j,k) + IWRK(dvbi+11)
                enddo
                
