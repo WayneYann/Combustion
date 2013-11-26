@@ -979,8 +979,8 @@ c     Get the matrix of elements versus species
       !
       !   c_0,c_1,rhoH_INIT,T_cell,rhoY_INIT,negative_Y_test
       !
-!$omp do private(i,j,k,strang_fix,TT1,ISTATE,Y,node)
-!$omp&private(rhoYtemp,Z,rho,sum,rhoInv,lout,name,weight)
+!$omp do private(i,j,k,strang_fix,TT1,ISTATE,Y,node,Ct,Qt,res)
+!$omp&private(rhoYtemp,Z,rho,sum,rhoInv,lout,name,weight,NIter)
 !$omp&private(TT1save,TT2,m,Yold,rhooldInv) schedule(dynamic,1)
       do k=lo(3),hi(3)
          do j=lo(2),hi(2)
