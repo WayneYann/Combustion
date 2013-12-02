@@ -128,6 +128,7 @@ contains
   subroutine EGZINI(np_in)
     integer, intent(in) :: np_in
     logical, save :: first_call = .true.
+    !$omp threadprivate(first_call)
 
     if (first_call) then
        np = np_in
@@ -201,7 +202,7 @@ contains
     double precision, parameter :: pi = 3.1415926535D0, &
          fac = 1.0D-12, dipmin = 1.0D-20, boltz = 1.38056D-16
     integer :: j, k
-    double precision :: xi, rooteps(ns)
+    double precision :: rooteps(ns)
     do j=1,ns
        rooteps(j) = sqrt(EPS(j))
     end do
@@ -212,7 +213,7 @@ contains
 !-----------------------------------------------------------------------
 !                K IS POLAR, J IS NONPOLAR
 !-----------------------------------------------------------------------
-             XI = 1.0D0 + 0.25D0*(POL(J)/SIG(J)**3) * &
+             eps2(K,J) = 1.0D0 + 0.25D0*(POL(J)/SIG(J)**3) * &
                   (FAC/BOLTZ) * &
                   (DIP(K)**2/(EPS(K)*SIG(K)**3)) * &
                   rooteps(k)/rooteps(j)
@@ -220,7 +221,7 @@ contains
 !-----------------------------------------------------------------------
 !             J IS POLAR, K IS NONPOLAR
 !-----------------------------------------------------------------------
-             XI = 1.0D0 + 0.25D0*(POL(K)/SIG(K)**3) * &
+             eps2(K,J) = 1.0D0 + 0.25D0*(POL(K)/SIG(K)**3) * &
                   (FAC/BOLTZ) * &
                   (DIP(J)**2/(EPS(J)*SIG(J)**3)) * &
                   rooteps(j)/rooteps(k)
@@ -228,9 +229,9 @@ contains
 !-----------------------------------------------------------------------
 !              NORMAL CASE, EITHER BOTH POLAR OR BOTH NONPOLAR
 !-----------------------------------------------------------------------
-             XI = 1.d0
+             eps2(K,J) = 1.d0
           ENDIF
-          eps2(K,J) = log(rooteps(j)*rooteps(k)* XI*XI)
+          eps2(K,J) = log(rooteps(j)*rooteps(k)* eps2(K,J)*eps2(K,J))
        end do
     end do
     do j=1,ns
@@ -535,7 +536,7 @@ contains
           wtfac = 1.d0/(wt(m) + wt(n))
           wtmn = wt(m)*iwt(n)
           wtnm = wt(n)*iwt(m)
-          !DEC$ SIMD
+          !DEC$ SIMD PRIVATE(aaa)
           do i=1,np
              aaa = bin(i,m,n) * xtr(i,n) * xtr(i,m) * FAC(i) * wtfac
              G(i,m,m) = G(i,m,m) + aaa*(A(i,m,n)*wtnm + CCC)
@@ -734,7 +735,7 @@ contains
     do n=1,ns
        do m=1,n-1
           wtfac = iwt(m) + iwt(n)
-          !DEC$ SIMD
+          !DEC$ SIMD PRIVATE(bb)
           do i=1,np
              bb = xtr(i,m)*xtr(i,n)*bin(i,m,n)*denfac*T(i)*A(i,m,n)*wtfac
              G(i,m,m) = G(i,m,m) + bb*cxi(i,m)
