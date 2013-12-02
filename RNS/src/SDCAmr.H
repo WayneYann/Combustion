@@ -28,7 +28,7 @@ using namespace std;
 typedef struct {
   const BoxArray* ba;
   IntVect rr;
-  int ncomp, ngrow, level;
+  int ncomp, ngrow, level, finest;
 } RNSEncapCtx;
 
 typedef struct {
