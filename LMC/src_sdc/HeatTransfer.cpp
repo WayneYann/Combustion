@@ -3070,7 +3070,7 @@ HeatTransfer::velocity_diffusion_update (Real dt)
 
         diffuse_cleanup(delta_rhs, betan, betanp1);
 
-        if (verbose)
+        if (verbose > 1)
         {
             const int IOProc   = ParallelDescriptor::IOProcessorNumber();
             Real      run_time = ParallelDescriptor::second() - strt_time;
@@ -4887,7 +4887,7 @@ HeatTransfer::compute_differential_diffusion_fluxes (const Real& time,
         }
     }
 
-    if (verbose)
+    if (verbose > 1)
     {
         const int IOProc   = ParallelDescriptor::IOProcessorNumber();
         Real      run_time = ParallelDescriptor::second() - strt_time;
@@ -6430,7 +6430,7 @@ HeatTransfer::compute_scalar_advection_fluxes_and_divergence (MultiFab& Force,
     }
   }
 
-  if (verbose)
+  if (verbose > 1)
   {
       const int IOProc   = ParallelDescriptor::IOProcessorNumber();
       Real      run_time = ParallelDescriptor::second() - strt_time;
