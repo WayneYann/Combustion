@@ -66,7 +66,6 @@ const Real* fabdat = (fab).dataPtr(comp);
 #endif
 
 #define GEOM_GROW   1
-#define HYP_GROW    3
 #define PRESS_GROW  1
 #define DIVU_GROW   1
 #define DSDT_GROW   1
@@ -840,7 +839,7 @@ HeatTransfer::HeatTransfer (Amr&            papa,
     //
     // Make room for all components except velocities in aux_boundary_data_old.
     //
-    aux_boundary_data_old(bl,HYP_GROW,desc_lst[State_Type].nComp()-BL_SPACEDIM,level_geom),
+    aux_boundary_data_old(bl,Godunov::hypgrow(),desc_lst[State_Type].nComp()-BL_SPACEDIM,level_geom),
     //
     // Only save Density & RhoH in aux_boundary_data_new in components 0 & 1.
     //
@@ -1074,7 +1073,7 @@ HeatTransfer::restart (Amr&          papa,
     //
     // Make room for all components except velocities in aux_boundary_data_old.
     //
-    aux_boundary_data_old.initialize(grids,HYP_GROW,desc_lst[State_Type].nComp()-BL_SPACEDIM,Geom());
+    aux_boundary_data_old.initialize(grids,Godunov::hypgrow(),desc_lst[State_Type].nComp()-BL_SPACEDIM,Geom());
     //
     // Only save Density & RhoH in aux_boundary_data_new in components 0 & 1.
     //
@@ -6013,7 +6012,6 @@ HeatTransfer::setThermoPress(Real time)
 }
 
 #if 1
-static int hyp_grow = 3; // ick!  
 Real
 HeatTransfer::predict_velocity (Real  dt,
                                 Real& comp_cfl)
@@ -6073,11 +6071,11 @@ HeatTransfer::predict_velocity (Real  dt,
     for (int dir=0; dir<BL_SPACEDIM; ++dir) {
         u_mac[dir].setVal(0.);
     }
-    MultiFab Force(grids,BL_SPACEDIM,hyp_grow);
+    MultiFab Force(grids,BL_SPACEDIM,Godunov::hypgrow());
     Force.setVal(0);
 #endif
 
-    for (FillPatchIterator U_fpi(*this,visc_terms,hyp_grow,prev_time,State_Type,Xvel,BL_SPACEDIM)
+    for (FillPatchIterator U_fpi(*this,visc_terms,Godunov::hypgrow(),prev_time,State_Type,Xvel,BL_SPACEDIM)
 #ifdef MOREGENGETFORCE
 	     , S_fpi(*this,visc_terms,1,prev_time,State_Type,Density,NUM_SCALARS);
 	 S_fpi.isValid() && U_fpi.isValid();
@@ -6751,7 +6749,7 @@ HeatTransfer::set_overdetermined_boundary_cells (Real time)
 
     AuxBoundaryData& rhoh_data = (whichTime == AmrOldTime) ? aux_boundary_data_old : aux_boundary_data_new;
 
-    const int nGrow = (whichTime == AmrOldTime) ? HYP_GROW : LinOp_grow;
+    const int nGrow = (whichTime == AmrOldTime) ? Godunov::hypgrow() : LinOp_grow;
     //                                                                                                           
     // Build a MultiFab parallel to State with appropriate # of ghost
     // cells built into the FABs themselves to cover rhoh_data.
@@ -7316,7 +7314,7 @@ HeatTransfer::compute_edge_states (Real              dt,
     //
     // FillPatch'd state data.
     //
-    for (FillPatchIterator S_fpi(*this,*divu_fp,HYP_GROW,prev_time,State_Type,0,nState);
+    for (FillPatchIterator S_fpi(*this,*divu_fp,Godunov::hypgrow(),prev_time,State_Type,0,nState);
          S_fpi.isValid();
          ++S_fpi)
     {

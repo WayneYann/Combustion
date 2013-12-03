@@ -63,7 +63,6 @@ const int* fabhi = (fab).hiVect();                    \
 const Real* fabdat = (fab).dataPtr(comp);
 
 #define GEOM_GROW   1
-#define HYP_GROW    3
 #define PRESS_GROW  1
 #define DIVU_GROW   1
 #define DSDT_GROW   1
@@ -482,7 +481,7 @@ HeatTransfer::HeatTransfer (Amr&            papa,
     //
     // Make room for all components except velocities in aux_boundary_data_old.
     //
-    aux_boundary_data_old(bl,HYP_GROW,desc_lst[State_Type].nComp()-BL_SPACEDIM,level_geom),
+    aux_boundary_data_old(bl,Godunov::hypgrow(),desc_lst[State_Type].nComp()-BL_SPACEDIM,level_geom),
     //
     // Only save Density & RhoH in aux_boundary_data_new in components 0 & 1.
     //
@@ -726,7 +725,7 @@ HeatTransfer::restart (Amr&          papa,
     //
     // Make room for all components except velocities in aux_boundary_data_old.
     //
-    aux_boundary_data_old.initialize(grids,HYP_GROW,desc_lst[State_Type].nComp()-BL_SPACEDIM,Geom());
+    aux_boundary_data_old.initialize(grids,Godunov::hypgrow(),desc_lst[State_Type].nComp()-BL_SPACEDIM,Geom());
     //
     // Only save Density & RhoH in aux_boundary_data_new in components 0 & 1.
     //
@@ -5844,7 +5843,7 @@ HeatTransfer::set_overdetermined_boundary_cells (Real time)
     if (rhoh_data.isEmpty())
       return; 
 
-    const int nGrow = (whichTime == AmrOldTime) ? HYP_GROW : LinOp_grow;
+    const int nGrow = (whichTime == AmrOldTime) ? Godunov::hypgrow() : LinOp_grow;
     //                                                                                                           
     // Build a MultiFab parallel to State with appropriate # of ghost
     // cells built into the FABs themselves to cover rhoh_data.
@@ -6379,7 +6378,7 @@ HeatTransfer::compute_edge_states (Real               dt,
     //
     // FillPatch'd state data.
     //
-    for (FillPatchIterator S_fpi(*this,*divu_fp,HYP_GROW,prev_time,State_Type,0,nState);
+    for (FillPatchIterator S_fpi(*this,*divu_fp,Godunov::hypgrow(),prev_time,State_Type,0,nState);
          S_fpi.isValid();
          ++S_fpi)
     {
@@ -11059,7 +11058,7 @@ HeatTransfer::compute_edge_states_sdc (Real dt, std::vector<bool>*
     //
     // FillPatch'd state data.
     //
-    for (FillPatchIterator S_fpi(*this,*divu_fp,HYP_GROW,prev_time,State_Type,
+    for (FillPatchIterator S_fpi(*this,*divu_fp,Godunov::hypgrow(),prev_time,State_Type,
 				 0,nState); S_fpi.isValid(); ++S_fpi)
     {
         //

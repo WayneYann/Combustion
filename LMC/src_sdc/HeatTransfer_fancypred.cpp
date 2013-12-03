@@ -69,7 +69,6 @@ const Real* fabdat = (fab).dataPtr(comp);
 #endif
 
 #define GEOM_GROW   1
-#define HYP_GROW    3
 #define PRESS_GROW  1
 #define DIVU_GROW   1
 #define DSDT_GROW   1
@@ -5312,7 +5311,6 @@ HeatTransfer::setThermoPress(Real time)
 }
 
 #if 1
-static int hyp_grow = 3; // ick!  
 Real
 HeatTransfer::predict_velocity (Real  dt,
                                 Real& comp_cfl)
@@ -5370,11 +5368,11 @@ HeatTransfer::predict_velocity (Real  dt,
     for (int dir=0; dir<BL_SPACEDIM; ++dir) {
         u_mac[dir].setVal(0.);
     }
-    MultiFab Force(grids,BL_SPACEDIM,hyp_grow);
+    MultiFab Force(grids,BL_SPACEDIM,Godunov::hypgrow());
     Force.setVal(0);
 #endif
 
-    for (FillPatchIterator U_fpi(*this,visc_terms,hyp_grow,prev_time,State_Type,Xvel,BL_SPACEDIM)
+    for (FillPatchIterator U_fpi(*this,visc_terms,Godunov::hypgrow(),prev_time,State_Type,Xvel,BL_SPACEDIM)
 #ifdef MOREGENGETFORCE
 	     , S_fpi(*this,visc_terms,1,prev_time,State_Type,Density,NUM_SCALARS);
 	 S_fpi.isValid() && U_fpi.isValid();
@@ -6355,7 +6353,7 @@ HeatTransfer::compute_scalar_advection_fluxes_and_divergence (MultiFab& Force,
 
   FArrayBox tforces, volume, area[BL_SPACEDIM], tvelforces, jdivu;
   const int  nState          = desc_lst[State_Type].nComp();
-  for (FillPatchIterator S_fpi(*this,DivU,HYP_GROW,prev_time,State_Type,0,nState);
+  for (FillPatchIterator S_fpi(*this,DivU,Godunov::hypgrow(),prev_time,State_Type,0,nState);
        S_fpi.isValid();
        ++S_fpi)
   {
