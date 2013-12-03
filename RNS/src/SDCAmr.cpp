@@ -271,12 +271,12 @@ void SDCAmr::timeStep(int level, Real time,
   }
 
   // spread and iterate
-  sdc_mg_spread(&mg, time, dt, 0);
+  sdc_mg_spread(&mg, time, dt);
 
   BL_PROFILE_VAR("SDCAmr::timeStep-iters", sdc_iters);
 
   for (int k=0; k<max_iters; k++) {
-    sdc_mg_sweep(&mg, time, dt, (k==max_iters-1) ? SDC_MG_LAST_SWEEP : 0);
+    sdc_mg_sweep(&mg, time, dt, 0);
 
     if (verbose > 0) {
       for (int lev=0; lev<=finest_level; lev++) {
@@ -297,6 +297,8 @@ void SDCAmr::timeStep(int level, Real time,
       }
     }
   }
+
+  sdc_mg_reflux(&mg, time, dt);
 
   BL_PROFILE_VAR_STOP(sdc_iters);
 
@@ -371,7 +373,7 @@ void SDCAmr::rebuild_mlsdc()
     sweepers[lev]->nset->encap = encaps[lev];
     sdc_mg_add_level(&mg, sweepers[lev], mlsdc_amr_interpolate, mlsdc_amr_restrict);
   }
-  sdc_mg_setup(&mg);
+  sdc_mg_setup(&mg, 0);
   sdc_mg_allocate(&mg);
 
   // XXX: for fine levels, need to make the interpolation matrices local only

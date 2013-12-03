@@ -388,10 +388,12 @@ void sdc_f1eval(void *Fp, void *Qp, double t, sdc_state *state, void *ctx)
   MultiFab& Uprime = *F.U;
 
   if (rns.verbose > 1 && ParallelDescriptor::IOProcessor()) {
-    cout << "MLSDC evaluating adv/diff:  level: " << rns.Level() << ", node: " << state->node << endl;
+    cout << "MLSDC evaluating adv/diff:"
+	 << "  level: " << rns.Level() << ", node: " << state->node << endl;
   }
 
-  rns.dUdt_AD(U, Uprime, t, RNS::use_FillBoundary, 0, 0, 0.0);
+  // XXX: do I have to clear out F.flux first?
+  rns.dUdt_AD(U, Uprime, t, RNS::use_FillBoundary, 0, F.flux, 0.0);
 }
 
 //
@@ -416,7 +418,8 @@ void sdc_f2eval(void *Fp, void *Qp, double t, sdc_state *state, void *ctx)
   if (rns.chemSolve->isNull) return;
 
   if (rns.verbose > 1 && ParallelDescriptor::IOProcessor()) {
-    cout << "MLSDC evaluating chemistry: level: " << rns.Level() << ", node: " << state->node << endl;
+    cout << "MLSDC evaluating chemistry:"
+	 << " level: " << rns.Level() << ", node: " << state->node << endl;
   }
 
   rns.fill_boundary(U, state->t, RNS::use_FillBoundary);
@@ -453,7 +456,8 @@ void sdc_f2comp(void *Fp, void *Qp, double t, double dt, void *RHSp, sdc_state *
   }
 
   if (rns.verbose > 1 && ParallelDescriptor::IOProcessor()) {
-    cout << "MLSDC advancing  chemistry: level: " << rns.Level() << ", node: " << state->node << endl;
+    cout << "MLSDC advancing  chemistry:"
+	 << " level: " << rns.Level() << ", node: " << state->node << endl;
   }
 
   rns.fill_boundary(U, state->t, RNS::use_FillBoundary);
