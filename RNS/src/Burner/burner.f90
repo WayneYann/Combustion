@@ -7,7 +7,7 @@ module burner_module
 
   double precision, allocatable, save :: Jac(:,:), A(:,:)
   integer, allocatable, save :: ipvt(:)
-  !$omp threadprivate(burn_linear_allocated,Jac,A,ipvt) 
+  !$omp threadprivate(Jac,A,ipvt) 
 
   private
 
