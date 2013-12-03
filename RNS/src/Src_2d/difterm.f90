@@ -96,6 +96,7 @@ contains
 
     ! ----- compute x-direction flux first -----
 
+    ! cell center => Gauss points on x-face
     call cc2xface_2d(lo,hi,  mucc, g2lo(1:2), g2hi(1:2),  mu1,  mu2, Qflo(1:2), Qfhi(1:2))
     call cc2xface_2d(lo,hi,  xicc, g2lo(1:2), g2hi(1:2),  xi1,  xi2, Qflo(1:2), Qfhi(1:2))
     call cc2xface_2d(lo,hi, lamcc, g2lo(1:2), g2hi(1:2), lam1, lam2, Qflo(1:2), Qfhi(1:2))
@@ -185,6 +186,7 @@ contains
 
     ! ----- compute y-direction flux -----
 
+    ! cell center => Gauss points on x-face
     call cc2yface_2d(lo,hi,  mucc, g2lo(1:2), g2hi(1:2),  mu1,  mu2, Qflo(1:2), Qfhi(1:2))
     call cc2yface_2d(lo,hi,  xicc, g2lo(1:2), g2hi(1:2),  xi1,  xi2, Qflo(1:2), Qfhi(1:2))
     call cc2yface_2d(lo,hi, lamcc, g2lo(1:2), g2hi(1:2), lam1, lam2, Qflo(1:2), Qfhi(1:2))
