@@ -35,8 +35,8 @@ contains
   subroutine cc2xface_2d(clo,chi,u,ulo,uhi,u1,u2,flo,fhi)
     integer, intent(in) :: clo(2),chi(2),ulo(2),uhi(2),flo(2),fhi(2)
     double precision, intent(in ) :: u (ulo(1):uhi(1),ulo(2):uhi(2))
-    double precision              :: u1(flo(1):fhi(1),flo(2):fhi(2))
-    double precision              :: u2(flo(1):fhi(1),flo(2):fhi(2))
+    double precision, intent(out) :: u1(flo(1):fhi(1),flo(2):fhi(2))
+    double precision, intent(out) :: u2(flo(1):fhi(1),flo(2):fhi(2))
 
     integer :: i, j
     double precision :: uf(clo(1):chi(1)+1,clo(2)-2:chi(2)+2)
@@ -61,8 +61,8 @@ contains
   subroutine cc2yface_2d(clo,chi,u,ulo,uhi,u1,u2,flo,fhi)
     integer, intent(in) :: clo(2),chi(2),ulo(2),uhi(2),flo(2),fhi(2)
     double precision, intent(in ) :: u (ulo(1):uhi(1),ulo(2):uhi(2))
-    double precision              :: u1(flo(1):fhi(1),flo(2):fhi(2))
-    double precision              :: u2(flo(1):fhi(1),flo(2):fhi(2))
+    double precision, intent(out) :: u1(flo(1):fhi(1),flo(2):fhi(2))
+    double precision, intent(out) :: u2(flo(1):fhi(1),flo(2):fhi(2))
 
     integer :: i, j
     double precision :: uf(clo(1)-2:chi(1)+2,clo(2):chi(2)+1)
