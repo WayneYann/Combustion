@@ -2633,7 +2633,7 @@ HeatTransfer::avgDown ()
                               level,level+1,0,1,fine_ratio);
     }
 
-    if (verbose)
+    if (verbose > 1)
     {
         const int IOProc   = ParallelDescriptor::IOProcessorNumber();
         Real      run_time = ParallelDescriptor::second() - strt_time;
@@ -7428,7 +7428,7 @@ HeatTransfer::reflux ()
 
     showMF("sdcSync",*Ssync,"sdc_Ssync_after_zero",level);
 
-    if (verbose)
+    if (verbose > 1)
     {
         const int IOProc   = ParallelDescriptor::IOProcessorNumber();
         Real      run_time = ParallelDescriptor::second() - strt_time;
@@ -7836,7 +7836,7 @@ HeatTransfer::RhoH_to_Temp (MultiFab& S,
 	{
             htt_hmixTYP = typical_values[RhoH];
 	}        
-        if (ParallelDescriptor::IOProcessor())
+        if (verbose && ParallelDescriptor::IOProcessor())
             std::cout << "setting htt_hmixTYP = " << htt_hmixTYP << '\n';
     }
 
@@ -7847,7 +7847,7 @@ HeatTransfer::RhoH_to_Temp (MultiFab& S,
         max_iters = std::max(max_iters, RhoH_to_Temp(S[mfi],box,dominmax));
     }
 
-    if (verbose)
+    if (verbose > 1)
     {
         const int IOProc   = ParallelDescriptor::IOProcessorNumber();
         Real      run_time = ParallelDescriptor::second() - strt_time;
