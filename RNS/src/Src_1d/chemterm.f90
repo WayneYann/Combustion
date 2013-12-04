@@ -20,7 +20,7 @@ contains
 
     integer :: i, n, g
     logical :: force_new_J
-    double precision :: rho(2), rhoinv, ei
+    double precision :: rho(2), rhoinv, ei, fac
     double precision :: YT(nspec+1,2)
     double precision, allocatable :: UG(:,:,:)
 
@@ -34,6 +34,8 @@ contains
 
     do i=lo(1),hi(1)
 
+       fac = 0.d0
+
        do g=1,2
 
           rho(g) = 0.d0
@@ -41,7 +43,9 @@ contains
              YT(n-UFS+1,g) = UG(i,n,g)
              rho(g) = rho(g) + UG(i,n,g)
           end do
+
           rhoinv = 1.d0/rho(g)
+          fac = fac + rho(g)
 
           YT(1:nspec,g) = YT(1:nspec,g) * rhoinv
           YT(nspec+1,g) = UG(i,UTEMP,g)
@@ -56,8 +60,10 @@ contains
 
        force_new_J = .false.
 
+       fac = U(i,URHO)/fac
+
        do n=1,nspec
-          U(i,UFS+n-1) = 0.5d0*(rho(1)*YT(n,1) + rho(2)*YT(n,2))
+          U(i,UFS+n-1) = fac*(rho(1)*YT(n,1) + rho(2)*YT(n,2))
        end do
 
     end do
