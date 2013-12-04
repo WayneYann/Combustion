@@ -222,8 +222,8 @@ contains
     end do
     !$omp end do
 
-    !$omp do collapse(2)
     do g=1,4
+       !$omp do
        do j=lo(2),hi(2)
 
           do i=lo(1),hi(1)
@@ -255,8 +255,8 @@ contains
           end do
 
        end do
+       !$omp end do
     end do
-    !$omp end do
 
     !$omp end parallel
 

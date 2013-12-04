@@ -228,8 +228,8 @@ contains
     end do
     !$omp end do
 
-    !$omp do collapse(2)
-    do g=1,4
+    do g=1,8
+       !$omp do collapse(2)
        do k=lo(3),hi(3)
        do j=lo(2),hi(2)
 
@@ -257,14 +257,14 @@ contains
 
           do n=1,nspec
              do i=lo(1),hi(1)
-                Ut(i,j,k,UFS+n-1) = Ut(i,j,k,UFS+n-1) + 0.25d0*rdYdt(i,n)
+                Ut(i,j,k,UFS+n-1) = Ut(i,j,k,UFS+n-1) + 0.125d0*rdYdt(i,n)
              end do
           end do
 
        end do
        end do
+       !$omp end do
     end do
-    !$omp end do
 
     !$omp end parallel
 
