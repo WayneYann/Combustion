@@ -15,11 +15,11 @@ void ChemDriver::reset()
     initialized = false;
 }
 
-ChemDriver::ChemDriver (int use_vode_in)
+ChemDriver::ChemDriver (int use_vode_in, int max_points_in)
+    : isNull(false),
+      use_vode(use_vode_in),
+      max_points(max_points_in)
 {
-    isNull = false;
-    use_vode = use_vode_in;
-
     if (!initialized) 
     {
 	initOnce();
@@ -120,19 +120,9 @@ ChemDriver::initOnce ()
 	ppb.query("reuse_jac", reuse_jac); 
 	ppb.query("multipoint", multipoint);
 
-	int npt = 1;
-	if (multipoint)
-	{
-#if (BL_SPACEDIM == 1)
-	    npt = 2;
-#elif (BL_SPACEDIM == 2)
-	    npt = 4;
-#else
-	    npt = 8;
-#endif
-	}
-
 	int neq = nspec+1; 
+	int npt = (multipoint) ? max_points : 1; 
+
 	BL_FORT_PROC_CALL(CD_INITBDF, cd_initbdf)
 	    (neq, npt, verbose, rtol, atol, order, reuse_jac);
     }

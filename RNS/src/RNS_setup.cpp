@@ -108,7 +108,22 @@ RNS::variableSetUp ()
 
     if (chemSolve == 0) 
     {
-	chemSolve = new ChemDriver(RNS::use_vode);
+	int max_points;
+	if ( use_vode || split_burning ) 
+	{
+	    max_points = 1;
+	}
+	else 
+	{
+#if (BL_SPACEDIM == 1)
+	    max_points = 2;
+#elif (BL_SPACEDIM == 2)
+	    max_points = 4;
+#else
+	    max_points = 8;
+#endif
+	}
+	chemSolve = new ChemDriver(use_vode, max_points);
     }
 
     //

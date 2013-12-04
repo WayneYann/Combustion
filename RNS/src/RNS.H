@@ -306,7 +306,7 @@ protected:
 		       NUM_RIEMANN_TYPE };
 
     static RiemannType Riemann;
-    static Real        difmag; // for JBB Riemann solver
+    static Real        difmag; // for JBB & HLLC Riemann solvers
 
     // species information
     static std::string  fuelName     ;
