@@ -10,7 +10,7 @@ namespace
 }
 
 ChemDriver::ChemDriver (int use_vode_in, int max_points_in)
-    : isNull(false),
+    : isNull(true),
       use_vode(use_vode_in),
       max_points(max_points_in)
 {
