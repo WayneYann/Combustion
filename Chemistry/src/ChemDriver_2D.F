@@ -863,7 +863,6 @@ c
       implicit none
 
 #include "cdwrk.H"
-#include "htdata.H"
 #include "conp.H"
 #include "vode.H"
 

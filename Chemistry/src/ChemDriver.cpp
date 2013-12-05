@@ -102,6 +102,9 @@ ChemDriver::initOnce ()
     if (v_maxcyc > 0) {
       set_max_vode_subcycles(v_maxcyc);
     }
+
+    reaction_map.resize(numReactions());
+    FORT_GET_REACTION_MAP(reaction_map.dataPtr());
 }
 
 void
@@ -1128,11 +1131,13 @@ ChemDriver::Edge::operator<(const Edge& rhs) const
 
 std::ostream& operator<< (std::ostream& os, const ChemDriver::Edge& e)
 {
-    os << e.sp1 << " <=> " << e.sp2 << "  ( ";
-    for (Array<std::pair<int,Real> >::const_iterator it=e.RWL.begin(); it!=e.RWL.end(); ++it)
-        os << it->first << ":" << it->second << " ";
-    os << ")";
-    return os;
+  os << e.sp1 << " " << e.sp2 << " ";
+  for (int i=0; i<e.RWL.size(); ++i) {
+    const std::pair<int,Real>& p=e.RWL[i];
+    os << p.first << ":" << p.second;
+    if (i<e.RWL.size()-1) os << " ";
+  }
+  return os;
 }
 
 ChemDriver::Group::Group (const std::map<std::string,int>& eltCnts)
@@ -1375,8 +1380,8 @@ ChemDriver::getEdges (const std::string& trElt, int PrintVerbose, int HackSplitt
             if (m>0)
                 eltCnts[elt] = m;
 
-            groups[sp] = Group(eltCnts);
         }
+        groups[sp] = Group(eltCnts);
     }
     for (int r=0; r<numReactions(); ++r)
     {
@@ -1460,7 +1465,7 @@ ChemDriver::getEdges (const std::string& trElt, int PrintVerbose, int HackSplitt
             int pc1 = p1->second;
 
             Group b0(pc0 * groups[ps0] - rc0 * groups[rs0]);
-            Group b1(pc1 * groups[ps1] - rc0 * groups[rs0]);
+            Group b1(pc1 * groups[ps1] - rc0 * groups[rs0]);            
             int pick = 0;
 
             // HACK
@@ -1468,7 +1473,7 @@ ChemDriver::getEdges (const std::string& trElt, int PrintVerbose, int HackSplitt
             {
                 pick = 0;
                 if (PrintVerbose>0)
-                    cout << "...resorting to HACK!!" << endl;
+                    cout << "decomposition of reaction " << r+1 << "...resorting to HACK!!" << endl;
             }
             else
             {
@@ -1476,7 +1481,7 @@ ChemDriver::getEdges (const std::string& trElt, int PrintVerbose, int HackSplitt
                 {
                     pick = 0;
                     if (PrintVerbose>0)
-                        cout << "...resorting to HACK!!" << endl;
+                        cout << "decomposition of reaction " << r+1 << "...resorting to HACK!!" << endl;
                 }
                 else
                 {
@@ -1486,7 +1491,7 @@ ChemDriver::getEdges (const std::string& trElt, int PrintVerbose, int HackSplitt
                         {
                             pick = 1;
                             if (PrintVerbose>0)
-                                cout << "...resorting to atom cnt" << endl;
+                                cout << "decomposition of reaction " << r+1 << " resorting to atom cnt" << endl;
                         }
                         if (b1.size() == b0.size())
                         {
@@ -1494,11 +1499,11 @@ ChemDriver::getEdges (const std::string& trElt, int PrintVerbose, int HackSplitt
                             {
                                 pick = 1;
                                 if (PrintVerbose>0)
-                                    cout << "...resorting to tot awt" << endl;
+                                    cout << "decomposition of reaction " << r+1 << " ...resorting to tot awt" << endl;
                             }
                             else if ( (PrintVerbose>0) && (b0.awt() < b1.awt()) )
                             {
-                                cout << "...resorting to tot awt" << endl;
+                                cout << "decomposition of reaction " << r+1 << " ...resorting to tot awt" << endl;
                             }
                         }
                     }

@@ -18,7 +18,13 @@
 #define onetenthsnd 0.0001d0
 #define ten2minus18 1.0d-18
 #endif
-      
+      subroutine FORT_GET_REACTION_MAP(rmap)
+      implicit none
+#include "cdwrk.H"
+      integer rmap(nReac)
+      call GET_REACTION_MAP(rmap) 
+      end
+
       subroutine FORT_SETTMINTRANS(TminTRANS)
       implicit none
       REAL_T TminTRANS

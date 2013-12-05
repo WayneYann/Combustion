@@ -75,6 +75,7 @@ public:
     Array<int> reactionsWithXonR (const std::string& rSpecName) const;
     Array<std::pair<std::string,int> > specCoeffsInReactions (int reacIdx) const;
     std::string reactionString (int reacIdx) const;
+    const Array<int>& reactionMap() const;
 
     int numberOfElementXinSpeciesY (const std::string& eltX,
                                     const std::string& spcY) const;
@@ -372,6 +373,8 @@ public:
 
         bool operator< (const Edge& rhs) const;
 
+        const Array<std::pair<int,Real> > RateWeightList() const {return RWL;}
+
     private:
         std::string sp1, sp2;
         Array<std::pair<int,Real> > RWL; // RateWeightList, each pair is (reac,coeff)
@@ -437,6 +440,7 @@ private:
     Array<Real>        mTmpData;
     int mMaxreac, mMaxspec, mMaxelts, mMaxord, mMaxthrdb, mMaxtp, mMaxsp, mMaxspnml;
     Array<int>         mNu;
+    Array<int> reaction_map;
 };
 
 ChemDriver::Group operator* (int n, const ChemDriver::Group& g);
@@ -524,5 +528,13 @@ ChemDriver::setHtoTiterMAX (int iter)
         mTmpData.resize(mHtoTiterMAX);
     }
 }
+
+inline
+const Array<int>&
+ChemDriver::reactionMap() const
+{
+  return reaction_map;
+}
+
 
 #endif /*_ChemDriver_H_*/

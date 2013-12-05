@@ -32,6 +32,7 @@
 #    define FORT_MASSR_TO_CONC   dmsrtocon
 #    define FORT_CONC_TO_MOLE    dcontomol
 #    define FORT_CONPSOLV        dcpsolv
+#    define FORT_GET_REACTION_MAP dgrm
 #ifdef LMC_SDC
 #    define FORT_CONPSOLV_SDC    dcpsolvsdc
 #endif
@@ -63,6 +64,7 @@
 #    define FORT_NORMMASS        dnormmass
 #    define FORT_SETTMINTRANS    dsetttrans
 #    define FORT_SETNU           dsetnu
+#    define FORT_GET_REACTION_MAP dgrm
 #else
 #  if defined(BL_FORT_USE_UPPERCASE)
 #    define FORT_USINGEG         DUSINGEG
@@ -126,6 +128,7 @@
 #    define FORT_NORMMASS        DNORMMASS
 #    define FORT_SETTMINTRANS    DSETTTRANS
 #    define FORT_SETNU           DSETNU
+#    define FORT_GET_REACTION_MAP DGRM
 #  elif defined(BL_FORT_USE_LOWERCASE)
 #    define FORT_USINGEG         dusingeg
 #    define FORT_USINGMC         dusingmc
@@ -188,6 +191,7 @@
 #    define FORT_NORMMASS        dnormmass
 #    define FORT_SETTMINTRANS    dsetttrans
 #    define FORT_SETNU           dsetnu
+#    define FORT_GET_REACTION_MAP dgrm
 #  elif defined(BL_FORT_USE_UNDERSCORE)
 #    define FORT_USINGEG         dusingeg_
 #    define FORT_USINGMC         dusingmc_
@@ -253,6 +257,7 @@
 #    define FORT_NORMMASS        dnormmass_
 #    define FORT_SETTMINTRANS    dsetttrans_
 #    define FORT_SETNU           dsetnu_
+#    define FORT_GET_REACTION_MAP dgrm_
 #  endif
 
 #include <ArrayLim.H>
@@ -468,6 +473,8 @@ extern "C" {
     void FORT_SETTRLIB(const int* lib_idx);
 
     void FORT_SETNU(int* nu, const int& N);
+
+    void FORT_GET_REACTION_MAP(int* rmap);
 }
 
 #endif
