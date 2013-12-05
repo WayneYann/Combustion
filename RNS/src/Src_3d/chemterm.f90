@@ -34,13 +34,13 @@ contains
 
     integer :: i, j, k, n, g
     logical :: force_new_J
-    double precision :: rhot(8), rhoinv, ei, fac
-    double precision :: Yt(nspec+1,8)
+    double precision :: rhot(8), rhoinv, ei
+    double precision :: Yt0(nspec+1,8), Yt(nspec+1,8), dry(nspec)
     double precision, allocatable :: UG(:,:,:,:,:)
 
     allocate(UG(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),8,NVAR))
 
-    !$omp parallel private(i,j,k,n,g,rhot,rhoinv,ei,fac,Yt,force_new_J)
+    !$omp parallel private(i,j,k,n,g,rhot,rhoinv,ei,Yt0,Yt,dry,force_new_J)
 
     !$omp do
     do n=1,NVAR
@@ -55,8 +55,6 @@ contains
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
 
-             fac = 0.d0
-
              do g=1,8
 
                 rhot = 0.d0
@@ -64,9 +62,7 @@ contains
                    Yt(n,g) = UG(i,j,k,g,UFS+n-1)
                    rhot(g) = rhot(g) + Yt(n,g)
                 end do
-
                 rhoinv = 1.d0/rhot(g)
-                fac = fac + rhot(g)
 
                 Yt(1:nspec,g) = Yt(1:nspec,g) * rhoinv
                 Yt(nspec+1,g) = UG(i,j,k,g,UTEMP)
@@ -78,18 +74,21 @@ contains
 
              end do
 
+             Yt0 = Yt
              call burn(8, rhot, Yt, dt, force_new_J)
 
              force_new_J = .false.
 
-             fac = U(i,j,k,URHO)/fac
-
-             do n =1,nspec
-                U(i,j,k,UFS+n-1) = 0.d0
-                do g=1,8
-                   U(i,j,k,UFS+n-1) = U(i,j,k,UFS+n-1) + rhot(g)*Yt(n,g)
+             dry = 0.d0
+             do g=1,8
+                do n=1,nspec
+                   dry(n) = dry(n) + rhot(g)*(Yt(n,g)-Yt0(n,g))
                 end do
-                U(i,j,k,UFS+n-1) = U(i,j,k,UFS+n-1) * fac
+             end do
+             
+             ! note that the sum of dry is zero
+             do n=1,nspec
+                U(i,j,k,UFS+n-1) = U(i,j,k,UFS+n-1) + 0.125d0*dry(n)
              end do
 
           end do
