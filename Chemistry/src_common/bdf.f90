@@ -119,10 +119,10 @@ contains
          real(dp), intent(in   ) :: y(neq,npt), t
          real(dp), intent(  out) :: yd(neq,npt)
        end subroutine f
-       subroutine Jac(neq, y, t, J)
+       subroutine Jac(neq, npt, y, t, J)
          import dp
-         integer,  intent(in   ) :: neq
-         real(dp), intent(in   ) :: y(neq), t
+         integer,  intent(in   ) :: neq, npt
+         real(dp), intent(in   ) :: y(neq,npt), t
          real(dp), intent(  out) :: J(neq, neq)
        end subroutine Jac
     end interface
@@ -272,10 +272,10 @@ contains
          real(dp), intent(in   ) :: y(neq,npt), t
          real(dp), intent(  out) :: yd(neq,npt)
        end subroutine f
-       subroutine Jac(neq, y, t, J)
+       subroutine Jac(neq, npt, y, t, J)
          import dp
-         integer,  intent(in   ) :: neq
-         real(dp), intent(in   ) :: y(neq), t
+         integer,  intent(in   ) :: neq, npt
+         real(dp), intent(in   ) :: y(neq,npt), t
          real(dp), intent(  out) :: J(neq, neq)
        end subroutine Jac
     end interface
@@ -311,7 +311,7 @@ contains
           if (ts%ncse > 0  .and. (dt_rat < 0.2d0 .or. dt_rat > 5.d0)) rebuild = .false.
 
           if (rebuild) then
-             call Jac(ts%neq, ts%y(:,1), ts%t, ts%J)
+             call Jac(ts%neq, ts%npt, ts%y, ts%t, ts%J)
              ts%nje   = ts%nje + 1
              ts%j_age = 0
           end if
