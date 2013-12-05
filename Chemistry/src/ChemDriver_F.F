@@ -152,14 +152,18 @@ c
       allocate(RWRK(dvr+dvdr))
       allocate(IWRK(dvi))
 
+!$omp single
       use_eg = 0
       use_mc = 0
+!$omp end single
       if (FORT_USINGEG() .eq. 1) then
          allocate(EGRWRK(egrlen))
          allocate(EGIWRK(egilen))         
          call EGINICD(eg_nodes, lout, eg_IFLAG, eg_ITLS,
      &        EGRWRK, egrlen, EGIWRK, egilen)
+!$omp single
          use_eg = 1
+!$omp end single
       else if (FORT_USINGMC() .eq. 1) then
          allocate(MCRWRK(mcr))
          allocate(MCIWRK(mci))
@@ -168,7 +172,9 @@ c
             WRITE(LOUTCK,*)' QUITTING BECAUSE MCINIT IFLAG = ', ierr
             call bl_abort(" ")
          end if
+!$omp single
          use_mc = 1
+!$omp end single
       else
          write(6,*) 'Unknown transport library'
          call bl_abort(" ")

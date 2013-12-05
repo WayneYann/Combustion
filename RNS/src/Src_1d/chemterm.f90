@@ -21,7 +21,7 @@ contains
     integer :: i, n, g
     logical :: force_new_J
     double precision :: rho(2), rhoinv, ei
-    double precision :: YT(nspec+1,2)
+    double precision :: YT0(nspec+1,2), YT(nspec+1,2), dry(nspec)
     double precision, allocatable :: UG(:,:,:)
 
     allocate(UG(lo(1):hi(1),NVAR,2))
@@ -52,12 +52,21 @@ contains
 
        end do
 
+       YT0 = YT
        call burn(2, rho, YT, dt, force_new_J)
 
        force_new_J = .false.
 
+       dry = 0.d0
+       do g=1,2
+          do n=1,nspec
+             dry(n) = dry(n) + rho(g)*(Yt(n,g)-Yt0(n,g))
+          end do
+       end do
+       
+       ! note that the sum of dry is zero
        do n=1,nspec
-          U(i,UFS+n-1) = 0.5d0*(rho(1)*YT(n,1) + rho(2)*YT(n,2))
+          U(i,UFS+n-1) = U(i,UFS+n-1) + 0.5d0*dry(n)
        end do
 
     end do

@@ -290,24 +290,24 @@ c     NOTE: scal converts result from assumed cgs to MKS (1 erg/s.cm^3 = .1 J/s.
       integer i,j,k,n
       REAL_T TIME,P1atm,RU,RUC
 
-      TIME = 0.
+      TIME = zero
       CALL CKRP(IWRK(ckbi), RWRK(ckbr), RU, RUC, P1atm)
       RWRK(NP) = Patm * P1atm
-
+      !
+      ! Note that c_0,c_1,rhoh_INIT & T_cell are thread-private.
+      !
+!$omp parallel do private(i,j,k,n,Zt,Zdott)
       do k=lo(3),hi(3)
          do j=lo(2),hi(2)
             do i=lo(1),hi(1)
                c_0(1:Nspec+1) = zero
                c_1(1:Nspec+1) = zero
-               rhoh_INIT = RhoH(i,j,k)
-               T_cell = T(i,j,k)
-               
-               Zt(Nspec+1) = RhoH(i,j,k)
-
+               rhoh_INIT      = RhoH(i,j,k)
+               T_cell         = T(i,j,k)
+               Zt(Nspec+1)    = RhoH(i,j,k)
                do n=1,Nspec
                   Zt(n) = RhoY(i,j,k,n)
                end do
-               
                call conpFY_sdc(NEQ,TIME,Zt,Zdott,RWRK,IWRK)
                do n=1,Nspec
                   RhoYdot(i,j,k,n) = Zdott(n)
@@ -315,6 +315,7 @@ c     NOTE: scal converts result from assumed cgs to MKS (1 erg/s.cm^3 = .1 J/s.
             end do
          end do
       end do
+!$omp end parallel do
       end
 #endif
 
@@ -922,7 +923,7 @@ c     Get the matrix of elements versus species
       character*(maxspnml) name
       REAL_T RTOL, ATOL(maxspec+2), ATOLEPS, TT1, TT2, RU, RUC, P1atm
       REAL_T Y(maxspec), hmix_ck, Z(maxspec+2), ZP(maxspec+2), Yold(maxspec)
-      REAL_T dtloc, TT1save, rho, rhoInv, h_INIT
+      REAL_T dtloc, weight, TT1save, rho, rhoInv, h_INIT
       REAL_T Ct(maxspec),Qt(maxreac), scale, sum
       REAL_T rhoYtemp(maxspec),rhoYres(maxspec),HMIX_CGS
       REAL_T,  parameter :: HtoTerrMAX = BL_REAL_E(7.8,-12)
@@ -978,8 +979,8 @@ c     Get the matrix of elements versus species
       !
       !   c_0,c_1,rhoH_INIT,T_cell,rhoY_INIT,negative_Y_test
       !
-!$omp do private(i,j,k,strang_fix,TT1,ISTATE,Y,node)
-!$omp&private(rhoYtemp,Z,rho,sum,rhoInv,lout,name)
+!$omp do private(i,j,k,strang_fix,TT1,ISTATE,Y,node,Ct,Qt,res)
+!$omp&private(rhoYtemp,Z,rho,sum,rhoInv,lout,name,weight,NIter)
 !$omp&private(TT1save,TT2,m,Yold,rhooldInv) schedule(dynamic,1)
       do k=lo(3),hi(3)
          do j=lo(2),hi(2)
@@ -999,7 +1000,22 @@ c     Get the matrix of elements versus species
                T_cell             = Told(i,j,k)
                FuncCount(i,j,k)   = 0
 
+               if (do_diag.eq.1) then
+                  FuncCount(i,j,k) = 0
+                  CALL CKYTCP(RWRK(NP),T_cell,Z(1),IWRK(ckbi),RWRK(ckbr),Ct)
+                  CALL CKQC(T_cell,Ct,IWRK(ckbi),RWRK(ckbr),Qt)
+                  do m=1,Nreac
+                     diag(i,j,k,m) = diag(i,j,k,m)+half*dtloc*Qt(m)*million
+                  enddo
+               endif
+
                do node = 1,nsub
+                  if (node.lt.nsub) then
+                     weight = one
+                  else
+                     weight = half
+                  endif
+
                   TT2     = TT1 + dtloc                  
                   TT1save = TT1
 
@@ -1113,7 +1129,16 @@ c     Get the matrix of elements versus species
                      end if
                   end if
                   
-                  TT1              = TT2
+                  TT1 = TT2
+
+                  if (do_diag.eq.1) then
+                     CALL CKYTCP(RWRK(NP),T_cell,Z(1),IWRK(ckbi),RWRK(ckbr),Ct)
+                     CALL CKQC(T_cell,Ct,IWRK(ckbi),RWRK(ckbr),Qt)
+                     do m=1,Nreac
+                        diag(i,j,k,m) = diag(i,j,k,m)+weight*dtloc*Qt(m)*million
+                     enddo
+                  endif
+
                   FuncCount(i,j,k) = FuncCount(i,j,k) + IWRK(dvbi+11)
                enddo
                

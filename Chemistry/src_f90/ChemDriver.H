@@ -9,7 +9,7 @@ class ChemDriver
 {
 public:
 
-    ChemDriver (int use_vode);
+    ChemDriver (int use_vode_in=1, int max_points_in=1);
 
     ~ChemDriver ();
 
@@ -26,6 +26,7 @@ public:
 
     bool isNull;
     bool use_vode;
+    bool max_points;
 
 private:
 

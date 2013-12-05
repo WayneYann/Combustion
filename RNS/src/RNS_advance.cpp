@@ -76,6 +76,8 @@ RNS::advance (Real time,
 void
 RNS::fill_boundary(MultiFab& U, Real time, int type_in)
 {
+    BL_PROFILE("RNS::fill_boundary()");
+
     if (type_in == no_fill) return;
 
     int type = type_in;
@@ -126,11 +128,12 @@ RNS::fill_boundary(MultiFab& U, Real time, int type_in)
     case use_FillBoundary:
 
 	U.FillBoundary();
-	geom.FillPeriodicBoundary(U, true);
 
 	// no break; so it will go to next case and set physical boundaries
 
     case set_PhysBoundary:
+
+	geom.FillPeriodicBoundary(U, true);
 
 	for (MFIter mfi(U); mfi.isValid(); ++mfi)
 	{
@@ -151,6 +154,8 @@ void
 RNS::dUdt_AD(MultiFab& U, MultiFab& Uprime, Real time, int fill_boundary_type,
 	     FluxRegister* fine, FluxRegister* current, Real dt)
 {
+    BL_PROFILE("RNS::dUdt_AD()");
+
     FArrayBox  flux[BL_SPACEDIM];
     MultiFab fluxes[BL_SPACEDIM];
     if (do_reflux && fine)
@@ -219,6 +224,8 @@ RNS::dUdt_AD(MultiFab& U, MultiFab& Uprime, Real time, int fill_boundary_type,
 void
 RNS::dUdt_chemistry(const MultiFab& U, MultiFab& Uprime)
 {
+    BL_PROFILE("RNS::dUdt_chemistry()");
+
     BL_ASSERT( ! chemSolve->isNull );
 
     for (MFIter mfi(U); mfi.isValid(); ++mfi)
@@ -287,6 +294,8 @@ RNS::post_update(MultiFab& U)
 void
 RNS::advance_chemistry(MultiFab& U, Real dt)
 {
+    BL_PROFILE("RNS::advance_chemistry()");
+
     BL_ASSERT( ! chemSolve->isNull );
 
     for (MFIter mfi(U); mfi.isValid(); ++mfi)
@@ -370,20 +379,21 @@ BEGIN_EXTERN_C
 //
 // Compute dU_{AD}/dt.
 //
-// XXX: it might be interesting to track the magnitude of reflux
-// registers.
-//
-void sdc_f1eval(void *F, void *Q, double t, sdc_state *state, void *ctx)
+void sdc_f1eval(void *Fp, void *Qp, double t, sdc_state *state, void *ctx)
 {
   RNS&      rns    = *((RNS*) ctx);
-  MultiFab& U      = *((MultiFab*) Q);
-  MultiFab& Uprime = *((MultiFab*) F);
+  RNSEncap& Q      = *((RNSEncap*) Qp);
+  RNSEncap& F      = *((RNSEncap*) Fp);
+  MultiFab& U      = *Q.U;
+  MultiFab& Uprime = *F.U;
 
-  if (rns.verbose > 0 && ParallelDescriptor::IOProcessor()) {
-    cout << "MLSDC evaluating adv/diff:  level: " << rns.Level() << ", node: " << state->node << endl;
+  if (rns.verbose > 1 && ParallelDescriptor::IOProcessor()) {
+    cout << "MLSDC evaluating adv/diff:"
+	 << "  level: " << rns.Level() << ", node: " << state->node << endl;
   }
 
-  rns.dUdt_AD(U, Uprime, t, RNS::use_FillBoundary, 0, 0, 0.0);
+  // XXX: do I have to clear out F.flux first?
+  rns.dUdt_AD(U, Uprime, t, RNS::use_FillBoundary, 0, F.flux, 0.0);
 }
 
 //
@@ -395,18 +405,21 @@ void sdc_f1eval(void *F, void *Q, double t, sdc_state *state, void *ctx)
 //
 //   * Calling advance_chemistry with dt=0.0 puts dU_R/dt into tmp.
 //
-void sdc_f2eval(void *F, void *Q, double t, sdc_state *state, void *ctx)
+void sdc_f2eval(void *Fp, void *Qp, double t, sdc_state *state, void *ctx)
 {
   RNS&      rns    = *((RNS*) ctx);
-  MultiFab& U      = *((MultiFab*) Q);
-  MultiFab& Uprime = *((MultiFab*) F);
+  RNSEncap& Q      = *((RNSEncap*) Qp);
+  RNSEncap& F      = *((RNSEncap*) Fp);
+  MultiFab& U      = *Q.U;
+  MultiFab& Uprime = *F.U;
 
   Uprime.setVal(0.0);
 
   if (rns.chemSolve->isNull) return;
 
-  if (rns.verbose > 0 && ParallelDescriptor::IOProcessor()) {
-    cout << "MLSDC evaluating chemistry: level: " << rns.Level() << ", node: " << state->node << endl;
+  if (rns.verbose > 1 && ParallelDescriptor::IOProcessor()) {
+    cout << "MLSDC evaluating chemistry:"
+	 << " level: " << rns.Level() << ", node: " << state->node << endl;
   }
 
   rns.fill_boundary(U, state->t, RNS::use_FillBoundary);
@@ -424,12 +437,15 @@ void sdc_f2eval(void *F, void *Q, double t, sdc_state *state, void *ctx)
 // XXX: it might be interesting to track the difference between Uprime
 // as calculated above and calling f2eval...
 //
-void sdc_f2comp(void *F, void *Q, double t, double dt, void *RHS, sdc_state *state, void *ctx)
+void sdc_f2comp(void *Fp, void *Qp, double t, double dt, void *RHSp, sdc_state *state, void *ctx)
 {
   RNS&      rns    = *((RNS*) ctx);
-  MultiFab& U      = *((MultiFab*) Q);
-  MultiFab& Uprime = *((MultiFab*) F);
-  MultiFab& Urhs   = *((MultiFab*) RHS);
+  RNSEncap& Q      = *((RNSEncap*) Qp);
+  RNSEncap& F      = *((RNSEncap*) Fp);
+  RNSEncap& RHS    = *((RNSEncap*) RHSp);
+  MultiFab& U      = *Q.U;
+  MultiFab& Uprime = *F.U;
+  MultiFab& Urhs   = *RHS.U;
 
   BL_ASSERT(Urhs.contains_nan() == false);
   MultiFab::Copy(U, Urhs, 0, 0, U.nComp(), U.nGrow());
@@ -439,8 +455,9 @@ void sdc_f2comp(void *F, void *Q, double t, double dt, void *RHS, sdc_state *sta
     return;
   }
 
-  if (rns.verbose > 0 && ParallelDescriptor::IOProcessor()) {
-    cout << "MLSDC advancing  chemistry: level: " << rns.Level() << ", node: " << state->node << endl;
+  if (rns.verbose > 1 && ParallelDescriptor::IOProcessor()) {
+    cout << "MLSDC advancing  chemistry:"
+	 << " level: " << rns.Level() << ", node: " << state->node << endl;
   }
 
   rns.fill_boundary(U, state->t, RNS::use_FillBoundary);
@@ -453,10 +470,11 @@ void sdc_f2comp(void *F, void *Q, double t, double dt, void *RHS, sdc_state *sta
   Uprime.mult(1./dt);
 }
 
-void sdc_poststep_hook(void *Q, sdc_state *state, void *ctx)
+void sdc_poststep_hook(void *Qp, sdc_state *state, void *ctx)
 {
-  RNS&      rns    = *((RNS*) ctx);
-  MultiFab& U      = *((MultiFab*) Q);
+  RNS&      rns = *((RNS*) ctx);
+  RNSEncap& Q   = *((RNSEncap*) Qp);
+  MultiFab& U   = *Q.U;
 
   rns.post_update(U);
 }

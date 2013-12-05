@@ -35,8 +35,8 @@ contains
     integer, intent(in), optional :: dir
     double precision, intent(in),target           :: U ( Ulo: Uhi,NVAR)
     double precision, intent(in),target, optional :: U0(U0lo:U0hi,NVAR)
-    double precision, dimension(ULRlo:ULRhi,NVAR), optional :: UL, UR
-    double precision, dimension( UGlo: UGhi,NVAR), optional :: UG1, UG2
+    double precision, intent(out), dimension(ULRlo:ULRhi,NVAR), optional :: UL, UR
+    double precision, intent(out), dimension( UGlo: UGhi,NVAR), optional :: UG1, UG2
 
     integer :: i, ii, ivar, m, n, ivel(3), idir, iextra
     double precision :: egv(NCHARV,NCHARV)

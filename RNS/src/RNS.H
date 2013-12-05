@@ -306,7 +306,7 @@ protected:
 		       NUM_RIEMANN_TYPE };
 
     static RiemannType Riemann;
-    static Real        difmag; // for JBB Riemann solver
+    static Real        difmag; // for JBB & HLLC Riemann solvers
 
     // species information
     static std::string  fuelName     ;
@@ -344,6 +344,7 @@ protected:
 
     static int         use_vode;
     static int         do_cc_burning;
+    static int         split_burning;
 
     // for keeping track of the amount of CPU time used -- this will persist
     // after restarts

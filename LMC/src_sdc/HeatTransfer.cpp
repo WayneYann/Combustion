@@ -67,7 +67,6 @@ const Real Real_MAX = DBL_MAX;
 #endif
 
 const int  GEOM_GROW   = 1;
-const int  HYP_GROW    = 3;
 const int  PRESS_GROW  = 1;
 const int  DIVU_GROW   = 1;
 const int  DSDT_GROW   = 1;
@@ -77,9 +76,8 @@ const int  YDOT_GROW   = 1;
 const int  HYPF_GROW   = 1;
 const int  LinOp_grow  = 1;
 
+static Real              typical_RhoH_value_default = -1.e10;
 static const std::string typical_values_filename("typical_values.fab");
-
-static const Real typical_RhoH_value_default = -1.e10;
 
 namespace
 {
@@ -250,7 +248,7 @@ HeatTransfer::Initialize ()
     do_not_use_funccount = false;
     do_active_control    = false;
     crse_dt              = -1;
-    
+
     HeatTransfer::num_divu_iters            = 1;
     HeatTransfer::init_once_done            = 0;
     HeatTransfer::do_OT_radiation           = 0;
@@ -1183,16 +1181,16 @@ HeatTransfer::restart (Amr&          papa,
 void
 HeatTransfer::set_typical_values(bool restart)
 {
-    if (level==0) {
+    if (level==0)
+    {
+        const int nComp = typical_values.size();
 
-        int nComp = typical_values.size();
-
-        if (restart) {
-
+        if (restart)
+        {
             BL_ASSERT(nComp==NUM_STATE);
-            for (int i=0; i<nComp; ++i) {
+
+            for (int i=0; i<nComp; ++i)
                 typical_values[i] = -1;
-            }
             
             if (ParallelDescriptor::IOProcessor())
             {
@@ -1200,56 +1198,61 @@ HeatTransfer::set_typical_values(bool restart)
                 std::ifstream tvis;
                 tvis.open(tvfile.c_str(),std::ios::in|std::ios::binary);
                 
-                if (tvis.good()) {
+                if (tvis.good())
+                {
                     FArrayBox tvfab;
                     tvfab.readFrom(tvis);
-                    if (tvfab.nComp() != typical_values.size()) {
+                    if (tvfab.nComp() != typical_values.size())
                         BoxLib::Abort("Typical values file has wrong number of components");
-                    }
-                    for (int i=0; i<typical_values.size(); ++i) {
+                    for (int i=0; i<typical_values.size(); ++i)
                         typical_values[i] = tvfab.dataPtr()[i];
-                    }
                 }
             }
 
 	    ParallelDescriptor::ReduceRealMax(typical_values.dataPtr(),nComp); //FIXME: better way?
         }
-	else { // not restart
-
-	  // Check fortan common values, override values set above if fortran values > 0
-	  Array<Real> tvTmp(nComp,0);
-	  FORT_GETTYPICALVALS(tvTmp.dataPtr(), &nComp);
-	  ParallelDescriptor::ReduceRealMax(tvTmp.dataPtr(),nComp);
+	else
+        {
+            //
+            // Check fortan common values, override values set above if fortran values > 0.
+            //
+            Array<Real> tvTmp(nComp,0);
+            FORT_GETTYPICALVALS(tvTmp.dataPtr(), &nComp);
+            ParallelDescriptor::ReduceRealMax(tvTmp.dataPtr(),nComp);
         
-	  for (int i=0; i<nComp; ++i) {
-            if (tvTmp[i]>0) {
-	      typical_values[i] = tvTmp[i];
+            for (int i=0; i<nComp; ++i)
+            {
+                if (tvTmp[i] > 0)
+                    typical_values[i] = tvTmp[i];
             }
-	  }
 	}
-
-        // If typVals specified in inputs, these take precedence componentwise
+        //
+        // If typVals specified in inputs, these take precedence componentwise.
+        //
         for (std::map<std::string,Real>::const_iterator it=typical_values_FileVals.begin(), 
-               End=typical_values_FileVals.end(); it!=End; ++it) {
-          int idx = getChemSolve().index(it->first);
-          if (idx>=0) {
-            typical_values[first_spec+idx] = it->second;
-          } else {
-            if (it->first == "Temp") {
-              typical_values[Temp] = it->second;
+               End=typical_values_FileVals.end();
+             it!=End;
+             ++it)
+        {
+            const int idx = getChemSolve().index(it->first);
+            if (idx>=0)
+            {
+                typical_values[first_spec+idx] = it->second;
             }
-            else if (it->first == "RhoH") {
-              typical_values[RhoH] = it->second;
+            else
+            {
+                if (it->first == "Temp")
+                    typical_values[Temp] = it->second;
+                else if (it->first == "RhoH")
+                    typical_values[RhoH] = it->second;
+                else if (it->first == "Trac")
+                    typical_values[Trac] = it->second;
+                else if (it->first == "Vel")
+                {
+                    for (int d=0; d<BL_SPACEDIM; ++d)
+                        typical_values[d] = it->second;
+                }
             }
-            else if (it->first == "Trac") {
-              typical_values[Trac] = it->second;
-            }
-            else if (it->first == "Vel") {
-              for (int d=0; d<BL_SPACEDIM; ++d) {
-                typical_values[d] = it->second;
-              }
-            }
-          }
         }
 
         FORT_SETTYPICALVALS(typical_values.dataPtr(), &nComp);
@@ -1258,23 +1261,29 @@ HeatTransfer::set_typical_values(bool restart)
         {
             cout << "Typical vals: " << '\n';
             cout << "\tVelocity: ";
-            for (int i=0; i<BL_SPACEDIM; ++i) {
-                cout << typical_values[i] << " ";
+            for (int i=0; i<BL_SPACEDIM; ++i)
+            {
+                cout << typical_values[i] << ' ';
             }
             cout << '\n';
             cout << "\tDensity: " << typical_values[Density] << '\n';
-            cout << "\tTemp: "    << typical_values[Temp]    << '\n';
-            cout << "\tRhoH: "    << typical_values[RhoH]    << '\n';
+            cout << "\tTemp:    " << typical_values[Temp]    << '\n';
+            cout << "\tRhoH:    " << typical_values[RhoH]    << '\n';
             const Array<std::string>& names = getChemSolve().speciesNames();
-            for (int i=0; i<nspecies; ++i) {
+            for (int i=0; i<nspecies; ++i)
+            {
                 cout << "\tY_" << names[i] << ": " << typical_values[first_spec+i] << '\n';
             }
         }
-
-        // Verify good values for Density, Temp, RhoH, Y -- currently only needed for mcdd problems
-        if (do_mcdd && ParallelDescriptor::IOProcessor()) {
-            for (int i=BL_SPACEDIM; i<nComp; ++i) {
-                if (i!=Trac && i!=RhoRT && typical_values[i]<=0) {
+        //
+        // Verify good values for Density, Temp, RhoH, Y -- currently only needed for mcdd problems.
+        //
+        if (do_mcdd && ParallelDescriptor::IOProcessor())
+        {
+            for (int i=BL_SPACEDIM; i<nComp; ++i)
+            {
+                if (i!=Trac && i!=RhoRT && typical_values[i]<=0)
+                {
                     cout << "component: " << i << " of " << nComp << '\n';
                     BoxLib::Abort("Must have non-zero typical values");
                 }
@@ -1284,69 +1293,79 @@ HeatTransfer::set_typical_values(bool restart)
 }
 
 void
-HeatTransfer::reset_typical_values(const MultiFab& S)
+HeatTransfer::reset_typical_values (const MultiFab& S)
 {
-  // NOTE: Assumes that this level has valid data everywhere
-  int nComp = typical_values.size();
-  BL_ASSERT(nComp = S.nComp());
-  for (int i=0; i<nComp; ++i) {
-    Real thisMax = S.max(i);
-    Real thisMin = S.min(i);
-    Real newVal = std::abs(thisMax - thisMin);
-    if (newVal > 0) {
-      if ( (i>=first_spec && i<=last_spec) ) {
-        typical_values[i] = newVal / typical_values[Density];
-      }
-      else {
-        typical_values[i] = newVal;
-      }
-    }
-  }
+    //
+    // NOTE: Assumes that this level has valid data everywhere.
+    //
+    const int nComp = typical_values.size();
 
-  // If typVals specified in inputs, these take precedence componentwise
-  if (parent->levelSteps(0) == 0)
-  {
-    for (std::map<std::string,Real>::const_iterator it=typical_values_FileVals.begin(), 
-	   End=typical_values_FileVals.end(); it!=End; ++it) {
-      int idx = getChemSolve().index(it->first);
-      if (idx>=0) {
-	typical_values[first_spec+idx] = it->second;
-      } else {
-	if (it->first == "Temp") {
-	  typical_values[Temp] = it->second;
-	}
-	else if (it->first == "RhoH") {
-	  typical_values[RhoH] = it->second;
-	}
-	else if (it->first == "Trac") {
-	  typical_values[Trac] = it->second;
-	}
-	else if (it->first == "Vel") {
-	  for (int d=0; d<BL_SPACEDIM; ++d) {
-	    typical_values[d] = it->second;
-	  }
-	}
-      }
-    }
-  }
+    BL_ASSERT(nComp == S.nComp());
 
-  FORT_SETTYPICALVALS(typical_values.dataPtr(), &nComp);
+    for (int i=0; i<nComp; ++i)
+    {
+        const Real thisMax = S.max(i);
+        const Real thisMin = S.min(i);
+        const Real newVal = std::abs(thisMax - thisMin);
+        if (newVal > 0)
+        {
+            if ( (i>=first_spec && i<=last_spec) )
+                typical_values[i] = newVal / typical_values[Density];
+            else
+                typical_values[i] = newVal;
+        }
+    }
+    //
+    // If typVals specified in inputs, these take precedence componentwise.
+    //
+    if (parent->levelSteps(0) == 0)
+    {
+        for (std::map<std::string,Real>::const_iterator it=typical_values_FileVals.begin(), 
+                 End=typical_values_FileVals.end();
+             it!=End;
+             ++it)
+        {
+            const int idx = getChemSolve().index(it->first);
+            if (idx>=0)
+            {
+                typical_values[first_spec+idx] = it->second;
+            }
+            else
+            {
+                if (it->first == "Temp")
+                    typical_values[Temp] = it->second;
+                else if (it->first == "RhoH")
+                    typical_values[RhoH] = it->second;
+                else if (it->first == "Trac")
+                    typical_values[Trac] = it->second;
+                else if (it->first == "Vel")
+                {
+                    for (int d=0; d<BL_SPACEDIM; ++d)
+                        typical_values[d] = it->second;
+                }
+            }
+        }
+    }
 
-  if (ParallelDescriptor::IOProcessor()) {
-    cout << "New typical vals: " << '\n';
-    cout << "\tVelocity: ";
-    for (int i=0; i<BL_SPACEDIM; ++i) {
-      cout << typical_values[i] << " ";
+    FORT_SETTYPICALVALS(typical_values.dataPtr(), &nComp);
+
+    if (ParallelDescriptor::IOProcessor())
+    {
+        cout << "New typical vals: " << '\n';
+        cout << "\tVelocity: ";
+        for (int i=0; i<BL_SPACEDIM; ++i) {
+            cout << typical_values[i] << ' ';
+        }
+        cout << '\n';
+        cout << "\tDensity:  " << typical_values[Density] << '\n';
+        cout << "\tTemp:     " << typical_values[Temp]    << '\n';
+        cout << "\tRhoH:     " << typical_values[RhoH]    << '\n';
+        const Array<std::string>& names = getChemSolve().speciesNames();
+        for (int i=0; i<nspecies; ++i)
+        {
+            cout << "\tY_" << names[i] << ": " << typical_values[first_spec+i] << '\n';
+        }
     }
-    cout << '\n';
-    cout << "\tDensity: " << typical_values[Density] << '\n';
-    cout << "\tTemp: "    << typical_values[Temp]    << '\n';
-    cout << "\tRhoH: "    << typical_values[RhoH]    << '\n';
-    const Array<std::string>& names = getChemSolve().speciesNames();
-    for (int i=0; i<nspecies; ++i) {
-      cout << "\tY_" << names[i] << ": " << typical_values[first_spec+i] << '\n';
-    }
-  }
 }
 
 Real
@@ -1359,6 +1378,8 @@ HeatTransfer::estTimeStep ()
         // The n-s function did the right thing in this case.
         //
         return estdt;
+
+    const Real strt_time = ParallelDescriptor::second();
 
     Real dt, ns_estdt = estdt, divu_dt = 1.0e20;
 
@@ -1428,6 +1449,17 @@ HeatTransfer::estTimeStep ()
     if (estdt < ns_estdt && verbose && ParallelDescriptor::IOProcessor())
         std::cout << "HeatTransfer::estTimeStep(): timestep reduced from " 
                   << ns_estdt << " to " << estdt << '\n';
+
+    if (verbose > 1)
+    {
+        const int IOProc   = ParallelDescriptor::IOProcessorNumber();
+        Real      run_time = ParallelDescriptor::second() - strt_time;
+
+        ParallelDescriptor::ReduceRealMax(run_time,IOProc);
+
+        if (ParallelDescriptor::IOProcessor())
+            std::cout << "HeatTransfer::estTimeStep(): lev: " << level << ", time: " << run_time << '\n';
+    }
 
     return estdt;
 }
@@ -1762,18 +1794,19 @@ HeatTransfer::initDataOtherTypes ()
 }
 
 void
-HeatTransfer::compute_instantaneous_reaction_rates(MultiFab&       R,
-                                                   const MultiFab& S,
-                                                   int             nGrow,
-                                                   HowToFillGrow   how)
+HeatTransfer::compute_instantaneous_reaction_rates (MultiFab&       R,
+                                                    const MultiFab& S,
+                                                    int             nGrow,
+                                                    HowToFillGrow   how)
 {
-
     if (hack_nochem) 
     {
 	R.setVal(0);
         R.setBndry(0,0,nspecies);
 	return;
     }
+
+    const Real strt_time = ParallelDescriptor::second();
 
     Real p_amb, dpdt_factor;
     FORT_GETPAMB(&p_amb, &dpdt_factor);
@@ -1826,6 +1859,17 @@ HeatTransfer::compute_instantaneous_reaction_rates(MultiFab&       R,
         // ("good" data produced via VISCEXTRAP above)
         //
         geom.FillPeriodicBoundary(R,0,nspecies,true);
+    }
+
+    if (verbose > 1)
+    {
+        const int IOProc   = ParallelDescriptor::IOProcessorNumber();
+        Real      run_time = ParallelDescriptor::second() - strt_time;
+
+        ParallelDescriptor::ReduceRealMax(run_time,IOProc);
+
+        if (ParallelDescriptor::IOProcessor())
+            std::cout << "HeatTransfer::compute_instantaneous_reaction_rates(): lev: " << level << ", time: " << run_time << '\n';
     }
 } 
 
@@ -2082,6 +2126,7 @@ HeatTransfer::post_init (Real stop_time)
         //
         return;
 
+    const Real strt_time    = ParallelDescriptor::second();
     const Real cur_time     = state[State_Type].curTime();
     const int  finest_level = parent->finestLevel();
     Real        dt_init     = 0.0;
@@ -2224,6 +2269,16 @@ HeatTransfer::post_init (Real stop_time)
     if (sum_interval > 0)
         sum_integrated_quantities();
 
+    if (verbose)
+    {
+        const int IOProc   = ParallelDescriptor::IOProcessorNumber();
+        Real      run_time = ParallelDescriptor::second() - strt_time;
+
+        ParallelDescriptor::ReduceRealMax(run_time,IOProc);
+
+        if (ParallelDescriptor::IOProcessor())
+            std::cout << "HeatTransfer::post_init(): lev: " << level << ", time: " << run_time << '\n';
+    }
 }
 
 void
@@ -2482,10 +2537,11 @@ HeatTransfer::avgDown ()
 {
     if (level == parent->finestLevel()) return;
 
-    HeatTransfer&   fine_lev = getLevel(level+1);
-    const BoxArray& fgrids   = fine_lev.grids;
-    MultiFab&       S_crse   = get_new_data(State_Type);
-    MultiFab&       S_fine   = fine_lev.get_new_data(State_Type);
+    const Real      strt_time = ParallelDescriptor::second();
+    HeatTransfer&   fine_lev  = getLevel(level+1);
+    const BoxArray& fgrids    = fine_lev.grids;
+    MultiFab&       S_crse    = get_new_data(State_Type);
+    MultiFab&       S_fine    = fine_lev.get_new_data(State_Type);
 
     NavierStokes::avgDown(grids,fgrids,S_crse,S_fine,
                           level,level+1,0,S_crse.nComp(),fine_ratio);
@@ -2575,6 +2631,17 @@ HeatTransfer::avgDown ()
             
         NavierStokes::avgDown(grids,fgrids,Dsdt_crse,Dsdt_fine,
                               level,level+1,0,1,fine_ratio);
+    }
+
+    if (verbose > 1)
+    {
+        const int IOProc   = ParallelDescriptor::IOProcessorNumber();
+        Real      run_time = ParallelDescriptor::second() - strt_time;
+
+        ParallelDescriptor::ReduceRealMax(run_time,IOProc);
+
+        if (ParallelDescriptor::IOProcessor())
+            std::cout << "HeatTransfer::avgDown(): lev: " << level << ", time: " << run_time << '\n';
     }
 }
 
@@ -2677,13 +2744,10 @@ HeatTransfer::differential_diffusion_update (MultiFab& Force,
     {
       for (int d = 0; d < BL_SPACEDIM; d++)
       {
-        for (MFIter fmfi(*SpecDiffusionFluxn[d]); fmfi.isValid(); ++fmfi)
-	{
-          if (level > 0)
-	  {
-	    getViscFluxReg().FineAdd((*SpecDiffusionFluxnp1[d])[fmfi],d,fmfi.index(),
-				     0,first_spec,nspecies+1,dt);
-          }
+        if (level > 0)
+        {
+            getViscFluxReg().FineAdd(*SpecDiffusionFluxnp1[d],d,
+                                     0,first_spec,nspecies+1,dt);
 	}
 	if (level < parent->finestLevel())
 	{
@@ -2697,13 +2761,15 @@ HeatTransfer::differential_diffusion_update (MultiFab& Force,
     flux_divergence(Dnew,DComp,SpecDiffusionFluxnp1,0,nComp,-1);
   }
     
-  if (verbose) {
+  if (verbose)
+  {
     const int IOProc   = ParallelDescriptor::IOProcessorNumber();
     Real      run_time = ParallelDescriptor::second() - strt_time;
+
     ParallelDescriptor::ReduceRealMax(run_time,IOProc);
-    if (ParallelDescriptor::IOProcessor()) {
-      std::cout << "HeatTransfer::differential_diffusion_update(): time: " << run_time << '\n';
-    }
+
+    if (ParallelDescriptor::IOProcessor())
+      std::cout << "HeatTransfer::differential_diffusion_update(): lev: " << level << ", time: " << run_time << '\n';
   }
 }
 
@@ -2715,8 +2781,11 @@ HeatTransfer::adjust_spec_diffusion_fluxes (Real time)
     // is zero.  The fluxes are class member data, either SpecDiffusionFluxn or 
     // SpecDiffusionFluxnp1, depending on time
     //
+    const Real      strt_time = ParallelDescriptor::second();
     const TimeLevel whichTime = which_time(State_Type,time);
+
     BL_ASSERT(whichTime == AmrOldTime || whichTime == AmrNewTime);    
+
     MultiFab* const * flux = (whichTime == AmrOldTime) ? SpecDiffusionFluxn : SpecDiffusionFluxnp1;
 
     MultiFab& S = get_data(State_Type,time);
@@ -2768,18 +2837,30 @@ HeatTransfer::adjust_spec_diffusion_fluxes (Real time)
                              &d, Ybc.vect());
         }
     }
+
+    if (verbose > 1)
+    {
+        const int IOProc   = ParallelDescriptor::IOProcessorNumber();
+        Real      run_time = ParallelDescriptor::second() - strt_time;
+
+        ParallelDescriptor::ReduceRealMax(run_time,IOProc);
+
+        if (ParallelDescriptor::IOProcessor())
+            std::cout << "HeatTransfer::adjust_spec_diffusion_fluxes(): lev: " << level << ", time: " << run_time << '\n';
+    }
 }
 
 void
 HeatTransfer::compute_enthalpy_fluxes (Real                   time,
 				       const MultiFab* const* beta)
 {
-
-
     BL_ASSERT(beta && beta[0]->nComp() == nspecies+2);
 
+    const Real      strt_time = ParallelDescriptor::second();
     const TimeLevel whichTime = which_time(State_Type,time);
+
     BL_ASSERT(whichTime == AmrOldTime || whichTime == AmrNewTime);    
+
     MultiFab* const * flux = (whichTime == AmrOldTime) ? SpecDiffusionFluxn : SpecDiffusionFluxnp1;
 
     MultiFab& S = get_data(State_Type,time);
@@ -2815,29 +2896,24 @@ HeatTransfer::compute_enthalpy_fluxes (Real                   time,
         for (int dir = 0; dir < BL_SPACEDIM; dir++)
             geom.GetFaceArea(area[dir],grids,i,dir,0);
             
-        FArrayBox& fh = sumSpecFluxDotGradH[mfi];
-        int FComp = 0;
-            
-        FArrayBox& T = S[mfi];
-        int TComp = Temp;
-            
-        FArrayBox& RhoY = S[mfi];
-        int RhoYComp = first_spec;
-            
-        int dComp = 0;
-            
-        const FArrayBox& rDx = (*beta[0])[i];
-        FArrayBox& fix = (*flux[0])[i];
-            
-        const FArrayBox& rDy = (*beta[1])[i];
-        FArrayBox& fiy = (*flux[1])[i];
+        int              FComp    = 0;
+        int              TComp    = Temp;
+        int              RhoYComp = first_spec;
+        int              dComp    = 0;
+        FArrayBox&       fh       = sumSpecFluxDotGradH[mfi];            
+        FArrayBox&       T        = S[mfi];
+        FArrayBox&       RhoY     = S[mfi];
+        const FArrayBox& rDx      = (*beta[0])[i];
+        FArrayBox&       fix      = (*flux[0])[i];
+        const FArrayBox& rDy      = (*beta[1])[i];
+        FArrayBox&       fiy      = (*flux[1])[i];
+        const Real*      dx       = geom.CellSize();
             
 #if BL_SPACEDIM == 3        
-        const FArrayBox& rDz = (*beta[2])[i];
-        FArrayBox& fiz = (*flux[2])[i];
+        const FArrayBox& rDz      = (*beta[2])[i];
+        FArrayBox&       fiz      = (*flux[2])[i];
 #endif
-        const Real* dx = geom.CellSize();
-            
+
         FORT_ENTH_DIFF_TERMS(box.loVect(), box.hiVect(), domain.loVect(), domain.hiVect(), dx,
                              T.dataPtr(TComp), ARLIM(T.loVect()),  ARLIM(T.hiVect()),
                              RhoY.dataPtr(RhoYComp), ARLIM(RhoY.loVect()),  ARLIM(RhoY.hiVect()),
@@ -2856,6 +2932,17 @@ HeatTransfer::compute_enthalpy_fluxes (Real                   time,
 #endif
                              fh.dataPtr(),     ARLIM(fh.loVect()), ARLIM(fh.hiVect()),
                              Tbc.vect() );
+    }
+
+    if (verbose > 1)
+    {
+        const int IOProc   = ParallelDescriptor::IOProcessorNumber();
+        Real      run_time = ParallelDescriptor::second() - strt_time;
+
+        ParallelDescriptor::ReduceRealMax(run_time,IOProc);
+
+        if (ParallelDescriptor::IOProcessor())
+            std::cout << "HeatTransfer::compute_enthalpy_fluxes(): lev: " << level << ", time: " << run_time << '\n';
     }
 }
     
@@ -2950,6 +3037,7 @@ HeatTransfer::diffuse_cleanup (MultiFab*&  delta_rhs,
 void
 HeatTransfer::velocity_diffusion_update (Real dt)
 {
+
     //
     // Do implicit c-n solve for velocity
     // compute the viscous forcing
@@ -2957,6 +3045,8 @@ HeatTransfer::velocity_diffusion_update (Real dt)
     //
     if (is_diffusive[Xvel])
     {
+        const Real strt_time = ParallelDescriptor::second();
+
         int rho_flag;
         if (do_mom_diff == 0)
         {
@@ -2971,12 +3061,23 @@ HeatTransfer::velocity_diffusion_update (Real dt)
 
         diffuse_velocity_setup(dt, delta_rhs, betan, betanp1);
 
-        int rhsComp = 0;
+        int rhsComp  = 0;
         int betaComp = 0;
         diffusion->diffuse_velocity(dt,be_cn_theta,get_rho_half_time(),rho_flag,
                                     delta_rhs,rhsComp,betan,betanp1,betaComp);
 
         diffuse_cleanup(delta_rhs, betan, betanp1);
+
+        if (verbose > 1)
+        {
+            const int IOProc   = ParallelDescriptor::IOProcessorNumber();
+            Real      run_time = ParallelDescriptor::second() - strt_time;
+
+            ParallelDescriptor::ReduceRealMax(run_time,IOProc);
+
+            if (ParallelDescriptor::IOProcessor())
+                std::cout << "HeatTransfer::velocity_diffusion_update(): lev: " << level << ", time: " << run_time << '\n';
+        }
     }
 }
     
@@ -3048,6 +3149,7 @@ HeatTransfer::getViscTerms (MultiFab& visc_terms,
                             int       num_comp,
                             Real      time)
 {
+    const Real strt_time = ParallelDescriptor::second();
     //
     // Load "viscous" terms, starting from component = 0.
     //
@@ -3226,6 +3328,17 @@ HeatTransfer::getViscTerms (MultiFab& visc_terms,
         // ("good" data produced via VISCEXTRAP above)
         //
         geom.FillPeriodicBoundary(visc_terms,0,num_comp,true);
+    }
+
+    if (verbose > 1)
+    {
+        const int IOProc   = ParallelDescriptor::IOProcessorNumber();
+        Real      run_time = ParallelDescriptor::second() - strt_time;
+
+        ParallelDescriptor::ReduceRealMax(run_time,IOProc);
+
+        if (ParallelDescriptor::IOProcessor())
+            std::cout << "HeatTransfer::getViscTerms(): lev: " << level << ", time: " << run_time << '\n';
     }
 }
 
@@ -4530,16 +4643,19 @@ void
 HeatTransfer::compute_differential_diffusion_fluxes (const Real& time,
                                                      const Real& dt)
 {
+    const Real      strt_time = ParallelDescriptor::second();
     const TimeLevel whichTime = which_time(State_Type,time);
-    BL_ASSERT(whichTime == AmrOldTime || whichTime == AmrNewTime);    
-    MultiFab* const * flux = (whichTime == AmrOldTime) ? SpecDiffusionFluxn : SpecDiffusionFluxnp1;
 
-    int rhoD_rhs_comp = 0; // Starting slot for beta, rhs for diffusion calls
+    BL_ASSERT(whichTime == AmrOldTime || whichTime == AmrNewTime);    
+
+    MultiFab* const * flux = (whichTime == AmrOldTime) ? SpecDiffusionFluxn : SpecDiffusionFluxnp1;
 
     if (hack_nospecdiff)
     {
         if (verbose && ParallelDescriptor::IOProcessor())
             std::cout << "... HACK!!! skipping spec diffusion " << '\n';
+
+        const int rhoD_rhs_comp = 0; // Starting slot for beta, rhs for diffusion calls
         
         for (int d = 0; d < BL_SPACEDIM; ++d)
         {
@@ -4549,33 +4665,37 @@ HeatTransfer::compute_differential_diffusion_fluxes (const Real& time,
         return;
     }
 
-    MultiFab* rho_half = 0; // Never need alpha for RhoY
-    MultiFab* alpha = 0;
-    int alphaComp = 0;
-    const Real a = 0;
-    const Real b = 1;
-    const int rho_flag = 2;
-    MultiFab **beta = 0;
+    MultiFab*  rho_half  = 0; // Never need alpha for RhoY
+    MultiFab*  alpha     = 0;
+    int        alphaComp = 0;
+    const Real a         = 0;
+    const Real b         = 1;
+    const int  rho_flag  = 2;
+    MultiFab** beta      = 0;
+    MultiFab&  S         = get_data(State_Type,time);
+
     diffusion->allocFluxBoxesLevel(beta,0,nspecies+2); // Species and heat fluxes
     getDiffusivity(beta, time, first_spec, 0, nspecies+1);
     getDiffusivity(beta, time, Temp, nspecies+1, 1);
-    MultiFab& S = get_data(State_Type,time);
+
     showMF("dd",S,"dd_preFP",level);
     //
-    // Fill grow cells in the state for (Rho,RhoY,RhoH,T)
-    // For Dirichlet physical boundary grow cells, this data will live on the cell face, otherwise
+    // Fill grow cells in the state for (Rho,RhoY,RhoH,T).  For Dirichlet physical
+    // boundary grow cells, this data will live on the cell face, otherwise
     // it will live at cell centers.
     //
-    int nGrow = 1;
+    const int nGrow = 1;
+
     BL_ASSERT(S.nGrow()>=nGrow);
+
     for (FillPatchIterator Yfpi(*this,S,nGrow,time,State_Type,Density,nspecies+2),
              Tfpi(*this,S,nGrow,time,State_Type,Temp,1);
          Yfpi.isValid() && Tfpi.isValid();
          ++Yfpi, ++Tfpi)
     {
-        const Box& vbox = Yfpi.validbox();
-        FArrayBox& fab = S[Tfpi];
-        BoxList gcells = BoxLib::boxDiff(Box(vbox).grow(nGrow),vbox);
+        const Box& vbox   = Yfpi.validbox();
+        FArrayBox& fab    = S[Tfpi];
+        BoxList    gcells = BoxLib::boxDiff(Box(vbox).grow(nGrow),vbox);
         for (BoxList::const_iterator it = gcells.begin(), end = gcells.end(); it != end; ++it)
         {
             const Box& gbox = *it;
@@ -4587,33 +4707,32 @@ HeatTransfer::compute_differential_diffusion_fluxes (const Real& time,
     //
     // Create and fill (Rho,RhoY,RhoH,T) at coarser level
     //    
-    MultiFab* S_crse = 0;
+    MultiFab* S_crse   = 0;
     MultiFab* Phi_crse = 0; 
     if (level > 0) 
     {
-      HeatTransfer* coarser = (HeatTransfer*) &(parent->getLevel(level-1));
+        HeatTransfer* coarser = (HeatTransfer*) &(parent->getLevel(level-1));
 
+        Phi_crse = new MultiFab(coarser->grids, 1, 2);
+        S_crse   = new MultiFab(coarser->grids,S.nComp(),0);
 
-      BoxArray crse_grids(coarser->grids);
-      Phi_crse = new MultiFab(crse_grids, 1, 2);
-      S_crse = new MultiFab(crse_grids,S.nComp(),0);
-
-      for (FillPatchIterator S_fpi(*coarser,*S_crse,0,time,State_Type,0,S.nComp());
-	   S_fpi.isValid(); ++S_fpi)
+        for (FillPatchIterator S_fpi(*coarser,*S_crse,0,time,State_Type,0,S.nComp());
+             S_fpi.isValid(); ++S_fpi)
 	{
-	  (*S_crse)[S_fpi.index()].copy(S_fpi(),0,0,S.nComp());
+            (*S_crse)[S_fpi.index()].copy(S_fpi(),0,0,S.nComp());
 	}
     }
 
     MultiFab Phi(grids,1,nGrow);
-    int phiComp = 0;
+    const int phiComp = 0;
 
     for (int sigma = 0; sigma < nspecies+1; ++sigma)
     {
         const int state_ind = first_spec + sigma;
         ViscBndry visc_bndry;
 
-        for (MFIter mfi(S); mfi.isValid(); ++mfi) {
+        for (MFIter mfi(S); mfi.isValid(); ++mfi)
+        {
             const Box& box = Phi[mfi].box();
             Phi[mfi].copy(S[mfi],box,state_ind,box,0,1);
             Phi[mfi].divide(S[mfi],box,Density,0,1);
@@ -4623,46 +4742,46 @@ HeatTransfer::compute_differential_diffusion_fluxes (const Real& time,
         {
             MultiFab::Copy(*Phi_crse,*S_crse,state_ind,0,1,0);
             for (MFIter mfi(*S_crse); mfi.isValid(); ++mfi)
-	      {
+            {
 		(*Phi_crse)[mfi].divide((*S_crse)[mfi],(*Phi_crse)[mfi].box(),Density,0,1);
-	      }
+            }
 	    Phi_crse->FillBoundary();
 	    getLevel(level-1).geom.FillPeriodicBoundary(*Phi_crse);
         }
 
 	diffusion->getBndryDataGivenS(visc_bndry,Phi,*Phi_crse,state_ind,0,1);
 
-        bool bndry_already_filled = true;            
-        int betaComp = sigma;
-        Real* rhsscale = 0;
+        const bool     do_applyBC           = true;
+        const bool     bndry_already_filled = true;            
+        const int      betaComp             = sigma;
+        Real*          rhsscale             = 0;
         ABecLaplacian* visc_op = diffusion->getViscOp(state_ind,a,b,time,visc_bndry,
                                                       rho_half,rho_flag,rhsscale,
                                                       beta,betaComp,alpha,alphaComp,bndry_already_filled);
         visc_op->maxOrder(diffusion->maxOrder());
-        bool do_applyBC = true;
         visc_op->compFlux(D_DECL(*flux[0],*flux[1],*flux[2]),Phi,do_applyBC,LinOp::Inhomogeneous_BC,phiComp,sigma);
+
         delete visc_op;
     }
 
     Phi.clear();
 
     if (Phi_crse)
-      delete Phi_crse;
+        delete Phi_crse;
 
     if (S_crse)
-      delete S_crse;
-
-    // Remove scaling left in fluxes from solve
-    for (int d=0; d < BL_SPACEDIM; ++d) {
+        delete S_crse;
+    //
+    // Remove scaling left in fluxes from solve.
+    //
+    for (int d=0; d < BL_SPACEDIM; ++d)
         flux[d]->mult(b/geom.CellSize()[d],0,nspecies+1);
-    }
     //
     // Modify update/fluxes to preserve flux sum = 0, build heat flux and temperature source terms
     //
 
     // conservatively correct Gamma_m
     adjust_spec_diffusion_fluxes(time);
-
     //
     // AJN FLUXREG
     // We have just explicitly computed "D" for Y_m and h given an input state.
@@ -4675,43 +4794,41 @@ HeatTransfer::compute_differential_diffusion_fluxes (const Real& time,
     //   case is equal to the t^n version
     // If updateFluxReg=T (we are in the final corrector):
     //   SUBTRACT (1/2)*Gamma_m^(k) and (1/2)*lambda^(k)/cp^(k) grad h^(k)
+    //
     if ( do_reflux && ( (is_predictor && sdc_iterMAX>1) || updateFluxReg ) )
     {
-      for (int d = 0; d < BL_SPACEDIM; d++)
-      {
-	for (MFIter fmfi(*SpecDiffusionFluxn[d]); fmfi.isValid(); ++fmfi)
-	{
-	  if (level > 0)
-          {
-	    if (is_predictor && sdc_iterMAX>1)
-	    {
-	      getViscFluxReg().FineAdd((*SpecDiffusionFluxn[d])[fmfi],d,fmfi.index(),0,
-				       first_spec,nspecies+1,0.5*dt);
-	    }
-	    if (updateFluxReg)
-            {
-	      getViscFluxReg().FineAdd((*SpecDiffusionFluxnp1[d])[fmfi],d,fmfi.index(),0,
-				       first_spec,nspecies+1,-0.5*dt);
-	    }
-	  }
-	}
-
-	if (level < parent->finestLevel())
+        for (int d = 0; d < BL_SPACEDIM; d++)
         {
-	  if (is_predictor && sdc_iterMAX>1)
-	  {
-	    getLevel(level+1).getViscFluxReg().CrseInit((*SpecDiffusionFluxn[d]),d,0,
-							first_spec,nspecies+1,-0.5*dt,
-							FluxRegister::COPY);
-	  }
-	  if (updateFluxReg)
-	  {
-	    getLevel(level+1).getViscFluxReg().CrseInit((*SpecDiffusionFluxnp1[d]),d,0,
-							first_spec,nspecies+1,0.5*dt,
-							FluxRegister::ADD);
-	  }
-	}
-      }
+            if (level > 0)
+            {
+                if (is_predictor && sdc_iterMAX>1)
+                {
+                    getViscFluxReg().FineAdd(*SpecDiffusionFluxn[d],d,0,
+                                             first_spec,nspecies+1,0.5*dt);
+                }
+                if (updateFluxReg)
+                {
+                    getViscFluxReg().FineAdd(*SpecDiffusionFluxnp1[d],d,0,
+                                             first_spec,nspecies+1,-0.5*dt);
+                }
+            }
+
+            if (level < parent->finestLevel())
+            {
+                if (is_predictor && sdc_iterMAX>1)
+                {
+                    getLevel(level+1).getViscFluxReg().CrseInit((*SpecDiffusionFluxn[d]),d,0,
+                                                                first_spec,nspecies+1,-0.5*dt,
+                                                                FluxRegister::COPY);
+                }
+                if (updateFluxReg)
+                {
+                    getLevel(level+1).getViscFluxReg().CrseInit((*SpecDiffusionFluxnp1[d]),d,0,
+                                                                first_spec,nspecies+1,0.5*dt,
+                                                                FluxRegister::ADD);
+                }
+            }
+        }
     }
     //
     // compute lambda grad T (for temperature and divu)
@@ -4731,43 +4848,52 @@ HeatTransfer::compute_differential_diffusion_fluxes (const Real& time,
     //   ADD 1.0*h_m^n(Gamma_m^n-lambda^n/cp^n grad Y_m^n)
     // If updateFluxReg=T (we are in the final corrector):
     //   ADD (1/2)*h_m^(k)(Gamma_m^(k)-lambda^(k)/cp^(k) grad Y_m^(k))
+    //
     if ( do_reflux && ( is_predictor || updateFluxReg ) )
     {
-      for (int d = 0; d < BL_SPACEDIM; d++)
-      {
-	for (MFIter fmfi(*SpecDiffusionFluxn[d]); fmfi.isValid(); ++fmfi)
-	{
-	  if (level > 0)
-	  {
-	    if (is_predictor)
-	    {
-	      Real fac = (sdc_iterMAX==1) ? dt : 0.5*dt;
-	      advflux_reg->FineAdd((*SpecDiffusionFluxn[d])[fmfi],  d,fmfi.index(),
-				   nspecies+1,RhoH,1,fac);
-	    }
-	    if (updateFluxReg)
-	    {
-	      advflux_reg->FineAdd((*SpecDiffusionFluxnp1[d])[fmfi],d,fmfi.index(),
-				   nspecies+1,RhoH,1,0.5*dt);
+        for (int d = 0; d < BL_SPACEDIM; d++)
+        {
+            if (level > 0)
+            {
+                if (is_predictor)
+                {
+                    const Real fac = (sdc_iterMAX==1) ? dt : 0.5*dt;
+                    advflux_reg->FineAdd(*SpecDiffusionFluxn[d],d,
+                                         nspecies+1,RhoH,1,fac);
+                }
+                if (updateFluxReg)
+                {
+                    advflux_reg->FineAdd(*SpecDiffusionFluxnp1[d],d,
+                                         nspecies+1,RhoH,1,0.5*dt);
+                }
             }
-	  }
-	}
 
-	if (level < parent->finestLevel())
-	{
-	  if (is_predictor)
-	  {
-	    Real fac = (sdc_iterMAX==1) ? dt : 0.5*dt;
-	    getAdvFluxReg(level+1).CrseInit((*SpecDiffusionFluxn[d])  ,d,nspecies+1,RhoH,
-					    1,-fac,FluxRegister::ADD);
-	  }
-	  if (updateFluxReg)
-	  {
-	    getAdvFluxReg(level+1).CrseInit((*SpecDiffusionFluxnp1[d]),d,nspecies+1,RhoH,
-					    1,-0.5*dt,FluxRegister::ADD);
-          }
-	}
-      }
+            if (level < parent->finestLevel())
+            {
+                if (is_predictor)
+                {
+                    const Real fac = (sdc_iterMAX==1) ? dt : 0.5*dt;
+                    getAdvFluxReg(level+1).CrseInit((*SpecDiffusionFluxn[d]),d,nspecies+1,RhoH,
+                                                    1,-fac,FluxRegister::ADD);
+                }
+                if (updateFluxReg)
+                {
+                    getAdvFluxReg(level+1).CrseInit((*SpecDiffusionFluxnp1[d]),d,nspecies+1,RhoH,
+                                                    1,-0.5*dt,FluxRegister::ADD);
+                }
+            }
+        }
+    }
+
+    if (verbose > 1)
+    {
+        const int IOProc   = ParallelDescriptor::IOProcessorNumber();
+        Real      run_time = ParallelDescriptor::second() - strt_time;
+
+        ParallelDescriptor::ReduceRealMax(run_time,IOProc);
+
+        if (ParallelDescriptor::IOProcessor())
+            std::cout << "HeatTransfer::compute_differential_diffusion_fluxes(): lev: " << level << ", time: " << run_time << '\n';
     }
 }
 
@@ -4807,7 +4933,7 @@ HeatTransfer::flux_divergence (MultiFab&        fdiv,
     FArrayBox volume;
     for (MFIter mfi(fdiv); mfi.isValid(); ++mfi)
     {
-	int        i = mfi.index();
+	const int  i   = mfi.index();
 	const Box& box = mfi.validbox();
         FArrayBox& fab = fdiv[mfi];
         geom.GetVolume(volume,grids,i,GEOM_GROW);
@@ -5069,6 +5195,8 @@ HeatTransfer::compute_rhoRT (const MultiFab& S,
 {
     BL_ASSERT(pComp<p.nComp());
 
+    const Real strt_time = ParallelDescriptor::second();
+
     const BoxArray& sgrids = S.boxArray();
     int nCompY = last_spec - first_spec + 1;
 
@@ -5105,6 +5233,17 @@ HeatTransfer::compute_rhoRT (const MultiFab& S,
             state.mult(tmp,0,sCompY+k,1);
 
 	getChemSolve().getPGivenRTY(p[i],state,state,state,box,sCompR,sCompT,sCompY,pComp);
+    }
+
+    if (verbose > 1)
+    {
+        const int IOProc   = ParallelDescriptor::IOProcessorNumber();
+        Real      run_time = ParallelDescriptor::second() - strt_time;
+
+        ParallelDescriptor::ReduceRealMax(run_time,IOProc);
+
+        if (ParallelDescriptor::IOProcessor())
+            std::cout << "HeatTransfer::compute_rhoRT(): lev: " << level << ", time: " << run_time << '\n';
     }
 }
 			   
@@ -5204,8 +5343,6 @@ HeatTransfer::setThermoPress(Real time)
     compute_rhoRT (S,S,pComp);
 }
 
-#if 1
-static int hyp_grow = 3; // ick!  
 Real
 HeatTransfer::predict_velocity (Real  dt,
                                 Real& comp_cfl)
@@ -5219,6 +5356,7 @@ HeatTransfer::predict_velocity (Real  dt,
     const Real* dx             = geom.CellSize();
     const Real  prev_time      = state[State_Type].prevTime();
     const Real  prev_pres_time = state[Press_Type].prevTime();
+    const Real strt_time       = ParallelDescriptor::second();
     //
     // Compute viscous terms at level n.
     // Ensure reasonable values in 1 grow cell.  Here, do extrap for
@@ -5260,11 +5398,11 @@ HeatTransfer::predict_velocity (Real  dt,
     for (int dir=0; dir<BL_SPACEDIM; ++dir) {
         u_mac[dir].setVal(0);
     }
-    MultiFab Force(grids,BL_SPACEDIM,hyp_grow);
+    MultiFab Force(grids,BL_SPACEDIM,Godunov::hypgrow());
     Force.setVal(0);
 #endif
 
-    for (FillPatchIterator U_fpi(*this,visc_terms,hyp_grow,prev_time,State_Type,Xvel,BL_SPACEDIM)
+    for (FillPatchIterator U_fpi(*this,visc_terms,Godunov::hypgrow(),prev_time,State_Type,Xvel,BL_SPACEDIM)
 #ifdef MOREGENGETFORCE
 	     , S_fpi(*this,visc_terms,1,prev_time,State_Type,Density,NUM_SCALARS);
 	 S_fpi.isValid() && U_fpi.isValid();
@@ -5333,31 +5471,44 @@ HeatTransfer::predict_velocity (Real  dt,
 
     ParallelDescriptor::ReduceRealMin(tempdt);
 
+    if (verbose > 1)
+    {
+        const int IOProc   = ParallelDescriptor::IOProcessorNumber();
+        Real      run_time = ParallelDescriptor::second() - strt_time;
+
+        ParallelDescriptor::ReduceRealMax(run_time,IOProc);
+
+        if (ParallelDescriptor::IOProcessor())
+            std::cout << "HeatTransfer::predict_velocity(): lev: " << level << ", time: " << run_time << '\n';
+    }
+
     return dt*tempdt;
 }
-#endif
 
 void
 HeatTransfer::set_reasonable_grow_cells_for_R (Real time)
 {
-  // Ensure reasonable grow cells for R
-  MultiFab& React = get_data(RhoYdot_Type, time);
-  for (MFIter mfi(React); mfi.isValid(); ++mfi) {
-    FArrayBox& R = React[mfi];
-    const Box& box = mfi.validbox();
-    BL_ASSERT(nGrowAdvForcing==1); // Since this routine can fill only 1
-    FORT_VISCEXTRAP(R.dataPtr(),ARLIM(R.loVect()),ARLIM(R.hiVect()),
-                    box.loVect(),box.hiVect(),&nspecies);
-  }
-  React.FillBoundary(0,nspecies);
-  //
-  // Note: this is a special periodic fill in that we want to
-  // preserve the extrapolated grow values when periodic --
-  // usually we preserve only valid data.  The scheme relies on
-  // the fact that there is computable data in the "non-periodic"
-      // grow cells (produced via VISCEXTRAP above)
-      //
-  geom.FillPeriodicBoundary(React,0,nspecies,true);
+    //
+    // Ensure reasonable grow cells for R.
+    //
+    MultiFab& React = get_data(RhoYdot_Type, time);
+    for (MFIter mfi(React); mfi.isValid(); ++mfi)
+    {
+        FArrayBox& R   = React[mfi];
+        const Box& box = mfi.validbox();
+        BL_ASSERT(nGrowAdvForcing==1); // Since this routine can fill only 1
+        FORT_VISCEXTRAP(R.dataPtr(),ARLIM(R.loVect()),ARLIM(R.hiVect()),
+                        box.loVect(),box.hiVect(),&nspecies);
+    }
+    React.FillBoundary(0,nspecies);
+    //
+    // Note: this is a special periodic fill in that we want to
+    // preserve the extrapolated grow values when periodic --
+    // usually we preserve only valid data.  The scheme relies on
+    // the fact that there is computable data in the "non-periodic"
+    // grow cells (produced via VISCEXTRAP above)
+    //
+    geom.FillPeriodicBoundary(React,0,nspecies,true);
 }
 
 Real
@@ -6094,7 +6245,7 @@ HeatTransfer::advance_chemistry (MultiFab&       mf_old,
         ParallelDescriptor::ReduceRealMax(run_time,IOProc);
 
         if (ParallelDescriptor::IOProcessor())
-            std::cout << "HeatTransfer::advance_chemistry time: " << run_time << '\n';
+           std::cout << "HeatTransfer::advance_chemistry(): lev: " << level << ", time: " << run_time << '\n';
     }
 }
 
@@ -6107,8 +6258,10 @@ HeatTransfer::compute_scalar_advection_fluxes_and_divergence (MultiFab& Force,
   //
   if (verbose && ParallelDescriptor::IOProcessor())
     std::cout << "... computing advection terms\n";
+
+  const Real  strt_time = ParallelDescriptor::second();
   const Real* dx        = geom.CellSize();
-  const Real prev_time = state[State_Type].prevTime();
+  const Real  prev_time = state[State_Type].prevTime();
   //
   // Gather info necesary to build transverse velocities
   // (stored internal to Godunov)
@@ -6134,7 +6287,7 @@ HeatTransfer::compute_scalar_advection_fluxes_and_divergence (MultiFab& Force,
 
   const int nState = desc_lst[State_Type].nComp();
 
-  for (FillPatchIterator S_fpi(*this,DivU,HYP_GROW,prev_time,State_Type,0,nState);
+  for (FillPatchIterator S_fpi(*this,DivU,Godunov::hypgrow(),prev_time,State_Type,0,nState);
        S_fpi.isValid();
        ++S_fpi)
   {
@@ -6270,6 +6423,17 @@ HeatTransfer::compute_scalar_advection_fluxes_and_divergence (MultiFab& Force,
         getAdvFluxReg(level+1).CrseInit((*EdgeFlux[d]),d,Density,Density,NUM_SCALARS,-dt,FluxRegister::ADD);
       }
     }
+  }
+
+  if (verbose > 1)
+  {
+      const int IOProc   = ParallelDescriptor::IOProcessorNumber();
+      Real      run_time = ParallelDescriptor::second() - strt_time;
+
+      ParallelDescriptor::ReduceRealMax(run_time,IOProc);
+
+      if (ParallelDescriptor::IOProcessor())
+          std::cout << "HeatTransfer::compute_scalar_advection_fluxes_and_divergence(): lev: " << level << ", time: " << run_time << '\n';
   }
 }
 
@@ -6674,12 +6838,8 @@ HeatTransfer::mac_sync ()
                                          rho_flag,flux,0,beta,0,alpha,0);
                 if (do_viscsyncflux && level > 0)
                 {
-                    for (MFIter mfi(*Ssync); mfi.isValid(); ++mfi)
-                    {
-                        const int i=mfi.index();
-                        for (int d=0; d<BL_SPACEDIM; ++d)
-                            getViscFluxReg().FineAdd((*flux[d])[i],d,i,0,state_ind,1,dt);
-                    }
+                    for (int d=0; d<BL_SPACEDIM; ++d)
+                        getViscFluxReg().FineAdd(*flux[d],d,0,state_ind,1,dt);
                 }
             }
         }
@@ -6857,7 +7017,7 @@ HeatTransfer::mac_sync ()
         ParallelDescriptor::ReduceRealMax(run_time,IOProc);
 
         if (ParallelDescriptor::IOProcessor())
-            std::cout << "HeatTransfer:mac_sync(): lev: " << level << ", time: " << run_time << '\n';
+            std::cout << "HeatTransfer::mac_sync(): lev: " << level << ", time: " << run_time << '\n';
     }
 }
 
@@ -7149,11 +7309,7 @@ HeatTransfer::differential_spec_diffuse_sync (Real dt)
     {
       for (int d=0; d<BL_SPACEDIM; ++d)
       {
-	for (MFIter fmfi(*SpecDiffusionFluxnp1[d]); fmfi.isValid(); ++fmfi)
-	{
-	  const int i=fmfi.index();
-	  getViscFluxReg().FineAdd((*SpecDiffusionFluxnp1[d])[i],d,i,0,first_spec,nspecies,dt);
-	}
+	  getViscFluxReg().FineAdd(*SpecDiffusionFluxnp1[d],d,0,first_spec,nspecies,dt);
       }
     }
 
@@ -7165,7 +7321,7 @@ HeatTransfer::differential_spec_diffuse_sync (Real dt)
         ParallelDescriptor::ReduceRealMax(run_time,IOProc);
 
         if (ParallelDescriptor::IOProcessor())
-            std::cout << "HeatTransfer::differential_spec_diffuse_sync(): time: " << run_time << '\n';
+            std::cout << "HeatTransfer::differential_spec_diffuse_sync(): lev: " << level << ", time: " << run_time << '\n';
     }
 }
 
@@ -7272,7 +7428,7 @@ HeatTransfer::reflux ()
 
     showMF("sdcSync",*Ssync,"sdc_Ssync_after_zero",level);
 
-    if (verbose)
+    if (verbose > 1)
     {
         const int IOProc   = ParallelDescriptor::IOProcessorNumber();
         Real      run_time = ParallelDescriptor::second() - strt_time;
@@ -7280,7 +7436,7 @@ HeatTransfer::reflux ()
         ParallelDescriptor::ReduceRealMax(run_time,IOProc);
 
         if (ParallelDescriptor::IOProcessor())
-            std::cout << "HeatTransfer::Reflux(): time: " << run_time << '\n';
+            std::cout << "HeatTransfer::Reflux(): lev: " << level << ", time: " << run_time << '\n';
     }
 }
 
@@ -7664,27 +7820,25 @@ HeatTransfer::RhoH_to_Temp (MultiFab& S,
                             int       nGrow,
                             int       dominmax)
 {
-
-
+    const Real strt_time = ParallelDescriptor::second();
     //
-    //  If this hasn't been set yet, we cannnot do it correct here (scan multilevel),
-    //   just wing it.
+    // If this hasn't been set yet, we cannnot do it correct here (scan multilevel),
+    // just wing it.
     //
     const Real htt_hmixTYP_SAVE = htt_hmixTYP; 
     if (htt_hmixTYP <= 0)
     {
-      if (typical_values[RhoH]==typical_RhoH_value_default)
+        if (typical_values[RhoH]==typical_RhoH_value_default)
 	{
-	  htt_hmixTYP = S.norm0(RhoH);
+            htt_hmixTYP = S.norm0(RhoH);
 	}
-      else
+        else
 	{
-	  htt_hmixTYP = typical_values[RhoH];
+            htt_hmixTYP = typical_values[RhoH];
 	}        
-      if (ParallelDescriptor::IOProcessor())
-	std::cout << "setting htt_hmixTYP = " << htt_hmixTYP << '\n';
+        if (verbose && ParallelDescriptor::IOProcessor())
+            std::cout << "setting htt_hmixTYP = " << htt_hmixTYP << '\n';
     }
-
 
     int max_iters = 0;
     for (MFIter mfi(S); mfi.isValid(); ++mfi)
@@ -7693,17 +7847,20 @@ HeatTransfer::RhoH_to_Temp (MultiFab& S,
         max_iters = std::max(max_iters, RhoH_to_Temp(S[mfi],box,dominmax));
     }
 
-    if (verbose)
+    if (verbose > 1)
     {
-        const int IOProc = ParallelDescriptor::IOProcessorNumber();
+        const int IOProc   = ParallelDescriptor::IOProcessorNumber();
+        Real      run_time = ParallelDescriptor::second() - strt_time;
 
         ParallelDescriptor::ReduceIntMax(max_iters,IOProc);
+        ParallelDescriptor::ReduceRealMax(run_time,IOProc);
 
         if (verbose && ParallelDescriptor::IOProcessor())
-            std::cout << "HeatTransfer::RhoH_to_Temp: max_iters = " << max_iters << '\n';
+            std::cout << "HeatTransfer::RhoH_to_Temp: max_iters = " << max_iters << ", time: " << run_time << '\n';
     }
-
-    // Reset it back
+    //
+    // Reset it back.
+    //
     htt_hmixTYP = htt_hmixTYP_SAVE;
 }
 
@@ -7764,6 +7921,8 @@ void
 HeatTransfer::compute_rhohmix (Real      time,
                                MultiFab& rhohmix)
 {
+    const Real strt_time = ParallelDescriptor::second();
+
     const int ngrow  = 0; // We only do this on the valid region
     const int sComp  = std::min(std::min((int)Density,(int)Temp),first_spec);
     const int eComp  = std::max(std::max((int)Density,(int)Temp),first_spec+nspecies-1);
@@ -7799,6 +7958,17 @@ HeatTransfer::compute_rhohmix (Real      time,
         // Convert hmix to rho*hmix
         //
         rhohmix[iGrid].mult(state,validBox,sCompR,sCompH,1);
+    }
+
+    if (verbose)
+    {
+        const int IOProc   = ParallelDescriptor::IOProcessorNumber();
+        Real      run_time = ParallelDescriptor::second() - strt_time;
+
+        ParallelDescriptor::ReduceRealMax(run_time,IOProc);
+
+        if (ParallelDescriptor::IOProcessor())
+            std::cout << "HeatTransfer::compute_rhohmix(): lev: " << level << ", time: " << run_time << '\n';
     }
 }
 

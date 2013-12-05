@@ -4568,7 +4568,6 @@ class CPickler(CMill):
             self._write("{")
             self._indent()
             self._write("double alpha[%d];" % ntroe)
-            self._write("double redP, F, logPred, logFcent, troe_c, troe_n, troe, F_troe;")
             for i in range(itroe[0],itroe[1]):
                 ii = i - itroe[0]
                 reaction = mechanism.reaction(id=i)
@@ -4591,6 +4590,7 @@ class CPickler(CMill):
             self._write("for (int i=%d; i<%d; i++)" %(itroe[0],itroe[1]))
             self._write("{")
             self._indent()
+            self._write("double redP, F, logPred, logFcent, troe_c, troe_n, troe, F_troe;")
             self._write("redP = alpha[i-%d] / k_f_save[i] * phase_units[i] * low_A[i] * exp(low_beta[i] * tc[0] - activation_units[i] * low_Ea[i] *invT);" % itroe[0])
             self._write("F = redP / (1.0 + redP);")
             self._write("logPred = log10(redP);")

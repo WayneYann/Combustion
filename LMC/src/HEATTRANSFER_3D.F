@@ -310,7 +310,9 @@ c     Compute enthalpy flux as hi*(Fi+(lambda/cp).Grad(Yi))
       enddo
 !$omp end parallel do
 
+!$omp parallel private(i,j,k,n,gradY)
       do n=1,Nspec
+!$omp do
       do k=lo(3),hi(3)
       do j=lo(2),hi(2)
       do i=lo(1),hi(1)+1
@@ -320,9 +322,13 @@ c     Compute enthalpy flux as hi*(Fi+(lambda/cp).Grad(Yi))
       enddo
       enddo
       enddo
+!$omp end do
       enddo
+!$omp end parallel
 
+!$omp parallel private(i,j,k,n,gradY)
       do n=1,Nspec
+!$omp do
       do k=lo(3),hi(3)
       do j=lo(2),hi(2)+1
       do i=lo(1),hi(1)
@@ -332,9 +338,13 @@ c     Compute enthalpy flux as hi*(Fi+(lambda/cp).Grad(Yi))
       enddo
       enddo
       enddo
+!$omp end do
       enddo
+!$omp end parallel
 
+!$omp parallel private(i,j,k,n,gradY)
       do n=1,Nspec
+!$omp do
       do k=lo(3),hi(3)+1
       do j=lo(2),hi(2)
       do i=lo(1),hi(1)
@@ -344,7 +354,9 @@ c     Compute enthalpy flux as hi*(Fi+(lambda/cp).Grad(Yi))
       enddo
       enddo
       enddo
+!$omp end do
       enddo
+!$omp end parallel
 
 c     xlo
       if (lo(1).eq.dlo(1)  .and.  Tbc(1,1).eq.EXT_DIR) then
@@ -463,8 +475,9 @@ c
 
       FiGHi(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3)) = 0.0D0
 
+!$omp parallel private(i,j,k,n)
       do n=1,Nspec
-!$omp parallel do private(i,j,k)
+!$omp do
       do k=lo(3),hi(3)
       do j=lo(2),hi(2)
       do i=lo(1),hi(1)
@@ -478,8 +491,9 @@ c
       enddo
       enddo
       enddo
-!$omp end parallel do
+!$omp end do
       enddo
+!$omp end parallel
 
       deallocate(AD)
 
@@ -1511,25 +1525,41 @@ c     yzi
       REAL_T zflux(DIMV(zflux),nc)
       REAL_T vol(DIMV(vol))
       REAL_T scal
+      REAL_T, allocatable :: ivol(:,:,:)
 
       integer i, j, k, n
 
+      allocate(ivol(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3)))
+
 !$omp parallel private(i,j,k,n)
+
+!$omp do
+      do k=lo(3),hi(3)
+         do j=lo(2),hi(2)
+            do i=lo(1),hi(1)
+               ivol(i,j,k) = scal / vol(i,j,k)
+            end do
+         end do
+      end do
+!$omp end do
+
       do n=1,nc
 !$omp do
          do k=lo(3),hi(3)
             do j=lo(2),hi(2)
                do i=lo(1),hi(1)
-                  update(i,j,k,n)=scal*
+                  update(i,j,k,n) = 
      &                 ( (xflux(i+1,j,k,n)-xflux(i,j,k,n))
      &                 + (yflux(i,j+1,k,n)-yflux(i,j,k,n)) 
-     &                 + (zflux(i,j,k+1,n)-zflux(i,j,k,n)) )/vol(i,j,k)
+     &                 + (zflux(i,j,k+1,n)-zflux(i,j,k,n)) ) * ivol(i,j,k)
                end do
             end do
          end do
 !$omp end do nowait
       end do
+
 !$omp end parallel
+
       end
 
       subroutine fillEdges(dat,DIMS(dat),domlo,domhi,bc )

@@ -137,8 +137,8 @@ contains
 
   subroutine cellavg2gausspt_1d(lo,hi, u, ulo,uhi, u1, u2, glo,ghi)
     integer, intent(in) :: lo, hi, ulo, uhi, glo, ghi
-    double precision, intent(in) :: u(ulo:uhi)
-    double precision :: u1(glo:ghi), u2(glo:ghi)
+    double precision, intent(in)  :: u(ulo:uhi)
+    double precision, intent(out) :: u1(glo:ghi), u2(glo:ghi)
     integer :: i
     do i=lo,hi
        u1(i) = cg1(-2)*u(i-2) + cg1(-1)*u(i-1) + cg1(0)*u(i) + cg1(1)*u(i+1) + cg1(2)*u(i+2)
@@ -148,8 +148,8 @@ contains
 
   subroutine cellavg2gausspt_2d_v1(lo, hi, u, ulo, uhi, ug, glo, ghi)
     integer, intent(in) :: lo(2), hi(2), ulo(2), uhi(2), glo(2), ghi(2)
-    double precision, intent(in) :: u (ulo(1):uhi(1),ulo(2):uhi(2))
-    double precision             :: ug(glo(1):ghi(1),glo(2):ghi(2),4)
+    double precision, intent(in)  :: u (ulo(1):uhi(1),ulo(2):uhi(2))
+    double precision, intent(out) :: ug(glo(1):ghi(1),glo(2):ghi(2),4)
 
     integer :: i, j, g, gg
     double precision, allocatable :: ugy(:,:,:)
@@ -175,11 +175,11 @@ contains
 
   subroutine cellavg2gausspt_2d_v2(lo, hi, u, ulo, uhi, u1, u2, u3, u4, glo, ghi)
     integer, intent(in) :: lo(2), hi(2), ulo(2), uhi(2), glo(2), ghi(2)
-    double precision, intent(in) :: u (ulo(1):uhi(1),ulo(2):uhi(2))
-    double precision             :: u1(glo(1):ghi(1),glo(2):ghi(2))
-    double precision             :: u2(glo(1):ghi(1),glo(2):ghi(2))
-    double precision             :: u3(glo(1):ghi(1),glo(2):ghi(2))
-    double precision             :: u4(glo(1):ghi(1),glo(2):ghi(2))
+    double precision,intent(in)  :: u (ulo(1):uhi(1),ulo(2):uhi(2))
+    double precision,intent(out) :: u1(glo(1):ghi(1),glo(2):ghi(2))
+    double precision,intent(out) :: u2(glo(1):ghi(1),glo(2):ghi(2))
+    double precision,intent(out) :: u3(glo(1):ghi(1),glo(2):ghi(2))
+    double precision,intent(out) :: u4(glo(1):ghi(1),glo(2):ghi(2))
 
     integer :: i, j
     double precision, allocatable :: ugy(:,:,:)
@@ -208,8 +208,8 @@ contains
 
   subroutine cellavg2gausspt_3d(lo, hi, u, ulo, uhi, ug, glo, ghi)
     integer, intent(in) :: lo(3), hi(3), ulo(3), uhi(3), glo(3), ghi(3)
-    double precision, intent(in) :: u (ulo(1):uhi(1),ulo(2):uhi(2),ulo(3):uhi(3))
-    double precision             :: ug(glo(1):ghi(1),glo(2):ghi(2),glo(3):ghi(3),8)
+    double precision, intent(in)  :: u (ulo(1):uhi(1),ulo(2):uhi(2),ulo(3):uhi(3))
+    double precision, intent(out) :: ug(glo(1):ghi(1),glo(2):ghi(2),glo(3):ghi(3),8)
 
     integer :: i, j, k, tlo(2), thi(2)
     double precision, allocatable :: ugz(:,:,:,:)
@@ -241,8 +241,8 @@ contains
 
   subroutine cellavg2dergausspt_1d(lo, hi, u, ulo, uhi, du1, du2, glo, ghi)
     integer, intent(in) :: lo, hi, ulo, uhi, glo, ghi
-    double precision, intent(in) :: u(ulo:uhi)
-    double precision :: du1(glo:ghi), du2(glo:ghi)
+    double precision, intent(in)  :: u(ulo:uhi)
+    double precision, intent(out) :: du1(glo:ghi), du2(glo:ghi)
     integer :: i
     do i=lo,hi
        du1(i) = derg1(-2)*u(i-2) + derg1(-1)*u(i-1) + derg1(0)*u(i) + derg1(1)*u(i+1) + derg1(2)*u(i+2)
@@ -253,11 +253,11 @@ contains
 
   subroutine cellavg2dergausspt_2d(lo, hi, u, ulo, uhi, du1, du2, du3, du4, dulo, duhi, der_dir)
     integer, intent(in) :: lo(2), hi(2), ulo(2), uhi(2),dulo(2),duhi(2), der_dir
-    double precision, intent(in) ::   u( ulo(1): uhi(1), ulo(2): uhi(2))
-    double precision             :: du1(dulo(1):duhi(1),dulo(2):duhi(2))
-    double precision             :: du2(dulo(1):duhi(1),dulo(2):duhi(2))
-    double precision             :: du3(dulo(1):duhi(1),dulo(2):duhi(2))
-    double precision             :: du4(dulo(1):duhi(1),dulo(2):duhi(2))
+    double precision,intent(in)  ::   u( ulo(1): uhi(1), ulo(2): uhi(2))
+    double precision,intent(out) :: du1(dulo(1):duhi(1),dulo(2):duhi(2))
+    double precision,intent(out) :: du2(dulo(1):duhi(1),dulo(2):duhi(2))
+    double precision,intent(out) :: du3(dulo(1):duhi(1),dulo(2):duhi(2))
+    double precision,intent(out) :: du4(dulo(1):duhi(1),dulo(2):duhi(2))
 
     integer :: i, j
     double precision, allocatable :: ugy(:,:,:)
@@ -306,7 +306,7 @@ contains
   subroutine cellavg2face_1d(lo, hi, u, ulo, uhi, uf, flo, fhi)
     integer, intent(in) :: lo, hi, ulo, uhi, flo, fhi
     double precision, intent(in) ::  u(ulo:uhi)
-    double precision             :: uf(flo:fhi)
+    double precision, intent(out):: uf(flo:fhi)
     integer :: i
     do i=lo,hi
        uf(i) = cc4(-2)*u(i-2) + cc4(-1)*u(i-1) + cc4(0)*u(i) + cc4(1)*u(i+1)
