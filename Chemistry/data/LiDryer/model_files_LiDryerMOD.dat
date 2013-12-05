@@ -3,6 +3,6 @@
    THERMO_input = "LiDryer.therm"
    TRANLIB_input = "LiDryer.trans"
    CHEMKIN_linking_file = "LiDryerMOD.asc"
-   TRANLIB_cpp_file = "LiDryerMOD-tran.cpp"
+   TRANLIB_c_file = "LiDryerMOD-tran.c"
    log_file = "LiDryerMOD.log"
  /

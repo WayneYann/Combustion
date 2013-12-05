@@ -126,6 +126,18 @@ class CPickler(CMill):
         
         self._write('static int rxn_map[%d] = {%s};' % (nReactions, ",".join(str(rmap[x]) for x in range(len(rmap)))))
 
+
+        self._write('')
+        self._write('void GET_REACTION_MAP(int *rmap)')
+        self._write('{')
+        self._indent()
+        self._write('for (int i=0; i<%d; ++i) {' % (nReactions))
+        self._indent()        
+        self._write('rmap[i] = rxn_map[i];')
+        self._outdent()
+        self._write('}')
+        self._outdent()
+        self._write('}')
         self._write()
         self._write('struct ReactionData* GetReactionData(int id)')
         self._write('{')
@@ -421,6 +433,7 @@ class CPickler(CMill):
             '#define VCKWYR VCKWYR',
             '#define VCKYTX VCKYTX',
             '#define GET_T_GIVEN_EY GET_T_GIVEN_EY',
+            '#define GET_REACTION_MAP GET_REACTION_MAP',
             '#elif defined(BL_FORT_USE_LOWERCASE)',
             '#define CKINDX ckindx',
             '#define CKINIT ckinit',
@@ -502,6 +515,7 @@ class CPickler(CMill):
             '#define VCKWYR vckwyr',
             '#define VCKYTX vckytx',
             '#define GET_T_GIVEN_EY get_t_given_ey',
+            '#define GET_REACTION_MAP get_reaction_map',
             '#elif defined(BL_FORT_USE_UNDERSCORE)',
             '#define CKINDX ckindx_',
             '#define CKINIT ckinit_',
@@ -583,6 +597,7 @@ class CPickler(CMill):
             '#define VCKWYR vckwyr_',
             '#define VCKYTX vckytx_',
             '#define GET_T_GIVEN_EY get_t_given_ey_',
+            '#define GET_REACTION_MAP get_reaction_map_',
             '#endif','',
             self.line('function declarations'),
             'void molecularWeight(double * restrict wt);',
@@ -690,6 +705,7 @@ class CPickler(CMill):
             'void aJacobian(double * restrict J, double * restrict sc, double T, int consP);',
             'void dcvpRdT(double * restrict species, double * restrict tc);',
             'void GET_T_GIVEN_EY(double * restrict e, double * restrict y, int * iwrk, double * restrict rwrk, double * restrict t, int *ierr);',
+            'void GET_REACTION_MAP(int * restrict rmap);',
             self.line('vector version'),
             'void vproductionRate(int npt, double * restrict wdot, double * restrict c, double * restrict T);',
             'void VCKHMS'+sym+'(int * restrict np, double * restrict T, int * iwrk, double * restrict rwrk, double * restrict ums);',
@@ -2936,7 +2952,7 @@ class CPickler(CMill):
         self._write('int id; ' + self.line('loop counter'))
         self._write('int kd = (*mdim); ')
         self._write(self.line('Zero ncf'))
-        self._write('for (id = 0; id < %d * %d; ++ id) {' % (nElement, self.nSpecies) )
+        self._write('for (id = 0; id < kd * %d; ++ id) {' % (self.nSpecies) )
         self._indent()
         self._write(' ncf[id] = 0; ')
         self._outdent()

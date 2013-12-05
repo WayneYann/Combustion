@@ -85,6 +85,7 @@
 #define VCKWYR VCKWYR
 #define VCKYTX VCKYTX
 #define GET_T_GIVEN_EY GET_T_GIVEN_EY
+#define GET_REACTION_MAP GET_REACTION_MAP
 #elif defined(BL_FORT_USE_LOWERCASE)
 #define CKINDX ckindx
 #define CKINIT ckinit
@@ -166,6 +167,7 @@
 #define VCKWYR vckwyr
 #define VCKYTX vckytx
 #define GET_T_GIVEN_EY get_t_given_ey
+#define GET_REACTION_MAP get_reaction_map
 #elif defined(BL_FORT_USE_UNDERSCORE)
 #define CKINDX ckindx_
 #define CKINIT ckinit_
@@ -247,6 +249,7 @@
 #define VCKWYR vckwyr_
 #define VCKYTX vckytx_
 #define GET_T_GIVEN_EY get_t_given_ey_
+#define GET_REACTION_MAP get_reaction_map_
 #endif
 
 /*function declarations */
@@ -344,6 +347,7 @@ void DWDOT(double * restrict J, double * restrict sc, double * restrict T, int *
 void aJacobian(double * restrict J, double * restrict sc, double T, int consP);
 void dcvpRdT(double * restrict species, double * restrict tc);
 void GET_T_GIVEN_EY(double * restrict e, double * restrict y, int * iwrk, double * restrict rwrk, double * restrict t, int *ierr);
+void GET_REACTION_MAP(int * restrict rmap);
 /*vector version */
 void vproductionRate(int npt, double * restrict wdot, double * restrict c, double * restrict T);
 void VCKHMS(int * restrict np, double * restrict T, int * iwrk, double * restrict rwrk, double * restrict ums);
@@ -415,6 +419,13 @@ static double sri_a[175], sri_b[175], sri_c[175], sri_d[175], sri_e[175];
 static double activation_units[175], prefactor_units[175], phase_units[175];
 static int is_PD[175], troe_len[175], sri_len[175];
 static int rxn_map[175] = {23,24,25,26,11,12,13,14,0,27,28,29,30,31,32,1,33,34,35,36,37,10,38,39,40,15,41,42,43,44,45,46,47,48,49,16,17,50,51,52,53,54,55,56,57,58,59,2,3,60,61,62,63,64,18,65,66,67,68,69,70,71,72,19,73,74,75,76,77,78,79,80,81,82,83,84,85,86,87,88,89,90,91,92,93,4,94,95,96,97,98,99,5,6,7,100,101,102,103,104,105,106,107,108,109,110,111,112,8,113,114,9,115,116,117,118,119,120,20,121,122,123,124,125,126,127,128,129,130,131,132,133,134,135,136,137,138,139,140,141,142,143,144,145,146,147,148,149,150,151,152,153,154,155,156,157,158,159,160,161,162,163,164,165,166,21,22,167,168,169,170,171,172,173,174};
+
+void GET_REACTION_MAP(int *rmap)
+{
+    for (int i=0; i<175; ++i) {
+        rmap[i] = rxn_map[i];
+    }
+}
 
 struct ReactionData* GetReactionData(int id)
 {
@@ -5923,7 +5934,7 @@ void CKNCF(int * mdim, int * iwrk, double * restrict rwrk, int * ncf)
     int id; /*loop counter */
     int kd = (*mdim); 
     /*Zero ncf */
-    for (id = 0; id < 4 * 39; ++ id) {
+    for (id = 0; id < kd * 39; ++ id) {
          ncf[id] = 0; 
     }
 
