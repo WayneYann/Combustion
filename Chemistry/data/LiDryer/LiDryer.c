@@ -3261,7 +3261,7 @@ void comp_qfqr(double * restrict qf, double * restrict qr, double * restrict sc,
         alpha[1] = mixture + 1.5*sc[0] + 11*sc[2];
         for (int i=0; i<2; i++)
         {
-	    double redP, F, logPred, logFcent, troe_c, troe_n, troe, F_troe;
+            double redP, F, logPred, logFcent, troe_c, troe_n, troe, F_troe;
             redP = alpha[i-0] / k_f_save[i] * phase_units[i] * low_A[i] * exp(low_beta[i] * tc[0] - activation_units[i] * low_Ea[i] *invT);
             F = redP / (1.0 + redP);
             logPred = log10(redP);

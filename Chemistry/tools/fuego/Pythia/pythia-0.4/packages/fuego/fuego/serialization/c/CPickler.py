@@ -4661,7 +4661,6 @@ class CPickler(CMill):
                 self._write("double alpha[%d];" % nlindemann)
             else:
                 self._write("double alpha;")
-            self._write("double redP;")
 
             for i in range(ilindemann[0],ilindemann[1]):
                 ii = i - ilindemann[0]
@@ -4674,7 +4673,7 @@ class CPickler(CMill):
                         self._write("alpha = %s;" %(alpha))
 
             if nlindemann == 1:
-                self._write("redP = alpha / k_f_save[%d] * phase_units[%d] * low_A[%d] * exp(low_beta[%d] * tc[0] - activation_units[%d] * low_Ea[%d] * invT);" 
+                self._write("double redP = alpha / k_f_save[%d] * phase_units[%d] * low_A[%d] * exp(low_beta[%d] * tc[0] - activation_units[%d] * low_Ea[%d] * invT);" 
                             % (ilindemann[0],ilindemann[0],ilindemann[0],ilindemann[0],ilindemann[0],ilindemann[0]))
                 self._write("Corr[%d] = redP / (1. + redP);" % ilindemann[0])
             else:
@@ -4686,10 +4685,11 @@ class CPickler(CMill):
                     self._outdent()
                     self._write('#endif')
                     self._indent()
-                self._write("for (int i=%d; i<%d; i++" % (ilindemann[0], ilindemann[1]))
+                self._write("for (int i=%d; i<%d; i++)" % (ilindemann[0], ilindemann[1]))
                 self._write("{")
                 self._indent()
-                self._write("redP = alpha / k_f_save[i] * phase_units[i] * low_A[i] * exp(low_beta[i] * tc[0] - activation_units[i] * low_Ea[i] * invT);")
+                self._write("double redP = alpha[i-%d] / k_f_save[i] * phase_units[i] * low_A[i] * exp(low_beta[i] * tc[0] - activation_units[i] * low_Ea[i] * invT);"
+                            % ilindemann[0])
                 self._write("Corr[i] = redP / (1. + redP);")
                 self._outdent()
                 self._write('}')
