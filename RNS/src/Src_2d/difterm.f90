@@ -181,7 +181,7 @@ contains
             Qf, mu, xi, lam, Ddia, dmom, Qflo, Qfhi, &
             Qc, Qclo, Qchi, dxinv, fac)
 
-       Nullify(Uag,dUag)
+       Nullify(Uag,dUag,mu,xi,lam,Ddia)
     end do
 
     ! ----- compute y-direction flux -----
@@ -214,11 +214,19 @@ contains
     do g=1,2
        
        if (g .eq. 1) then
-          Uag  =>  U1
-          dUag => dU1
+          Uag  =>    U1
+          dUag =>   dU1
+          mu   =>   mu1
+          xi   =>   xi1
+          lam  =>  lam1
+          Ddia => Ddia1
        else
-          Uag  =>  U2
-          dUag => dU2
+          Uag  =>    U2
+          dUag =>   dU2
+          mu   =>   mu2
+          xi   =>   xi2
+          lam  =>  lam2
+          Ddia => Ddia2
        end if
 
        do n=1,3
@@ -263,7 +271,7 @@ contains
             Qf, mu, xi, lam, Ddia, dmom, Qflo, Qfhi, &
             Qc, Qclo, Qchi, dxinv, fac)
 
-       Nullify(Uag,dUag)
+       Nullify(Uag,dUag,mu,xi,lam,Ddia)
     end do
 
     deallocate(U1,U2,dU1,dU2,Qc,Qf,dmom)
