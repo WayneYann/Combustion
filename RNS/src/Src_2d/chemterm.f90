@@ -110,13 +110,13 @@ contains
 
     integer :: i, j, n
     logical :: force_new_J
-    double precision :: rhot(1), rhoinv, ei, fac
-    double precision :: Yt(nspec+1)
+    double precision :: rhot(1), rhoinv, ei
+    double precision :: Yt0(nspec), Yt(nspec+1)
     double precision, allocatable :: Ucc(:,:,:)
 
     allocate(Ucc(lo(1)-1:hi(1)+1,lo(2)-1:hi(2)+1,NVAR))
 
-    !$omp parallel private(i,j,n,rhot,rhoinv,ei,fac,Yt,force_new_J)
+    !$omp parallel private(i,j,n,rhot,rhoinv,ei,Yt0,Yt,force_new_J)
 
     !$omp do
     do n=1,NVAR
@@ -145,14 +145,14 @@ contains
 
           call eos_get_T(Yt(nspec+1), ei, Yt(1:nspec))
 
+          Yt0 = Yt(1:nspec)
           call burn(1, rhot, Yt, dt, force_new_J)
 
           force_new_J = .false.
 
           do n=1,nspec
-             Ucc(i,j,UFS+n-1) = rhot(1)*Yt(n)
+             Ucc(i,j,UFS+n-1) = rhot(1)*(Yt(n)-Yt0(n))
           end do
-          U(i,j,UTEMP) = Yt(nspec+1)
 
        end do
     end do
@@ -160,20 +160,10 @@ contains
 
     !$omp do
     do n=UFS,UFS+nspec-1
-       call cc2cellavg_2d(lo,hi, Ucc(:,:,n), lo-1,hi+1, U(:,:,n), Ulo,Uhi)
-    end do
-    !$omp end do
-
-    !$omp do collapse(2)
-    do j=lo(2),hi(2)
-       do i=lo(1),hi(1)
-          rhot = 0.d0
-          do n=1,NSPEC
-             rhot(1) = rhot(1) + U(i,j,UFS+n-1)
-          end do
-          fac = U(i,j,URHO)/rhot(1)
-          do n=1,NSPEC
-             U(i,j,UFS+n-1) = U(i,j,UFS+n-1) * fac
+       call cc2cellavg_2d(lo,hi, Ucc(:,:,n), lo-1,hi+1, Ucc(:,:,UTEMP), lo-1,hi+1)
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+             U(i,j,n) = U(i,j,n) + Ucc(i,j,UTEMP)
           end do
        end do
     end do
