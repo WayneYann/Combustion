@@ -6094,7 +6094,7 @@ HeatTransfer::advance_chemistry (MultiFab&       mf_old,
         //
         const int NProcs = ParallelDescriptor::NProcs();
         BoxArray  ba     = mf_new.boxArray();
-        bool      done   = false;
+        bool      done   = (ba.size() >= 3*NProcs);
 
         for (int cnt = 1; !done; cnt *= 2)
         {
@@ -6162,6 +6162,8 @@ HeatTransfer::advance_chemistry (MultiFab&       mf_old,
             }
         }
 
+        FTemp.clear();
+
         mf_new.copy(STemp,0,first_spec,nspecies+3); // Parallel copy.
 
         STemp.clear();
@@ -6201,6 +6203,7 @@ HeatTransfer::advance_chemistry (MultiFab&       mf_old,
                 FC[mfi].copy(grownFC[mfi]);
             }
         }
+        fcnCntTemp.clear();
         //
         // Approximate covered crse chemistry (I_R) with averaged down fine I_R from previous time step.
         //
