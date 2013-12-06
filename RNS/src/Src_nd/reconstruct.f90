@@ -46,7 +46,7 @@ contains
     double precision :: vel(3), vflag(3)
     double precision :: charv(-2:2,NCHARV) ! characteristic variables
     double precision, dimension(NCHARV) :: vp, vm, vg1, vg2
-    double precision :: eref, rhoEnew(-2:2), Yref(NSPEC)
+    double precision :: eref, Yref(NSPEC), Uii(NCHARV)
     logical :: do_gauss, do_face
     double precision, pointer :: Ubase(:,:)
 
@@ -173,24 +173,25 @@ contains
 
        ! convert conserved variables to characteristic variables
        do ii=-2,2
+
           rhoinV = 1.d0 / U(i+ii,URHO)
+
+          Uii(1) = U(i+ii,ivel(1)) * vflag(1)
+          Uii(2) = U(i+ii,ivel(2)) * vflag(2)
+          Uii(3) = U(i+ii,ivel(3)) * vflag(3)
+          Uii(4) = U(i+ii,UEDEN)
+          
           do n=1,nspec
+             Uii(CFS+n-1) = U(i+ii,UFS+n-1)
              Yref(n) = U(i+ii,UFS+n-1) * rhoInv
           end do
           eref = eos_get_eref(Yref)
-          rhoEnew(ii) = U(i+ii,UEDEN) - U(i+ii,URHO) * eref
-       end do
+          Uii(4) = U(ii,4) - U(i+ii,URHO) * eref
 
-       do n=1,NCHARV
-          do ii=-2,2
-             charv(ii,n) = egv(1,n)*U(i+ii,ivel(1)) * vflag(1)  &
-                  +        egv(2,n)*U(i+ii,ivel(2)) * vflag(2)  &
-                  +        egv(3,n)*U(i+ii,ivel(3)) * vflag(3)  &
-                  + egv(4,n)*rhoEnew(ii)
-             do m=1,nspec
-                charv(ii,n) = charv(ii,n) + egv(CFS+m-1,n)*U(i+ii,UFS+m-1)
-             end do
+          do n=1,NCHARV
+             charv(ii,n) = dot_product(egv(:,n),Uii)
           end do
+
        end do
 
        if (do_face .and. do_gauss) then
