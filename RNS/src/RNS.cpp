@@ -136,13 +136,9 @@ std::vector<int> RNS::blocksize(BL_SPACEDIM, 2048);
 
 int          RNS::do_quartic_interp   = 1;
 
-int          RNS::use_vode            = 1;
+int          RNS::use_vode            = 0;
 int          RNS::do_cc_burning       = 0; // do_cc_burning has no effect when split_burning is true
-#ifdef USE_SDCLIB
-int          RNS::split_burning       = 1;
-#else
 int          RNS::split_burning       = 0;
-#endif
 
 // this will be reset upon restart
 Real         RNS::previousCPUTimeUsed = 0.0;
