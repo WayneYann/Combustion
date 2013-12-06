@@ -109,7 +109,7 @@ RNS::variableSetUp ()
     if (chemSolve == 0) 
     {
 	int max_points;
-	if ( use_vode || split_burning ) 
+	if ( use_vode || split_burning || do_cc_burning ) 
 	{
 	    max_points = 1;
 	}
