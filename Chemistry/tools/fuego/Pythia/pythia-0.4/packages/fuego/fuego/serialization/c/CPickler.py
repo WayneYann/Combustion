@@ -3294,7 +3294,7 @@ class CPickler(CMill):
  
         # now compute conversion
         self._write(self.line('Now compute conversion'))
-        self._write('double XWinv = 1.0/XW')
+        self._write('double XWinv = 1.0/XW;')
         for species in self.species:
             self._write('y[%d] = x[%d]*%f*XWinv; ' % (
                 species.id, species.id, species.weight) )
@@ -5265,7 +5265,17 @@ class CPickler(CMill):
             for k in range(nSpecies):
                 dqdc_s = ''
                 dcdc = self._Denhancement(mechanism,reaction,k,True)
-                if dcdc != 0.0:
+                if dcdc == 1:
+                    if isPD:
+                        dqdc_s +=' dcdc_fac'
+                    elif has_alpha:
+                        dqdc_s +=' q_nocor'
+                elif dcdc == -1:
+                    if isPD:
+                        dqdc_s +=' -dcdc_fac'
+                    elif has_alpha:
+                        dqdc_s +=' -q_nocor'                        
+                elif dcdc != 0.0:
                     if isPD:
                         dqdc_s +=' %.17g*dcdc_fac'%dcdc
                     elif has_alpha:
@@ -5279,6 +5289,7 @@ class CPickler(CMill):
                     for m in sorted(all_dict.keys()):
                         if all_dict[m][1] != 0:
                             s1 = 'J[%d] += %.17g * dqdci;' % (k*(nSpecies+1)+m, all_dict[m][1])
+                            s1 = s1.replace('+= 1 *', '+=').replace('+= -1 *', '-=')
                             s2 = '/* dwdot[%s]/d[%s] */' % (all_dict[m][0], symb_k)
                             self._write(s1.ljust(30) + s2)
 
@@ -5290,9 +5301,17 @@ class CPickler(CMill):
             for k in range(nSpecies):
                 dqdc_s = ''
                 dcdc = self._Denhancement(mechanism,reaction,k,False)
-                if dcdc == 0.0:
-                    dqdc_s += ' 0.0'
-                else:
+                if dcdc == 1:
+                    if isPD:
+                        dqdc_s +=' dcdc_fac'
+                    elif has_alpha:
+                        dqdc_s +=' q_nocor'
+                elif dcdc == -1:
+                    if isPD:
+                        dqdc_s +=' -dcdc_fac'
+                    elif has_alpha:
+                        dqdc_s +=' -q_nocor'                        
+                elif dcdc != 0.0:
                     if isPD:
                         dqdc_s +=' %.17g*dcdc_fac'%dcdc
                     elif has_alpha:
@@ -5304,7 +5323,10 @@ class CPickler(CMill):
             self._write('for (int k=0; k<%d; k++) {' % nSpecies)
             self._indent()
             for m in sorted(all_dict.keys()):
-                self._write('J[%d*k+%d] += %.17g * dqdc[k];' % ((nSpecies+1), m, all_dict[m][1]))
+                if all_dict[m][1] != 0:
+                    s1 = 'J[%d*k+%d] += %.17g * dqdc[k];' % ((nSpecies+1), m, all_dict[m][1])
+                    s1 = s1.replace('+= 1 *', '+=').replace('+= -1 *', '-=')
+                    self._write(s1)
             self._outdent()
             self._write('}')
 
@@ -5312,8 +5334,11 @@ class CPickler(CMill):
             self._write('}')
 
             for m in sorted(all_dict.keys()):
-                self._write('J[%d] += %.17g * dqdT; /* dwdot[%s]/dT */' % \
-                                (nSpecies*(nSpecies+1)+m, all_dict[m][1], all_dict[m][0]))
+                if all_dict[m][1] != 0:
+                    s1 = 'J[%d] += %.17g * dqdT; /* dwdot[%s]/dT */' % \
+                        (nSpecies*(nSpecies+1)+m, all_dict[m][1], all_dict[m][0])
+                    s1 = s1.replace('+= 1 *', '+=').replace('+= -1 *', '-=')
+                    self._write(s1)
 
         else:
 
@@ -5326,12 +5351,14 @@ class CPickler(CMill):
                         for m in sorted(all_dict.keys()):
                             if all_dict[m][1] != 0:
                                 s1 = 'J[%d] += %.17g * dqdci;' % (k*(nSpecies+1)+m, all_dict[m][1])
+                                s1 = s1.replace('+= 1 *', '+=').replace('+= -1 *', '-=')
                                 s2 = '/* dwdot[%s]/d[%s] */' % (all_dict[m][0], all_dict[k][0])
                                 self._write(s1.ljust(30) + s2)
             self._write('/* d()/dT */')
             for m in sorted(all_dict.keys()):
                 if all_dict[m][1] != 0:
                     s1 = 'J[%d] += %.17g * dqdT;' % (nSpecies*(nSpecies+1)+m, all_dict[m][1])
+                    s1 = s1.replace('+= 1 *', '+=').replace('+= -1 *', '-=').replace('+= -1 *', '-=')
                     s2 = '/* dwdot[%s]/dT */' % (all_dict[m][0])
                     self._write(s1.ljust(30) + s2)
 
@@ -6307,10 +6334,12 @@ class CPickler(CMill):
             conc = "sc[%d]" % mechanism.species(symbol).id
             if factor == 1:
                 alpha.append(conc)
+            elif factor == -1:
+                alpha.append('-'+conc)
             elif factor != 0:
                 alpha.append("%.17g*%s" % (factor, conc))
 
-        return " + ".join(alpha)
+        return " + ".join(alpha).replace('+ -','- ')
 
     def _Denhancement(self, mechanism, reaction, kid, consP):
         thirdBody = reaction.thirdBody
@@ -6365,7 +6394,9 @@ class CPickler(CMill):
             conc = "sc[%d*npt+i]" % mechanism.species(symbol).id
             if factor == 1:
                 alpha.append(conc)
-            else:
+            elif factor == -1:
+                alpha.append('-'+conc)
+            elif factor != 0:
                 alpha.append("%.17g*%s" % (factor, conc))
 
         return " + ".join(alpha)
