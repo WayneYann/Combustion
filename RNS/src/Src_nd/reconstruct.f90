@@ -186,7 +186,7 @@ contains
              Yref(n) = U(i+ii,UFS+n-1) * rhoInv
           end do
           eref = eos_get_eref(Yref)
-          Uii(4) = U(ii,4) - U(i+ii,URHO) * eref
+          Uii(4) = Uii(4) - U(i+ii,URHO) * eref
 
           do n=1,NCHARV
              charv(ii,n) = dot_product(egv(:,n),Uii)
