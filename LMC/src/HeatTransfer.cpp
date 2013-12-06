@@ -6528,10 +6528,8 @@ HeatTransfer::strang_chem (MultiFab&  mf,
             // We want to try and level out the chemistry work.
             //
             const int NProcs = ParallelDescriptor::NProcs();
-
-            BoxArray ba = mf.boxArray();
-
-            bool done = false;
+            BoxArray  ba     = mf.boxArray();
+            bool      done   = (ba.size() >= 3*NProcs);
 
             for (int cnt = 1; !done; cnt *= 2)
             {
@@ -6548,9 +6546,7 @@ HeatTransfer::strang_chem (MultiFab&  mf,
                 for (int j = BL_SPACEDIM-1; j >=0  && ba.size() < 3*NProcs; j--)
                 {
                     chunk[j] /= 2;
-
                     ba.maxSize(chunk);
-
                     if (ba.size() >= 3*NProcs) done = true;
                 }
             }
@@ -6560,7 +6556,6 @@ HeatTransfer::strang_chem (MultiFab&  mf,
             MultiFab tmp, fcnCntTemp;
 
             tmp.define(ba, mf.nComp(), 0, dm, Fab_allocate);
-
             fcnCntTemp.define(ba, 1, 0, dm, Fab_allocate);
 
             MultiFab diagTemp;
