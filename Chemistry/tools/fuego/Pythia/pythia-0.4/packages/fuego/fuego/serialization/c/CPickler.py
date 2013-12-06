@@ -3005,16 +3005,13 @@ class CPickler(CMill):
         self._write('{')
         self._indent()
 
- 
-        for reaction in mechanism.reaction():
-
-            self._write()
-            self._write(self.line('reaction %d: %s' % (reaction.id, reaction.equation())))
-
-            # store the progress rate
-            self._write("a[%d] = %.17g;" % (reaction.id-1 , reaction.arrhenius[0]))
-            self._write("b[%d] = %.17g;" % (reaction.id-1 , reaction.arrhenius[1]))
-            self._write("e[%d] = %.17g;" % (reaction.id-1 , reaction.arrhenius[2]))
+        self._write('for (int i=0; i<%d; ++i) {' % len(mechanism.reaction()) )
+        self._indent()
+        self._write("a[i] = fwd_A[i];")
+        self._write("b[i] = fwd_beta[i];")
+        self._write("e[i] = fwd_Ea[i];")
+        self._outdent()
+        self._write('}')
 
         self._write()
         self._write('return;')
@@ -3024,13 +3021,6 @@ class CPickler(CMill):
 
         return
                             
-        # done
-        self._outdent()
-
-        self._write('}')
-
-        return
-
     
     def _ckmmwy(self, mechanism):
         self._write()
