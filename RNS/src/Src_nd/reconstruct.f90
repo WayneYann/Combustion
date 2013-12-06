@@ -39,7 +39,7 @@ contains
     double precision, intent(out), dimension( UGlo: UGhi,NVAR), optional :: UG1, UG2
 
     integer :: i, ii, ivar, m, n, ivel(3), idir, iextra
-    double precision :: egv(NCHARV,NCHARV)
+    double precision :: egv(NCHARV,NCHARV), egvt(NCHARV,NCHARV)
     double precision :: gt, b, d(NSPEC)
     double precision :: rho, rhoInv, p, c, gamc, T, dpdr(NSPEC), dpde, e, ek, H, Y(NSPEC)
     double precision :: gtinv, cinv
@@ -252,18 +252,18 @@ contains
           egv(CFS+n-1,CFS+n-1) = 1.d0
        end do
 
+       egvt = transpose(egv)
+
        if (do_face .and. i.ne.hi+1) then
           do n=1,NCHARV
              UL(i+1,ivel(1)) = UL(i+1,ivel(1)) + vp(n)*egv(1,n)*vflag(1)
              UL(i+1,ivel(2)) = UL(i+1,ivel(2)) + vp(n)*egv(2,n)*vflag(2)
              UL(i+1,ivel(3)) = UL(i+1,ivel(3)) + vp(n)*egv(3,n)*vflag(3)
              UL(i+1,UEDEN  ) = UL(i+1,UEDEN  ) + vp(n)*egv(4,n)
-             do m=1,nspec
-                UL(i+1,UFS+m-1) = UL(i+1,UFS+m-1) + vp(n)*egv(CFS+m-1,n)
-             end do
           end do
 
           do m=1,nspec
+             UL(i+1,UFS+m-1) = UL(i+1,UFS+m-1) + dot_product(vp, egvt(:,CFS+m-1))
              UL(i+1,URHO) = UL(i+1,URHO) + UL(i+1,UFS+m-1)
           end do
 
@@ -284,12 +284,10 @@ contains
              UR(i,ivel(2)) = UR(i,ivel(2)) + vm(n)*egv(2,n)*vflag(2)
              UR(i,ivel(3)) = UR(i,ivel(3)) + vm(n)*egv(3,n)*vflag(3)
              UR(i,UEDEN  ) = UR(i,UEDEN  ) + vm(n)*egv(4,n)
-             do m=1,nspec
-                UR(i,UFS+m-1) = UR(i,UFS+m-1) + vm(n)*egv(CFS+m-1,n)
-             end do
           end do
 
           do m=1,nspec
+             UR(i,UFS+m-1) = UR(i,UFS+m-1) + dot_product(vm, egvt(:,CFS+m-1))
              UR(i,URHO) = UR(i,URHO) + UR(i,UFS+m-1)
           end do
 
@@ -311,12 +309,10 @@ contains
              UG1(i,ivel(2)) = UG1(i,ivel(2)) + vg1(n)*egv(2,n)*vflag(2)
              UG1(i,ivel(3)) = UG1(i,ivel(3)) + vg1(n)*egv(3,n)*vflag(3)
              UG1(i,UEDEN  ) = UG1(i,UEDEN  ) + vg1(n)*egv(4,n)
-             do m=1,nspec
-                UG1(i,UFS+m-1) = UG1(i,UFS+m-1) + vg1(n)*egv(CFS+m-1,n)
-             end do
           end do
-          
+
           do m=1,nspec
+             UG1(i,UFS+m-1) = UG1(i,UFS+m-1) + dot_product(vg1, egvt(:,CFS+m-1))
              UG1(i,URHO) = UG1(i,URHO) + UG1(i,UFS+m-1)
           end do
           
@@ -335,12 +331,10 @@ contains
              UG2(i,ivel(2)) = UG2(i,ivel(2)) + vg2(n)*egv(2,n)*vflag(2)
              UG2(i,ivel(3)) = UG2(i,ivel(3)) + vg2(n)*egv(3,n)*vflag(3)
              UG2(i,UEDEN  ) = UG2(i,UEDEN  ) + vg2(n)*egv(4,n)
-             do m=1,nspec
-                UG2(i,UFS+m-1) = UG2(i,UFS+m-1) + vg2(n)*egv(CFS+m-1,n)
-             end do
           end do
-          
+
           do m=1,nspec
+             UG2(i,UFS+m-1) = UG2(i,UFS+m-1) + dot_product(vg2, egvt(:,CFS+m-1))
              UG2(i,URHO) = UG2(i,URHO) + UG2(i,UFS+m-1)
           end do
           
