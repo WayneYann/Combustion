@@ -3294,8 +3294,9 @@ class CPickler(CMill):
  
         # now compute conversion
         self._write(self.line('Now compute conversion'))
+        self._write('double XWinv = 1.0/XW')
         for species in self.species:
-            self._write('y[%d] = x[%d]*%f/XW; ' % (
+            self._write('y[%d] = x[%d]*%f*XWinv; ' % (
                 species.id, species.id, species.weight) )
 
         self._write()
@@ -3395,9 +3396,10 @@ class CPickler(CMill):
         # now compute conversion
         self._write()
         self._write(self.line(' See Eq 13 '))
+        self._write('double sumCinv = 1.0/sumC;')
         self._write('for (id = 0; id < %d; ++id) {' % self.nSpecies)
         self._indent()
-        self._write('x[id] = c[id]/sumC;')
+        self._write('x[id] = c[id]*sumCinv;')
         self._outdent()
         self._write('}')
 
@@ -3428,8 +3430,9 @@ class CPickler(CMill):
 
         # now compute conversion
         self._write(self.line('Now compute conversion'))
+        self._write('double CWinv = 1.0/CW;')
         for species in self.species:
-            self._write('y[%d] = c[%d]*%f/CW; ' % (
+            self._write('y[%d] = c[%d]*%f*CWinv; ' % (
                 species.id, species.id, species.weight) )
 
         self._write()
