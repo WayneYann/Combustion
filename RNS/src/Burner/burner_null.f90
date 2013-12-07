@@ -4,7 +4,7 @@ module burner_module
 
   private
 
-  public :: burn, compute_rhodYdt, init_burn_linear, burn_linear
+  public :: burn, compute_rhodYdt, splitburn
 
 contains
 
@@ -25,16 +25,13 @@ contains
   end subroutine compute_rhodYdt
 
 
-  subroutine init_burn_linear(rho0, Y0, dt)
-    double precision, intent(in) :: rho0, Y0(*), dt
+  subroutine splitburn(np, rho0, Y0, rho, YT, dt)
+    integer, intent(in) :: np
+    double precision, intent(in   ) :: rho0, rho(np), dt
+    double precision, intent(in   ) :: Y0(*)
+    double precision, intent(inout) :: YT(*)
     return
-  end subroutine init_burn_linear
-
-
-  subroutine burn_linear(dY)
-    double precision, intent(inout) :: dY(*)
-    return;
-  end subroutine burn_linear
+  end subroutine splitburn
 
 end module burner_module
 

@@ -2,7 +2,7 @@ module chemterm_module
 
   use meth_params_module, only : NVAR, URHO, UEDEN, UMX, UMY, UMZ, UTEMP, UFS, NSPEC, &
        do_cc_burning, split_burning
-  use burner_module, only : burn, compute_rhodYdt, init_burn_linear, burn_linear
+  use burner_module, only : burn, compute_rhodYdt, splitburn
   use eos_module, only : eos_get_T
 
   implicit none
@@ -273,12 +273,12 @@ contains
     integer :: i, j, k, n, g
     logical :: force_new_J
     double precision :: rhot(8), rhoinv, ei, rho0(1)
-    double precision :: Yt0(nspec+1,8), Yt(nspec+1,8), Y0(nspec+1), dry(nspec)
+    double precision :: Yt(nspec+1,8), Y0(nspec+1)
     double precision, allocatable :: UG(:,:,:,:,:)
 
     allocate(UG(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),8,NVAR))
 
-    !$omp parallel private(i,j,k,n,g,rhot,rhoinv,ei,Yt0,Yt,dry,force_new_J,rho0,Y0)
+    !$omp parallel private(i,j,k,n,g,rhot,rhoinv,ei,Yt,force_new_J,rho0,Y0)
 
     !$omp do
     do n=1,NVAR
@@ -318,34 +318,16 @@ contains
 
              end do
 
-             do g=1,8
-                do n=1,nspec+1
-                   Yt0(n,g) = Yt(n,g)
-                   Yt(n,g) = Yt(n,g) - Y0(n)
-                end do
-             end do
-
              call burn(1, rho0(1), Y0, dt, force_new_J)
 
              force_new_J = .false.
 
-             call init_burn_linear(rho0(1), Y0, dt)
+             call splitburn(8, rho0(1), Y0, rhot, Yt, dt)
 
-             do g=1,8
-                call burn_linear(Yt(1:nspec,g))
-                Yt(:,g) = Yt(:,g) + Y0
-             end do
-
-             dry = 0.d0
              do g=1,8
                 do n=1,nspec
-                   dry(n) = dry(n) + rhot(g)*(Yt(n,g)-Yt0(n,g))
+                   U(i,j,k,UFS+n-1) = U(i,j,k,UFS+n-1) + 0.125d0*rhot(g)*Yt(n,g)
                 end do
-             end do
-
-             ! note that the sum of dry is zero
-             do n=1,nspec
-                U(i,j,k,UFS+n-1) = U(i,j,k,UFS+n-1) + 0.125d0*dry(n)
              end do
 
           end do

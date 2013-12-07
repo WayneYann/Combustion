@@ -6,12 +6,12 @@ module burner_module
   implicit none
 
   double precision, allocatable, save :: Jac(:,:), A(:,:)
-  integer, allocatable, save :: ipvt(:)
-  !$omp threadprivate(Jac,A,ipvt) 
+  integer, save :: nstep
+  !$omp threadprivate(Jac,A,nstep) 
 
   private
 
-  public :: burn, compute_rhodYdt, init_burn_linear, burn_linear, burn_nonlinear
+  public :: burn, compute_rhodYdt, splitburn
 
 contains
 
@@ -75,6 +75,8 @@ contains
        call dvode(f_rhs, nspecies+1, YT(:,g), time, dt, itol, rtol, atol, itask, &
             istate, iopt, voderwork, lvoderwork, vodeiwork, lvodeiwork, &
             f_jac, MF, voderpar, vodeipar)
+
+       nstep = vodeiwork(11)
 
        if (verbose .ge. 1) then
           write(6,*) '......dvode done:'
@@ -151,6 +153,8 @@ contains
           call bdf_advance(ts, f_rhs, f_jac, neq, np_bdf, YT(:,i:i+np_bdf-1), t0,  &
                y1(:,i:i+np_bdf-1), t1, dt, reset, reuse_J, ierr)
 
+          nstep = ts%n - 1
+
           reuse_J = reuse_jac
 
           if (ierr .ne. 0) then
@@ -194,27 +198,34 @@ contains
   end subroutine compute_rhodYdt
 
 
-  subroutine init_burn_linear(rho0, Y0, dt)
-    double precision, intent(in) :: rho0, Y0(nspecies+1), dt
+  subroutine splitburn(np, rho0, Y0, rho, YT, dt)
+    integer, intent(in) :: np
+    double precision, intent(in   ) :: rho0, rho(np), dt
+    double precision, intent(in   ) :: Y0(nspecies+1)
+    double precision, intent(inout) :: YT(nspecies+1,np)
 
-    integer :: i, j, iwrk, info
-    double precision :: C(nspecies)
-    double precision :: rwrk
+    integer :: i, j, n, iwrk, info
+    double precision :: ipvt(nspecies), C(nspecies)
+    double precision :: Y(np,nspecies), T(np), rdYdt(np,nspecies)
+    double precision :: rwrk, dt_step, fac
     integer, parameter :: consP = 0
     
     if (.not. allocated(Jac)) then
        allocate(Jac(nspecies+1,nspecies+1))
        allocate(A(nspecies,nspecies))
-       allocate(ipvt(nspecies))
     end if
+
+    ! form A
 
     call ckytcr(rho0, Y0(nspecies+1), Y0, iwrk, rwrk, C)
     call DWDOT(Jac, C, Y0(nspecies+1), consP)
 
+    dt_step = dt / dble(nstep)
+
     do j=1,nspecies
        do i=1,nspecies
           Jac(i,j) = Jac(i,j) * molecular_weight(i) * inv_mwt(j)
-          A(i,j) = -dt*Jac(i,j)
+          A(i,j) = -dt_step*Jac(i,j)
        end do
     end do
 
@@ -224,42 +235,28 @@ contains
     
     call dgefa(A, nspecies, nspecies, ipvt, info)
 
-  end subroutine init_burn_linear
-
-
-  subroutine burn_linear(Y)
-    double precision, intent(inout) :: Y(nspecies)
-    call dgesl(A, nspecies, nspecies, ipvt, Y, 0)
-  end subroutine burn_linear
-
-  subroutine burn_nonlinear(np, Ynew, Yold, rho, dt)
-    integer, intent(in) :: np
-    double precision, intent(inout) :: Ynew(nspecies+1,np)
-    double precision, intent(in   ) :: Yold(nspecies+1,np), rho(np)
-    double precision, intent(in) :: dt
-
-    integer :: i, m, n, iwrk
-    double precision :: rwrk, T(np), Y(np,nspecies), rdYdt(np,nspecies), fac
-
+    ! form b and store in YT
+    
     do i=1,np
        do n=1,nspecies
-          Y(i,n) = Yold(n,i)
+          Y(i,n) = YT(n,i)
        end do
-       T(i) = Yold(nspecies+1,i)
+       T(i) = YT(nspecies+1,i)
     end do
 
     call vckwyr(np, rho, T, Y, iwrk, rwrk, rdYdt)
 
     do i=1,np
-       fac = dt / rho(i)
+       fac = dt_step / rho(i)
        do n=1,nspecies
-          Ynew(n,i) = Ynew(n,i) + rdYdt(i,n) * molecular_weight(n) * fac
-          do m=1,nspecies
-             Ynew(n,i) = Ynew(n,i) - dt*Jac(n,m)*Yold(m,np)
-          end do
+          YT(n,i) = rdYdt(i,n) * molecular_weight(n) * fac
+       end do
+       
+       do j=1,nstep
+          call dgesl(A, nspecies, nspecies, ipvt, YT(1:nspecies,i), 0)
        end do
     end do
 
-  end subroutine burn_nonlinear
+  end subroutine splitburn
 
 end module burner_module
