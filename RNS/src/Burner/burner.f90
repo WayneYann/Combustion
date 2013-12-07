@@ -11,7 +11,7 @@ module burner_module
 
   private
 
-  public :: burn, compute_rhodYdt, init_burn_linear, burn_linear
+  public :: burn, compute_rhodYdt, init_burn_linear, burn_linear, burn_nonlinear
 
 contains
 
@@ -227,9 +227,39 @@ contains
   end subroutine init_burn_linear
 
 
-  subroutine burn_linear(dY)
-    double precision, intent(inout) :: dY(nspecies)
-    call dgesl(A, nspecies, nspecies, ipvt, dY, 0)
+  subroutine burn_linear(Y)
+    double precision, intent(inout) :: Y(nspecies)
+    call dgesl(A, nspecies, nspecies, ipvt, Y, 0)
   end subroutine burn_linear
+
+  subroutine burn_nonlinear(np, Ynew, Yold, rho, dt)
+    integer, intent(in) :: np
+    double precision, intent(inout) :: Ynew(nspecies+1,np)
+    double precision, intent(in   ) :: Yold(nspecies+1,np), rho(np)
+    double precision, intent(in) :: dt
+
+    integer :: i, m, n, iwrk
+    double precision :: rwrk, T(np), Y(np,nspecies), rdYdt(np,nspecies), fac
+
+    do i=1,np
+       do n=1,nspecies
+          Y(i,n) = Yold(n,i)
+       end do
+       T(i) = Yold(nspecies+1,i)
+    end do
+
+    call vckwyr(np, rho, T, Y, iwrk, rwrk, rdYdt)
+
+    do i=1,np
+       fac = dt / rho(i)
+       do n=1,nspecies
+          Ynew(n,i) = Ynew(n,i) + rdYdt(i,n) * molecular_weight(n) * fac
+          do m=1,nspecies
+             Ynew(n,i) = Ynew(n,i) - dt*Jac(n,m)*Yold(m,np)
+          end do
+       end do
+    end do
+
+  end subroutine burn_nonlinear
 
 end module burner_module

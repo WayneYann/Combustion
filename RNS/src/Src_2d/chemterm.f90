@@ -2,7 +2,8 @@ module chemterm_module
 
   use meth_params_module, only : NVAR, URHO, UEDEN, UMX, UMY, UTEMP, UFS, NSPEC, &
        do_cc_burning, split_burning
-  use burner_module, only : burn, compute_rhodYdt, init_burn_linear, burn_linear
+  use burner_module, only : burn, compute_rhodYdt, init_burn_linear, burn_linear, &
+       burn_nonlinear
   use eos_module, only : eos_get_T
 
   implicit none
@@ -307,25 +308,20 @@ contains
 
           end do
 
-          do g=1,4
-             do n=1,nspec+1
-                Yt0(n,g) = Yt(n,g)
-                Yt(n,g) = Yt(n,g) - Y0(n)
-             end do
-          end do
-
           call burn(1, rho0(1), Y0, dt, force_new_J)
 
           force_new_J = .false.
 
           call init_burn_linear(rho0(1), Y0, dt)
 
+          dry = 0.d0
           do g=1,4
+             Yt0(:,g) = Yt(:,g)
              call burn_linear(Yt(1:nspec,g))
-             Yt(:,g) = Yt(:,g) + Y0
           end do
 
-          dry = 0.d0
+          call burn_nonlinear(4, Yt, Yt0, rhot, dt)
+
           do g=1,4
              do n=1,nspec
                 dry(n) = dry(n) + rhot(g)*(Yt(n,g)-Yt0(n,g))
