@@ -28,7 +28,7 @@ contains
   !   double precision             :: uf(flo:fhi)
   !   integer :: i
   !   do i=lo,hi
-  !      uf(i) = -0.0625d0*(u(i-2)+u(i+1)) + 0.5626d0*(u(i-1)+u(i))
+  !      uf(i) = -0.0625d0*(u(i-2)+u(i+1)) + 0.5625d0*(u(i-1)+u(i))
   !   end do
   ! end subroutine cc2face_1d
 
@@ -43,7 +43,7 @@ contains
 
     do  j=clo(2)-2, chi(2)+2
      do i=clo(1)   ,chi(1)+1
-          uf(i,j) = -0.0625d0*(u(i-2,j)+u(i+1,j)) + 0.5626d0*(u(i-1,j)+u(i,j))
+          uf(i,j) = -0.0625d0*(u(i-2,j)+u(i+1,j)) + 0.5625d0*(u(i-1,j)+u(i,j))
        end do
     end do
 
@@ -69,7 +69,7 @@ contains
 
     do  j=clo(2)  ,chi(2)+1
      do i=clo(1)-2,chi(1)+2
-          uf(i,j) = -0.0625d0*(u(i,j-2)+u(i,j+1)) + 0.5626d0*(u(i,j-1)+u(i,j))
+          uf(i,j) = -0.0625d0*(u(i,j-2)+u(i,j+1)) + 0.5625d0*(u(i,j-1)+u(i,j))
        end do
     end do
 
