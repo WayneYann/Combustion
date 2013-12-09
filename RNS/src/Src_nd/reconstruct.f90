@@ -67,7 +67,7 @@ contains
 
     integer :: i, n, iextra
     double precision, dimension(NVAR) :: vp, vm, vg1, vg2
-    double precision :: rhoE(Ulo:Uhi), Ek, e, rho, rhoInv, Y(nspec)
+    double precision :: rhoE(Ulo:Uhi), rho, rhoInv, Y(nspec)
     logical :: do_gauss, do_face
 
     iextra = 0
@@ -97,14 +97,7 @@ contains
           Y(n) = Y(n) * rhoInv
        end do
 
-       Ek = U(i,UMX)**2
-       if (ndim>1) Ek = Ek + U(i,UMY)**2
-       if (ndim>2) Ek = Ek + U(i,UMZ)**2
-       Ek = 0.5d0*Ek*rhoInv
-
-       e = (U(i,UEDEN)-Ek)*rhoInv - eos_get_eref(Y)
-
-       rhoE(i) = Ek + rho*e
+       rhoE(i) = U(i,UEDEN) - rho*eos_get_eref(Y)
 
     end do
 
