@@ -136,6 +136,8 @@ std::vector<int> RNS::blocksize(BL_SPACEDIM, 2048);
 
 int          RNS::do_quartic_interp   = 1;
 
+int          RNS::do_component_weno;
+
 int          RNS::use_vode            = 0;
 int          RNS::do_cc_burning       = 0; // do_cc_burning has no effect when split_burning is true
 int          RNS::split_burning       = 1;
@@ -303,6 +305,16 @@ RNS::read_params ()
     pp.queryarr("blocksize", blocksize);
 
     pp.query("do_quartic_interp", do_quartic_interp);
+
+    if (ChemDriver::isNull())
+    {
+	do_component_weno = 0;
+    }
+    else
+    {
+	do_component_weno = 1;
+    }
+    pp.query("do_component_weno", do_component_weno);
 
     pp.query("use_vode", use_vode);
     pp.query("do_cc_burning", do_cc_burning);

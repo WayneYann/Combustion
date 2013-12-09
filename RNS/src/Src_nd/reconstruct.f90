@@ -1,7 +1,9 @@
 module reconstruct_module
 
   use meth_params_module, only : ndim, NVAR, URHO, UMX, UMY, UMZ, UEDEN, UTEMP, &
-       UFS, NSPEC, NCHARV, CFS
+       UFS, NSPEC, NCHARV, CFS, do_component_weno
+  use weno_module, only : weno5
+  use eos_module, only : eos_given_ReY, eos_get_eref
 
   implicit none
 
@@ -28,8 +30,140 @@ contains
        U0lo, U0hi, &
        U, UL, UR, UG1, UG2, U0, dir)
 
-    use weno_module, only : weno5
-    use eos_module, only : eos_given_ReY, eos_get_eref
+    integer, intent(in) :: lo, hi, Ulo, Uhi, ULRlo, ULRhi, UGlo, UGhi, U0lo, U0hi 
+    integer, intent(in), optional :: dir
+    double precision, intent(in),target           :: U ( Ulo: Uhi,NVAR)
+    double precision, intent(in),target, optional :: U0(U0lo:U0hi,NVAR)
+    double precision, intent(out), dimension(ULRlo:ULRhi,NVAR), optional :: UL, UR
+    double precision, intent(out), dimension( UGlo: UGhi,NVAR), optional :: UG1, UG2
+
+    if (do_component_weno) then
+       call reconstruct_comp(lo, hi, &
+            Ulo, Uhi, &
+            ULRlo, ULRhi, &
+            UGlo, UGhi, &
+            U, UL, UR, UG1, UG2)
+    else
+       call reconstruct_char(lo, hi, &
+            Ulo, Uhi, &
+            ULRlo, ULRhi, &
+            UGlo, UGhi, &
+            U0lo, U0hi, &
+            U, UL, UR, UG1, UG2, U0, dir)
+    end if
+
+  end subroutine reconstruct
+
+  subroutine reconstruct_comp(lo, hi, &
+       Ulo, Uhi, &
+       ULRlo, ULRhi, &
+       UGlo, UGhi, &
+       U, UL, UR, UG1, UG2)
+
+    integer, intent(in) :: lo, hi, Ulo, Uhi, ULRlo, ULRhi, UGlo, UGhi
+    double precision, intent(in) :: U(Ulo:Uhi,NVAR)
+    double precision, intent(out), dimension(ULRlo:ULRhi,NVAR), optional :: UL, UR
+    double precision, intent(out), dimension( UGlo: UGhi,NVAR), optional :: UG1, UG2
+
+    integer :: i, n, iextra
+    double precision, dimension(NVAR) :: vp, vm, vg1, vg2
+    double precision :: rhoE(Ulo:Uhi), Ek, e, rho, rhoInv, Y(nspec)
+    logical :: do_gauss, do_face
+
+    iextra = 0
+    do_face = .false.
+    do_gauss = .false.
+
+    if (present(UL) .and. present(UR)) then
+       do_face = .true.
+       iextra  = 1
+    end if
+
+    if (present(UG1) .and. present(UG2)) then
+       do_gauss = .true.
+    end if
+
+    do i = lo-iextra-2, hi+iextra+2
+
+       rho = 0.d0
+       do n=1,nspec
+          Y(n) = U(i,UFS+n-1)
+          rho = rho + Y(n)
+       end do
+       
+       rhoInv = 1.d0/rho
+       
+       do n=1,nspec
+          Y(n) = Y(n) * rhoInv
+       end do
+
+       Ek = U(i,UMX)**2
+       if (ndim>1) Ek = Ek + U(i,UMY)**2
+       if (ndim>2) Ek = Ek + U(i,UMZ)**2
+       Ek = 0.5d0*Ek*rhoInv
+
+       e = (U(i,UEDEN)-Ek)*rhoInv - eos_get_eref(Y)
+
+       rhoE(i) = Ek + rho*e
+
+    end do
+
+    do i = lo-iextra, hi+iextra
+
+       if (do_face .and. do_gauss) then
+          do n=1,NVAR
+             if (n.eq.UEDEN) then
+                call weno5(rhoE(i-2:i+2), vp(n), vm(n), vg1(n), vg2(n))
+             else
+                call weno5(U(i-2:i+2,n), vp(n), vm(n), vg1(n), vg2(n))
+             end if
+          end do
+       else if (do_face) then
+          do n=1,NVAR
+             if (n.eq.UEDEN) then
+                call weno5(rhoE(i-2:i+2), vp=vp(n), vm=vm(n))
+             else
+                call weno5(U(i-2:i+2,n), vp=vp(n), vm=vm(n))
+             end if
+          end do
+       else  ! do_gauss
+          do n=1,NVAR
+             if (n.eq.UEDEN) then
+                call weno5(rhoE(i-2:i+2), vg1=vg1(n), vg2=vg2(n))
+             else
+                call weno5(U(i-2:i+2,n), vg1=vg1(n), vg2=vg2(n))
+             end if
+          end do
+       end if
+
+       if (do_face .and. i.ne.hi+1) then
+          call normalize(vp)
+          UL(i+1,:) = vp
+       end if
+
+       if (do_face .and. i.ne.lo-1) then
+          call normalize(vm)
+          UR(i,:) = vm
+       end if
+
+       if (do_gauss .and. i.ne.lo-1 .and. i.ne. hi+1) then
+          call normalize(vg1)
+          UG1(i,:) = vg1
+          call normalize(vg2)
+          UG2(i,:) = vg2
+       end if
+
+    end do
+
+  end subroutine reconstruct_comp
+    
+
+  subroutine reconstruct_char(lo, hi, &
+       Ulo, Uhi, &
+       ULRlo, ULRhi, &
+       UGlo, UGhi, &
+       U0lo, U0hi, &
+       U, UL, UR, UG1, UG2, U0, dir)
 
     integer, intent(in) :: lo, hi, Ulo, Uhi, ULRlo, ULRhi, UGlo, UGhi, U0lo, U0hi 
     integer, intent(in), optional :: dir
@@ -353,8 +487,8 @@ contains
 
     Nullify(Ubase)
 
-  end subroutine reconstruct
-    
+  end subroutine reconstruct_char
+
 
   subroutine set_vel(idir, ivel, vflag)
     integer, intent(in) :: idir
@@ -399,5 +533,15 @@ contains
        end if
     end if
   end subroutine set_vel
+
+
+  subroutine normalize(v)
+    double precision, intent(inout) :: v(NVAR)
+    double precision :: rhoInv, Y(nspec)
+    v(URHO) = sum(v(UFS:UFS+nspec-1))
+    rhoInv = 1.d0/v(URHO)
+    Y = v(UFS:UFS+nspec-1) * rhoInv
+    v(UEDEN) = v(UEDEN) + eos_get_eref(Y)*v(URHO)
+  end subroutine normalize
 
 end module reconstruct_module

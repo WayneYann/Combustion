@@ -342,6 +342,8 @@ protected:
 
     static int         do_quartic_interp;
 
+    static int         do_component_weno;
+
     static int         use_vode;
     static int         do_cc_burning;
     static int         split_burning;
