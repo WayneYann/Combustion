@@ -57,7 +57,7 @@ module weno_module
 
   private
 
-  public :: weno5, cellavg2gausspt_1d, cellavg2gausspt_2d, cellavg2gausspt_2d_v1, &
+  public :: weno5, vweno5, cellavg2gausspt_1d, cellavg2gausspt_2d, cellavg2gausspt_2d_v1, &
        cellavg2gausspt_2d_v2, cellavg2gausspt_3d, &
        cellavg2dergausspt_1d, cellavg2dergausspt_2d, cellavg2face_1d
 
@@ -68,71 +68,156 @@ contains
     double precision, intent(out), optional :: vp , vm   ! v_{i+1/2} & v_{i-1/2}
     double precision, intent(out), optional :: vg1, vg2  ! at two Gauss points
 
-    double precision :: vpr(-2:0), vmr(-2:0), v1r(-2:0), v2r(-2:0)
-    double precision :: beta(-2:0), alpha(-2:0), alpha1
+    double precision :: vr_2, vr_1, vr_0
+    double precision :: beta_2, beta_1, beta_0
+    double precision :: alpha_2, alpha_1, alpha_0
+    double precision :: alpha1
 
-    beta(-2) = b1*(v(-2)-2.d0*v(-1)+v(0))**2 + 0.25d0*(v(-2)-4.d0*v(-1)+3.d0*v(0))**2
-    beta(-1) = b1*(v(-1)-2.d0*v( 0)+v(1))**2 + 0.25d0*(v(-1)-v(1))**2
-    beta( 0) = b1*(v( 0)-2.d0*v( 1)+v(2))**2 + 0.25d0*(3.d0*v(0)-4.d0*v(1)+v(2))**2
+    beta_2 = b1*(v(-2)-2.d0*v(-1)+v(0))**2 + 0.25d0*(v(-2)-4.d0*v(-1)+3.d0*v(0))**2
+    beta_2 = 1.d0/(epsw+beta_2)**2
 
-    beta(-2) = 1.d0/(epsw+beta(-2))**2
-    beta(-1) = 1.d0/(epsw+beta(-1))**2
-    beta( 0) = 1.d0/(epsw+beta( 0))**2
+    beta_1 = b1*(v(-1)-2.d0*v( 0)+v(1))**2 + 0.25d0*(v(-1)-v(1))**2
+    beta_1 = 1.d0/(epsw+beta_1)**2
+
+    beta_0 = b1*(v( 0)-2.d0*v( 1)+v(2))**2 + 0.25d0*(3.d0*v(0)-4.d0*v(1)+v(2))**2
+    beta_0 = 1.d0/(epsw+beta_0)**2
 
     if (present(vp)) then
-       alpha(-2) =      beta(-2)
-       alpha(-1) = 6.d0*beta(-1)
-       alpha( 0) = 3.d0*beta( 0)
-       alpha1 = 1.d0/(alpha(-2) + alpha(-1) + alpha(0))
+       alpha_2 =      beta_2
+       alpha_1 = 6.d0*beta_1
+       alpha_0 = 3.d0*beta_0
+       alpha1 = 1.d0/(alpha_2 + alpha_1 + alpha_0)
 
-       vpr(-2) = 2.d0*v(-2) - 7.d0*v(-1) + 11.d0*v(0)
-       vpr(-1) =     -v(-1) + 5.d0*v( 0) +  2.d0*v(1)
-       vpr( 0) = 2.d0*v( 0) + 5.d0*v( 1) -       v(2)
+       vr_2 = 2.d0*v(-2) - 7.d0*v(-1) + 11.d0*v(0)
+       vr_1 =     -v(-1) + 5.d0*v( 0) +  2.d0*v(1)
+       vr_0 = 2.d0*v( 0) + 5.d0*v( 1) -       v(2)
        
-       vp = oneSixth*alpha1*(alpha(-2)*vpr(-2) + alpha(-1)*vpr(-1) + alpha(0)*vpr(0))
+       vp = oneSixth*alpha1*(alpha_2*vr_2 + alpha_1*vr_1 + alpha_0*vr_0)
     end if
 
     if (present(vm)) then
-       alpha(-2) = 3.d0*beta(-2)
-       alpha(-1) = 6.d0*beta(-1)
-       alpha( 0) =      beta( 0)
-       alpha1 = 1.d0/(alpha(-2) + alpha(-1) + alpha(0))
+       alpha_2 = 3.d0*beta_2
+       alpha_1 = 6.d0*beta_1
+       alpha_0 =      beta_0
+       alpha1 = 1.d0/(alpha_2 + alpha_1 + alpha_0)
        
-       vmr(-2) =      -v(-2) + 5.d0*v(-1) + 2.d0*v(0)
-       vmr(-1) =  2.d0*v(-1) + 5.d0*v(0 ) -      v(1) 
-       vmr( 0) = 11.d0*v( 0) - 7.d0*v(1 ) + 2.d0*v(2)
+       vr_2 =      -v(-2) + 5.d0*v(-1) + 2.d0*v(0)
+       vr_1 =  2.d0*v(-1) + 5.d0*v(0 ) -      v(1) 
+       vr_0 = 11.d0*v( 0) - 7.d0*v(1 ) + 2.d0*v(2)
        
-       vm = oneSixth*alpha1*(alpha(-2)*vmr(-2) + alpha(-1)*vmr(-1) + alpha(0)*vmr(0))
+       vm = oneSixth*alpha1*(alpha_2*vr_2 + alpha_1*vr_1 + alpha_0*vr_0)
     end if
 
     if (present(vg1)) then
-       alpha(-2) = d_g1(-2)*beta(-2)
-       alpha(-1) = d_g1(-1)*beta(-1)
-       alpha( 0) = d_g1( 0)*beta( 0)
-       alpha1 = 1.d0/(alpha(-2) + alpha(-1) + alpha(0))
+       alpha_2 = d_g1(-2)*beta_2
+       alpha_1 = d_g1(-1)*beta_1
+       alpha_0 = d_g1( 0)*beta_0
+       alpha1 = 1.d0/(alpha_2 + alpha_1 + alpha_0)
        
-       v1r(-2) = L3_cg1(-2)*v(-2) + L3_cg1(-1)*v(-1) + L3_cg1(0)*v(0)
-       v1r(-1) = C3_cg1(-1)*v(-1) + C3_cg1( 0)*v( 0) + C3_cg1(1)*v(1)
-       v1r( 0) = R3_cg1( 0)*v( 0) + R3_cg1( 1)*v( 1) + R3_cg1(2)*v(2)
+       vr_2 = L3_cg1(-2)*v(-2) + L3_cg1(-1)*v(-1) + L3_cg1(0)*v(0)
+       vr_1 = C3_cg1(-1)*v(-1) + C3_cg1( 0)*v( 0) + C3_cg1(1)*v(1)
+       vr_0 = R3_cg1( 0)*v( 0) + R3_cg1( 1)*v( 1) + R3_cg1(2)*v(2)
 
-       vg1 = alpha1*(alpha(-2)*v1r(-2) + alpha(-1)*v1r(-1) + alpha(0)*v1r(0))
+       vg1 = alpha1*(alpha_2*vr_2 + alpha_1*vr_1 + alpha_0*vr_0)
     end if
 
     if (present(vg2)) then
-       alpha(-2) = d_g2(-2)*beta(-2)
-       alpha(-1) = d_g2(-1)*beta(-1)
-       alpha( 0) = d_g2( 0)*beta( 0)
-       alpha1 = 1.d0/(alpha(-2) + alpha(-1) + alpha(0))
+       alpha_2 = d_g2(-2)*beta_2
+       alpha_1 = d_g2(-1)*beta_1
+       alpha_0 = d_g2( 0)*beta_0
+       alpha1 = 1.d0/(alpha_2 + alpha_1 + alpha_0)
        
-       v2r(-2) = L3_cg2(-2)*v(-2) + L3_cg2(-1)*v(-1) + L3_cg2(0)*v(0)
-       v2r(-1) = C3_cg2(-1)*v(-1) + C3_cg2( 0)*v( 0) + C3_cg2(1)*v(1)
-       v2r( 0) = R3_cg2( 0)*v( 0) + R3_cg2( 1)*v( 1) + R3_cg2(2)*v(2)
+       vr_2 = L3_cg2(-2)*v(-2) + L3_cg2(-1)*v(-1) + L3_cg2(0)*v(0)
+       vr_1 = C3_cg2(-1)*v(-1) + C3_cg2( 0)*v( 0) + C3_cg2(1)*v(1)
+       vr_0 = R3_cg2( 0)*v( 0) + R3_cg2( 1)*v( 1) + R3_cg2(2)*v(2)
 
-       vg2 = alpha1*(alpha(-2)*v2r(-2) + alpha(-1)*v2r(-1) + alpha(0)*v2r(0))
+       vg2 = alpha1*(alpha_2*vr_2 + alpha_1*vr_1 + alpha_0*vr_0)
     end if
 
     return
   end subroutine weno5
+
+
+  subroutine vweno5(lo, hi, v, vlo, vhi, glo, ghi, vp, vm, vg1, vg2)
+    integer, intent(in) :: lo, hi, vlo, vhi, glo, ghi
+    double precision, intent(in)  :: v(vlo:vhi)
+    double precision, dimension(glo-1:ghi+1), intent(out), optional :: vp, vm  ! v_{i+1/2} & v_{i-1/2}
+    double precision, dimension(glo  :ghi  ), intent(out), optional :: vg1, vg2  ! at two Gauss points
+
+    integer :: i
+    double precision, dimension(lo:hi) :: vr_2, vr_1, vr_0
+    double precision, dimension(lo:hi) :: alpha_2, alpha_1, alpha_0
+    double precision, dimension(lo:hi) :: beta_2, beta_1, beta_0
+
+    !DEC$ SIMD
+    do i=lo,hi
+       beta_2(i) = b1*(v(i-2)-2.d0*v(i-1)+v(i))**2 + 0.25d0*(v(i-2)-4.d0*v(i-1)+3.d0*v(i))**2
+       beta_2(i) = 1.d0/(epsw+beta_2(i))**2
+       
+       beta_1(i) = b1*(v(i-1)-2.d0*v(i  )+v(i+1))**2 + 0.25d0*(v(i-1)-v(i+1))**2
+       beta_1(i) = 1.d0/(epsw+beta_1(i))**2
+       
+       beta_0(i) = b1*(v(i  )-2.d0*v(i+1)+v(i+2))**2 + 0.25d0*(3.d0*v(i)-4.d0*v(i+1)+v(i+2))**2
+       beta_0(i) = 1.d0/(epsw+beta_0(i))**2
+    end do
+
+    if (present(vp)) then
+       !DEC$ SIMD
+       do i=lo,hi
+          alpha_2(i) =      beta_2(i)
+          alpha_1(i) = 6.d0*beta_1(i)
+          alpha_0(i) = 3.d0*beta_0(i)
+          
+          vr_2(i) = 2.d0*v(i-2) - 7.d0*v(i-1) + 11.d0*v(i  )
+          vr_1(i) =     -v(i-1) + 5.d0*v(i  ) +  2.d0*v(i+1)
+          vr_0(i) = 2.d0*v(i  ) + 5.d0*v(i+1) -       v(i+2)
+
+          vp(i) = oneSixth*(alpha_2(i)*vr_2(i) + alpha_1(i)*vr_1(i) + alpha_0(i)*vr_0(i)) &
+               / (alpha_2(i) + alpha_1(i) + alpha_0(i))
+
+          alpha_2(i) = 3.d0*beta_2(i)
+          alpha_1(i) = 6.d0*beta_1(i)
+          alpha_0(i) =      beta_0(i)
+          
+          vr_2(i) =      -v(i-2) + 5.d0*v(i-1) + 2.d0*v(i  )
+          vr_1(i) =  2.d0*v(i-1) + 5.d0*v(i  ) -      v(i+1) 
+          vr_0(i) = 11.d0*v(i  ) - 7.d0*v(i+1) + 2.d0*v(i+2)
+          
+          vm(i) = oneSixth*(alpha_2(i)*vr_2(i) + alpha_1(i)*vr_1(i) + alpha_0(i)*vr_0(i)) &
+               / (alpha_2(i) + alpha_1(i) + alpha_0(i))
+       end do
+    endif
+
+    if (present(vg1)) then
+       !DEC$ SIMD
+       do i=glo,ghi
+          alpha_2(i) = d_g1(-2)*beta_2(i)
+          alpha_1(i) = d_g1(-1)*beta_1(i)
+          alpha_0(i) = d_g1( 0)*beta_0(i)
+          
+          vr_2(i) = L3_cg1(-2)*v(i-2) + L3_cg1(-1)*v(i-1) + L3_cg1(0)*v(i  )
+          vr_1(i) = C3_cg1(-1)*v(i-1) + C3_cg1( 0)*v(i  ) + C3_cg1(1)*v(i+1)
+          vr_0(i) = R3_cg1( 0)*v(i  ) + R3_cg1( 1)*v(i+1) + R3_cg1(2)*v(i+2)
+          
+          vg1(i) = (alpha_2(i)*vr_2(i) + alpha_1(i)*vr_1(i) + alpha_0(i)*vr_0(i)) &
+               / (alpha_2(i) + alpha_1(i) + alpha_0(i))
+
+          alpha_2(i) = d_g2(-2)*beta_2(i)
+          alpha_1(i) = d_g2(-1)*beta_1(i)
+          alpha_0(i) = d_g2( 0)*beta_0(i)
+       
+          vr_2(i) = L3_cg2(-2)*v(i-2) + L3_cg2(-1)*v(i-1) + L3_cg2(0)*v(i  )
+          vr_1(i) = C3_cg2(-1)*v(i-1) + C3_cg2( 0)*v(i  ) + C3_cg2(1)*v(i+1)
+          vr_0(i) = R3_cg2( 0)*v(i  ) + R3_cg2( 1)*v(i+1) + R3_cg2(2)*v(i+2)
+
+          vg2(i) = (alpha_2(i)*vr_2(i) + alpha_1(i)*vr_1(i) + alpha_0(i)*vr_0(i)) &
+               / (alpha_2(i) + alpha_1(i) + alpha_0(i))
+       end do
+
+
+    end if
+
+  end subroutine vweno5
 
 
   subroutine cellavg2gausspt_1d(lo,hi, u, ulo,uhi, u1, u2, glo,ghi)
