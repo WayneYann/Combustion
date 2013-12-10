@@ -212,13 +212,13 @@ void mlsdc_amr_restrict(void *Fp, void *Gp, sdc_state *state, void *ctxF, void *
   BL_ASSERT(G.type==SDC_SOLUTION || G.type==SDC_TAU);
 
   if (G.type == SDC_TAU) {
-    dzmq_send_mf(UG, 0, 0, 0);
-    dzmq_send_mf(UF, 1, 0, 0);
+    dgp_send_mf(UG, 0, 0, 0);
+    dgp_send_mf(UF, 1, 0, 0);
   }
 
   if (G.type == SDC_TAU) {
     FluxRegister& flxF = *F.flux;
-    // flxF.Reflux(UG, levelG.Volume(), 1.0, 0, 0, UG.nComp(), levelG.Geom());
+    flxF.Reflux(UG, levelG.Volume(), 1.0, 0, 0, UG.nComp(), levelG.Geom());
     // flxF.Reflux(UG, levelG.Volume(), -1.0, 0, 0, UG.nComp(), levelG.Geom());
     // dzmq_send_mf(UG, 1, 0, 0);
   }
@@ -228,7 +228,7 @@ void mlsdc_amr_restrict(void *Fp, void *Gp, sdc_state *state, void *ctxF, void *
     levelG.fill_boundary(UG, state->t, RNS::use_FillBoundary);
 
   if (G.type == SDC_TAU)
-    dzmq_send_mf(UG, 2, 0, 1);
+    dgp_send_mf(UG, 2, 0, 1);
 
 
 #ifndef NDEBUG
@@ -396,7 +396,7 @@ void SDCAmr::rebuild_mlsdc()
     sweepers[lev]->nset->encap = encaps[lev];
     sdc_mg_add_level(&mg, sweepers[lev], mlsdc_amr_interpolate, mlsdc_amr_restrict);
   }
-  // mg.nsweeps[0] = 2;
+  mg.nsweeps[0] = 4;
   // mg.nsweeps[1] = 2;
   sdc_mg_setup(&mg, 0);
   sdc_mg_allocate(&mg);
@@ -422,7 +422,7 @@ SDCAmr::SDCAmr ()
   if (!ppsdc.query("nnodes0",   nnodes0))   nnodes0 = 3;
   if (!ppsdc.query("trat",      trat))      trat = 2;
 
-  // sdc_log_set_stdout(SDC_LOG_DEBUG);
+  sdc_log_set_stdout(SDC_LOG_DEBUG);
   sdc_mg_build(&mg, max_level+1);
   sdc_hooks_add(mg.hooks, SDC_HOOK_POST_TRANS, sdc_poststep_hook);
   // sdc_hooks_add(mg.hooks, SDC_HOOK_POST_FAS,   sdc_postfas_hook);

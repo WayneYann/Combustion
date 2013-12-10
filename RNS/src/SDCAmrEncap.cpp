@@ -123,13 +123,24 @@ void mf_encap_saxpy(void *yp, sdc_dtype a, void *xp)
     FluxRegister& Fx  = *Qx.flux;
     FluxRegister& Fy  = *Qy.flux;
     for (OrientationIter face; face; ++face)
-      for (FabSetIter bfsi(Fy[face()]); bfsi.isValid(); ++bfsi) {
+      for (FabSetIter bfsi(Fy[face()]); bfsi.isValid(); ++bfsi)
         Fy[face()][bfsi].saxpy(a, Fx[face()][bfsi]);
-	// cout << "SAXPY ";
-        // cout << Fy[face()][bfsi].norm(0, 0, Uy.nComp()) << " ";
-        // cout << Fx[face()][bfsi].norm(0, 0, Ux.nComp()) << endl;
-      }
   }
+
+  // if ((Qy.flux==NULL) && (Qx.flux!=NULL)) {
+  //   FluxRegister& Fx  = *Qx.flux;
+  //   RNS& rns = *Qy.rns;
+  //   cout << "SAXPY REFLUXING SAME LEVEL" << endl;
+  //   Fx.Reflux(Uy, rns.Volume(), a, 0, 0, Uy.nComp(), rns.Geom());
+
+  //   // for (OrientationIter face; face; ++face)
+  //   //   for (FabSetIter bfsi(Fy[face()]); bfsi.isValid(); ++bfsi) {
+  //   //     Fy[face()][bfsi].saxpy(a, Fx[face()][bfsi]);
+  //   // 	// cout << "SAXPY ";
+  //   //     // cout << Fy[face()][bfsi].norm(0, 0, Uy.nComp()) << " ";
+  //   //     // cout << Fx[face()][bfsi].norm(0, 0, Ux.nComp()) << endl;
+  //   //   }
+  // }
 }
 
 END_EXTERN_C

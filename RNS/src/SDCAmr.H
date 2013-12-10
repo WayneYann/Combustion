@@ -81,8 +81,8 @@ public:
   // 		       bool initial = false);
 };
 
-#ifdef ZMQ
-void dzmq_send_mf(MultiFab& U, int level, int comp, int wait);
+#ifdef GP
+void dgp_send_mf(MultiFab& U, int level, int comp, int wait);
 #endif
 
 #endif

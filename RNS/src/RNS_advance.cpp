@@ -399,9 +399,11 @@ void sdc_f1eval(void *Fp, void *Qp, double t, sdc_state *state, void *ctx)
   if (F.flux != NULL)
     F.flux->setVal(0.0);
 
-  // dzmq_send_mf(U, rns.Level(), 0, 0);
   rns.dUdt_AD(U, Uprime, t, RNS::use_FillBoundary, 0, F.flux, 1.0);
-  // dzmq_send_mf(Uprime, 2, 0, 1);
+  if (state->node > 0) {
+    dgp_send_mf(U, 0, 0, 0);
+    dgp_send_mf(Uprime, 2, 0, 1);
+  }
 }
 
 //
