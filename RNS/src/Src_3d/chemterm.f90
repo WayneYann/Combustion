@@ -59,7 +59,7 @@ contains
 
              do g=1,8
 
-                rhot = 0.d0
+                rhot(g) = 0.d0
                 do n=1,NSPEC
                    Yt(n,g) = UG(i,j,k,g,UFS+n-1)
                    rhot(g) = rhot(g) + Yt(n,g)
@@ -298,7 +298,7 @@ contains
 
              do g=1,8
 
-                rhot = 0.d0
+                rhot(g) = 0.d0
                 do n=1,NSPEC
                    Yt(n,g) = UG(i,j,k,g,UFS+n-1)
                    rhot(g) = rhot(g) + Yt(n,g)
