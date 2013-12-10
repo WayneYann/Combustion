@@ -39,7 +39,7 @@ RNS::advance (Real time,
     }
     fill_boundary(Unew, time, fill_boundary_type);
 
-    if (! chemSolve->isNull)
+    if (! ChemDriver::isNull())
     {
 	// do half-dt chemistry
 	advance_chemistry(Unew, 0.5*dt);
@@ -51,7 +51,7 @@ RNS::advance (Real time,
     // Advance Advection & Diffusion
     advance_AD(Unew, time, dt);
 
-    if (! chemSolve->isNull)
+    if (! ChemDriver::isNull())
     {
 	// fill boundary for chemistry
 	fill_boundary_type = use_FillCoarsePatch;
@@ -230,7 +230,7 @@ RNS::dUdt_chemistry(const MultiFab& U, MultiFab& Uprime)
 {
     BL_PROFILE("RNS::dUdt_chemistry()");
 
-    BL_ASSERT( ! chemSolve->isNull );
+    BL_ASSERT( ! ChemDriver::isNull() );
 
     for (MFIter mfi(U); mfi.isValid(); ++mfi)
     {
@@ -300,7 +300,7 @@ RNS::advance_chemistry(MultiFab& U, Real dt)
 {
     BL_PROFILE("RNS::advance_chemistry()");
 
-    BL_ASSERT( ! chemSolve->isNull );
+    BL_ASSERT( ! ChemDriver::isNull() );
 
     for (MFIter mfi(U); mfi.isValid(); ++mfi)
     {
@@ -423,7 +423,7 @@ void sdc_f2eval(void *Fp, void *Qp, double t, sdc_state *state, void *ctx)
 
   Uprime.setVal(0.0);
 
-  if (rns.chemSolve->isNull) return;
+  if (ChemDriver::isNull()) return;
 
   if (rns.verbose > 1 && ParallelDescriptor::IOProcessor()) {
     cout << "MLSDC evaluating chemistry:"
@@ -458,7 +458,7 @@ void sdc_f2comp(void *Fp, void *Qp, double t, double dt, void *RHSp, sdc_state *
   BL_ASSERT(Urhs.contains_nan() == false);
   MultiFab::Copy(U, Urhs, 0, 0, U.nComp(), U.nGrow());
 
-  if (rns.chemSolve->isNull) {
+  if (ChemDriver::isNull()) {
     Uprime.setVal(0.0);
     return;
   }

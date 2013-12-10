@@ -126,6 +126,18 @@ class CPickler(CMill):
         
         self._write('static int rxn_map[%d] = {%s};' % (nReactions, ",".join(str(rmap[x]) for x in range(len(rmap)))))
 
+
+        self._write('')
+        self._write('void GET_REACTION_MAP(int *rmap)')
+        self._write('{')
+        self._indent()
+        self._write('for (int i=0; i<%d; ++i) {' % (nReactions))
+        self._indent()        
+        self._write('rmap[i] = rxn_map[i];')
+        self._outdent()
+        self._write('}')
+        self._outdent()
+        self._write('}')
         self._write()
         self._write('struct ReactionData* GetReactionData(int id)')
         self._write('{')
@@ -208,7 +220,7 @@ class CPickler(CMill):
         self.reactionIndex = mechanism._sort_reactions()
 
         self._includes()
-        self._declarations()
+        self._declarations(mechanism)
         self._statics(mechanism)
         self._ckinit(mechanism)
 
@@ -337,7 +349,7 @@ class CPickler(CMill):
         return
 
 
-    def _declarations(self):
+    def _declarations(self, mechanism):
         self._rep += [
             '',
             '#if defined(BL_FORT_USE_UPPERCASE)',
@@ -421,6 +433,7 @@ class CPickler(CMill):
             '#define VCKWYR VCKWYR',
             '#define VCKYTX VCKYTX',
             '#define GET_T_GIVEN_EY GET_T_GIVEN_EY',
+            '#define GET_REACTION_MAP GET_REACTION_MAP',
             '#elif defined(BL_FORT_USE_LOWERCASE)',
             '#define CKINDX ckindx',
             '#define CKINIT ckinit',
@@ -502,6 +515,7 @@ class CPickler(CMill):
             '#define VCKWYR vckwyr',
             '#define VCKYTX vckytx',
             '#define GET_T_GIVEN_EY get_t_given_ey',
+            '#define GET_REACTION_MAP get_reaction_map',
             '#elif defined(BL_FORT_USE_UNDERSCORE)',
             '#define CKINDX ckindx_',
             '#define CKINIT ckinit_',
@@ -583,6 +597,7 @@ class CPickler(CMill):
             '#define VCKWYR vckwyr_',
             '#define VCKYTX vckytx_',
             '#define GET_T_GIVEN_EY get_t_given_ey_',
+            '#define GET_REACTION_MAP get_reaction_map_',
             '#endif','',
             self.line('function declarations'),
             'void molecularWeight(double * restrict wt);',
@@ -690,6 +705,7 @@ class CPickler(CMill):
             'void aJacobian(double * restrict J, double * restrict sc, double T, int consP);',
             'void dcvpRdT(double * restrict species, double * restrict tc);',
             'void GET_T_GIVEN_EY(double * restrict e, double * restrict y, int * iwrk, double * restrict rwrk, double * restrict t, int *ierr);',
+            'void GET_REACTION_MAP(int * restrict rmap);',
             self.line('vector version'),
             'void vproductionRate(int npt, double * restrict wdot, double * restrict c, double * restrict T);',
             'void VCKHMS'+sym+'(int * restrict np, double * restrict T, int * iwrk, double * restrict rwrk, double * restrict ums);',
@@ -698,7 +714,24 @@ class CPickler(CMill):
             '            double * restrict y, int * restrict iwrk, double * restrict rwrk,',
             '            double * restrict wdot);',
             'void VCKYTX'+sym+'(int * restrict np, double * restrict y, int * iwrk, double * restrict rwrk, double * restrict x);',
+            'void vcomp_k_f(int npt, double * restrict k_f_s, double * restrict tc, double * restrict invT);',
+            'void vcomp_gibbs(int npt, double * restrict g_RT, double * restrict tc);',
+            'void vcomp_Kc(int npt, double * restrict Kc_s, double * restrict g_RT, double * restrict invT);',
             ]
+        nReactions = len(mechanism.reaction())
+        if nReactions <= 50:
+            self._rep += [
+                'void vcomp_wdot(int npt, double * restrict wdot, double * restrict mixture, double * restrict sc,',
+                '                double * restrict k_f_s, double * restrict Kc_s,',
+                '                double * restrict tc, double * restrict invT, double * restrict T);',
+                ]
+        else:
+            for i in range(0,nReactions,50):
+                self._rep += [
+                    'void vcomp_wdot_%d_%d(int npt, double * restrict wdot, double * restrict mixture, double * restrict sc,' % (i+1,min(i+50,nReactions)),
+                    '                double * restrict k_f_s, double * restrict Kc_s,',
+                    '                double * restrict tc, double * restrict invT, double * restrict T);',
+                    ]                
         return
 
 
@@ -2936,7 +2969,7 @@ class CPickler(CMill):
         self._write('int id; ' + self.line('loop counter'))
         self._write('int kd = (*mdim); ')
         self._write(self.line('Zero ncf'))
-        self._write('for (id = 0; id < %d * %d; ++ id) {' % (nElement, self.nSpecies) )
+        self._write('for (id = 0; id < kd * %d; ++ id) {' % (self.nSpecies) )
         self._indent()
         self._write(' ncf[id] = 0; ')
         self._outdent()
@@ -2972,16 +3005,13 @@ class CPickler(CMill):
         self._write('{')
         self._indent()
 
- 
-        for reaction in mechanism.reaction():
-
-            self._write()
-            self._write(self.line('reaction %d: %s' % (reaction.id, reaction.equation())))
-
-            # store the progress rate
-            self._write("a[%d] = %.17g;" % (reaction.id-1 , reaction.arrhenius[0]))
-            self._write("b[%d] = %.17g;" % (reaction.id-1 , reaction.arrhenius[1]))
-            self._write("e[%d] = %.17g;" % (reaction.id-1 , reaction.arrhenius[2]))
+        self._write('for (int i=0; i<%d; ++i) {' % len(mechanism.reaction()) )
+        self._indent()
+        self._write("a[i] = fwd_A[i];")
+        self._write("b[i] = fwd_beta[i];")
+        self._write("e[i] = fwd_Ea[i];")
+        self._outdent()
+        self._write('}')
 
         self._write()
         self._write('return;')
@@ -2991,13 +3021,6 @@ class CPickler(CMill):
 
         return
                             
-        # done
-        self._outdent()
-
-        self._write('}')
-
-        return
-
     
     def _ckmmwy(self, mechanism):
         self._write()
@@ -3271,8 +3294,9 @@ class CPickler(CMill):
  
         # now compute conversion
         self._write(self.line('Now compute conversion'))
+        self._write('double XWinv = 1.0/XW;')
         for species in self.species:
-            self._write('y[%d] = x[%d]*%f/XW; ' % (
+            self._write('y[%d] = x[%d]*%f*XWinv; ' % (
                 species.id, species.id, species.weight) )
 
         self._write()
@@ -3372,9 +3396,10 @@ class CPickler(CMill):
         # now compute conversion
         self._write()
         self._write(self.line(' See Eq 13 '))
+        self._write('double sumCinv = 1.0/sumC;')
         self._write('for (id = 0; id < %d; ++id) {' % self.nSpecies)
         self._indent()
-        self._write('x[id] = c[id]/sumC;')
+        self._write('x[id] = c[id]*sumCinv;')
         self._outdent()
         self._write('}')
 
@@ -3405,8 +3430,9 @@ class CPickler(CMill):
 
         # now compute conversion
         self._write(self.line('Now compute conversion'))
+        self._write('double CWinv = 1.0/CW;')
         for species in self.species:
-            self._write('y[%d] = c[%d]*%f/CW; ' % (
+            self._write('y[%d] = c[%d]*%f*CWinv; ' % (
                 species.id, species.id, species.weight) )
 
         self._write()
@@ -4552,12 +4578,17 @@ class CPickler(CMill):
             self._write("{")
             self._indent()
             self._write("double alpha[%d];" % ntroe)
+            alpha_d = {}
             for i in range(itroe[0],itroe[1]):
                 ii = i - itroe[0]
                 reaction = mechanism.reaction(id=i)
                 if reaction.thirdBody:
                     alpha = self._enhancement(mechanism, reaction)
-                    self._write("alpha[%d] = %s;" %(ii,alpha))
+                    if alpha in alpha_d:
+                        self._write("alpha[%d] = %s;" %(ii,alpha_d[alpha]))
+                    else:
+                        self._write("alpha[%d] = %s;" %(ii,alpha))
+                        alpha_d[alpha] = "alpha[%d]" % ii
 
             if ntroe >= 4:
                 self._outdent()
@@ -4600,12 +4631,17 @@ class CPickler(CMill):
             self._indent()
             self._write("double alpha[%d];" % nsri)
             self._write("double redP, F, X, F_sri;")
+            alpha_d = {}
             for i in range(isri[0],isri[1]):
                 ii = i - isri[0]
                 reaction = mechanism.reaction(id=i)
                 if reaction.thirdBody:
                     alpha = self._enhancement(mechanism, reaction)
-                    self._write("alpha[%d] = %s;" %(ii,alpha))
+                    if alpha in alpha_d:
+                        self._write("alpha[%d] = %s;" %(ii,alpha_d[alpha]))
+                    else:
+                        self._write("alpha[%d] = %s;" %(ii,alpha))
+                        alpha_d[alpha] = "alpha[%d]" % ii
 
             if nsri >= 4:
                 self._outdent()
@@ -4645,7 +4681,6 @@ class CPickler(CMill):
                 self._write("double alpha[%d];" % nlindemann)
             else:
                 self._write("double alpha;")
-            self._write("double redP;")
 
             for i in range(ilindemann[0],ilindemann[1]):
                 ii = i - ilindemann[0]
@@ -4658,7 +4693,7 @@ class CPickler(CMill):
                         self._write("alpha = %s;" %(alpha))
 
             if nlindemann == 1:
-                self._write("redP = alpha / k_f_save[%d] * phase_units[%d] * low_A[%d] * exp(low_beta[%d] * tc[0] - activation_units[%d] * low_Ea[%d] * invT);" 
+                self._write("double redP = alpha / k_f_save[%d] * phase_units[%d] * low_A[%d] * exp(low_beta[%d] * tc[0] - activation_units[%d] * low_Ea[%d] * invT);" 
                             % (ilindemann[0],ilindemann[0],ilindemann[0],ilindemann[0],ilindemann[0],ilindemann[0]))
                 self._write("Corr[%d] = redP / (1. + redP);" % ilindemann[0])
             else:
@@ -4670,10 +4705,11 @@ class CPickler(CMill):
                     self._outdent()
                     self._write('#endif')
                     self._indent()
-                self._write("for (int i=%d; i<%d; i++" % (ilindemann[0], ilindemann[1]))
+                self._write("for (int i=%d; i<%d; i++)" % (ilindemann[0], ilindemann[1]))
                 self._write("{")
                 self._indent()
-                self._write("redP = alpha / k_f_save[i] * phase_units[i] * low_A[i] * exp(low_beta[i] * tc[0] - activation_units[i] * low_Ea[i] * invT);")
+                self._write("double redP = alpha[i-%d] / k_f_save[i] * phase_units[i] * low_A[i] * exp(low_beta[i] * tc[0] - activation_units[i] * low_Ea[i] * invT);"
+                            % ilindemann[0])
                 self._write("Corr[i] = redP / (1. + redP);")
                 self._outdent()
                 self._write('}')
@@ -5229,7 +5265,17 @@ class CPickler(CMill):
             for k in range(nSpecies):
                 dqdc_s = ''
                 dcdc = self._Denhancement(mechanism,reaction,k,True)
-                if dcdc != 0.0:
+                if dcdc == 1:
+                    if isPD:
+                        dqdc_s +=' dcdc_fac'
+                    elif has_alpha:
+                        dqdc_s +=' q_nocor'
+                elif dcdc == -1:
+                    if isPD:
+                        dqdc_s +=' -dcdc_fac'
+                    elif has_alpha:
+                        dqdc_s +=' -q_nocor'                        
+                elif dcdc != 0.0:
                     if isPD:
                         dqdc_s +=' %.17g*dcdc_fac'%dcdc
                     elif has_alpha:
@@ -5243,6 +5289,7 @@ class CPickler(CMill):
                     for m in sorted(all_dict.keys()):
                         if all_dict[m][1] != 0:
                             s1 = 'J[%d] += %.17g * dqdci;' % (k*(nSpecies+1)+m, all_dict[m][1])
+                            s1 = s1.replace('+= 1 *', '+=').replace('+= -1 *', '-=')
                             s2 = '/* dwdot[%s]/d[%s] */' % (all_dict[m][0], symb_k)
                             self._write(s1.ljust(30) + s2)
 
@@ -5254,9 +5301,17 @@ class CPickler(CMill):
             for k in range(nSpecies):
                 dqdc_s = ''
                 dcdc = self._Denhancement(mechanism,reaction,k,False)
-                if dcdc == 0.0:
-                    dqdc_s += ' 0.0'
-                else:
+                if dcdc == 1:
+                    if isPD:
+                        dqdc_s +=' dcdc_fac'
+                    elif has_alpha:
+                        dqdc_s +=' q_nocor'
+                elif dcdc == -1:
+                    if isPD:
+                        dqdc_s +=' -dcdc_fac'
+                    elif has_alpha:
+                        dqdc_s +=' -q_nocor'                        
+                elif dcdc != 0.0:
                     if isPD:
                         dqdc_s +=' %.17g*dcdc_fac'%dcdc
                     elif has_alpha:
@@ -5268,7 +5323,10 @@ class CPickler(CMill):
             self._write('for (int k=0; k<%d; k++) {' % nSpecies)
             self._indent()
             for m in sorted(all_dict.keys()):
-                self._write('J[%d*k+%d] += %.17g * dqdc[k];' % ((nSpecies+1), m, all_dict[m][1]))
+                if all_dict[m][1] != 0:
+                    s1 = 'J[%d*k+%d] += %.17g * dqdc[k];' % ((nSpecies+1), m, all_dict[m][1])
+                    s1 = s1.replace('+= 1 *', '+=').replace('+= -1 *', '-=')
+                    self._write(s1)
             self._outdent()
             self._write('}')
 
@@ -5276,8 +5334,11 @@ class CPickler(CMill):
             self._write('}')
 
             for m in sorted(all_dict.keys()):
-                self._write('J[%d] += %.17g * dqdT; /* dwdot[%s]/dT */' % \
-                                (nSpecies*(nSpecies+1)+m, all_dict[m][1], all_dict[m][0]))
+                if all_dict[m][1] != 0:
+                    s1 = 'J[%d] += %.17g * dqdT; /* dwdot[%s]/dT */' % \
+                        (nSpecies*(nSpecies+1)+m, all_dict[m][1], all_dict[m][0])
+                    s1 = s1.replace('+= 1 *', '+=').replace('+= -1 *', '-=')
+                    self._write(s1)
 
         else:
 
@@ -5290,12 +5351,14 @@ class CPickler(CMill):
                         for m in sorted(all_dict.keys()):
                             if all_dict[m][1] != 0:
                                 s1 = 'J[%d] += %.17g * dqdci;' % (k*(nSpecies+1)+m, all_dict[m][1])
+                                s1 = s1.replace('+= 1 *', '+=').replace('+= -1 *', '-=')
                                 s2 = '/* dwdot[%s]/d[%s] */' % (all_dict[m][0], all_dict[k][0])
                                 self._write(s1.ljust(30) + s2)
             self._write('/* d()/dT */')
             for m in sorted(all_dict.keys()):
                 if all_dict[m][1] != 0:
                     s1 = 'J[%d] += %.17g * dqdT;' % (nSpecies*(nSpecies+1)+m, all_dict[m][1])
+                    s1 = s1.replace('+= 1 *', '+=').replace('+= -1 *', '-=').replace('+= -1 *', '-=')
                     s2 = '/* dwdot[%s]/dT */' % (all_dict[m][0])
                     self._write(s1.ljust(30) + s2)
 
@@ -5328,7 +5391,7 @@ class CPickler(CMill):
         self._write('{')
         self._indent()
 
-        self._write('double k_f_s[%d][npt], Kc_s[%d][npt], mixture[npt], g_RT[%d*npt];'
+        self._write('double k_f_s[%d*npt], Kc_s[%d*npt], mixture[npt], g_RT[%d*npt];'
                     % (nReactions, nReactions, nSpecies))
         self._write('double tc[5*npt], invT[npt];')
 
@@ -5353,63 +5416,6 @@ class CPickler(CMill):
         self._write('}')
 
         self._write()
-
-        self._outdent()
-        self._write('#ifdef __INTEL_COMPILER')
-        self._indent()
-        self._write('#pragma simd')
-        self._outdent()
-        self._write('#endif')
-        self._indent()
-        self._write('for (int i=0; i<npt; i++) {')
-        self._indent()
-        for reaction in mechanism.reaction():
-            self._write("k_f_s[%d][i] = prefactor_units[%d] * fwd_A[%d] * exp(fwd_beta[%d] * tc[i] - activation_units[%d] * fwd_Ea[%d] * invT[i]);" 
-                        % (reaction.id-1,reaction.id-1,reaction.id-1,
-                           reaction.id-1,reaction.id-1,reaction.id-1))
-        self._outdent()
-        self._write('}')        
-        self._write()
-
-        self._write(self.line('compute the Gibbs free energy'))
-        self._write('for (int i=0; i<npt; i++) {')
-        self._indent()
-        self._write('double tg[5], g[%d];' % nSpecies)
-        self._write('tg[0] = tc[0*npt+i];')
-        self._write('tg[1] = tc[1*npt+i];')
-        self._write('tg[2] = tc[2*npt+i];')
-        self._write('tg[3] = tc[3*npt+i];')
-        self._write('tg[4] = tc[4*npt+i];')
-        self._write()
-        self._write('gibbs(g, tg);')
-        self._write()
-        for ispec in range(nSpecies):
-            self._write('g_RT[%d*npt+i] = g[%d];' % (ispec, ispec))
-        self._outdent()
-        self._write('}')
-
-        self._write()
-
-        self._outdent()
-        self._write('#ifdef __INTEL_COMPILER')
-        self._indent()
-        self._write('#pragma simd')
-        self._outdent()
-        self._write('#endif')
-        self._indent()
-        self._write('for (int i=0; i<npt; i++) {')
-        self._indent()
-        self._write(self.line('reference concentration: P_atm / (RT) in inverse mol/m^3'))
-        self._write('double refC = (101325. / 8.31451) * invT[i];');
-        self._write('double refCinv = 1.0 / refC;');
-        self._write()
-        for reaction in mechanism.reaction():
-            K_c = self._vKc(mechanism, reaction)
-            self._write("Kc_s[%d][i] = %s;" % (reaction.id-1,K_c))
-        self._outdent()
-        self._write('}')        
-
-        self._write()
         self._write('for (int i=0; i<npt; i++) {')
         self._indent()
         self._write('mixture[i] = 0.0;')
@@ -5429,8 +5435,130 @@ class CPickler(CMill):
         self._write('}')
 
         self._write()
+        self._write('vcomp_k_f(npt, k_f_s, tc, invT);')
+        self._write()
+        self._write('vcomp_gibbs(npt, g_RT, tc);')
+        self._write()
+        self._write('vcomp_Kc(npt, Kc_s, g_RT, invT);')
+        self._write()
+        if nReactions <= 50:
+            self._write('vcomp_wdot(npt, wdot, mixture, sc, k_f_s, Kc_s, tc, invT, T);')
+        else:
+            for i in range(0,nReactions,50):
+                self._write('vcomp_wdot_%d_%d(npt, wdot, mixture, sc, k_f_s, Kc_s, tc, invT, T);' % (i+1,min(i+50,nReactions)))
 
         self._outdent()
+        self._write('}')
+
+        self._write()
+
+        self._write('void vcomp_k_f(int npt, double * restrict k_f_s, double * restrict tc, double * restrict invT)')
+        self._write('{')
+        self._write('#ifdef __INTEL_COMPILER')
+        self._indent()
+        self._write('#pragma simd')
+        self._outdent()
+        self._write('#endif')
+        self._indent()
+        self._write('for (int i=0; i<npt; i++) {')
+        self._indent()
+        for reaction in mechanism.reaction():
+            self._write("k_f_s[%d*npt+i] = prefactor_units[%d] * fwd_A[%d] * exp(fwd_beta[%d] * tc[i] - activation_units[%d] * fwd_Ea[%d] * invT[i]);" 
+                        % (reaction.id-1,reaction.id-1,reaction.id-1,
+                           reaction.id-1,reaction.id-1,reaction.id-1))
+        self._outdent()
+        self._write('}')
+        self._outdent()
+        self._write('}')        
+
+        self._write()
+
+        self._write('void vcomp_gibbs(int npt, double * restrict g_RT, double * restrict tc)')
+        self._write('{')
+        self._indent()
+        self._write(self.line('compute the Gibbs free energy'))
+        self._write('for (int i=0; i<npt; i++) {')
+        self._indent()
+        self._write('double tg[5], g[%d];' % nSpecies)
+        self._write('tg[0] = tc[0*npt+i];')
+        self._write('tg[1] = tc[1*npt+i];')
+        self._write('tg[2] = tc[2*npt+i];')
+        self._write('tg[3] = tc[3*npt+i];')
+        self._write('tg[4] = tc[4*npt+i];')
+        self._write()
+        self._write('gibbs(g, tg);')
+        self._write()
+        for ispec in range(nSpecies):
+            self._write('g_RT[%d*npt+i] = g[%d];' % (ispec, ispec))
+        self._outdent()
+        self._write('}')
+        self._outdent()
+        self._write('}')
+
+        self._write()
+
+        self._write('void vcomp_Kc(int npt, double * restrict Kc_s, double * restrict g_RT, double * restrict invT)')
+        self._write('{')
+        self._write('#ifdef __INTEL_COMPILER')
+        self._indent()
+        self._write('#pragma simd')
+        self._outdent()
+        self._write('#endif')
+        self._indent()
+        self._write('for (int i=0; i<npt; i++) {')
+        self._indent()
+        self._write(self.line('reference concentration: P_atm / (RT) in inverse mol/m^3'))
+        self._write('double refC = (101325. / 8.31451) * invT[i];');
+        self._write('double refCinv = 1.0 / refC;');
+        self._write()
+        for reaction in mechanism.reaction():
+            K_c = self._vKc(mechanism, reaction)
+            self._write("Kc_s[%d*npt+i] = %s;" % (reaction.id-1,K_c))
+        self._outdent()
+        self._write('}')        
+        self._outdent()
+        self._write('}')        
+
+        self._write()
+        if nReactions <= 50:
+            self._write('void vcomp_wdot(int npt, double * restrict wdot, double * restrict mixture, double * restrict sc,')
+            self._write('		double * restrict k_f_s, double * restrict Kc_s,')
+            self._write('		double * restrict tc, double * restrict invT, double * restrict T)')
+            self._write('{')
+            self._vcomp_wdot(mechanism,0,nReactions)
+            self._write('}')
+        else:
+            for i in range(0,nReactions,50):
+                nr = min(50, nReactions-i)
+                self._write('void vcomp_wdot_%d_%d(int npt, double * restrict wdot, double * restrict mixture, double * restrict sc,' % (i+1,i+nr))
+                self._write('		double * restrict k_f_s, double * restrict Kc_s,')
+                self._write('		double * restrict tc, double * restrict invT, double * restrict T)')
+                self._write('{')
+                self._vcomp_wdot(mechanism,i,nr)
+                self._write('}')
+                self._write()
+
+        return
+
+    def _vcomp_wdot(self, mechanism, istart, nr):
+
+        nSpecies = len(mechanism.species())
+        nReactions = len(mechanism.reaction())
+
+        itroe      = self.reactionIndex[0:2]
+        isri       = self.reactionIndex[1:3]
+        ilindemann = self.reactionIndex[2:4]
+        i3body     = self.reactionIndex[3:5] 
+        isimple    = self.reactionIndex[4:6]
+        ispecial   = self.reactionIndex[5:7]
+        
+        ntroe      = itroe[1]      - itroe[0]
+        nsri       = isri[1]       - isri[0]
+        nlindemann = ilindemann[1] - ilindemann[0]
+        n3body     = i3body[1]     - i3body[0]
+        nsimple    = isimple[1]    - isimple[0]
+        nspecial   = ispecial[1]   - ispecial[0]
+
         self._write('#ifdef __INTEL_COMPILER')
         self._indent()
         self._write('#pragma simd')
@@ -5441,13 +5569,24 @@ class CPickler(CMill):
         self._indent()
 
         self._write('double qdot, q_f, q_r, phi_f, phi_r, k_f, k_r, Kc;')
-        self._write('double alpha, redP, F, logPred;')
-        if ntroe>0:
-            self._write('double logFcent, troe_c, troe_n, troe, F_troe;')
-        if nsri>0:
-            self._write('double X, F_sri;')
+        if istart < isimple[0]:
+            self._write('double alpha;')
+        if istart < i3body[0]:
+            self._write('double redP, F;') 
+        if istart < ilindemann[0]:
+            self._write('double logPred;')
+            if ntroe>0:
+                self._write('double logFcent, troe_c, troe_n, troe, F_troe;')
+            if nsri>0:
+                self._write('double X, F_sri;')
+
+        first_id = istart + 1
+        last_id  = istart + nr
 
         for reaction in mechanism.reaction():
+
+            if reaction.id < first_id or reaction.id > last_id:
+                continue
 
             self._write()
             self._write(self.line('reaction %d: %s' % (reaction.id, reaction.equation())))
@@ -5485,8 +5624,7 @@ class CPickler(CMill):
 
         self._outdent()
         self._write('}')
-        self._outdent()
-        self._write('}')
+        self._outdent()        
 
         return
 
@@ -5707,7 +5845,7 @@ class CPickler(CMill):
                 
         thirdBody = reaction.thirdBody
         if not thirdBody:
-            self._write("k_f = k_f_s[%d][i];" % (reaction.id-1))
+            self._write("k_f = k_f_s[%d*npt+i];" % (reaction.id-1))
             self._write("q_f = phi_f * k_f;")
             return
             
@@ -5719,11 +5857,11 @@ class CPickler(CMill):
         troe = reaction.troe
 
         if not low:
-            self._write("k_f = alpha * k_f_s[%d][i];" % (reaction.id-1))
+            self._write("k_f = alpha * k_f_s[%d*npt+i];" % (reaction.id-1))
             self._write("q_f = phi_f * k_f;")
             return
 
-        self._write("k_f = k_f_s[%d][i];" % (reaction.id-1))
+        self._write("k_f = k_f_s[%d*npt+i];" % (reaction.id-1))
         self._write("redP = alpha / k_f * phase_units[%d] * low_A[%d] * exp(low_beta[%d] * tc[i] - activation_units[%d] * low_Ea[%d] * invT[i]);" 
                     % (reaction.id-1,reaction.id-1,reaction.id-1,reaction.id-1,reaction.id-1))
         self._write("F = redP / (1 + redP);")
@@ -5819,7 +5957,7 @@ class CPickler(CMill):
             self._write("q_f = phi_r * k_r;")
             return
         
-        self._write("Kc = Kc_s[%d][i];" % (reaction.id-1))
+        self._write("Kc = Kc_s[%d*npt+i];" % (reaction.id-1))
 
         self._write("k_r = k_f / Kc;")
         self._write("q_r = phi_r * k_r;")
@@ -6196,10 +6334,12 @@ class CPickler(CMill):
             conc = "sc[%d]" % mechanism.species(symbol).id
             if factor == 1:
                 alpha.append(conc)
-            else:
+            elif factor == -1:
+                alpha.append('-'+conc)
+            elif factor != 0:
                 alpha.append("%.17g*%s" % (factor, conc))
 
-        return " + ".join(alpha)
+        return " + ".join(alpha).replace('+ -','- ')
 
     def _Denhancement(self, mechanism, reaction, kid, consP):
         thirdBody = reaction.thirdBody
@@ -6254,7 +6394,9 @@ class CPickler(CMill):
             conc = "sc[%d*npt+i]" % mechanism.species(symbol).id
             if factor == 1:
                 alpha.append(conc)
-            else:
+            elif factor == -1:
+                alpha.append('-'+conc)
+            elif factor != 0:
                 alpha.append("%.17g*%s" % (factor, conc))
 
         return " + ".join(alpha)

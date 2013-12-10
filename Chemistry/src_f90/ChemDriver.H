@@ -9,7 +9,7 @@ class ChemDriver
 {
 public:
 
-    ChemDriver (int use_vode);
+    ChemDriver (int use_vode_in=1, int max_points_in=1);
 
     ~ChemDriver ();
 
@@ -24,8 +24,10 @@ public:
     const Array<std::string>& elementNames () const;
     int index(const std::string speciesName) const;
 
-    bool isNull;
+    static bool isNull();
+
     bool use_vode;
+    bool max_points;
 
 private:
 

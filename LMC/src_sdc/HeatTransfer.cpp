@@ -67,7 +67,6 @@ const Real Real_MAX = DBL_MAX;
 #endif
 
 const int  GEOM_GROW   = 1;
-const int  HYP_GROW    = 3;
 const int  PRESS_GROW  = 1;
 const int  DIVU_GROW   = 1;
 const int  DSDT_GROW   = 1;
@@ -77,9 +76,8 @@ const int  YDOT_GROW   = 1;
 const int  HYPF_GROW   = 1;
 const int  LinOp_grow  = 1;
 
+static Real              typical_RhoH_value_default = -1.e10;
 static const std::string typical_values_filename("typical_values.fab");
-
-static const Real typical_RhoH_value_default = -1.e10;
 
 namespace
 {
@@ -250,7 +248,7 @@ HeatTransfer::Initialize ()
     do_not_use_funccount = false;
     do_active_control    = false;
     crse_dt              = -1;
-    
+
     HeatTransfer::num_divu_iters            = 1;
     HeatTransfer::init_once_done            = 0;
     HeatTransfer::do_OT_radiation           = 0;
@@ -2635,7 +2633,7 @@ HeatTransfer::avgDown ()
                               level,level+1,0,1,fine_ratio);
     }
 
-    if (verbose)
+    if (verbose > 1)
     {
         const int IOProc   = ParallelDescriptor::IOProcessorNumber();
         Real      run_time = ParallelDescriptor::second() - strt_time;
@@ -5345,8 +5343,6 @@ HeatTransfer::setThermoPress(Real time)
     compute_rhoRT (S,S,pComp);
 }
 
-#if 1
-static int hyp_grow = 3; // ick!  
 Real
 HeatTransfer::predict_velocity (Real  dt,
                                 Real& comp_cfl)
@@ -5402,11 +5398,11 @@ HeatTransfer::predict_velocity (Real  dt,
     for (int dir=0; dir<BL_SPACEDIM; ++dir) {
         u_mac[dir].setVal(0);
     }
-    MultiFab Force(grids,BL_SPACEDIM,hyp_grow);
+    MultiFab Force(grids,BL_SPACEDIM,Godunov::hypgrow());
     Force.setVal(0);
 #endif
 
-    for (FillPatchIterator U_fpi(*this,visc_terms,hyp_grow,prev_time,State_Type,Xvel,BL_SPACEDIM)
+    for (FillPatchIterator U_fpi(*this,visc_terms,Godunov::hypgrow(),prev_time,State_Type,Xvel,BL_SPACEDIM)
 #ifdef MOREGENGETFORCE
 	     , S_fpi(*this,visc_terms,1,prev_time,State_Type,Density,NUM_SCALARS);
 	 S_fpi.isValid() && U_fpi.isValid();
@@ -5488,7 +5484,6 @@ HeatTransfer::predict_velocity (Real  dt,
 
     return dt*tempdt;
 }
-#endif
 
 void
 HeatTransfer::set_reasonable_grow_cells_for_R (Real time)
@@ -6099,7 +6094,7 @@ HeatTransfer::advance_chemistry (MultiFab&       mf_old,
         //
         const int NProcs = ParallelDescriptor::NProcs();
         BoxArray  ba     = mf_new.boxArray();
-        bool      done   = false;
+        bool      done   = (ba.size() >= 3*NProcs);
 
         for (int cnt = 1; !done; cnt *= 2)
         {
@@ -6167,6 +6162,8 @@ HeatTransfer::advance_chemistry (MultiFab&       mf_old,
             }
         }
 
+        FTemp.clear();
+
         mf_new.copy(STemp,0,first_spec,nspecies+3); // Parallel copy.
 
         STemp.clear();
@@ -6206,6 +6203,7 @@ HeatTransfer::advance_chemistry (MultiFab&       mf_old,
                 FC[mfi].copy(grownFC[mfi]);
             }
         }
+        fcnCntTemp.clear();
         //
         // Approximate covered crse chemistry (I_R) with averaged down fine I_R from previous time step.
         //
@@ -6292,7 +6290,7 @@ HeatTransfer::compute_scalar_advection_fluxes_and_divergence (MultiFab& Force,
 
   const int nState = desc_lst[State_Type].nComp();
 
-  for (FillPatchIterator S_fpi(*this,DivU,HYP_GROW,prev_time,State_Type,0,nState);
+  for (FillPatchIterator S_fpi(*this,DivU,Godunov::hypgrow(),prev_time,State_Type,0,nState);
        S_fpi.isValid();
        ++S_fpi)
   {
@@ -7433,7 +7431,7 @@ HeatTransfer::reflux ()
 
     showMF("sdcSync",*Ssync,"sdc_Ssync_after_zero",level);
 
-    if (verbose)
+    if (verbose > 1)
     {
         const int IOProc   = ParallelDescriptor::IOProcessorNumber();
         Real      run_time = ParallelDescriptor::second() - strt_time;
@@ -7841,7 +7839,7 @@ HeatTransfer::RhoH_to_Temp (MultiFab& S,
 	{
             htt_hmixTYP = typical_values[RhoH];
 	}        
-        if (ParallelDescriptor::IOProcessor())
+        if (verbose && ParallelDescriptor::IOProcessor())
             std::cout << "setting htt_hmixTYP = " << htt_hmixTYP << '\n';
     }
 
@@ -7852,7 +7850,7 @@ HeatTransfer::RhoH_to_Temp (MultiFab& S,
         max_iters = std::max(max_iters, RhoH_to_Temp(S[mfi],box,dominmax));
     }
 
-    if (verbose)
+    if (verbose > 1)
     {
         const int IOProc   = ParallelDescriptor::IOProcessorNumber();
         Real      run_time = ParallelDescriptor::second() - strt_time;

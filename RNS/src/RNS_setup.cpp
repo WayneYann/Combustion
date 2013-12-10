@@ -108,7 +108,22 @@ RNS::variableSetUp ()
 
     if (chemSolve == 0) 
     {
-	chemSolve = new ChemDriver(RNS::use_vode);
+	int max_points;
+	if ( use_vode || split_burning || do_cc_burning ) 
+	{
+	    max_points = 1;
+	}
+	else 
+	{
+#if (BL_SPACEDIM == 1)
+	    max_points = 2;
+#elif (BL_SPACEDIM == 2)
+	    max_points = 4;
+#else
+	    max_points = 8;
+#endif
+	}
+	chemSolve = new ChemDriver(use_vode, max_points);
     }
 
     //
@@ -143,7 +158,7 @@ RNS::variableSetUp ()
 	plot_fuelConsumption = 0;
     }
 
-    if (chemSolve->isNull)
+    if (ChemDriver::isNull())
     {
 	plot_X = plot_omegadot = plot_dYdt = plot_heatRelease = plot_fuelConsumption = 0;
     }
@@ -165,7 +180,8 @@ RNS::variableSetUp ()
     BL_FORT_PROC_CALL(SET_METHOD_PARAMS, set_method_params)
 	(dm, Density, Xmom, Eden, Temp, FirstSpec, NUM_STATE, NumSpec, 
 	 small_dens, small_temp, small_pres, gamma, gravity, Treference,
-	 riemann, difmag, &blocksize[0], use_vode, do_cc_burning, split_burning);
+	 riemann, difmag, &blocksize[0], do_component_weno,
+	 use_vode, do_cc_burning, split_burning);
     
     int coord_type = Geometry::Coord();
     const Real* prob_lo   = Geometry::ProbLo();

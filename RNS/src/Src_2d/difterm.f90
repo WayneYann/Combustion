@@ -13,6 +13,7 @@ contains
     use meth_params_module, only : NVAR, NSPEC, QCVAR, QFVAR
     use weno_module, only : cellavg2gausspt_1d, cellavg2face_1d, cellavg2dergausspt_1d
     use convert_2d_module, only : cellavg2cc_2d
+    use polyinterp_module, only : cc2xface_2d, cc2yface_2d
     use variables_module, only : ctoprim
     use transport_properties, only : get_transport_properties
 
@@ -22,26 +23,56 @@ contains
     double precision, intent(inout) :: fx(fxlo(1):fxhi(1),fxlo(2):fxhi(2),NVAR)
     double precision, intent(inout) :: fy(fylo(1):fyhi(1),fylo(2):fyhi(2),NVAR)
 
-    double precision, dimension(:,:,:), pointer ::  Uag
-    double precision, dimension(:,:,:), pointer :: dUag
+    double precision, allocatable :: Ucc(:,:,:),mucc(:,:),xicc(:,:),lamcc(:,:),Ddiacc(:,:,:)
+    double precision, dimension(:,:,:), pointer :: Uag, dUag, Ddia
+    double precision, dimension(:,:)  , pointer :: mu, xi, lam
     double precision, allocatable, target ::  U1(:,:,:),  U2(:,:,:)
     double precision, allocatable, target :: dU1(:,:,:), dU2(:,:,:)
+    double precision, allocatable, target :: mu1(:,:), xi1(:,:), lam1(:,:), Ddia1(:,:,:)
+    double precision, allocatable, target :: mu2(:,:), xi2(:,:), lam2(:,:), Ddia2(:,:,:)
     double precision, allocatable :: Qc(:,:,:), Qf(:,:,:), dmom(:,:,:)
-    double precision, allocatable :: mu(:,:), xi(:,:), lam(:,:), Ddia(:,:,:)
     integer :: i, j, n, g
-    integer :: g2lo(2), g2hi(2), g3lo(2), g3hi(2)
+    integer :: g2lo(3), g2hi(3), g3lo(3), g3hi(3)
     integer :: tlo(3), thi(3), Qclo(3), Qchi(3), Qflo(3), Qfhi(3)
     double precision, parameter :: fac = 0.5d0 ! due to Gauss quadrature
 
-    g3lo = lo-3;  g3hi = hi+3
+    tlo = 1
+    thi = 1
+    g2lo(1:2) = lo-2
+    g2lo(3)   = 1
+    g2hi(1:2) = hi+2
+    g2hi(3)   = 1
+    g3lo(1:2) = lo-3  
+    g3lo(3)   = 1
+    g3hi(1:2) = hi+3
+    g3hi(3)   = 1
+
+    allocate(Ucc   (g2lo(1):g2hi(1),g2lo(2):g2hi(2),QCVAR))
+    allocate(mucc  (g2lo(1):g2hi(1),g2lo(2):g2hi(2)))
+    allocate(xicc  (g2lo(1):g2hi(1),g2lo(2):g2hi(2)))
+    allocate(lamcc (g2lo(1):g2hi(1),g2lo(2):g2hi(2)))
+    allocate(Ddiacc(g2lo(1):g2hi(1),g2lo(2):g2hi(2),NSPEC))
+
+    do n=1,NVAR
+       call cellavg2cc_2d(g2lo,g2hi, U(:,:,n), Ulo,Uhi, Ucc(:,:,n), g2lo,g2hi)
+    end do
+
+    call ctoprim(g2lo, g2hi, Ucc, g2lo, g2hi, QCVAR)
+    ! Ucc now contains Q at cell centers
+
+    ! transport coefficients at cell centers
+    call get_transport_properties(g2lo,g2hi, Ucc,g2lo,g2hi,QCVAR, &
+         mucc,xicc,lamcc,Ddiacc, g2lo,g2hi)
+
+    deallocate(Ucc)
+
     allocate(U1(g3lo(1):g3hi(1),g3lo(2):g3hi(2),NVAR))
     allocate(U2(g3lo(1):g3hi(1),g3lo(2):g3hi(2),NVAR))
 
-    g2lo = lo-2;  g2hi = hi+2
     allocate(dU1(g2lo(1):g2hi(1),g2lo(2):g2hi(2),3))
     allocate(dU2(g2lo(1):g2hi(1),g2lo(2):g2hi(2),3))    
 
-    tlo = 1; thi = 1; Qclo = 1;  Qchi = 1;  Qflo = 1;  Qfhi = 1
+    Qclo = 1;  Qchi = 1;  Qflo = 1;  Qfhi = 1
 
     Qclo(1:2) = lo(1:2)-2
     Qchi(1:2) = hi(1:2)+2
@@ -51,13 +82,28 @@ contains
 
     allocate(Qc  (Qclo(1):Qchi(1),Qclo(2):Qchi(2),QCVAR))
     allocate(Qf  (Qflo(1):Qfhi(1),Qflo(2):Qfhi(2),QFVAR))
-    allocate(mu  (Qflo(1):Qfhi(1),Qflo(2):Qfhi(2)))
-    allocate(xi  (Qflo(1):Qfhi(1),Qflo(2):Qfhi(2)))
-    allocate(lam (Qflo(1):Qfhi(1),Qflo(2):Qfhi(2)))
-    allocate(Ddia(Qflo(1):Qfhi(1),Qflo(2):Qfhi(2),NSPEC))
     allocate(dmom(Qflo(1):Qfhi(1),Qflo(2):Qfhi(2),3))
 
+    allocate(  mu1(Qflo(1):Qfhi(1),Qflo(2):Qfhi(2)))
+    allocate(  xi1(Qflo(1):Qfhi(1),Qflo(2):Qfhi(2)))
+    allocate( lam1(Qflo(1):Qfhi(1),Qflo(2):Qfhi(2)))
+    allocate(Ddia1(Qflo(1):Qfhi(1),Qflo(2):Qfhi(2),NSPEC))
+
+    allocate(  mu2(Qflo(1):Qfhi(1),Qflo(2):Qfhi(2)))
+    allocate(  xi2(Qflo(1):Qfhi(1),Qflo(2):Qfhi(2)))
+    allocate( lam2(Qflo(1):Qfhi(1),Qflo(2):Qfhi(2)))
+    allocate(Ddia2(Qflo(1):Qfhi(1),Qflo(2):Qfhi(2),NSPEC))
+
     ! ----- compute x-direction flux first -----
+
+    ! cell center => Gauss points on x-face
+    call cc2xface_2d(lo,hi,  mucc, g2lo(1:2), g2hi(1:2),  mu1,  mu2, Qflo(1:2), Qfhi(1:2))
+    call cc2xface_2d(lo,hi,  xicc, g2lo(1:2), g2hi(1:2),  xi1,  xi2, Qflo(1:2), Qfhi(1:2))
+    call cc2xface_2d(lo,hi, lamcc, g2lo(1:2), g2hi(1:2), lam1, lam2, Qflo(1:2), Qfhi(1:2))
+    do n=1,NSPEC
+       call cc2xface_2d(lo,hi, Ddiacc(:,:,n), g2lo(1:2), g2hi(1:2), &
+            Ddia1(:,:,n), Ddia2(:,:,n), Qflo(1:2), Qfhi(1:2))
+    end do
 
     ! cell-average of ? => cell-avg-in-x and Gauss-point-in-y of d?/dy
     do n=1,3
@@ -78,11 +124,19 @@ contains
     do g=1,2
        
        if (g .eq. 1) then
-          Uag  =>  U1
-          dUag => dU1
+          Uag  =>    U1
+          dUag =>   dU1
+          mu   =>   mu1
+          xi   =>   xi1
+          lam  =>  lam1
+          Ddia => Ddia1
        else
-          Uag  =>  U2
-          dUag => dU2
+          Uag  =>    U2
+          dUag =>   dU2
+          mu   =>   mu2
+          xi   =>   xi2
+          lam  =>  lam2
+          Ddia => Ddia2
        end if
 
        do n=1,3
@@ -107,7 +161,7 @@ contains
        thi(2) = hi(2)
        ! cell-avg-in-x and Gauss-point-in-y => cell-center-in-x and Gauss-point-in-y
        do n=1,NVAR
-          call cellavg2cc_2d(tlo(1:2),thi(1:2), Uag(:,:,n),g3lo,g3hi, &
+          call cellavg2cc_2d(tlo(1:2),thi(1:2), Uag(:,:,n),g3lo(1:2),g3hi(1:2), &
                Qc(:,:,n),Qclo(1:2),Qchi(1:2),idir=1)
        end do
 
@@ -115,9 +169,6 @@ contains
        thi(1) = hi(1)+1
        thi(2) = hi(2)
        call ctoprim(tlo,thi, Qf, Qflo,Qfhi,QFVAR)
-
-       ! transport coefficients on face
-       call get_transport_properties(tlo,thi, Qf,Qflo,Qfhi,QFVAR, mu,xi,lam,Ddia,Qflo,Qfhi)
 
        tlo(1) = lo(1)-2
        thi(1) = hi(1)+2
@@ -130,10 +181,19 @@ contains
             Qf, mu, xi, lam, Ddia, dmom, Qflo, Qfhi, &
             Qc, Qclo, Qchi, dxinv, fac)
 
-       Nullify(Uag,dUag)
+       Nullify(Uag,dUag,mu,xi,lam,Ddia)
     end do
 
     ! ----- compute y-direction flux -----
+
+    ! cell center => Gauss points on x-face
+    call cc2yface_2d(lo,hi,  mucc, g2lo(1:2), g2hi(1:2),  mu1,  mu2, Qflo(1:2), Qfhi(1:2))
+    call cc2yface_2d(lo,hi,  xicc, g2lo(1:2), g2hi(1:2),  xi1,  xi2, Qflo(1:2), Qfhi(1:2))
+    call cc2yface_2d(lo,hi, lamcc, g2lo(1:2), g2hi(1:2), lam1, lam2, Qflo(1:2), Qfhi(1:2))
+    do n=1,NSPEC
+       call cc2yface_2d(lo,hi, Ddiacc(:,:,n), g2lo(1:2), g2hi(1:2), &
+            Ddia1(:,:,n), Ddia2(:,:,n), Qflo(1:2), Qfhi(1:2))
+    end do
 
     ! cell-average of ? => cell-avg-in-y and Gauss-point-in-x of d?/dx
     do n=1,3
@@ -154,11 +214,19 @@ contains
     do g=1,2
        
        if (g .eq. 1) then
-          Uag  =>  U1
-          dUag => dU1
+          Uag  =>    U1
+          dUag =>   dU1
+          mu   =>   mu1
+          xi   =>   xi1
+          lam  =>  lam1
+          Ddia => Ddia1
        else
-          Uag  =>  U2
-          dUag => dU2
+          Uag  =>    U2
+          dUag =>   dU2
+          mu   =>   mu2
+          xi   =>   xi2
+          lam  =>  lam2
+          Ddia => Ddia2
        end if
 
        do n=1,3
@@ -183,7 +251,7 @@ contains
        thi(2) = hi(2)+2
        do n=1,NVAR
           ! cell-avg-in-y and Gauss-point-in-x => cell-center-in-y and Gauss-point-in-x
-          call cellavg2cc_2d(tlo(1:2),thi(1:2), Uag(:,:,n),g3lo,g3hi, &
+          call cellavg2cc_2d(tlo(1:2),thi(1:2), Uag(:,:,n),g3lo(1:2),g3hi(1:2), &
                Qc(:,:,n),Qclo(1:2),Qchi(1:2),idir=2)
        end do
 
@@ -191,9 +259,6 @@ contains
        thi(1) = hi(1)
        thi(2) = hi(2)+1
        call ctoprim(tlo,thi, Qf, Qflo,Qfhi,QFVAR)
-
-       ! transport coefficients on face
-       call get_transport_properties(tlo,thi, Qf,Qflo,Qfhi,QFVAR, mu,xi,lam,Ddia,Qflo,Qfhi)
 
        tlo(2) = lo(2)-2
        thi(2) = hi(2)+2
@@ -206,10 +271,13 @@ contains
             Qf, mu, xi, lam, Ddia, dmom, Qflo, Qfhi, &
             Qc, Qclo, Qchi, dxinv, fac)
 
-       Nullify(Uag,dUag)
+       Nullify(Uag,dUag,mu,xi,lam,Ddia)
     end do
 
-    deallocate(U1,U2,dU1,dU2,Qc,Qf,mu,xi,lam,Ddia,dmom)
+    deallocate(U1,U2,dU1,dU2,Qc,Qf,dmom)
+    deallocate(mu1 ,xi1 ,lam1 ,Ddia1)
+    deallocate(mu2 ,xi2 ,lam2 ,Ddia2)
+    deallocate(mucc,xicc,lamcc,Ddiacc)
 
   end subroutine difterm
 

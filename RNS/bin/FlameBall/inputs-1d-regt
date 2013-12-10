@@ -15,14 +15,6 @@ geometry.prob_lo     =  -0.5    -0.5    -0.5
 geometry.prob_hi     =   0.5     0.5     0.5  
 amr.n_cell           =   128     128     128
 
-vode.rtol      = 1.e-10
-vode.atol      = 1.e-10
-vode.order     = 5
-vode.use_ajac  = 1
-vode.save_ajac = 1
-vode.stiff     = 1
-vode.verbose   = 0
-
 eglib.use_bulk_visc = 1
 
 rns.Riemann    = 0     # 0: HLL,  1: JBB,  2: HLLC

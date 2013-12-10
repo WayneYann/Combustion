@@ -9,7 +9,8 @@ MPI    := t
 OMP    := t
 PROF   := 
 
-COMP := Intel
+#COMP := Intel
+COMP := gfortran
 
 MKVERBOSE :=
 

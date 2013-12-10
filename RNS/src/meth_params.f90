@@ -34,6 +34,8 @@ module meth_params_module
   integer, save :: xblksize=2048, yblksize=2048, zblksize=2048
   integer, save :: nthreads=1
 
+  logical, save :: do_component_weno;
+
   logical, save :: use_vode
   logical, save :: do_cc_burning, split_burning
 

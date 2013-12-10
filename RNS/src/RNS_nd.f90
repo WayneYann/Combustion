@@ -16,7 +16,7 @@ end subroutine get_method_params
 subroutine set_method_params(dm,Density,Xmom,Eden,Temp,FirstSpec, &
      NUM_STATE, NumSpec, small_dens_in, small_temp_in, small_pres_in, &
      gamma_in, grav_in, Tref_in, riemann_in, difmag_in, blocksize, &
-     use_vode_in, do_cc_burning_in, split_burning_in)
+     do_comp_weno_in, use_vode_in, do_cc_burning_in, split_burning_in)
 
   use meth_params_module
   use eos_module
@@ -25,7 +25,8 @@ subroutine set_method_params(dm,Density,Xmom,Eden,Temp,FirstSpec, &
 
   integer, intent(in) :: dm
   integer, intent(in) :: Density, Xmom, Eden, Temp, FirstSpec, NUM_STATE, NumSpec, &
-       riemann_in, blocksize(*), use_vode_in, do_cc_burning_in, split_burning_in
+       riemann_in, blocksize(*), do_comp_weno_in, &
+       use_vode_in, do_cc_burning_in, split_burning_in
   double precision, intent(in) :: small_dens_in, small_temp_in, small_pres_in, &
        gamma_in, grav_in, Tref_in, difmag_in
   
@@ -100,6 +101,8 @@ subroutine set_method_params(dm,Density,Xmom,Eden,Temp,FirstSpec, &
   !$omp parallel reduction(+:nthreads)
   nthreads = nthreads + 1
   !$omp end parallel
+
+  do_component_weno = (do_comp_weno_in .ne. 0)
 
   use_vode = (use_vode_in .ne. 0)
   do_cc_burning = (do_cc_burning_in .ne. 0)

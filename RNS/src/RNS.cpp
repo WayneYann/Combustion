@@ -80,7 +80,7 @@ Real         RNS::Treference    = 298.0;
 int          RNS::RK_order      = 2;
 
 RNS::RiemannType RNS::Riemann   = RNS::HLL;
-Real             RNS::difmag    = -1.0;
+Real             RNS::difmag    = -1.0;  // for JBB & HLLC Riemann solvers
 
 std::string  RNS::fuelName           = "";
 int          RNS::fuelID             = -1;
@@ -136,9 +136,11 @@ std::vector<int> RNS::blocksize(BL_SPACEDIM, 2048);
 
 int          RNS::do_quartic_interp   = 1;
 
-int          RNS::use_vode            = 1;
-int          RNS::do_cc_burning       = 0;
-int          RNS::split_burning       = 0;
+int          RNS::do_component_weno;
+
+int          RNS::use_vode            = 0;
+int          RNS::do_cc_burning       = 0; // do_cc_burning has no effect when split_burning is true
+int          RNS::split_burning       = 1;
 
 // this will be reset upon restart
 Real         RNS::previousCPUTimeUsed = 0.0;
@@ -303,6 +305,16 @@ RNS::read_params ()
     pp.queryarr("blocksize", blocksize);
 
     pp.query("do_quartic_interp", do_quartic_interp);
+
+    if (ChemDriver::isNull())
+    {
+	do_component_weno = 0;
+    }
+    else
+    {
+	do_component_weno = 1;
+    }
+    pp.query("do_component_weno", do_component_weno);
 
     pp.query("use_vode", use_vode);
     pp.query("do_cc_burning", do_cc_burning);
