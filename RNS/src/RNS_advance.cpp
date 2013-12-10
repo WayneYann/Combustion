@@ -3,6 +3,10 @@
 #include "RNS.H"
 #include "RNS_F.H"
 
+#ifdef USE_SDCLIB
+#include "SDCAmr.H"
+#endif
+
 // #include <ArrayView.H>
 
 using std::string;
@@ -392,8 +396,12 @@ void sdc_f1eval(void *Fp, void *Qp, double t, sdc_state *state, void *ctx)
 	 << "  level: " << rns.Level() << ", node: " << state->node << endl;
   }
 
-  // XXX: do I have to clear out F.flux first?
-  rns.dUdt_AD(U, Uprime, t, RNS::use_FillBoundary, 0, F.flux, 0.0);
+  if (F.flux != NULL)
+    F.flux->setVal(0.0);
+
+  // dzmq_send_mf(U, rns.Level(), 0, 0);
+  rns.dUdt_AD(U, Uprime, t, RNS::use_FillBoundary, 0, F.flux, 1.0);
+  // dzmq_send_mf(Uprime, 2, 0, 1);
 }
 
 //
@@ -451,7 +459,7 @@ void sdc_f2comp(void *Fp, void *Qp, double t, double dt, void *RHSp, sdc_state *
   MultiFab::Copy(U, Urhs, 0, 0, U.nComp(), U.nGrow());
 
   if (rns.chemSolve->isNull) {
-   Uprime.setVal(0.0);
+    Uprime.setVal(0.0);
     return;
   }
 

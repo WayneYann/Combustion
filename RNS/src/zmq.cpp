@@ -17,9 +17,13 @@ void dzmq_send_mf(MultiFab& U, int level, int comp, int wait)
 {
   if (!zmqctx) zmqctx = dzmq_connect();
 
+  int n = 0;
+  for (MFIter mfi(U); mfi.isValid(); ++mfi) { n++; }
+
+  int i = 0;
   for (MFIter mfi(U); mfi.isValid(); ++mfi) {
     std::ostringstream buf;
-    buf << level;
+    buf << level << ", " << i++ << ", " << n << ";";
     U[mfi].writeOn(buf, comp, 1);
     dzmq_send_buf(zmqctx, buf.str().c_str(), buf.str().length());
   }
@@ -134,4 +138,3 @@ void dzmq_send_buf(void *ptr, const char *buf, int n)
 
   /* zmq_sendmsg(ctx->socket, &msg, 0); */
 }
-

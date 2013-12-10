@@ -48,6 +48,7 @@
 #include <AmrLevel.H>
 #include <Interpolater.H>
 #include <FabArray.H>
+#include <cmath>
 
 #include "RNS.H"
 #include "RNS_F.H"
@@ -84,7 +85,7 @@ void mlsdc_amr_interpolate(void *Fp, void *Gp, sdc_state *state, void *ctxF, voi
   Array<BCRec>          bcr(ncomp);
 
   const Geometry& geomG = levelG.Geom();
-  const Geometry& geomF = levelF.Geom();
+  // const Geometry& geomF = levelF.Geom();
 
   RNS_SETNAN(UF);
 
@@ -208,9 +209,31 @@ void mlsdc_amr_restrict(void *Fp, void *Gp, sdc_state *state, void *ctxF, void *
   MultiFab& UG     = *G.U;
   RNS&      levelG = *((RNS*) ctxG);
 
+  BL_ASSERT(G.type==SDC_SOLUTION || G.type==SDC_TAU);
+
+  if (G.type == SDC_TAU) {
+    dzmq_send_mf(UG, 0, 0, 0);
+    dzmq_send_mf(UF, 1, 0, 0);
+  }
+
+  if (G.type == SDC_TAU) {
+    FluxRegister& flxF = *F.flux;
+    // flxF.Reflux(UG, levelG.Volume(), 1.0, 0, 0, UG.nComp(), levelG.Geom());
+    // flxF.Reflux(UG, levelG.Volume(), -1.0, 0, 0, UG.nComp(), levelG.Geom());
+    // dzmq_send_mf(UG, 1, 0, 0);
+  }
+
   levelG.avgDown(UG, UF);
-  if (state->kind == SDC_SOLUTION)
+  if (G.type == SDC_SOLUTION)
     levelG.fill_boundary(UG, state->t, RNS::use_FillBoundary);
+
+  if (G.type == SDC_TAU)
+    dzmq_send_mf(UG, 2, 0, 1);
+
+
+#ifndef NDEBUG
+  BL_ASSERT(UG.contains_nan() == false);
+#endif
 }
 
 END_EXTERN_C
@@ -334,7 +357,7 @@ sdc_sweeper* SDCAmr::build_mlsdc_level(int lev)
   if (lev < first_refinement_level)
     nnodes = nnodes0;
   else
-    nnodes = 1 + (nnodes0 - 1) * ((int) pow(trat, lev-first_refinement_level+1));
+    nnodes = 1 + (nnodes0 - 1) * ((int) pow((double) trat, lev-first_refinement_level+1));
 
   sdc_nodes* nodes = sdc_nodes_create(nnodes, SDC_UNIFORM);
   sdc_imex*  imex  = sdc_imex_create(nodes, sdc_f1eval, sdc_f2eval, sdc_f2comp);
@@ -373,6 +396,8 @@ void SDCAmr::rebuild_mlsdc()
     sweepers[lev]->nset->encap = encaps[lev];
     sdc_mg_add_level(&mg, sweepers[lev], mlsdc_amr_interpolate, mlsdc_amr_restrict);
   }
+  // mg.nsweeps[0] = 2;
+  // mg.nsweeps[1] = 2;
   sdc_mg_setup(&mg, 0);
   sdc_mg_allocate(&mg);
 
