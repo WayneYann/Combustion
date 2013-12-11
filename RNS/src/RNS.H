@@ -1,27 +1,19 @@
 #ifndef _RNS_H_
 #define _RNS_H_
 
+#define BEGIN_EXTERN_C extern "C" {
+#define END_EXTERN_C   }
+
 #include <BC_TYPES.H>
 #include <AmrLevel.H>
 #include <ErrorList.H>
 #include <FluxRegister.H>
 #include <ChemDriver.H>
-#include <SDCAmr.H>
 
 #include <iostream>
 
 using std::istream;
 using std::ostream;
-
-
-#ifdef USE_SDCLIB
-BEGIN_EXTERN_C
-void sdc_f1eval(void*, void*, double, sdc_state*, void*);
-void sdc_f2eval(void*, void*, double, sdc_state*, void*);
-void sdc_f2comp(void*, void*, double, double, void*, sdc_state*, void*);
-void sdc_poststep_hook(void*, sdc_state*, void*);
-END_EXTERN_C
-#endif
 
 enum StateType { State_Type = 0,
                  NUM_STATE_TYPE };

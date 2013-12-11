@@ -3,12 +3,10 @@
 #ifndef _SDCAMR_H_
 #define _SDCAMR_H_
 
-#define BEGIN_EXTERN_C extern "C" {
-#define END_EXTERN_C   }
-
 #include <MultiFab.H>
 #include <FluxRegister.H>
 #include <Amr.H>
+#include <RNS.H>
 #include <sdc.h>
 
 #if defined(NDEBUG)
@@ -19,6 +17,14 @@
 #define RNS_ASSERTNONAN(MF) BL_ASSERT(MF.contains_nan() == false);
 #endif
 
+BEGIN_EXTERN_C
+void sdc_f1eval(void*, void*, double, sdc_state*, void*);
+void sdc_f2eval(void*, void*, double, sdc_state*, void*);
+void sdc_f2comp(void*, void*, double, double, void*, sdc_state*, void*);
+void sdc_poststep_hook(void*, sdc_state*, void*);
+END_EXTERN_C
+
+
 using namespace std;
 
 /*
@@ -26,14 +32,17 @@ using namespace std;
  */
 
 typedef struct {
-  const BoxArray* ba;
-  IntVect rr;
+  const BoxArray *ba, *fine_ba;
+  IntVect crse_ratio;
   int ncomp, ngrow, level, finest;
+  RNS *rns;
 } RNSEncapCtx;
 
 typedef struct {
   MultiFab* U;
   FluxRegister* flux;
+  RNS* rns;
+  int type;
 } RNSEncap;
 
 /*
@@ -72,8 +81,8 @@ public:
   // 		       bool initial = false);
 };
 
-#ifdef ZMQ
-void dzmq_send_mf(MultiFab& U, int level, int comp, int wait);
+#ifdef GP
+void dgp_send_mf(MultiFab& U, int level, int comp, int wait);
 #endif
 
 #endif
