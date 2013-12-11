@@ -20,8 +20,6 @@ module eos_module
 
   logical, save, private :: initialized = .false.
 
-  logical, parameter :: eos_is_simple = .true.
-
 contains
 
   subroutine eos_init(small_temp, small_dens, gamma_in, Tref_in)
