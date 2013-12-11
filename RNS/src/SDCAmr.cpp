@@ -427,7 +427,7 @@ SDCAmr::SDCAmr ()
   if (!ppsdc.query("nnodes0",   nnodes0))   nnodes0 = 3;
   if (!ppsdc.query("trat",      trat))      trat = 2;
 
-  sdc_log_set_stdout(SDC_LOG_DEBUG);
+  // sdc_log_set_stdout(SDC_LOG_DEBUG);
   sdc_mg_build(&mg, max_level+1);
   sdc_hooks_add(mg.hooks, SDC_HOOK_POST_TRANS, sdc_poststep_hook);
   // sdc_hooks_add(mg.hooks, SDC_HOOK_POST_FAS,   sdc_postfas_hook);
