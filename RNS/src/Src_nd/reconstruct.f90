@@ -2,7 +2,7 @@ module reconstruct_module
 
   use meth_params_module, only : ndim, NVAR, URHO, UMX, UMY, UMZ, UEDEN, UTEMP, &
        UFS, NSPEC, NCHARV, CFS, do_component_weno
-  use weno_module, only : weno5
+  use weno_module, only : weno5, vweno5
   use eos_module, only : eos_given_ReY, eos_get_eref
 
   implicit none
@@ -66,7 +66,8 @@ contains
     double precision, intent(out), dimension( UGlo: UGhi,NVAR), optional :: UG1, UG2
 
     integer :: i, n, iextra
-    double precision, dimension(NVAR) :: vp, vm, vg1, vg2
+    double precision, dimension(lo-1:hi+1) :: vp, vm
+    double precision, dimension(lo  :hi  ) :: vg1, vg2
     double precision :: rhoE(Ulo:Uhi), rho, rhoInv, Y(nspec)
     logical :: do_gauss, do_face
 
@@ -101,52 +102,67 @@ contains
 
     end do
 
-    do i = lo-iextra, hi+iextra
+    if (do_face .and. do_gauss) then
 
-       if (do_face .and. do_gauss) then
-          do n=1,NVAR
-             if (n.eq.UEDEN) then
-                call weno5(rhoE(i-2:i+2), vp(n), vm(n), vg1(n), vg2(n))
-             else
-                call weno5(U(i-2:i+2,n), vp(n), vm(n), vg1(n), vg2(n))
-             end if
+       do n=1,NVAR
+          if (n.eq.UEDEN) then
+             call vweno5(lo-1,hi+1, rhoE,Ulo,Uhi, lo,hi, vp,vm, vg1,vg2)
+          else
+             call vweno5(lo-1,hi+1, U(:,n),Ulo,Uhi, lo,hi, vp,vm,vg1,vg2)
+          end if
+
+          do i=lo, hi+1
+             UL(i,n) = vp(i-1)
+             UR(i,n) = vm(i)
           end do
-       else if (do_face) then
-          do n=1,NVAR
-             if (n.eq.UEDEN) then
-                call weno5(rhoE(i-2:i+2), vp=vp(n), vm=vm(n))
-             else
-                call weno5(U(i-2:i+2,n), vp=vp(n), vm=vm(n))
-             end if
+
+          do i=lo, hi
+             UG1(i,n) = vg1(i)
+             UG2(i,n) = vg2(i)
           end do
-       else  ! do_gauss
-          do n=1,NVAR
-             if (n.eq.UEDEN) then
-                call weno5(rhoE(i-2:i+2), vg1=vg1(n), vg2=vg2(n))
-             else
-                call weno5(U(i-2:i+2,n), vg1=vg1(n), vg2=vg2(n))
-             end if
+       end do
+
+    else if (do_face) then
+
+       do n=1,NVAR
+          if (n.eq.UEDEN) then
+             call vweno5(lo-1,hi+1, rhoE,Ulo,Uhi, lo,hi, vp=vp,vm=vm)
+          else
+             call vweno5(lo-1,hi+1, U(:,n),Ulo,Uhi, lo,hi, vp=vp,vm=vm)
+          end if
+
+          do i=lo, hi+1
+             UL(i,n) = vp(i-1)
+             UR(i,n) = vm(i)
           end do
-       end if
+       end do
 
-       if (do_face .and. i.ne.hi+1) then
-          call normalize(vp)
-          UL(i+1,:) = vp
-       end if
+    else ! do_gauss
 
-       if (do_face .and. i.ne.lo-1) then
-          call normalize(vm)
-          UR(i,:) = vm
-       end if
+       do n=1,NVAR
+          if (n.eq.UEDEN) then
+             call vweno5(lo,hi, rhoE,Ulo,Uhi, lo,hi, vg1=vg1,vg2=vg2)
+          else
+             call vweno5(lo,hi, U(:,n),Ulo,Uhi, lo,hi, vg1=vg1,vg2=vg2)
+          end if
 
-       if (do_gauss .and. i.ne.lo-1 .and. i.ne. hi+1) then
-          call normalize(vg1)
-          UG1(i,:) = vg1
-          call normalize(vg2)
-          UG2(i,:) = vg2
-       end if
+          do i=lo, hi
+             UG1(i,n) = vg1(i)
+             UG2(i,n) = vg2(i)
+          end do
+       end do
 
-    end do
+    end if
+
+    if (do_face) then
+       call normalize(lo,hi+1, UL, ULRlo,ULRhi)
+       call normalize(lo,hi+1, UR, ULRlo,ULRhi)
+    end if
+
+    if (do_gauss) then
+       call normalize(lo,hi, UG1, UGlo,UGhi)
+       call normalize(lo,hi, UG2, UGlo,UGhi)
+    end if
 
   end subroutine reconstruct_comp
     
@@ -528,13 +544,27 @@ contains
   end subroutine set_vel
 
 
-  subroutine normalize(v)
-    double precision, intent(inout) :: v(NVAR)
+  subroutine normalize(lo,hi,U,Ulo,Uhi)
+    integer, intent(in) :: lo, hi, Ulo, Uhi
+    double precision, intent(inout) :: U(Ulo:Uhi,NVAR)
+
+    integer :: i, n
     double precision :: rhoInv, Y(nspec)
-    v(URHO) = sum(v(UFS:UFS+nspec-1))
-    rhoInv = 1.d0/v(URHO)
-    Y = v(UFS:UFS+nspec-1) * rhoInv
-    v(UEDEN) = v(UEDEN) + eos_get_eref(Y)*v(URHO)
+    
+    do i=lo,hi
+       U(i,URHO) = 0.d0
+       do n=1, nspec
+          Y(n) = U(i,UFS+n-1)
+          U(i,URHO) = U(i,URHO) + Y(n)
+       end do
+       rhoInv = 1.d0/U(i,URHO)
+
+       do n=1, nspec
+          Y(n) = Y(n) * rhoInv
+       end do
+       
+       U(i,UEDEN) = U(i,UEDEN) + eos_get_eref(Y)*U(i,URHO)
+    end do
   end subroutine normalize
 
 end module reconstruct_module

@@ -5861,10 +5861,12 @@ HeatTransfer::advance (Real time,
         MultiFab& divu_new = get_new_data(Divu_Type);
         MultiFab& divu_old = get_old_data(Divu_Type);
         MultiFab& dsdt_old = get_old_data(Dsdt_Type);
+
+        std::vector< std::pair<int,Box> > isects;
             
         for (MFIter mfi(divu_new); mfi.isValid();++mfi)
         {
-            std::vector< std::pair<int,Box> > isects = crsndgrids.intersections(mfi.validbox());
+            isects = crsndgrids.intersections(mfi.validbox());
 
             for (int i = 0, N = isects.size(); i < N; i++)
             {
