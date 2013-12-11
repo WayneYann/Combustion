@@ -21,6 +21,7 @@ CHEMISTRY_MODEL = LIDRYER
 # Is this a convergence test?  For convergence tests, T is computed to higher accuracy,
 # and iterative routines in EGLIB are not used. 
 CONVERGENCE = FALSE
+CONVERGENCE = TRUE
 
 Bpack   := ./Make.package
 Blocs   := .
