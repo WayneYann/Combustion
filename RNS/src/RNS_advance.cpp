@@ -396,14 +396,18 @@ void sdc_f1eval(void *Fp, void *Qp, double t, sdc_state *state, void *ctx)
 	 << "  level: " << rns.Level() << ", node: " << state->node << endl;
   }
 
+  // // XXX: need to dig down and get fine flux register
+  // SDCAmr& amr = dynamic_cast<SDCAmr&>(rns.getLevel(rns.Level()+1));
+
   if (F.flux != NULL)
     F.flux->setVal(0.0);
 
   rns.dUdt_AD(U, Uprime, t, RNS::use_FillBoundary, 0, F.flux, 1.0);
-  if (state->node > 0) {
-    dgp_send_mf(U, 0, 0, 0);
-    dgp_send_mf(Uprime, 2, 0, 1);
-  }
+
+  // if (state->node > 0) {
+  //   dgp_send_mf(U, 0, 0, 0);
+  //   dgp_send_mf(Uprime, 2, 0, 1);
+  // }
 }
 
 //

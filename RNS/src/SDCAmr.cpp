@@ -207,18 +207,23 @@ void mlsdc_amr_restrict(void *Fp, void *Gp, sdc_state *state, void *ctxF, void *
   RNSEncap& G      = *((RNSEncap*) Gp);
   MultiFab& UF     = *F.U;
   MultiFab& UG     = *G.U;
+  RNS&      levelF = *((RNS*) ctxF);
   RNS&      levelG = *((RNS*) ctxG);
 
   BL_ASSERT(G.type==SDC_SOLUTION || G.type==SDC_TAU);
 
-  if (G.type == SDC_TAU) {
-    dgp_send_mf(UG, 0, 0, 0);
-    dgp_send_mf(UF, 1, 0, 0);
-  }
+  // if (G.type == SDC_TAU) {
+  //   dgp_send_mf(UG, 0, 0, 0);
+  //   dgp_send_mf(UF, 1, 0, 0);
+  // }
 
   if (G.type == SDC_TAU) {
+    // IntVect crse_ratio = levelF.refRatio(levelG.Level());
     FluxRegister& flxF = *F.flux;
+    // FluxRegister& flxG = new FluxRegister(UF.boxArray(), crse_ratio, levelF.Level(), UF.nComp());
+
     flxF.Reflux(UG, levelG.Volume(), 1.0, 0, 0, UG.nComp(), levelG.Geom());
+
     // flxF.Reflux(UG, levelG.Volume(), -1.0, 0, 0, UG.nComp(), levelG.Geom());
     // dzmq_send_mf(UG, 1, 0, 0);
   }
@@ -227,8 +232,8 @@ void mlsdc_amr_restrict(void *Fp, void *Gp, sdc_state *state, void *ctxF, void *
   if (G.type == SDC_SOLUTION)
     levelG.fill_boundary(UG, state->t, RNS::use_FillBoundary);
 
-  if (G.type == SDC_TAU)
-    dgp_send_mf(UG, 2, 0, 1);
+  // if (G.type == SDC_TAU)
+  //   dgp_send_mf(UG, 2, 0, 1);
 
 
 #ifndef NDEBUG
