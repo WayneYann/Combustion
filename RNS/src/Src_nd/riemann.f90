@@ -82,7 +82,7 @@ contains
 
 
   subroutine compute_flux_and_alpha(lo, hi, U, F, ap, am, dir)
-    use eos_module, only : eos_given_ReY
+    use eos_module, only : eos_is_simple, eos_given_ReY, eos_given_RTY
     integer, intent(in) :: lo, hi
     integer, intent(in), optional :: dir
     double precision, intent(in   ) ::  U(lo:hi+1,NVAR)
@@ -119,13 +119,16 @@ contains
        rhoInv = 1.0d0/rho
        v      = m*rhoInv
        T      = U(i,UTEMP)
-       
-       ek = 0.5d0*(v(1)*v(1) + v(2)*v(2) + v(3)*v(3))
-       e  = rhoE*rhoInv - ek
 
        Y = U(i,UFS:UFS+NSPEC-1)*rhoInv
 
-       call eos_given_ReY(p,c,gamc,T,dpdr,dpde,rho,e,Y)
+       if (eos_is_simple) then
+          ek = 0.5d0*(v(1)*v(1) + v(2)*v(2) + v(3)*v(3))
+          e  = rhoE*rhoInv - ek
+          call eos_given_ReY(p,c,gamc,T,dpdr,dpde,rho,e,Y)
+       else
+          call eos_given_RTY(e, p, c, dpdr, dpde, rho, T, Y)
+       end if
 
        vn = v(idir)
 

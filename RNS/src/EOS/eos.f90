@@ -14,6 +14,8 @@ module eos_module
 
   logical, save, private :: initialized = .false.
 
+  logical, parameter :: eos_is_simple = .false.
+
   private :: nspecies, Ru, inv_mwt
 
 contains
