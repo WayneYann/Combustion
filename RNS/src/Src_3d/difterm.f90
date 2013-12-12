@@ -7,7 +7,7 @@ contains
 
   subroutine difterm(lo,hi,U,Ulo,Uhi,fx,fxlo,fxhi,fy,fylo,fyhi,fz,fzlo,fzhi,dxinv)
 
-    use meth_params_module, only : NVAR, NSPEC, QCVAR, QFVAR, QU, QV, QW
+    use meth_params_module, only : NVAR, NSPEC, QFVAR, QU, QV, QW
     use polyinterp_module, only : cc2zgauss_3d, cc2DzGauss_3d, cc2xyGauss_3d, &
          cc2xyGaussDx_3d, cc2xyGaussDy_3d
     use convert_3d_module, only : cellavg2cc_3d
@@ -22,13 +22,15 @@ contains
     double precision,intent(inout)::fy(fylo(1):fyhi(1),fylo(2):fyhi(2),fylo(3):fyhi(3),NVAR)
     double precision,intent(inout)::fz(fzlo(1):fzhi(1),fzlo(2):fzhi(2),fzlo(3):fzhi(3),NVAR)
 
-    integer :: n, g2lo(3), g2hi(3), tlo(3), thi(3), Qzclo(3), Qzchi(3)
+    integer :: n 
+    integer :: g2lo(3), g2hi(3) 
     double precision, allocatable :: Qcc(:,:,:,:)
     double precision, allocatable :: mucc(:,:,:),xicc(:,:,:),lamcc(:,:,:),Ddiacc(:,:,:,:)
+    integer :: QzGlo(3), QzGhi(3)
     double precision, allocatable, dimension(:,:,:,:) :: Qz1, Qz2, dveldz1, dveldz2
     double precision, allocatable, dimension(:,:,:) :: muz1, muz2, xiz1, xiz2, lamz1, lamz2
     double precision, allocatable, dimension(:,:,:,:) :: Ddiaz1, Ddiaz2
-    !
+    integer :: Qzclo(3), Qzchi(3)
     double precision, allocatable, dimension(:,:,:,:) :: Qzc1, Qzc2, Qzc3, Qzc4
     double precision, allocatable, dimension(:,:,:)   :: muzc1,  muzc2,  muzc3,  muzc4
     double precision, allocatable, dimension(:,:,:)   :: xizc1,  xizc2,  xizc3,  xizc4
@@ -55,48 +57,48 @@ contains
     call get_transport_properties(g2lo,g2hi, Qcc,g2lo,g2hi,QFVAR, &
          mucc,xicc,lamcc,Ddiacc, g2lo,g2hi)
 
-    tlo(1:2) = g2lo(1:2)
-    tlo(3) = lo(3)
-    thi(1:2) = g2hi(1:2)
-    thi(3) = hi(3)
+    QzGlo(1:2) = g2lo(1:2)
+    QzGlo(3) = lo(3)
+    QzGhi(1:2) = g2hi(1:2)
+    QzGhi(3) = hi(3)
 
-    allocate(   Qz1(tlo(1):thi(1),tlo(2):thi(2),tlo(3):thi(3),QFVAR))
-    allocate(  muz1(tlo(1):thi(1),tlo(2):thi(2),tlo(3):thi(3)))
-    allocate(  xiz1(tlo(1):thi(1),tlo(2):thi(2),tlo(3):thi(3)))
-    allocate( lamz1(tlo(1):thi(1),tlo(2):thi(2),tlo(3):thi(3)))
-    allocate(Ddiaz1(tlo(1):thi(1),tlo(2):thi(2),tlo(3):thi(3),NSPEC))
+    allocate(   Qz1(QzGlo(1):QzGhi(1),QzGlo(2):QzGhi(2),QzGlo(3):QzGhi(3),QFVAR))
+    allocate(  muz1(QzGlo(1):QzGhi(1),QzGlo(2):QzGhi(2),QzGlo(3):QzGhi(3)))
+    allocate(  xiz1(QzGlo(1):QzGhi(1),QzGlo(2):QzGhi(2),QzGlo(3):QzGhi(3)))
+    allocate( lamz1(QzGlo(1):QzGhi(1),QzGlo(2):QzGhi(2),QzGlo(3):QzGhi(3)))
+    allocate(Ddiaz1(QzGlo(1):QzGhi(1),QzGlo(2):QzGhi(2),QzGlo(3):QzGhi(3),NSPEC))
 
-    allocate(   Qz2(tlo(1):thi(1),tlo(2):thi(2),tlo(3):thi(3),QFVAR))
-    allocate(  muz2(tlo(1):thi(1),tlo(2):thi(2),tlo(3):thi(3)))
-    allocate(  xiz2(tlo(1):thi(1),tlo(2):thi(2),tlo(3):thi(3)))
-    allocate( lamz2(tlo(1):thi(1),tlo(2):thi(2),tlo(3):thi(3)))
-    allocate(Ddiaz2(tlo(1):thi(1),tlo(2):thi(2),tlo(3):thi(3),NSPEC))
+    allocate(   Qz2(QzGlo(1):QzGhi(1),QzGlo(2):QzGhi(2),QzGlo(3):QzGhi(3),QFVAR))
+    allocate(  muz2(QzGlo(1):QzGhi(1),QzGlo(2):QzGhi(2),QzGlo(3):QzGhi(3)))
+    allocate(  xiz2(QzGlo(1):QzGhi(1),QzGlo(2):QzGhi(2),QzGlo(3):QzGhi(3)))
+    allocate( lamz2(QzGlo(1):QzGhi(1),QzGlo(2):QzGhi(2),QzGlo(3):QzGhi(3)))
+    allocate(Ddiaz2(QzGlo(1):QzGhi(1),QzGlo(2):QzGhi(2),QzGlo(3):QzGhi(3),NSPEC))
 
-    allocate(dveldz1(tlo(1):thi(1),tlo(2):thi(2),tlo(3):thi(3),3))
-    allocate(dveldz2(tlo(1):thi(1),tlo(2):thi(2),tlo(3):thi(3),3))
+    allocate(dveldz1(QzGlo(1):QzGhi(1),QzGlo(2):QzGhi(2),QzGlo(3):QzGhi(3),3))
+    allocate(dveldz2(QzGlo(1):QzGhi(1),QzGlo(2):QzGhi(2),QzGlo(3):QzGhi(3),3))
 
-    call cc2zgauss_3d(tlo,thi,  mucc, g2lo,g2hi,  muz1,  muz2, tlo,thi)
-    call cc2zgauss_3d(tlo,thi,  xicc, g2lo,g2hi,  xiz1,  xiz2, tlo,thi)
-    call cc2zgauss_3d(tlo,thi, lamcc, g2lo,g2hi, lamz1, lamz2, tlo,thi)
+    call cc2zgauss_3d(QzGlo,QzGhi,  mucc, g2lo,g2hi,  muz1,  muz2, QzGlo,QzGhi)
+    call cc2zgauss_3d(QzGlo,QzGhi,  xicc, g2lo,g2hi,  xiz1,  xiz2, QzGlo,QzGhi)
+    call cc2zgauss_3d(QzGlo,QzGhi, lamcc, g2lo,g2hi, lamz1, lamz2, QzGlo,QzGhi)
     do n=1,NSPEC
-       call cc2zgauss_3d(tlo,thi, Ddiacc(:,:,:,n), g2lo,g2hi, &
-            Ddiaz1(:,:,:,n), Ddiaz2(:,:,:,n), tlo,thi)
+       call cc2zgauss_3d(QzGlo,QzGhi, Ddiacc(:,:,:,n), g2lo,g2hi, &
+            Ddiaz1(:,:,:,n), Ddiaz2(:,:,:,n), QzGlo,QzGhi)
     end do
 
     do n=1,QFVAR
-       call cc2zgauss_3d(tlo,thi, Qcc(:,:,:,n), g2lo,g2hi, &
-            Qz1(:,:,:,n), Qz2(:,:,:,n), tlo,thi)
+       call cc2zgauss_3d(QzGlo,QzGhi, Qcc(:,:,:,n), g2lo,g2hi, &
+            Qz1(:,:,:,n), Qz2(:,:,:,n), QzGlo,QzGhi)
     end do
 
     do n=1,3
-       call cc2DzGauss_3d(tlo,thi, Qcc(:,:,:,QU+n-1), g2lo,g2hi, &
-            dveldz1(:,:,:,n), dveldz2(:,:,:,n), tlo,thi)
+       call cc2DzGauss_3d(QzGlo,QzGhi, Qcc(:,:,:,QU+n-1), g2lo,g2hi, &
+            dveldz1(:,:,:,n), dveldz2(:,:,:,n), QzGlo,QzGhi)
     end do
 
-    call diff_xy(lo,hi, dveldz1, Qz1, muz1, xiz1, lamz1, Ddiaz1, tlo, thi, &
+    call diff_xy(lo,hi, dveldz1, Qz1, muz1, xiz1, lamz1, Ddiaz1, QzGlo, QzGhi, &
          fx, fxlo, fxhi, fy, fylo, fyhi, dxinv)
 
-    call diff_xy(lo,hi, dveldz2, Qz2, muz2, xiz2, lamz2, Ddiaz2, tlo, thi, &
+    call diff_xy(lo,hi, dveldz2, Qz2, muz2, xiz2, lamz2, Ddiaz2, QzGlo, QzGhi, &
          fx, fxlo, fxhi, fy, fylo, fyhi, dxinv)
 
     deallocate(Qz1,Qz2,dveldz1,dveldz2)
@@ -153,7 +155,7 @@ contains
     call cc2xyGauss_3d(Qzclo,Qzchi,lamcc,g2lo,g2hi,lamzc1,lamzc2,lamzc3,lamzc4,Qzclo,Qzchi)
     do n=1,nspec
        call cc2xyGauss_3d(Qzclo,Qzchi,Ddiacc(:,:,:,n),g2lo,g2hi, &
-            Qzc1(:,:,:,n),Qzc2(:,:,:,n),Qzc3(:,:,:,n),Qzc4(:,:,:,n),Qzclo,Qzchi)
+            Ddiazc1(:,:,:,n),Ddiazc2(:,:,:,n),Ddiazc3(:,:,:,n),Ddiazc4(:,:,:,n),Qzclo,Qzchi)
     end do
 
     ! du/dx
@@ -197,7 +199,6 @@ contains
        fx, fxlo, fxhi, fy, fylo, fyhi, dxinv)
     
     use meth_params_module, only : NVAR, NSPEC, QCVAR, QFVAR, QU, QV
-    use convert_3d_module, only : cellavg2cc_3d
     use polyinterp_module, only : cc2xface_2d, cc2yface_2d, cc2DxYface_2d, cc2DyXface_2d
 
     integer, intent(in) :: lo(3), hi(3), qlo(3), qhi(3), fxlo(3), fxhi(3), fylo(3), fyhi(3)
@@ -211,14 +212,17 @@ contains
     double precision,intent(inout)::    fx(fxlo(1):fxhi(1),fxlo(2):fxhi(2),fxlo(3):fxhi(3),NVAR)
     double precision,intent(inout)::    fy(fylo(1):fyhi(1),fylo(2):fyhi(2),fylo(3):fyhi(3),NVAR)
 
-    double precision, allocatable :: Qc1(:,:,:), Qc2(:,:,:), Qf1(:,:,:), Qf2(:,:,:)
-    double precision, allocatable :: dveldz1(:,:,:), dveldz2(:,:,:)
-    double precision, allocatable :: dveldt1(:,:,:), dveldt2(:,:,:)  ! dt means dx or dy
+    integer :: k, n
+    integer :: g2lo(2), g2hi(2)
+    double precision, allocatable :: Qc1(:,:,:), Qc2(:,:,:)
+    double precision, allocatable :: tmp1(:,:), tmp2(:,:)
+    integer :: Qflo(2), Qfhi(2)
+    double precision, allocatable :: Qf1(:,:,:), Qf2(:,:,:)
     double precision, dimension(:,:), allocatable :: mu1, mu2, xi1, xi2, lam1, lam2
     double precision, dimension(:,:,:), allocatable :: Ddia1, Ddia2
-    double precision, allocatable :: tmp1(:,:), tmp2(:,:)
-    integer :: k, n
-    integer :: g2lo(2), g2hi(2), Qflo(2), Qfhi(2), flo(2), fhi(2)
+    double precision, allocatable :: dveldz1(:,:,:), dveldz2(:,:,:)
+    double precision, allocatable :: dveldt1(:,:,:), dveldt2(:,:,:)  ! dt means dx or dy
+    integer :: tlo(2), thi(2)
     double precision, parameter :: fac = 0.25d0 ! due to Gauss quadrature
 
     g2lo = lo(1:2)-2  
@@ -265,18 +269,15 @@ contains
             tmp1, tmp2, g2lo, g2hi)
        do n=1,NSPEC
           call cc2xface_2d(lo(1:2),hi(1:2),Ddia(:,:,k,n),qlo(1:2),qhi(1:2), &
-               Ddia1(:,:,n),Ddia2(:,:,n),Qflo,Qfhi,&
-               tmp1, tmp2, g2lo, g2hi)
+               Ddia1(:,:,n),Ddia2(:,:,n),Qflo,Qfhi, tmp1, tmp2, g2lo, g2hi)
        end do
 
        ! dU/dz
        call cc2xface_2d(lo(1:2),hi(1:2),dveldz(:,:,k,1),qlo(1:2),qhi(1:2), &
-            dveldz1(:,:,1),dveldz2(:,:,1),Qflo,Qfhi,&
-            tmp1, tmp2, g2lo, g2hi)
+            dveldz1(:,:,1),dveldz2(:,:,1),Qflo,Qfhi, tmp1, tmp2, g2lo, g2hi)
        ! dW/dz
        call cc2xface_2d(lo(1:2),hi(1:2),dveldz(:,:,k,3),qlo(1:2),qhi(1:2), &
-            dveldz1(:,:,2),dveldz2(:,:,2),Qflo,Qfhi,&
-            tmp1, tmp2, g2lo, g2hi)
+            dveldz1(:,:,2),dveldz2(:,:,2),Qflo,Qfhi, tmp1, tmp2, g2lo, g2hi)
 
        ! cell-center => Qc: center-in-x and Gauss-point-in-y 
        !                Qf: xface and Gauss-point-in-y
@@ -287,25 +288,22 @@ contains
        end do
        do n=QCVAR+1,QFVAR
           call cc2xface_2d(lo(1:2),hi(1:2), Q(:,:,k,n), qlo(1:2),qhi(1:2), &
-               Qf1(:,:,n), Qf2(:,:,n), Qflo, Qfhi, &
-               tmp1, tmp2, g2lo, g2hi)
+               Qf1(:,:,n), Qf2(:,:,n), Qflo, Qfhi, tmp1, tmp2, g2lo, g2hi)
        end do
 
        ! cell-average of ? => xface & Gauss-point-in-y of d?/dy
        call cc2DyXface_2d(lo(1:2),hi(1:2), Q(:,:,k,QU), qlo(1:2), qhi(1:2), &
-            dveldt1(:,:,1), dveldt2(:,:,1), Qflo, Qfhi, &
-            tmp1, tmp2, g2lo, g2hi)
+            dveldt1(:,:,1), dveldt2(:,:,1), Qflo, Qfhi, tmp1, tmp2, g2lo, g2hi)
        call cc2DyXface_2d(lo(1:2),hi(1:2), Q(:,:,k,QV), qlo(1:2), qhi(1:2), &
-            dveldt1(:,:,2), dveldt2(:,:,2), Qflo, Qfhi, &
-            tmp1, tmp2, g2lo, g2hi)
+            dveldt1(:,:,2), dveldt2(:,:,2), Qflo, Qfhi, tmp1, tmp2, g2lo, g2hi)
 
-       flo = lo(1:2)
-       fhi(1) = hi(1)+1
-       fhi(2) = hi(2)
-       call comp_diff_flux_x(flo, fhi, k, fx, fxlo, fxhi, &
+       tlo = lo(1:2)
+       thi(1) = hi(1)+1
+       thi(2) = hi(2)
+       call comp_diff_flux_x(tlo, thi, k, fx, fxlo, fxhi, &
             Qf1, mu1, xi1, lam1, Ddia1, dveldt1, dveldz1, Qflo, Qfhi, &
             Qc1, g2lo, g2hi, dxinv, fac)
-       call comp_diff_flux_x(flo, fhi, k, fx, fxlo, fxhi, &
+       call comp_diff_flux_x(tlo, thi, k, fx, fxlo, fxhi, &
             Qf2, mu2, xi2, lam2, Ddia2, dveldt2, dveldz2, Qflo, Qfhi, &
             Qc2, g2lo, g2hi, dxinv, fac)
 
@@ -320,18 +318,15 @@ contains
             tmp1, tmp2, g2lo, g2hi)
        do n=1,NSPEC
           call cc2yface_2d(lo(1:2),hi(1:2),Ddia(:,:,k,n),qlo(1:2),qhi(1:2), &
-               Ddia1(:,:,n),Ddia2(:,:,n),Qflo,Qfhi,&
-               tmp1, tmp2, g2lo, g2hi)
+               Ddia1(:,:,n),Ddia2(:,:,n),Qflo,Qfhi, tmp1, tmp2, g2lo, g2hi)
        end do
 
        ! dU/dz
        call cc2yface_2d(lo(1:2),hi(1:2),dveldz(:,:,k,1),qlo(1:2),qhi(1:2), &
-            dveldz1(:,:,1),dveldz2(:,:,1),Qflo,Qfhi,&
-            tmp1, tmp2, g2lo, g2hi)
+            dveldz1(:,:,1),dveldz2(:,:,1),Qflo,Qfhi, tmp1, tmp2, g2lo, g2hi)
        ! dV/dz
        call cc2yface_2d(lo(1:2),hi(1:2),dveldz(:,:,k,2),qlo(1:2),qhi(1:2), &
-            dveldz1(:,:,2),dveldz2(:,:,2),Qflo,Qfhi,&
-            tmp1, tmp2, g2lo, g2hi)
+            dveldz1(:,:,2),dveldz2(:,:,2),Qflo,Qfhi, tmp1, tmp2, g2lo, g2hi)
 
        ! cell-center => Qc: center-in-y and Gauss-point-in-x
        !                Qf: yface and Gauss-point-in-x
@@ -342,25 +337,22 @@ contains
        end do
        do n=QCVAR+1,QFVAR
           call cc2yface_2d(lo(1:2),hi(1:2), Q(:,:,k,n), qlo(1:2),qhi(1:2), &
-               Qf1(:,:,n), Qf2(:,:,n), Qflo, Qfhi, &
-               tmp1, tmp2, g2lo, g2hi)
+               Qf1(:,:,n), Qf2(:,:,n), Qflo, Qfhi, tmp1, tmp2, g2lo, g2hi)
        end do
 
        ! cell-average of ? => yface & Gauss-point-in-x of d?/dx
        call cc2DxYface_2d(lo(1:2),hi(1:2), Q(:,:,k,QU), qlo(1:2), qhi(1:2), &
-            dveldt1(:,:,1), dveldt2(:,:,1), Qflo, Qfhi, &
-            tmp1, tmp2, g2lo, g2hi)
+            dveldt1(:,:,1), dveldt2(:,:,1), Qflo, Qfhi, tmp1, tmp2, g2lo, g2hi)
        call cc2DxYface_2d(lo(1:2),hi(1:2), Q(:,:,k,QV), qlo(1:2), qhi(1:2), &
-            dveldt1(:,:,2), dveldt2(:,:,2), Qflo, Qfhi, &
-            tmp1, tmp2, g2lo, g2hi)
+            dveldt1(:,:,2), dveldt2(:,:,2), Qflo, Qfhi, tmp1, tmp2, g2lo, g2hi)
 
-       flo = lo(1:2)
-       fhi(1) = hi(1)
-       fhi(2) = hi(2)+1
-       call comp_diff_flux_y(flo, fhi, k, fy, fylo, fyhi, &
+       tlo = lo(1:2)
+       thi(1) = hi(1)
+       thi(2) = hi(2)+1
+       call comp_diff_flux_y(tlo, thi, k, fy, fylo, fyhi, &
             Qf1, mu1, xi1, lam1, Ddia1, dveldt1, dveldz1, Qflo, Qfhi, &
             Qc1, g2lo, g2hi, dxinv, fac)
-       call comp_diff_flux_y(flo, fhi, k, fy, fylo, fyhi, &
+       call comp_diff_flux_y(tlo, thi, k, fy, fylo, fyhi, &
             Qf2, mu2, xi2, lam2, Ddia2, dveldt2, dveldz2, Qflo, Qfhi, &
             Qc2, g2lo, g2hi, dxinv, fac)
 

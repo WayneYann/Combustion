@@ -65,9 +65,6 @@ contains
           uc2(i,j) = cg2(-2)*u(i,j-2)+cg2(-1)*u(i,j-1)+cg2(0)*u(i,j) &
                +     cg2( 1)*u(i,j+1)+cg2( 2)*u(i,j+2)          
        end do
-    end do
-
-    do    j=lo(2),hi(2)
        do i=lo(1),hi(1)+1
           uf1(i,j) = -0.0625d0*(uc1(i-2,j)+uc1(i+1,j)) + 0.5625d0*(uc1(i-1,j)+uc1(i,j))
           uf2(i,j) = -0.0625d0*(uc2(i-2,j)+uc2(i+1,j)) + 0.5625d0*(uc2(i-1,j)+uc2(i,j))
@@ -98,11 +95,6 @@ contains
     do    j=lo(2),hi(2)+1
        do i=lo(1),hi(1)
           uf1(i,j) = -0.0625d0*(uc1(i,j-2)+uc1(i,j+1)) + 0.5625d0*(uc1(i,j-1)+uc1(i,j))
-       end do
-    end do
-
-    do    j=lo(2),hi(2)+1
-       do i=lo(1),hi(1)
           uf2(i,j) = -0.0625d0*(uc2(i,j-2)+uc2(i,j+1)) + 0.5625d0*(uc2(i,j-1)+uc2(i,j))
        end do
     end do
@@ -127,9 +119,6 @@ contains
           uc2(i,j) = dg2(-2)*u(i,j-2)+dg2(-1)*u(i,j-1)+dg2(0)*u(i,j) &
                +     dg2( 1)*u(i,j+1)+dg2( 2)*u(i,j+2)          
        end do
-    end do
-
-    do    j=lo(2),hi(2)
        do i=lo(1),hi(1)+1
           uf1(i,j) = -0.0625d0*(uc1(i-2,j)+uc1(i+1,j)) + 0.5625d0*(uc1(i-1,j)+uc1(i,j))
           uf2(i,j) = -0.0625d0*(uc2(i-2,j)+uc2(i+1,j)) + 0.5625d0*(uc2(i-1,j)+uc2(i,j))
@@ -161,11 +150,6 @@ contains
     do    j=lo(2),hi(2)+1
        do i=lo(1),hi(1)
           uf1(i,j) = -0.0625d0*(uc1(i,j-2)+uc1(i,j+1)) + 0.5625d0*(uc1(i,j-1)+uc1(i,j))
-       end do
-    end do
-
-    do    j=lo(2),hi(2)+1
-       do i=lo(1),hi(1)
           uf2(i,j) = -0.0625d0*(uc2(i,j-2)+uc2(i,j+1)) + 0.5625d0*(uc2(i,j-1)+uc2(i,j))
        end do
     end do
