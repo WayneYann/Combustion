@@ -598,7 +598,7 @@ contains
     call cc2zface_3d(lo,hi, mu,qlo,qhi, muf,Qflo,Qfhi)
     call cc2zface_3d(lo,hi, xi,qlo,qhi, xif,Qflo,Qfhi)
     call cc2zface_3d(lo,hi,lam,qlo,qhi,lamf,Qflo,Qfhi)    
-    do n=1,2
+    do n=1,nspec
        call cc2zface_3d(lo,hi,Ddia(:,:,:,n),qlo,qhi,Ddiaf(:,:,:,n),Qflo,Qfhi)
     end do
 
