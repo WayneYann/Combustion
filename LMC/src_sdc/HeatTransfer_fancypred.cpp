@@ -5239,7 +5239,6 @@ HeatTransfer::set_htt_hmixTYP ()
     {
         htt_hmixTYP = 0;
         std::vector< std::pair<int,Box> > isects;
-        isects.reserve(27);
         for (int k = 0; k <= finest_level; k++)
         {
             AmrLevel& ht = getLevel(k);
@@ -7435,8 +7434,6 @@ HeatTransfer::reflux ()
     // coarse grid cells which underlie fine grid cells.
     //
     std::vector< std::pair<int,Box> > isects;
-
-    isects.reserve(27);
 
     for (MFIter mfi(*Vsync); mfi.isValid(); ++mfi)
     {

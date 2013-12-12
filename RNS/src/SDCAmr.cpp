@@ -401,7 +401,7 @@ void SDCAmr::rebuild_mlsdc()
     sweepers[lev]->nset->encap = encaps[lev];
     sdc_mg_add_level(&mg, sweepers[lev], mlsdc_amr_interpolate, mlsdc_amr_restrict);
   }
-  mg.nsweeps[0] = 4;
+  // mg.nsweeps[0] = 4;
   // mg.nsweeps[1] = 2;
   sdc_mg_setup(&mg, 0);
   sdc_mg_allocate(&mg);

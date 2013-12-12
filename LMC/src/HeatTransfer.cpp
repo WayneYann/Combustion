@@ -5449,7 +5449,6 @@ HeatTransfer::set_htt_hmixTYP ()
     {
         htt_hmixTYP = 0;
         std::vector< std::pair<int,Box> > isects;
-        isects.reserve(27);
         for (int k = 0; k <= finest_level; k++)
         {
             AmrLevel& ht = getLevel(k);
@@ -6110,8 +6109,6 @@ HeatTransfer::advance (Real time,
 
         std::vector< std::pair<int,Box> > isects;
 
-        isects.reserve(27);
-            
         for (MFIter mfi(divu_new); mfi.isValid();++mfi)
         {
             crsndgrids.intersections(mfi.validbox(),isects);
@@ -6272,8 +6269,6 @@ HeatTransfer::set_overdetermined_boundary_cells (Real time)
     MultiFab t(grids,1,0,Fab_noallocate);
 
     std::vector< std::pair<int,Box> > isects;
-
-    isects.reserve(27);
 
     for (FillPatchIterator T_fpi(*this,t,nGrow,time,State_Type,Temp,1),
              RhoY_fpi(*this,t,nGrow,time,State_Type,Density,nspecies+1);
@@ -8640,8 +8635,6 @@ HeatTransfer::reflux ()
     // coarse grid cells which underlie fine grid cells.
     //
     std::vector< std::pair<int,Box> > isects;
-
-    isects.reserve(27);
 
     for (MFIter mfi(*Vsync); mfi.isValid(); ++mfi)
     {
