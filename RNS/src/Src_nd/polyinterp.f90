@@ -274,7 +274,7 @@ contains
     do k      =lo(3),hi(3)
        do j   =lo(2),hi(2)
 
-          do i=lo(1)-2,hi(1)-2
+          do i=lo(1)-2,hi(1)+2
              t1(i) = cg1(-2)*u(i,j-2,k)+cg1(-1)*u(i,j-1,k)+cg1(0)*u(i,j,k) &
                   +  cg1( 1)*u(i,j+1,k)+cg1( 2)*u(i,j+2,k)
              t2(i) = cg2(-2)*u(i,j-2,k)+cg2(-1)*u(i,j-1,k)+cg2(0)*u(i,j,k) &
@@ -314,9 +314,11 @@ contains
     do k      =lo(3),hi(3)
        do j   =lo(2),hi(2)
 
-          do i=lo(1)-2,hi(1)-2
+          do i=lo(1)-2,hi(1)+2
              t1(i) = dg1(-2)*u(i,j-2,k)+dg1(-1)*u(i,j-1,k)+dg1(0)*u(i,j,k) &
                   +  dg1( 1)*u(i,j+1,k)+dg1( 2)*u(i,j+2,k)
+          end do
+          do i=lo(1)-2,hi(1)+2
              t2(i) = dg2(-2)*u(i,j-2,k)+dg2(-1)*u(i,j-1,k)+dg2(0)*u(i,j,k) &
                   +  dg2( 1)*u(i,j+1,k)+dg2( 2)*u(i,j+2,k)
           end do
