@@ -345,7 +345,7 @@ contains
              beta_0(i) = 1.d0/(epsw+beta_0(i))**2
           end do
 
-          if (do_gauss .and. j.ne.lo(1)-1 .and. j.ne.hi(1)+1) then
+          if (do_gauss .and. j.ne.lo(2)-1 .and. j.ne.hi(2)+1) then
              do i=lo(1),hi(1)
                 alpha_2(i) = d_g1(-2)*beta_2(i)
                 alpha_1(i) = d_g1(-1)*beta_1(i)
@@ -425,7 +425,7 @@ contains
              beta_0(i) = 1.d0/(epsw+beta_0(i))**2
           end do
 
-          if (do_gauss .and. j.ne.lo(1)-1 .and. j.ne.hi(1)+1) then
+          if (do_gauss .and. k.ne.lo(3)-1 .and. k.ne.hi(3)+1) then
              do i=lo(1),hi(1)
                 alpha_2(i) = d_g1(-2)*beta_2(i)
                 alpha_1(i) = d_g1(-1)*beta_1(i)

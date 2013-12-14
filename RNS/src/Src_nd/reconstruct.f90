@@ -132,7 +132,7 @@ contains
        do n=1,NVAR
           if (n.eq.UEDEN) then
              call weno_3d(idir,lo,hi, rhoE,elo,ehi, ULRlo, ULRhi, UGlo, UGhi, &
-                  UL, UR, UG1, UG2)
+                  UL(:,:,:,n), UR(:,:,:,n), UG1(:,:,:,n), UG2(:,:,:,n))
           else
              call weno_3d(idir,lo,hi, U(:,:,:,n),Ulo,Uhi, ULRlo, ULRhi, UGlo, UGhi, &
                   UL(:,:,:,n), UR(:,:,:,n), UG1(:,:,:,n), UG2(:,:,:,n))
@@ -144,7 +144,7 @@ contains
        do n=1,NVAR
           if (n.eq.UEDEN) then
              call weno_3d(idir,lo,hi, rhoE,elo,ehi, ULRlo, ULRhi, UGlo, UGhi, &
-                  vp=UL, vm=UR)
+                  vp=UL(:,:,:,n), vm=UR(:,:,:,n))
           else
              call weno_3d(idir,lo,hi, U(:,:,:,n),Ulo,Uhi, ULRlo, ULRhi, UGlo, UGhi, &
                   vp=UL(:,:,:,n), vm=UR(:,:,:,n))
@@ -156,7 +156,7 @@ contains
        do n=1,NVAR
           if (n.eq.UEDEN) then
              call weno_3d(idir,lo,hi, rhoE,elo,ehi, ULRlo, ULRhi, UGlo, UGhi, &
-                  vg1=UG1, vg2=UG2)
+                  vg1=UG1(:,:,:,n), vg2=UG2(:,:,:,n))
           else
              call weno_3d(idir,lo,hi, U(:,:,:,n),Ulo,Uhi, ULRlo, ULRhi, UGlo, UGhi, &
                   vg1=UG1(:,:,:,n), vg2=UG2(:,:,:,n))
