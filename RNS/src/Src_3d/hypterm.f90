@@ -11,7 +11,7 @@ contains
   subroutine hypterm(lo,hi,U,Ulo,Uhi,fx,fxlo,fxhi,fy,fylo,fyhi,fz,fzlo,fzhi,dx)
 
     use meth_params_module, only : NVAR, difmag
-    use reconstruct_module, only : reconstruct
+    use reconstruct_module, only : reconstruct_3d
     use hypterm_xy_module, only : hypterm_xy
 
     integer, intent(in) :: lo(3), hi(3), Ulo(3), Uhi(3), fxlo(3), fxhi(3), &
@@ -22,48 +22,43 @@ contains
     double precision,intent(inout)::fy(fylo(1):fyhi(1),fylo(2):fyhi(2),fylo(3):fyhi(3),NVAR)
     double precision,intent(inout)::fz(fzlo(1):fzhi(1),fzlo(2):fzhi(2),fzlo(3):fzhi(3),NVAR)
 
-    integer :: tlo4(4), thi4(4), tlo(3), thi(3), i, j
+    integer :: Glo(3), Ghi(3), Flo(3), Fhi(3), tlo(3), thi(3)
     double precision, dimension(:,:,:,:), allocatable :: Ulz, URz, UG1z, UG2z
 
-    allocate( ULz(lo(1)-3:hi(1)+3,lo(2)-3:hi(2)+3,lo(3):hi(3)+1,NVAR))
-    allocate( URz(lo(1)-3:hi(1)+3,lo(2)-3:hi(2)+3,lo(3):hi(3)+1,NVAR))
-    allocate(UG1z(lo(1)-3:hi(1)+3,lo(2)-3:hi(2)+3,lo(3):hi(3)  ,NVAR))
-    allocate(UG2z(lo(1)-3:hi(1)+3,lo(2)-3:hi(2)+3,lo(3):hi(3)  ,NVAR))
+    Glo(1:2) = lo(1:2)-3
+    Glo(3)   = lo(3)
+    Ghi(1:2) = hi(1:2)+3
+    Ghi(3)   = hi(3)
+
+    Flo(1:2) = lo(1:2)-3
+    Flo(3)   = lo(3)
+    Fhi(1:2) = hi(1:2)+3
+    Fhi(3)   = hi(3)  +1    
+
+    allocate( ULz(Flo(1):Fhi(1),Flo(2):Fhi(2),Flo(3):Fhi(3),NVAR))
+    allocate( URz(Flo(1):Fhi(1),Flo(2):Fhi(2),Flo(3):Fhi(3),NVAR))
+    allocate(UG1z(Glo(1):Ghi(1),Glo(2):Ghi(2),Glo(3):Ghi(3),NVAR))
+    allocate(UG2z(Glo(1):Ghi(1),Glo(2):Ghi(2),Glo(3):Ghi(3),NVAR))
 
     ! Given cell averages, reconstruct in z-direction
     ! Note that they are still averges in x and y-direction
-    do j=lo(2)-3,hi(2)+3
-    do i=lo(1)-3,hi(1)+3
-       call reconstruct(lo(3),hi(3), &
-            Ulo(3),Uhi(3),   &  ! for U
-            lo (3), hi(3)+1, &  ! for UL & UR
-            lo (3), hi(3),   &  ! for UG1 & UG2
-            0,0,             &  ! U0 is not present
-            U(i,j,:,:), &
-            UL=ULz(i,j,:,:), UR=URz(i,j,:,:),  &
-            UG1=UG1z(i,j,:,:), UG2=UG2z(i,j,:,:), &
-            dir=3)
-    end do
-    end do
+    call reconstruct_3d(3, Glo, Ghi, &
+         Ulo, Uhi,   &  ! for U
+         Flo, Fhi,   &  ! for UL & UR
+         Glo, Ghi,   &  ! for UG1 & UG2
+         Ulo, Ulo,   &  ! U0 is not present
+         U,          &
+         UL=ULz, UR=URz,  &
+         UG1=UG1z, UG2=UG2z)
 
-    tlo4 = lbound(UG1z)
-    thi4 = ubound(UG1z)
-    tlo = tlo4(1:3)
-    thi = thi4(1:3)
-
-    call hypterm_xy(0.5d0,lo,hi,UG1z,tlo,thi,fx,fxlo,fxhi,fy,fylo,fyhi,dx, &
+    call hypterm_xy(0.5d0,lo,hi,UG1z,Glo,Ghi,fx,fxlo,fxhi,fy,fylo,fyhi,dx, &
          Ulo,Uhi,U)
-    call hypterm_xy(0.5d0,lo,hi,UG2z,tlo,thi,fx,fxlo,fxhi,fy,fylo,fyhi,dx, &
+    call hypterm_xy(0.5d0,lo,hi,UG2z,Glo,Ghi,fx,fxlo,fxhi,fy,fylo,fyhi,dx, &
          Ulo,Uhi,U)
 
     deallocate(UG1z,UG2z)
 
-    tlo4 = lbound(ULz)
-    thi4 = ubound(ULz)
-    tlo = tlo4(1:3)
-    thi = thi4(1:3)
-
-    call hypterm_z(lo,hi,U,Ulo,Uhi,ULz,URz,tlo,thi,fz,fzlo,fzhi,dx)
+    call hypterm_z(lo,hi,U,Ulo,Uhi,ULz,URz,Flo,Fhi,fz,fzlo,fzhi,dx)
 
     deallocate(ULz,URz)
 
@@ -77,7 +72,7 @@ contains
   subroutine hypterm_z(lo,hi,U,Ulo,Uhi,UL,UR,zlo,zhi,fz,fzlo,fzhi,dx)
 
     use meth_params_module, only : NVAR
-    use reconstruct_module, only : reconstruct
+    use reconstruct_module, only : reconstruct_3d
     use riemann_module, only : riemann
 
     integer, intent(in) :: lo(3),hi(3),Ulo(3),Uhi(3),zlo(3),zhi(3),fzlo(3),fzhi(3)
@@ -87,113 +82,110 @@ contains
     double precision,intent(in   )::UR( zlo(1): zhi(1), zlo(2): zhi(2), zlo(3): zhi(3),NVAR)
     double precision,intent(inout)::fz(fzlo(1):fzhi(1),fzlo(2):fzhi(2),fzlo(3):fzhi(3),NVAR)
 
-    integer :: i,j,k,n
-    double precision, dimension(:,:,:,:), allocatable :: UL11,UL12,UL21,UL22,UR11,UR12,UR21,UR22
-    double precision, dimension(:,:,:), allocatable :: UG1y, UG2y
-    double precision, dimension(:,:), allocatable :: U0, flx
+    integer :: i,j,k,n, Flo(3), Fhi(3), Glo(3), Ghi(3), U0lo(3), U0hi(3)
+    double precision, dimension(:,:,:,:), allocatable :: UL1,UL2,UL3,UL4,UR1,UR2,UR3,UR4
+    double precision, dimension(:,:,:,:), allocatable :: UG1, UG2
+    double precision, dimension(:,:), allocatable :: flx
 
-    allocate(UL11(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3)+1,NVAR))
-    allocate(UL12(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3)+1,NVAR))
-    allocate(UL21(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3)+1,NVAR))
-    allocate(UL22(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3)+1,NVAR))
+    Flo = lo
+    Fhi(1:2) = hi(1:2)
+    Fhi(3)   = hi(3) + 1
 
-    allocate(UR11(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3)+1,NVAR))
-    allocate(UR12(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3)+1,NVAR))
-    allocate(UR21(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3)+1,NVAR))
-    allocate(UR22(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3)+1,NVAR))
+    Glo(1) = lo(1) - 2
+    Glo(2) = lo(2)
+    Glo(3) = lo(3)
+    Ghi(1) = hi(1) + 2
+    Ghi(2) = hi(2)
+    Ghi(3) = hi(3) + 1
 
-    allocate(UG1y(lo(1)-2:hi(1)+2,lo(2):hi(2),NVAR))
-    allocate(UG2y(lo(1)-2:hi(1)+2,lo(2):hi(2),NVAR))
+    allocate(UG1(Glo(1):Ghi(1),Glo(2):Ghi(2),Glo(3):Ghi(3),NVAR))
+    allocate(UG2(Glo(1):Ghi(1),Glo(2):Ghi(2),Glo(3):Ghi(3),NVAR))
 
-    allocate(U0(lo(1):hi(1),NVAR))
+    allocate(UL1(Flo(1):Fhi(1),Flo(2):Fhi(2),Flo(3):Fhi(3),NVAR))
+    allocate(UL2(Flo(1):Fhi(1),Flo(2):Fhi(2),Flo(3):Fhi(3),NVAR))
+    allocate(UL3(Flo(1):Fhi(1),Flo(2):Fhi(2),Flo(3):Fhi(3),NVAR))
+    allocate(UL4(Flo(1):Fhi(1),Flo(2):Fhi(2),Flo(3):Fhi(3),NVAR))
+
+    allocate(UR1(Flo(1):Fhi(1),Flo(2):Fhi(2),Flo(3):Fhi(3),NVAR))
+    allocate(UR2(Flo(1):Fhi(1),Flo(2):Fhi(2),Flo(3):Fhi(3),NVAR))
+    allocate(UR3(Flo(1):Fhi(1),Flo(2):Fhi(2),Flo(3):Fhi(3),NVAR))
+    allocate(UR4(Flo(1):Fhi(1),Flo(2):Fhi(2),Flo(3):Fhi(3),NVAR))
+
+    ! work on UL
+
+    U0lo(1:2) = Ulo(1:2)
+    U0lo(3)   = Ulo(3) + 1 ! hack: shift U to be used as base (i.e., U0))
+    U0hi(1:2) = Uhi(1:2)
+    U0hi(3)   = Uhi(3) + 1 ! hack
+
+    ! obtain Gauss points in y-direction
+    call reconstruct_3d(2, Glo, Ghi, &
+         zlo, zhi,   &  ! for input data array
+         lo, hi,     &  ! L & R not present
+         Glo, Ghi,   &  ! for G1 & G2
+         U0lo, U0hi, &  ! for U0
+         UL,  &
+         UG1=UG1, UG2=UG2, &
+         U0 = U)
+
+    ! obtain Gauss points in x-direction
+    call reconstruct_3d(1, Flo,Fhi, & 
+         Glo, Ghi(1), &  ! for input data array
+         lo, hi,      &  ! L & R not present
+         Flo, Fhi,    &  ! for G1 & G2
+         U0lo, U0hi,  &  ! for U0
+         UG1,  &
+         UG1=UL1, UG2=UL2, &
+         U0 = U)
+    call reconstruct_3d(1, Flo,Fhi, & 
+         Glo, Ghi(1), &  ! for input data array
+         lo, hi,      &  ! L & R not present
+         Flo, Fhi,    &  ! for G1 & G2
+         U0lo, U0hi,  &  ! for U0
+         UG2,  &
+         UG1=UL3, UG2=UL4, &
+         U0 = U)
+
+    ! work on UR
+
+    U0lo = Ulo
+    U0hi = Uhi
+
+    ! obtain Gauss points in y-direction
+    call reconstruct_3d(2, Glo, Ghi, &
+         zlo, zhi,   &  ! for input data array
+         lo, hi,     &  ! L & R not present
+         Glo, Ghi,   &  ! for G1 & G2
+         U0lo, U0hi, &  ! for U0
+         UR,  &
+         UG1=UG1, UG2=UG2, &
+         U0 = U)
+
+    ! obtain Gauss points in x-direction
+    call reconstruct_3d(1, Flo,Fhi, & 
+         Glo, Ghi(1), &  ! for input data array
+         lo, hi,      &  ! L & R not present
+         Flo, Fhi,    &  ! for G1 & G2
+         U0lo, U0hi,  &  ! for U0
+         UG1,  &
+         UG1=UR1, UG2=UR2, &
+         U0 = U)
+    call reconstruct_3d(1, Flo,Fhi, & 
+         Glo, Ghi(1), &  ! for input data array
+         lo, hi,      &  ! L & R not present
+         Flo, Fhi,    &  ! for G1 & G2
+         U0lo, U0hi,  &  ! for U0
+         UG2,  &
+         UG1=UR3, UG2=UR4, &
+         U0 = U)
 
     allocate(flx(lo(3):hi(3)+1,NVAR))
-
-    do k=lo(3),hi(3)+1
-       
-       ! ----- UL -----
-
-       ! obtain Gauss points in y-direction
-       do i=lo(1)-2,hi(1)+2
-          call reconstruct(lo(2),hi(2), & 
-               zlo(2),zhi(2),   &  ! for input data array
-               0,0,             &  ! L & R not present
-               lo (2), hi(2),   &  ! for G1 & G2
-               lo (2), hi(2),   &  ! for U0
-               UL(i,:,k,:), &
-               UG1=UG1y(i,:,:), UG2=UG2y(i,:,:), &
-               U0 = U(i,lo(2):hi(2),k-1,:), &
-               dir=2)
-       end do
-
-       ! obtain Gauss points in x-direction
-       do j=lo(2),hi(2)
-          U0 = U(lo(1):hi(1),j,k-1,:)
-          call reconstruct(lo(1),hi(1), & 
-               lo(1)-2,hi(1)+2, &  ! for input data array
-               0,0,             &  ! L & R not present
-               lo (1), hi(1),   &  ! for G1 & G2
-               lo (1), hi(1),   &  ! for U0
-               UG1y(:,j,:), &
-               UG1=UL11(:,j,k,:), UG2=UL12(:,j,k,:), &
-               U0 = U0, &
-               dir=1)          
-          call reconstruct(lo(1),hi(1), & 
-               lo(1)-2,hi(1)+2, &  ! for input data array
-               0,0,             &  ! L & R not present
-               lo (1), hi(1),   &  ! for G1 & G2
-               lo (1), hi(1),   &  ! for U0
-               UG2y(:,j,:), &
-               UG1=UL21(:,j,k,:), UG2=UL22(:,j,k,:), &
-               U0 = U0, &
-               dir=1)          
-       end do
-
-       ! ----- UR -----
-
-       ! obtain Gauss points in y-direction
-       do i=lo(1)-2,hi(1)+2
-          call reconstruct(lo(2),hi(2), & 
-               zlo(2),zhi(2),   &  ! for input data array
-               0,0,             &  ! L & R not present
-               lo (2), hi(2),   &  ! for G1 & G2
-               lo (2), hi(2),   &  ! for U0
-               UR(i,:,k,:), &
-               UG1=UG1y(i,:,:), UG2=UG2y(i,:,:), &
-               U0 = U(i,lo(2):hi(2),k,:), &
-               dir=2)
-       end do
-
-       ! obtain Gauss points in x-direction
-       do j=lo(2),hi(2)
-          U0 = U(lo(1):hi(1),j,k,:)
-          call reconstruct(lo(1),hi(1), & 
-               lo(1)-2,hi(1)+2, &  ! for input data array
-               0,0,             &  ! L & R not present
-               lo (1), hi(1),   &  ! for G1 & G2
-               lo (1), hi(1),   &  ! for U0
-               UG1y(:,j,:), &
-               UG1=UR11(:,j,k,:), UG2=UR12(:,j,k,:), &
-               U0 = U0, &
-               dir=1)          
-          call reconstruct(lo(1),hi(1), & 
-               lo(1)-2,hi(1)+2, &  ! for input data array
-               0,0,             &  ! L & R not present
-               lo (1), hi(1),   &  ! for G1 & G2
-               lo (1), hi(1),   &  ! for U0
-               UG2y(:,j,:), &
-               UG1=UR21(:,j,k,:), UG2=UR22(:,j,k,:), &
-               U0 = U0, &
-               dir=1)          
-       end do
-
-    end do
 
     do j=lo(2),hi(2)
        do i=lo(1),hi(1)
 
-          ! 11
-          call riemann(lo(3),hi(3), UL11(i,j,:,:), UR11(i,j,:,:), lo(3),hi(3)+1, &
+          ! 1
+          call riemann(lo(3),hi(3), UL1(i,j,:,:), UR1(i,j,:,:), lo(3),hi(3)+1, &
                flx, lo(3),hi(3)+1, dir=3)
           do n=1,NVAR
              do k=lo(3),hi(3)+1
@@ -201,8 +193,8 @@ contains
              end do
           end do
 
-          ! 12
-          call riemann(lo(3),hi(3), UL12(i,j,:,:), UR12(i,j,:,:), lo(3),hi(3)+1, &
+          ! 2
+          call riemann(lo(3),hi(3), UL2(i,j,:,:), UR2(i,j,:,:), lo(3),hi(3)+1, &
                flx, lo(3),hi(3)+1, dir=3)
           do n=1,NVAR
              do k=lo(3),hi(3)+1
@@ -210,8 +202,8 @@ contains
              end do
           end do
 
-          ! 21
-          call riemann(lo(3),hi(3), UL21(i,j,:,:), UR21(i,j,:,:), lo(3),hi(3)+1, &
+          ! 3
+          call riemann(lo(3),hi(3), UL3(i,j,:,:), UR3(i,j,:,:), lo(3),hi(3)+1, &
                flx, lo(3),hi(3)+1, dir=3)
           do n=1,NVAR
              do k=lo(3),hi(3)+1
@@ -219,8 +211,8 @@ contains
              end do
           end do
 
-          ! 22
-          call riemann(lo(3),hi(3), UL22(i,j,:,:), UR22(i,j,:,:), lo(3),hi(3)+1, &
+          ! 4
+          call riemann(lo(3),hi(3), UL4(i,j,:,:), UR4(i,j,:,:), lo(3),hi(3)+1, &
                flx, lo(3),hi(3)+1, dir=3)
           do n=1,NVAR
              do k=lo(3),hi(3)+1
@@ -231,7 +223,7 @@ contains
        end do
     end do
 
-    deallocate(UL11,UL12,UL21,UL22,UR11,UR12,UR21,UR22,UG1y,UG2y,U0,flx)
+    deallocate(UL1,UL2,UL3,UL4,UR1,UR2,UR3,UR4,UG1,UG2,flx)
 
   end subroutine hypterm_z
 

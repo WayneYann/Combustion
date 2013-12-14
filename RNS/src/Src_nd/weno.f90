@@ -57,8 +57,8 @@ module weno_module
 
   private
 
-  public :: weno5, vweno5, cellavg2gausspt_1d, cellavg2gausspt_2d, cellavg2gausspt_2d_v1, &
-       cellavg2gausspt_2d_v2, cellavg2gausspt_3d, &
+  public :: weno5, vweno5, weno_3d, cellavg2gausspt_1d, cellavg2gausspt_2d, &
+       cellavg2gausspt_2d_v1, cellavg2gausspt_2d_v2, cellavg2gausspt_3d, &
        cellavg2dergausspt_1d, cellavg2dergausspt_2d, cellavg2face_1d
 
 contains
@@ -218,6 +218,277 @@ contains
 
   end subroutine vweno5
 
+
+  subroutine weno_3d(idir,lo,hi, &
+       v, vlo, vhi, flo, fhi, glo, ghi, vp, vm, vg1, vg2)
+    integer, intent(in) :: idir, lo(3), hi(3), vlo(3), vhi(3), flo(3), fhi(3), glo(3), ghi(3)
+    double precision, intent(in) :: v(vlo(1):vhi(1),vlo(2):vhi(2),vlo(3):vhi(3))
+    double precision, intent(inout), optional :: vp(flo(1):fhi(1),flo(2):fhi(2),flo(3):fhi(3))
+    double precision, intent(inout), optional :: vm(flo(1):fhi(1),flo(2):fhi(2),flo(3):fhi(3))
+    double precision, intent(inout), optional ::vg1(glo(1):ghi(1),glo(2):ghi(2),glo(3):ghi(3))
+    double precision, intent(inout), optional ::vg2(glo(1):ghi(1),glo(2):ghi(2),glo(3):ghi(3))
+
+    integer :: i, j, k, elo(3), ehi(3)
+    logical :: do_face, do_gauss
+    double precision, dimension(lo(1)-1:hi(1)+1) :: vr_2, vr_1, vr_0
+    double precision, dimension(lo(1)-1:hi(1)+1) :: alpha_2, alpha_1, alpha_0
+    double precision, dimension(lo(1)-1:hi(1)+1) :: beta_2, beta_1, beta_0
+    
+    elo = lo
+    ehi = hi
+
+    do_face = .false.
+    do_gauss = .false.
+
+    if (present(vp) .and. present(vm)) then
+       do_face = .true.
+       elo(idir) = elo(idir)-1
+       ehi(idir) = ehi(idir)+1
+    end if
+    
+    if (present(vg1) .and. present(vg2)) then
+       do_gauss = .true.
+    end if
+
+    if (idir .eq. 1) then
+
+       do k=lo(3),hi(3)
+       do j=lo(2),hi(2)
+
+          do i=elo(1),ehi(1)
+             beta_2(i) = b1*(v(i-2,j,k)-2.d0*v(i-1,j,k)+v(i,j,k))**2 + &
+                  0.25d0*(v(i-2,j,k)-4.d0*v(i-1,j,k)+3.d0*v(i,j,k))**2
+             beta_2(i) = 1.d0/(epsw+beta_2(i))**2
+             
+             beta_1(i) = b1*(v(i-1,j,k)-2.d0*v(i,j,k)+v(i+1,j,k))**2 + &
+                  0.25d0*(v(i-1,j,k)-v(i+1,j,k))**2
+             beta_1(i) = 1.d0/(epsw+beta_1(i))**2
+             
+             beta_0(i) = b1*(v(i,j,k)-2.d0*v(i+1,j,k)+v(i+2,j,k))**2 + &
+                  0.25d0*(3.d0*v(i,j,k)-4.d0*v(i+1,j,k)+v(i+2,j,k))**2
+             beta_0(i) = 1.d0/(epsw+beta_0(i))**2
+          end do
+
+          if (do_gauss) then
+             do i=lo(1),hi(1)
+                alpha_2(i) = d_g1(-2)*beta_2(i)
+                alpha_1(i) = d_g1(-1)*beta_1(i)
+                alpha_0(i) = d_g1( 0)*beta_0(i)
+          
+                vr_2(i) = L3_cg1(-2)*v(i-2,j,k) + L3_cg1(-1)*v(i-1,j,k) + L3_cg1(0)*v(i  ,j,k)
+                vr_1(i) = C3_cg1(-1)*v(i-1,j,k) + C3_cg1( 0)*v(i  ,j,k) + C3_cg1(1)*v(i+1,j,k)
+                vr_0(i) = R3_cg1( 0)*v(i  ,j,k) + R3_cg1( 1)*v(i+1,j,k) + R3_cg1(2)*v(i+2,j,k)
+          
+                vg1(i,j,k) = (alpha_2(i)*vr_2(i) + alpha_1(i)*vr_1(i) + alpha_0(i)*vr_0(i)) &
+                     / (alpha_2(i) + alpha_1(i) + alpha_0(i))
+
+                alpha_2(i) = d_g2(-2)*beta_2(i)
+                alpha_1(i) = d_g2(-1)*beta_1(i)
+                alpha_0(i) = d_g2( 0)*beta_0(i)
+       
+                vr_2(i) = L3_cg2(-2)*v(i-2,j,k) + L3_cg2(-1)*v(i-1,j,k) + L3_cg2(0)*v(i  ,j,k)
+                vr_1(i) = C3_cg2(-1)*v(i-1,j,k) + C3_cg2( 0)*v(i  ,j,k) + C3_cg2(1)*v(i+1,j,k)
+                vr_0(i) = R3_cg2( 0)*v(i  ,j,k) + R3_cg2( 1)*v(i+1,j,k) + R3_cg2(2)*v(i+2,j,k)
+
+                vg2(i,j,k) = (alpha_2(i)*vr_2(i) + alpha_1(i)*vr_1(i) + alpha_0(i)*vr_0(i)) &
+                     / (alpha_2(i) + alpha_1(i) + alpha_0(i))                
+             end do
+          end if
+
+          if (do_face) then
+             do i=lo(1)-1,hi(1)
+                alpha_2(i) =      beta_2(i)
+                alpha_1(i) = 6.d0*beta_1(i)
+                alpha_0(i) = 3.d0*beta_0(i)
+          
+                vr_2(i) = 2.d0*v(i-2,j,k) - 7.d0*v(i-1,j,k) + 11.d0*v(i  ,j,k)
+                vr_1(i) =     -v(i-1,j,k) + 5.d0*v(i  ,j,k) +  2.d0*v(i+1,j,k)
+                vr_0(i) = 2.d0*v(i  ,j,k) + 5.d0*v(i+1,j,k) -       v(i+2,j,k)
+
+                vp(i+1,j,k) = oneSixth*(alpha_2(i)*vr_2(i) + alpha_1(i)*vr_1(i) + &
+                     alpha_0(i)*vr_0(i)) / (alpha_2(i) + alpha_1(i) + alpha_0(i))
+             end do
+
+             do i=lo(1), hi(1)+1
+                alpha_2(i) = 3.d0*beta_2(i)
+                alpha_1(i) = 6.d0*beta_1(i)
+                alpha_0(i) =      beta_0(i)
+                
+                vr_2(i) =      -v(i-2,j,k) + 5.d0*v(i-1,j,k) + 2.d0*v(i  ,j,k)
+                vr_1(i) =  2.d0*v(i-1,j,k) + 5.d0*v(i  ,j,k) -      v(i+1,j,k) 
+                vr_0(i) = 11.d0*v(i  ,j,k) - 7.d0*v(i+1,j,k) + 2.d0*v(i+2,j,k)
+                
+                vm(i,j,k) = oneSixth*(alpha_2(i)*vr_2(i) + alpha_1(i)*vr_1(i) + &
+                     alpha_0(i)*vr_0(i)) / (alpha_2(i) + alpha_1(i) + alpha_0(i))                
+             end do
+          end if
+          
+       end do
+       end do
+
+    else if (idir .eq. 2) then
+
+       do k= lo(3), hi(3)
+       do j=elo(2),ehi(2)
+
+          do i=lo(1),hi(1)
+             beta_2(i) = b1*(v(i,j-2,k)-2.d0*v(i,j-1,k)+v(i,j,k))**2 + &
+                  0.25d0*(v(i,j-2,k)-4.d0*v(i,j-1,k)+3.d0*v(i,j,k))**2
+             beta_2(i) = 1.d0/(epsw+beta_2(i))**2
+             
+             beta_1(i) = b1*(v(i,j-1,k)-2.d0*v(i,j,k)+v(i,j+1,k))**2 + &
+                  0.25d0*(v(i,j-1,k)-v(i,j+1,k))**2
+             beta_1(i) = 1.d0/(epsw+beta_1(i))**2
+             
+             beta_0(i) = b1*(v(i,j,k)-2.d0*v(i,j+1,k)+v(i,j+2,k))**2 + &
+                  0.25d0*(3.d0*v(i,j,k)-4.d0*v(i,j+1,k)+v(i,j+2,k))**2
+             beta_0(i) = 1.d0/(epsw+beta_0(i))**2
+          end do
+
+          if (do_gauss .and. j.ne.lo(1)-1 .and. j.ne.hi(1)+1) then
+             do i=lo(1),hi(1)
+                alpha_2(i) = d_g1(-2)*beta_2(i)
+                alpha_1(i) = d_g1(-1)*beta_1(i)
+                alpha_0(i) = d_g1( 0)*beta_0(i)
+          
+                vr_2(i) = L3_cg1(-2)*v(i,j-2,k) + L3_cg1(-1)*v(i,j-1,k) + L3_cg1(0)*v(i,j  ,k)
+                vr_1(i) = C3_cg1(-1)*v(i,j-1,k) + C3_cg1( 0)*v(i,j  ,k) + C3_cg1(1)*v(i,j+1,k)
+                vr_0(i) = R3_cg1( 0)*v(i,j  ,k) + R3_cg1( 1)*v(i,j+1,k) + R3_cg1(2)*v(i,j+2,k)
+          
+                vg1(i,j,k) = (alpha_2(i)*vr_2(i) + alpha_1(i)*vr_1(i) + alpha_0(i)*vr_0(i)) &
+                     / (alpha_2(i) + alpha_1(i) + alpha_0(i))
+                
+                alpha_2(i) = d_g2(-2)*beta_2(i)
+                alpha_1(i) = d_g2(-1)*beta_1(i)
+                alpha_0(i) = d_g2( 0)*beta_0(i)
+                
+                vr_2(i) = L3_cg2(-2)*v(i,j-2,k) + L3_cg2(-1)*v(i,j-1,k) + L3_cg2(0)*v(i,j  ,k)
+                vr_1(i) = C3_cg2(-1)*v(i,j-1,k) + C3_cg2( 0)*v(i,j  ,k) + C3_cg2(1)*v(i,j+1,k)
+                vr_0(i) = R3_cg2( 0)*v(i,j  ,k) + R3_cg2( 1)*v(i,j+1,k) + R3_cg2(2)*v(i,j+2,k)
+                
+                vg2(i,j,k) = (alpha_2(i)*vr_2(i) + alpha_1(i)*vr_1(i) + alpha_0(i)*vr_0(i)) &
+                     / (alpha_2(i) + alpha_1(i) + alpha_0(i))                
+             end do
+          end if
+
+          if (do_face) then
+
+             if (j.ne.hi(2)+1) then
+                do i=lo(1),hi(1)
+                   alpha_2(i) =      beta_2(i)
+                   alpha_1(i) = 6.d0*beta_1(i)
+                   alpha_0(i) = 3.d0*beta_0(i)
+                   
+                   vr_2(i) = 2.d0*v(i,j-2,k) - 7.d0*v(i,j-1,k) + 11.d0*v(i,j  ,k)
+                   vr_1(i) =     -v(i,j-1,k) + 5.d0*v(i,j  ,k) +  2.d0*v(i,j+1,k)
+                   vr_0(i) = 2.d0*v(i,j  ,k) + 5.d0*v(i,j+1,k) -       v(i,j+2,k)
+                   
+                   vp(i,j+1,k) = oneSixth*(alpha_2(i)*vr_2(i) + alpha_1(i)*vr_1(i) + &
+                        alpha_0(i)*vr_0(i)) / (alpha_2(i) + alpha_1(i) + alpha_0(i))
+                end do
+             end if
+
+             if (j.ne.lo(2)-1) then
+                do i=lo(1),hi(1)
+                   alpha_2(i) = 3.d0*beta_2(i)
+                   alpha_1(i) = 6.d0*beta_1(i)
+                   alpha_0(i) =      beta_0(i)
+                   
+                   vr_2(i) =      -v(i,j-2,k) + 5.d0*v(i,j-1,k) + 2.d0*v(i,j  ,k)
+                   vr_1(i) =  2.d0*v(i,j-1,k) + 5.d0*v(i,j  ,k) -      v(i,j+1,k) 
+                   vr_0(i) = 11.d0*v(i,j  ,k) - 7.d0*v(i,j+1,k) + 2.d0*v(i,j+2,k)
+                   
+                   vm(i,j,k) = oneSixth*(alpha_2(i)*vr_2(i) + alpha_1(i)*vr_1(i) + &
+                        alpha_0(i)*vr_0(i)) / (alpha_2(i) + alpha_1(i) + alpha_0(i)) 
+                end do
+             end if
+          end if
+       end do
+       end do
+
+    else
+
+       do k=elo(3),ehi(3)
+       do j= lo(2), hi(2)
+
+          do i=lo(1),hi(1)
+             beta_2(i) = b1*(v(i,j,k-2)-2.d0*v(i,j,k-1)+v(i,j,k))**2 + &
+                  0.25d0*(v(i,j,k-2)-4.d0*v(i,j,k-1)+3.d0*v(i,j,k))**2
+             beta_2(i) = 1.d0/(epsw+beta_2(i))**2
+             
+             beta_1(i) = b1*(v(i,j,k-1)-2.d0*v(i,j,k)+v(i,j,k+1))**2 + &
+                  0.25d0*(v(i,j,k-1)-v(i,j,k+1))**2
+             beta_1(i) = 1.d0/(epsw+beta_1(i))**2
+             
+             beta_0(i) = b1*(v(i,j,k)-2.d0*v(i,j,k+1)+v(i,j,k+2))**2 + &
+                  0.25d0*(3.d0*v(i,j,k)-4.d0*v(i,j,k+1)+v(i,j,k+2))**2
+             beta_0(i) = 1.d0/(epsw+beta_0(i))**2
+          end do
+
+          if (do_gauss .and. j.ne.lo(1)-1 .and. j.ne.hi(1)+1) then
+             do i=lo(1),hi(1)
+                alpha_2(i) = d_g1(-2)*beta_2(i)
+                alpha_1(i) = d_g1(-1)*beta_1(i)
+                alpha_0(i) = d_g1( 0)*beta_0(i)
+          
+                vr_2(i) = L3_cg1(-2)*v(i,j,k-2) + L3_cg1(-1)*v(i,j,k-1) + L3_cg1(0)*v(i,j,k  )
+                vr_1(i) = C3_cg1(-1)*v(i,j,k-1) + C3_cg1( 0)*v(i,j,k  ) + C3_cg1(1)*v(i,j,k+1)
+                vr_0(i) = R3_cg1( 0)*v(i,j,k  ) + R3_cg1( 1)*v(i,j,k+1) + R3_cg1(2)*v(i,j,k+2)
+          
+                vg1(i,j,k) = (alpha_2(i)*vr_2(i) + alpha_1(i)*vr_1(i) + alpha_0(i)*vr_0(i)) &
+                     / (alpha_2(i) + alpha_1(i) + alpha_0(i))
+                
+                alpha_2(i) = d_g2(-2)*beta_2(i)
+                alpha_1(i) = d_g2(-1)*beta_1(i)
+                alpha_0(i) = d_g2( 0)*beta_0(i)
+                
+                vr_2(i) = L3_cg2(-2)*v(i,j,k-2) + L3_cg2(-1)*v(i,j,k-1) + L3_cg2(0)*v(i,j,k  )
+                vr_1(i) = C3_cg2(-1)*v(i,j,k-1) + C3_cg2( 0)*v(i,j,k  ) + C3_cg2(1)*v(i,j,k+1)
+                vr_0(i) = R3_cg2( 0)*v(i,j,k  ) + R3_cg2( 1)*v(i,j,k+1) + R3_cg2(2)*v(i,j,k+2)
+                
+                vg2(i,j,k) = (alpha_2(i)*vr_2(i) + alpha_1(i)*vr_1(i) + alpha_0(i)*vr_0(i)) &
+                     / (alpha_2(i) + alpha_1(i) + alpha_0(i))                
+             end do
+          end if
+
+          if (do_face) then
+
+             if (k.ne.hi(3)+1) then
+                do i=lo(1),hi(1)
+                   alpha_2(i) =      beta_2(i)
+                   alpha_1(i) = 6.d0*beta_1(i)
+                   alpha_0(i) = 3.d0*beta_0(i)
+                   
+                   vr_2(i) = 2.d0*v(i,j,k-2) - 7.d0*v(i,j,k-1) + 11.d0*v(i,j,k  )
+                   vr_1(i) =     -v(i,j,k-1) + 5.d0*v(i,j,k  ) +  2.d0*v(i,j,k+1)
+                   vr_0(i) = 2.d0*v(i,j,k  ) + 5.d0*v(i,j,k+1) -       v(i,j,k+2)
+                   
+                   vp(i,j,k+1) = oneSixth*(alpha_2(i)*vr_2(i) + alpha_1(i)*vr_1(i) + &
+                        alpha_0(i)*vr_0(i)) / (alpha_2(i) + alpha_1(i) + alpha_0(i))
+                end do
+             end if
+
+             if (k.ne.lo(3)-1) then
+                do i=lo(1),hi(1)
+                   alpha_2(i) = 3.d0*beta_2(i)
+                   alpha_1(i) = 6.d0*beta_1(i)
+                   alpha_0(i) =      beta_0(i)
+                   
+                   vr_2(i) =      -v(i,j,k-2) + 5.d0*v(i,j,k-1) + 2.d0*v(i,j,k  )
+                   vr_1(i) =  2.d0*v(i,j,k-1) + 5.d0*v(i,j,k  ) -      v(i,j,k+1) 
+                   vr_0(i) = 11.d0*v(i,j,k  ) - 7.d0*v(i,j,k+1) + 2.d0*v(i,j,k+2)
+                   
+                   vm(i,j,k) = oneSixth*(alpha_2(i)*vr_2(i) + alpha_1(i)*vr_1(i) + &
+                        alpha_0(i)*vr_0(i)) / (alpha_2(i) + alpha_1(i) + alpha_0(i)) 
+                end do
+             end if
+          end if
+       end do
+       end do
+
+    end if
+
+  end subroutine weno_3d
 
   subroutine cellavg2gausspt_1d(lo,hi, u, ulo,uhi, u1, u2, glo,ghi)
     integer, intent(in) :: lo, hi, ulo, uhi, glo, ghi
