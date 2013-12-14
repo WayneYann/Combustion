@@ -27,7 +27,7 @@ ifdef ZMQ
   cEXE_sources += zmq.c
 endif
 
-VERBOSE=TRUE
+VERBOSE=FALSE
 
 include ../Make.RNS
 

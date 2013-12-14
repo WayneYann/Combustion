@@ -47,12 +47,12 @@ subroutine set_method_params(dm,Density,Xmom,Eden,Temp,FirstSpec, &
   if (dm .ge. 2) then
      UMY = UMX + 1
   else
-     UMY = UMX
+     UMY = 0
   end if
   if (dm .eq. 3) then
      UMZ = UMY + 1
   else
-     UMZ = UMY
+     UMZ = 0
   end if
   UEDEN = Eden      + 1
   UTEMP = Temp      + 1
