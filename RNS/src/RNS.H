@@ -10,6 +10,10 @@
 #include <FluxRegister.H>
 #include <ChemDriver.H>
 
+#ifdef USE_SDCLIB
+class SDCAmr;
+#endif
+
 #include <iostream>
 
 using std::istream;
@@ -238,6 +242,11 @@ public:
     void avgDown (MultiFab& S_crse, const MultiFab& S_fine);
 
     static class ChemDriver* chemSolve;
+
+#ifdef USE_SDCLIB
+    SDCAmr* getSDCAmr() { return (SDCAmr*) parent; }
+#endif
+
 
 protected:
 

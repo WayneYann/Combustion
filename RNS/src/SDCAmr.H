@@ -32,15 +32,16 @@ using namespace std;
  */
 
 typedef struct {
-  const BoxArray *ba, *fine_ba;
+  const BoxArray *ba;
   IntVect crse_ratio;
   int ncomp, ngrow, level, finest;
   RNS *rns;
 } RNSEncapCtx;
 
 typedef struct {
-  MultiFab* U;
-  FluxRegister* flux;
+  MultiFab* U;			// solution or function eval
+  FluxRegister* fine_flux;	// current levels flux register
+  FluxRegister* crse_flux;	// coarse levels flux register
   RNS* rns;
   int type;
 } RNSEncap;

@@ -212,29 +212,25 @@ void mlsdc_amr_restrict(void *Fp, void *Gp, sdc_state *state, void *ctxF, void *
 
   BL_ASSERT(G.type==SDC_SOLUTION || G.type==SDC_TAU);
 
-  // if (G.type == SDC_TAU) {
-  //   dgp_send_mf(UG, 0, 0, 0);
-  //   dgp_send_mf(UF, 1, 0, 0);
-  // }
-
   if (G.type == SDC_TAU) {
-    // IntVect crse_ratio = levelF.refRatio(levelG.Level());
-    FluxRegister& flxF = *F.flux;
-    // FluxRegister& flxG = new FluxRegister(UF.boxArray(), crse_ratio, levelF.Level(), UF.nComp());
+    SDCAmr&       amr        = *levelF.getSDCAmr();
+    IntVect       crse_ratio = amr.refRatio(levelG.Level());
+    FluxRegister& flxF       = *F.fine_flux;
+    FluxRegister& flxG       = *G.crse_flux;
 
-    flxF.Reflux(UG, levelG.Volume(), 1.0, 0, 0, UG.nComp(), levelG.Geom());
+    FluxRegister& flx  = *new FluxRegister(UF.boxArray(), crse_ratio, levelF.Level(), UF.nComp());
+    for (OrientationIter face; face; ++face)
+      for (FabSetIter bfsi(flxF[face()]); bfsi.isValid(); ++bfsi) {
+        flx[face()][bfsi].copy(flxF[face()][bfsi]);
+        flx[face()][bfsi].saxpy(1.0, flxG[face()][bfsi]);
+      }
 
-    // flxF.Reflux(UG, levelG.Volume(), -1.0, 0, 0, UG.nComp(), levelG.Geom());
-    // dzmq_send_mf(UG, 1, 0, 0);
+    flx.Reflux(UG, levelG.Volume(), 1.0, 0, 0, UG.nComp(), levelG.Geom());
   }
 
   levelG.avgDown(UG, UF);
   if (G.type == SDC_SOLUTION)
     levelG.fill_boundary(UG, state->t, RNS::use_FillBoundary);
-
-  // if (G.type == SDC_TAU)
-  //   dgp_send_mf(UG, 2, 0, 1);
-
 
 #ifndef NDEBUG
   BL_ASSERT(UG.contains_nan() == false);
@@ -401,8 +397,8 @@ void SDCAmr::rebuild_mlsdc()
     sweepers[lev]->nset->encap = encaps[lev];
     sdc_mg_add_level(&mg, sweepers[lev], mlsdc_amr_interpolate, mlsdc_amr_restrict);
   }
-  // mg.nsweeps[0] = 4;
-  // mg.nsweeps[1] = 2;
+  if (max_level > 0)
+    mg.nsweeps[0] = 2;
   sdc_mg_setup(&mg, 0);
   sdc_mg_allocate(&mg);
 
