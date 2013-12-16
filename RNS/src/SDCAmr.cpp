@@ -226,6 +226,8 @@ void mlsdc_amr_restrict(void *Fp, void *Gp, sdc_state *state, void *ctxF, void *
       }
 
     flx.Reflux(UG, levelG.Volume(), 1.0, 0, 0, UG.nComp(), levelG.Geom());
+
+    delete &flx;
   }
 
   levelG.avgDown(UG, UF);
@@ -444,5 +446,10 @@ SDCAmr::SDCAmr ()
 
 SDCAmr::~SDCAmr()
 {
+  for (unsigned int lev=0; lev<=max_level; lev++)
+    if (sweepers[lev] != NULL) {
+      sweepers[lev]->destroy(sweepers[lev]); sweepers[lev] = NULL;
+      destroy_encap(lev);
+    }
   sdc_mg_destroy(&mg);
 }

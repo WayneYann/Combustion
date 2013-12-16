@@ -64,10 +64,8 @@ void mf_encap_destroy(void *Qptr)
 {
   RNSEncap* Q = (RNSEncap*) Qptr;
   delete Q->U;
-  if (Q->fine_flux != NULL) {
-    delete Q->fine_flux;
-    delete Q->crse_flux;
-  }
+  if (Q->fine_flux != NULL) delete Q->fine_flux;
+  if (Q->crse_flux != NULL) delete Q->crse_flux;
   delete Q;
 }
 
