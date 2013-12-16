@@ -167,9 +167,14 @@ sdc_encap* SDCAmr::build_encap(int lev)
   return encap;
 }
 
-void SDCAmr::destroy_encap(int lev)
+void SDCAmr::destroy_mlsdc()
 {
-  // XXX: memory leaks here?
-  delete (RNSEncapCtx*) encaps[lev]->ctx;
-  delete encaps[lev];
+  for (unsigned int lev=0; lev<=max_level; lev++) {
+    if (sweepers[lev] != NULL) {
+      sweepers[lev]->destroy(sweepers[lev]);
+      sweepers[lev] = NULL;
+      delete (RNSEncapCtx*) encaps[lev]->ctx;
+      delete encaps[lev];
+    }
+  }
 }

@@ -32,12 +32,9 @@
  *
  * Known issues:
  *
- * 1. Currently the fine levels are very high order: we need to tweak
- *    the integration and interpolation matrices.
+ * 1. The SDC hierarchy is currently not depth limited.
  *
- * 2. The SDC hierarchy is currently not depth limited.
- *
- * 3. We're using Gauss-Lobatto nodes, but Gauss-Radau would probably
+ * 2. We're using Gauss-Lobatto nodes, but Gauss-Radau would probably
  *    be better for chemistry.
  */
 
@@ -85,7 +82,6 @@ void mlsdc_amr_interpolate(void *Fp, void *Gp, sdc_state *state, void *ctxF, voi
   Array<BCRec>          bcr(ncomp);
 
   const Geometry& geomG = levelG.Geom();
-  // const Geometry& geomF = levelF.Geom();
 
   RNS_SETNAN(UF);
 
@@ -197,7 +193,8 @@ void mlsdc_amr_interpolate(void *Fp, void *Gp, sdc_state *state, void *ctxF, voi
 }
 
 /*
- * Spatial restriction between MultiFabs.  Called by SDCLib.
+ * Spatial restriction between solutions and integrals of function
+ * evals.  Called by SDCLib.
  */
 void mlsdc_amr_restrict(void *Fp, void *Gp, sdc_state *state, void *ctxF, void *ctxG)
 {
@@ -218,7 +215,7 @@ void mlsdc_amr_restrict(void *Fp, void *Gp, sdc_state *state, void *ctxF, void *
     FluxRegister& flxF       = *F.fine_flux;
     FluxRegister& flxG       = *G.crse_flux;
 
-    FluxRegister& flx  = *new FluxRegister(UF.boxArray(), crse_ratio, levelF.Level(), UF.nComp());
+    FluxRegister flx(UF.boxArray(), crse_ratio, levelF.Level(), UF.nComp());
     for (OrientationIter face; face; ++face)
       for (FabSetIter bfsi(flxF[face()]); bfsi.isValid(); ++bfsi) {
         flx[face()][bfsi].copy(flxF[face()][bfsi]);
@@ -226,8 +223,6 @@ void mlsdc_amr_restrict(void *Fp, void *Gp, sdc_state *state, void *ctxF, void *
       }
 
     flx.Reflux(UG, levelG.Volume(), 1.0, 0, 0, UG.nComp(), levelG.Geom());
-
-    delete &flx;
   }
 
   levelG.avgDown(UG, UF);
@@ -312,7 +307,7 @@ void SDCAmr::timeStep(int level, Real time,
 	double    r0     = R.norm0();
 	double    r2     = R.norm2();
 
-	// dzmq_send_mf(R, lev, 0, lev==finest_level);
+	// dgp_send_mf(R, lev, 0, lev==finest_level);
 
 	if (ParallelDescriptor::IOProcessor()) {
 	  std::ios_base::fmtflags ff = cout.flags();
@@ -323,8 +318,6 @@ void SDCAmr::timeStep(int level, Real time,
       }
     }
   }
-
-  sdc_mg_reflux(&mg, time, dt);
 
   BL_PROFILE_VAR_STOP(sdc_iters);
 
@@ -346,9 +339,9 @@ void SDCAmr::timeStep(int level, Real time,
 /*
  * Build single SDC level.
  */
-sdc_sweeper* SDCAmr::build_mlsdc_level(int lev)
+sdc_sweeper* SDCAmr::build_level(int lev)
 {
-  BL_PROFILE("SDCAmr::build_mlsdc_level()");
+  BL_PROFILE("SDCAmr::build_level()");
 
   int first_refinement_level, nnodes;
 
@@ -365,7 +358,7 @@ sdc_sweeper* SDCAmr::build_mlsdc_level(int lev)
   sdc_nodes* nodes = sdc_nodes_create(nnodes, SDC_UNIFORM);
   sdc_imex*  imex  = sdc_imex_create(nodes, sdc_f1eval, sdc_f2eval, sdc_f2comp);
 
-  // XXX: for fine levels, need to make the integration tables etc local only
+  if (lev > 0) sdc_sweeper_nest((sdc_sweeper*) imex, sweepers[lev-1]);
 
   sdc_imex_setup(imex, NULL, NULL);
   sdc_hooks_add(imex->hooks, SDC_HOOK_POST_STEP, sdc_poststep_hook);
@@ -375,34 +368,30 @@ sdc_sweeper* SDCAmr::build_mlsdc_level(int lev)
 
 /*
  * Rebuild MLSDC hierarchy.
- *
- * Note that XXX.
  */
 void SDCAmr::rebuild_mlsdc()
 {
   BL_PROFILE("SDCAmr::rebuild_mlsdc()");
 
+  BL_ASSERT(finest_level <= 2);	// XXX: need to relax this using max_trefs as discussed
+
   // reset previous and clear sweepers etc
   sdc_mg_reset(&mg);
-  for (unsigned int lev=0; lev<=max_level; lev++) {
-    if (sweepers[lev] != NULL) {
-      sweepers[lev]->destroy(sweepers[lev]); sweepers[lev] = NULL;
-      destroy_encap(lev);
-    }
-  }
+  destroy_mlsdc();
 
   // rebuild
   for (int lev=0; lev<=finest_level; lev++) {
     encaps[lev] = build_encap(lev);
-    sweepers[lev] = build_mlsdc_level(lev);
+    sweepers[lev] = build_level(lev);
     sweepers[lev]->nset->ctx = &getLevel(lev);
     sweepers[lev]->nset->encap = encaps[lev];
     sdc_mg_add_level(&mg, sweepers[lev], mlsdc_amr_interpolate, mlsdc_amr_restrict);
   }
-  if (max_level > 0)
-    mg.nsweeps[0] = 2;
-  sdc_mg_setup(&mg, 0);
+
+  if (max_level > 0) mg.nsweeps[0] = 2;
+  sdc_mg_setup(&mg, SDC_MG_NEST);
   sdc_mg_allocate(&mg);
+  //  sdc_mg_print(&mg, 0);
 
   // XXX: for fine levels, need to make the interpolation matrices local only
 
@@ -428,28 +417,20 @@ SDCAmr::SDCAmr ()
   // sdc_log_set_stdout(SDC_LOG_DEBUG);
   sdc_mg_build(&mg, max_level+1);
   sdc_hooks_add(mg.hooks, SDC_HOOK_POST_TRANS, sdc_poststep_hook);
-  // sdc_hooks_add(mg.hooks, SDC_HOOK_POST_FAS,   sdc_postfas_hook);
 
   sweepers.resize(max_level+1);
   encaps.resize(max_level+1);
 
   for (int i=0; i<=max_level; i++) sweepers[i] = NULL;
 
-  if (max_level > 0) {
-      for (int i=0; i<=max_level; i++) {
-	  if (blockingFactor(i) < 4) {
-	      BoxLib::Abort("For AMR runs, set blocking_factor to at least 4.");
-	  }
-      }
-  }
+  if (max_level > 0)
+    for (int i=0; i<=max_level; i++)
+      if (blockingFactor(i) < 4)
+	BoxLib::Abort("For AMR runs, set blocking_factor to at least 4.");
 }
 
 SDCAmr::~SDCAmr()
 {
-  for (unsigned int lev=0; lev<=max_level; lev++)
-    if (sweepers[lev] != NULL) {
-      sweepers[lev]->destroy(sweepers[lev]); sweepers[lev] = NULL;
-      destroy_encap(lev);
-    }
+  destroy_mlsdc();
   sdc_mg_destroy(&mg);
 }
