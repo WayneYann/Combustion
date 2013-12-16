@@ -214,7 +214,6 @@ contains
                / (alpha_2(i) + alpha_1(i) + alpha_0(i))
        end do
 
-
     end if
 
   end subroutine vweno5

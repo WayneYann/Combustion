@@ -6,7 +6,7 @@ subroutine rns_dudt_ad (lo, hi, &
      yflx,yf_l1,yf_l2,yf_l3,yf_h1,yf_h2,yf_h3, &
      zflx,zf_l1,zf_l2,zf_l3,zf_h1,zf_h2,zf_h3, &
      dx)
-  use meth_params_module, only : NVAR, gravity, URHO, UMZ, UEDEN, &
+  use meth_params_module, only : NVAR, gravity, URHO, UMZ, UEDEN, do_weno, &
        xblksize, yblksize, zblksize, nthreads
   use hypterm_module, only : hypterm
   use difterm_module, only : difterm
@@ -88,7 +88,9 @@ subroutine rns_dudt_ad (lo, hi, &
         byflx = 0.d0
         bzflx = 0.d0
 
-        call hypterm(tlo,thi,U,Ulo,Uhi,bxflx,fxlo,fxhi,byflx,fylo,fyhi,bzflx,fzlo,fzhi,dx)
+        if (do_weno) then
+           call hypterm(tlo,thi,U,Ulo,Uhi,bxflx,fxlo,fxhi,byflx,fylo,fyhi,bzflx,fzlo,fzhi,dx)
+        end if
         call difterm(tlo,thi,U,Ulo,Uhi,bxflx,fxlo,fxhi,byflx,fylo,fyhi,bzflx,fzlo,fzhi,dxinv)
 
         ! Note that fluxes are on faces.  So don't double count!

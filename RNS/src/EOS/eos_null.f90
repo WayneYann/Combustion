@@ -108,6 +108,14 @@ contains
   end subroutine eos_get_p
 
 
+  subroutine eos_get_e(e, T, Y, pt_index)
+    double precision, intent(out) :: e
+    double precision, intent(in ) :: T, Y(2)
+    integer, optional, intent(in) :: pt_index(:)
+    e = cv*T
+  end subroutine eos_get_e
+
+
   subroutine eos_given_RTY(e, p, c, dpdr, dpde, rho, T, Y, pt_index)
     double precision, intent(out) :: e, p, c, dpdr(2), dpde
     double precision, intent(in ) :: rho, T, Y(2)
