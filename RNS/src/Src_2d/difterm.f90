@@ -202,6 +202,7 @@ contains
     integer :: i, j, n, UYN, QYN, QXN, QHN
     double precision :: tauxx, tauxy, dudx, dudy, dvdx, dvdy, divu
     double precision :: dTdx, dXdx, Vd
+    double precision :: ek, rhovn
     double precision, dimension(lo(1):hi(1)) :: dlnpdx, Vc
     double precision, parameter :: twoThirds = 2.d0/3.d0
 
@@ -259,6 +260,25 @@ contains
        end do
     end do
 
+    if (.not. do_weno) then
+       ! compute hyperbolic flux
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+             rhovn = fac*Qf(i,j,QRHO)*Qf(i,j,QU)
+             flx(i,j,URHO) = flx(i,j,URHO) + rhovn
+             flx(i,j,UMX ) = flx(i,j,UMX ) + rhovn*Qf(i,j,QU) + fac*Qf(i,j,QPRES)
+             flx(i,j,UMY ) = flx(i,j,UMY ) + rhovn*Qf(i,j,QV)
+
+             ek = 0.5d0*(Qf(i,j,QU)**2+Qf(i,j,QV)**2)
+             flx(i,j,UEDEN) = flx(i,j,UEDEN) + rhovn*ek
+             do n=1,NSPEC
+                flx(i,j,UEDEN) = flx(i,j,UEDEN) + rhovn*Qf(i,j,QFH+n-1)
+                flx(i,j,UFS+n-1) = flx(i,j,UFS+n-1) + rhovn*Qf(i,j,QFY+n-1)
+             end do
+          end do
+       end do
+    end if
+
   end subroutine comp_diff_flux_x
 
 
@@ -283,6 +303,7 @@ contains
     integer :: i, j, n, UYN, QYN, QXN, QHN
     double precision :: tauyy, tauxy, dudx, dudy, dvdx, dvdy, divu, rhoinv
     double precision :: dTdy, dXdy, Vd
+    double precision :: ek, rhovn
     double precision, allocatable :: dlnpdy(:,:), Vc(:,:)
     double precision, parameter :: twoThirds = 2.d0/3.d0
 
@@ -349,6 +370,25 @@ contains
     end do
 
     deallocate(dlnpdy,Vc)
+    
+    if (.not. do_weno) then
+       ! compute hyperbolic flux
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+             rhovn = fac*Qf(i,j,QRHO)*Qf(i,j,QV)
+             flx(i,j,URHO) = flx(i,j,URHO) + rhovn
+             flx(i,j,UMX ) = flx(i,j,UMX ) + rhovn*Qf(i,j,QU)
+             flx(i,j,UMY ) = flx(i,j,UMY ) + rhovn*Qf(i,j,QV) + fac*Qf(i,j,QPRES)
+
+             ek = 0.5d0*(Qf(i,j,QU)**2+Qf(i,j,QV)**2)
+             flx(i,j,UEDEN) = flx(i,j,UEDEN) + rhovn*ek
+             do n=1,NSPEC
+                flx(i,j,UEDEN) = flx(i,j,UEDEN) + rhovn*Qf(i,j,QFH+n-1)
+                flx(i,j,UFS+n-1) = flx(i,j,UFS+n-1) + rhovn*Qf(i,j,QFY+n-1)
+             end do
+          end do
+       end do
+    end if
 
   end subroutine comp_diff_flux_y
 

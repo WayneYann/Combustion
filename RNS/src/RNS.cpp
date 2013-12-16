@@ -136,6 +136,7 @@ std::vector<int> RNS::blocksize(BL_SPACEDIM, 2048);
 
 int          RNS::do_quartic_interp   = 1;
 
+int          RNS::do_weno;
 int          RNS::do_component_weno;
 
 int          RNS::use_vode            = 0;
@@ -308,10 +309,14 @@ RNS::read_params ()
 
     if (ChemDriver::isNull())
     {
+	do_weno = 1;
 	do_component_weno = 0;
     }
     else
     {
+	do_weno = 1;
+	pp.query("do_weno", do_weno);
+
 	do_component_weno = 1;
     }
     pp.query("do_component_weno", do_component_weno);

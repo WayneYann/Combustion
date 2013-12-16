@@ -388,6 +388,7 @@ contains
     double precision :: tauxx, tauxy, tauxz
     double precision :: dudx, dudy, dudz, dvdx, dvdy, dwdx, dwdz, divu
     double precision :: dTdx, dXdx, Vd
+    double precision :: ek, rhovn
     double precision, dimension(lo(1):hi(1)) :: dlnpdx, Vc
 
     do j=lo(2),hi(2)
@@ -451,6 +452,26 @@ contains
        end do
     end do
 
+    if (.not. do_weno) then
+       ! compute hyperbolic flux
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+             rhovn = fac*Qf(i,j,QRHO)*Qf(i,j,QU)
+             flx(i,j,k,URHO) = flx(i,j,k,URHO) + rhovn
+             flx(i,j,k,UMX ) = flx(i,j,k,UMX ) + rhovn*Qf(i,j,QU) + fac*Qf(i,j,QPRES)
+             flx(i,j,k,UMY ) = flx(i,j,k,UMY ) + rhovn*Qf(i,j,QV)
+             flx(i,j,k,UMZ ) = flx(i,j,k,UMZ ) + rhovn*Qf(i,j,QW)
+
+             ek = 0.5d0*(Qf(i,j,QU)**2+Qf(i,j,QV)**2+Qf(i,j,QW)**2)
+             flx(i,j,k,UEDEN) = flx(i,j,k,UEDEN) + rhovn*ek
+             do n=1,NSPEC
+                flx(i,j,k,UEDEN) = flx(i,j,k,UEDEN) + rhovn*Qf(i,j,QFH+n-1)
+                flx(i,j,k,UFS+n-1) = flx(i,j,k,UFS+n-1) + rhovn*Qf(i,j,QFY+n-1)
+             end do
+          end do
+       end do
+    end if
+
   end subroutine comp_diff_flux_x
 
 
@@ -477,6 +498,7 @@ contains
     double precision :: tauyy, tauxy, tauyz
     double precision :: dudx, dudy, dvdx, dvdy, dvdz, dwdy, dwdz, divu
     double precision :: dTdy, dXdy, Vd
+    double precision :: ek, rhovn
     double precision, allocatable :: dlnpdy(:,:), Vc(:,:)
 
     allocate(dlnpdy(lo(1):hi(1),lo(2):hi(2)))
@@ -548,6 +570,26 @@ contains
     end do
 
     deallocate(dlnpdy,Vc)
+
+    if (.not. do_weno) then
+       ! compute hyperbolic flux
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+             rhovn = fac*Qf(i,j,QRHO)*Qf(i,j,QV)
+             flx(i,j,k,URHO) = flx(i,j,k,URHO) + rhovn
+             flx(i,j,k,UMX ) = flx(i,j,k,UMX ) + rhovn*Qf(i,j,QU)
+             flx(i,j,k,UMY ) = flx(i,j,k,UMY ) + rhovn*Qf(i,j,QV) + fac*Qf(i,j,QPRES)
+             flx(i,j,k,UMZ ) = flx(i,j,k,UMZ ) + rhovn*Qf(i,j,QW)
+
+             ek = 0.5d0*(Qf(i,j,QU)**2+Qf(i,j,QV)**2+Qf(i,j,QW)**2)
+             flx(i,j,k,UEDEN) = flx(i,j,k,UEDEN) + rhovn*ek
+             do n=1,NSPEC
+                flx(i,j,k,UEDEN) = flx(i,j,k,UEDEN) + rhovn*Qf(i,j,QFH+n-1)
+                flx(i,j,k,UFS+n-1) = flx(i,j,k,UFS+n-1) + rhovn*Qf(i,j,QFY+n-1)
+             end do
+          end do
+       end do
+    end if
 
   end subroutine comp_diff_flux_y
 
@@ -634,6 +676,7 @@ contains
     double precision :: tauzz, tauxz, tauyz
     double precision :: dudx, dudz, dvdy, dvdz, dwdx, dwdy, dwdz, divu
     double precision :: dTdz, dXdz, Vd
+    double precision :: ek, rhovn
     double precision, dimension(lo(1):hi(1)) :: dlnpdz, Vc
 
     do k      =lo(3),hi(3)
@@ -699,6 +742,28 @@ contains
           end do
        end do
     end do
+
+    if (.not. do_weno) then
+       ! compute hyperbolic flux
+       do k      =lo(3),hi(3)
+          do j   =lo(2),hi(2)
+             do i=lo(1),hi(1)
+             rhovn = fac*Qf(i,j,k,QRHO)*Qf(i,j,k,QW)
+             flx(i,j,k,URHO) = flx(i,j,k,URHO) + rhovn
+             flx(i,j,k,UMX ) = flx(i,j,k,UMX ) + rhovn*Qf(i,j,k,QU)
+             flx(i,j,k,UMY ) = flx(i,j,k,UMY ) + rhovn*Qf(i,j,k,QV)
+             flx(i,j,k,UMZ ) = flx(i,j,k,UMZ ) + rhovn*Qf(i,j,k,QW) + fac*Qf(i,j,k,QPRES)
+
+             ek = 0.5d0*(Qf(i,j,k,QU)**2+Qf(i,j,k,QV)**2+Qf(i,j,k,QW)**2)
+             flx(i,j,k,UEDEN) = flx(i,j,k,UEDEN) + rhovn*ek
+             do n=1,NSPEC
+                flx(i,j,k,UEDEN) = flx(i,j,k,UEDEN) + rhovn*Qf(i,j,k,QFH+n-1)
+                flx(i,j,k,UFS+n-1) = flx(i,j,k,UFS+n-1) + rhovn*Qf(i,j,k,QFY+n-1)
+             end do                
+             end do
+          end do
+       end do
+    end if
     
   end subroutine comp_diff_flux_z
 

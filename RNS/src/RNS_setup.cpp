@@ -180,7 +180,7 @@ RNS::variableSetUp ()
     BL_FORT_PROC_CALL(SET_METHOD_PARAMS, set_method_params)
 	(dm, Density, Xmom, Eden, Temp, FirstSpec, NUM_STATE, NumSpec, 
 	 small_dens, small_temp, small_pres, gamma, gravity, Treference,
-	 riemann, difmag, &blocksize[0], do_component_weno,
+	 riemann, difmag, &blocksize[0], do_weno, do_component_weno,
 	 use_vode, do_cc_burning, split_burning);
     
     int coord_type = Geometry::Coord();

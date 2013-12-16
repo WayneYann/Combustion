@@ -128,37 +128,14 @@ contains
   end subroutine eos_get_p
 
 
-  ! subroutine eos_get_TP(T, P, rho, e, Y, pt_index)
-  !   double precision, intent(out) :: T, P
-  !   double precision, intent(in ) :: rho, e, Y(nspecies)
-  !   integer, optional, intent(in   ) :: pt_index(:)
-    
-  !   integer :: iwrk, ierr
-  !   double precision :: rwrk
-
-  !   call get_T_given_eY(e, Y, iwrk, rwrk, T, ierr)
-  !   T = max(T, smallt)
-
-  !   call ckpy(rho, T, Y, iwrk, rwrk, p)
-  !   p = max(p,smallp)    
-
-  ! end subroutine eos_get_TP
-
-
-  ! subroutine eos_get_eP(e, P, rho, T, Y, pt_index)
-  !   double precision, intent(  out) :: e, P
-  !   double precision, intent(in   ) :: rho, T, Y(nspecies)
-  !   integer, optional, intent(in   ) :: pt_index(:)
-    
-  !   integer :: iwrk
-  !   double precision :: rwrk
-
-  !   call ckpy(rho, T, Y, iwrk, rwrk, P)
-  !   P = max(P,smallp)
-
-  !   call ckubms(T,Y,iwrk,rwrk,e)
-
-  ! end subroutine eos_get_eP
+  subroutine eos_get_e(e, T, Y, pt_index)
+    double precision, intent(  out) :: e
+    double precision, intent(in   ) :: T, Y(nspecies)
+    integer, optional, intent(in   ) :: pt_index(:)
+    integer :: iwrk
+    double precision :: rwrk
+    call ckubms(T,Y,iwrk,rwrk,e)
+  end subroutine eos_get_e
 
 
   subroutine eos_given_RTY(e, P, C, dpdr, dpde, rho, T, Y, pt_index)
