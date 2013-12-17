@@ -24,7 +24,6 @@ void sdc_f2comp(void*, void*, double, double, void*, sdc_state*, void*);
 void sdc_poststep_hook(void*, sdc_state*, void*);
 END_EXTERN_C
 
-
 using namespace std;
 
 /*
@@ -32,15 +31,16 @@ using namespace std;
  */
 
 typedef struct {
-  const BoxArray *ba, *fine_ba;
+  const BoxArray *ba;
   IntVect crse_ratio;
   int ncomp, ngrow, level, finest;
   RNS *rns;
 } RNSEncapCtx;
 
 typedef struct {
-  MultiFab* U;
-  FluxRegister* flux;
+  MultiFab* U;			// solution or function eval
+  FluxRegister* fine_flux;	// current levels flux register
+  FluxRegister* crse_flux;	// coarse levels flux register
   RNS* rns;
   int type;
 } RNSEncap;
@@ -66,19 +66,16 @@ public:
   ~SDCAmr();
 
   sdc_encap*   build_encap(int lev);
-  void         destroy_encap(int lev);
-  sdc_sweeper* build_mlsdc_level(int lev);
+  sdc_sweeper* build_level(int lev);
   void         rebuild_mlsdc();
+  void         destroy_mlsdc();
 
-  virtual void timeStep(int  level,
-                        Real time,
-                        int  iteration,
-                        int  niter,
-                        Real stop_time);
+  virtual void timeStep(int level,
+			Real time,
+			int iteration,
+			int niter ,
+			Real stop_time);
 
-  // virtual void regrid (int  lbase,
-  // 		       Real time,
-  // 		       bool initial = false);
 };
 
 #ifdef GP

@@ -10,6 +10,10 @@
 #include <FluxRegister.H>
 #include <ChemDriver.H>
 
+#ifdef USE_SDCLIB
+class SDCAmr;
+#endif
+
 #include <iostream>
 
 using std::istream;
@@ -239,6 +243,11 @@ public:
 
     static class ChemDriver* chemSolve;
 
+#ifdef USE_SDCLIB
+    SDCAmr* getSDCAmr() { return (SDCAmr*) parent; }
+#endif
+
+
 protected:
 
     static void read_params ();
@@ -334,6 +343,7 @@ protected:
 
     static int         do_quartic_interp;
 
+    static int         do_weno;
     static int         do_component_weno;
 
     static int         use_vode;
