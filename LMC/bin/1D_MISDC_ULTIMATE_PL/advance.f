@@ -105,6 +105,12 @@ c     nodal, no ghost cells
       real*8   scal_tmp(0:nlevs-1,-2:nfine+1,nscal)
       real*8 norm(Nspec),deltaTsum
 
+c     "diffdiff" means "differential diffusion", which corresponds to
+c     sum_m div [ h_m (rho D_m - lambda/cp) grad Y_m ]
+c     in equation (3)
+      diffdiff_old = 0.d0
+      diffdiff_new = 0.d0
+
       print *,'advance: at start of time step',istep
 
 ccccccccccccccccccccccccccccccccccccccccccc
@@ -185,9 +191,6 @@ c     we compute h_m using T from the scalar argument
          call get_diffdiff_terms(scal_old(0,:,:),
      $                           gamma_lo(0,:,:),gamma_hi(0,:,:),
      $                           diffdiff_old(0,:),dx(0),lo(0),hi(0))
-      else
-         diffdiff_old = 0.d0
-         diffdiff_new = 0.d0
       end if
 
 c     If istep > 1, I_R is instantaneous value at t^n
@@ -206,13 +209,13 @@ c     Otherwise,    I_R is I_R^kmax from previous pressure iteration
 
 c     non-fancy predictor that simply sets scal_new = scal_old
       scal_new = scal_old
-      divu_new = divu_old
       beta_new = beta_old
       beta_for_Y_new = beta_for_Y_old
       beta_for_Wbar_new = beta_for_Wbar_old
       diff_new = diff_old
-      aofs_new = aofs_old
       diffdiff_new = diffdiff_old
+      divu_new = divu_old
+      aofs_new = aofs_old
 
 C----------------------------------------------------------------
 c     Begin MISDC iterations
@@ -405,7 +408,17 @@ c     compute rho^{(k+1)}*Y_{m,AD}^{(k+1),l+1}
             end do
 
 c     diagnostic stuff
-            if (l .gt. 1) then
+            if (l .eq. 1) then
+               norm = 0.d0
+               do i=lo(0),hi(0)
+                  do n=1,Nspec
+                     is = FirstSpec + n - 1
+                     norm(n) = norm(n) + abs(scal_new(0,i,is)-scal_old(0,i,is))
+                  end do
+               end do               
+               print*,'change in rhoY relative to old state'
+               write(*,1000) (norm(1:Nspec))
+            else
                norm = 0.d0
                do i=lo(0),hi(0)
                   do n=1,Nspec
@@ -413,7 +426,7 @@ c     diagnostic stuff
                      norm(n) = norm(n) + abs(scal_new(0,i,is)-scal_tmp(0,i,is))
                   end do
                end do               
-               print*,'change in rhoY relative to previous iter'
+               print*,'change in rhoY relative to previous change'
                write(*,1000) (norm(1:Nspec))
  1000          format (1000E11.3)
             end if
