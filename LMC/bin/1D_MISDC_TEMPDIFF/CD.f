@@ -189,6 +189,7 @@ c           Returns the mean specific heat at CP
 c         open(unit=51,status='old',form='formatted',file=tranfile)
 
 c     This sets Nspec
+         CALL CKINIT()
          CALL CKINDX(IDUMMY,RDUMMY,Nelt,Nspec,Nreac,Nfit)
 
          lout = 6
