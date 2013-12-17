@@ -495,8 +495,25 @@ RNS::estTimeStep (Real dt_old)
 	
 	estdt = std::min(estdt,dt);
     }
-    ParallelDescriptor::ReduceRealMin(estdt);
     estdt *= cfl;
+
+#ifndef NULLCHEMISTRY
+    if ( ! ChemDriver::isNull() )
+    {
+	for (MFIter mfi(stateMF); mfi.isValid(); ++mfi)
+	{
+	    const Box& box = mfi.validbox();
+	    Real dt = estdt;
+	    BL_FORT_PROC_CALL(RNS_ESTDT_DIFF,rns_estdt_diff)
+		(BL_TO_FORTRAN(stateMF[mfi]),
+		 box.loVect(),box.hiVect(),dx,&dt);
+	    
+	    estdt = std::min(estdt,dt);
+	}
+    }
+#endif
+
+    ParallelDescriptor::ReduceRealMin(estdt);
     
     if (verbose && ParallelDescriptor::IOProcessor())
 	cout << "RNS::estTimeStep at level " << level << ":  estdt = " << estdt << '\n';

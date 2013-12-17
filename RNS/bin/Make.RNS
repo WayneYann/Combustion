@@ -57,7 +57,9 @@ else ifeq (${CHEMISTRY_MODEL}, LUDME)
   cEXE_sources += LuDME.c
   vpath %.f $(VPATH_LOCATIONS) ${MECHDIR}/Lu/PMFs
   vpath %.c $(VPATH_LOCATIONS) ${MECHDIR}/Lu
-else ifneq (${CHEMISTRY_MODEL}, NULL)
+else ifeq (${CHEMISTRY_MODEL}, NULL)
+  DEFINES += -DNULLCHEMISTRY
+else
   $(error "Unknown CHEMISTRY_MODEL: $(CHEMISTRY_MODEL)")
 endif
 
