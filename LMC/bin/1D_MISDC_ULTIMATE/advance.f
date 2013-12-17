@@ -75,8 +75,8 @@ c     cell-centered, 1 ghost cell
       real*8       tforce(0:nlevs-1,-1:nfine,  nscal)
       real*8 diffdiff_old(0:nlevs-1,-1:nfine)
       real*8 diffdiff_new(0:nlevs-1,-1:nfine)
-      real*8 diffdiff_tmp(0:nlevs-1,-1:nfine)
-      real*8    divu_half(0:nlevs-1,-1:nfine)
+      real*8 diffdiff_hat(0:nlevs-1,-1:nfine)
+      real*8  divu_effect(0:nlevs-1,-1:nfine)
 
 c     cell-centered, no ghost cells
       real*8       rhohalf(0:nlevs-1, 0:nfine-1)
@@ -260,7 +260,7 @@ c     divu
 
 c     time-centered divu
          do i=lo(0),hi(0)
-            divu_half(0,i) = 0.5d0*(divu_old(0,i) + divu_new(0,i))
+            divu_effect(0,i) = 0.5d0*(divu_old(0,i) + divu_new(0,i))
          end do
 
 cccccccccccccccccccccccccccccccccccc
@@ -281,12 +281,12 @@ c     delta_chi = delta_chi + (peos-p0)/(dt*peos) + (1/peos) u dot grad peos
 
 c     S_hat^{n+1/2} = S^{n+1/2} + delta_chi
          do i=lo(0),hi(0)
-            divu_half(0,i) = divu_half(0,i) + delta_chi(0,i)
+            divu_effect(0,i) = divu_effect(0,i) + delta_chi(0,i)
          end do
 
 c     macvel will now satisfy div(umac) = S_hat^{n+1/2}
          call macproj(macvel(0,:),scal_old(0,:,Density),
-     &                divu_half(0,:),dx,lo(0),hi(0),bc(0,:))
+     &                divu_effect(0,:),dx,lo(0),hi(0),bc(0,:))
 
          print *,'... computing A forcing term = D^n + I_R^{k-1}'
 
@@ -306,7 +306,7 @@ c     diffdiff_old carries div h_m gamma_m
             
 c     compute advective flux divergence
          call scal_aofs(scal_old(0,:,:),macvel(0,:),aofs(0,:,:),
-     $                  divu_half(0,:),tforce(0,:,:),dx(0),dt(0),
+     $                  divu_effect(0,:),tforce(0,:,:),dx(0),dt(0),
      $                  lo(0),hi(0),bc(0,:))
 
 c     update density
@@ -437,7 +437,7 @@ c     we pass in conservative gamma_m via gamma
 c     we compute h_m using T from the scalar argument
             call get_diffdiff_terms(scal_new(0,:,:),
      $                              gamma_lo(0,:,:),gamma_hi(0,:,:),
-     $                              diffdiff_tmp(0,:),dx(0),lo(0),hi(0))
+     $                              diffdiff_hat(0,:),dx(0),lo(0),hi(0))
 
          end if
 
@@ -478,7 +478,7 @@ c     need to add dt*div lambda^{(k)} grad T_AD^{(k+1),l} to Rhs(Temp)
 
 c     add dt*div h_m^{(k)} Gamma_{m,AD}^{(k+1)}
             do i=lo(0),hi(0)
-               Rhs(0,i,Temp) = Rhs(0,i,Temp) + dt(0)*diffdiff_tmp(0,i)
+               Rhs(0,i,Temp) = Rhs(0,i,Temp) + dt(0)*diffdiff_hat(0,i)
             end do
 
 c     Solve C-N system for delta T
@@ -523,7 +523,7 @@ c       +(dt/2) div (h_m^n gamma_m^n - h_m^(k) gamma_m^(k))
          do i=lo(0),hi(0)
             dRhs(0,i,0) = dRhs(0,i,0) / dt(0)
             dRhs(0,i,0) = dRhs(0,i,0) + aofs(0,i,RhoH) 
-     &           + diff_hat(0,i,Temp) + diffdiff_tmp(0,i)
+     &           + diff_hat(0,i,Temp) + diffdiff_hat(0,i)
          end do
 
          print *,'... react with const sources'
@@ -645,14 +645,14 @@ c                           + dpdt_factor*(u dot grad p)/(gamma*p0)
      &                    delta_chi(0,:),vel_new(0,:),dx(0),dt(0),
      &                    lo(0),hi(0),bc(0,:))
 
-c     use divu_half as a temporary holding place for divu_new + delta_chi
+c     use divu_effect as a temporary holding place for divu_new + delta_chi
       do i=lo(0),hi(0)
-         divu_half(0,i) = divu_new(0,i) + delta_chi(0,i)
+         divu_effect(0,i) = divu_new(0,i) + delta_chi(0,i)
       end do
 
 c     project cell-centered velocities
       print *,'...nodal projection...'
-      call project_level(vel_new(0,:),rhohalf(0,:),divu_half(0,:),
+      call project_level(vel_new(0,:),rhohalf(0,:),divu_effect(0,:),
      &                   press_old(0,:),press_new(0,:),dx(0),dt(0),
      &                   lo(0),hi(0),bc(0,:))
 
