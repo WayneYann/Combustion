@@ -273,8 +273,8 @@ cccccccccccccccccccccccccccccccccccc
 c     compute ptherm = p(rho,T,Y)
 c     this is needed for any dpdt-based correction scheme
          call compute_pthermo(scal_new(0,:,:),lo(0),hi(0),bc(0,:))
-            
-c     delta_chi = delta_chi + (peos-p0)/(dt*peos) + (1/peos) u dot grad peos
+               
+c     delta_chi = delta_chi + dpdt_factor*(peos-p0)/(dt*peos)
          call add_dpdt(scal_new(0,:,:),scal_new(0,:,RhoRT),
      $                 delta_chi(0,:),macvel(0,:),dx(0),dt(0),
      $                 lo(0),hi(0),bc(0,:))

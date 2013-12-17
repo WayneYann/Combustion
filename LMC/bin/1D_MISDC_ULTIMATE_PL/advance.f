@@ -131,31 +131,6 @@ c     compute U^{ADV,*}
 c     reset delta_chi
       delta_chi = 0.d0
 
-c     compute ptherm = p(rho,T,Y)
-c     this is needed for any dpdt-based correction scheme
-      call compute_pthermo(scal_old(0,:,:),lo(0),hi(0),bc(0,:))
-
-c     delta_chi = delta_chi + dpdt_factor*(peos-p0)/(dt*peos)
-      call add_dpdt(scal_old(0,:,:),scal_old(0,:,RhoRT),
-     $              delta_chi(0,:),macvel(0,:),dx(0),dt(0),
-     $              lo(0),hi(0),bc(0,:))
-
-c     S_hat^n = S^n + delta_chi
-      do i=lo(0),hi(0)
-         divu_effect(0,i) = divu_old(0,i) + delta_chi(0,i)
-      end do
-
-c     mac projection
-c     macvel will now satisfy div(umac) = S_hat
-      call macproj(macvel(0,:),scal_old(0,:,Density),
-     &             divu_effect(0,:),dx,lo(0),hi(0),bc(0,:))
-
-c     compute A^n
-      print *,'... creating the advective terms with old data'
-      call scal_aofs(scal_old(0,:,:),macvel(0,:),aofs_old(0,:,:),
-     $               divu_effect(0,:),dx(0),dt(0),
-     $               lo(0),hi(0),bc(0,:))
-
 ccccccccccccccccccccccccccccccccccccccccccc
 c     Step 2: Advance thermodynamic variables
 ccccccccccccccccccccccccccccccccccccccccccc
@@ -215,7 +190,6 @@ c     non-fancy predictor that simply sets scal_new = scal_old
       diff_new = diff_old
       diffdiff_new = diffdiff_old
       divu_new = divu_old
-      aofs_new = aofs_old
 
 C----------------------------------------------------------------
 c     Begin MISDC iterations
@@ -282,43 +256,43 @@ c     divu
             call calc_divu(scal_new(0,:,:),beta_new(0,:,:),I_R_instant(0,:,:),
      &                     divu_new(0,:),dx(0),lo(0),hi(0))
 
-cccccccccccccccccccccccccccccccccccc
-c     update delta_chi and project
-cccccccccccccccccccccccccccccccccccc
-
-c     compute ptherm = p(rho,T,Y)
-c     this is needed for any dpdt-based correction scheme
-            call compute_pthermo(scal_new(0,:,:),lo(0),hi(0),bc(0,:))
-               
-c     delta_chi = delta_chi + dpdt_factor*(peos-p0)/(dt*peos)
-            call add_dpdt(scal_new(0,:,:),scal_new(0,:,RhoRT),
-     $                    delta_chi(0,:),macvel(0,:),dx(0),dt(0),
-     $                    lo(0),hi(0),bc(0,:))
-
-c     S_hat^{n+1,(k)} = S^{n+1,(k)} + delta_chi
-            do i=lo(0),hi(0)
-               divu_new(0,i) = divu_new(0,i) + delta_chi(0,i)
-            end do
-
-c     macvel will now satisfy div(umac) = S_hat^{n+1,(k)}
-            call macproj(macvel(0,:),scal_new(0,:,Density),
-     &                   divu_new(0,:),dx,lo(0),hi(0),bc(0,:))
-
-            print *,'... creating the advective terms with new data'
-
-c     compute A^{n+1,(k)}
-            call scal_aofs(scal_new(0,:,:),macvel(0,:),aofs_new(0,:,:),
-     $                     divu_new(0,:),dx(0),dt(0),
-     $                     lo(0),hi(0),bc(0,:))
-
          end if
 
 cccccccccccccccccccccccccccccccccccc
 c     update delta_chi and project
 cccccccccccccccccccccccccccccccccccc
 
-         print *,'... updating S^{n+1/2} and macvel'
+         print *,'... updating S^{n+1} and macvel'
          print *,'    using fancy delta_chi'
+
+c     compute ptherm = p(rho,T,Y)
+c     this is needed for any dpdt-based correction scheme
+         call compute_pthermo(scal_new(0,:,:),lo(0),hi(0),bc(0,:))
+               
+c     delta_chi = delta_chi + dpdt_factor*(peos-p0)/(dt*peos)
+         call add_dpdt(scal_new(0,:,:),scal_new(0,:,RhoRT),
+     $                 delta_chi(0,:),macvel(0,:),dx(0),dt(0),
+     $                 lo(0),hi(0),bc(0,:))
+
+c     S_hat^{n+1,(k)} = S^{n+1,(k)} + delta_chi
+         do i=lo(0),hi(0)
+            divu_new(0,i) = divu_new(0,i) + delta_chi(0,i)
+         end do
+
+c     macvel will now satisfy div(umac) = S_hat^{n+1,(k)}
+         call macproj(macvel(0,:),scal_new(0,:,Density),
+     &                divu_new(0,:),dx,lo(0),hi(0),bc(0,:))
+
+         print *,'... creating the advective terms with new data'
+
+c     compute A^{n+1,(k)}
+         call scal_aofs(scal_new(0,:,:),macvel(0,:),aofs_new(0,:,:),
+     $                  divu_new(0,:),dx(0),dt(0),
+     $                  lo(0),hi(0),bc(0,:))
+
+         if (misdc .eq. 1) then
+            aofs_old = aofs_new
+         end if
 
 c     update density
          print *,'... update rho'
