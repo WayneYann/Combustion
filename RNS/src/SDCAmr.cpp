@@ -319,6 +319,8 @@ void SDCAmr::timeStep(int level, Real time,
     }
   }
 
+  sdc_mg_picard(&mg, time, dt, 0);
+
   BL_PROFILE_VAR_STOP(sdc_iters);
 
   // copy final solution from sdclib to new_data
