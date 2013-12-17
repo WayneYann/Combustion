@@ -32,4 +32,5 @@ cat ${CHEMC} ${TRANC} \
           ${HEADERDIR}/header.therm ${THERMINP}\
           ${HEADERDIR}/header.trans ${TRANINP}\
           ${HEADERDIR}/header.end > ${FINALFILE}
-rm -f ${CHEMC} ${CHEMLK} ${LOG} ${TRANC} ${TRANLOG} model_files.dat
+#rm -f ${CHEMC} ${CHEMLK} ${LOG} ${TRANC} ${TRANLOG} model_files.dat
+rm -f ${CHEMC} ${CHEMLK} ${TRANC} ${TRANLOG} model_files.dat
