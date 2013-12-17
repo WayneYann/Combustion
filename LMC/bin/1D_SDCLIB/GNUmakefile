@@ -18,19 +18,17 @@ pmf_source = chemHSoln_seed_0.00.f
 REACTION_MECHANISM=CHEMH
 #REACTION_MECHANISM=LUDME
 
+export LD_LIBRARY_PATH=/home/memmett/gcc-4.7/lib64
 CC = /home/memmett/gcc-4.7/bin/gcc
 FC = /home/memmett/gcc-4.7/bin/gfortran
 
 CFLAGS = -g -O0 -std=c99 -Wall -Wno-sign-compare -fno-exceptions -DBL_FORT_USE_UNDERSCORE
 FFLAGS = -g -O1 -cpp -Wall -fbounds-check -Wno-unused-dummy-argument
 
+FFLAGS += -DGNUPLOT
+
 FFLAGS  += -Ibuild -Jbuild
 CFLAGS  += -I$(SDCLIB_HOME)/include
-
-# FFLAGS   += -DZMQ
-# CFLAGS   += -I$(HOME)/anaconda/include
-# LDFLAGS  += -L$(HOME)/anaconda/lib -lzmq
-# csources += zmq.c
 
 ifeq ($(REACTION_MECHANISM),GRI30)
   mech_source += ../../../Chemistry/data/gri/grimech30.c

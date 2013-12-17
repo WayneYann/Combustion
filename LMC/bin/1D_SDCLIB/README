@@ -1,3 +1,63 @@
+LMC SDCLIB
+==========
+
+This project is a testbed for an implementation of LMC using a
+method-of-lines time discretisation.  Time evolution is subsequently
+handled by SDCLib.
+
+Momentum conservation:
+
+  (1) ρ (∂/∂t U + U·∇U) = -∇π + ∇·τ
+
+Species mass conservation:
+
+  (2) ∂/∂t (ρ Y_m) = -∇·(U ρ Y_m) + ∇·(ρ D_m ∇Y_m) + d/dt ω_m
+
+Enthalpy conservation:
+
+  (3) ∂/∂t (ρ h) = -∇·(U ρ h) + ∇·(λ ∇h / c_p) + Σ_m ∇·[ h_m (ρ D_m - λ / c_p) ∇Y_m
+
+Constraint:
+
+  (4) ∇·U = S
+
+
+IMEX SDC
+========
+
+The equations of motion are split into explicit (f1) and implicit (f2)
+parts according to:
+
+* Explicit:
+
+  (1) ∂/∂t U       = - (∇π + U·∇U) / ρ
+  (2) ∂/∂t (ρ Y_m) = -∇·(U ρ Y_m)
+  (3) ∂/∂t (ρ h)   = -∇·(U ρ h)
+
+* Implicit:
+
+  (1) ∂/∂t U       = ∇·τ / ρ
+  (2) ∂/∂t (ρ Y_m) = ∇·(ρ D_m ∇Y_m) + d/dt ω_m
+  (3) ∂/∂t (ρ h)   = ∇·(λ ∇h / c_p) + Σ_m ∇·[ h_m (ρ D_m - λ / c_p) ∇Y_m
+
+Note that d/dt ω_m is very stiff and is therefore handled with VODE or
+BDF according to: XXX.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 -Using Nspec and maxspec interchangably here
 
 ****************

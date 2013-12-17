@@ -38,28 +38,15 @@ contains
 
     print *, 'explicit eval ...'
 
-    f%scal  = 0
-    f%vel   = 0
-    f%press = 0
-
-    aofs = 0
-    aofv = 0
-
-    call dsend(q%scal(:,density), .false.)
-    call dsend(q%press(:), .false.)
-    call dsend(q%vel(:), .false.)
-
-    call calc_grad_pi(gp, q%press, lo, hi, dx)
-    call calc_edge_vel(edgevel, q%vel, lo, hi, bc)
+    f%scal = 0; f%vel = 0; f%press = 0; aofs = 0; aofv = 0
 
     print *, '   ... computing divu'
     call calc_diffusivities(q%scal, beta, beta_for_Y, beta_for_Wbar, mu, lo, hi)
     call calc_omega_dot(q%scal, omegadot, lo, hi)
-    call calc_divu(q%scal,beta,omegadot,divu,dx,lo,hi)
-
-    call dsend(divu, .false.)
+    call calc_divu(q%scal, beta, omegadot, divu, dx, lo, hi)
 
     print *, '   ... projecting'
+    call calc_edge_vel(edgevel, q%vel, lo, hi, bc)
     macvel = edgevel
     call mac_project(macvel, q%scal(:,density), divu, dx, lo, hi, bc)
 
@@ -67,6 +54,7 @@ contains
     call scal_aofs(q%scal, macvel, aofs, divu, dx, lo, hi, bc)
 
     print *, '   ... computing advective velocity flux'
+    call calc_grad_pi(gp, q%press, lo, hi, dx)
     do i = lo, hi
        aofv(i) = - ( (macvel(i+1)*edgevel(i+1) - macvel(i)*edgevel(i)) &
                      - 0.5d0 * (macvel(i+1)-macvel(i))*(edgevel(i)+edgevel(i+1)) &
@@ -78,9 +66,13 @@ contains
     f%scal(lo:hi,:) = aofs
     f%vel(lo:hi) = aofv
 
-    call dsend(macvel, .false.)
-    call dsend(f%scal(:,density), .false.)
-    call dsend(f%vel, .true.)
+    call plot1(q%scal(:,density), 1, 'with lines title "density"', .false.)
+    call plot1(q%press(:), 2, 'with lines title "pressure"', .false.)
+    call plot1(q%vel(:), 3, 'with lines title "velocity"', .true.)
+    ! call dsend(divu, 1, "", .false.)
+    ! call dsend(macvel, 1, "", .false.)
+    ! call dsend(f%scal(:,density), 1, "", .false.)
+    ! call dsend(f%vel, 1, "", .true.)
   end subroutine f1eval
 
   !
@@ -104,15 +96,12 @@ contains
     double precision :: mu(lo-1:hi+1)
     double precision :: gamma_lo(lo:hi,nspec), gamma_hi(lo:hi,nspec)
 
-
     print *, 'implicit eval ...'
 
     call c_f_pointer(qptr, q)
     call c_f_pointer(fptr, f)
 
-    f%vel   = 0
-    f%scal  = 0
-    f%press = 0
+    f%vel = 0; f%scal = 0; f%press = 0
 
     print *,'   ... computing divu'
 
