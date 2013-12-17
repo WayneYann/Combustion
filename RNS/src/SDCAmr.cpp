@@ -333,6 +333,11 @@ void SDCAmr::timeStep(int level, Real time,
     MultiFab::Copy(Unew, Uend, 0, 0, Uend.nComp(), 0);
   }
 
+  for (int lev = finest_level-1; lev>= 0; lev--) {
+    RNS& rns = *dynamic_cast<RNS*>(&getLevel(lev));
+    rns.avgDown();
+  }
+
   level_steps[level]++;
   level_count[level]++;
 }
