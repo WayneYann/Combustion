@@ -2,8 +2,8 @@ LMC SDCLIB
 ==========
 
 This project is a testbed for an implementation of LMC using a
-method-of-lines time discretisation.  Time evolution is subsequently
-handled by SDCLib.
+method-of-lines time discretisation.  Time evolution is handled by
+SDCLib.
 
 Momentum conservation:
 
@@ -20,6 +20,11 @@ Enthalpy conservation:
 Constraint:
 
   (4) ∇·U = S
+
+
+The state of the system (ρ, T, ρ h, ρ R T, Y_m, U, p) is hereafter
+denoted Q.  Note that the state is encapsulated (see src/encap.f90) so
+that SDCLib can operate on it in a very general way.
 
 
 IMEX SDC
@@ -42,6 +47,11 @@ parts according to:
 
 Note that d/dt ω_m is very stiff and is therefore handled with VODE or
 BDF according to: XXX.
+
+The f1eval routine in src/feval.f90 computes dQ/dt for the explicit
+terms.  The f2eval routine in src/feval.f90 computes the instantaneous
+values of dQ/dt for the implicit terms.  The f2comp routine in
+src/feval.f90 solves a backward-Euler step of the implicit terms.
 
 
 
@@ -105,4 +115,3 @@ get_diffdiff_terms - computes sum_m h_m * (rho*D_m - lamba/cp) grad Y_m
 
 get_temp_visc_terms - computes del dot lambda grad T + sum_m rho D_m grad h_m dot grad Y_m
 		      does not divide by rho*cp
-

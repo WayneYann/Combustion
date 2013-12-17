@@ -68,11 +68,8 @@ contains
 
     call plot1(q%scal(:,density), 1, 'with lines title "density"', .false.)
     call plot1(q%press(:), 2, 'with lines title "pressure"', .false.)
-    call plot1(q%vel(:), 3, 'with lines title "velocity"', .true.)
-    ! call dsend(divu, 1, "", .false.)
-    ! call dsend(macvel, 1, "", .false.)
-    ! call dsend(f%scal(:,density), 1, "", .false.)
-    ! call dsend(f%vel, 1, "", .true.)
+    call plot2(q%vel(lo:hi), macvel(lo:hi), 4, &
+         "u 1:2 w l title 'velocity', '' u 1:3 w l title 'macvel'", .true.)
   end subroutine f1eval
 
   !
@@ -166,67 +163,5 @@ contains
     f%vel  = 0
     f%scal = 0
   end subroutine f2comp
-
-
-
-
-
-  ! subroutine calc_divu(scal,beta,I_R,divu,dx,lo,hi)
-  !   implicit none
-  !   real*8 scal(-2:nfine+1,nscal)
-  !   real*8 beta(-1:nfine  ,nscal)
-  !   real*8  I_R(-1:nfine  ,0:Nspec)
-  !   real*8 divu(-1:nfine)
-  !   real*8 dx
-  !   integer lo,hi
-
-  !   real*8 Y(Nspec)
-  !   real*8 HK(Nspec)
-  !   real*8 cpmix,mwmix
-
-  !   real*8 diff(-1:nfine,nscal)
-  !   real*8 diffdiff(-1:nfine)
-
-  !   real*8 RWRK,rho,T
-  !   integer IWRK,i,n
-
-  !   real*8 gamma_lo(0:nfine-1,Nspec)
-  !   real*8 gamma_hi(0:nfine-1,Nspec)
-
-  !   ! compute Gamma_m
-  !   call get_spec_visc_terms(scal,beta,diff(:,FirstSpec:), gamma_lo,gamma_hi,dx,lo,hi)
-
-  !   ! compute div lambda grad T
-  !   diff(:,Temp) = 0.d0
-  !   call addDivLambdaGradT(scal,beta,diff(:,Temp),dx,lo,hi)
-
-  !   ! compute div h_m Gamma_m
-  !   call get_diffdiff_terms(scal,gamma_lo,gamma_hi, diffdiff,dx,lo,hi)
-
-  !   ! combine div lambda grad T + div h_m Gamma_m
-  !   do i=lo,hi
-  !      diff(i,Temp) = diff(i,Temp) + diffdiff(i)
-  !   end do
-
-  !   do i=lo,hi
-  !      rho = scal(i,Density)
-  !      do n = 1,Nspec
-  !         Y(n) = scal(i,FirstSpec + n - 1) / rho
-  !      enddo
-  !      T = scal(i,Temp)
-  !      call CKMMWY(Y,IWRK,RWRK,mwmix)
-  !      call CKCPBS(T,Y,IWRK,RWRK,cpmix)
-  !      call CKHMS(T,IWRK,RWRK,HK)
-
-  !      divu(i) = diff(i,Temp)/(rho*cpmix*T)
-
-  !      do n=1,Nspec
-  !         divu(i) = divu(i) + (diff(i,FirstSpec+n-1) + I_R(i,n))*(invmwt(n)*mwmix/rho - HK(n)/(rho*cpmix*T))
-  !      enddo
-  !   enddo
-
-  ! end subroutine calc_divu
-
-
 
 end module feval

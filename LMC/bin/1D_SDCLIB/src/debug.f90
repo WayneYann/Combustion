@@ -1,6 +1,6 @@
 module debug
   implicit none
-  integer, parameter :: un = 66
+  integer, parameter :: gpun = 66, datun = 67
   logical, save      :: connected = .false.
 contains
 
@@ -10,20 +10,25 @@ contains
     character(*), intent(in   ) :: options
     logical,      intent(in   ) :: wait
 
+    character(128) :: fname
+
     integer :: i
 
 #ifdef GNUPLOT
     if (.not. connected) then
-       open(unit=un, file="/tmp/gp")
+       open(unit=gpun, file="/tmp/gp")
        connected = .true.
     end if
 
-    write(un,*) "set term wxt ", window
-    write(un,*) "plot '-' ", options
-    do i = 1, size(q)
-       write(un,*) i, q(:,i)
+    write(fname,"(a,i1)") "/tmp/debug.dat", window
+    open(unit=datun, file=fname, action="write")
+    do i = 1, size(q, dim=2)
+       write(datun,*) i, q(:,i)
     end do
-    write(un,"(a)"), "e"
+    close(datun)
+
+    write(gpun,*) "set term wxt ", window
+    write(gpun,*) "plot '" // trim(fname) // "' " // options
 
     if (wait) then
        write (*,*) '==> paused'

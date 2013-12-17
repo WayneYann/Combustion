@@ -2,7 +2,8 @@ module encap
   use sdclib
   implicit none
   type :: lmc_encap
-      real(8), pointer :: vel(:), scal(:,:), divu(:), press(:)
+     ! XXX: get rid of divu?
+     real(8), pointer :: vel(:), scal(:,:), divu(:), press(:)
   end type lmc_encap
   type :: lmc_encap_ctx
      integer :: nfine, nscal
