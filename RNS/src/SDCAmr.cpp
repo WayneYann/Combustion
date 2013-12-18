@@ -301,13 +301,13 @@ void SDCAmr::timeStep(int level, Real time,
 
     if (verbose > 0) {
       for (int lev=0; lev<=finest_level; lev++) {
-        int       nnodes = mg.sweepers[lev]->nset->nnodes;
-	RNSEncap& R0     = *((RNSEncap*) mg.sweepers[lev]->nset->R[nnodes-2]);
-        MultiFab& R      = *R0.U;
+	RNSEncap* Rencap = (RNSEncap*) encaps[lev]->create(SDC_INTEGRAL, encaps[lev]->ctx);
+        MultiFab& R      = *Rencap->U;
+
+	sdc_sweeper_residual(mg.sweepers[lev], dt, Rencap);
 	double    r0     = R.norm0();
 	double    r2     = R.norm2();
-
-	// dgp_send_mf(R, lev, 0, lev==finest_level);
+	encaps[lev]->destroy(Rencap);
 
 	if (ParallelDescriptor::IOProcessor()) {
 	  std::ios_base::fmtflags ff = cout.flags();
@@ -319,6 +319,8 @@ void SDCAmr::timeStep(int level, Real time,
     }
   }
 
+  sdc_mg_picard(&mg, time, dt, 0);
+
   BL_PROFILE_VAR_STOP(sdc_iters);
 
   // copy final solution from sdclib to new_data
@@ -329,6 +331,11 @@ void SDCAmr::timeStep(int level, Real time,
     MultiFab& Uend   = *Qend.U;
 
     MultiFab::Copy(Unew, Uend, 0, 0, Uend.nComp(), 0);
+  }
+
+  for (int lev = finest_level-1; lev>= 0; lev--) {
+    RNS& rns = *dynamic_cast<RNS*>(&getLevel(lev));
+    rns.avgDown();
   }
 
   level_steps[level]++;

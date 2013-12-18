@@ -38,28 +38,15 @@ contains
 
     print *, 'explicit eval ...'
 
-    f%scal  = 0
-    f%vel   = 0
-    f%press = 0
-
-    aofs = 0
-    aofv = 0
-
-    call dsend(q%scal(:,density), .false.)
-    call dsend(q%press(:), .false.)
-    call dsend(q%vel(:), .false.)
-
-    call calc_grad_pi(gp, q%press, lo, hi, dx)
-    call calc_edge_vel(edgevel, q%vel, lo, hi, bc)
+    f%scal = 0; f%vel = 0; f%press = 0; aofs = 0; aofv = 0
 
     print *, '   ... computing divu'
     call calc_diffusivities(q%scal, beta, beta_for_Y, beta_for_Wbar, mu, lo, hi)
     call calc_omega_dot(q%scal, omegadot, lo, hi)
-    call calc_divu(q%scal,beta,omegadot,divu,dx,lo,hi)
-
-    call dsend(divu, .false.)
+    call calc_divu(q%scal, beta, omegadot, divu, dx, lo, hi)
 
     print *, '   ... projecting'
+    call calc_edge_vel(edgevel, q%vel, lo, hi, bc)
     macvel = edgevel
     call mac_project(macvel, q%scal(:,density), divu, dx, lo, hi, bc)
 
@@ -67,6 +54,7 @@ contains
     call scal_aofs(q%scal, macvel, aofs, divu, dx, lo, hi, bc)
 
     print *, '   ... computing advective velocity flux'
+    call calc_grad_pi(gp, q%press, lo, hi, dx)
     do i = lo, hi
        aofv(i) = - ( (macvel(i+1)*edgevel(i+1) - macvel(i)*edgevel(i)) &
                      - 0.5d0 * (macvel(i+1)-macvel(i))*(edgevel(i)+edgevel(i+1)) &
@@ -78,9 +66,10 @@ contains
     f%scal(lo:hi,:) = aofs
     f%vel(lo:hi) = aofv
 
-    call dsend(macvel, .false.)
-    call dsend(f%scal(:,density), .false.)
-    call dsend(f%vel, .true.)
+    call plot1(q%scal(:,density), 1, 'with lines title "density"', .false.)
+    call plot1(q%press(:), 2, 'with lines title "pressure"', .false.)
+    call plot2(q%vel(lo:hi), macvel(lo:hi), 4, &
+         "u 1:2 w l title 'velocity', '' u 1:3 w l title 'macvel'", .true.)
   end subroutine f1eval
 
   !
@@ -104,15 +93,12 @@ contains
     double precision :: mu(lo-1:hi+1)
     double precision :: gamma_lo(lo:hi,nspec), gamma_hi(lo:hi,nspec)
 
-
     print *, 'implicit eval ...'
 
     call c_f_pointer(qptr, q)
     call c_f_pointer(fptr, f)
 
-    f%vel   = 0
-    f%scal  = 0
-    f%press = 0
+    f%vel = 0; f%scal = 0; f%press = 0
 
     print *,'   ... computing divu'
 
@@ -177,67 +163,5 @@ contains
     f%vel  = 0
     f%scal = 0
   end subroutine f2comp
-
-
-
-
-
-  ! subroutine calc_divu(scal,beta,I_R,divu,dx,lo,hi)
-  !   implicit none
-  !   real*8 scal(-2:nfine+1,nscal)
-  !   real*8 beta(-1:nfine  ,nscal)
-  !   real*8  I_R(-1:nfine  ,0:Nspec)
-  !   real*8 divu(-1:nfine)
-  !   real*8 dx
-  !   integer lo,hi
-
-  !   real*8 Y(Nspec)
-  !   real*8 HK(Nspec)
-  !   real*8 cpmix,mwmix
-
-  !   real*8 diff(-1:nfine,nscal)
-  !   real*8 diffdiff(-1:nfine)
-
-  !   real*8 RWRK,rho,T
-  !   integer IWRK,i,n
-
-  !   real*8 gamma_lo(0:nfine-1,Nspec)
-  !   real*8 gamma_hi(0:nfine-1,Nspec)
-
-  !   ! compute Gamma_m
-  !   call get_spec_visc_terms(scal,beta,diff(:,FirstSpec:), gamma_lo,gamma_hi,dx,lo,hi)
-
-  !   ! compute div lambda grad T
-  !   diff(:,Temp) = 0.d0
-  !   call addDivLambdaGradT(scal,beta,diff(:,Temp),dx,lo,hi)
-
-  !   ! compute div h_m Gamma_m
-  !   call get_diffdiff_terms(scal,gamma_lo,gamma_hi, diffdiff,dx,lo,hi)
-
-  !   ! combine div lambda grad T + div h_m Gamma_m
-  !   do i=lo,hi
-  !      diff(i,Temp) = diff(i,Temp) + diffdiff(i)
-  !   end do
-
-  !   do i=lo,hi
-  !      rho = scal(i,Density)
-  !      do n = 1,Nspec
-  !         Y(n) = scal(i,FirstSpec + n - 1) / rho
-  !      enddo
-  !      T = scal(i,Temp)
-  !      call CKMMWY(Y,IWRK,RWRK,mwmix)
-  !      call CKCPBS(T,Y,IWRK,RWRK,cpmix)
-  !      call CKHMS(T,IWRK,RWRK,HK)
-
-  !      divu(i) = diff(i,Temp)/(rho*cpmix*T)
-
-  !      do n=1,Nspec
-  !         divu(i) = divu(i) + (diff(i,FirstSpec+n-1) + I_R(i,n))*(invmwt(n)*mwmix/rho - HK(n)/(rho*cpmix*T))
-  !      enddo
-  !   enddo
-
-  ! end subroutine calc_divu
-
-
 
 end module feval

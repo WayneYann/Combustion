@@ -13,7 +13,7 @@ module lmc
   double precision, save :: vel_TYP, hmix_TYP, c_0(0:maxspec), c_1(0:maxspec)
 
   integer, save :: nscal, nspec, nelt, nreac, nfit
-  integer, save :: density, temp, rhort, rhoh, firstspec, lastspec
+  integer, save :: Density, Temp, RhoRT, RhoH, firstspec, lastspec
   integer, save :: iH2, iO2, iN2, iCH4, iCH3OCH3, iCO2, iH2O
 
   integer, parameter :: eg_nodes = 1
