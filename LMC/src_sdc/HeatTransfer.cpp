@@ -6136,7 +6136,7 @@ HeatTransfer::advance_chemistry (MultiFab&       mf_old,
             std::cout << "*** advance_chemistry: FABs in tmp MF: " << STemp.size() << '\n';
 
         STemp.copy(mf_old,first_spec,0,nspecies+3); // Parallel copy.
-        FTemp.copy(Force,FabArrayBase::COPY,false); // Parallel copy.
+        FTemp.copy(Force);                          // Parallel copy.
 
         for (MFIter Smfi(STemp); Smfi.isValid(); ++Smfi)
         {
@@ -6188,7 +6188,7 @@ HeatTransfer::advance_chemistry (MultiFab&       mf_old,
         MultiFab& FC = get_new_data(FuncCount_Type);
         if (ngrow == 0)
         {
-            FC.copy(fcnCntTemp,FabArrayBase::COPY,false); // Parallel copy.
+            FC.copy(fcnCntTemp); // Parallel copy.
         }
         else
         {
@@ -6201,7 +6201,7 @@ HeatTransfer::advance_chemistry (MultiFab&       mf_old,
             grownFC.copy(fcnCntTemp); // Parallel copy.        
             for (MFIter mfi(grownFC); mfi.isValid(); ++mfi)
             {
-                FC[mfi].copy(grownFC[mfi],FabArrayBase::COPY,false);
+                FC[mfi].copy(grownFC[mfi]);
             }
         }
         fcnCntTemp.clear();

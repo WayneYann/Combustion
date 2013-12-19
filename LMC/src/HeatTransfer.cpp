@@ -6564,7 +6564,7 @@ HeatTransfer::strang_chem (MultiFab&  mf,
             if (verbose && ParallelDescriptor::IOProcessor())
                 std::cout << "*** strang_chem: FABs in tmp MF: " << tmp.size() << '\n';
 
-            tmp.copy(mf,FabArrayBase::COPY,false); // Parallel copy.
+            tmp.copy(mf); // Parallel copy.
 
             for (MFIter Smfi(tmp); Smfi.isValid(); ++Smfi)
             {
@@ -6576,11 +6576,11 @@ HeatTransfer::strang_chem (MultiFab&  mf,
                 getChemSolve().solveTransient(fb,fb,fb,fb,fc,bx,ycomp,Tcomp,0.5*dt,Patm,chemDiag);
             }
 
-            mf.copy(tmp,FabArrayBase::COPY,false); // Parallel copy.
+            mf.copy(tmp); // Parallel copy.
 
             if (do_diag)
             {
-                auxDiag["REACTIONS"]->copy(diagTemp,FabArrayBase::COPY,false); // Parallel copy
+                auxDiag["REACTIONS"]->copy(diagTemp); // Parallel copy
             }
 
             if (ngrow == 0)
@@ -6588,7 +6588,7 @@ HeatTransfer::strang_chem (MultiFab&  mf,
                 //
                 // Working on valid region of state.
                 //
-                get_new_data(FuncCount_Type).copy(fcnCntTemp,FabArrayBase::COPY,false); // Parallel copy.
+                get_new_data(FuncCount_Type).copy(fcnCntTemp); // Parallel copy.
             }
             else
             {
@@ -6604,7 +6604,7 @@ HeatTransfer::strang_chem (MultiFab&  mf,
                 for (MFIter mfi(FC); mfi.isValid(); ++mfi)
                     grownFC[mfi].copy(FC[mfi]);
 
-                grownFC.copy(fcnCntTemp,FabArrayBase::COPY,false); // Parallel copy.
+                grownFC.copy(fcnCntTemp); // Parallel copy.
 
                 for (MFIter mfi(grownFC); mfi.isValid(); ++mfi)
                     FC[mfi].copy(grownFC[mfi]);
