@@ -78,9 +78,7 @@ public:
 
 };
 
-#ifdef GP
 void dgp_send_mf(MultiFab& U, int level, int comp, int wait);
-#endif
 
 #endif
 #endif
