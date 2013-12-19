@@ -5449,7 +5449,6 @@ HeatTransfer::set_htt_hmixTYP ()
     {
         htt_hmixTYP = 0;
         std::vector< std::pair<int,Box> > isects;
-        isects.reserve(27);
         for (int k = 0; k <= finest_level; k++)
         {
             AmrLevel& ht = getLevel(k);
@@ -6110,8 +6109,6 @@ HeatTransfer::advance (Real time,
 
         std::vector< std::pair<int,Box> > isects;
 
-        isects.reserve(27);
-            
         for (MFIter mfi(divu_new); mfi.isValid();++mfi)
         {
             crsndgrids.intersections(mfi.validbox(),isects);
@@ -6272,8 +6269,6 @@ HeatTransfer::set_overdetermined_boundary_cells (Real time)
     MultiFab t(grids,1,0,Fab_noallocate);
 
     std::vector< std::pair<int,Box> > isects;
-
-    isects.reserve(27);
 
     for (FillPatchIterator T_fpi(*this,t,nGrow,time,State_Type,Temp,1),
              RhoY_fpi(*this,t,nGrow,time,State_Type,Density,nspecies+1);
@@ -6528,10 +6523,8 @@ HeatTransfer::strang_chem (MultiFab&  mf,
             // We want to try and level out the chemistry work.
             //
             const int NProcs = ParallelDescriptor::NProcs();
-
-            BoxArray ba = mf.boxArray();
-
-            bool done = false;
+            BoxArray  ba     = mf.boxArray();
+            bool      done   = (ba.size() >= 3*NProcs);
 
             for (int cnt = 1; !done; cnt *= 2)
             {
@@ -6548,9 +6541,7 @@ HeatTransfer::strang_chem (MultiFab&  mf,
                 for (int j = BL_SPACEDIM-1; j >=0  && ba.size() < 3*NProcs; j--)
                 {
                     chunk[j] /= 2;
-
                     ba.maxSize(chunk);
-
                     if (ba.size() >= 3*NProcs) done = true;
                 }
             }
@@ -6560,7 +6551,6 @@ HeatTransfer::strang_chem (MultiFab&  mf,
             MultiFab tmp, fcnCntTemp;
 
             tmp.define(ba, mf.nComp(), 0, dm, Fab_allocate);
-
             fcnCntTemp.define(ba, 1, 0, dm, Fab_allocate);
 
             MultiFab diagTemp;
@@ -8645,8 +8635,6 @@ HeatTransfer::reflux ()
     // coarse grid cells which underlie fine grid cells.
     //
     std::vector< std::pair<int,Box> > isects;
-
-    isects.reserve(27);
 
     for (MFIter mfi(*Vsync); mfi.isValid(); ++mfi)
     {

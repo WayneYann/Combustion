@@ -136,13 +136,12 @@ std::vector<int> RNS::blocksize(BL_SPACEDIM, 2048);
 
 int          RNS::do_quartic_interp   = 1;
 
-int          RNS::use_vode            = 1;
+int          RNS::do_weno;
+int          RNS::do_component_weno;
+
+int          RNS::use_vode            = 0;
 int          RNS::do_cc_burning       = 0; // do_cc_burning has no effect when split_burning is true
-#ifdef USE_SDCLIB
 int          RNS::split_burning       = 1;
-#else
-int          RNS::split_burning       = 0;
-#endif
 
 // this will be reset upon restart
 Real         RNS::previousCPUTimeUsed = 0.0;
@@ -307,6 +306,20 @@ RNS::read_params ()
     pp.queryarr("blocksize", blocksize);
 
     pp.query("do_quartic_interp", do_quartic_interp);
+
+    if (ChemDriver::isNull())
+    {
+	do_weno = 1;
+	do_component_weno = 0;
+    }
+    else
+    {
+	do_weno = 1;
+	pp.query("do_weno", do_weno);
+
+	do_component_weno = 1;
+    }
+    pp.query("do_component_weno", do_component_weno);
 
     pp.query("use_vode", use_vode);
     pp.query("do_cc_burning", do_cc_burning);
@@ -482,8 +495,25 @@ RNS::estTimeStep (Real dt_old)
 	
 	estdt = std::min(estdt,dt);
     }
-    ParallelDescriptor::ReduceRealMin(estdt);
     estdt *= cfl;
+
+#ifndef NULLCHEMISTRY
+    if ( ! ChemDriver::isNull() )
+    {
+	for (MFIter mfi(stateMF); mfi.isValid(); ++mfi)
+	{
+	    const Box& box = mfi.validbox();
+	    Real dt = estdt;
+	    BL_FORT_PROC_CALL(RNS_ESTDT_DIFF,rns_estdt_diff)
+		(BL_TO_FORTRAN(stateMF[mfi]),
+		 box.loVect(),box.hiVect(),dx,&dt);
+	    
+	    estdt = std::min(estdt,dt);
+	}
+    }
+#endif
+
+    ParallelDescriptor::ReduceRealMin(estdt);
     
     if (verbose && ParallelDescriptor::IOProcessor())
 	cout << "RNS::estTimeStep at level " << level << ":  estdt = " << estdt << '\n';

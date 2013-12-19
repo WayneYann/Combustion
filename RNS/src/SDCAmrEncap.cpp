@@ -1,3 +1,16 @@
+/*
+ * RNS encapsulation for SDCLib.
+ *
+ * Notes:
+ *   - State/solution encaps are created with grow/ghost cells.
+ *   - Function evaluation encaps are created without grow/ghost cells.
+ *   - Integral encaps are created without grow/ghost cells.
+ *
+ * XXX: Note that the FEVAL encapsulations have flux registers, and
+ * since we're using the IMEX sweeper, both the "explicit" feval and
+ * "implicit" feval will have flux registers, but this isn't
+ * necessary.  Matt should clean this up sometime.
+ */
 
 #include <MultiFab.H>
 #include <SDCAmr.H>
@@ -8,19 +21,42 @@
 
 BEGIN_EXTERN_C
 
+void mf_encap_setval(void *Qptr, sdc_dtype val);
+
+
 void *mf_encap_create(int type, void *encap_ctx)
 {
   RNSEncapCtx* ctx   = (RNSEncapCtx*) encap_ctx;
   RNSEncap*    encap = new RNSEncap;
-  encap->flux = 0;
-  if (type == SDC_SOLUTION || type == SDC_WORK) {
-    encap->U    = new MultiFab(*ctx->ba, ctx->ncomp, ctx->ngrow);
-    encap->flux = 0;
-  } else {
-    encap->U    = new MultiFab(*ctx->ba, ctx->ncomp, 0);
-    if (! ctx->finest)
-      encap->flux = new FluxRegister(*ctx->ba, ctx->rr, ctx->level, ctx->ncomp);
+
+  BoxArray ba(*ctx->ba);
+
+  encap->fine_flux = 0;
+  encap->crse_flux = 0;
+  encap->type = type;
+  encap->rns  = ctx->rns;
+
+  switch (type) {
+  case SDC_SOLUTION:
+  case SDC_WORK:
+    encap->U = new MultiFab(ba, ctx->ncomp, ctx->ngrow);
+    mf_encap_setval(encap, 0.0);
+    break;
+  case SDC_FEVAL:
+  case SDC_INTEGRAL:
+  case SDC_TAU:
+    encap->U = new MultiFab(ba, ctx->ncomp, 0);
+    if (ctx->level > 0)
+      encap->fine_flux = new FluxRegister(ba, ctx->crse_ratio, ctx->level, ctx->ncomp);
+    if (! ctx->finest) {
+      SDCAmr&   amr  = *encap->rns->getSDCAmr();
+      AmrLevel& rnsF = amr.getLevel(ctx->level+1);
+      encap->crse_flux = new FluxRegister(rnsF.boxArray(), amr.refRatio(ctx->level), rnsF.Level(), ctx->ncomp);
+    }
+    mf_encap_setval(encap, 0.0);
+    break;
   }
+
   return encap;
 }
 
@@ -28,9 +64,16 @@ void mf_encap_destroy(void *Qptr)
 {
   RNSEncap* Q = (RNSEncap*) Qptr;
   delete Q->U;
-  if (Q->flux != NULL)
-    delete Q->flux;
+  if (Q->fine_flux != NULL) delete Q->fine_flux;
+  if (Q->crse_flux != NULL) delete Q->crse_flux;
   delete Q;
+}
+
+void mf_encap_setval_flux(FluxRegister& dst, sdc_dtype val)
+{
+  for (OrientationIter face; face; ++face)
+    for (FabSetIter bfsi(dst[face()]); bfsi.isValid(); ++bfsi)
+      dst[face()][bfsi].setVal(val);
 }
 
 void mf_encap_setval(void *Qptr, sdc_dtype val)
@@ -39,12 +82,15 @@ void mf_encap_setval(void *Qptr, sdc_dtype val)
   MultiFab& U = *Q.U;
   U.setVal(val, U.nGrow());
 
-  if (Q.flux) {
-    FluxRegister& F = *Q.flux;
-    for (OrientationIter face; face; ++face)
-      for (FabSetIter bfsi(F[face()]); bfsi.isValid(); ++bfsi)
-	F[face()][bfsi].setVal(val);
-  }
+  if (Q.fine_flux) mf_encap_setval_flux(*Q.fine_flux, val);
+  if (Q.crse_flux) mf_encap_setval_flux(*Q.crse_flux, val);
+}
+
+void mf_encap_copy_flux(FluxRegister& dst, FluxRegister& src)
+{
+  for (OrientationIter face; face; ++face)
+    for (FabSetIter bfsi(dst[face()]); bfsi.isValid(); ++bfsi)
+      dst[face()][bfsi].copy(src[face()][bfsi]);
 }
 
 void mf_encap_copy(void *dstp, const void *srcp)
@@ -53,20 +99,24 @@ void mf_encap_copy(void *dstp, const void *srcp)
   RNSEncap& Qsrc = *((RNSEncap*) srcp);
   MultiFab& Udst = *Qdst.U;
   MultiFab& Usrc = *Qsrc.U;
-  MultiFab::Copy(Udst, Usrc, 0, 0, Udst.nComp(), Udst.nGrow());
 
-  if (Qdst.flux && Qsrc.flux) {
-    FluxRegister& Fdst = *Qdst.flux;
-    FluxRegister& Fsrc = *Qsrc.flux;
-    for (OrientationIter face; face; ++face)
-      for (FabSetIter bfsi(Fdst[face()]); bfsi.isValid(); ++bfsi)
-	Fdst[face()][bfsi].copy(Fsrc[face()][bfsi]);
-  }
+  for (MFIter mfi(Udst); mfi.isValid(); ++mfi)
+    Udst[mfi].copy(Usrc[mfi]);
+
+  if (Qdst.fine_flux && Qsrc.fine_flux) mf_encap_copy_flux(*Qdst.fine_flux, *Qsrc.fine_flux);
+  if (Qdst.crse_flux && Qsrc.crse_flux) mf_encap_copy_flux(*Qdst.crse_flux, *Qsrc.crse_flux);
 
 #ifndef NDEBUG
   BL_ASSERT(Usrc.contains_nan() == false);
   BL_ASSERT(Udst.contains_nan() == false);
 #endif
+}
+
+void mf_encap_saxpy_flux(FluxRegister& y, sdc_dtype a, FluxRegister& x)
+{
+  for (OrientationIter face; face; ++face)
+    for (FabSetIter bfsi(y[face()]); bfsi.isValid(); ++bfsi)
+      y[face()][bfsi].saxpy(a, x[face()][bfsi]);
 }
 
 void mf_encap_saxpy(void *yp, sdc_dtype a, void *xp)
@@ -79,19 +129,13 @@ void mf_encap_saxpy(void *yp, sdc_dtype a, void *xp)
 // #ifdef _OPENMP
 // #pragma omp parallel for
 // #endif
-  BL_ASSERT(Uy.boxArray() == Ux.boxArray());
+ BL_ASSERT(Uy.boxArray() == Ux.boxArray());
 
   for (MFIter mfi(Uy); mfi.isValid(); ++mfi)
     Uy[mfi].saxpy(a, Ux[mfi]);
 
-  if (Qy.flux && Qx.flux) {
-    FluxRegister& Fy = *Qy.flux;
-    FluxRegister& Fx = *Qx.flux;
-
-    for (OrientationIter face; face; ++face)
-      for (FabSetIter bfsi(Fy[face()]); bfsi.isValid(); ++bfsi)
-	Fy[face()][bfsi].saxpy(a, Fx[face()][bfsi]);
-  }
+  if ((Qy.type==SDC_TAU) && (Qx.fine_flux!=NULL)) mf_encap_saxpy_flux(*Qy.fine_flux, a, *Qx.fine_flux);
+  if ((Qy.type==SDC_TAU) && (Qx.crse_flux!=NULL)) mf_encap_saxpy_flux(*Qy.crse_flux, a, *Qx.crse_flux);
 }
 
 END_EXTERN_C
@@ -100,19 +144,17 @@ END_EXTERN_C
 sdc_encap* SDCAmr::build_encap(int lev)
 {
   const DescriptorList& dl = getLevel(lev).get_desc_lst();
-  assert(dl.size() == 1);	// valid for RNS
+  assert(dl.size() == 1);       // valid for RNS
 
   RNSEncapCtx* ctx = new RNSEncapCtx;
-  ctx->ba    = &boxArray(lev);
-  if (lev < finest_level) {
-    ctx->rr     = refRatio(lev);
-    ctx->finest = 0;
-  } else {
-    ctx->finest = 1;
-  }
-  ctx->ncomp = dl[0].nComp();
-  ctx->ngrow = dl[0].nExtra();
-  ctx->level = lev;
+  ctx->level  = lev;
+  ctx->ba     = &boxArray(lev);
+  ctx->rns    = dynamic_cast<RNS*>(&getLevel(lev));
+  ctx->finest = lev == finest_level;
+  ctx->ncomp  = dl[0].nComp();
+  ctx->ngrow  = dl[0].nExtra();
+  if (lev > 0)
+    ctx->crse_ratio = refRatio(lev-1);
 
   sdc_encap* encap = new sdc_encap;
   encap->create  = mf_encap_create;
@@ -125,10 +167,14 @@ sdc_encap* SDCAmr::build_encap(int lev)
   return encap;
 }
 
-void SDCAmr::destroy_encap(int lev)
+void SDCAmr::destroy_mlsdc()
 {
-  // XXX: memory leaks here?
-  delete (RNSEncapCtx*) encaps[lev]->ctx;
-  delete encaps[lev];
+  for (unsigned int lev=0; lev<=max_level; lev++) {
+    if (sweepers[lev] != NULL) {
+      sweepers[lev]->destroy(sweepers[lev]);
+      sweepers[lev] = NULL;
+      delete (RNSEncapCtx*) encaps[lev]->ctx;
+      delete encaps[lev];
+    }
+  }
 }
-

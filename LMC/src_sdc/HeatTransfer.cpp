@@ -5273,7 +5273,6 @@ HeatTransfer::set_htt_hmixTYP ()
     {
         htt_hmixTYP = 0;
         std::vector< std::pair<int,Box> > isects;
-        isects.reserve(27);
         for (int k = 0; k <= finest_level; k++)
         {
             AmrLevel&       ht = getLevel(k);
@@ -5861,10 +5860,12 @@ HeatTransfer::advance (Real time,
         MultiFab& divu_new = get_new_data(Divu_Type);
         MultiFab& divu_old = get_old_data(Divu_Type);
         MultiFab& dsdt_old = get_old_data(Dsdt_Type);
+
+        std::vector< std::pair<int,Box> > isects;
             
         for (MFIter mfi(divu_new); mfi.isValid();++mfi)
         {
-            std::vector< std::pair<int,Box> > isects = crsndgrids.intersections(mfi.validbox());
+            isects = crsndgrids.intersections(mfi.validbox());
 
             for (int i = 0, N = isects.size(); i < N; i++)
             {
@@ -6094,7 +6095,7 @@ HeatTransfer::advance_chemistry (MultiFab&       mf_old,
         //
         const int NProcs = ParallelDescriptor::NProcs();
         BoxArray  ba     = mf_new.boxArray();
-        bool      done   = false;
+        bool      done   = (ba.size() >= 3*NProcs);
 
         for (int cnt = 1; !done; cnt *= 2)
         {
@@ -6162,6 +6163,8 @@ HeatTransfer::advance_chemistry (MultiFab&       mf_old,
             }
         }
 
+        FTemp.clear();
+
         mf_new.copy(STemp,0,first_spec,nspecies+3); // Parallel copy.
 
         STemp.clear();
@@ -6201,6 +6204,7 @@ HeatTransfer::advance_chemistry (MultiFab&       mf_old,
                 FC[mfi].copy(grownFC[mfi]);
             }
         }
+        fcnCntTemp.clear();
         //
         // Approximate covered crse chemistry (I_R) with averaged down fine I_R from previous time step.
         //
@@ -7412,8 +7416,6 @@ HeatTransfer::reflux ()
     // coarse grid cells which underlie fine grid cells.
     //
     std::vector< std::pair<int,Box> > isects;
-
-    isects.reserve(27);
 
     for (MFIter mfi(*Vsync); mfi.isValid(); ++mfi)
     {

@@ -9,9 +9,14 @@ namespace
     void ChemDriver_Finalize() { initialized = false; }
 }
 
+bool
+ChemDriver::isNull()
+{
+    return true;
+}
+
 ChemDriver::ChemDriver (int use_vode_in, int max_points_in)
-    : isNull(true),
-      use_vode(use_vode_in),
+    : use_vode(use_vode_in),
       max_points(max_points_in)
 {
     if (!initialized) 
@@ -35,7 +40,6 @@ ChemDriver::initOnce ()
     mElementNames[0] = "X";
     mElementNames[1] = "Y";
 }
-
 
 ChemDriver::~ChemDriver ()
 {

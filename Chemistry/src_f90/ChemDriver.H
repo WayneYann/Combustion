@@ -24,7 +24,8 @@ public:
     const Array<std::string>& elementNames () const;
     int index(const std::string speciesName) const;
 
-    bool isNull;
+    static bool isNull();
+
     bool use_vode;
     bool max_points;
 

@@ -29,7 +29,7 @@ endif
 
 ifeq ($(USE_SDCLIB), TRUE)
   DEFINES += -DUSE_SDCLIB
-  CEXE_sources += SDCAmr.cpp SDCAmrEncap.cpp
+  CEXE_sources += SDCAmr.cpp SDCAmrEncap.cpp gnuplot.cpp
   CEXE_headers += SDCAmr.H
   Bpack   += $(SDCLIB_HOME)/Make.package
   Blocs   += $(SDCLIB_HOME)/src $(SDCLIB_HOME)/include
@@ -57,7 +57,9 @@ else ifeq (${CHEMISTRY_MODEL}, LUDME)
   cEXE_sources += LuDME.c
   vpath %.f $(VPATH_LOCATIONS) ${MECHDIR}/Lu/PMFs
   vpath %.c $(VPATH_LOCATIONS) ${MECHDIR}/Lu
-else ifneq (${CHEMISTRY_MODEL}, NULL)
+else ifeq (${CHEMISTRY_MODEL}, NULL)
+  DEFINES += -DNULLCHEMISTRY
+else
   $(error "Unknown CHEMISTRY_MODEL: $(CHEMISTRY_MODEL)")
 endif
 
@@ -67,7 +69,7 @@ INCLUDE_LOCATIONS += $(Blocs)
 VPATH_LOCATIONS   += $(Blocs)
 
 
-all: $(executable) 
+all: $(executable)
 	$(SILENT) $(RM) buildInfo.cpp
 	@echo SUCCESS
 
@@ -81,7 +83,7 @@ buildInfo.cpp: $(BOXLIB_HOME)/Tools/C_scripts/make_build_info_cpp
 	$(BOXLIB_HOME)/Tools/C_scripts/make_build_info_cpp "$(BOXLIB_HOME)" \
             "$(COMP)" "$(FCOMP)" \
             "AUX=$(CHEMISTRY_MODEL)" \
-            "GIT=$(TOP)" "GIT=$(BOXLIB_HOME)" "GIT=$(SDCLIB_HOME)" 
+            "GIT=$(TOP)" "GIT=$(BOXLIB_HOME)" "GIT=$(SDCLIB_HOME)"
 
 
 vpath %.c   . $(VPATH_LOCATIONS)
