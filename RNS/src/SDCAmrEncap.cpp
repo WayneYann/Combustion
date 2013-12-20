@@ -93,15 +93,23 @@ void mf_encap_copy_flux(FluxRegister& dst, FluxRegister& src)
       dst[face()][bfsi].copy(src[face()][bfsi]);
 }
 
-void mf_encap_copy(void *dstp, const void *srcp)
+void mf_encap_copy(void *dstp, const void *srcp, int inc_ghost)
 {
   RNSEncap& Qdst = *((RNSEncap*) dstp);
   RNSEncap& Qsrc = *((RNSEncap*) srcp);
   MultiFab& Udst = *Qdst.U;
   MultiFab& Usrc = *Qsrc.U;
 
-  for (MFIter mfi(Udst); mfi.isValid(); ++mfi)
-    Udst[mfi].copy(Usrc[mfi]);
+  int nghost;
+  if (inc_ghost) {
+      int ngsrc = Usrc.nGrow();
+      int ngdst = Udst.nGrow();
+      nghost = (ngdst < ngsrc) ? ngdst : ngsrc;
+  }
+  else {
+      nghost = 0;
+  }
+  MultiFab::Copy(Udst, Usrc, 0, 0, Usrc.nComp(), nghost);
 
   if (Qdst.fine_flux && Qsrc.fine_flux) mf_encap_copy_flux(*Qdst.fine_flux, *Qsrc.fine_flux);
   if (Qdst.crse_flux && Qsrc.crse_flux) mf_encap_copy_flux(*Qdst.crse_flux, *Qsrc.crse_flux);
