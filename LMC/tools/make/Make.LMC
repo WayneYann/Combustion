@@ -8,7 +8,11 @@ fincludes=$(includes)
 
 # LMC
 ifeq ($(USE_LMC_SDC), TRUE)
-  Bdirs += $(COMBUSTION_DIR)/LMC/src_sdc
+  ifeq ($(USE_WBAR), TRUE)
+    Bdirs += $(COMBUSTION_DIR)/LMC/src_sdc_wbar
+  else
+    Bdirs += $(COMBUSTION_DIR)/LMC/src_sdc
+  endif
 endif
 Bdirs += $(COMBUSTION_DIR)/LMC/src
 
