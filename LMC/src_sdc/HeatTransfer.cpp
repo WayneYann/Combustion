@@ -5968,8 +5968,15 @@ HeatTransfer::calcDiffusivity (const Real time)
                           &nc_bcen, &P1atm_MKS, &dotemp, &vflag);
         
         FArrayBox& Dfab = diff[Rho_and_spec_fpi];
+
+	// beta for Y's (for non-Wbar code) or X's (for Wbar code)
         Dfab.copy(bcen,0,first_spec-offset,nspecies);
+	// lambda in Temp slot
         Dfab.copy(bcen,nspecies,Temp-offset,1);
+#ifdef USE_WBAR
+	// beta for Y's and beta for Wbar's
+	Dfab.copy(bcen,nspecies+2,first_spec+nspecies+2-offset,2*nspecies);
+#endif
 
         //
         // Convert from tmp=RhoY_l to Y_l
@@ -5986,14 +5993,16 @@ HeatTransfer::calcDiffusivity (const Real time)
         {
             if (icomp == RhoH)
             {
-                const int sCompT = 0, sCompY = 1, sCompCp = RhoH-offset;
-                getChemSolve().getCpmixGivenTY(Dfab,Tfab,RYfab,gbox,sCompT,sCompY,sCompCp);
-                Dfab.invert(1,sCompCp,1);
-                Dfab.mult(Dfab,Temp-offset,RhoH-offset,1);
+	      // lambda/cp in RhoH slot
+	      const int sCompT = 0, sCompY = 1, sCompCp = RhoH-offset;
+	      getChemSolve().getCpmixGivenTY(Dfab,Tfab,RYfab,gbox,sCompT,sCompY,sCompCp);
+	      Dfab.invert(1,sCompCp,1);
+	      Dfab.mult(Dfab,Temp-offset,RhoH-offset,1);
             }
             else if (icomp == Trac || icomp == RhoRT)
             {
-                Dfab.setVal(trac_diff_coef, gbox, icomp-offset, 1);
+	      // fill Trac and RhoRT slot so trac_diff_coef (typically zero)
+	      Dfab.setVal(trac_diff_coef, gbox, icomp-offset, 1);
             }
         }
     }
