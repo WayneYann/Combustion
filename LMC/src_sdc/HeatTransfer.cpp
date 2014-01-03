@@ -7485,7 +7485,13 @@ HeatTransfer::calcDiffusivity (const Real time,
          const Box& gbox = RYfab.box();
 
         const int  vflag   = do_VelVisc;
-        const int nc_bcen = nspecies+2; // rhoD + lambda + mu
+#ifdef USE_WBAR
+	// beta_for_X's + lambda + mu + beta_for_Y's + beta_for_Wbar's
+        const int nc_bcen = nspecies+2+2*nspecies;
+#else
+	// rhoD + lambda + mu
+        const int nc_bcen = nspecies+2; 
+#endif
         int       dotemp  = 1;
         bcen.resize(gbox,nc_bcen);
         
