@@ -1137,6 +1137,28 @@ HeatTransfer::restart (Amr&          papa,
     if (level==0)
         stripBox = getStrip(geom);
 
+    bool running_sdc_from_strang_chk = false;
+
+    if (running_sdc_from_strang_chk)
+    {
+      MultiFab& rYdot_old = get_old_data(RhoYdot_Type);
+      MultiFab& rYdot_new = get_new_data(RhoYdot_Type);
+      MultiFab& S_old = get_old_data(State_Type);
+      MultiFab& S_new = get_new_data(State_Type);
+      for (MFIter mfi(rYdot_old); mfi.isValid(); ++mfi)
+	{
+	  FArrayBox& ry1 = rYdot_old[mfi];
+	  FArrayBox& ry2 = rYdot_new[mfi];
+	  FArrayBox& S1 = S_old[mfi];
+	  FArrayBox& S2 = S_new[mfi];
+	  for (int i=0; i<nspecies; i++)
+	    {
+	      ry1.mult(S1,Density,i,1);
+	      ry2.mult(S2,Density,i,1);
+	    }
+	}
+    }
+
     // Deal with typical values
     set_typical_values(true);
 }
@@ -3562,7 +3584,7 @@ HeatTransfer::compute_differential_diffusion_terms (MultiFab& D,
     //  data for fluxes, etc
     //
     BL_ASSERT(D.boxArray() == grids);
-    BL_ASSERT(D.nComp() >= nspeces+2); // room for spec+RhoH+Temp
+    BL_ASSERT(D.nComp() >= nspecies+2); // room for spec+RhoH+Temp
 
     if (hack_nospecdiff)
     {
