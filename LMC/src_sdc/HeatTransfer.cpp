@@ -2648,14 +2648,12 @@ HeatTransfer::avgDown ()
 void
 HeatTransfer::differential_diffusion_update (MultiFab& Force,
                                              int       FComp,
-                                             Real      theta,
                                              MultiFab& Dnew,
                                              int       DComp,
-                                             MultiFab& DDnew,
-                                             Real      theta_enthalpy)
+                                             MultiFab& DDnew)
 {
   //
-  // If theta_enthalpy > 0, recompute the D[Nspec+1] = Div(Fi.Hi) using
+  // Recompute the D[Nspec+1] = Div(Fi.Hi) using
   // Fi.Hi based on solution here.
   //
   BL_ASSERT(Force.boxArray() == grids);
@@ -2687,48 +2685,32 @@ HeatTransfer::differential_diffusion_update (MultiFab& Force,
   Real dt = curr_time - prev_time;
   BL_ASSERT(dt>0);
   const int nGrow = 0;
-  if (theta == 0) {  // fully explicit update, assume all RHS terms in Force, zero np1 flux-based terms
-    MultiFab::Copy(S_new,Force,0,first_spec,nspecies+1,0);
-    S_new.mult(dt,first_spec,nspecies);
-    MultiFab::Add(S_new,S_old,first_spec,first_spec,nspecies+1,0);
-    for (int d = 0; d < BL_SPACEDIM; ++d) {
-      SpecDiffusionFluxnp1[d]->setVal(0,0,nspecies+3);
-    }
-    sumSpecFluxDotGradHnp1.setVal(0,0,1);
-  } else {
-    MultiFab::Copy(S_new,S_old,first_spec,first_spec,nspecies+1,0);
-    MultiFab* rho_half = 0;
-    Diffusion::SolveMode solve_mode = Diffusion::ONEPASS;
-    MultiFab **betanp1, **betan = 0; // Will not need betan since time-explicit pieces computed above
-    diffusion->allocFluxBoxesLevel(betanp1,nGrow,nspecies+2); // fill rhoD, lambda/cp and lambda
-    getDiffusivity(betanp1, curr_time, first_spec, 0, nspecies+1);
-    getDiffusivity(betanp1, curr_time, Temp, nspecies+1, 1);
-    //
-    // Diffuse RhoY (and RhoH, unless theta_enthalpy>0 -- if so, will modify the source term for
-    //   RhoH with the results of the RhoY diffusion)
-    //
-    MultiFab* alpha = 0; // Never need alpha for RhoY, RhoH
-    int alphaComp = 0;
-    int nComp = nspecies+1;
-    for (int sigma = 0; sigma < nComp; ++sigma) {
-      int betaComp = sigma;
-      const int state_ind = first_spec + sigma;
-      bool add_old_time_divFlux = false; // indicate that the rhs contains the time-explicit diff terms already
-      int rho_flag = 2;
-      diffusion->diffuse_scalar(dt,state_ind,theta,rho_half,rho_flag,
-                                SpecDiffusionFluxn,SpecDiffusionFluxnp1,sigma,&Force,sigma,alpha,
-                                alphaComp,betan,betanp1,betaComp,solve_mode,add_old_time_divFlux);
-    }
+
+  MultiFab::Copy(S_new,S_old,first_spec,first_spec,nspecies+1,0);
+  MultiFab* rho_half = 0;
+  Diffusion::SolveMode solve_mode = Diffusion::ONEPASS;
+  MultiFab **betanp1, **betan = 0; // Will not need betan since time-explicit pieces computed above
+  diffusion->allocFluxBoxesLevel(betanp1,nGrow,nspecies+2); // fill rhoD, lambda/cp and lambda
+  getDiffusivity(betanp1, curr_time, first_spec, 0, nspecies+1);
+  getDiffusivity(betanp1, curr_time, Temp, nspecies+1, 1);
+  //
+  // Diffuse RhoY (and RhoH, unless theta_enthalpy>0 -- if so, will modify the source term for
+  //   RhoH with the results of the RhoY diffusion)
+  //
+  MultiFab* alpha = 0; // Never need alpha for RhoY, RhoH
+  int alphaComp = 0;
+  int nComp = nspecies+1;
+  for (int sigma = 0; sigma < nComp; ++sigma) {
+    int betaComp = sigma;
+    const int state_ind = first_spec + sigma;
+    bool add_old_time_divFlux = false; // indicate that the rhs contains the time-explicit diff terms already
+    int rho_flag = 2;
+    diffusion->diffuse_scalar(dt,state_ind,1.0,rho_half,rho_flag,
+			      SpecDiffusionFluxn,SpecDiffusionFluxnp1,sigma,&Force,sigma,alpha,
+			      alphaComp,betan,betanp1,betaComp,solve_mode,add_old_time_divFlux);
 
     diffusion->removeFluxBoxesLevel(betanp1);
-    //
-    // Remove theta scaling of fluxes, adjust so that the species fluxes sum to zero
-    //  and compute - Div(Flux)
-    //
-    for (int d=0; d<BL_SPACEDIM; ++d) {
-      (*SpecDiffusionFluxnp1[d]).mult(1/theta,0,nComp);
-      (*SpecDiffusionFluxn[d]).mult(1/(1-theta),0,nComp);
-    }
+
     //
     // Modify/update new-time fluxes to ensure sum of species fluxes = 0
     //
@@ -5713,7 +5695,6 @@ HeatTransfer::advance (Real time,
       showMF("sdc",Dnp1,"sdc_Dnp1_before_Dhat",level,sdc_iter,parent->levelSteps(level));
       showMF("sdc",DDnp1,"sdc_DDnp1_before_Dhat",level,sdc_iter,parent->levelSteps(level));
 
-      Real sdc_theta = 1.0; // backward-Euler type solve
       for (MFIter mfi(Forcing); mfi.isValid(); ++mfi) 
       {
 	const Box& box = mfi.validbox();
@@ -5737,7 +5718,7 @@ HeatTransfer::advance (Real time,
 
       // advection-diffusion solve with theta=1, theta_enthalpy=-1
       showMF("sdc",Forcing,"sdc_Forcing_before_Dhat",level,sdc_iter,parent->levelSteps(level));
-      differential_diffusion_update(Forcing,0,sdc_theta,Dhat,0,DDnp1,-1);
+      differential_diffusion_update(Forcing,0,Dhat,0,DDnp1);
 
       showMF("sdc",Dn,"sdc_Dn_before_R",level,sdc_iter,parent->levelSteps(level));
       showMF("sdc",Dnp1,"sdc_Dnp1_before_R",level,sdc_iter,parent->levelSteps(level));

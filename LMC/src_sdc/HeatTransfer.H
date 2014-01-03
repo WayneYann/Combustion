@@ -131,11 +131,9 @@ public:
 
     void differential_diffusion_update (MultiFab& Force,
                                         int       FComp,
-                                        Real      theta,
                                         MultiFab& D,
                                         int       DComp,
-                                        MultiFab& DD,
-                                        Real      theta_enthalpy);
+                                        MultiFab& DD);
 
     void flux_divergence (MultiFab&        fdiv,
                           int              fdivComp,
