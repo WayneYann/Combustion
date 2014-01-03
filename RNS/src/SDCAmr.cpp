@@ -396,9 +396,10 @@ void SDCAmr::rebuild_mlsdc()
   }
 
   if (max_level > 0) mg.nsweeps[0] = 2;
-  sdc_mg_setup(&mg, SDC_MG_NEST);
+  // sdc_mg_setup(&mg, SDC_MG_NEST);
+  sdc_mg_setup(&mg, 0);
   sdc_mg_allocate(&mg);
-  //  sdc_mg_print(&mg, 0);
+  // sdc_mg_print(&mg, 0);
 
   // XXX: for fine levels, need to make the interpolation matrices local only
 

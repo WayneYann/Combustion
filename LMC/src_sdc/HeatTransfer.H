@@ -131,11 +131,9 @@ public:
 
     void differential_diffusion_update (MultiFab& Force,
                                         int       FComp,
-                                        Real      theta,
                                         MultiFab& D,
                                         int       DComp,
-                                        MultiFab& DD,
-                                        Real      theta_enthalpy);
+                                        MultiFab& DD);
 
     void flux_divergence (MultiFab&        fdiv,
                           int              fdivComp,
@@ -329,9 +327,6 @@ protected:
 
     virtual void calcDiffusivity (const Real time);
 
-    void calcDiffusivity (const Real time,
-                          bool       doCalcVisc);
-
     virtual void getViscosity (MultiFab* viscosity[BL_SPACEDIM],
                                const Real time);
 
@@ -384,18 +379,6 @@ protected:
                           Real      scale);
 
   DistributionMapping getFuncCountDM (const BoxArray& bxba, int ngrow);
-
-
-    //
-    // Functions related to full-transport model
-    //
-    void fill_mcdd_boundary_data(Real time);
-
-    void compute_mcdd_visc_terms(MultiFab&           vtermsYH,
-                                 Real                time,
-                                 int                 nGrow,
-                                 DDOp::DD_ApForTorRH whichApp,
-                                 PArray<MultiFab>*   flux = 0);
 
     enum Solver_Status {HT_InProgress, HT_Stalled, HT_Solved};
     struct MCDD_MGParams {
@@ -453,20 +436,6 @@ protected:
         int         nu2;
         int         mg_level;
     };
-
-    void mcdd_fas_cycle(MCDD_MGParams&      status,
-                        MultiFab&           S,
-                        const MultiFab&     Rhs,
-                        const MultiFab&     rhoCpInv,
-                        PArray<MultiFab>&   flux,
-                        Real                time,
-                        Real                dt,
-                        DDOp::DD_ApForTorRH whichApp);
-    
-    void mcdd_update(Real time,
-                     Real dt);
-
-    void mcdd_diffuse_sync(Real dt);
 
     void set_htt_hmixTYP ();
 
