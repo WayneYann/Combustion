@@ -3114,7 +3114,6 @@ HeatTransfer::getViscTerms (MultiFab& visc_terms,
     // to give the true divided difference approximation to the divergence of the
     // intensive flux.
     //
-    const int  last_comp = src_comp + num_comp - 1;
     int        icomp     = src_comp; // This is the current related state comp.
     int        load_comp = 0;        // Comp for result of current calculation.
     MultiFab** vel_visc  = 0;        // Potentially reused, raise scope
@@ -3142,82 +3141,9 @@ HeatTransfer::getViscTerms (MultiFab& visc_terms,
 
         icomp = load_comp = BL_SPACEDIM;
     }
-    //
-    // For Le != 1, need to get visc terms in a block
-    //
-    if (!unity_Le)
+    else
     {
-	const int non_spec_comps = std::min(num_comp,
-                                            std::max(0,first_spec-src_comp) + std::max(0,last_comp-last_spec));
-	const bool has_spec = src_comp <= last_spec && last_comp >= first_spec;
-	BL_ASSERT( !has_spec || (num_comp>=nspecies+non_spec_comps));
-	if (has_spec)
-	{
-            if (do_mcdd)
-            {
-	      BoxLib::Abort("getViscTerms:compute_mcdd_visc_terms not implemented in SDC");
-            }
-	    else 
-	    {
-	      BoxLib::Abort("Fix me");
-            }
-        }
-    }
-    //
-    // Now, do the rest.
-    // Get Div(visc.Grad(state)) or Div(visc.Grad(state/rho)), as appropriate.
-    //
-    for ( ; icomp <= last_comp; load_comp++, icomp++)
-    {
-	const bool is_spec  = icomp >= first_spec && icomp <= last_spec;
-	if ( !(is_spec && !unity_Le) )
-	{
-	    if (icomp == Temp)
-	    {
-                if (do_mcdd) 
-		{
-		    // Do nothing, because in this case, was done above
-		}
-		else
-		{
-		  BoxLib::Abort("Should not call getTempViscTerms anymore, now terms are tied with species diffusion");
-		}
-	    }
-	    else if (icomp == RhoH)
-	    {
-		if (do_mcdd) {
-                    BoxLib::Abort("do we really want to get RhoH VT when do_mcdd?");
-                }
-                else
-		{
-		  BoxLib::Abort("Should not call getTempViscTerms anymore");
-		}
-	    }
-	    else
-	    {
-		const int  rho_flag = Diffusion::set_rho_flag(diffusionType[icomp]);
-		MultiFab** beta     = 0;
-
-		if (icomp == Density)
-                {
-                    visc_terms.setVal(0.0,load_comp,1);
-                }
-                else
-                {
-                    //
-                    // Assume always variable viscosity / diffusivity.
-                    //
-                    diffusion->allocFluxBoxesLevel(beta);
-                    getDiffusivity(beta, time, icomp, 0, 1);
-
-                    int betaComp = 0;
-                    diffusion->getViscTerms(visc_terms,icomp-load_comp,
-                                            icomp,time,rho_flag,beta,betaComp);
-                    
-                    diffusion->removeFluxBoxesLevel(beta);
-                }
-	    }
-	}
+      BoxLib::Abort("Should only call getViscTerms for velocity");
     }
     //
     // Add Div(u) term if desired, if this is velocity, and if Div(u) is nonzero
