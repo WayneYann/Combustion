@@ -1832,7 +1832,8 @@ HeatTransfer::compute_instantaneous_reaction_rates (MultiFab&       R,
         ParallelDescriptor::ReduceRealMax(run_time,IOProc);
 
         if (ParallelDescriptor::IOProcessor())
-            std::cout << "HeatTransfer::compute_instantaneous_reaction_rates(): lev: " << level << ", time: " << run_time << '\n';
+            std::cout << "HeatTransfer::compute_instantaneous_reaction_rates(): lev: " << level 
+		      << ", time: " << run_time << '\n';
     }
 } 
 
@@ -2627,19 +2628,9 @@ HeatTransfer::differential_diffusion_update (MultiFab& Force,
 
   const Real strt_time = ParallelDescriptor::second();
 
-  if (hack_nospecdiff) {
-    if (verbose && ParallelDescriptor::IOProcessor()) {
-      std::cout << "... HACK!!! skipping spec diffusion " << '\n';
-    }
-    for (int d = 0; d < BL_SPACEDIM; ++d) {
-      SpecDiffusionFluxn[d]->setVal(0,0,nspecies+3);
-      SpecDiffusionFluxnp1[d]->setVal(0,0,nspecies+3);
-    }
-    sumSpecFluxDotGradHn.setVal(0);
-    sumSpecFluxDotGradHnp1.setVal(0);
-    Dnew.setVal(0,DComp,nspecies+1);
-    DDnew.setVal(0,0,1);
-    return;
+  if (hack_nospecdiff)
+  {
+    BoxLib::Error("differential_diffusion_update: hack_nospecdiff not implemented");
   }
   MultiFab& S_old = get_old_data(State_Type);
   MultiFab& S_new = get_new_data(State_Type);
@@ -2653,9 +2644,9 @@ HeatTransfer::differential_diffusion_update (MultiFab& Force,
   MultiFab* rho_half = 0;
   Diffusion::SolveMode solve_mode = Diffusion::ONEPASS;
   MultiFab **betanp1, **betan = 0; // Will not need betan since time-explicit pieces computed above
-  diffusion->allocFluxBoxesLevel(betanp1,nGrow,nspecies+2); // fill rhoD, lambda/cp and lambda
-  getDiffusivity(betanp1, curr_time, first_spec, 0, nspecies+1);
-  getDiffusivity(betanp1, curr_time, Temp, nspecies+1, 1);
+  diffusion->allocFluxBoxesLevel(betanp1,nGrow,nspecies+2);
+  getDiffusivity(betanp1, curr_time, first_spec, 0, nspecies+1); // species (rhoD) and RhoH (lambda/cp)
+  getDiffusivity(betanp1, curr_time, Temp, nspecies+1, 1); // temperature (lambda)
   //
   // Diffuse RhoY (and RhoH, unless theta_enthalpy>0 -- if so, will modify the source term for
   //   RhoH with the results of the RhoY diffusion)
@@ -2715,7 +2706,8 @@ HeatTransfer::differential_diffusion_update (MultiFab& Force,
     ParallelDescriptor::ReduceRealMax(run_time,IOProc);
 
     if (ParallelDescriptor::IOProcessor())
-      std::cout << "HeatTransfer::differential_diffusion_update(): lev: " << level << ", time: " << run_time << '\n';
+      std::cout << "HeatTransfer::differential_diffusion_update(): lev: " << level 
+		<< ", time: " << run_time << '\n';
   }
 }
 
@@ -3256,6 +3248,8 @@ void
 HeatTransfer::compute_differential_diffusion_fluxes (const Real& time,
                                                      const Real& dt)
 {
+    // explicit computation of species and enthalpy (heat) diffusion fluxes
+    // save fluxes in class data
     const Real      strt_time = ParallelDescriptor::second();
     const TimeLevel whichTime = which_time(State_Type,time);
 
@@ -3265,17 +3259,7 @@ HeatTransfer::compute_differential_diffusion_fluxes (const Real& time,
 
     if (hack_nospecdiff)
     {
-        if (verbose && ParallelDescriptor::IOProcessor())
-            std::cout << "... HACK!!! skipping spec diffusion " << '\n';
-
-        const int rhoD_rhs_comp = 0; // Starting slot for beta, rhs for diffusion calls
-        
-        for (int d = 0; d < BL_SPACEDIM; ++d)
-        {
-            (*flux[d]).setVal(0,rhoD_rhs_comp,nspecies+1);
-        }
-
-        return;
+      BoxLib::Error("differential_diffusion_update: hack_nospecdiff not implemented");
     }
 
     MultiFab*  rho_half  = 0; // Never need alpha for RhoY
@@ -3287,7 +3271,9 @@ HeatTransfer::compute_differential_diffusion_fluxes (const Real& time,
     MultiFab** beta      = 0;
     MultiFab&  S         = get_data(State_Type,time);
 
-    diffusion->allocFluxBoxesLevel(beta,0,nspecies+2); // Species and heat fluxes
+    // allocate edge-beta for species, RhoH, and Temp
+    diffusion->allocFluxBoxesLevel(beta,0,nspecies+2);
+    // average transport coefficients for species, RhoH, and Temp to edges
     getDiffusivity(beta, time, first_spec, 0, nspecies+1);
     getDiffusivity(beta, time, Temp, nspecies+1, 1);
 
@@ -3302,19 +3288,19 @@ HeatTransfer::compute_differential_diffusion_fluxes (const Real& time,
     BL_ASSERT(S.nGrow()>=nGrow);
 
     for (FillPatchIterator Yfpi(*this,S,nGrow,time,State_Type,Density,nspecies+2),
-             Tfpi(*this,S,nGrow,time,State_Type,Temp,1);
+	                   Tfpi(*this,S,nGrow,time,State_Type,Temp,1);
          Yfpi.isValid() && Tfpi.isValid();
          ++Yfpi, ++Tfpi)
     {
-        const Box& vbox   = Yfpi.validbox();
-        FArrayBox& fab    = S[Tfpi];
-        BoxList    gcells = BoxLib::boxDiff(Box(vbox).grow(nGrow),vbox);
-        for (BoxList::const_iterator it = gcells.begin(), end = gcells.end(); it != end; ++it)
-        {
-            const Box& gbox = *it;
-            fab.copy(Yfpi(),gbox,0,gbox,Density,nspecies+2);
-            fab.copy(Tfpi(),gbox,0,gbox,Temp,1);
-        }
+      const Box& vbox   = Yfpi.validbox();
+      FArrayBox& fab    = S[Tfpi];
+      BoxList    gcells = BoxLib::boxDiff(Box(vbox).grow(nGrow),vbox);
+      for (BoxList::const_iterator it = gcells.begin(), end = gcells.end(); it != end; ++it)
+      {
+	const Box& gbox = *it;
+	fab.copy(Yfpi(),gbox,0,gbox,Density,nspecies+2);
+	fab.copy(Tfpi(),gbox,0,gbox,Temp,1);
+      }
     }
     showMF("dd",S,"dd_rsT_fp",level);
     //
@@ -3506,7 +3492,8 @@ HeatTransfer::compute_differential_diffusion_fluxes (const Real& time,
         ParallelDescriptor::ReduceRealMax(run_time,IOProc);
 
         if (ParallelDescriptor::IOProcessor())
-            std::cout << "HeatTransfer::compute_differential_diffusion_fluxes(): lev: " << level << ", time: " << run_time << '\n';
+            std::cout << "HeatTransfer::compute_differential_diffusion_fluxes(): lev: " << level 
+		      << ", time: " << run_time << '\n';
     }
 }
 
@@ -3574,17 +3561,12 @@ HeatTransfer::compute_differential_diffusion_terms (MultiFab& D,
     // Uses state at time to explicitly compute fluxes, and resets internal
     //  data for fluxes, etc
     //
-    int nComp = nspecies + 2;
     BL_ASSERT(D.boxArray() == grids);
-    BL_ASSERT(D.nComp() >= nComp);// spec+heat+conduction
+    BL_ASSERT(D.nComp() >= nspeces+2); // room for spec+RhoH+Temp
 
     if (hack_nospecdiff)
     {
-        if (verbose && ParallelDescriptor::IOProcessor())
-            std::cout << "... HACK!!! zeroing diffusion terms " << '\n';
-        D.setVal(0.0,0,nComp);
-        DD.setVal(0.0,0,1);
-        return;            
+      BoxLib::Error("differential_diffusion_update: hack_nospecdiff not implemented");
     }
 
     const TimeLevel whichTime = which_time(State_Type,time);
@@ -3593,12 +3575,17 @@ HeatTransfer::compute_differential_diffusion_terms (MultiFab& D,
     MultiFab* const * flux = (whichTime == AmrOldTime) ? SpecDiffusionFluxn : SpecDiffusionFluxnp1;
     //
     // Compute/adjust species fluxes/heat flux/conduction, save in class data
-    // Then compute -Div(Fi), -Div((lambda/cp).Grad(h) + Fi.(Lei-1)) + heating,
-    //  -Div(lambda.Grad(T)) + heating + sum(Fi.Grad(Hi)) 
-    //
     compute_differential_diffusion_fluxes(time,dt);
 
-    // compute div Gamma_m for species AND div lambda/cp grad h for enthalpy
+
+    // Then compute:
+    // -Div(Fi),
+    // -Div((lambda/cp).Grad(h) + Fi.(Lei-1)) + heating,
+    // -Div(lambda.Grad(T)) + heating + sum(Fi.Grad(Hi)) 
+    //
+
+    // compute div Gamma_m for species AND 
+    // div lambda/cp grad h for enthalpy
     flux_divergence(D,0,flux,0,nspecies+1,-1);
 
     // compute div sum_m h_m (Gamma_m + lambda/cp grad Y_m), a.k.a. the "diffdiff" terms
@@ -4347,7 +4334,7 @@ HeatTransfer::advance (Real time,
 
       MultiFab Dhat(grids,nspecies+2,nGrowAdvForcing);
 
-      // advection-diffusion solve with theta=1, theta_enthalpy=-1
+      // advection-diffusion solve
       showMF("sdc",Forcing,"sdc_Forcing_before_Dhat",level,sdc_iter,parent->levelSteps(level));
       differential_diffusion_update(Forcing,0,Dhat,0,DDnp1);
 
@@ -5264,8 +5251,7 @@ HeatTransfer::mac_sync ()
             const int nGrow    = 1; // Size to grow fil-patched fab for T below
             const int dataComp = 0; // coeffs loaded into 0-comp for all species
                   
-            // get lambda/cp
-            getDiffusivity(rhoh_visc, cur_time, RhoH, 0, 1);
+            getDiffusivity(rhoh_visc, cur_time, RhoH, 0, 1); // RhoH (lambda/cp)
 
             MultiFab Soln(grids,1,1);
 
@@ -5647,13 +5633,7 @@ HeatTransfer::differential_spec_diffuse_sync (Real dt)
 
     if (hack_nospecdiff)
     {
-        if (verbose && ParallelDescriptor::IOProcessor())
-            std::cout << "... HACK!!! skipping spec sync diffusion " << '\n';
-
-        for (int d=0; d<BL_SPACEDIM; ++d)
-            SpecDiffusionFluxnp1[d]->setVal(0.0,0,nspecies);
-
-        return;            
+      BoxLib::Error("differential_spec_diffuse_sync: hack_nospecdiff not implemented");
     }
 
     const Real strt_time = ParallelDescriptor::second();
@@ -5671,7 +5651,7 @@ HeatTransfer::differential_spec_diffuse_sync (Real dt)
     const Real cur_time = state[State_Type].curTime();
     MultiFab **betanp1;
     diffusion->allocFluxBoxesLevel(betanp1,0,nspecies);
-    getDiffusivity(betanp1, cur_time, first_spec, 0, nspecies); // rhoD
+    getDiffusivity(betanp1, cur_time, first_spec, 0, nspecies); // species
 
     MultiFab Rhs(grids,nspecies,0);
     const int spec_Ssync_sComp = first_spec - BL_SPACEDIM;
