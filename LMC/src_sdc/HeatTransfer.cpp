@@ -1875,7 +1875,7 @@ HeatTransfer::init (AmrLevel& old)
          fpi.isValid();
          ++fpi)
     {
-        Ydot[fpi.index()].copy(fpi());
+      Ydot[fpi.index()].copy(fpi());
     }
 
     RhoH_to_Temp(get_new_data(State_Type));
@@ -1886,7 +1886,7 @@ HeatTransfer::init (AmrLevel& old)
          fpi.isValid();
          ++fpi)
     {
-        FuncCount[fpi.index()].copy(fpi());
+      FuncCount[fpi.index()].copy(fpi());
     }
 }
 
@@ -2757,7 +2757,7 @@ HeatTransfer::adjust_spec_diffusion_fluxes (Real time)
     const int nGrow = 1;
     BL_ASSERT(S.nGrow()>=nGrow);
     for (FillPatchIterator Tfpi(*this,S,nGrow,time,State_Type,Temp,1),
-             Yfpi(*this,S,nGrow,time,State_Type,first_spec,nspecies);
+                           Yfpi(*this,S,nGrow,time,State_Type,first_spec,nspecies);
          Yfpi.isValid() && Tfpi.isValid();
          ++Yfpi, ++Tfpi)
     {
@@ -2838,7 +2838,7 @@ HeatTransfer::compute_enthalpy_fluxes (Real                   time,
     // Fill ghost cells for rhoY and Temp.
     //
     for (FillPatchIterator rYfpi(*this,S,1,time,State_Type,first_spec,nspecies),
-             Tfpi(*this,S,1,time,State_Type,Temp,1);
+                            Tfpi(*this,S,1,time,State_Type,Temp,1);
          rYfpi.isValid() && Tfpi.isValid();
          ++rYfpi,++Tfpi)
     {
@@ -2906,71 +2906,6 @@ HeatTransfer::compute_enthalpy_fluxes (Real                   time,
     }
 }
     
-void
-HeatTransfer::compute_OT_radloss (Real      time,
-                                  int       nGrow,
-                                  MultiFab& dqrad)
-{
-    //
-    // Get optically thin radiation losses (+ve when energy LOST).
-    //
-    BL_ASSERT(do_OT_radiation || do_heat_sink);
-    BL_ASSERT(nGrow <= dqrad.nGrow());
-    BL_ASSERT(dqrad.boxArray() == grids);
-
-    const Real* dx = geom.CellSize();
-
-    Real p_amb, dpdt_factor;
-    FORT_GETPAMB(&p_amb, &dpdt_factor);
-
-    const Real Patm = p_amb / P1atm_MKS;
-    const Real T_bg = 298.0;
-
-    FArrayBox tmp;
-
-    for (FillPatchIterator fpi(*this,dqrad,nGrow,time,State_Type,0,NUM_STATE);
-         fpi.isValid();
-         ++fpi)
-    {
-        FArrayBox& S   = fpi();
-        const Box& box = S.box();
-
-        tmp.resize(box,1);
-        tmp.copy(S,Density,0,1);
-        tmp.invert(1);
-        for (int spec = first_spec; spec <= last_spec; spec++)
-            S.mult(tmp,0,spec,1);
-
-        FArrayBox& dqrad_fab = dqrad[fpi];
-
-        tmp.resize(box,nspecies);
-
-        getChemSolve().massFracToMoleFrac(tmp,S,box,first_spec,0);
-
-        if (do_OT_radiation)
-        {
-            getChemSolve().getOTradLoss_TDF(dqrad_fab,S,tmp,Patm,T_bg,box,0,Temp,0);
-        }
-        else
-        {
-            dqrad_fab.setVal(0.0);
-        }
-        //
-        // Add arbitrary heat sink.
-        //
-        if (do_heat_sink)
-        {
-            FArrayBox rad(box,1);
-            FORT_RADLOSS(box.loVect(),box.hiVect(),
-                         rad.dataPtr(),         ARLIM(rad.loVect()),ARLIM(rad.hiVect()),
-                         S.dataPtr(Temp),       ARLIM(S.loVect()),  ARLIM(S.hiVect()),
-                         S.dataPtr(first_spec), ARLIM(S.loVect()),  ARLIM(S.hiVect()),
-                         dx, &Patm, &time);
-            dqrad_fab.plus(rad,0,0,1);
-        }
-    }
-}
-
 void
 HeatTransfer::diffuse_cleanup (MultiFab*&  delta_rhs,
                                MultiFab**& betan,
@@ -3640,32 +3575,6 @@ HeatTransfer::compute_differential_diffusion_terms (MultiFab& D,
 	DD.FillBoundary(0,1);
 	geom.FillPeriodicBoundary(DD,0,1,true);
       }
-}
-
-void
-HeatTransfer::add_heat_sources(MultiFab& sum,
-                               int       dComp,
-                               Real      time,
-                               int       nGrow,
-                               Real      scale)
-{
-    //
-    // - div q rad
-    //
-    if (do_OT_radiation || do_heat_sink)
-    {
-        BL_ASSERT(sum.boxArray() == grids);
-        MultiFab dqrad(grids,1,nGrow);
-        compute_OT_radloss(time,nGrow,dqrad);
-        for (MFIter mfi(sum); mfi.isValid(); ++mfi)
-        {
-            FArrayBox& sumFab = sum[mfi];
-            FArrayBox& Qfab = dqrad[mfi];
-            if (scale != 1)
-                Qfab.mult(scale);
-            sumFab.minus(Qfab,mfi.validbox(),0,dComp,1);
-        }
-    }    
 }
 
 void
@@ -5944,7 +5853,7 @@ HeatTransfer::calcDiffusivity (const Real time)
     MultiFab&  diff            = (whichTime == AmrOldTime) ? (*diffn_cc) : (*diffnp1_cc);
     FArrayBox tmp, bcen;
     for (FillPatchIterator Rho_and_spec_fpi(*this,diff,nGrow,time,State_Type,Density,nspecies+1),
-             Temp_fpi(*this,diff,nGrow,time,State_Type,Temp,1);
+                                   Temp_fpi(*this,diff,nGrow,time,State_Type,Temp,1);
          Rho_and_spec_fpi.isValid() && Temp_fpi.isValid();
          ++Rho_and_spec_fpi, ++Temp_fpi)
     {
@@ -6116,7 +6025,7 @@ HeatTransfer::compute_vel_visc (Real      time,
     MultiFab dummy(grids,1,0,Fab_noallocate);
 
     for (FillPatchIterator Temp_fpi(*this,dummy,nGrow,time,State_Type,Temp,1),
-             Rho_and_spec_fpi(*this,dummy,nGrow,time,State_Type,Density,nspecies+1);
+                   Rho_and_spec_fpi(*this,dummy,nGrow,time,State_Type,Density,nspecies+1);
          Rho_and_spec_fpi.isValid() && Temp_fpi.isValid();
          ++Rho_and_spec_fpi, ++Temp_fpi)
     {

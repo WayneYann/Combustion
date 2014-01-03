@@ -342,9 +342,6 @@ protected:
                            const int  dst_comp,
                            const int  ncomp) const;
 
-    void compute_OT_radloss (Real      time,
-                             int       nGrow,
-                             MultiFab& radloss);
     //
     // Set the variables that are put in the plotfile....
     //
@@ -371,12 +368,6 @@ protected:
                                       const Box&       domain,
                                       const FPLoc&     bc_lo,
                                       const FPLoc&     bc_hi);
-
-    void add_heat_sources(MultiFab& sum,
-                          int       dComp,
-                          Real      time,
-                          int       nGrow,
-                          Real      scale);
 
   DistributionMapping getFuncCountDM (const BoxArray& bxba, int ngrow);
 
