@@ -84,12 +84,12 @@ subroutine rns_initdata(level,time,lo,hi,nscal, &
         
         call eos_get_T(Tt, et, Yt)
         
-        state(i,URHO ) = state(i,URHO ) + 0.25d0*rhot
-        state(i,UMX  ) = state(i,UMX  ) + 0.25d0*rhot*u0
-        state(i,UEDEN) = state(i,UEDEN) + 0.25d0*rhot*(et+ekt)
-        state(i,UTEMP) = state(i,UTEMP) + 0.25d0*Tt
+        state(i,URHO ) = state(i,URHO ) + 0.5d0*rhot
+        state(i,UMX  ) = state(i,UMX  ) + 0.5d0*rhot*u0
+        state(i,UEDEN) = state(i,UEDEN) + 0.5d0*rhot*(et+ekt)
+        state(i,UTEMP) = state(i,UTEMP) + 0.5d0*Tt
         do n=1, NSPEC
-           state(i,UFS+n-1) = state(i,UFS+n-1) + 0.25d0*rhot*Yt(n)
+           state(i,UFS+n-1) = state(i,UFS+n-1) + 0.5d0*rhot*Yt(n)
         end do
 
      end do
