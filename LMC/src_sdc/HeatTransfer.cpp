@@ -3333,10 +3333,7 @@ HeatTransfer::compute_differential_diffusion_fluxes (const Real& time,
     for (int d=0; d < BL_SPACEDIM; ++d)
         flux[d]->mult(b/geom.CellSize()[d],0,nspecies+1);
     //
-    // Modify update/fluxes to preserve flux sum = 0, build heat flux and temperature source terms
-    //
-
-    // conservatively correct Gamma_m
+    // Modify update/fluxes to preserve flux sum = 0 (conservatively correct Gamma_m)
     adjust_spec_diffusion_fluxes(time);
     //
     // AJN FLUXREG
@@ -3386,7 +3383,7 @@ HeatTransfer::compute_differential_diffusion_fluxes (const Real& time,
             }
         }
     }
-    //
+    // build heat flux and temperature source terms
     // compute lambda grad T (for temperature and divu)
     // compute sum_m (Gamma_m + lambda/cp grad Y) (for enthalpy)
     // compute sum_m Gamma_m dot grad h_m (for divu)
