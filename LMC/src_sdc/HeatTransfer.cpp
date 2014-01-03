@@ -2700,7 +2700,8 @@ HeatTransfer::differential_diffusion_update (MultiFab& Force,
   MultiFab* alpha = 0; // Never need alpha for RhoY, RhoH
   int alphaComp = 0;
   int nComp = nspecies+1;
-  for (int sigma = 0; sigma < nComp; ++sigma) {
+  for (int sigma = 0; sigma < nComp; ++sigma)
+  {
     int betaComp = sigma;
     const int state_ind = first_spec + sigma;
     bool add_old_time_divFlux = false; // indicate that the rhs contains the time-explicit diff terms already
@@ -2708,40 +2709,40 @@ HeatTransfer::differential_diffusion_update (MultiFab& Force,
     diffusion->diffuse_scalar(dt,state_ind,1.0,rho_half,rho_flag,
 			      SpecDiffusionFluxn,SpecDiffusionFluxnp1,sigma,&Force,sigma,alpha,
 			      alphaComp,betan,betanp1,betaComp,solve_mode,add_old_time_divFlux);
+  }
 
-    diffusion->removeFluxBoxesLevel(betanp1);
+  diffusion->removeFluxBoxesLevel(betanp1);
 
-    //
-    // Modify/update new-time fluxes to ensure sum of species fluxes = 0
-    //
-    adjust_spec_diffusion_fluxes(curr_time);
-    //
-    // AJN FLUXREG
-    // We have just performed the correction diffusion solve for Y_m and h
-    // If updateFluxReg=T, we update VISCOUS flux registers:
-    //   ADD Gamma_{m,AD}^(k+1),
-    //   ADD lambda^(k)/cp^(k) grad h_AD^(k+1).
-    //
-    if (do_reflux && updateFluxReg)
+  //
+  // Modify/update new-time fluxes to ensure sum of species fluxes = 0
+  //
+  adjust_spec_diffusion_fluxes(curr_time);
+  //
+  // AJN FLUXREG
+  // We have just performed the correction diffusion solve for Y_m and h
+  // If updateFluxReg=T, we update VISCOUS flux registers:
+  //   ADD Gamma_{m,AD}^(k+1),
+  //   ADD lambda^(k)/cp^(k) grad h_AD^(k+1).
+  //
+  if (do_reflux && updateFluxReg)
+  {
+    for (int d = 0; d < BL_SPACEDIM; d++)
     {
-      for (int d = 0; d < BL_SPACEDIM; d++)
+      if (level > 0)
       {
-        if (level > 0)
-        {
-            getViscFluxReg().FineAdd(*SpecDiffusionFluxnp1[d],d,
-                                     0,first_spec,nspecies+1,dt);
-	}
-	if (level < parent->finestLevel())
-	{
-	  getLevel(level+1).getViscFluxReg().CrseInit((*SpecDiffusionFluxnp1[d]),d,
-						      0,first_spec,nspecies+1,-dt,
-						      FluxRegister::ADD);
-	}
+	getViscFluxReg().FineAdd(*SpecDiffusionFluxnp1[d],d,
+				 0,first_spec,nspecies+1,dt);
+      }
+      if (level < parent->finestLevel())
+      {
+	getLevel(level+1).getViscFluxReg().CrseInit((*SpecDiffusionFluxnp1[d]),d,
+						    0,first_spec,nspecies+1,-dt,
+						    FluxRegister::ADD);
       }
     }
-
-    flux_divergence(Dnew,DComp,SpecDiffusionFluxnp1,0,nComp,-1);
   }
+
+  flux_divergence(Dnew,DComp,SpecDiffusionFluxnp1,0,nComp,-1);
     
   if (verbose)
   {
