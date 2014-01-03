@@ -327,9 +327,6 @@ protected:
 
     virtual void calcDiffusivity (const Real time);
 
-    void calcDiffusivity (const Real time,
-                          bool       doCalcVisc);
-
     virtual void getViscosity (MultiFab* viscosity[BL_SPACEDIM],
                                const Real time);
 

@@ -598,21 +598,6 @@ FabMinMax (FArrayBox& fab,
 }
 
 static
-std::ostream&
-levWrite(std::ostream& os, int level, std::string& message)
-{
-    if (ParallelDescriptor::IOProcessor())
-    {
-        for (int lev=0; lev<=level; ++lev) {
-            //os << '\t';
-            os << "  ";
-        }
-        os << message;
-    }
-    return os;
-}
-
-static
 Box
 getStrip(const Geometry& geom)
 {
@@ -719,28 +704,6 @@ showMF(const std::string&   mySet,
         }
         VisMF::Write(mf,junkname);
         FArrayBox::setFormat(saved_format);
-    }
-}
-
-void
-showMCDD(const std::string&   mySet,
-         const DDOp&          mcddop,
-         const std::string&   name)
-{
-    if (ShowMF_Sets.count(mySet)>0)
-    {
-        std::string DebugDir(ShowMF_Dir);
-        if (ParallelDescriptor::IOProcessor())
-            if (!BoxLib::UtilCreateDirectory(DebugDir, 0755))
-                BoxLib::CreateDirectoryFailed(DebugDir);
-        ParallelDescriptor::Barrier();
-
-        std::string junkname = DebugDir + "/" + name;
-
-        if (ShowMF_Verbose>0 && ParallelDescriptor::IOProcessor()) {
-            cout << "   ******************************  Debug: writing " << junkname << '\n';
-        }
-        mcddop.Write(junkname);
     }
 }
 
@@ -6042,13 +6005,6 @@ HeatTransfer::calcViscosity (const Real time,
 void
 HeatTransfer::calcDiffusivity (const Real time)
 {
-    calcDiffusivity(time,false);
-}
-
-void
-HeatTransfer::calcDiffusivity (const Real time,
-                               bool       do_VelVisc)
-{
     if (do_mcdd) return;
 
     const TimeLevel whichTime = which_time(State_Type, time);
@@ -6066,9 +6022,9 @@ HeatTransfer::calcDiffusivity (const Real time,
     {
         FArrayBox& Tfab = Temp_fpi();
         FArrayBox& RYfab = Rho_and_spec_fpi();
-         const Box& gbox = RYfab.box();
+	const Box& gbox = RYfab.box();
 
-        const int  vflag   = do_VelVisc;
+	const int  vflag   = false;
 #ifdef USE_WBAR
 	// beta_for_X's + lambda + mu + beta_for_Y's + beta_for_Wbar's
         const int nc_bcen = nspecies+2+2*nspecies;
@@ -6088,12 +6044,6 @@ HeatTransfer::calcDiffusivity (const Real time,
         FArrayBox& Dfab = diff[Rho_and_spec_fpi];
         Dfab.copy(bcen,0,first_spec-offset,nspecies);
         Dfab.copy(bcen,nspecies,Temp-offset,1);
-
-        if (do_VelVisc)
-        {
-            MultiFab& visc = (whichTime==AmrOldTime) ? (*viscn_cc) : (*viscnp1_cc);
-            visc[Rho_and_spec_fpi].copy(bcen,nspecies+1,0,1);
-        }
 
         //
         // Convert from tmp=RhoY_l to Y_l
@@ -6265,7 +6215,7 @@ HeatTransfer::calc_divu (Real      time,
 {
     const int nGrow = 0;
 
-    int       vtCompY, vtCompT;
+    int       vtCompY=0, vtCompT=0;
     MultiFab  mcViscTerms;
 
     if (do_mcdd)
