@@ -459,12 +459,11 @@ extern "C" {
                           Real*       C_elt, ARLIM_P(Celtlo), ARLIM_P(Celthi),
                           const Real* C,     ARLIM_P(Clo),    ARLIM_P(Chi));
 
-    int FORT_OTrad_TDF(const int* lo, const int* hi,
-                       Real* Qloss,   ARLIM_P(Qlo), ARLIM_P(Qhi),
-                       const Real* T, ARLIM_P(Tlo), ARLIM_P(Thi),
-                       const Real* X, ARLIM_P(Xlo), ARLIM_P(Xhi),
-                       const Real* Patm, const Real* T_bg);
-
+    void FORT_OTrad_TDF(const int* lo, const int* hi,
+                        Real* Qloss,   ARLIM_P(Qlo), ARLIM_P(Qhi),
+                        const Real* T, ARLIM_P(Tlo), ARLIM_P(Thi),
+                        const Real* X, ARLIM_P(Xlo), ARLIM_P(Xhi),
+                        const Real* Patm, const Real* T_bg);
     Real FORT_RUNIV();
     Real FORT_P1ATMMKS();
 

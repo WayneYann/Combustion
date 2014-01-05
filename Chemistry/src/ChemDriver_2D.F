@@ -1228,7 +1228,17 @@ c               RWRK(dvbr+4) = TT2 - TT1
 #endif
 
                do n=1,Nspec
+#ifdef USE_WBAR
+c     beta for X
+                  RD(i,j,          n) = RHO *                     Dt(n) * SCAL
+c     beta for Y
+                  RD(i,j,2+  Nspec+n) = RHO * Wavg  * invmwt(n) * Dt(n) * SCAL
+c     beta for Wbar
+                  RD(i,j,2+2*Nspec+n) = RHO * Yt(n) * invmwt(n) * Dt(n) * SCAL
+#else
+c     original code - beta for Y
                   RD(i,j,n) = RHO * Wavg * invmwt(n) * Dt(n) * SCAL
+#endif
                end do
 
                if (do_temp .ne. 0) then
