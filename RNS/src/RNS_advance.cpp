@@ -454,7 +454,7 @@ void sdc_f2comp(void *Fp, void *Qp, double t, double dt, void *RHSp, sdc_state *
   MultiFab& Urhs   = *RHS.U;
 
   BL_ASSERT(Urhs.contains_nan() == false);
-  MultiFab::Copy(U, Urhs, 0, 0, U.nComp(), U.nGrow());
+  MultiFab::Copy(U, Urhs, 0, 0, U.nComp(), 0);
 
   if (ChemDriver::isNull()) {
     Uprime.setVal(0.0);

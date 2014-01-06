@@ -365,7 +365,8 @@ sdc_sweeper* SDCAmr::build_level(int lev)
   sdc_nodes* nodes = sdc_nodes_create(nnodes, SDC_UNIFORM);
   sdc_imex*  imex  = sdc_imex_create(nodes, sdc_f1eval, sdc_f2eval, sdc_f2comp);
 
-  if (lev > 0) sdc_sweeper_nest((sdc_sweeper*) imex, sweepers[lev-1]);
+  if (lev > 0 && trat > 1)
+    sdc_sweeper_nest((sdc_sweeper*) imex, sweepers[lev-1]);
 
   sdc_imex_setup(imex, NULL, NULL);
   sdc_hooks_add(imex->hooks, SDC_HOOK_POST_STEP, sdc_poststep_hook);
@@ -396,11 +397,9 @@ void SDCAmr::rebuild_mlsdc()
   }
 
   if (max_level > 0) mg.nsweeps[0] = 2;
-  sdc_mg_setup(&mg, SDC_MG_NEST);
+  sdc_mg_setup(&mg, 0);
   sdc_mg_allocate(&mg);
-  //  sdc_mg_print(&mg, 0);
-
-  // XXX: for fine levels, need to make the interpolation matrices local only
+  // sdc_mg_print(&mg, 0);
 
   if (verbose > 0 && ParallelDescriptor::IOProcessor()) {
     cout << "Rebuilt MLSDC: " << mg.nlevels << ", nnodes: ";

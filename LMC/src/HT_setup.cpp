@@ -462,6 +462,9 @@ HeatTransfer::variableSetUp ()
 #endif
     NUM_STATE = ++counter;
     NUM_SCALARS = NUM_STATE - Density;
+#ifdef USE_WBAR
+    NUM_SPEC = nspecies;
+#endif
 
     const Array<std::string>& names = getChemSolve().speciesNames();
 

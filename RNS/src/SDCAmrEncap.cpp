@@ -29,34 +29,31 @@ void *mf_encap_create(int type, void *encap_ctx)
   RNSEncapCtx* ctx   = (RNSEncapCtx*) encap_ctx;
   RNSEncap*    encap = new RNSEncap;
 
-  BoxArray ba(*ctx->ba);
-
+  encap->rns       = ctx->rns;
+  encap->type      = type;
   encap->fine_flux = 0;
   encap->crse_flux = 0;
-  encap->type = type;
-  encap->rns  = ctx->rns;
 
   switch (type) {
   case SDC_SOLUTION:
   case SDC_WORK:
-    encap->U = new MultiFab(ba, ctx->ncomp, ctx->ngrow);
-    mf_encap_setval(encap, 0.0);
+    encap->U = new MultiFab(*ctx->ba, ctx->ncomp, ctx->ngrow);
     break;
   case SDC_FEVAL:
   case SDC_INTEGRAL:
   case SDC_TAU:
-    encap->U = new MultiFab(ba, ctx->ncomp, 0);
+    encap->U = new MultiFab(*ctx->ba, ctx->ncomp, 0);
     if (ctx->level > 0)
-      encap->fine_flux = new FluxRegister(ba, ctx->crse_ratio, ctx->level, ctx->ncomp);
-    if (! ctx->finest) {
+      encap->fine_flux = new FluxRegister(*ctx->ba, ctx->crse_ratio, ctx->level, ctx->ncomp);
+    if (ctx->level < ctx->finest) {
       SDCAmr&   amr  = *encap->rns->getSDCAmr();
       AmrLevel& rnsF = amr.getLevel(ctx->level+1);
       encap->crse_flux = new FluxRegister(rnsF.boxArray(), amr.refRatio(ctx->level), rnsF.Level(), ctx->ncomp);
     }
-    mf_encap_setval(encap, 0.0);
     break;
   }
 
+  mf_encap_setval(encap, 0.0);
   return encap;
 }
 
@@ -81,7 +78,6 @@ void mf_encap_setval(void *Qptr, sdc_dtype val)
   RNSEncap& Q = *((RNSEncap*) Qptr);
   MultiFab& U = *Q.U;
   U.setVal(val, U.nGrow());
-
   if (Q.fine_flux) mf_encap_setval_flux(*Q.fine_flux, val);
   if (Q.crse_flux) mf_encap_setval_flux(*Q.crse_flux, val);
 }
@@ -93,15 +89,20 @@ void mf_encap_copy_flux(FluxRegister& dst, FluxRegister& src)
       dst[face()][bfsi].copy(src[face()][bfsi]);
 }
 
-void mf_encap_copy(void *dstp, const void *srcp)
+void mf_encap_copy(void *dstp, const void *srcp, int flags)
 {
   RNSEncap& Qdst = *((RNSEncap*) dstp);
   RNSEncap& Qsrc = *((RNSEncap*) srcp);
   MultiFab& Udst = *Qdst.U;
   MultiFab& Usrc = *Qsrc.U;
 
-  for (MFIter mfi(Udst); mfi.isValid(); ++mfi)
-    Udst[mfi].copy(Usrc[mfi]);
+  int nghost = 0;
+  if (flags & SDC_COPY_GHOST) {
+      int ngsrc = Usrc.nGrow();
+      int ngdst = Udst.nGrow();
+      nghost = (ngdst < ngsrc) ? ngdst : ngsrc;
+  }
+  MultiFab::Copy(Udst, Usrc, 0, 0, Usrc.nComp(), nghost);
 
   if (Qdst.fine_flux && Qsrc.fine_flux) mf_encap_copy_flux(*Qdst.fine_flux, *Qsrc.fine_flux);
   if (Qdst.crse_flux && Qsrc.crse_flux) mf_encap_copy_flux(*Qdst.crse_flux, *Qsrc.crse_flux);
@@ -126,11 +127,11 @@ void mf_encap_saxpy(void *yp, sdc_dtype a, void *xp)
   MultiFab& Uy = *Qy.U;
   MultiFab& Ux = *Qx.U;
 
+  BL_ASSERT(Uy.boxArray() == Ux.boxArray());
+
 // #ifdef _OPENMP
 // #pragma omp parallel for
 // #endif
- BL_ASSERT(Uy.boxArray() == Ux.boxArray());
-
   for (MFIter mfi(Uy); mfi.isValid(); ++mfi)
     Uy[mfi].saxpy(a, Ux[mfi]);
 
@@ -150,7 +151,7 @@ sdc_encap* SDCAmr::build_encap(int lev)
   ctx->level  = lev;
   ctx->ba     = &boxArray(lev);
   ctx->rns    = dynamic_cast<RNS*>(&getLevel(lev));
-  ctx->finest = lev == finest_level;
+  ctx->finest = finest_level;
   ctx->ncomp  = dl[0].nComp();
   ctx->ngrow  = dl[0].nExtra();
   if (lev > 0)
