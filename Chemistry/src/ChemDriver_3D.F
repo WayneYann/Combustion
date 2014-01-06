@@ -1837,11 +1837,8 @@ c
 
       parameter (sigma = 5.669D-08)
       
-      iH2O = 0
-      iCO2 = 0
-      iCH4 = 0
-      iCO  = 0
-      
+      iH2O = 0; iCO2 = 0; iCH4 = 0; iCO  = 0
+
       do n = 1,Nspec
          call get_spec_name(name, n)
          if (name .EQ. 'H20') iH2O = n
@@ -1862,6 +1859,8 @@ c
                T2 = T1*T1
                T3 = T2*T1
                T4 = T3*T1
+
+               lnT1 = zero; lnT2 = zero; lnT3 = zero; lnT4 = zero
                
                if ( (iH2O.gt.0) .or. (iCO2.gt.0) ) then
                   lnT1 = LOG(T1)

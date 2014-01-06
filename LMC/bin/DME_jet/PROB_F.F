@@ -716,6 +716,8 @@ c     Set amplitudes
 
       len = len_trim(probtype)
 
+      iO2 = -1; iH2 = -1; iCH4 = -1
+
       if (probtype(1:len).eq.BL_PROB_JET_DIFFUSION)then
 
         do n=1,Nspec
