@@ -1144,9 +1144,10 @@ c     Get the matrix of elements versus species
                
                rhoHnew(i,j,k) = Z(Nspec+1)
                
-               rhooldInv = one / rho
-               rho  = zero
-               do m= 1,Nspec
+               if (strang_fix .eq. 1) rhooldInv = one / rho
+
+               rho = zero
+               do m = 1,Nspec
                   rho = rho + Z(m)
                end do
                rhoInv = 1.d0 / rho
@@ -1155,6 +1156,8 @@ c     Get the matrix of elements versus species
                   !
                   ! We want Z to contain rhoYnew(i,j,k)
                   !
+                  rhooldInv = one / rho
+
                   do m= 1,Nspec
                      Z(m) = Z(m) + (rhoYold(i,j,k,m) - rhoYtemp(m))*rhooldInv*rho
                   end do

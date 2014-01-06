@@ -1132,7 +1132,8 @@ c               RWRK(dvbr+4) = TT2 - TT1
             
             rhoHnew(i,j) = Z(Nspec+1)
 
-            rhooldInv = 1.d0 / rho
+            if (strang_fix .eq. 1) rhooldInv = one / rho
+
             rho  = 0.d0
             do m= 1,Nspec
                rho = rho + Z(m)
