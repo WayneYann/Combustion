@@ -637,9 +637,6 @@ c     any hacking to be done on viscosity, be sure to catch it there as well.
                   do j=lo(2), hi(2)
                      do i=lo(1), hi(1)
                         rhoD(i,j,        n) = rhoD(i,j,        n)*thickFacTR
-#ifdef USE_WBAR
-                        rhoD(i,j,2+  ncs+n) = rhoD(i,j,2+  ncs+n)*thickFacTR
-#endif
                      end do
                   end do
                end do

@@ -5859,13 +5859,8 @@ HeatTransfer::calcDiffusivity (const Real time)
 	const Box& gbox = RYfab.box();
 
 	const int  vflag   = false;
-#ifdef USE_WBAR
-	// beta_for_Y's + lambda + mu + beta_for_Wbar's
-        const int nc_bcen = nspecies+2+nspecies;
-#else
 	// rhoD + lambda + mu
         const int nc_bcen = nspecies+2; 
-#endif
         int       dotemp  = 1;
         bcen.resize(gbox,nc_bcen);
         
@@ -5881,10 +5876,6 @@ HeatTransfer::calcDiffusivity (const Real time)
         Dfab.copy(bcen,0,first_spec-offset,nspecies);
 	// lambda in Temp slot
         Dfab.copy(bcen,nspecies,Temp-offset,1);
-#ifdef USE_WBAR
-	// beta for Wbar's
-	Dfab.copy(bcen,nspecies+2,first_spec+nspecies+2-offset,nspecies);
-#endif
 
         //
         // Convert from tmp=RhoY_l to Y_l
