@@ -5860,8 +5860,8 @@ HeatTransfer::calcDiffusivity (const Real time)
 
 	const int  vflag   = false;
 #ifdef USE_WBAR
-	// beta_for_X's + lambda + mu + beta_for_Y's + beta_for_Wbar's
-        const int nc_bcen = nspecies+2+2*nspecies;
+	// beta_for_Y's + lambda + mu + beta_for_Wbar's
+        const int nc_bcen = nspecies+2+nspecies;
 #else
 	// rhoD + lambda + mu
         const int nc_bcen = nspecies+2; 
@@ -5877,13 +5877,13 @@ HeatTransfer::calcDiffusivity (const Real time)
         
         FArrayBox& Dfab = diff[Rho_and_spec_fpi];
 
-	// beta for Y's (for non-Wbar code) or X's (for Wbar code)
+	// beta for Y's
         Dfab.copy(bcen,0,first_spec-offset,nspecies);
 	// lambda in Temp slot
         Dfab.copy(bcen,nspecies,Temp-offset,1);
 #ifdef USE_WBAR
-	// beta for Y's and beta for Wbar's
-	Dfab.copy(bcen,nspecies+2,first_spec+nspecies+2-offset,2*nspecies);
+	// beta for Wbar's
+	Dfab.copy(bcen,nspecies+2,first_spec+nspecies+2-offset,nspecies);
 #endif
 
         //
