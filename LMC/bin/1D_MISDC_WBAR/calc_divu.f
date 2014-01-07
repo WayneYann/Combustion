@@ -36,6 +36,9 @@ c     Quantities passed in
      &                                    gamma_Wbar_lo,gamma_Wbar_hi,
      &                                    gamma_lo,gamma_hi,
      &                                    dx,lo,hi)
+      call adjust_spec_diffusion_fluxes(scal,diff(:,FirstSpec:),
+     &                                  gamma_lo,gamma_hi,
+     &                                  dx,lo,hi)
 
       do i=lo,hi
          rho = scal(i,Density)
