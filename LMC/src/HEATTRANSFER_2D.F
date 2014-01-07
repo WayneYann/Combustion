@@ -1908,6 +1908,56 @@ c     Get curvature at centers from nodal normal, get normal at centers
       end do
       end
 
+#if USE_WBAR
+
+      subroutine FORT_GRADWBAR(lo, hi, Wbar, DIMS(Wbar),
+     &     Y, DIMS(Y), rDe, DIMS(rDe), flux, DIMS(flux),
+     &     area, DIMS(area), dx, dir, mult, ispec)
+      implicit none
+#include <cdwrk.H>
+      integer lo(SDIM), hi(SDIM)
+      integer dir, ispec
+      integer DIMDEC(Wbar)
+      integer DIMDEC(Y)
+      integer DIMDEC(rDe)
+      integer DIMDEC(flux)
+      integer DIMDEC(area)
+      REAL_T  Wbar(DIMV(Wbar))
+      REAL_T  Y(DIMV(Y))
+      REAL_T  rDe(DIMV(rDe))
+      REAL_T  flux(DIMV(flux))
+      REAL_T  area(DIMV(area))
+      REAL_T  dx, mult
+
+      REAL_T Wav, Yav, Wgr, fac
+      integer i,j
+
+      fac = mult / dx
+      if (dir.eq.0) then
+         do j = lo(2),hi(2)
+            do i = lo(1),hi(1)+1
+               Yav = 0.5d0*(Y(i,j)    + Y(i-1,j))
+               Wav = 0.5d0*(Wbar(i,j) + Wbar(i-1,j))
+               Wgr =   fac*(Wbar(i,j) - Wbar(i-1,j))
+               flux(i,j) = flux(i,j) + rDe(i,j) * Yav * Wgr * area(i,j) / Wav
+            enddo
+         enddo
+      else if (dir.eq.1) then
+         do j = lo(2),hi(2)+1
+            do i = lo(1),hi(1)
+               Yav = 0.5d0*(Y(i,j)    + Y(i,j-1))
+               Wav = 0.5d0*(Wbar(i,j) + Wbar(i,j-1))
+               Wgr =   fac*(Wbar(i,j) - Wbar(i,j-1))
+               flux(i,j) = flux(i,j) + rDe(i,j) * Yav * Wgr * area(i,j) / Wav
+            enddo
+         enddo
+      else
+         call bl_pd_abort('Bad dir in FORT_GRADWBAR')
+      endif
+      end
+
+#endif
+
       subroutine  FORT_RECOMP_UPDATE(lo, hi,
      &                               update, DIMS(update),
      &                               xflux,  DIMS(xflux),

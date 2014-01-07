@@ -3332,6 +3332,43 @@ HeatTransfer::compute_differential_diffusion_fluxes (const Real& time,
     //
     for (int d=0; d < BL_SPACEDIM; ++d)
         flux[d]->mult(b/geom.CellSize()[d],0,nspecies+1);
+
+#ifdef USE_WBAR
+
+    int nGrowOp = 1;
+
+    FArrayBox tmp;
+    MultiFab rho_and_species(grids,nspecies+1,nGrowOp);
+
+    for (FillPatchIterator fpi(*this,rho_and_species,nGrowOp,time,State_Type,Density,nspecies+1);
+         fpi.isValid();
+	 ++fpi)
+    {
+      FArrayBox& rho_and_spec = rho_and_species[fpi];
+      rho_and_spec.copy(fpi(),0,0,nspecies+1);
+
+      tmp.resize(rho_and_spec.box(),1);
+      tmp.copy(rho_and_spec,0,0,1);
+      tmp.invert(1);
+
+      for (int comp = 0; comp < nspecies; ++comp) 
+	rho_and_spec.mult(tmp,0,comp+1,1);
+    }
+
+    // add in grad wbar term
+    MultiFab Wbar;
+
+    Wbar.define(grids,1,nGrowOp,Fab_allocate);
+
+    for (MFIter mfi(rho_and_species); mfi.isValid(); ++mfi)
+    {
+      const Box& gbox = rho_and_species[mfi].box();
+      getChemSolve().getMwmixGivenY(Wbar[mfi],rho_and_species[mfi],gbox,1,0);
+    }
+
+
+#endif
+
     //
     // Modify update/fluxes to preserve flux sum = 0 (conservatively correct Gamma_m)
     adjust_spec_diffusion_fluxes(time);

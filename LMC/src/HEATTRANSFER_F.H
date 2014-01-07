@@ -37,6 +37,9 @@
 #    define FORT_PART_CNT_ERR              particlecnterr
 #    define FORT_MCURVE                    mcurve
 #    define FORT_SMOOTH                    smooth
+#if USE_WBAR
+#    define FORT_GRADWBAR                  gradwbar
+#endif
 #else
 #  if  defined(BL_FORT_USE_UPPERCASE)
 #    define FORT_SET_SCAL_NUMB             SETSCNUM
@@ -73,6 +76,9 @@
 #    define FORT_PART_CNT_ERR              PARTICLECNTERR
 #    define FORT_MCURVE                    MCURVE
 #    define FORT_SMOOTH                    SMOOTH
+#if USE_WBAR
+#    define FORT_GRADWBAR                  GRADWBAR
+#endif
 #  elif defined(BL_FORT_USE_LOWERCASE)
 #    define FORT_SET_SCAL_NUMB             setscnum
 #    define FORT_GETPAMB                   getpamb
@@ -108,6 +114,9 @@
 #    define FORT_PART_CNT_ERR              particlecnterr
 #    define FORT_MCURVE                    mcurve
 #    define FORT_SMOOTH                    smooth
+#if USE_WBAR
+#    define FORT_GRADWBAR                  gradwbar
+#endif
 #  elif defined(BL_FORT_USE_UNDERSCORE)
 #    define FORT_SET_SCAL_NUMB             setscnum_
 #    define FORT_GETPAMB                   getpamb_
@@ -143,6 +152,9 @@
 #    define FORT_PART_CNT_ERR              particlecnterr_
 #    define FORT_MCURVE                    mcurve_
 #    define FORT_SMOOTH                    smooth_
+#if USE_WBAR
+#    define FORT_GRADWBAR                  gradwbar_
+#endif
 #  endif
 
 #include <ArrayLim.H>
@@ -439,6 +451,15 @@ extern "C" {
     void FORT_SMOOTH(const int* lo, const int* hi,
                      Real*       i, ARLIM_P(ilo), ARLIM_P(ihi),
                      const Real* o, ARLIM_P(olo), ARLIM_P(ohi));
+
+    void FORT_GRADWBAR(const int* lo, const int* hi,
+                       const Real* Wbar, ARLIM_P(Wlo),    ARLIM_P(Whi),
+                       const Real* Y,    ARLIM_P(Ylo),    ARLIM_P(Yhi),
+                       const Real* rDe,  ARLIM_P(rDelo),  ARLIM_P(rDehi),
+                       Real* flx,  ARLIM_P(flxlo),  ARLIM_P(flxhi),
+                       const Real* a,    ARLIM_P(alo),    ARLIM_P(ahi),
+                       const Real* delta, const int* dir,
+                       const Real* mult, const int* ispec);
     
 }
 #endif
