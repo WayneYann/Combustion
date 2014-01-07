@@ -2687,6 +2687,100 @@ HeatTransfer::differential_diffusion_update (MultiFab& Force,
 			      alphaComp,betan,betanp1,betaComp,solve_mode,add_old_time_divFlux);
   }
 
+#ifdef USE_WBAR
+
+  // add lagged grad W fluxes to time-advanced species diffusion fluxes
+    int nGrowOp = 1;
+
+    FArrayBox tmp;
+    MultiFab rho_and_species(grids,nspecies+1,nGrowOp);
+
+    for (FillPatchIterator fpi(*this,rho_and_species,nGrowOp,curr_time,State_Type,Density,nspecies+1);
+         fpi.isValid();
+	 ++fpi)
+    {
+      FArrayBox& rho_and_spec = rho_and_species[fpi];
+      rho_and_spec.copy(fpi(),0,0,nspecies+1);
+
+      tmp.resize(rho_and_spec.box(),1);
+      tmp.copy(rho_and_spec,0,0,1);
+      tmp.invert(1);
+
+      for (int comp = 0; comp < nspecies; ++comp) 
+	rho_and_spec.mult(tmp,0,comp+1,1);
+    }
+
+    // add in grad wbar term
+    MultiFab Wbar;
+
+    Wbar.define(grids,1,nGrowOp,Fab_allocate);
+
+    for (MFIter mfi(rho_and_species); mfi.isValid(); ++mfi)
+    {
+      const Box& gbox = rho_and_species[mfi].box();
+      getChemSolve().getMwmixGivenY(Wbar[mfi],rho_and_species[mfi],gbox,1,0);
+    }
+
+    //
+    // Here, we'll use the same LinOp as Y for filling grow cells.
+    //
+    const Real* dx    = geom.CellSize();
+    const BCRec& bc = get_desc_lst()[State_Type].getBC(first_spec);
+    ViscBndry*     bndry   = new ViscBndry(grids,1,geom);
+    ABecLaplacian* visc_op = new ABecLaplacian(bndry,dx);
+
+    visc_op->maxOrder(diffusion->maxOrder());
+
+    if (level == 0)
+    {
+      bndry->setBndryValues(Wbar,0,0,1,bc);
+    }
+    else
+    {
+      BoxLib::Error("Wbar doesn't work for multilevel yet");
+    }
+
+    visc_op->setScalars(0,1);
+    visc_op->bCoefficients(1);
+    visc_op->applyBC(Wbar,0,1,0,LinOp::Inhomogeneous_BC);
+
+    delete visc_op;
+    
+    FArrayBox area;
+
+
+    for (MFIter mfi(Wbar); mfi.isValid(); ++mfi)
+    {
+      const int        i    = mfi.index();
+      const Box&       vbox = mfi.validbox();
+      const FArrayBox& Y    = rho_and_species[i];
+      const FArrayBox& wbar = Wbar[i];
+      const Real       mult = -1.0;
+
+      for (int d=0; d<BL_SPACEDIM; ++d) 
+      {
+	const FArrayBox& rhoDe    = (*betanp1[d])[i];
+	FArrayBox&       fluxfab  = (*SpecDiffusionFluxnp1[d])[i];
+		  
+	area.resize(BoxLib::surroundingNodes(grids[i],d),1);
+	geom.GetFaceArea(area,grids,i,d,GEOM_GROW);
+	
+	for (int ispec=0; ispec<nspecies; ++ispec)
+	{
+	  FORT_GRADWBAR(vbox.loVect(), vbox.hiVect(),
+			wbar.dataPtr(), ARLIM(wbar.loVect()),ARLIM(wbar.hiVect()),
+			Y.dataPtr(1+ispec), ARLIM(Y.loVect()), ARLIM(Y.hiVect()),
+			rhoDe.dataPtr(ispec), ARLIM(rhoDe.loVect()), ARLIM(rhoDe.hiVect()),
+			fluxfab.dataPtr(ispec), ARLIM(fluxfab.loVect()), ARLIM(fluxfab.hiVect()),
+			area.dataPtr(), ARLIM(area.loVect()), ARLIM(area.hiVect()),
+			&dx[d], &d, &mult, &ispec);
+	}
+      }
+    }
+    Wbar.clear();
+
+#endif
+
   diffusion->removeFluxBoxesLevel(betanp1);
 
   //
@@ -3366,6 +3460,63 @@ HeatTransfer::compute_differential_diffusion_fluxes (const Real& time,
       getChemSolve().getMwmixGivenY(Wbar[mfi],rho_and_species[mfi],gbox,1,0);
     }
 
+    //
+    // Here, we'll use the same LinOp as Y for filling grow cells.
+    //
+    const Real* dx    = geom.CellSize();
+    const BCRec& bc = get_desc_lst()[State_Type].getBC(first_spec);
+    ViscBndry*     bndry   = new ViscBndry(grids,1,geom);
+    ABecLaplacian* visc_op = new ABecLaplacian(bndry,dx);
+
+    visc_op->maxOrder(diffusion->maxOrder());
+
+    if (level == 0)
+    {
+      bndry->setBndryValues(Wbar,0,0,1,bc);
+    }
+    else
+    {
+      BoxLib::Error("Wbar doesn't work for multilevel yet");
+    }
+
+    visc_op->setScalars(0,1);
+    visc_op->bCoefficients(1);
+    visc_op->applyBC(Wbar,0,1,0,LinOp::Inhomogeneous_BC);
+
+    delete visc_op;
+    
+    FArrayBox area;
+
+
+    for (MFIter mfi(Wbar); mfi.isValid(); ++mfi)
+    {
+      const int        i    = mfi.index();
+      const Box&       vbox = mfi.validbox();
+      const FArrayBox& Y    = rho_and_species[i];
+      const FArrayBox& wbar = Wbar[i];
+      const Real       mult = -1.0;
+
+      for (int d=0; d<BL_SPACEDIM; ++d) 
+      {
+	const FArrayBox& rhoDe = (*beta[d])[i];
+	FArrayBox&       fluxfab  = (*flux[d])[i];
+		  
+	area.resize(BoxLib::surroundingNodes(grids[i],d),1);
+	geom.GetFaceArea(area,grids,i,d,GEOM_GROW);
+	
+	for (int ispec=0; ispec<nspecies; ++ispec)
+	{
+	  FORT_GRADWBAR(vbox.loVect(), vbox.hiVect(),
+			wbar.dataPtr(), ARLIM(wbar.loVect()),ARLIM(wbar.hiVect()),
+			Y.dataPtr(1+ispec), ARLIM(Y.loVect()), ARLIM(Y.hiVect()),
+			rhoDe.dataPtr(ispec), ARLIM(rhoDe.loVect()), ARLIM(rhoDe.hiVect()),
+			fluxfab.dataPtr(ispec), ARLIM(fluxfab.loVect()), ARLIM(fluxfab.hiVect()),
+			area.dataPtr(), ARLIM(area.loVect()), ARLIM(area.hiVect()),
+			&dx[d], &d, &mult, &ispec);
+	}
+      }
+    }
+    Wbar.clear();
 
 #endif
 
