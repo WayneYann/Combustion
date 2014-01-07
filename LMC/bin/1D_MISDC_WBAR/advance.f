@@ -385,6 +385,9 @@ c     fluxes from beta_for_Wbar^(k) grad Wbar^(k) are already available
      &                                          gamma_lo(0,:,:),gamma_hi(0,:,:),
      &                                          dx(0),lo(0),hi(0))
 
+c     NOTE - EVERYTHING FROM HERE THROUGH THE END OF THE LOOP OVER L
+c     IS FOR DIAGNOSTIC PURPOSES ONLY AND DOES NOT AFFECT THE SOLUTION
+
 c     compute rho^{(k+1)}*Y_{m,AD}^{(k+1),l+1}
             do i=lo(0),hi(0)
                do n=1,Nspec
