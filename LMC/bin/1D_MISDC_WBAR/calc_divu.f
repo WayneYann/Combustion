@@ -25,7 +25,7 @@ c     Quantities passed in
       real*8 gamma_Wbar_lo(0:nfine-1,Nspec)
       real*8 gamma_Wbar_hi(0:nfine-1,Nspec)
 
-      call get_temp_visc_terms(scal,beta,diff(:,Temp),dx,lo,hi)
+      call get_temp_visc_terms(scal,beta,beta_for_Wbar,diff(:,Temp),dx,lo,hi)
       call get_spec_visc_terms(scal,beta,gamma_lo,gamma_hi,lo,hi)
       call get_spec_visc_terms_Wbar(scal,beta_for_Wbar,
      &                              gamma_Wbar_lo,gamma_Wbar_hi,
