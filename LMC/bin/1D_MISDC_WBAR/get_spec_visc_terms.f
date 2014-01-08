@@ -1,3 +1,62 @@
+      subroutine get_spec_visc_terms(scal,beta,gamma_lo, gamma_hi,
+     &                               lo,hi)
+
+c     compute 
+c     gamma_m = beta grad Y
+
+      implicit none
+      include 'spec.h'
+      real*8          scal(-2:nfine+1,nscal)
+      real*8          beta(-1:nfine  ,nscal)
+      real*8 gamma_lo( 0:nfine-1,Nspec)
+      real*8 gamma_hi( 0:nfine-1,Nspec)
+      integer lo,hi
+      
+      integer i,n,is,IWRK
+      real*8 beta_lo,beta_hi,RWRK
+      real*8 Y(-1:nfine,Nspec)
+      real*8 X(-1:nfine,Nspec)
+      real*8 scal_X(-2:nfine+1,nscal)
+
+      do i=lo-1,hi+1
+
+c     compute Y = rho*Y / rho
+         do n=1,Nspec
+            Y(i,n) = scal(i,FirstSpec+n-1)/scal(i,Density)
+         enddo
+
+c     convert Y to X
+         CALL CKYTX(Y(i,:),IWRK,RWRK,X(i,:))
+
+c     compute rho*X
+         do n=1,Nspec
+            scal_X(i,FirstSpec+n-1) = scal(i,Density)*X(i,n)
+         end do
+
+      enddo
+
+      do i=lo,hi
+         do n=1,Nspec
+            is = FirstSpec + n - 1
+
+c     compute beta on edges
+            if (coef_avg_harm.eq.1) then
+               beta_lo = 2.d0 / (1.d0/beta(i,is)+1.d0/beta(i-1,is))
+               beta_hi = 2.d0 / (1.d0/beta(i,is)+1.d0/beta(i+1,is))
+            else
+               beta_lo = 0.5d0*(beta(i,is) + beta(i-1,is))
+               beta_hi = 0.5d0*(beta(i,is) + beta(i+1,is))
+            endif
+
+c     compute gamma
+            gamma_hi(i,n) = beta_hi*(Y(i+1,n) - Y(i  ,n)) 
+            gamma_lo(i,n) = beta_lo*(Y(i  ,n) - Y(i-1,n))  
+
+         enddo
+      enddo
+        
+      end
+
       subroutine get_spec_visc_terms_Wbar(scal,beta_for_Wbar,
      &                                    gamma_Wbar_lo,gamma_Wbar_hi,
      &                                    lo,hi)
@@ -49,74 +108,6 @@ c     compute gamma
 
       end do
 
-      end
-
-
-      subroutine get_spec_visc_terms_Y_and_Wbar(scal,beta,
-     &                                          gamma_Wbar_lo,
-     &                                          gamma_Wbar_hi,
-     &                                          gamma_lo, gamma_hi,
-     &                                          lo,hi)
-
-c     compute 
-c     gamma_m = beta_for_y grad Y + gamma_Wbar
-
-      implicit none
-      include 'spec.h'
-      real*8          scal(-2:nfine+1,nscal)
-      real*8          beta(-1:nfine  ,nscal)
-      real*8 gamma_Wbar_lo( 0:nfine-1,Nspec)
-      real*8 gamma_Wbar_hi( 0:nfine-1,Nspec)
-      real*8 gamma_lo( 0:nfine-1,Nspec)
-      real*8 gamma_hi( 0:nfine-1,Nspec)
-      integer lo,hi
-      
-      integer i,n,is,IWRK
-      real*8 beta_lo,beta_hi,RWRK
-      real*8 Y(-1:nfine,Nspec)
-      real*8 X(-1:nfine,Nspec)
-      real*8 scal_X(-2:nfine+1,nscal)
-
-      do i=lo-1,hi+1
-
-c     compute Y = rho*Y / rho
-         do n=1,Nspec
-            Y(i,n) = scal(i,FirstSpec+n-1)/scal(i,Density)
-         enddo
-
-c     convert Y to X
-         CALL CKYTX(Y(i,:),IWRK,RWRK,X(i,:))
-
-c     compute rho*X
-         do n=1,Nspec
-            scal_X(i,FirstSpec+n-1) = scal(i,Density)*X(i,n)
-         end do
-
-      enddo
-
-      do i=lo,hi
-         do n=1,Nspec
-            is = FirstSpec + n - 1
-
-c     compute beta on edges
-            if (coef_avg_harm.eq.1) then
-               beta_lo = 2.d0 / (1.d0/beta(i,is)+1.d0/beta(i-1,is))
-               beta_hi = 2.d0 / (1.d0/beta(i,is)+1.d0/beta(i+1,is))
-            else
-               beta_lo = 0.5d0*(beta(i,is) + beta(i-1,is))
-               beta_hi = 0.5d0*(beta(i,is) + beta(i+1,is))
-            endif
-
-c     compute gamma
-            gamma_hi(i,n) = beta_hi*(Y(i+1,n) - Y(i  ,n)) 
-            gamma_lo(i,n) = beta_lo*(Y(i  ,n) - Y(i-1,n))  
-
-            gamma_hi(i,n) = gamma_hi(i,n) + gamma_Wbar_hi(i,n)
-            gamma_lo(i,n) = gamma_lo(i,n) + gamma_Wbar_lo(i,n)
-
-         enddo
-      enddo
-        
       end
 
       subroutine adjust_spec_diffusion_fluxes(scal,gamma_lo,gamma_hi,lo,hi)

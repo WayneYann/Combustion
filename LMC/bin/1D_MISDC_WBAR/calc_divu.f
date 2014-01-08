@@ -26,14 +26,15 @@ c     Quantities passed in
       real*8 gamma_Wbar_hi(0:nfine-1,Nspec)
 
       call get_temp_visc_terms(scal,beta,diff(:,Temp),dx,lo,hi)
-
+      call get_spec_visc_terms(scal,beta,gamma_lo,gamma_hi,lo,hi)
       call get_spec_visc_terms_Wbar(scal,beta_for_Wbar,
      &                              gamma_Wbar_lo,gamma_Wbar_hi,
      &                              lo,hi)
-      call get_spec_visc_terms_Y_and_Wbar(scal,beta,
-     &                                    gamma_Wbar_lo,gamma_Wbar_hi,
-     &                                    gamma_lo,gamma_hi,
-     &                                    lo,hi)
+
+c     add Wbar part
+            gamma_lo = gamma_lo + gamma_Wbar_lo
+            gamma_hi = gamma_hi + gamma_Wbar_hi
+
       call adjust_spec_diffusion_fluxes(scal,gamma_lo,gamma_hi,lo,hi)
       call flux_divergence(diff(:,FirstSpec),gamma_lo,gamma_hi,dx,lo,hi)
 

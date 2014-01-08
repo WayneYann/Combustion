@@ -133,15 +133,18 @@ c     compute diffusion terms at time n
 
 c     compute conservatively corrected div gamma_m 
 c     also save gamma_m for computing diffdiff terms later
+            call get_spec_visc_terms(scal_old(0,:,:),beta_old(0,:,:),
+     &                               gamma_lo(0,:,:),gamma_hi(0,:,:),
+     &                               lo(0),hi(0))
             call get_spec_visc_terms_Wbar(scal_old(0,:,:),beta_for_Wbar_old(0,:,:),
      &                                    gamma_Wbar_lo(0,:,:),
      &                                    gamma_Wbar_hi(0,:,:),
      &                                    lo(0),hi(0))
-            call get_spec_visc_terms_Y_and_Wbar(scal_old(0,:,:),beta_old(0,:,:),
-     &                                          gamma_Wbar_lo(0,:,:),
-     &                                          gamma_Wbar_hi(0,:,:),
-     &                                          gamma_lo(0,:,:),gamma_hi(0,:,:),
-     &                                          lo(0),hi(0))
+
+c     add Wbar part
+            gamma_lo = gamma_lo + gamma_Wbar_lo
+            gamma_hi = gamma_hi + gamma_Wbar_hi
+
             call adjust_spec_diffusion_fluxes(scal_old(0,:,:),
      &                                        gamma_lo(0,:,:),gamma_hi(0,:,:),
      &                                        lo(0),hi(0))
@@ -218,15 +221,18 @@ c        lambda      (for temperature)
      &                              mu_new(0,:),lo(0),hi(0))
 c     compute a conservative div gamma_m
 c     save gamma_m for differential diffusion computation
+            call get_spec_visc_terms(scal_new(0,:,:),beta_new(0,:,:),
+     &                               gamma_lo(0,:,:),gamma_hi(0,:,:),
+     &                               lo(0),hi(0))
             call get_spec_visc_terms_Wbar(scal_new(0,:,:),beta_for_Wbar_new(0,:,:),
      &                                    gamma_Wbar_lo(0,:,:),
      &                                    gamma_Wbar_hi(0,:,:),
      &                                    lo(0),hi(0))
-            call get_spec_visc_terms_Y_and_Wbar(scal_new(0,:,:),beta_new(0,:,:),
-     &                                          gamma_Wbar_lo(0,:,:),
-     &                                          gamma_Wbar_hi(0,:,:),
-     &                                          gamma_lo(0,:,:),gamma_hi(0,:,:),
-     &                                          lo(0),hi(0))
+
+c     add Wbar part
+            gamma_lo = gamma_lo + gamma_Wbar_lo
+            gamma_hi = gamma_hi + gamma_Wbar_hi
+
             call adjust_spec_diffusion_fluxes(scal_new(0,:,:),
      &                                        gamma_lo(0,:,:),gamma_hi(0,:,:),
      &                                        lo(0),hi(0))
@@ -381,11 +387,14 @@ c     Solve implicit system
 c     compute conservatively corrected version of div gamma_m
 c     where gamma_m = beta^(k) grad \tilde Y_{m,AD}^(k+1) + beta_for_Wbar^(k) grad Wbar^(k)
 c     fluxes from beta_for_Wbar^(k) grad Wbar^(k) are already available
-            call get_spec_visc_terms_Y_and_Wbar(scal_new(0,:,:),beta_new(0,:,:),
-     &                                          gamma_Wbar_lo(0,:,:),
-     &                                          gamma_Wbar_hi(0,:,:),
-     &                                          gamma_lo(0,:,:),gamma_hi(0,:,:),
-     &                                          lo(0),hi(0))
+            call get_spec_visc_terms(scal_new(0,:,:),beta_new(0,:,:),
+     &                               gamma_lo(0,:,:),gamma_hi(0,:,:),
+     &                               lo(0),hi(0))
+
+c     add Wbar part
+            gamma_lo = gamma_lo + gamma_Wbar_lo
+            gamma_hi = gamma_hi + gamma_Wbar_hi
+
             call adjust_spec_diffusion_fluxes(scal_new(0,:,:),
      &                                        gamma_lo(0,:,:),gamma_hi(0,:,:),
      &                                        lo(0),hi(0))
