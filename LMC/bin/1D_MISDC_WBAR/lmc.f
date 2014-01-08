@@ -24,8 +24,6 @@
       real*8, allocatable ::      I_R(:,:,:)
       real*8, allocatable :: beta_old(:,:,:)
       real*8, allocatable :: beta_new(:,:,:)
-      real*8, allocatable :: beta_for_Wbar_old(:,:,:)
-      real*8, allocatable :: beta_for_Wbar_new(:,:,:)
       real*8, allocatable :: mu_old(:,:)
       real*8, allocatable :: mu_new(:,:)
       real*8, allocatable :: divu_old(:,:)
@@ -144,8 +142,6 @@ c     u_bc, T_bc, Y_bc, h_bc, and rho_bc
       allocate(     I_R(0:nlevs-1,-1:nfine,0:Nspec))
       allocate(beta_old(0:nlevs-1,-1:nfine,nscal))
       allocate(beta_new(0:nlevs-1,-1:nfine,nscal))
-      allocate(beta_for_Wbar_old(0:nlevs-1,-1:nfine,nscal))
-      allocate(beta_for_Wbar_new(0:nlevs-1,-1:nfine,nscal))
       allocate(mu_old(0:nlevs-1,-1:nfine))
       allocate(mu_new(0:nlevs-1,-1:nfine))
       allocate(divu_old(0:nlevs-1,-1:nfine))
@@ -250,7 +246,6 @@ c     needed for seed to EOS after first strang_chem call
 
          do l=0,nlevs-1
             call calc_diffusivities(scal_old(l,:,:),beta_old(l,:,:),
-     &                              beta_for_Wbar_old(l,:,:),
      &                              mu_old(l,:),lo(l),hi(l))
          end do
          
@@ -259,7 +254,6 @@ c     needed for seed to EOS after first strang_chem call
             print *,'initialVelocityProject: '
             do l=0,nlevs-1
                call calc_divu(scal_old(l,:,:),beta_old(l,:,:),
-     &                        beta_for_Wbar_old(l,:,:),
      &                        I_R(l,:,:),divu_old(l,:),dx(l),
      &                        lo(l),hi(l))
             end do
@@ -301,7 +295,6 @@ c     reset temperature just in case strang_chem call is not well poased
 
             do l=0,nlevs-1
                call calc_divu(scal_old(l,:,:),beta_old(l,:,:),
-     &                        beta_for_Wbar_old(l,:,:),
      &                        I_R(l,:,:),divu_old(l,:),dx(l),
      &                        lo(l),hi(l))
             end do
@@ -338,7 +331,6 @@ c     return zero pressure
             call advance(vel_old,vel_new,scal_old,scal_new,
      $                   I_R,press_old,press_new,
      $                   divu_old,divu_new,beta_old,beta_new,
-     $                   beta_for_Wbar_old,beta_for_Wbar_new,
      $                   mu_old,mu_new,
      $                   dx,dt,lo,hi,bc,-init_iter)
 
@@ -385,7 +377,6 @@ C-- Now advance
          call advance(vel_old,vel_new,scal_old,scal_new,
      $                I_R,press_old,press_new,
      $                divu_old,divu_new,beta_old,beta_new,
-     $                beta_for_Wbar_old,beta_for_Wbar_new,
      $                mu_old,mu_new,
      $                dx,dt,lo,hi,bc,nsteps_taken)
 
@@ -395,7 +386,6 @@ c     update state, time
          divu_old = divu_new
          press_old = press_new
          beta_old = beta_new
-         beta_for_Wbar_old = beta_for_Wbar_new
          mu_old = mu_new
 
          time = time + dt(0)
