@@ -28,17 +28,14 @@ c     Quantities passed in
       call get_temp_visc_terms(scal,beta,diff(:,Temp),dx,lo,hi)
 
       call get_spec_visc_terms_Wbar(scal,beta_for_Wbar,
-     &                              diff(:,FirstSpec:),
      &                              gamma_Wbar_lo,gamma_Wbar_hi,
-     &                              dx,lo,hi)
+     &                              lo,hi)
       call get_spec_visc_terms_Y_and_Wbar(scal,beta,
-     &                                    diff(:,FirstSpec:),
      &                                    gamma_Wbar_lo,gamma_Wbar_hi,
      &                                    gamma_lo,gamma_hi,
-     &                                    dx,lo,hi)
-      call adjust_spec_diffusion_fluxes(scal,diff(:,FirstSpec:),
-     &                                  gamma_lo,gamma_hi,
-     &                                  dx,lo,hi)
+     &                                    lo,hi)
+      call adjust_spec_diffusion_fluxes(scal,gamma_lo,gamma_hi,lo,hi)
+      call flux_divergence(diff(:,FirstSpec),gamma_lo,gamma_hi,dx,lo,hi)
 
       do i=lo,hi
          rho = scal(i,Density)

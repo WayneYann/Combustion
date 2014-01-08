@@ -1,25 +1,19 @@
-      subroutine get_spec_visc_terms_Wbar(scal,beta_for_Wbar,visc,
+      subroutine get_spec_visc_terms_Wbar(scal,beta_for_Wbar,
      &                                    gamma_Wbar_lo,gamma_Wbar_hi,
-     &                                    dx,lo,hi)
+     &                                    lo,hi)
 
       implicit none
       include 'spec.h'
       real*8          scal(-2:nfine+1,nscal)
       real*8 beta_for_Wbar(-1:nfine  ,nscal)
-      real*8          visc(-1:nfine  ,Nspec)
       real*8 gamma_Wbar_lo( 0:nfine-1,Nspec)
       real*8 gamma_Wbar_hi( 0:nfine-1,Nspec)
-      real*8 dx
       integer lo,hi
       
       integer i,n,is,IWRK
       real*8 beta_for_Wbar_lo,beta_for_Wbar_hi,RWRK
-      real*8 dxsqinv
       real*8 Y(-1:nfine,Nspec)
       real*8 Wbar(-1:nfine)
-      real*8 sum_gamma_lo, sum_gamma_hi, sumRhoY_lo, sumRhoY_hi
-
-      dxsqinv = 1.d0/(dx*dx)
 
       do i=lo-1,hi+1
 
@@ -34,11 +28,6 @@ c     convert Y to Wbar
       enddo
 
       do i=lo,hi
-
-         sum_gamma_lo = 0.d0
-         sum_gamma_hi = 0.d0
-         sumRhoY_lo = 0.d0
-         sumRhoY_hi = 0.d0
 
          do n=1,Nspec
             is = FirstSpec + n - 1
@@ -55,12 +44,6 @@ c     compute beta on edges
 c     compute gamma
             gamma_Wbar_hi(i,n) = beta_for_Wbar_hi*(Wbar(i+1) - Wbar(i  )) 
             gamma_Wbar_lo(i,n) = beta_for_Wbar_lo*(Wbar(i  ) - Wbar(i-1)) 
- 
-c     compute div(gamma).
-c     no need to conservatively correct these
-c     we will correct beta grad X after the species diffusion solve
-c     in fact the algorithm is more stable without the correction here
-            visc(i,n) = (gamma_Wbar_hi(i,n)-gamma_Wbar_lo(i,n))*dxsqinv
 
          enddo
 
@@ -69,26 +52,23 @@ c     in fact the algorithm is more stable without the correction here
       end
 
 
-      subroutine get_spec_visc_terms_Y_and_Wbar(scal,beta,visc,
+      subroutine get_spec_visc_terms_Y_and_Wbar(scal,beta,
      &                                          gamma_Wbar_lo,
      &                                          gamma_Wbar_hi,
      &                                          gamma_lo, gamma_hi,
-     &                                          dx,lo,hi)
+     &                                          lo,hi)
 
 c     compute 
 c     gamma_m = beta_for_y grad Y + gamma_Wbar
-c     conservatively correct this, then set visc = (1/dxsq)*div(gamma_m)
 
       implicit none
       include 'spec.h'
       real*8          scal(-2:nfine+1,nscal)
       real*8          beta(-1:nfine  ,nscal)
-      real*8          visc(-1:nfine  ,Nspec)
       real*8 gamma_Wbar_lo( 0:nfine-1,Nspec)
       real*8 gamma_Wbar_hi( 0:nfine-1,Nspec)
       real*8 gamma_lo( 0:nfine-1,Nspec)
       real*8 gamma_hi( 0:nfine-1,Nspec)
-      real*8 dx
       integer lo,hi
       
       integer i,n,is,IWRK
@@ -96,9 +76,6 @@ c     conservatively correct this, then set visc = (1/dxsq)*div(gamma_m)
       real*8 Y(-1:nfine,Nspec)
       real*8 X(-1:nfine,Nspec)
       real*8 scal_X(-2:nfine+1,nscal)
-      real*8 dxsqinv
-
-      dxsqinv = 1.d0/(dx*dx)
 
       do i=lo-1,hi+1
 
@@ -137,31 +114,23 @@ c     compute gamma
             gamma_hi(i,n) = gamma_hi(i,n) + gamma_Wbar_hi(i,n)
             gamma_lo(i,n) = gamma_lo(i,n) + gamma_Wbar_lo(i,n)
 
-c     compute div(gamma).  If non-unity Le we overwrite this later
-            visc(i,n) = (gamma_hi(i,n)-gamma_lo(i,n))*dxsqinv
-
          enddo
       enddo
         
       end
 
-      subroutine adjust_spec_diffusion_fluxes(scal,visc,gamma_lo,gamma_hi,dx,lo,hi)
+      subroutine adjust_spec_diffusion_fluxes(scal,gamma_lo,gamma_hi,lo,hi)
 
       implicit none
       include 'spec.h'
       real*8     scal(-2:nfine+1,nscal)
-      real*8     visc(-1:nfine  ,Nspec)
       real*8 gamma_lo( 0:nfine-1,Nspec)
       real*8 gamma_hi( 0:nfine-1,Nspec)
-      real*8 dx
       integer lo,hi
 
       integer n,is,i
       real*8 sum_gamma_lo, sum_gamma_hi, sumRhoY_lo, sumRhoY_hi
       real*8 RhoYe_lo, RhoYe_hi
-      real*8 dxsqinv
-
-      dxsqinv = 1.d0/(dx*dx)
 
       do i=lo,hi
 
@@ -202,14 +171,36 @@ c     set flux = flux - (rho*V_c)*(rho*Y_m)/rho
                gamma_hi(i,n) = gamma_hi(i,n) 
      $              - sum_gamma_hi*RhoYe_hi/sumRhoY_hi
 
-c     compute div(gamma)
-               visc(i,n) = (gamma_hi(i,n)-gamma_lo(i,n))*dxsqinv
-
             end do
 
          end if
 
 
+      enddo
+
+      end
+
+
+      subroutine flux_divergence(visc,gamma_lo,gamma_hi,dx,lo,hi)
+
+      implicit none
+      include 'spec.h'
+
+      real*8     visc(-1:nfine  ,Nspec)
+      real*8 gamma_lo( 0:nfine-1,Nspec)
+      real*8 gamma_hi( 0:nfine-1,Nspec)
+      real*8 dx
+      integer lo,hi
+
+      integer n,i
+      real*8 dxsqinv
+
+      dxsqinv = 1.d0/(dx*dx)
+
+      do i=lo,hi
+         do n=1,Nspec
+            visc(i,n) = (gamma_hi(i,n)-gamma_lo(i,n))*dxsqinv
+         enddo
       enddo
 
       end
