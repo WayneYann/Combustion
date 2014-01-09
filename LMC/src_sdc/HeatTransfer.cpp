@@ -4716,20 +4716,24 @@ HeatTransfer::getFuncCountDM (const BoxArray& bxba, int ngrow)
     Array<int> nmtags(ParallelDescriptor::NProcs(),0);
     Array<int> offset(ParallelDescriptor::NProcs(),0);
 
+    const Array<int>& procmap = rr.ProcessorMap();
+
     for (int i = 0; i < vwrk.size(); i++)
-        nmtags[rr.ProcessorMap()[i]]++;
+        nmtags[procmap[i]]++;
 
     BL_ASSERT(nmtags[ParallelDescriptor::MyProc()] == count);
 
     for (int i = 1; i < offset.size(); i++)
         offset[i] = offset[i-1] + nmtags[i-1];
 
-    Array<long> vwrktmp = vwrk;
+    Array<long> vwrktmp;
+
+    if (ParallelDescriptor::IOProcessor()) vwrktmp = vwrk;
 
     MPI_Gatherv(vwrk.dataPtr(),
                 count,
                 ParallelDescriptor::Mpi_typemap<long>::type(),
-                vwrktmp.dataPtr(),
+                ParallelDescriptor::IOProcessor() ? vwrktmp.dataPtr() : 0,
                 nmtags.dataPtr(),
                 offset.dataPtr(),
                 ParallelDescriptor::Mpi_typemap<long>::type(),
@@ -4744,13 +4748,18 @@ HeatTransfer::getFuncCountDM (const BoxArray& bxba, int ngrow)
         std::vector< std::vector<int> > table(ParallelDescriptor::NProcs());
 
         for (int i = 0; i < vwrk.size(); i++)
-            table[rr.ProcessorMap()[i]].push_back(i);
+            table[procmap[i]].push_back(i);
 
         int idx = 0;
         for (int i = 0; i < table.size(); i++)
-            for (int j = 0; j < table[i].size(); j++)
-                vwrk[table[i][j]] = vwrktmp[idx++]; 
+        {
+            std::vector<int>& tbl = table[i];
+            for (int j = 0; j < tbl.size(); j++)
+                vwrk[tbl[j]] = vwrktmp[idx++];
+        }
     }
+
+    vwrktmp.clear();
     //
     // Send the properly-ordered vwrk to all processors.
     //
