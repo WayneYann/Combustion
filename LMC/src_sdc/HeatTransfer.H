@@ -327,6 +327,8 @@ protected:
 
     virtual void calcDiffusivity (const Real time);
 
+    void calcDiffusivity_Wbar (const Real time);
+
     virtual void getViscosity (MultiFab* viscosity[BL_SPACEDIM],
                                const Real time);
 
@@ -446,6 +448,8 @@ protected:
     MultiFab**  SpecDiffusionFluxnp1;
     MultiFab    sumSpecFluxDotGradHn;
     MultiFab    sumSpecFluxDotGradHnp1;
+
+    MultiFab *diffWbar_cc;
 
     static bool                     plot_reactions;
     static bool                     plot_consumption;

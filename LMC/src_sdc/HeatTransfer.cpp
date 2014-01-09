@@ -19,6 +19,7 @@
 #include <ErrorList.H>
 #include <HeatTransfer.H>
 #include <HEATTRANSFER_F.H>
+#include <ChemDriver_F.H>
 #include <DIFFUSION_F.H>
 #include <MultiGrid.H>
 #include <ArrayLim.H>
@@ -896,6 +897,12 @@ HeatTransfer::HeatTransfer (Amr&            papa,
     // HACK for debugging
     if (level==0)
         stripBox = getStrip(geom);
+
+#ifdef USE_WBAR
+    // this will hold the transport coefficients for Wbar
+    diffWbar_cc = new MultiFab(grids,nspecies,1);
+#endif
+
 }
 
 HeatTransfer::~HeatTransfer ()
@@ -916,6 +923,11 @@ HeatTransfer::~HeatTransfer ()
     {
         delete it->second;
     }
+
+#ifdef USE_WBAR
+    // this will hold the transport coefficients for Wbar
+    delete diffWbar_cc;
+#endif
 }
 
 void
@@ -6094,6 +6106,39 @@ HeatTransfer::calcDiffusivity (const Real time)
         }
     }
     showMFsub("1D",diff,stripBox,"1D_calcD_visc",level);
+}
+
+void
+HeatTransfer::calcDiffusivity_Wbar (const Real time)
+{
+  // diffn_cc or diffnp1_cc contains cell-centered transport coefficients from Y's
+  //
+
+    if (do_mcdd) return;
+
+    const TimeLevel whichTime = which_time(State_Type, time);
+
+    BL_ASSERT(whichTime == AmrOldTime || whichTime == AmrNewTime);
+
+    MultiFab& diff       = (whichTime == AmrOldTime) ? (*diffn_cc) : (*diffnp1_cc);
+    const int nGrow      = diff.nGrow();
+
+    BL_ASSERT(diffWbar_cc->nGrow() >= nGrow);
+
+    for (FillPatchIterator Rho_and_spec_fpi(*this,diff,nGrow,time,State_Type,Density,nspecies+1);
+         Rho_and_spec_fpi.isValid();
+         ++Rho_and_spec_fpi)
+    {
+        const FArrayBox& RD = diff[Rho_and_spec_fpi];
+        const FArrayBox& RYfab = Rho_and_spec_fpi();
+	FArrayBox& Dfab_Wbar = (*diffWbar_cc)[Rho_and_spec_fpi];
+	const Box& gbox = RYfab.box();
+        
+        FORT_BETA_WBAR(gbox.loVect(),gbox.hiVect(),
+		       RD.dataPtr(),ARLIM(RD.loVect()),ARLIM(RD.hiVect()),
+		       Dfab_Wbar.dataPtr(),ARLIM(Dfab_Wbar.loVect()),ARLIM(Dfab_Wbar.hiVect()),
+		       RYfab.dataPtr(1),ARLIM(RYfab.loVect()),ARLIM(RYfab.hiVect()));
+    }
 }
 
 void
