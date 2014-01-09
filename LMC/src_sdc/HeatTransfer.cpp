@@ -6163,7 +6163,6 @@ HeatTransfer::getViscosity (MultiFab*  beta[BL_SPACEDIM],
     }
 }
 
-
 void
 HeatTransfer::getDiffusivity (MultiFab*  beta[BL_SPACEDIM],
                               const Real time,
@@ -6198,6 +6197,32 @@ HeatTransfer::getDiffusivity (MultiFab*  beta[BL_SPACEDIM],
 
     if (zeroBndryVisc > 0)
         zeroBoundaryVisc(beta,time,state_comp,dst_comp,ncomp);
+}
+
+
+void
+HeatTransfer::getDiffusivity_Wbar (MultiFab*  beta[BL_SPACEDIM],
+				   const Real time)	   
+{
+    MultiFab* diff = diffWbar_cc;
+
+    for (MFIter diffMfi(*diff); diffMfi.isValid(); ++diffMfi)
+    {
+        const int i = diffMfi.index();
+
+        for (int dir = 0; dir < BL_SPACEDIM; dir++)
+        {
+            FPLoc bc_lo = fpi_phys_loc(get_desc_lst()[State_Type].getBC(first_spec).lo(dir));
+            FPLoc bc_hi = fpi_phys_loc(get_desc_lst()[State_Type].getBC(first_spec).hi(dir));
+
+            center_to_edge_fancy((*diff)[diffMfi],(*beta[dir])[i],
+                                 BoxLib::grow(grids[i],BoxLib::BASISV(dir)), 0,
+                                 0, nspecies, geom.Domain(), bc_lo, bc_hi);
+        }
+    }
+
+    if (zeroBndryVisc > 0)
+      zeroBoundaryVisc(beta,time,0,0,nspecies);
 }
 
 void

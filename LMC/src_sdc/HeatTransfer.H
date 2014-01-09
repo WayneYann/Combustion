@@ -338,6 +338,9 @@ protected:
                                  const int dst_comp,
                                  const int num_comp);
 
+    void getDiffusivity_Wbar (MultiFab* diffusivity[BL_SPACEDIM],
+			      const Real time);
+
     void zeroBoundaryVisc (MultiFab*  beta[BL_SPACEDIM],
                            const Real time,
                            const int  state_comp,
