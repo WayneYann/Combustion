@@ -454,12 +454,11 @@ extern "C" {
 
     void FORT_GRADWBAR(const int* lo, const int* hi,
                        const Real* Wbar, ARLIM_P(Wlo),    ARLIM_P(Whi),
-                       const Real* Y,    ARLIM_P(Ylo),    ARLIM_P(Yhi),
                        const Real* rDe,  ARLIM_P(rDelo),  ARLIM_P(rDehi),
                        Real* flx,  ARLIM_P(flxlo),  ARLIM_P(flxhi),
                        const Real* a,    ARLIM_P(alo),    ARLIM_P(ahi),
                        const Real* delta, const int* dir,
-                       const Real* mult, const int* ispec);
+                       const Real* mult);
     
 }
 #endif

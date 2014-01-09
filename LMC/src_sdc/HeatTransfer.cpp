@@ -2765,7 +2765,6 @@ HeatTransfer::differential_diffusion_update (MultiFab& Force,
     {
       const int        i    = mfi.index();
       const Box&       vbox = mfi.validbox();
-      const FArrayBox& Y    = rho_and_species[i];
       const FArrayBox& wbar = Wbar[i];
       const Real       mult = -1.0;
 
@@ -2781,11 +2780,10 @@ HeatTransfer::differential_diffusion_update (MultiFab& Force,
 	{
 	  FORT_GRADWBAR(vbox.loVect(), vbox.hiVect(),
 			wbar.dataPtr(), ARLIM(wbar.loVect()),ARLIM(wbar.hiVect()),
-			Y.dataPtr(1+ispec), ARLIM(Y.loVect()), ARLIM(Y.hiVect()),
 			rhoDe.dataPtr(ispec), ARLIM(rhoDe.loVect()), ARLIM(rhoDe.hiVect()),
 			fluxfab.dataPtr(ispec), ARLIM(fluxfab.loVect()), ARLIM(fluxfab.hiVect()),
 			area.dataPtr(), ARLIM(area.loVect()), ARLIM(area.hiVect()),
-			&dx[d], &d, &mult, &ispec);
+			&dx[d], &d, &mult);
 	}
       }
     }
@@ -3504,7 +3502,6 @@ HeatTransfer::compute_differential_diffusion_fluxes (const Real& time,
     {
       const int        i    = mfi.index();
       const Box&       vbox = mfi.validbox();
-      const FArrayBox& Y    = rho_and_species[i];
       const FArrayBox& wbar = Wbar[i];
       const Real       mult = -1.0;
 
@@ -3520,11 +3517,10 @@ HeatTransfer::compute_differential_diffusion_fluxes (const Real& time,
 	{
 	  FORT_GRADWBAR(vbox.loVect(), vbox.hiVect(),
 			wbar.dataPtr(), ARLIM(wbar.loVect()),ARLIM(wbar.hiVect()),
-			Y.dataPtr(1+ispec), ARLIM(Y.loVect()), ARLIM(Y.hiVect()),
 			rhoDe.dataPtr(ispec), ARLIM(rhoDe.loVect()), ARLIM(rhoDe.hiVect()),
 			fluxfab.dataPtr(ispec), ARLIM(fluxfab.loVect()), ARLIM(fluxfab.hiVect()),
 			area.dataPtr(), ARLIM(area.loVect()), ARLIM(area.hiVect()),
-			&dx[d], &d, &mult, &ispec);
+			&dx[d], &d, &mult);
 	}
       }
     }

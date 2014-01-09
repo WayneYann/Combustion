@@ -2595,63 +2595,55 @@ c     Fill normal on nodes (assumes 1 grow cell properly filled)
 
 #if USE_WBAR
       subroutine FORT_GRADWBAR(lo, hi, Wbar, DIMS(Wbar),
-     &     Y, DIMS(Y), rDe, DIMS(rDe), flux, DIMS(flux),
-     &     area, DIMS(area), dx, dir, mult, ispec)
+     &     rDe, DIMS(rDe), flux, DIMS(flux),
+     &     area, DIMS(area), dx, dir, mult)
       implicit none
 #include <cdwrk.H>
       integer lo(SDIM), hi(SDIM)
-      integer dir, ispec
+      integer dir
       integer DIMDEC(Wbar)
-      integer DIMDEC(Y)
       integer DIMDEC(rDe)
       integer DIMDEC(flux)
       integer DIMDEC(area)
       REAL_T  Wbar(DIMV(Wbar))
-      REAL_T  Y(DIMV(Y))
       REAL_T  rDe(DIMV(rDe))
       REAL_T  flux(DIMV(flux))
       REAL_T  area(DIMV(area))
       REAL_T  dx, mult
 
-      REAL_T Wav, Yav, Wgr, fac
+      REAL_T Wgr, fac
       integer i,j,k
 
       fac = mult / dx
       if (dir.eq.0) then
-!$omp parallel do private(i,j,k,Yav,Wav,Wgr)
+!$omp parallel do private(i,j,k,Wgr)
          do k = lo(3),hi(3)
             do j = lo(2),hi(2)
                do i = lo(1),hi(1)+1
-                  Yav = 0.5d0*(Y(i,j,k)    + Y(i-1,j,k))
-                  Wav = 0.5d0*(Wbar(i,j,k) + Wbar(i-1,j,k))
                   Wgr =   fac*(Wbar(i,j,k) - Wbar(i-1,j,k))
-                  flux(i,j,k) = flux(i,j,k) + rDe(i,j,k) * Yav * Wgr * area(i,j,k) / Wav
+                  flux(i,j,k) = flux(i,j,k) + rDe(i,j,k) * Wgr * area(i,j,k)
                enddo
             enddo
          enddo
 !$omp end parallel do
       else if (dir.eq.1) then
-!$omp parallel do private(i,j,k,Yav,Wav,Wgr)
+!$omp parallel do private(i,j,k,Wgr)
          do k = lo(3),hi(3)
             do j = lo(2),hi(2)+1
                do i = lo(1),hi(1)
-                  Yav = 0.5d0*(Y(i,j,k)    + Y(i,j-1,k))
-                  Wav = 0.5d0*(Wbar(i,j,k) + Wbar(i,j-1,k))
                   Wgr =   fac*(Wbar(i,j,k) - Wbar(i,j-1,k))
-                  flux(i,j,k) = flux(i,j,k) + rDe(i,j,k) * Yav * Wgr * area(i,j,k) / Wav
+                  flux(i,j,k) = flux(i,j,k) + rDe(i,j,k) * Wgr * area(i,j,k)
                enddo
             enddo
          enddo
 !$omp end parallel do
       else if (dir.eq.2) then
-!$omp parallel do private(i,j,k,Yav,Wav,Wgr)
+!$omp parallel do private(i,j,k,Wgr)
          do k = lo(3),hi(3)+1
             do j = lo(2),hi(2)
                do i = lo(1),hi(1)
-                  Yav = 0.5d0*(Y(i,j,k)    + Y(i,j,k-1))
-                  Wav = 0.5d0*(Wbar(i,j,k) + Wbar(i,j,k-1))
                   Wgr =   fac*(Wbar(i,j,k) - Wbar(i,j,k-1))
-                  flux(i,j,k) = flux(i,j,k) + rDe(i,j,k) * Yav * Wgr * area(i,j,k) / Wav
+                  flux(i,j,k) = flux(i,j,k) + rDe(i,j,k) * Wgr * area(i,j,k)
                enddo
             enddo
          enddo

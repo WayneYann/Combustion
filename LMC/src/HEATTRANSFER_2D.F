@@ -1911,44 +1911,38 @@ c     Get curvature at centers from nodal normal, get normal at centers
 #if USE_WBAR
 
       subroutine FORT_GRADWBAR(lo, hi, Wbar, DIMS(Wbar),
-     &     Y, DIMS(Y), rDe, DIMS(rDe), flux, DIMS(flux),
-     &     area, DIMS(area), dx, dir, mult, ispec)
+     &     rDe, DIMS(rDe), flux, DIMS(flux),
+     &     area, DIMS(area), dx, dir, mult)
       implicit none
 #include <cdwrk.H>
       integer lo(SDIM), hi(SDIM)
-      integer dir, ispec
+      integer dir
       integer DIMDEC(Wbar)
-      integer DIMDEC(Y)
       integer DIMDEC(rDe)
       integer DIMDEC(flux)
       integer DIMDEC(area)
       REAL_T  Wbar(DIMV(Wbar))
-      REAL_T  Y(DIMV(Y))
       REAL_T  rDe(DIMV(rDe))
       REAL_T  flux(DIMV(flux))
       REAL_T  area(DIMV(area))
       REAL_T  dx, mult
 
-      REAL_T Wav, Yav, Wgr, fac
+      REAL_T Wgr, fac
       integer i,j
 
       fac = mult / dx
       if (dir.eq.0) then
          do j = lo(2),hi(2)
             do i = lo(1),hi(1)+1
-               Yav = 0.5d0*(Y(i,j)    + Y(i-1,j))
-               Wav = 0.5d0*(Wbar(i,j) + Wbar(i-1,j))
                Wgr =   fac*(Wbar(i,j) - Wbar(i-1,j))
-               flux(i,j) = flux(i,j) + rDe(i,j) * Yav * Wgr * area(i,j) / Wav
+               flux(i,j) = flux(i,j) + rDe(i,j) * Wgr * area(i,j)
             enddo
          enddo
       else if (dir.eq.1) then
          do j = lo(2),hi(2)+1
             do i = lo(1),hi(1)
-               Yav = 0.5d0*(Y(i,j)    + Y(i,j-1))
-               Wav = 0.5d0*(Wbar(i,j) + Wbar(i,j-1))
                Wgr =   fac*(Wbar(i,j) - Wbar(i,j-1))
-               flux(i,j) = flux(i,j) + rDe(i,j) * Yav * Wgr * area(i,j) / Wav
+               flux(i,j) = flux(i,j) + rDe(i,j) * Wgr * area(i,j)
             enddo
          enddo
       else
