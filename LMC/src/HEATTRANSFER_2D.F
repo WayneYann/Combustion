@@ -1935,14 +1935,14 @@ c     Get curvature at centers from nodal normal, get normal at centers
          do j = lo(2),hi(2)
             do i = lo(1),hi(1)+1
                Wgr =   fac*(Wbar(i,j) - Wbar(i-1,j))
-               flux(i,j) = flux(i,j) + rDe(i,j) * Wgr * area(i,j)
+               flux(i,j) = rDe(i,j) * Wgr * area(i,j)
             enddo
          enddo
       else if (dir.eq.1) then
          do j = lo(2),hi(2)+1
             do i = lo(1),hi(1)
                Wgr =   fac*(Wbar(i,j) - Wbar(i,j-1))
-               flux(i,j) = flux(i,j) + rDe(i,j) * Wgr * area(i,j)
+               flux(i,j) = rDe(i,j) * Wgr * area(i,j)
             enddo
          enddo
       else
