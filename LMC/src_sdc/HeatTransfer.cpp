@@ -848,6 +848,7 @@ HeatTransfer::HeatTransfer ()
     EdgeFlux               = 0;
     SpecDiffusionFluxn     = 0;
     SpecDiffusionFluxnp1   = 0;
+    SpecDiffusionFluxWbar  = 0;
 
     updateFluxReg = false;
 }
@@ -878,8 +879,9 @@ HeatTransfer::HeatTransfer (Amr&            papa,
     diffusion->allocFluxBoxesLevel(EdgeFlux,nGrow,nEdgeStates);
     if (nspecies>0 && !unity_Le)
     {
-	diffusion->allocFluxBoxesLevel(SpecDiffusionFluxn,  nGrow,nspecies+3);
-	diffusion->allocFluxBoxesLevel(SpecDiffusionFluxnp1,nGrow,nspecies+3);
+	diffusion->allocFluxBoxesLevel(SpecDiffusionFluxn,   nGrow,nspecies+3);
+	diffusion->allocFluxBoxesLevel(SpecDiffusionFluxnp1, nGrow,nspecies+3);
+	diffusion->allocFluxBoxesLevel(SpecDiffusionFluxWbar,nGrow,nspecies);
         sumSpecFluxDotGradHn.define(grids,1,0,Fab_allocate);
         sumSpecFluxDotGradHnp1.define(grids,1,0,Fab_allocate);
     }
@@ -911,8 +913,9 @@ HeatTransfer::~HeatTransfer ()
     diffusion->removeFluxBoxesLevel(EdgeFlux);
     if (nspecies>0 && !unity_Le)    
     {
-	diffusion->removeFluxBoxesLevel(SpecDiffusionFluxn);    
-	diffusion->removeFluxBoxesLevel(SpecDiffusionFluxnp1);    
+	diffusion->removeFluxBoxesLevel(SpecDiffusionFluxn);
+	diffusion->removeFluxBoxesLevel(SpecDiffusionFluxnp1);
+	diffusion->removeFluxBoxesLevel(SpecDiffusionFluxWbar);
         sumSpecFluxDotGradHn.clear();
         sumSpecFluxDotGradHnp1.clear();
     }
@@ -1129,8 +1132,10 @@ HeatTransfer::restart (Amr&          papa,
     {
 	BL_ASSERT(SpecDiffusionFluxn == 0);
 	BL_ASSERT(SpecDiffusionFluxnp1 == 0);
-	diffusion->allocFluxBoxesLevel(SpecDiffusionFluxn,  nGrow,nspecies+3);
-	diffusion->allocFluxBoxesLevel(SpecDiffusionFluxnp1,nGrow,nspecies+3);
+	BL_ASSERT(SpecDiffusionFluxWbar == 0);
+	diffusion->allocFluxBoxesLevel(SpecDiffusionFluxn,   nGrow,nspecies+3);
+	diffusion->allocFluxBoxesLevel(SpecDiffusionFluxnp1, nGrow,nspecies+3);
+	diffusion->allocFluxBoxesLevel(SpecDiffusionFluxWbar,nGrow,nspecies);
         sumSpecFluxDotGradHn.define(grids,1,0,Fab_allocate);
         sumSpecFluxDotGradHnp1.define(grids,1,0,Fab_allocate);
     }
@@ -2678,7 +2683,9 @@ HeatTransfer::differential_diffusion_update (MultiFab& Force,
   MultiFab* rho_half = 0;
   Diffusion::SolveMode solve_mode = Diffusion::ONEPASS;
   MultiFab **betanp1, **betan = 0; // Will not need betan since time-explicit pieces computed above
+  MultiFab **betaWbar = 0;
   diffusion->allocFluxBoxesLevel(betanp1,nGrow,nspecies+2);
+  diffusion->allocFluxBoxesLevel(betaWbar,nGrow,nspecies);
   getDiffusivity(betanp1, curr_time, first_spec, 0, nspecies+1); // species (rhoD) and RhoH (lambda/cp)
   getDiffusivity(betanp1, curr_time, Temp, nspecies+1, 1); // temperature (lambda)
   //
@@ -2770,8 +2777,8 @@ HeatTransfer::differential_diffusion_update (MultiFab& Force,
 
       for (int d=0; d<BL_SPACEDIM; ++d) 
       {
-	const FArrayBox& rhoDe    = (*betanp1[d])[i];
-	FArrayBox&       fluxfab  = (*SpecDiffusionFluxnp1[d])[i];
+	const FArrayBox& rhoDe    = (*betaWbar[d])[i];
+	FArrayBox&       fluxfab  = (*SpecDiffusionFluxWbar[d])[i];
 		  
 	area.resize(BoxLib::surroundingNodes(grids[i],d),1);
 	geom.GetFaceArea(area,grids,i,d,GEOM_GROW);
@@ -2792,6 +2799,7 @@ HeatTransfer::differential_diffusion_update (MultiFab& Force,
 #endif
 
   diffusion->removeFluxBoxesLevel(betanp1);
+  diffusion->removeFluxBoxesLevel(betaWbar);
 
   //
   // Modify/update new-time fluxes to ensure sum of species fluxes = 0
@@ -3330,13 +3338,21 @@ HeatTransfer::compute_differential_diffusion_fluxes (const Real& time,
     const Real b         = 1;
     const int  rho_flag  = 2;
     MultiFab** beta      = 0;
+    MultiFab** betaWbar  = 0;
     MultiFab&  S         = get_data(State_Type,time);
 
     // allocate edge-beta for species, RhoH, and Temp
     diffusion->allocFluxBoxesLevel(beta,0,nspecies+2);
+
+    // allocate edge-beta for Wbar
+    diffusion->allocFluxBoxesLevel(betaWbar,0,nspecies);
+
     // average transport coefficients for species, RhoH, and Temp to edges
     getDiffusivity(beta, time, first_spec, 0, nspecies+1);
     getDiffusivity(beta, time, Temp, nspecies+1, 1);
+
+    // average transport coefficients for Wbar to edges
+    getDiffusivity_Wbar(betaWbar,time);
 
     showMF("dd",S,"dd_preFP",level);
     //
@@ -3466,7 +3482,7 @@ HeatTransfer::compute_differential_diffusion_fluxes (const Real& time,
 
     for (MFIter mfi(rho_and_species); mfi.isValid(); ++mfi)
     {
-      const Box& gbox = rho_and_species[mfi].box();
+      const Box& gbox = Box(mfi.validbox()).grow(nGrowOp);
       getChemSolve().getMwmixGivenY(Wbar[mfi],rho_and_species[mfi],gbox,1,0);
     }
 
@@ -3497,7 +3513,6 @@ HeatTransfer::compute_differential_diffusion_fluxes (const Real& time,
     
     FArrayBox area;
 
-
     for (MFIter mfi(Wbar); mfi.isValid(); ++mfi)
     {
       const int        i    = mfi.index();
@@ -3507,8 +3522,8 @@ HeatTransfer::compute_differential_diffusion_fluxes (const Real& time,
 
       for (int d=0; d<BL_SPACEDIM; ++d) 
       {
-	const FArrayBox& rhoDe = (*beta[d])[i];
-	FArrayBox&       fluxfab  = (*flux[d])[i];
+	const FArrayBox& rhoDe = (*betaWbar[d])[i];
+	FArrayBox&       fluxfab  = (*SpecDiffusionFluxWbar[d])[i];
 		  
 	area.resize(BoxLib::surroundingNodes(grids[i],d),1);
 	geom.GetFaceArea(area,grids,i,d,GEOM_GROW);
@@ -3587,6 +3602,7 @@ HeatTransfer::compute_differential_diffusion_fluxes (const Real& time,
     compute_enthalpy_fluxes(time,beta);
 
     diffusion->removeFluxBoxesLevel(beta);
+    diffusion->removeFluxBoxesLevel(betaWbar);
     //
     // AJN FLUXREG
     // We have just computed "DD" given an input state.
