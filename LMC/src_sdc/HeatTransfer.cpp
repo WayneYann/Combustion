@@ -3664,6 +3664,7 @@ HeatTransfer::compute_differential_diffusion_terms (MultiFab& D,
     BL_ASSERT(whichTime == AmrOldTime || whichTime == AmrNewTime);    
     MultiFab& sumSpecFluxDotGradH = (whichTime == AmrOldTime) ? sumSpecFluxDotGradHn : sumSpecFluxDotGradHnp1;
     MultiFab* const * flux = (whichTime == AmrOldTime) ? SpecDiffusionFluxn : SpecDiffusionFluxnp1;
+    MultiFab* const * fluxWbar = SpecDiffusionFluxWbar;
     //
     // Compute/adjust species fluxes/heat flux/conduction, save in class data
     compute_differential_diffusion_fluxes(time,dt);
@@ -3684,6 +3685,9 @@ HeatTransfer::compute_differential_diffusion_terms (MultiFab& D,
 
     // compute div lambda grad T for temperature
     flux_divergence(D,nspecies+1,flux,nspecies+2,1,-1);
+
+    // compute div beta_for_Wbar grad Wbar
+    flux_divergence(DWbar,0,fluxWbar,0,nspecies,-1);
 
     // add sum_m Gamma_m dot grad h_m to D for temperature
     MultiFab::Add(D,sumSpecFluxDotGradH,0,nspecies+1,1,0);
@@ -4250,11 +4254,14 @@ HeatTransfer::advance (Real time,
     // Compute Dn and DDn (based on state at tn)
     //  (Note that coeffs at tn and tnp1 were intialized in _setup)
     if (verbose && ParallelDescriptor::IOProcessor())
-      std::cout << "Computing Dn and DDn \n";
+      std::cout << "Computing Dn, DDn, and DWbar \n";
 
     compute_differential_diffusion_terms(Dn,DDn,DWbar,prev_time,dt);
     showMF("sdc",Dn,"sdc_Dn",level,parent->levelSteps(level));
     showMF("sdc",DDn,"sdc_DDn",level,parent->levelSteps(level));
+#if USE_WBAR
+    showMF("sdc",DWbar,"sdc_DWbar",level,parent->levelSteps(level));
+#endif
 
     /*
       You could compute instantaneous I_R here but for now it's using either the
@@ -4391,15 +4398,17 @@ HeatTransfer::advance (Real time,
 	const FArrayBox& ddn = DDn[mfi];
 	const FArrayBox& dnp1 = Dnp1[mfi];
 	const FArrayBox& ddnp1 = DDnp1[mfi];
+	const FArrayBox& dwbar = DWbar[mfi];
 	f.copy(dn,box,0,box,0,nspecies+1); // copy Dn into RhoY and RhoH
 	f.minus(dnp1,box,box,0,0,nspecies+1); // subtract Dnp1 from RhoY and RhoH
 	f.plus(ddn  ,box,box,0,nspecies,1); // add DDn to RhoH, no contribution for RhoY
 	f.plus(ddnp1,box,box,0,nspecies,1); // add DDnp1 to RhoH, no contribution for RhoY
 	f.mult(0.5);
+#if USE_WBAR
+	f.plus(dwbar,box,box,0,0,nspecies); // add DWbar to RhoY
+#endif
 	f.plus(a,box,box,first_spec,0,nspecies+1); // add A into RhoY and RhoH
 	f.plus(r,box,box,0,0,nspecies); // no reactions for RhoH
-	// WBAR FIXME
-	// add grad Wbar source terms to species solve
       }
 
       MultiFab Dhat(grids,nspecies+2,nGrowAdvForcing);
@@ -6182,7 +6191,7 @@ HeatTransfer::getDiffusivity_Wbar (MultiFab*  beta[BL_SPACEDIM],
     }
 
     if (zeroBndryVisc > 0)
-      zeroBoundaryVisc(beta,time,0,0,nspecies);
+      zeroBoundaryVisc(beta,time,BL_SPACEDIM+1,0,nspecies);
 }
 #endif
 
