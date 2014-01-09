@@ -308,6 +308,7 @@ protected:
     virtual void differential_spec_diffuse_sync (Real dt);
     virtual void compute_differential_diffusion_terms (MultiFab& D,
                                                        MultiFab& DD,
+						       MultiFab& DWbar,
 						       Real      time,
 						       Real      dt);
 

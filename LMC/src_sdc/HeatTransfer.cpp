@@ -928,7 +928,6 @@ HeatTransfer::~HeatTransfer ()
     }
 
 #ifdef USE_WBAR
-    // this will hold the transport coefficients for Wbar
     delete diffWbar_cc;
 #endif
 }
@@ -2683,9 +2682,7 @@ HeatTransfer::differential_diffusion_update (MultiFab& Force,
   MultiFab* rho_half = 0;
   Diffusion::SolveMode solve_mode = Diffusion::ONEPASS;
   MultiFab **betanp1, **betan = 0; // Will not need betan since time-explicit pieces computed above
-  MultiFab **betaWbar = 0;
   diffusion->allocFluxBoxesLevel(betanp1,nGrow,nspecies+2);
-  diffusion->allocFluxBoxesLevel(betaWbar,nGrow,nspecies);
   getDiffusivity(betanp1, curr_time, first_spec, 0, nspecies+1); // species (rhoD) and RhoH (lambda/cp)
   getDiffusivity(betanp1, curr_time, Temp, nspecies+1, 1); // temperature (lambda)
   //
@@ -2706,100 +2703,18 @@ HeatTransfer::differential_diffusion_update (MultiFab& Force,
 			      alphaComp,betan,betanp1,betaComp,solve_mode,add_old_time_divFlux);
   }
 
+  diffusion->removeFluxBoxesLevel(betanp1);
+
 #ifdef USE_WBAR
 
-  // add lagged grad W fluxes to time-advanced species diffusion fluxes
-    int nGrowOp = 1;
-
-    FArrayBox tmp;
-    MultiFab rho_and_species(grids,nspecies+1,nGrowOp);
-
-    for (FillPatchIterator fpi(*this,rho_and_species,nGrowOp,curr_time,State_Type,Density,nspecies+1);
-         fpi.isValid();
-	 ++fpi)
-    {
-      FArrayBox& rho_and_spec = rho_and_species[fpi];
-      rho_and_spec.copy(fpi(),0,0,nspecies+1);
-
-      tmp.resize(rho_and_spec.box(),1);
-      tmp.copy(rho_and_spec,0,0,1);
-      tmp.invert(1);
-
-      for (int comp = 0; comp < nspecies; ++comp) 
-	rho_and_spec.mult(tmp,0,comp+1,1);
-    }
-
-    // add in grad wbar term
-    MultiFab Wbar;
-
-    Wbar.define(grids,1,nGrowOp,Fab_allocate);
-
-    for (MFIter mfi(rho_and_species); mfi.isValid(); ++mfi)
-    {
-      const Box& gbox = rho_and_species[mfi].box();
-      getChemSolve().getMwmixGivenY(Wbar[mfi],rho_and_species[mfi],gbox,1,0);
-    }
-
-    //
-    // Here, we'll use the same LinOp as Y for filling grow cells.
-    //
-    const Real* dx    = geom.CellSize();
-    const BCRec& bc = get_desc_lst()[State_Type].getBC(first_spec);
-    ViscBndry*     bndry   = new ViscBndry(grids,1,geom);
-    ABecLaplacian* visc_op = new ABecLaplacian(bndry,dx);
-
-    visc_op->maxOrder(diffusion->maxOrder());
-
-    if (level == 0)
-    {
-      bndry->setBndryValues(Wbar,0,0,1,bc);
-    }
-    else
-    {
-      BoxLib::Error("Wbar doesn't work for multilevel yet");
-    }
-
-    visc_op->setScalars(0,1);
-    visc_op->bCoefficients(1);
-    visc_op->applyBC(Wbar,0,1,0,LinOp::Inhomogeneous_BC);
-
-    delete visc_op;
-    
-    FArrayBox area;
-
-
-    for (MFIter mfi(Wbar); mfi.isValid(); ++mfi)
-    {
-      const int        i    = mfi.index();
-      const Box&       vbox = mfi.validbox();
-      const FArrayBox& wbar = Wbar[i];
-      const Real       mult = -1.0;
-
-      for (int d=0; d<BL_SPACEDIM; ++d) 
-      {
-	const FArrayBox& rhoDe    = (*betaWbar[d])[i];
-	FArrayBox&       fluxfab  = (*SpecDiffusionFluxWbar[d])[i];
-		  
-	area.resize(BoxLib::surroundingNodes(grids[i],d),1);
-	geom.GetFaceArea(area,grids,i,d,GEOM_GROW);
-	
-	for (int ispec=0; ispec<nspecies; ++ispec)
-	{
-	  FORT_GRADWBAR(vbox.loVect(), vbox.hiVect(),
-			wbar.dataPtr(), ARLIM(wbar.loVect()),ARLIM(wbar.hiVect()),
-			rhoDe.dataPtr(ispec), ARLIM(rhoDe.loVect()), ARLIM(rhoDe.hiVect()),
-			fluxfab.dataPtr(ispec), ARLIM(fluxfab.loVect()), ARLIM(fluxfab.hiVect()),
-			area.dataPtr(), ARLIM(area.loVect()), ARLIM(area.hiVect()),
-			&dx[d], &d, &mult);
-	}
-      }
-    }
-    Wbar.clear();
+  // add lagged grad Wbar fluxes (SpecDiffusionFluxWbar) to time-advanced 
+  // species diffusion fluxes (SpecDiffusionFluxnp1)
+  for (int d=0; d<BL_SPACEDIM; ++d)
+  {
+    (*SpecDiffusionFluxnp1[d]).plus((*SpecDiffusionFluxWbar[d]),0,0,nspecies);
+  }
 
 #endif
-
-  diffusion->removeFluxBoxesLevel(betanp1);
-  diffusion->removeFluxBoxesLevel(betaWbar);
 
   //
   // Modify/update new-time fluxes to ensure sum of species fluxes = 0
@@ -3541,6 +3456,13 @@ HeatTransfer::compute_differential_diffusion_fluxes (const Real& time,
     }
     Wbar.clear();
 
+    // add grad Wbar fluxes (SpecDiffusionFluxWbar) to 
+    // species diffusion fluxes (flux)
+    for (int d=0; d<BL_SPACEDIM; ++d)
+    {
+      (*flux[d]).plus((*SpecDiffusionFluxWbar[d]),0,0,nspecies);
+    }
+
 #endif
 
     //
@@ -3719,6 +3641,7 @@ HeatTransfer::flux_divergence (MultiFab&        fdiv,
 void
 HeatTransfer::compute_differential_diffusion_terms (MultiFab& D,
                                                     MultiFab& DD,
+						    MultiFab& DWbar,
                                                     Real      time,
                                                     Real      dt)
 {
@@ -4320,13 +4243,14 @@ HeatTransfer::advance (Real time,
 
     MultiFab Dn(grids,nspecies+2,nGrowAdvForcing);
     MultiFab DDn(grids,1,nGrowAdvForcing);
+    MultiFab DWbar(grids,nspecies,nGrowAdvForcing);
 
     // Compute Dn and DDn (based on state at tn)
     //  (Note that coeffs at tn and tnp1 were intialized in _setup)
     if (verbose && ParallelDescriptor::IOProcessor())
       std::cout << "Computing Dn and DDn \n";
 
-    compute_differential_diffusion_terms(Dn,DDn,prev_time,dt);
+    compute_differential_diffusion_terms(Dn,DDn,DWbar,prev_time,dt);
     showMF("sdc",Dn,"sdc_Dn",level,parent->levelSteps(level));
     showMF("sdc",DDn,"sdc_DDn",level,parent->levelSteps(level));
 
@@ -4364,12 +4288,13 @@ HeatTransfer::advance (Real time,
       {
 	// compute new-time transport coefficients
 	calcDiffusivity(cur_time);
+	calcDiffusivity_Wbar(cur_time);
 
 	// compute Dnp1 and DDnp1
 	// iteratively lagged
 	if (verbose && ParallelDescriptor::IOProcessor())
             std::cout << "Computing Dnp1 and DDnp1 (SDC iteration " << sdc_iter << ")\n";
-	compute_differential_diffusion_terms(Dnp1,DDnp1,cur_time,dt);
+	compute_differential_diffusion_terms(Dnp1,DDnp1,DWbar,cur_time,dt);
 
 	// compute new-time DivU with instantaneous reaction rates
 	calc_divu(cur_time, dt, get_new_data(Divu_Type));
@@ -4397,7 +4322,6 @@ HeatTransfer::advance (Real time,
       MultiFab::Add(dpdt,delta_dpdt,0,0,1,nGrowAdvForcing);
       showMF("sdc",dpdt,"sdc_mac_rhs2",level,sdc_iter,parent->levelSteps(level));
       MultiFab::Add(Forcing,dpdt,0,0,1,nGrowAdvForcing);
-
 
       // MAC-project... and overwrite U^{ADV,*}
       showMF("sdc",Forcing,"sdc_Forcing_for_mac",level,sdc_iter,parent->levelSteps(level));
@@ -4470,6 +4394,8 @@ HeatTransfer::advance (Real time,
 	f.mult(0.5);
 	f.plus(a,box,box,first_spec,0,nspecies+1); // add A into RhoY and RhoH
 	f.plus(r,box,box,0,0,nspecies); // no reactions for RhoH
+	// WBAR FIXME
+	// add grad Wbar source terms to species solve
       }
 
       MultiFab Dhat(grids,nspecies+2,nGrowAdvForcing);
@@ -4576,6 +4502,7 @@ HeatTransfer::advance (Real time,
     }
 
     calcDiffusivity(cur_time);
+    calcDiffusivity_Wbar(cur_time);
     calcViscosity(cur_time,dt,iteration,ncycle);
     //
     // Set the dependent value of RhoRT to be the thermodynamic pressure.  By keeping this in
@@ -6331,6 +6258,8 @@ HeatTransfer::calc_divu (Real      time,
     int       vtCompY=0, vtCompT=0;
     MultiFab  mcViscTerms;
 
+    MultiFab DWbar_temp(grids,nspecies,nGrowAdvForcing);
+
     if (do_mcdd)
     {
       BoxLib::Error("calc_divu:compute_mcdd_visc_terms not implemented for SDC");
@@ -6347,7 +6276,7 @@ HeatTransfer::calc_divu (Real      time,
 
 	// DD is computed and stored in divu, but we don't need it and overwrite
 	// divu in CALCDIVU.
-        compute_differential_diffusion_terms(mcViscTerms,divu,time,dt);
+        compute_differential_diffusion_terms(mcViscTerms,divu,DWbar_temp,time,dt);
 
 	do_reflux = do_reflux_hold;
     }
