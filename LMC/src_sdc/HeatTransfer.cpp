@@ -4003,6 +4003,8 @@ HeatTransfer::advance_setup (Real time,
         set_htt_hmixTYP();
 
     make_rho_curr_time();
+
+    calcDiffusivity_Wbar(time);
 }
 
 void
@@ -4263,11 +4265,6 @@ HeatTransfer::advance (Real time,
     //  (Note that coeffs at tn and tnp1 were intialized in _setup)
     if (verbose && ParallelDescriptor::IOProcessor())
       std::cout << "Computing Dn, DDn, and DWbar \n";
-
-#if USE_WBAR
-    // need to compute betas for Wbar since this isn't done in advance_setup
-    calcDiffusivity_Wbar(cur_time);
-#endif
 
     compute_differential_diffusion_terms(Dn,DDn,DWbar,prev_time,dt);
     showMF("sdc",Dn,"sdc_Dn",level,parent->levelSteps(level));
