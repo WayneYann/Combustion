@@ -2711,7 +2711,11 @@ HeatTransfer::differential_diffusion_update (MultiFab& Force,
   // species diffusion fluxes (SpecDiffusionFluxnp1)
   for (int d=0; d<BL_SPACEDIM; ++d)
   {
-    (*SpecDiffusionFluxnp1[d]).plus((*SpecDiffusionFluxWbar[d]),0,0,nspecies);
+    for (MFIter mfi(*SpecDiffusionFluxWbar[d]); mfi.isValid(); ++mfi)
+    {
+      const Box& ebox = (*SpecDiffusionFluxWbar[d])[mfi].box();
+      (*SpecDiffusionFluxnp1[d])[mfi].plus((*SpecDiffusionFluxWbar[d])[mfi],ebox,0,0,nspecies);
+    }
   }
 
 #endif
@@ -3462,7 +3466,11 @@ HeatTransfer::compute_differential_diffusion_fluxes (const Real& time,
     // species diffusion fluxes (flux)
     for (int d=0; d<BL_SPACEDIM; ++d)
     {
-      (*flux[d]).plus((*SpecDiffusionFluxWbar[d]),0,0,nspecies);
+      for (MFIter mfi(*SpecDiffusionFluxWbar[d]); mfi.isValid(); ++mfi)
+      {
+	const Box& ebox = (*SpecDiffusionFluxWbar[d])[mfi].box();
+	(*flux[d])[mfi].plus((*SpecDiffusionFluxWbar[d])[mfi],ebox,0,0,nspecies);
+      }
     }
 
 #endif
