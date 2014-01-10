@@ -42,10 +42,24 @@ void interp_bnd(void *Q, void *Q0, void *Q2, void *Q4,
 	c2 = ( 5./12.)*(0.25*dt);
 	c4 = (-1./12.)*(0.25*dt);
     }
-    else {
+    else if (m == 2) {
+	c0 = ( 5./12.)*(0.5*dt);
+	c2 = ( 8./12.)*(0.5*dt);
+	c4 = (-1./12.)*(0.5*dt);
+    }
+    else if (m == 3) {
 	c0 = (1./4.)*(0.75*dt);
 	c2 = (3./4.)*(0.75*dt);
 	c4 = 0.0;
+    }
+    else if (m == 4) {
+	c0 = (1./6.)*dt;
+	c2 = (4./6.)*dt;
+	c4 = (1./6.)*dt;
+    }
+    else {
+	std::cout << " m = " << m << std::endl;
+	BoxLib::Abort("interp_bnd: wrong m");
     }
 
     for (MFIter mfi(U); mfi.isValid(); ++mfi) {
