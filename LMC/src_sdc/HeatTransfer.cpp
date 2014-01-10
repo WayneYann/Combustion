@@ -6281,6 +6281,8 @@ HeatTransfer::calc_divu (Real      time,
 	bool do_reflux_hold = do_reflux;
 	do_reflux = false;
 
+	calcDiffusivity_Wbar(time);
+
 	// DD is computed and stored in divu, but we don't need it and overwrite
 	// divu in CALCDIVU.
         compute_differential_diffusion_terms(mcViscTerms,divu,DWbar_temp,time,dt);
