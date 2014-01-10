@@ -1726,6 +1726,8 @@ HeatTransfer::initData ()
         state[State_Type].setTimeLevel(cur_time,dt,dt);
 
         calcDiffusivity(cur_time);
+	calcDiffusivity_Wbar(cur_time);
+
         calc_divu(cur_time,dtin,Divu_new);
 
         if (have_dsdt)
@@ -6280,8 +6282,6 @@ HeatTransfer::calc_divu (Real      time,
 	// we don't want to update flux registers due to fluxes in divu computation
 	bool do_reflux_hold = do_reflux;
 	do_reflux = false;
-
-	calcDiffusivity_Wbar(time);
 
 	// DD is computed and stored in divu, but we don't need it and overwrite
 	// divu in CALCDIVU.
