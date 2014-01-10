@@ -297,7 +297,7 @@ void SDCAmr::timeStep(int level, Real time,
   BL_PROFILE_VAR("SDCAmr::timeStep-iters", sdc_iters);
 
   for (int k=0; k<max_iters; k++) {
-    sdc_mg_sweep(&mg, time, dt, 0);
+    sdc_mg_sweep(&mg, time, dt, 0);  
 
     if (verbose > 0) {
       for (int lev=0; lev<=finest_level; lev++) {
