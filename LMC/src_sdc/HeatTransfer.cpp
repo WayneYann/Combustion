@@ -4264,6 +4264,11 @@ HeatTransfer::advance (Real time,
     if (verbose && ParallelDescriptor::IOProcessor())
       std::cout << "Computing Dn, DDn, and DWbar \n";
 
+#if USE_WBAR
+    // need to compute betas for Wbar since this isn't done in advance_setup
+    calcDiffusivity_Wbar(cur_time);
+#endif
+
     compute_differential_diffusion_terms(Dn,DDn,DWbar,prev_time,dt);
     showMF("sdc",Dn,"sdc_Dn",level,parent->levelSteps(level));
     showMF("sdc",DDn,"sdc_DDn",level,parent->levelSteps(level));
@@ -6085,7 +6090,6 @@ HeatTransfer::calcDiffusivity_Wbar (const Real time)
 {
   // diffn_cc or diffnp1_cc contains cell-centered transport coefficients from Y's
   //
-
     if (do_mcdd) return;
 
     const TimeLevel whichTime = which_time(State_Type, time);
