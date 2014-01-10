@@ -1908,8 +1908,6 @@ c     Get curvature at centers from nodal normal, get normal at centers
       end do
       end
 
-#if USE_WBAR
-
       subroutine FORT_GRADWBAR(lo, hi, Wbar, DIMS(Wbar),
      &     rDe, DIMS(rDe), flux, DIMS(flux),
      &     area, DIMS(area), dx, dir, mult)
@@ -1949,8 +1947,6 @@ c     Get curvature at centers from nodal normal, get normal at centers
          call bl_pd_abort('Bad dir in FORT_GRADWBAR')
       endif
       end
-
-#endif
 
       subroutine  FORT_RECOMP_UPDATE(lo, hi,
      &                               update, DIMS(update),

@@ -37,9 +37,7 @@
 #    define FORT_PART_CNT_ERR              particlecnterr
 #    define FORT_MCURVE                    mcurve
 #    define FORT_SMOOTH                    smooth
-#if USE_WBAR
 #    define FORT_GRADWBAR                  gradwbar
-#endif
 #else
 #  if  defined(BL_FORT_USE_UPPERCASE)
 #    define FORT_SET_SCAL_NUMB             SETSCNUM
@@ -76,9 +74,7 @@
 #    define FORT_PART_CNT_ERR              PARTICLECNTERR
 #    define FORT_MCURVE                    MCURVE
 #    define FORT_SMOOTH                    SMOOTH
-#if USE_WBAR
 #    define FORT_GRADWBAR                  GRADWBAR
-#endif
 #  elif defined(BL_FORT_USE_LOWERCASE)
 #    define FORT_SET_SCAL_NUMB             setscnum
 #    define FORT_GETPAMB                   getpamb
@@ -114,9 +110,7 @@
 #    define FORT_PART_CNT_ERR              particlecnterr
 #    define FORT_MCURVE                    mcurve
 #    define FORT_SMOOTH                    smooth
-#if USE_WBAR
 #    define FORT_GRADWBAR                  gradwbar
-#endif
 #  elif defined(BL_FORT_USE_UNDERSCORE)
 #    define FORT_SET_SCAL_NUMB             setscnum_
 #    define FORT_GETPAMB                   getpamb_
@@ -152,9 +146,7 @@
 #    define FORT_PART_CNT_ERR              particlecnterr_
 #    define FORT_MCURVE                    mcurve_
 #    define FORT_SMOOTH                    smooth_
-#if USE_WBAR
 #    define FORT_GRADWBAR                  gradwbar_
-#endif
 #  endif
 
 #include <ArrayLim.H>

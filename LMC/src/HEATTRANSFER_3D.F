@@ -2593,7 +2593,6 @@ c     Fill normal on nodes (assumes 1 grow cell properly filled)
 
       end
 
-#if USE_WBAR
       subroutine FORT_GRADWBAR(lo, hi, Wbar, DIMS(Wbar),
      &     rDe, DIMS(rDe), flux, DIMS(flux),
      &     area, DIMS(area), dx, dir, mult)
@@ -2652,7 +2651,6 @@ c     Fill normal on nodes (assumes 1 grow cell properly filled)
          call bl_pd_abort('Bad dir in FORT_GRADWBAR')
       endif
       end
-#endif
 
       subroutine  FORT_RECOMP_UPDATE(lo, hi,
      &                               update, DIMS(update),

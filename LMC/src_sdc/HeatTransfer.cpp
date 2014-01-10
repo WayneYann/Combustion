@@ -700,7 +700,7 @@ showMF(const std::string&   mySet,
         {
             for (MFIter mfi(mf); mfi.isValid(); ++mfi)
             {
-                BL_ASSERT(!mf[mfi].contains_nan(mfi.validbox(),0,mf.nComp()));
+	      //                BL_ASSERT(!mf[mfi].contains_nan(mfi.validbox(),0,mf.nComp()));
             }
         }
         VisMF::Write(mf,junkname);
@@ -900,11 +900,8 @@ HeatTransfer::HeatTransfer (Amr&            papa,
     if (level==0)
         stripBox = getStrip(geom);
 
-#ifdef USE_WBAR
     // this will hold the transport coefficients for Wbar
     diffWbar_cc = new MultiFab(grids,nspecies,1);
-#endif
-
 }
 
 HeatTransfer::~HeatTransfer ()
@@ -927,9 +924,7 @@ HeatTransfer::~HeatTransfer ()
         delete it->second;
     }
 
-#ifdef USE_WBAR
     delete diffWbar_cc;
-#endif
 }
 
 void
@@ -2705,8 +2700,7 @@ HeatTransfer::differential_diffusion_update (MultiFab& Force,
 
   diffusion->removeFluxBoxesLevel(betanp1);
 
-#ifdef USE_WBAR
-
+#if USE_WBAR
   // add lagged grad Wbar fluxes (SpecDiffusionFluxWbar) to time-advanced 
   // species diffusion fluxes (SpecDiffusionFluxnp1)
   for (int d=0; d<BL_SPACEDIM; ++d)
@@ -2717,7 +2711,6 @@ HeatTransfer::differential_diffusion_update (MultiFab& Force,
       (*SpecDiffusionFluxnp1[d])[mfi].plus((*SpecDiffusionFluxWbar[d])[mfi],ebox,0,0,nspecies);
     }
   }
-
 #endif
 
   //
@@ -3270,10 +3263,8 @@ HeatTransfer::compute_differential_diffusion_fluxes (const Real& time,
     getDiffusivity(beta, time, first_spec, 0, nspecies+1);
     getDiffusivity(beta, time, Temp, nspecies+1, 1);
 
-#if USE_WBAR
     // average transport coefficients for Wbar to edges
     getDiffusivity_Wbar(betaWbar,time);
-#endif
 
     showMF("dd",S,"dd_preFP",level);
     //
@@ -3374,8 +3365,6 @@ HeatTransfer::compute_differential_diffusion_fluxes (const Real& time,
     for (int d=0; d < BL_SPACEDIM; ++d)
         flux[d]->mult(b/geom.CellSize()[d],0,nspecies+1);
 
-#ifdef USE_WBAR
-
     int nGrowOp = 1;
 
     FArrayBox tmp;
@@ -3462,6 +3451,7 @@ HeatTransfer::compute_differential_diffusion_fluxes (const Real& time,
     }
     Wbar.clear();
 
+#if USE_WBAR
     // add grad Wbar fluxes (SpecDiffusionFluxWbar) to 
     // species diffusion fluxes (flux)
     for (int d=0; d<BL_SPACEDIM; ++d)
@@ -3472,7 +3462,6 @@ HeatTransfer::compute_differential_diffusion_fluxes (const Real& time,
 	(*flux[d])[mfi].plus((*SpecDiffusionFluxWbar[d])[mfi],ebox,0,0,nspecies);
       }
     }
-
 #endif
 
     //
@@ -4269,9 +4258,7 @@ HeatTransfer::advance (Real time,
     compute_differential_diffusion_terms(Dn,DDn,DWbar,prev_time,dt);
     showMF("sdc",Dn,"sdc_Dn",level,parent->levelSteps(level));
     showMF("sdc",DDn,"sdc_DDn",level,parent->levelSteps(level));
-#if USE_WBAR
     showMF("sdc",DWbar,"sdc_DWbar",level,parent->levelSteps(level));
-#endif
 
     /*
       You could compute instantaneous I_R here but for now it's using either the
@@ -4307,9 +4294,7 @@ HeatTransfer::advance (Real time,
       {
 	// compute new-time transport coefficients
 	calcDiffusivity(cur_time);
-#if USE_WBAR
 	calcDiffusivity_Wbar(cur_time);
-#endif
 
 	// compute Dnp1 and DDnp1
 	// iteratively lagged
@@ -4525,9 +4510,8 @@ HeatTransfer::advance (Real time,
     }
 
     calcDiffusivity(cur_time);
-#if USE_WBAR
     calcDiffusivity_Wbar(cur_time);
-#endif
+
     calcViscosity(cur_time,dt,iteration,ncycle);
     //
     // Set the dependent value of RhoRT to be the thermodynamic pressure.  By keeping this in
@@ -6081,7 +6065,6 @@ HeatTransfer::calcDiffusivity (const Real time)
     showMFsub("1D",diff,stripBox,"1D_calcD_visc",level);
 }
 
-#if USE_WBAR
 void
 HeatTransfer::calcDiffusivity_Wbar (const Real time)
 {
@@ -6113,7 +6096,6 @@ HeatTransfer::calcDiffusivity_Wbar (const Real time)
 		       RYfab.dataPtr(1),ARLIM(RYfab.loVect()),ARLIM(RYfab.hiVect()));
     }
 }
-#endif
 
 void
 HeatTransfer::getViscosity (MultiFab*  beta[BL_SPACEDIM],
@@ -6177,7 +6159,6 @@ HeatTransfer::getDiffusivity (MultiFab*  beta[BL_SPACEDIM],
         zeroBoundaryVisc(beta,time,state_comp,dst_comp,ncomp);
 }
 
-#if USE_WBAR
 void
 HeatTransfer::getDiffusivity_Wbar (MultiFab*  beta[BL_SPACEDIM],
 				   const Real time)	   
@@ -6202,7 +6183,6 @@ HeatTransfer::getDiffusivity_Wbar (MultiFab*  beta[BL_SPACEDIM],
     if (zeroBndryVisc > 0)
       zeroBoundaryVisc(beta,time,BL_SPACEDIM+1,0,nspecies);
 }
-#endif
 
 void
 HeatTransfer::zeroBoundaryVisc (MultiFab*  beta[BL_SPACEDIM],
