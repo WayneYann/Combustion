@@ -8,7 +8,7 @@ ns.do_fillPatchUMAC=1
 ns.zeroBndryVisc=1
 
 proj.proj_2 = 1
-ns.num_divu_iters = 0
+ns.num_divu_iters = 3
 
 ht.plot_consumption=0
 ht.plot_heat_release=0
@@ -174,7 +174,7 @@ fab.format = NATIVE
 #ns.do_init_proj=0
 #ShowMF_Sets = mac velVT dd estate
 #ShowMF_Sets = dddt dd divu 1D mac
-#ShowMF_Sets = 1D
+#ShowMF_Sets = sdc
 #ShowMF_Dir = JUNK
 #ShowMF_Verbose = true
 #ShowMF_Fab_Format = ascii
