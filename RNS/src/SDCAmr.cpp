@@ -298,7 +298,7 @@ void SDCAmr::timeStep(int level, Real time,
 
 #ifdef USE_FUTURE
   {
-      int npreiter = 2;
+      int npreiter = 0;
       ParmParse ppsdc("mlsdc");
       ppsdc.query("npreiter", npreiter);
       if (npreiter > 0) {
