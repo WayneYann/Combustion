@@ -3390,6 +3390,7 @@ HeatTransfer::compute_differential_diffusion_fluxes (const Real& time,
 	rho_and_spec.mult(tmp,0,comp+1,1);
     }
 
+#if USE_WBAR
     // add in grad wbar term
     MultiFab Wbar;
 
@@ -3456,7 +3457,6 @@ HeatTransfer::compute_differential_diffusion_fluxes (const Real& time,
     }
     Wbar.clear();
 
-#if USE_WBAR
     // add grad Wbar fluxes (SpecDiffusionFluxWbar) to 
     // species diffusion fluxes (flux)
     for (int d=0; d<BL_SPACEDIM; ++d)
