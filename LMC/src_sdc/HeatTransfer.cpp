@@ -1148,6 +1148,9 @@ HeatTransfer::restart (Amr&          papa,
     if (level==0)
         stripBox = getStrip(geom);
 
+    // this will hold the transport coefficients for Wbar
+    diffWbar_cc = new MultiFab(grids,nspecies,1);
+
     bool running_sdc_from_strang_chk = false;
 
     if (running_sdc_from_strang_chk)
