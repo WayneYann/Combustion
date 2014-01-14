@@ -3398,7 +3398,7 @@ HeatTransfer::compute_differential_diffusion_fluxes (const Real& time,
 
     for (MFIter mfi(rho_and_species); mfi.isValid(); ++mfi)
     {
-      const Box& gbox = Box(mfi.validbox()).grow(nGrowOp);
+      const Box gbox = Box(mfi.validbox()).grow(nGrowOp);
       getChemSolve().getMwmixGivenY(Wbar[mfi],rho_and_species[mfi],gbox,1,0);
     }
 
