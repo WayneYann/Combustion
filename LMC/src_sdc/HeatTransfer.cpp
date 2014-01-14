@@ -4781,10 +4781,16 @@ HeatTransfer::advance_chemistry (MultiFab&       mf_old,
         const int  ngrow     = React_new.nGrow();
         //
         // Chop the grids to level out the chemistry work.
+        // We want enough grids so that KNAPSACK works well,
+        // but not too many to many unweildy BoxArrays.
         //
-        const int NProcs = ParallelDescriptor::NProcs();
-        BoxArray  ba     = mf_new.boxArray();
-        bool      done   = (ba.size() >= 3*NProcs);
+#ifdef BL_USE_OMP
+        const int Threshold = 8*ParallelDescriptor::NProcs();
+#else
+        const int Threshold = 4*ParallelDescriptor::NProcs();
+#endif
+        BoxArray  ba   = mf_new.boxArray();
+        bool      done = (ba.size() >= Threshold);
 
         for (int cnt = 1; !done; cnt *= 2)
         {
@@ -4798,11 +4804,11 @@ HeatTransfer::advance_chemistry (MultiFab&       mf_old,
         
             IntVect chunk(D_DECL(ChunkSize,ChunkSize,ChunkSize));
 
-            for (int j = BL_SPACEDIM-1; j >=0  && ba.size() < 3*NProcs; j--)
+            for (int j = BL_SPACEDIM-1; j >=0 && ba.size() < Threshold; j--)
             {
                 chunk[j] /= 2;
                 ba.maxSize(chunk);
-                if (ba.size() >= 3*NProcs) done = true;
+                if (ba.size() >= Threshold) done = true;
             }
         }
 
