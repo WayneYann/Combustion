@@ -296,17 +296,6 @@ void SDCAmr::timeStep(int level, Real time,
 
   BL_PROFILE_VAR("SDCAmr::timeStep-iters", sdc_iters);
 
-#ifdef USE_FUTURE
-  {
-      int npreiter = 0;
-      ParmParse ppsdc("mlsdc");
-      ppsdc.query("npreiter", npreiter);
-      if (npreiter > 0) {
-	  sdc_mg_sweep(&mg, time, dt, npreiter);  	  
-      }
-  }
-#endif
-
   for (int k=0; k<max_iters; k++) {
     sdc_mg_sweep(&mg, time, dt, 0);  
 
