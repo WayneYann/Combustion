@@ -1148,6 +1148,9 @@ HeatTransfer::restart (Amr&          papa,
     if (level==0)
         stripBox = getStrip(geom);
 
+    // this will hold the transport coefficients for Wbar
+    diffWbar_cc = new MultiFab(grids,nspecies,1);
+
     bool running_sdc_from_strang_chk = false;
 
     if (running_sdc_from_strang_chk)
@@ -3387,6 +3390,7 @@ HeatTransfer::compute_differential_diffusion_fluxes (const Real& time,
 	rho_and_spec.mult(tmp,0,comp+1,1);
     }
 
+#if USE_WBAR
     // add in grad wbar term
     MultiFab Wbar;
 
@@ -3394,7 +3398,7 @@ HeatTransfer::compute_differential_diffusion_fluxes (const Real& time,
 
     for (MFIter mfi(rho_and_species); mfi.isValid(); ++mfi)
     {
-      const Box& gbox = Box(mfi.validbox()).grow(nGrowOp);
+      const Box gbox = Box(mfi.validbox()).grow(nGrowOp);
       getChemSolve().getMwmixGivenY(Wbar[mfi],rho_and_species[mfi],gbox,1,0);
     }
 
@@ -3453,7 +3457,6 @@ HeatTransfer::compute_differential_diffusion_fluxes (const Real& time,
     }
     Wbar.clear();
 
-#if USE_WBAR
     // add grad Wbar fluxes (SpecDiffusionFluxWbar) to 
     // species diffusion fluxes (flux)
     for (int d=0; d<BL_SPACEDIM; ++d)
@@ -4778,10 +4781,16 @@ HeatTransfer::advance_chemistry (MultiFab&       mf_old,
         const int  ngrow     = React_new.nGrow();
         //
         // Chop the grids to level out the chemistry work.
+        // We want enough grids so that KNAPSACK works well,
+        // but not too many to many unweildy BoxArrays.
         //
-        const int NProcs = ParallelDescriptor::NProcs();
-        BoxArray  ba     = mf_new.boxArray();
-        bool      done   = (ba.size() >= 3*NProcs);
+#ifdef BL_USE_OMP
+        const int Threshold = 8*ParallelDescriptor::NProcs();
+#else
+        const int Threshold = 4*ParallelDescriptor::NProcs();
+#endif
+        BoxArray  ba   = mf_new.boxArray();
+        bool      done = (ba.size() >= Threshold);
 
         for (int cnt = 1; !done; cnt *= 2)
         {
@@ -4795,11 +4804,11 @@ HeatTransfer::advance_chemistry (MultiFab&       mf_old,
         
             IntVect chunk(D_DECL(ChunkSize,ChunkSize,ChunkSize));
 
-            for (int j = BL_SPACEDIM-1; j >=0  && ba.size() < 3*NProcs; j--)
+            for (int j = BL_SPACEDIM-1; j >=0 && ba.size() < Threshold; j--)
             {
                 chunk[j] /= 2;
                 ba.maxSize(chunk);
-                if (ba.size() >= 3*NProcs) done = true;
+                if (ba.size() >= Threshold) done = true;
             }
         }
 
