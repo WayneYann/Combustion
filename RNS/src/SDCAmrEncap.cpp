@@ -21,66 +21,6 @@
 
 BEGIN_EXTERN_C
 
-#ifdef USE_FUTURE
-void interp_bnd(void *Q, void *Q0, void *Q2, void *Q4,
-		void *F0, void *F2, void *F4, sdc_dtype dt, int m)
-{
-    MultiFab& U  = *((RNSEncap*)Q )->U;
-    MultiFab& U0 = *((RNSEncap*)Q0)->U;
-    MultiFab& U2 = *((RNSEncap*)Q2)->U;
-    MultiFab& U4 = *((RNSEncap*)Q4)->U;
-    MultiFab& f0 = *((RNSEncap*)F0)->U;
-    MultiFab& f2 = *((RNSEncap*)F2)->U;
-    MultiFab& f4 = *((RNSEncap*)F4)->U;
-
-    int nc = U.nComp();
-    int ng = U.nGrow();
-
-    Real c0, c2, c4;
-    if (m == 1) {
-	c0 = ( 8./12.)*(0.25*dt);
-	c2 = ( 5./12.)*(0.25*dt);
-	c4 = (-1./12.)*(0.25*dt);
-    }
-    else if (m == 2) {
-	c0 = ( 5./12.)*(0.5*dt);
-	c2 = ( 8./12.)*(0.5*dt);
-	c4 = (-1./12.)*(0.5*dt);
-    }
-    else if (m == 3) {
-	c0 = (1./4.)*(0.75*dt);
-	c2 = (3./4.)*(0.75*dt);
-	c4 = 0.0;
-    }
-    else if (m == 4) {
-	c0 = (1./6.)*dt;
-	c2 = (4./6.)*dt;
-	c4 = (1./6.)*dt;
-    }
-    else {
-	std::cout << " m = " << m << std::endl;
-	BoxLib::Abort("interp_bnd: wrong m");
-    }
-
-    for (MFIter mfi(U); mfi.isValid(); ++mfi) {
-	int i = mfi.index();
-	const Box& gbox = U[i].box();
-	const Box& vbox = mfi.validbox();
-
-	FArrayBox Utmp(gbox, nc);
-	Utmp.copy(U0[i]);
-	Utmp.saxpy(c0, f0[i]);
-	Utmp.saxpy(c2, f2[i]);
-	Utmp.saxpy(c4, f4[i]);
-
-	// only want to overwrite boundaries of U
-	Utmp.saxpy(-1.0, U[i]);
-	Utmp.setVal(0.0, vbox, 0, nc);
-	U[i] += Utmp;
-    }
-}
-#endif
-
 void mf_encap_setval(void *Qptr, sdc_dtype val, const int flags);
 
 
