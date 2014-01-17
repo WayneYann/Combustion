@@ -57,6 +57,7 @@ public:
   int max_trefs;                // maximum number of time refinements
   int nnodes0;			// number of nodes on the coarsest level
   int trat;			// time refinement ratio
+  int first_refinement_level;   // first amr level that has time refinement
 
   sdc_mg mg;
   vector<sdc_sweeper*> sweepers;
