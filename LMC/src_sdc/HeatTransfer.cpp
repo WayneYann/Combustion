@@ -4414,13 +4414,14 @@ HeatTransfer::advance (Real time,
 	const FArrayBox& ddn = DDn[mfi];
 	const FArrayBox& dnp1 = Dnp1[mfi];
 	const FArrayBox& ddnp1 = DDnp1[mfi];
-	const FArrayBox& dwbar = DWbar[mfi];
+
 	f.copy(dn,box,0,box,0,nspecies+1); // copy Dn into RhoY and RhoH
 	f.minus(dnp1,box,box,0,0,nspecies+1); // subtract Dnp1 from RhoY and RhoH
 	f.plus(ddn  ,box,box,0,nspecies,1); // add DDn to RhoH, no contribution for RhoY
 	f.plus(ddnp1,box,box,0,nspecies,1); // add DDnp1 to RhoH, no contribution for RhoY
 	f.mult(0.5);
 #if USE_WBAR
+	const FArrayBox& dwbar = DWbar[mfi];
 	f.plus(dwbar,box,box,0,0,nspecies); // add DWbar to RhoY
 #endif
 	f.plus(a,box,box,first_spec,0,nspecies+1); // add A into RhoY and RhoH
@@ -4948,13 +4949,19 @@ HeatTransfer::advance_chemistry (MultiFab&       mf_old,
 
     if (verbose)
     {
-        const int IOProc   = ParallelDescriptor::IOProcessorNumber();
-        Real      run_time = ParallelDescriptor::second() - strt_time;
+        const int IOProc = ParallelDescriptor::IOProcessorNumber();
 
-        ParallelDescriptor::ReduceRealMax(run_time,IOProc);
+        Real mx = ParallelDescriptor::second() - strt_time, mn = mx;
+
+        ParallelDescriptor::ReduceRealMin(mn,IOProc);
+        ParallelDescriptor::ReduceRealMax(mx,IOProc);
 
         if (ParallelDescriptor::IOProcessor())
-           std::cout << "HeatTransfer::advance_chemistry(): lev: " << level << ", time: " << run_time << '\n';
+           std::cout << "HeatTransfer::advance_chemistry(): lev: " << level << ", time: ["
+                      << mn
+                      << " ... "
+                      << mx
+                      << "]\n";
     }
 }
 
