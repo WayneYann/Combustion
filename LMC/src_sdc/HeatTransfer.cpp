@@ -97,6 +97,7 @@ namespace
     bool                  do_not_use_funccount;
     bool                  do_active_control;
     Real                  crse_dt;
+    int                   chem_box_chop_threshold;
 }
 
 int  HeatTransfer::num_divu_iters;
@@ -243,12 +244,13 @@ HeatTransfer::Initialize ()
     ShowMF_Fab_Format_map["NATIVE"] = FABio::FAB_NATIVE;
     ShowMF_Fab_Format_map["8BIT"] = FABio::FAB_8BIT;
     ShowMF_Fab_Format_map["IEEE_32"] = FABio::FAB_IEEE_32;
-    ShowMF_Verbose       = true;
-    ShowMF_Check_Nans    = true;
-    ShowMF_Fab_Format    = ShowMF_Fab_Format_map["ASCII"];
-    do_not_use_funccount = false;
-    do_active_control    = false;
-    crse_dt              = -1;
+    ShowMF_Verbose          = true;
+    ShowMF_Check_Nans       = true;
+    ShowMF_Fab_Format       = ShowMF_Fab_Format_map["ASCII"];
+    do_not_use_funccount    = false;
+    do_active_control       = false;
+    crse_dt                 = -1;
+    chem_box_chop_threshold = -1;
 
     HeatTransfer::num_divu_iters            = 1;
     HeatTransfer::init_once_done            = 0;
@@ -1046,6 +1048,20 @@ HeatTransfer::init_once ()
         && RhoYdot_Type != Divu_Type
         && RhoYdot_Type != Dsdt_Type
         && RhoYdot_Type != State_Type;
+    //
+    // This is the minimum number of boxes per MPI proc that I want
+    // when chopping up chemistry work.
+    //
+    pp.query("chem_box_chop_threshold",chem_box_chop_threshold);
+
+    if (chem_box_chop_threshold <= 0)
+    {
+#ifdef BL_USE_OMP
+        chem_box_chop_threshold = 8;
+#else
+        chem_box_chop_threshold = 4;
+#endif
+    }
     
     if (!ydot_good)
         BoxLib::Error("HeatTransfer::init_once(): need RhoYdot_Type if do_chemistry");
@@ -4724,9 +4740,7 @@ HeatTransfer::getFuncCountDM (const BoxArray& bxba, int ngrow)
 #endif
 
     DistributionMapping res;
-    //
-    // This call doesn't invoke the MinimizeCommCosts() stuff.
-    //
+
     res.KnapSackProcessorMap(vwrk,ParallelDescriptor::NProcs());
 
     return res;
@@ -4782,15 +4796,11 @@ HeatTransfer::advance_chemistry (MultiFab&       mf_old,
         //
         // Chop the grids to level out the chemistry work.
         // We want enough grids so that KNAPSACK works well,
-        // but not too many to many unweildy BoxArrays.
+        // but not too many to make unweildy BoxArrays.
         //
-#ifdef BL_USE_OMP
-        const int Threshold = 8*ParallelDescriptor::NProcs();
-#else
-        const int Threshold = 4*ParallelDescriptor::NProcs();
-#endif
-        BoxArray  ba   = mf_new.boxArray();
-        bool      done = (ba.size() >= Threshold);
+        const int Threshold = chem_box_chop_threshold * ParallelDescriptor::NProcs();
+        BoxArray  ba        = mf_new.boxArray();
+        bool      done      = (ba.size() >= Threshold);
 
         for (int cnt = 1; !done; cnt *= 2)
         {
@@ -4801,7 +4811,7 @@ HeatTransfer::advance_chemistry (MultiFab&       mf_old,
                 // Don't let grids get too small.
                 //
                 break;
-        
+
             IntVect chunk(D_DECL(ChunkSize,ChunkSize,ChunkSize));
 
             for (int j = BL_SPACEDIM-1; j >=0 && ba.size() < Threshold; j--)
