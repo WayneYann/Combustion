@@ -139,6 +139,7 @@ int          RNS::do_quartic_interp   = 1;
 int          RNS::do_weno;
 int          RNS::do_component_weno;
 
+int          RNS::do_chemistry        = 1;
 int          RNS::use_vode            = 0;
 int          RNS::do_cc_burning       = 0; // do_cc_burning has no effect when split_burning is true
 int          RNS::split_burning       = 1;
@@ -321,6 +322,7 @@ RNS::read_params ()
     }
     pp.query("do_component_weno", do_component_weno);
 
+    pp.query("do_chemistry", do_chemistry);
     pp.query("use_vode", use_vode);
     pp.query("do_cc_burning", do_cc_burning);
     pp.query("split_burning", split_burning);

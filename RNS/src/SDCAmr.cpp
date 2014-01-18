@@ -270,8 +270,9 @@ void SDCAmr::timeStep(int level, Real time,
 
   // echo
   double dt = dt_level[0];
+  for (int lev=1; lev<first_refinement_level; lev++) dt /= trat;
   if (verbose > 0 && ParallelDescriptor::IOProcessor()) {
-    cout << "MLSDC advancing with dt: " << dt << endl;
+    cout << "MLSDC advancing with dt: " << dt << " (" << dt_level[0] << ")" << endl;
   }
 
   // set intial conditions and times
@@ -297,7 +298,7 @@ void SDCAmr::timeStep(int level, Real time,
   BL_PROFILE_VAR("SDCAmr::timeStep-iters", sdc_iters);
 
   for (int k=0; k<max_iters; k++) {
-    sdc_mg_sweep(&mg, time, dt, 0);
+    sdc_mg_sweep(&mg, time, dt, k==max_iters-1 ? SDC_MG_HALFSWEEP : 0);
 
     if (verbose > 0) {
       for (int lev=0; lev<=finest_level; lev++) {
@@ -350,10 +351,10 @@ sdc_sweeper* SDCAmr::build_level(int lev)
 {
   BL_PROFILE("SDCAmr::build_level()");
 
-  int first_refinement_level, nnodes;
+  int nnodes;
 
-  if (finest_level - max_trefs > 1)
-    first_refinement_level = finest_level - max_trefs;
+  if (finest_level - max_trefs > 0)
+    first_refinement_level = finest_level - max_trefs + 1;
   else
     first_refinement_level = 1;
 
@@ -380,8 +381,6 @@ sdc_sweeper* SDCAmr::build_level(int lev)
 void SDCAmr::rebuild_mlsdc()
 {
   BL_PROFILE("SDCAmr::rebuild_mlsdc()");
-
-  BL_ASSERT(finest_level <= 2);	// XXX: need to relax this using max_trefs as discussed
 
   // reset previous and clear sweepers etc
   sdc_mg_reset(&mg);
@@ -416,11 +415,11 @@ SDCAmr::SDCAmr ()
 {
   ParmParse ppsdc("mlsdc");
   if (!ppsdc.query("max_iters", max_iters)) max_iters = 8;
-  if (!ppsdc.query("max_trefs", max_trefs)) max_trefs = 3;
+  if (!ppsdc.query("max_trefs", max_trefs)) max_trefs = 2;
   if (!ppsdc.query("nnodes0",   nnodes0))   nnodes0 = 3;
   if (!ppsdc.query("trat",      trat))      trat = 2;
 
-  // sdc_log_set_stdout(SDC_LOG_DEBUG);
+  if (verbose > 1) sdc_log_set_stdout(SDC_LOG_INFO);
   sdc_mg_build(&mg, max_level+1);
   sdc_hooks_add(mg.hooks, SDC_HOOK_POST_TRANS, sdc_poststep_hook);
 

@@ -8,18 +8,18 @@ COMBUSTION_DIR = ${TOP}/Combustion
 #
 
 PRECISION       = DOUBLE
-DEBUG           = FALSE
-DIM             = 3
+DEBUG           = TRUE
+DIM             = 2
 COMP            = g++
 FCOMP           = gfortran
-USE_MPI         = FALSE
+USE_MPI         = TRUE
 USE_OMP         = FALSE
 USE_F90_SOLVERS = TRUE
 VERBOSE         = FALSE
 
 # Enable SDC code - add .SDC to executable
 # and compile in the #ifdef LMC_SDC
-USE_LMC_SDC = FALSE
+USE_LMC_SDC = TRUE
 
 # Enable flctin namelist
 USE_FLCTS       = FALSE
@@ -33,11 +33,11 @@ USE_VELOCITY    = FALSE
 USE_TDEPFORCING = FALSE
 
 # Choose model (from list below), and pmf file
-CHEMISTRY_MODEL = DRM19
-fEXE_sources += drm19Soln_seed_0.125.f
+#CHEMISTRY_MODEL = DRM19
+#fEXE_sources += drm19Soln_seed_0.125.f
 
-#CHEMISTRY_MODEL = CHEMH
-#fEXE_sources += chemHSoln_seed_0.00.f
+CHEMISTRY_MODEL = CHEMH
+fEXE_sources += chemHSoln_seed_0.00.f
 
 Blocs   := .
 
