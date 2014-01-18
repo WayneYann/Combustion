@@ -242,6 +242,7 @@ class CPickler(CMill):
         self._ckrhoy(mechanism)
         self._ckrhoc(mechanism)
         self._ckwt(mechanism)
+        self._ckawt(mechanism)
         self._ckmmwy(mechanism)
         self._ckmmwx(mechanism)
         self._ckmmwc(mechanism)
@@ -328,6 +329,7 @@ class CPickler(CMill):
         self._equilibriumConstants(mechanism)
         self._thermo(mechanism)
         self._molecularWeight(mechanism)
+        self._atomicWeight(mechanism)
         self._T_given_ey(mechanism)
         return
 
@@ -366,6 +368,7 @@ class CPickler(CMill):
             '#define CKRHOY CKRHOY',
             '#define CKRHOC CKRHOC',
             '#define CKWT CKWT',
+            '#define CKAWT CKAWT',
             '#define CKMMWY CKMMWY',
             '#define CKMMWX CKMMWX',
             '#define CKMMWC CKMMWC',
@@ -448,6 +451,7 @@ class CPickler(CMill):
             '#define CKRHOY ckrhoy',
             '#define CKRHOC ckrhoc',
             '#define CKWT ckwt',
+            '#define CKAWT ckawt',
             '#define CKMMWY ckmmwy',
             '#define CKMMWX ckmmwx',
             '#define CKMMWC ckmmwc',
@@ -530,6 +534,7 @@ class CPickler(CMill):
             '#define CKRHOY ckrhoy_',
             '#define CKRHOC ckrhoc_',
             '#define CKWT ckwt_',
+            '#define CKAWT ckawt_',
             '#define CKMMWY ckmmwy_',
             '#define CKMMWX ckmmwx_',
             '#define CKMMWC ckmmwc_',
@@ -600,6 +605,7 @@ class CPickler(CMill):
             '#define GET_REACTION_MAP get_reaction_map_',
             '#endif','',
             self.line('function declarations'),
+            'void atomicWeight(double * restrict awt);',
             'void molecularWeight(double * restrict wt);',
             'void gibbs(double * restrict species, double * restrict tc);',
             'void helmholtz(double * restrict species, double * restrict tc);',
@@ -630,6 +636,7 @@ class CPickler(CMill):
             'void CKRHOY'+sym+'(double * restrict P, double * restrict T, double * restrict y, int * iwrk, double * restrict rwrk, double * restrict rho);',
             'void CKRHOC'+sym+'(double * restrict P, double * restrict T, double * restrict c, int * iwrk, double * restrict rwrk, double * restrict rho);',
             'void CKWT'+sym+'(int * iwrk, double * restrict rwrk, double * restrict wt);',
+            'void CKAWT'+sym+'(int * iwrk, double * restrict rwrk, double * restrict awt);',
             'void CKMMWY'+sym+'(double * restrict y, int * iwrk, double * restrict rwrk, double * restrict wtm);',
             'void CKMMWX'+sym+'(double * restrict x, int * iwrk, double * restrict rwrk, double * restrict wtm);',
             'void CKMMWC'+sym+'(double * restrict c, int * iwrk, double * restrict rwrk, double * restrict wtm);',
@@ -1361,8 +1368,26 @@ class CPickler(CMill):
         self._write('{')
         self._indent()
 
-        # call moleuclarWeight
+        # call molecularWeight
         self._write('molecularWeight(wt);')
+        
+        self._outdent()
+
+        self._write('}')
+
+        return
+      
+    def _ckawt(self, mechanism):
+
+        self._write()
+        self._write()
+        self._write(self.line('get atomic weight for all elements'))
+        self._write('void CKAWT'+sym+'(int * iwrk, double * restrict rwrk, double * restrict awt)')
+        self._write('{')
+        self._indent()
+
+        # call atomicWeight
+        self._write('atomicWeight(awt);')
         
         self._outdent()
 
@@ -4353,6 +4378,32 @@ class CPickler(CMill):
 
             self._write('wt[%d] = %f; ' % (
                 species.id, weight) + self.line('%s' % species.symbol))
+
+        self._write()
+        self._write('return;')
+        self._outdent()
+
+        self._write('}')
+
+        return 
+
+    def _atomicWeight(self, mechanism):
+
+        self._write()
+        self._write()
+        self._write(self.line('save atomic weights into array'))
+        self._write('void atomicWeight(double * restrict awt)')
+        self._write('{')
+        self._indent()
+        import pyre
+        periodic = pyre.handbook.periodicTable()
+        for element in mechanism.element():
+            aw = mechanism.element(element.symbol).weight
+            if not aw:
+                aw = periodic.symbol(element.symbol.capitalize()).atomicWeight
+
+            self._write('awt[%d] = %f; ' % (
+                element.id, aw) + self.line('%s' % element.symbol))
 
         self._write()
         self._write('return;')
