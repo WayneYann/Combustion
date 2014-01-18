@@ -1132,7 +1132,8 @@ c               RWRK(dvbr+4) = TT2 - TT1
             
             rhoHnew(i,j) = Z(Nspec+1)
 
-            rhooldInv = 1.d0 / rho
+            if (strang_fix .eq. 1) rhooldInv = one / rho
+
             rho  = 0.d0
             do m= 1,Nspec
                rho = rho + Z(m)
@@ -1165,6 +1166,81 @@ c               RWRK(dvbr+4) = TT2 - TT1
       end do
       end
 #endif
+
+      subroutine FORT_BETA_WBAR(lo, hi, RD, DIMS(RD), RD_Wbar, DIMS(RD_Wbar), Y, DIMS(Y))
+      implicit none
+
+#include "cdwrk.H"
+
+      integer lo(SDIM), hi(SDIM)
+      integer DIMDEC(RD)
+      integer DIMDEC(RD_Wbar)
+      integer DIMDEC(Y)
+      REAL_T RD(DIMV(RD),*)
+      REAL_T RD_Wbar(DIMV(RD_Wbar),*)
+      REAL_T Y(DIMV(Y),*)
+
+      integer i, j, n
+      REAL_T Yt(maxspec), RHO, Wavg
+
+      if (use_eg .eq. 1) then
+         do j=lo(2),hi(2)
+            do i=lo(1),hi(1)
+
+#ifdef LMC_SDC
+               RHO = 0.d0
+               do n=1,Nspec
+                  RHO = RHO + Y(i,j,n)
+               end do
+
+               do n=1,Nspec
+                  Yt(n) = Y(i,j,n) / RHO
+               end do
+#else
+               do n=1,Nspec
+                  Yt(n) = Y(i,j,n)
+               end do
+#endif
+               CALL CKMMWY(Yt,IWRK(ckbi),RWRK(ckbr),Wavg)
+
+               do n=1,Nspec
+                  RD_Wbar(i,j,n) = RD(i,j,n) * Yt(n) / Wavg
+               end do
+
+            end do
+         end do
+
+      else if (use_mc .eq. 1) then
+
+         do j=lo(2),hi(2)
+            do i=lo(1),hi(1)
+
+#ifdef LMC_SDC
+               RHO = 0.d0
+               do n=1,Nspec
+                  RHO = RHO + Y(i,j,n)
+               end do
+
+               do n=1,Nspec
+                  Yt(n) = Y(i,j,n) / RHO
+               end do
+#else
+               do n=1,Nspec
+                  Yt(n) = Y(i,j,n)
+               end do
+#endif
+
+               CALL CKMMWY(Yt,IWRK(ckbi),RWRK(ckbr),Wavg)
+               do n=1,Nspec
+                  RD_Wbar(i,j,n) = RD(i,j,n) * Yt(n) / Wavg
+               end do
+
+            end do
+         end do
+
+      endif
+
+      end
 
       subroutine FORT_MIXAVG_RHODIFF_TEMP(lo, hi, RD, DIMS(RD), T,
      &     DIMS(T), Y, DIMS(Y), Patm, do_temp, do_VelVisc)
@@ -1228,17 +1304,7 @@ c               RWRK(dvbr+4) = TT2 - TT1
 #endif
 
                do n=1,Nspec
-#ifdef USE_WBAR
-c     beta for X
-                  RD(i,j,          n) = RHO *                     Dt(n) * SCAL
-c     beta for Y
-                  RD(i,j,2+  Nspec+n) = RHO * Wavg  * invmwt(n) * Dt(n) * SCAL
-c     beta for Wbar
-                  RD(i,j,2+2*Nspec+n) = RHO * Yt(n) * invmwt(n) * Dt(n) * SCAL
-#else
-c     original code - beta for Y
                   RD(i,j,n) = RHO * Wavg * invmwt(n) * Dt(n) * SCAL
-#endif
                end do
 
                if (do_temp .ne. 0) then

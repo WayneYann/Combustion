@@ -236,6 +236,7 @@ public:
     static int Density, Xmom, Ymom, Zmom, Eden, Temp;
     static int FirstSpec, LastSpec, NumSpec;
     static int verbose;
+    static int do_chemistry;
 
     void avgDown ();
     void avgDown (int state_indx);

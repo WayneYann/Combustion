@@ -421,7 +421,7 @@ void sdc_f2eval(void *Fp, void *Qp, double t, sdc_state *state, void *ctx)
 
   Uprime.setVal(0.0);
 
-  if (ChemDriver::isNull()) return;
+  if (ChemDriver::isNull() || !RNS::do_chemistry) return;
 
   if (rns.verbose > 1 && ParallelDescriptor::IOProcessor()) {
     cout << "MLSDC evaluating chemistry:"
@@ -456,7 +456,7 @@ void sdc_f2comp(void *Fp, void *Qp, double t, double dt, void *RHSp, sdc_state *
   BL_ASSERT(Urhs.contains_nan() == false);
   MultiFab::Copy(U, Urhs, 0, 0, U.nComp(), 0);
 
-  if (ChemDriver::isNull()) {
+  if (ChemDriver::isNull() || !RNS::do_chemistry) {
     Uprime.setVal(0.0);
     return;
   }

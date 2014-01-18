@@ -380,6 +380,8 @@ c ::: -----------------------------------------------------------
       REAL_T pert,Lx,FORT_P1ATMMKS,eta,u,v,w,rho,T,h
 
       len = len_trim(probtype)
+
+      iO2 = -1; iH2 = -1; iCH4 = -1
            
       if ( (probtype(1:len).eq.BL_PROB_PREMIXED_FREE) 
      &     .or. (probtype(1:len).eq.BL_PROB_PREMIXED_CONTROLLED_INFLOW)

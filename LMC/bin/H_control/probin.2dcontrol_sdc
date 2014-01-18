@@ -23,7 +23,7 @@
  /
  &heattransin
   pamb = 101325.
-  dpdt_factor = .3
+  dpdt_factor = 1.0
  /
   &flctin
   flct_file = "Turb_n0575_strong.bin"

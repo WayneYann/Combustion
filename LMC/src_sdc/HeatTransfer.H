@@ -308,6 +308,7 @@ protected:
     virtual void differential_spec_diffuse_sync (Real dt);
     virtual void compute_differential_diffusion_terms (MultiFab& D,
                                                        MultiFab& DD,
+						       MultiFab& DWbar,
 						       Real      time,
 						       Real      dt);
 
@@ -327,6 +328,8 @@ protected:
 
     virtual void calcDiffusivity (const Real time);
 
+    void calcDiffusivity_Wbar (const Real time);
+
     virtual void getViscosity (MultiFab* viscosity[BL_SPACEDIM],
                                const Real time);
 
@@ -335,6 +338,9 @@ protected:
                                  const int state_comp,
                                  const int dst_comp,
                                  const int num_comp);
+
+    void getDiffusivity_Wbar (MultiFab* diffusivity[BL_SPACEDIM],
+			      const Real time);
 
     void zeroBoundaryVisc (MultiFab*  beta[BL_SPACEDIM],
                            const Real time,
@@ -444,8 +450,11 @@ protected:
     MultiFab**  EdgeFlux;
     MultiFab**  SpecDiffusionFluxn;
     MultiFab**  SpecDiffusionFluxnp1;
+    MultiFab**  SpecDiffusionFluxWbar;
     MultiFab    sumSpecFluxDotGradHn;
     MultiFab    sumSpecFluxDotGradHnp1;
+
+    MultiFab *diffWbar_cc;
 
     static bool                     plot_reactions;
     static bool                     plot_consumption;
