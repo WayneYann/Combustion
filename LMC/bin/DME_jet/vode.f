@@ -823,10 +823,10 @@ C-----------------------------------------------------------------------
       ENDDO
       END
 
-      SUBROUTINE DEWSET (N, ITOL, RTOL, ATOL, YCUR, EWT)
-      DOUBLE PRECISION RTOL, ATOL, YCUR, EWT
+      SUBROUTINE DEWSET (N, ITOL, YCUR, EWT)
+      DOUBLE PRECISION YCUR, EWT
       INTEGER N, ITOL
-      DIMENSION RTOL(*), ATOL(*), YCUR(N), EWT(N)
+      DIMENSION YCUR(N), EWT(N)
 C-----------------------------------------------------------------------
 C Call sequence input -- N, ITOL, RTOL, ATOL, YCUR
 C Call sequence output -- EWT
@@ -2648,7 +2648,7 @@ C (a) DEWSET.
 C The following subroutine is called just before each internal
 C integration step, and sets the array of error weights, EWT, as
 C described under ITOL/RTOL/ATOL above..
-C     SUBROUTINE DEWSET (NEQ, ITOL, RTOL, ATOL, YCUR, EWT)
+C     SUBROUTINE DEWSET (NEQ, ITOL, YCUR, EWT)
 C where NEQ, ITOL, RTOL, and ATOL are as in the DVODE call sequence,
 C YCUR contains the current dependent variable vector, and
 C EWT is the array of weights set by DEWSET.
@@ -2849,6 +2849,7 @@ C
       PARAMETER(ZERO = 0.0D0, ONE = 1.0D0, TWO = 2.0D0, FOUR = 4.0D0)
       PARAMETER(PT2 = 0.2D0, HUN = 100.0D0)
 
+      IHIT = .false.
 C-----------------------------------------------------------------------
 C Block A.
 C This code block is executed on every call.
@@ -3011,7 +3012,7 @@ C Load the initial value vector in YH. ---------------------------------
 C Load and invert the EWT array.  (H is temporarily set to 1.0.) -------
       NQ = 1
       H = ONE
-      CALL DEWSET (N, ITOL, RTOL, ATOL, RWORK(LYH), RWORK(LEWT))
+      CALL DEWSET (N, ITOL, RWORK(LYH), RWORK(LEWT))
       DO 120 I = 1,N
         IF (RWORK(I+LEWT-1) .LE. ZERO) GO TO 621
  120    RWORK(I+LEWT-1) = ONE/RWORK(I+LEWT-1)
@@ -3076,7 +3077,7 @@ C check for H below the roundoff level in T.
 C-----------------------------------------------------------------------
  250  CONTINUE
       IF ((NST-NSLAST) .GE. MXSTEP) GO TO 500
-      CALL DEWSET (N, ITOL, RTOL, ATOL, RWORK(LYH), RWORK(LEWT))
+      CALL DEWSET (N, ITOL, RWORK(LYH), RWORK(LEWT))
       DO 260 I = 1,N
         IF (RWORK(I+LEWT-1) .LE. ZERO) GO TO 510
  260    RWORK(I+LEWT-1) = ONE/RWORK(I+LEWT-1)

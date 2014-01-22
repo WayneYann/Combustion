@@ -36,6 +36,7 @@
 #ifdef LMC_SDC
 #    define FORT_CONPSOLV_SDC    dcpsolvsdc
 #endif
+#    define FORT_BETA_WBAR       dbetawbar
 #    define FORT_MIXAVG_RHODIFF_TEMP dmavgdiftemp
 #    define FORT_MIX_SHEAR_VISC  dmixshvis
 #    define FORT_RHOfromPTY      drhopty
@@ -100,6 +101,7 @@
 #ifdef LMC_SDC
 #    define FORT_CONPSOLV_SDC    DCPSOLVSDC
 #endif
+#    define FORT_BETA_WBAR       DBETAWBAR
 #    define FORT_MIXAVG_RHODIFF_TEMP DMAVGDIFTEMP
 #    define FORT_MIX_SHEAR_VISC  DMIXSHVIS
 #    define FORT_RHOfromPTY      DRHOPTY
@@ -163,6 +165,7 @@
 #ifdef LMC_SDC
 #    define FORT_CONPSOLV_SDC    dcpsolvsdc
 #endif
+#    define FORT_BETA_WBAR       dbetawbar
 #    define FORT_MIXAVG_RHODIFF_TEMP dmavgdiftemp
 #    define FORT_MIX_SHEAR_VISC  dmixshvis
 #    define FORT_RHOfromPTY      drhopty
@@ -226,6 +229,7 @@
 #ifdef LMC_SDC
 #    define FORT_CONPSOLV_SDC    dcpsolvsdc_
 #endif
+#    define FORT_BETA_WBAR       dbetawbar_
 #    define FORT_MIXAVG_RHODIFF_TEMP dmavgdiftemp_
 #    define FORT_MIX_SHEAR_VISC  dmixshvis_
 #    define FORT_RHOfromPTY      drhopty_
@@ -373,6 +377,11 @@ extern "C" {
                            const int* do_diag, const int* do_stiff);
 #endif
 
+    void FORT_BETA_WBAR(const int* lo, const int* hi,
+			const Real* RD, ARLIM_P(RDlo),      ARLIM_P(RDhi),
+			Real* RD_Wbar,  ARLIM_P(RDlo_Wbar), ARLIM_P(RDhi_Wbar),
+			const Real* Y,  ARLIM_P(Ylo),       ARLIM_P(Yhi));
+
     void FORT_MIXAVG_RHODIFF_TEMP(const int* lo, const int* hi,
                                   Real*       RD, ARLIM_P(RDlo), ARLIM_P(RDhi),
                                   const Real* T,  ARLIM_P(Tlo),  ARLIM_P(Thi),
@@ -459,12 +468,11 @@ extern "C" {
                           Real*       C_elt, ARLIM_P(Celtlo), ARLIM_P(Celthi),
                           const Real* C,     ARLIM_P(Clo),    ARLIM_P(Chi));
 
-    int FORT_OTrad_TDF(const int* lo, const int* hi,
-                       Real* Qloss,   ARLIM_P(Qlo), ARLIM_P(Qhi),
-                       const Real* T, ARLIM_P(Tlo), ARLIM_P(Thi),
-                       const Real* X, ARLIM_P(Xlo), ARLIM_P(Xhi),
-                       const Real* Patm, const Real* T_bg);
-
+    void FORT_OTrad_TDF(const int* lo, const int* hi,
+                        Real* Qloss,   ARLIM_P(Qlo), ARLIM_P(Qhi),
+                        const Real* T, ARLIM_P(Tlo), ARLIM_P(Thi),
+                        const Real* X, ARLIM_P(Xlo), ARLIM_P(Xhi),
+                        const Real* Patm, const Real* T_bg);
     Real FORT_RUNIV();
     Real FORT_P1ATMMKS();
 

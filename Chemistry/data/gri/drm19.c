@@ -18,6 +18,7 @@
 #define CKRHOY CKRHOY
 #define CKRHOC CKRHOC
 #define CKWT CKWT
+#define CKAWT CKAWT
 #define CKMMWY CKMMWY
 #define CKMMWX CKMMWX
 #define CKMMWC CKMMWC
@@ -100,6 +101,7 @@
 #define CKRHOY ckrhoy
 #define CKRHOC ckrhoc
 #define CKWT ckwt
+#define CKAWT ckawt
 #define CKMMWY ckmmwy
 #define CKMMWX ckmmwx
 #define CKMMWC ckmmwc
@@ -182,6 +184,7 @@
 #define CKRHOY ckrhoy_
 #define CKRHOC ckrhoc_
 #define CKWT ckwt_
+#define CKAWT ckawt_
 #define CKMMWY ckmmwy_
 #define CKMMWX ckmmwx_
 #define CKMMWC ckmmwc_
@@ -253,6 +256,7 @@
 #endif
 
 /*function declarations */
+void atomicWeight(double * restrict awt);
 void molecularWeight(double * restrict wt);
 void gibbs(double * restrict species, double * restrict tc);
 void helmholtz(double * restrict species, double * restrict tc);
@@ -282,6 +286,7 @@ void CKRHOX(double * restrict P, double * restrict T, double * restrict x, int *
 void CKRHOY(double * restrict P, double * restrict T, double * restrict y, int * iwrk, double * restrict rwrk, double * restrict rho);
 void CKRHOC(double * restrict P, double * restrict T, double * restrict c, int * iwrk, double * restrict rwrk, double * restrict rho);
 void CKWT(int * iwrk, double * restrict rwrk, double * restrict wt);
+void CKAWT(int * iwrk, double * restrict rwrk, double * restrict awt);
 void CKMMWY(double * restrict y, int * iwrk, double * restrict rwrk, double * restrict wtm);
 void CKMMWX(double * restrict x, int * iwrk, double * restrict rwrk, double * restrict wtm);
 void CKMMWC(double * restrict c, int * iwrk, double * restrict rwrk, double * restrict wtm);
@@ -1666,6 +1671,13 @@ void CKRHOC(double * restrict P, double * restrict T, double * restrict c, int *
 void CKWT(int * iwrk, double * restrict rwrk, double * restrict wt)
 {
     molecularWeight(wt);
+}
+
+
+/*get atomic weight for all elements */
+void CKAWT(int * iwrk, double * restrict rwrk, double * restrict awt)
+{
+    atomicWeight(awt);
 }
 
 
@@ -16156,6 +16168,19 @@ void molecularWeight(double * restrict wt)
     wt[18] = 30.070120; /*C2H6 */
     wt[19] = 28.013400; /*N2 */
     wt[20] = 39.948000; /*AR */
+
+    return;
+}
+
+
+/*save atomic weights into array */
+void atomicWeight(double * restrict awt)
+{
+    awt[0] = 15.999400; /*O */
+    awt[1] = 1.007970; /*H */
+    awt[2] = 12.011150; /*C */
+    awt[3] = 14.006700; /*N */
+    awt[4] = 39.948000; /*AR */
 
     return;
 }

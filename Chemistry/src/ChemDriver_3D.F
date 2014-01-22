@@ -1144,9 +1144,10 @@ c     Get the matrix of elements versus species
                
                rhoHnew(i,j,k) = Z(Nspec+1)
                
-               rhooldInv = one / rho
-               rho  = zero
-               do m= 1,Nspec
+               if (strang_fix .eq. 1) rhooldInv = one / rho
+
+               rho = zero
+               do m = 1,Nspec
                   rho = rho + Z(m)
                end do
                rhoInv = 1.d0 / rho
@@ -1155,6 +1156,8 @@ c     Get the matrix of elements versus species
                   !
                   ! We want Z to contain rhoYnew(i,j,k)
                   !
+                  rhooldInv = one / rho
+
                   do m= 1,Nspec
                      Z(m) = Z(m) + (rhoYold(i,j,k,m) - rhoYtemp(m))*rhooldInv*rho
                   end do
@@ -1185,6 +1188,87 @@ c     Get the matrix of elements versus species
 
       end
 #endif
+
+
+
+      subroutine FORT_BETA_WBAR(lo, hi, RD, DIMS(RD), RD_Wbar, DIMS(RD_Wbar), Y, DIMS(Y))
+      implicit none
+
+#include "cdwrk.H"
+
+      integer lo(SDIM), hi(SDIM)
+      integer DIMDEC(RD)
+      integer DIMDEC(RD_Wbar)
+      integer DIMDEC(Y)
+      REAL_T RD(DIMV(RD),*)
+      REAL_T RD_Wbar(DIMV(RD_Wbar),*)
+      REAL_T Y(DIMV(Y),*)
+
+      integer i, j, k, n
+      REAL_T Yt(maxspec), RHO, Wavg
+
+      if (use_eg .eq. 1) then
+         do k=lo(3),hi(3)
+            do j=lo(2),hi(2)
+               do i=lo(1),hi(1)
+
+#ifdef LMC_SDC
+                  RHO = 0.d0
+                  do n=1,Nspec
+                     RHO = RHO + Y(i,j,k,n)
+                  end do
+
+                  do n=1,Nspec
+                     Yt(n) = Y(i,j,k,n) / RHO
+                  end do
+#else
+                  do n=1,Nspec
+                     Yt(n) = Y(i,j,k,n)
+                  end do
+#endif
+                  CALL CKMMWY(Yt,IWRK(ckbi),RWRK(ckbr),Wavg)
+
+                  do n=1,Nspec
+                     RD_Wbar(i,j,k,n) = RD(i,j,k,n) * Yt(n) / Wavg
+                  end do
+
+               end do
+            end do
+         end do
+
+      else if (use_mc .eq. 1) then
+
+         do k=lo(3),hi(3)
+            do j=lo(2),hi(2)
+               do i=lo(1),hi(1)
+
+#ifdef LMC_SDC
+                  RHO = 0.d0
+                  do n=1,Nspec
+                     RHO = RHO + Y(i,j,k,n)
+                  end do
+
+                  do n=1,Nspec
+                     Yt(n) = Y(i,j,k,n) / RHO
+                  end do
+#else
+                  do n=1,Nspec
+                     Yt(n) = Y(i,j,k,n)
+                  end do
+#endif
+
+                  CALL CKMMWY(Yt,IWRK(ckbi),RWRK(ckbr),Wavg)
+                  do n=1,Nspec
+                     RD_Wbar(i,j,k,n) = RD(i,j,k,n) * Yt(n) / Wavg
+                  end do
+
+               end do
+            end do
+         end do
+
+      endif
+
+      end
 
       subroutine FORT_MIXAVG_RHODIFF_TEMP(lo, hi, RD, DIMS(RD), T,
      &     DIMS(T), Y, DIMS(Y), Patm, do_temp, do_VelVisc)
@@ -1834,11 +1918,8 @@ c
 
       parameter (sigma = 5.669D-08)
       
-      iH2O = 0
-      iCO2 = 0
-      iCH4 = 0
-      iCO  = 0
-      
+      iH2O = 0; iCO2 = 0; iCH4 = 0; iCO  = 0
+
       do n = 1,Nspec
          call get_spec_name(name, n)
          if (name .EQ. 'H20') iH2O = n
@@ -1859,6 +1940,8 @@ c
                T2 = T1*T1
                T3 = T2*T1
                T4 = T3*T1
+
+               lnT1 = zero; lnT2 = zero; lnT3 = zero; lnT4 = zero
                
                if ( (iH2O.gt.0) .or. (iCO2.gt.0) ) then
                   lnT1 = LOG(T1)

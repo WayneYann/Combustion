@@ -8,8 +8,6 @@ ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
       subroutine advance(vel_old,vel_new,scal_old,scal_new,
      $                   I_R,press_old,press_new,
      $                   divu_old,divu_new,beta_old,beta_new,
-     $                   beta_for_Y_old,beta_for_Y_new,
-     $                   beta_for_Wbar_old,beta_for_Wbar_new,
      $                   mu_old,mu_new,dx,dt,lo,hi,bc,istep)
 
       implicit none
@@ -38,10 +36,6 @@ c     cell-centered, 1 ghost cell
       real*8        I_R(0:nlevs-1,-1:nfine  ,0:Nspec)
       real*8   beta_old(0:nlevs-1,-1:nfine  ,nscal)
       real*8   beta_new(0:nlevs-1,-1:nfine  ,nscal)
-      real*8   beta_for_Y_old(0:nlevs-1,-1:nfine  ,nscal)
-      real*8   beta_for_Y_new(0:nlevs-1,-1:nfine  ,nscal)
-      real*8   beta_for_Wbar_old(0:nlevs-1,-1:nfine  ,nscal)
-      real*8   beta_for_Wbar_new(0:nlevs-1,-1:nfine  ,nscal)
       real*8   mu_old(0:nlevs-1,-1:nfine)
       real*8   mu_new(0:nlevs-1,-1:nfine)
       real*8   divu_old(0:nlevs-1,-1:nfine)
@@ -72,6 +66,7 @@ c     cell-centered, 1 ghost cell
       real*8 diffdiff_old(0:nlevs-1,-1:nfine)
       real*8 diffdiff_new(0:nlevs-1,-1:nfine)
       real*8  divu_effect(0:nlevs-1,-1:nfine)
+      real*8 beta_for_Wbar(0:nlevs-1,-1:nfine  ,nscal)
 
 c     cell-centered, no ghost cells
       real*8  delta_chi(0:nlevs-1, 0:nfine-1)
@@ -136,10 +131,27 @@ c     compute diffusion terms at time n
 
 c     compute conservatively corrected div gamma_m 
 c     also save gamma_m for computing diffdiff terms later
-      call get_spec_visc_terms(scal_old(0,:,:),beta_old(0,:,:),
-     &                         diff_old(0,:,FirstSpec:),
-     &                         gamma_lo(0,:,:),gamma_hi(0,:,:),
-     &                         dx(0),lo(0),hi(0))
+            call get_spec_visc_terms(scal_old(0,:,:),beta_old(0,:,:),
+     &                               gamma_lo(0,:,:),gamma_hi(0,:,:),
+     &                               lo(0),hi(0))
+
+            call compute_beta_for_Wbar(scal_old(0,:,:),beta_old(0,:,:),
+     &                                 beta_for_Wbar(0,:,:), lo(0), hi(0))
+            call get_spec_visc_terms_Wbar(scal_old(0,:,:),beta_for_Wbar(0,:,:),
+     &                                    gamma_Wbar_lo(0,:,:),
+     &                                    gamma_Wbar_hi(0,:,:),
+     &                                    lo(0),hi(0))
+
+c     add Wbar part
+            gamma_lo = gamma_lo + gamma_Wbar_lo
+            gamma_hi = gamma_hi + gamma_Wbar_hi
+
+            call adjust_spec_diffusion_fluxes(scal_old(0,:,:),
+     &                                        gamma_lo(0,:,:),gamma_hi(0,:,:),
+     &                                        lo(0),hi(0))
+            call flux_divergence(diff_old(0,:,FirstSpec:),
+     &                           gamma_lo(0,:,:),gamma_hi(0,:,:),
+     &                           dx(0),lo(0),hi(0))
 c     compute div lambda/cp grad h (no differential diffusion)
       call get_rhoh_visc_terms(scal_old(0,:,:),beta_old(0,:,:),
      &                         diff_old(0,:,RhoH),dx(0),lo(0),hi(0))
@@ -176,8 +188,6 @@ c     Otherwise,    I_R is I_R^kmax from previous pressure iteration
 c     non-fancy predictor that simply sets scal_new = scal_old
       scal_new = scal_old
       beta_new = beta_old
-      beta_for_Y_new = beta_for_Y_old
-      beta_for_Wbar_new = beta_for_Wbar_old
       diff_new = diff_old
       diffdiff_new = diffdiff_old
       divu_new = divu_old
@@ -207,16 +217,32 @@ c        rho D_m     (for species)
 c        lambda / cp (for enthalpy)
 c        lambda      (for temperature)
             call calc_diffusivities(scal_new(0,:,:),beta_new(0,:,:),
-     &                              beta_for_Y_new(0,:,:),
-     &                              beta_for_Wbar_new(0,:,:),
      &                              mu_new(0,:),lo(0),hi(0))
 c     compute a conservative div gamma_m
 c     save gamma_m for differential diffusion computation
             call get_spec_visc_terms(scal_new(0,:,:),beta_new(0,:,:),
-     &                               diff_new(0,:,FirstSpec:),
-     &                               gamma_lo(0,:,:),
-     &                               gamma_hi(0,:,:),
-     &                               dx(0),lo(0),hi(0))
+     &                               gamma_lo(0,:,:),gamma_hi(0,:,:),
+     &                               lo(0),hi(0))
+
+            call compute_beta_for_Wbar(scal_new(0,:,:),beta_new(0,:,:),
+     &                                 beta_for_Wbar(0,:,:), lo(0), hi(0))
+            call get_spec_visc_terms_Wbar(scal_new(0,:,:),beta_for_Wbar(0,:,:),
+     &                                    gamma_Wbar_lo(0,:,:),
+     &                                    gamma_Wbar_hi(0,:,:),
+     &                                    lo(0),hi(0))
+
+c     add Wbar part
+            gamma_lo = gamma_lo + gamma_Wbar_lo
+            gamma_hi = gamma_hi + gamma_Wbar_hi
+
+            call adjust_spec_diffusion_fluxes(scal_new(0,:,:),
+     &                                        gamma_lo(0,:,:),gamma_hi(0,:,:),
+     &                                        lo(0),hi(0))
+            call flux_divergence(diff_new(0,:,FirstSpec:),
+     &                           gamma_lo(0,:,:),gamma_hi(0,:,:),
+     &                           dx(0),lo(0),hi(0))
+
+
 c     compute div lambda/cp grad h (no differential diffusion)
             call get_rhoh_visc_terms(scal_new(0,:,:),beta_new(0,:,:),
      &                               diff_new(0,:,RhoH),dx(0),lo(0),hi(0))
@@ -254,8 +280,8 @@ c     instantaneous omegadot for divu calc
             end do
 
 c     divu
-            call calc_divu(scal_new(0,:,:),beta_new(0,:,:),I_R_divu(0,:,:),
-     &                     divu_new(0,:),dx(0),lo(0),hi(0))
+            call calc_divu(scal_new(0,:,:),beta_new(0,:,:),
+     &                     I_R_divu(0,:,:),divu_new(0,:),dx(0),lo(0),hi(0))
 
          end if
 
@@ -331,11 +357,14 @@ c     new iterative Wbar procedure
 
 c     compute div(beta_for_Wbar^(k) grad Wbar^(k),l)
 c     also need to save the fluxes themselves
-            call get_spec_visc_terms_Wbar(scal_new(0,:,:),beta_for_Wbar_new(0,:,:),
-     &                                    diff_tmp(0,:,FirstSpec:),
+            call get_spec_visc_terms_Wbar(scal_new(0,:,:),beta_for_Wbar(0,:,:),
      &                                    gamma_Wbar_lo(0,:,:),
      &                                    gamma_Wbar_hi(0,:,:),
-     &                                    dx(0),lo(0),hi(0))
+     &                                    lo(0),hi(0))
+            call flux_divergence(diff_tmp(0,:,FirstSpec:),
+     &                           gamma_Wbar_lo(0,:,:),
+     &                           gamma_Wbar_hi(0,:,:),
+     &                           dx(0),lo(0),hi(0))
 
 c     setup alpha and rhs for species solve
             do i=lo(0),hi(0)
@@ -351,19 +380,29 @@ c     Solve implicit system
             rho_flag = 2
             do n=1,Nspec
                is = FirstSpec + n - 1
-               call cn_solve(scal_new(0,:,:),alpha(0,:),beta_for_Y_new(0,:,:),
+               call cn_solve(scal_new(0,:,:),alpha(0,:),beta_new(0,:,:),
      $                       Rhs(0,:,is),dx(0),dt(0),is,be_cn_theta,
      $                       rho_flag,.false.,lo(0),hi(0),bc(0,:))
             enddo
 
 c     compute conservatively corrected version of div gamma_m
-c     where gamma_m = beta_for_y^(k) grad \tilde Y_{m,AD}^(k+1) + beta_for_Wbar^(k) grad Wbar^(k)
-c     fluxes from beta_for_Wbar^(k) grad Wbar^(k) are already available
-            call get_spec_visc_terms_Y_and_Wbar(scal_new(0,:,:),beta_for_Y_new(0,:,:),
-     &                                          diff_hat(0,:,FirstSpec:),
-     &                                          gamma_Wbar_lo(0,:,:),
-     &                                          gamma_Wbar_hi(0,:,:),
-     &                                          dx(0),lo(0),hi(0))
+c     compute the grad Y part first
+            call get_spec_visc_terms(scal_new(0,:,:),beta_new(0,:,:),
+     &                               gamma_lo(0,:,:),gamma_hi(0,:,:),
+     &                               lo(0),hi(0))
+c     add Wbar part
+            gamma_lo = gamma_lo + gamma_Wbar_lo
+            gamma_hi = gamma_hi + gamma_Wbar_hi
+
+            call adjust_spec_diffusion_fluxes(scal_new(0,:,:),
+     &                                        gamma_lo(0,:,:),gamma_hi(0,:,:),
+     &                                        lo(0),hi(0))
+            call flux_divergence(diff_hat(0,:,FirstSpec),
+     &                           gamma_lo(0,:,:),gamma_hi(0,:,:),
+     &                           dx(0),lo(0),hi(0))
+
+c     NOTE - EVERYTHING FROM HERE THROUGH THE END OF THE LOOP OVER L
+c     IS FOR DIAGNOSTIC PURPOSES ONLY AND DOES NOT AFFECT THE SOLUTION
 
 c     compute rho^{(k+1)}*Y_{m,AD}^{(k+1),l+1}
             do i=lo(0),hi(0)
@@ -479,12 +518,11 @@ c        rho D_m     (for species)
 c        lambda / cp (for enthalpy)
 c        lambda      (for temperature)       
       call calc_diffusivities(scal_new(0,:,:),beta_new(0,:,:),
-     &                        beta_for_Y_new(0,:,:),
-     &                        beta_for_Wbar_new(0,:,:),
      &                        mu_new(0,:),lo(0),hi(0))
 
 c     calculate S
-      call calc_divu(scal_new(0,:,:),beta_new(0,:,:),I_R_divu(0,:,:),
+      call calc_divu(scal_new(0,:,:),beta_new(0,:,:),
+     &               I_R_divu(0,:,:),
      &               divu_new(0,:),dx(0),lo(0),hi(0))
 
       print *,'... update velocities'

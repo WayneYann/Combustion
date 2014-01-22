@@ -353,6 +353,8 @@ public:
     public:
         friend std::ostream& operator<< (std::ostream& os, const Edge& e);
         
+        Edge () {}
+
         Edge (const std::string& n1, const std::string& n2, const Array<std::pair<int,Real> > rwl);
         
         Edge (const std::string& n1, const std::string& n2, int reac, Real weight );
