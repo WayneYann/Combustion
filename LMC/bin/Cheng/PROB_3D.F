@@ -839,8 +839,7 @@ c     Rftran is the transition width between fuel and air
             if (getuvw) then
 
 c     Compute coflow velocity components (allows ramping up/down)
-               u_inf(1) = 0.d0
-               u_inf(2) = 0.d0
+               u_inf = 0.d0
                if ( (time .gt. zero).and.(tVco_l.ge.zero) ) then
                   if (time .le. tVco_l) then
                      u_inf(3) = Vco_l

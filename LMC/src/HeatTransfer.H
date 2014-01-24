@@ -654,9 +654,6 @@ protected:
     static Array<Real> typical_values;
     static int         reset_typical_vals_int;
     static std::map<std::string,Real> typical_values_FileVals;
-
-    static bool        do_curvature_sample;
-
 };
 
 #endif /*_HeatTransfer_H_*/
