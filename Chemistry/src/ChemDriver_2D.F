@@ -848,6 +848,7 @@ c
       end
 
 #if LMC_SDC
+#ifdef LMC_SDC
       subroutine FORT_CONPSOLV_SDC(lo, hi,
      &     rhoYnew,   DIMS(rhoYnew), 
      &     rhoHnew,   DIMS(rhoHnew),
@@ -887,66 +888,38 @@ c
       REAL_T Patm, dt
       REAL_T diag(DIMV(FuncCount),*)
 
-      integer ITOL, IOPT, ITASK, open_vode_failure_file
-      parameter (IOPT=1, ITASK=1)
-      REAL_T RTOL, ATOL(maxspec+2), ATOLEPS
-      REAL_T spec_scalT, NEWJ_TOL
-      parameter (spec_scalT=twothousand, NEWJ_TOL=one100th)
+      integer open_vode_failure_file
       external conpFY_sdc, CONPJ_FILE, open_vode_failure_file
-      REAL_T TT1, TT2, RU, RUC, P1atm
-      integer i, j, m, MF, ISTATE, lout
+      integer i, j,  m, MF, ISTATE, lout, ITOL
+      integer nsub, node, strang_fix, Niter, nfails
       character*(maxspnml) name
-
-      REAL_T rho, rhoInv, h_INIT, Y(maxspec), hmix_ck, Z(maxspec+2), ZP(maxspec+2), Yold(maxspec)
-
-      integer nsubchem, nsub, node
-      REAL_T dtloc, weight, TT1save
-      REAL_T Ct(maxspec),Qt(maxreac), scale
-
-      REAL_T dY(maxspec), rhoYtemp(maxspec),rhoYres(maxspec),sum,HMIX_CGS
-
-      integer strang_fix
-
-C     Needed to compute T from h
-      REAL_T HtoTerrMAX
-      integer HtoTiterMAX, Niter
-      parameter (HtoTerrMAX = BL_REAL_E(7.8,-12))
-      parameter (HtoTiterMAX = 20)
-      REAL_T res(0:HtoTiterMAX-1)
-
-      REAL_T rhooldInv
-
-c     Set IOPT=1 parameter settings for VODE
-      RWRK(dvbr+4) = 0
-      RWRK(dvbr+5) = 0
-c      RWRK(dvbr+6) = ten2minus19
-      RWRK(dvbr+6) = 1.d-25
-      IWRK(dvbi+4) = 0
-      IWRK(dvbi+5) = max_vode_subcycles
-      IWRK(dvbi+6) = 0
+      REAL_T RTOL, ATOL(maxspec+2), ATOLEPS, TT1, TT2, RU, RUC, P1atm
+      REAL_T Y(maxspec), hmix_ck, Z(maxspec+2), ZP(maxspec+2), Yold(maxspec)
+      REAL_T dtloc, weight, TT1save, rho, rhoInv, h_INIT
+      REAL_T Ct(maxspec),Qt(maxreac), scale, sum
+      REAL_T rhoYtemp(maxspec),rhoYres(maxspec),HMIX_CGS
+      REAL_T,  parameter :: HtoTerrMAX = BL_REAL_E(7.8,-12)
+      integer, parameter :: HtoTiterMAX = 20, IOPT = 1, ITASK = 1
+      REAL_T res(0:HtoTiterMAX-1), rhooldInv
+      !
+      ! Set to .true. if you want to see the 'nfails' output
+      !
+      logical, parameter :: verbose = .false.
 
       ITOL    = vode_itol
       RTOL    = vode_rtol
       ATOLEPS = vode_atol
-
-      if (do_diag.eq.1) nsubchem = nchemdiag
-c
-c     Set molecular weights and pressure in area accessible by conpF
-c
+      !
+      ! Set molecular weights and pressure in area accessible by conpF
+      !
       CALL CKRP(IWRK(ckbi), RWRK(ckbr), RU, RUC, P1atm)
-      RWRK(NP) = Patm * P1atm
-      
-      TT2 = dt
 
       if (do_stiff .eq. 1) then
-c     backward difference solver with finite difference jacobian
-         MF = 22
+         MF = 22  ! Backward difference solver.
       else
-c     Adams integrator
-         MF = 10
+         MF = 10  ! Adams integrator
       endif
 
-c     Set up ATOL
       if (ITOL.eq.2 .or. ITOL.eq.4) then
          ATOL(Nspec+1) = typVal_RhoH*ATOLEPS
          do m=1,Nspec
@@ -956,36 +929,52 @@ c     Set up ATOL
          ATOL(1) = ATOLEPS
       end if
 
+      if (do_diag.eq.1) then
+         nsub  = nchemdiag
+         dtloc = dt/nchemdiag
+      else
+         nsub  = 1
+         dtloc = dt
+      endif
+
+      nfails = 0
+
+      !
+      ! Force recalculation of jacobian for each XYZ block.
+      !
+      FIRST = .TRUE.
+
+      RWRK(NP) = Patm * P1atm
+      !
+      ! The following are in /sdc_function/ :
+      !
+      !   c_0,c_1,rhoH_INIT,T_cell,rhoY_INIT,negative_Y_test
+      !
       do j=lo(2),hi(2)
          do i=lo(1),hi(1)
 
-            strang_fix = 0
-            negative_Y_test = 0
-
-            TT1 = zero
-            if (do_diag.eq.1) then
-               nsub = nsubchem
-               dtloc = dt/nsubchem
-            else
-               nsub = 1
-               dtloc = dt
-            endif
-            ISTATE = 1
-
-            rhoYtemp(1:Nspec) = rhoYold(i,j,1:Nspec)
-
-            Z(1:Nspec) = rhoYtemp(1:Nspec)
+            TT1                = zero
+            TT2                = dt
+            strang_fix         = 0
+            negative_Y_test    = 0
+            ISTATE             = 1
+            rhoYtemp(1:Nspec)  = rhoYold(i,j,1:Nspec)
+            Z(1:Nspec)         = rhoYtemp(1:Nspec)
             rhoY_INIT(1:Nspec) = Z(1:Nspec)
+            rhoH_INIT          = rhoHold(i,j)
+            Z(Nspec+1)         = rhoH_INIT
+            c_0(1:Nspec+1)     = const_src(i,j,1:Nspec+1)
+            T_cell             = Told(i,j)
+            FuncCount(i,j)     = 0
 
-            rhoH_INIT = rhoHold(i,j)
-            Z(Nspec+1) = rhoH_INIT
-            c_0(1:Nspec+1) = const_src(i,j,1:Nspec+1)
-            
-            T_cell = Told(i,j)
-
-c     Reset FIRST to .TRUE. to force new Jacobian on each cell
-            FIRST = .TRUE.
-            FuncCount(i,j) = 0
+            if (do_diag.eq.1) then
+               FuncCount(i,j) = 0
+               CALL CKYTCP(RWRK(NP),T_cell,Z(1),IWRK(ckbi),RWRK(ckbr),Ct)
+               CALL CKQC(T_cell,Ct,IWRK(ckbi),RWRK(ckbr),Qt)
+               do m=1,Nreac
+                  diag(i,j,m) = diag(i,j,m)+half*dtloc*Qt(m)*million
+               enddo
+            endif
 
             do node = 1,nsub
                if (node.lt.nsub) then
@@ -994,13 +983,10 @@ c     Reset FIRST to .TRUE. to force new Jacobian on each cell
                   weight = half
                endif
 
+               TT2     = TT1 + dtloc                  
                TT1save = TT1
-               TT2 = TT1 + dtloc
 
-c     Suggest strongly that VODE do it in one step
-c               RWRK(dvbr+4) = TT2 - TT1
-
-#if !defined(BL_USE_DOUBLE) || defined(BL_T3E)
+#if !defined(BL_USE_DOUBLE)
                CALL SVODE
 #else
                CALL DVODE
@@ -1013,29 +999,17 @@ c               RWRK(dvbr+4) = TT2 - TT1
 
                   strang_fix = 1
 
-                  if (ISTATE .LE. -1) then
-                     print*,"STRANG VODE; ISTATE .LE. -1",i,j
-                  else
-                     print*,"STRANG VODE; negative_Y_test .eq. 1",i,j
-                  end if
-                  call flush()
-
-c     redo
                   do m=1,Nspec
                      rhoYold(i,j,m) = rhoYold(i,j,m) + dt*const_src(i,j,m)
                   end do
                   rhoHold(i,j) = rhoHold(i,j) + dt*const_src(i,j,Nspec+1)
 
-                  TT1 = zero
-                  ISTATE = 1
-
-c     "jbb hack"
                   rho = zero
                   do m=1,Nspec
                      rho = rho+rhoYold(i,j,m)
                   end do
                   rhoInv = one / rho
-                  sum = 0.d0
+                  sum = zero
                   do m=1,Nspec
                      rhoYtemp(m) = MAX(rhoYold(i,j,m),zero)
                      sum = sum + rhoYtemp(m) * rhoInv
@@ -1044,26 +1018,24 @@ c     "jbb hack"
                      rhoYtemp(iN2) = ( (rhoYtemp(iN2)*rhoInv + one - sum) * rho )
                   endif
 
-                  Z(1:Nspec) = rhoYtemp(1:Nspec)
+                  TT1                = zero
+                  ISTATE             = 1
+                  Z(1:Nspec)         = rhoYtemp(1:Nspec)
                   rhoY_INIT(1:Nspec) = Z(1:Nspec)
+                  rhoH_INIT          = rhoHold(i,j)
+                  Z(Nspec+1)         = rhoH_INIT
+                  c_0(1:Nspec+1)     = zero
+                  T_cell             = Told(i,j)
+                  FIRST              = .TRUE.
+                  FuncCount(i,j)     = 0
+                  TT1save            = TT1
+                  TT2                = TT1 + dtloc
 
-                  rhoH_INIT = rhoHold(i,j)
-                  Z(Nspec+1) = rhoH_INIT
-                  c_0(1:Nspec+1) = 0.d0
-            
-                  T_cell = Told(i,j)
+                  if (verbose) then
+                     nfails = nfails + 1
+                  end if
 
-c     Reset FIRST to .TRUE. to force new Jacobian on each cell
-                  FIRST = .TRUE.
-                  FuncCount(i,j) = 0
-
-                  TT1save = TT1
-                  TT2 = TT1 + dtloc
-
-c     Suggest strongly that VODE do it in one step
-c               RWRK(dvbr+4) = TT2 - TT1
-
-#if !defined(BL_USE_DOUBLE) || defined(BL_T3E)
+#if !defined(BL_USE_DOUBLE)
                   CALL SVODE
 #else
                   CALL DVODE
@@ -1071,89 +1043,94 @@ c               RWRK(dvbr+4) = TT2 - TT1
      &                 (conpFY_sdc, NEQ, Z, TT1, TT2, ITOL, RTOL, ATOL,
      &                 ITASK, ISTATE, IOPT, RWRK(dvbr), dvr, IWRK(dvbi),
      &                 dvi, CONPJ_FILE, MF, RWRK, IWRK)
-
+                  
                   if (ISTATE .LE. -1) then
-
                      call conpFY_sdc(NEQ, TT1, Z, ZP, RWRK, IWRK)
                      lout = open_vode_failure_file()
                      write(lout,*)
-                     write(lout,995) 'VODE Failed at (i,j) = (',i,',',j,
-     &                    '),   Return code = ',ISTATE
-                     if (ISTATE.eq.-4 .or. ISTATE.eq.-5) then
-                        write(lout,*) 'Index w/largest weighted err: ',
-     &                       IWRK(dvbi+16-1)
-                     endif
+                     write(lout,995) 'VODE Failed at (i,j) = (',i,
+     &                       ',',j,'),   Return code = ',ISTATE
                      write(lout,996) 'time(T2,Tl,dt)  ',dt, TT1, dt-TT1
-                     write(lout,995) 'StateID,RY,RYp,dRH/dt,dRH/dt*(dt)'
+                     write(lout,995) 
+     &                    'State ID,RY,RYp,dRH/dt,dRH/dt*(dt)'
                      name = 'RhoH'
                      write(lout,996) name,
-     &                    RhoHold(i,j),Z(Nspec+1),ZP(Nspec+1),
-     &                    ZP(Nspec+1)*(dt-TT1)
+     &                    RhoHold(i,j),Z(Nspec+1),
+     &                    ZP(Nspec+1),ZP(Nspec+1)*(dt-TT1)
                      do m=1,Nspec
                         call get_spec_name(name,m)
                         write(lout,996) name,RhoYold(i,j,m),
      &                       Z(m),ZP(m),ZP(m)*(dt-TT1)
                      end do
                      write(lout,996) 'T_cell:',Z(Nspec+2)
-                     sum = 0.d0
+                     sum = zero
                      do m=1,Nspec
                         sum = sum + Z(m)
                      enddo
                      do m=1,Nspec
                         Y(m) = Z(m)/sum
                      enddo
-                     sum = 0.d0
+                     sum = zero
                      do m=1,Nspec
                         sum = sum + RhoYold(i,j,m)
                      enddo
                      do m=1,Nspec
                         Yold(m) = RhoYold(i,j,m)/sum
                      enddo
-
+                        
                      write(lout,996)'Mass fracs: old, curr'
                      do m=1,Nspec
                         Y(m) = Z(m)/sum
                         call get_spec_name(name,m)
                         write(lout,996) name,Yold(m),Y(m)
                      enddo
-
+                        
  995                 format(a,3(i4,a))
  996                 format(a,1x,4e30.22)
                      close(lout)
-                     call bl_abort('VODE failed, see drop file')
+                     call bl_abort('VODE failed, exiting')
                   end if
-
                end if
-
+                  
                TT1 = TT2
+
+               if (do_diag.eq.1) then
+                  CALL CKYTCP(RWRK(NP),T_cell,Z(1),IWRK(ckbi),RWRK(ckbr),Ct)
+                  CALL CKQC(T_cell,Ct,IWRK(ckbi),RWRK(ckbr),Qt)
+                  do m=1,Nreac
+                     diag(i,j,m) = diag(i,j,m)+weight*dtloc*Qt(m)*million
+                  enddo
+               endif
+
                FuncCount(i,j) = FuncCount(i,j) + IWRK(dvbi+11)
-
             enddo
-            
+               
             rhoHnew(i,j) = Z(Nspec+1)
-
+               
             if (strang_fix .eq. 1) rhooldInv = one / rho
 
-            rho  = 0.d0
-            do m= 1,Nspec
+            rho = zero
+            do m = 1,Nspec
                rho = rho + Z(m)
             end do
             rhoInv = 1.d0 / rho
 
             if (strang_fix .eq. 1) then
-              !
-              ! We want Z to contain rhoYnew(i,j,k)
-              !
-              do m= 1,Nspec
-                 Z(m) = Z(m) + (rhoYold(i,j,m) - rhoYtemp(m))*rhooldInv*rho
-              end do
+               !
+               ! We want Z to contain rhoYnew(i,j)
+               !
+               rhooldInv = one / rho
+
+               do m= 1,Nspec
+                  Z(m) = Z(m) + (rhoYold(i,j,m) - rhoYtemp(m))*rhooldInv*rho
+               end do
             end if
 
             do m=1,Nspec
-              !
-              ! Finally update rhoYnew
-              !
-              rhoYnew(i,j,m) = Z(m)
+               !
+               ! Finally update rhoYnew
+               !
+               rhoYnew(i,j,m) = Z(m)
             end do
 
             do m=1,Nspec
@@ -1161,9 +1138,14 @@ c               RWRK(dvbr+4) = TT2 - TT1
             enddo
             Tnew(i,j) = T_cell
             call FORT_TfromHYpt(Tnew(i,j),rhoHnew(i,j)*rhoInv,Y,HtoTerrMAX,HtoTiterMAX,res,Niter)
-            
+
          end do
       end do
+
+      if (verbose .and. nfails .gt. 0) then
+         print*, '*** DVODE failures for last chem block: ', nfails; call flush(6)
+      end if
+
       end
 #endif
 
