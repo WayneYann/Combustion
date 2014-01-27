@@ -847,7 +847,6 @@ c
       end do
       end
 
-#if LMC_SDC
 #ifdef LMC_SDC
       subroutine FORT_CONPSOLV_SDC(lo, hi,
      &     rhoYnew,   DIMS(rhoYnew), 
