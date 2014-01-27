@@ -194,9 +194,6 @@ Array<int>  HeatTransfer::mcdd_nu1;
 Array<int>  HeatTransfer::mcdd_nu2;
 Array<Real> HeatTransfer::typical_values;
 
-bool        HeatTransfer::do_curvature_sample;
-
-
 #ifdef PARTICLES
 
 namespace
@@ -216,6 +213,7 @@ namespace
     std::string      particle_restart_file;
     std::string      particle_output_file;
     bool             restart_from_nonparticle_chkfile;
+    bool             do_curvature_sample;
     int              pverbose;
     //
     // We want to call this routine on exit to clean up particles.
@@ -314,12 +312,12 @@ HeatTransfer::Initialize ()
     HeatTransfer::new_T_threshold           = -1;  // On new AMR level, max change in lower bound for T, not used if <=0
 
     HeatTransfer::do_add_nonunityLe_corr_to_rhoh_adv_flux = 1;
-    HeatTransfer::do_curvature_sample       = false;
 
     HeatTransfer::reset_typical_vals_int    = -1;
     HeatTransfer::typical_values_FileVals.clear();
 
 #ifdef PARTICLES
+    do_curvature_sample              = false;
     timestamp_dir                    = "Timestamps";
     restart_from_nonparticle_chkfile = false;
     pverbose                         = 2;
@@ -553,7 +551,6 @@ HeatTransfer::Initialize ()
 
     ParmParse ppht("ht");
     ppht.query("do_curvature_sample", do_curvature_sample);
-
 #endif
         
     if (verbose && ParallelDescriptor::IOProcessor())
@@ -1994,6 +1991,9 @@ HeatTransfer::post_regrid (int lbase,
     if (HTPC != 0)
     {
         HTPC->Redistribute();
+
+        if (parent->finestLevel() > 0)
+            HTPC->RemoveParticlesNotAtFinestLevel();
     }
 #endif
 }
