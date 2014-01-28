@@ -195,7 +195,7 @@ public:
 #ifdef PARTICLES
     static HTParticleContainer* theHTPC ();
 
-    MultiFab* ParticleDerive (const std::string& name, Real time, int ngrow);
+    void ParticleDerive (const std::string& name, Real time, MultiFab& mf, int dcomp);
 #endif
     //
     // Returns a MultiFab containing the derived data for this level.
