@@ -4570,7 +4570,7 @@ HeatTransfer::advance (Real time,
       {
         int consumptionComp = getChemSolve().index(consumptionName[j]);
         MultiFab::Copy((*auxDiag["CONSUMPTION"]),get_new_data(RhoYdot_Type),consumptionComp,j,1,0);
-        auxDiag["CONSUMPTION"]->mult(-1); // Convert production to consumption
+        auxDiag["CONSUMPTION"]->mult(-1,j,1); // Convert production to consumption
       }
     }
 
