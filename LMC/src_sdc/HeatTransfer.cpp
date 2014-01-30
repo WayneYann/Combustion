@@ -3412,13 +3412,45 @@ HeatTransfer::compute_differential_diffusion_fluxes (const Real& time,
 
     visc_op->maxOrder(diffusion->maxOrder());
 
+    MultiFab rho_and_species_crse;
+    const int nGrowCrse = InterpBndryData::IBD_max_order_DEF - 1;
+
     if (level == 0)
     {
       bndry->setBndryValues(Wbar,0,0,1,bc);
     }
     else
     {
-      BoxLib::Error("Wbar doesn't work for multilevel yet");
+      HeatTransfer& coarser = *(HeatTransfer*) &(parent->getLevel(level-1));
+
+      rho_and_species_crse.define(coarser.grids,nspecies+1,nGrowCrse,Fab_allocate);
+
+      for (FillPatchIterator fpi(coarser,rho_and_species_crse,nGrowCrse,time,State_Type,Density,nspecies+1);
+	   fpi.isValid();
+	   ++fpi)
+      {
+	FArrayBox& rho_and_spec = rho_and_species_crse[fpi];
+	rho_and_spec.copy(fpi(),0,0,nspecies+1);
+	tmp.resize(rho_and_spec.box(),1);
+	tmp.copy(rho_and_spec,0,0,1);
+	tmp.invert(1);
+	
+	for (int comp = 0; comp < nspecies; ++comp) 
+	  rho_and_spec.mult(tmp,0,comp+1,1);
+      }
+
+      BoxArray cgrids = grids;
+      cgrids.coarsen(crse_ratio);
+      BndryRegister crse_br(cgrids,0,1,nGrowCrse,1);
+      crse_br.setVal(1.e200);
+      MultiFab Wbar_crse(rho_and_species_crse.boxArray(),1,nGrowCrse);
+      for (MFIter mfi(rho_and_species_crse); mfi.isValid(); ++mfi)
+      {
+	const Box& box = rho_and_species_crse[mfi].box();
+	getChemSolve().getMwmixGivenY(Wbar_crse[mfi],rho_and_species_crse[mfi],box,1,0);
+      }	  
+      crse_br.copyFrom(Wbar_crse,nGrowCrse,0,0,1);
+      bndry->setBndryValues(crse_br,0,Wbar,0,0,1,crse_ratio,bc);
     }
 
     visc_op->setScalars(0,1);
@@ -5850,7 +5882,7 @@ HeatTransfer::differential_spec_diffuse_sync (Real dt)
 	// add RHS from diffusion solve
 	update.plus(Rhs[iGrid],box,0,0,nspecies);
 
-	// Ssync = "RHS from diffusion solve" - dt/2) div (delta gamma)
+	// Ssync = "RHS from diffusion solve" + (dt/2) * div (delta gamma)
 	(*Ssync)[mfi].copy(update,box,0,box,first_spec-BL_SPACEDIM,nspecies);
     }
 
