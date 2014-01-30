@@ -97,6 +97,7 @@ namespace
     bool                  do_not_use_funccount;
     bool                  do_active_control;
     Real                  crse_dt;
+    int                   chem_box_chop_threshold;
 }
 
 int  HeatTransfer::num_divu_iters;
@@ -173,6 +174,8 @@ Array<int>  HeatTransfer::mcdd_nu1;
 Array<int>  HeatTransfer::mcdd_nu2;
 Array<Real> HeatTransfer::typical_values;
 
+
+
 ///////////////////////////////
 // SDC Stuff
 
@@ -198,6 +201,7 @@ namespace
     std::string      particle_restart_file;
     std::string      particle_output_file;
     bool             restart_from_nonparticle_chkfile;
+    bool             do_curvature_sample;
     int              pverbose;
     //
     // We want to call this routine on exit to clean up particles.
@@ -243,12 +247,13 @@ HeatTransfer::Initialize ()
     ShowMF_Fab_Format_map["NATIVE"] = FABio::FAB_NATIVE;
     ShowMF_Fab_Format_map["8BIT"] = FABio::FAB_8BIT;
     ShowMF_Fab_Format_map["IEEE_32"] = FABio::FAB_IEEE_32;
-    ShowMF_Verbose       = true;
-    ShowMF_Check_Nans    = true;
-    ShowMF_Fab_Format    = ShowMF_Fab_Format_map["ASCII"];
-    do_not_use_funccount = false;
-    do_active_control    = false;
-    crse_dt              = -1;
+    ShowMF_Verbose          = true;
+    ShowMF_Check_Nans       = true;
+    ShowMF_Fab_Format       = ShowMF_Fab_Format_map["ASCII"];
+    do_not_use_funccount    = false;
+    do_active_control       = false;
+    crse_dt                 = -1;
+    chem_box_chop_threshold = -1;
 
     HeatTransfer::num_divu_iters            = 1;
     HeatTransfer::init_once_done            = 0;
@@ -321,6 +326,7 @@ HeatTransfer::Initialize ()
     HeatTransfer::sdc_iterMAX               = 1;
 
 #ifdef PARTICLES
+    do_curvature_sample              = false;
     timestamp_dir                    = "Timestamps";
     restart_from_nonparticle_chkfile = false;
     pverbose                         = 2;
@@ -557,8 +563,11 @@ HeatTransfer::Initialize ()
     // Used in post_restart() to write out the file of particles.
     //
     ppp.query("particle_output_file", particle_output_file);
+
+    ParmParse ppht("ht");
+    ppht.query("do_curvature_sample", do_curvature_sample);
 #endif
-        
+
     if (verbose && ParallelDescriptor::IOProcessor())
     {
         std::cout << "\nDumping ParmParse table:\n \n";
@@ -1046,6 +1055,20 @@ HeatTransfer::init_once ()
         && RhoYdot_Type != Divu_Type
         && RhoYdot_Type != Dsdt_Type
         && RhoYdot_Type != State_Type;
+    //
+    // This is the minimum number of boxes per MPI proc that I want
+    // when chopping up chemistry work.
+    //
+    pp.query("chem_box_chop_threshold",chem_box_chop_threshold);
+
+    if (chem_box_chop_threshold <= 0)
+    {
+#ifdef BL_USE_OMP
+        chem_box_chop_threshold = 8;
+#else
+        chem_box_chop_threshold = 4;
+#endif
+    }
     
     if (!ydot_good)
         BoxLib::Error("HeatTransfer::init_once(): need RhoYdot_Type if do_chemistry");
@@ -1975,6 +1998,65 @@ void
 HeatTransfer::post_timestep (int crse_iteration)
 {
     NavierStokes::post_timestep(crse_iteration);
+
+#ifdef PARTICLES
+    //
+    // Don't redistribute/timestamp on the final subiteration except on the coarsest grid.
+    //
+    const int ncycle = parent->nCycle(level);
+
+    if (HTPC != 0 && (crse_iteration < ncycle || level == 0))
+    {
+        const Real curr_time = state[State_Type].curTime();
+            
+        HTPC->Redistribute(false, true, level, 2);
+
+        if (!timestamp_dir.empty())
+        {
+            //
+            // Get data for timestamping.
+            //
+            std::string basename = timestamp_dir;
+
+            if (basename[basename.length()-1] != '/') basename += '/';
+
+            basename += "Timestamp";
+
+            const int finest_level = parent->finestLevel();
+
+            for (int lev = level; lev <= finest_level; lev++)
+            {
+                if (HTPC->NumberOfParticlesAtLevel(lev) <= 0) continue;
+
+                AmrLevel&       amr   = parent->getLevel(lev);
+                const MultiFab& mf    = amr.get_new_data(State_Type);
+                const int       pComp = do_curvature_sample ?  (mf.nComp()+1) : mf.nComp();
+
+                MultiFab tmf(mf.boxArray(), pComp, 2);
+
+                ParallelDescriptor::Barrier(); 
+                
+                if (do_curvature_sample)
+                {
+                    MultiFab MC(mf.boxArray(), 1, 0);
+                    amr.derive("mean_progress_curvature", curr_time, MC, 0);
+                    const int cComp = pComp - 1;
+                    tmf.setBndry(0,cComp,1);
+                    MultiFab::Copy(tmf,MC,0,cComp,1,0);
+                }
+
+                for (FillPatchIterator fpi(amr,tmf,2,curr_time,State_Type,0,mf.nComp());
+                     fpi.isValid();
+                     ++fpi)
+                {
+                    tmf[fpi.index()].copy(fpi(),0,0,mf.nComp());
+                }
+
+                HTPC->Timestamp(basename, tmf, lev, curr_time, timestamp_indices);
+            }
+        }
+    }
+#endif
 
     if (plot_reactions && level == 0)
     {
@@ -4430,13 +4512,14 @@ HeatTransfer::advance (Real time,
 	const FArrayBox& ddn = DDn[mfi];
 	const FArrayBox& dnp1 = Dnp1[mfi];
 	const FArrayBox& ddnp1 = DDnp1[mfi];
-	const FArrayBox& dwbar = DWbar[mfi];
+
 	f.copy(dn,box,0,box,0,nspecies+1); // copy Dn into RhoY and RhoH
 	f.minus(dnp1,box,box,0,0,nspecies+1); // subtract Dnp1 from RhoY and RhoH
 	f.plus(ddn  ,box,box,0,nspecies,1); // add DDn to RhoH, no contribution for RhoY
 	f.plus(ddnp1,box,box,0,nspecies,1); // add DDnp1 to RhoH, no contribution for RhoY
 	f.mult(0.5);
 #if USE_WBAR
+	const FArrayBox& dwbar = DWbar[mfi];
 	f.plus(dwbar,box,box,0,0,nspecies); // add DWbar to RhoY
 #endif
 	f.plus(a,box,box,first_spec,0,nspecies+1); // add A into RhoY and RhoH
@@ -4519,7 +4602,7 @@ HeatTransfer::advance (Real time,
       {
         int consumptionComp = getChemSolve().index(consumptionName[j]);
         MultiFab::Copy((*auxDiag["CONSUMPTION"]),get_new_data(RhoYdot_Type),consumptionComp,j,1,0);
-        auxDiag["CONSUMPTION"]->mult(-1); // Convert production to consumption
+        auxDiag["CONSUMPTION"]->mult(-1,j,1); // Convert production to consumption
       }
     }
 
@@ -4623,6 +4706,13 @@ HeatTransfer::advance (Real time,
         if (level > 0 && iteration == 1) p_avg->setVal(0);
     }
     showMF("sdc",get_new_data(State_Type),"sdc_Snew_postProj",level,parent->levelSteps(level));
+
+#ifdef PARTICLES
+    if (HTPC != 0)
+    {
+        HTPC->AdvectWithUmac(u_mac, level, dt);
+    }
+#endif
 
     advance_cleanup(iteration,ncycle);
     //
@@ -4756,9 +4846,7 @@ HeatTransfer::getFuncCountDM (const BoxArray& bxba, int ngrow)
 #endif
 
     DistributionMapping res;
-    //
-    // This call doesn't invoke the MinimizeCommCosts() stuff.
-    //
+
     res.KnapSackProcessorMap(vwrk,ParallelDescriptor::NProcs());
 
     return res;
@@ -4814,15 +4902,11 @@ HeatTransfer::advance_chemistry (MultiFab&       mf_old,
         //
         // Chop the grids to level out the chemistry work.
         // We want enough grids so that KNAPSACK works well,
-        // but not too many to many unweildy BoxArrays.
+        // but not too many to make unweildy BoxArrays.
         //
-#ifdef BL_USE_OMP
-        const int Threshold = 8*ParallelDescriptor::NProcs();
-#else
-        const int Threshold = 4*ParallelDescriptor::NProcs();
-#endif
-        BoxArray  ba   = mf_new.boxArray();
-        bool      done = (ba.size() >= Threshold);
+        const int Threshold = chem_box_chop_threshold * ParallelDescriptor::NProcs();
+        BoxArray  ba        = mf_new.boxArray();
+        bool      done      = (ba.size() >= Threshold);
 
         for (int cnt = 1; !done; cnt *= 2)
         {
@@ -4833,7 +4917,7 @@ HeatTransfer::advance_chemistry (MultiFab&       mf_old,
                 // Don't let grids get too small.
                 //
                 break;
-        
+
             IntVect chunk(D_DECL(ChunkSize,ChunkSize,ChunkSize));
 
             for (int j = BL_SPACEDIM-1; j >=0 && ba.size() < Threshold; j--)
@@ -4970,13 +5054,19 @@ HeatTransfer::advance_chemistry (MultiFab&       mf_old,
 
     if (verbose)
     {
-        const int IOProc   = ParallelDescriptor::IOProcessorNumber();
-        Real      run_time = ParallelDescriptor::second() - strt_time;
+        const int IOProc = ParallelDescriptor::IOProcessorNumber();
 
-        ParallelDescriptor::ReduceRealMax(run_time,IOProc);
+        Real mx = ParallelDescriptor::second() - strt_time, mn = mx;
+
+        ParallelDescriptor::ReduceRealMin(mn,IOProc);
+        ParallelDescriptor::ReduceRealMax(mx,IOProc);
 
         if (ParallelDescriptor::IOProcessor())
-           std::cout << "HeatTransfer::advance_chemistry(): lev: " << level << ", time: " << run_time << '\n';
+           std::cout << "HeatTransfer::advance_chemistry(): lev: " << level << ", time: ["
+                      << mn
+                      << " ... "
+                      << mx
+                      << "]\n";
     }
 }
 
@@ -6964,44 +7054,146 @@ MultiFab*
 HeatTransfer::derive (const std::string& name,
                       Real               time,
                       int                ngrow)
-{
-#ifdef PARTICLES
-    return ParticleDerive(name,time,ngrow);
-#else
-    return AmrLevel::derive(name,time,ngrow);
-#endif
-}
+{        
+  BL_ASSERT(ngrow >= 0);
+  
+  MultiFab* mf = 0;
+  const DeriveRec* rec = derive_lst.get(name);
+  if (rec)
+  {
+    BoxArray dstBA(grids);
+    mf = new MultiFab(dstBA, rec->numDerive(), ngrow);
+    int dcomp = 0;
+    derive(name,time,*mf,dcomp);
+  }
+  else
+  {
+    mf = AmrLevel::derive(name,time,ngrow);
+  }
 
+  if (mf==0) {
+    std::string msg("HeatTransfer::derive(): unknown variable: ");
+    msg += name;
+    BoxLib::Error(msg.c_str());
+  }
+  return mf;
+}
+ 
 void
 HeatTransfer::derive (const std::string& name,
                       Real               time,
                       MultiFab&          mf,
                       int                dcomp)
 {
-    AmrLevel::derive(name,time,mf,dcomp);
+    if (name == "mean_progress_curvature")
+    {
+        // 
+        // Smooth the temperature, then use smoothed T to compute mean progress curvature
+        //
+
+        // Assert because we do not know how to un-convert the destination
+        //   and also, implicitly assume the convert that was used to build mf BA is trivial
+        BL_ASSERT(mf.boxArray()[0].ixType()==IndexType::TheCellType());
+
+        const DeriveRec* rec = derive_lst.get(name);
+
+        Box srcB = mf.boxArray()[0];
+        Box dstB = rec->boxMap()(srcB);
+
+        // Find nGrowSRC
+        int nGrowSRC = 0;
+        for ( ; !srcB.contains(dstB); ++nGrowSRC)
+        {
+            srcB.grow(1);
+        }
+        BL_ASSERT(nGrowSRC);  // Need grow cells for this to work!
+
+        MultiFab tmf(mf.boxArray(),1,nGrowSRC);
+        
+        for (FillPatchIterator fpi(*this,tmf,nGrowSRC,time,State_Type,Temp,1);
+             fpi.isValid();
+             ++fpi)
+        {
+            tmf[fpi.index()].copy(fpi());
+        }
+
+        int num_smooth_pre = 3;
+        bool do_corners = true;
+        
+        for (int i=0; i<num_smooth_pre; ++i)
+        {
+            // Fix up fine-fine and periodic
+            tmf.FillBoundary(0,1);
+            geom.FillPeriodicBoundary(tmf,0,1,do_corners);
+                        
+            for (MFIter mfi(tmf); mfi.isValid(); ++mfi)
+            {
+                // 
+                // Use result MultiFab for temporary container to hold smooth T field
+                // 
+                const Box& box = mfi.validbox();
+                FORT_SMOOTH(box.loVect(),box.hiVect(),
+                            tmf[mfi].dataPtr(),
+                            ARLIM(tmf[mfi].loVect()),ARLIM(tmf[mfi].hiVect()),
+                            mf[mfi].dataPtr(dcomp),
+                            ARLIM(mf[mfi].loVect()),ARLIM(mf[mfi].hiVect()));
+
+                // Set result back into slot for smoothed T, leave grow cells
+                tmf[mfi].copy(mf[mfi],box,dcomp,box,0,1);
+            }
+        }
+
+        tmf.FillBoundary(0,1);
+        geom.FillPeriodicBoundary(tmf,0,1,do_corners);
+
+        const Real* dx = geom.CellSize();
+        
+        FArrayBox nWork;
+        for (MFIter mfi(mf); mfi.isValid(); ++mfi)
+        {
+            const FArrayBox& Tg = tmf[mfi];
+            FArrayBox& MC = mf[mfi];
+            const Box& box = mfi.validbox();
+            const Box nodebox = BoxLib::surroundingNodes(box);
+            nWork.resize(nodebox,BL_SPACEDIM);
+            
+            FORT_MCURVE(box.loVect(),box.hiVect(),
+                        Tg.dataPtr(),ARLIM(Tg.loVect()),ARLIM(Tg.hiVect()),
+                        MC.dataPtr(dcomp),ARLIM(MC.loVect()),ARLIM(MC.hiVect()),
+                        nWork.dataPtr(),ARLIM(nWork.loVect()),ARLIM(nWork.hiVect()),
+                        dx);
+        }
+    } 
+    else
+    {
+#ifdef PARTICLES
+        ParticleDerive(name,time,mf,dcomp);
+#else
+        AmrLevel::derive(name,time,mf,dcomp);
+#endif
+    }
 }
 
 #ifdef PARTICLES
-MultiFab*
+void
 HeatTransfer::ParticleDerive(const std::string& name,
                              Real               time,
-                             int                ngrow)
+                             MultiFab&          mf,
+                             int                dcomp)
 {
     if (HTPC && name == "particle_count")
     {
-        MultiFab* derive_dat = new MultiFab(grids,1,0);
-        MultiFab    temp_dat(grids,1,0);
+        MultiFab temp_dat(grids,1,0);
         temp_dat.setVal(0);
         HTPC->Increment(temp_dat,level);
-        MultiFab::Copy(*derive_dat,temp_dat,0,0,1,0);
-        return derive_dat;
+        MultiFab::Copy(mf,temp_dat,0,dcomp,1,0);
     }
     else if (HTPC && name == "total_particle_count")
     {
         //
         // We want the total particle count at this level or higher.
         //
-        MultiFab* derive_dat = ParticleDerive("particle_count",time,ngrow);
+        ParticleDerive("particle_count",time,mf,dcomp);
 
         IntVect trr(D_DECL(1,1,1));
 
@@ -7044,14 +7236,12 @@ HeatTransfer::ParticleDerive(const std::string& name,
             dat.setVal(0);
             dat.copy(ctemp_dat);
 
-            MultiFab::Add(*derive_dat,dat,0,0,1,0);
+            MultiFab::Add(mf,dat,0,dcomp,1,0);
         }
-
-        return derive_dat;
     }
     else
     {
-        return AmrLevel::derive(name,time,ngrow);
+        AmrLevel::derive(name,time,mf,dcomp);
     }
 }
 #endif

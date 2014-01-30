@@ -21,67 +21,7 @@
 
 BEGIN_EXTERN_C
 
-#ifdef USE_FUTURE
-void interp_bnd(void *Q, void *Q0, void *Q2, void *Q4, 
-		void *F0, void *F2, void *F4, sdc_dtype dt, int m)
-{
-    MultiFab& U  = *((RNSEncap*)Q )->U;
-    MultiFab& U0 = *((RNSEncap*)Q0)->U;
-    MultiFab& U2 = *((RNSEncap*)Q2)->U;
-    MultiFab& U4 = *((RNSEncap*)Q4)->U; 
-    MultiFab& f0 = *((RNSEncap*)F0)->U;
-    MultiFab& f2 = *((RNSEncap*)F2)->U;
-    MultiFab& f4 = *((RNSEncap*)F4)->U;
-
-    int nc = U.nComp();
-    int ng = U.nGrow();
-
-    Real c0, c2, c4;
-    if (m == 1) {
-	c0 = ( 8./12.)*(0.25*dt);
-	c2 = ( 5./12.)*(0.25*dt);
-	c4 = (-1./12.)*(0.25*dt);
-    }
-    else if (m == 2) {
-	c0 = ( 5./12.)*(0.5*dt);
-	c2 = ( 8./12.)*(0.5*dt);
-	c4 = (-1./12.)*(0.5*dt);
-    }
-    else if (m == 3) {
-	c0 = (1./4.)*(0.75*dt);
-	c2 = (3./4.)*(0.75*dt);
-	c4 = 0.0;
-    }
-    else if (m == 4) {
-	c0 = (1./6.)*dt;
-	c2 = (4./6.)*dt;
-	c4 = (1./6.)*dt;
-    }
-    else {
-	std::cout << " m = " << m << std::endl;
-	BoxLib::Abort("interp_bnd: wrong m");
-    }
-
-    for (MFIter mfi(U); mfi.isValid(); ++mfi) {
-	int i = mfi.index();
-	const Box& gbox = U[i].box();
-	const Box& vbox = mfi.validbox();
-
-	FArrayBox Utmp(gbox, nc);
-	Utmp.copy(U0[i]);
-	Utmp.saxpy(c0, f0[i]);
-	Utmp.saxpy(c2, f2[i]);
-	Utmp.saxpy(c4, f4[i]);
-
-	// only want to overwrite boundaries of U
-	Utmp.saxpy(-1.0, U[i]);
-	Utmp.setVal(0.0, vbox, 0, nc);
-	U[i] += Utmp;
-    }
-}
-#endif
-
-void mf_encap_setval(void *Qptr, sdc_dtype val);
+void mf_encap_setval(void *Qptr, sdc_dtype val, const int flags);
 
 
 void *mf_encap_create(int type, void *encap_ctx)
@@ -113,7 +53,7 @@ void *mf_encap_create(int type, void *encap_ctx)
     break;
   }
 
-  mf_encap_setval(encap, 0.0);
+  mf_encap_setval(encap, 0.0, SDC_ENCAP_ALL);
   return encap;
 }
 
@@ -133,11 +73,16 @@ void mf_encap_setval_flux(FluxRegister& dst, sdc_dtype val)
       dst[face()][bfsi].setVal(val);
 }
 
-void mf_encap_setval(void *Qptr, sdc_dtype val)
+void mf_encap_setval(void *Qptr, sdc_dtype val, const int flags)
 {
   RNSEncap& Q = *((RNSEncap*) Qptr);
   MultiFab& U = *Q.U;
-  U.setVal(val, U.nGrow());
+
+  if ((flags & SDC_ENCAP_INTERIOR) && (flags & SDC_ENCAP_GHOST))
+    U.setVal(val, U.nGrow());
+  else
+    U.setVal(val, 0);
+
   if (Q.fine_flux) mf_encap_setval_flux(*Q.fine_flux, val);
   if (Q.crse_flux) mf_encap_setval_flux(*Q.crse_flux, val);
 }
@@ -156,13 +101,14 @@ void mf_encap_copy(void *dstp, const void *srcp, int flags)
   MultiFab& Udst = *Qdst.U;
   MultiFab& Usrc = *Qsrc.U;
 
-  int nghost = 0;
-  if (flags & SDC_COPY_GHOST) {
-      int ngsrc = Usrc.nGrow();
-      int ngdst = Udst.nGrow();
-      nghost = (ngdst < ngsrc) ? ngdst : ngsrc;
+  if ((flags & SDC_ENCAP_INTERIOR) && (flags & SDC_ENCAP_GHOST)) {
+    int ngsrc = Usrc.nGrow();
+    int ngdst = Udst.nGrow();
+    int nghost = (ngdst < ngsrc) ? ngdst : ngsrc;
+    MultiFab::Copy(Udst, Usrc, 0, 0, Usrc.nComp(), nghost);
+  } else {
+    MultiFab::Copy(Udst, Usrc, 0, 0, Usrc.nComp(), 0);
   }
-  MultiFab::Copy(Udst, Usrc, 0, 0, Usrc.nComp(), nghost);
 
   if (Qdst.fine_flux && Qsrc.fine_flux) mf_encap_copy_flux(*Qdst.fine_flux, *Qsrc.fine_flux);
   if (Qdst.crse_flux && Qsrc.crse_flux) mf_encap_copy_flux(*Qdst.crse_flux, *Qsrc.crse_flux);
@@ -180,7 +126,7 @@ void mf_encap_saxpy_flux(FluxRegister& y, sdc_dtype a, FluxRegister& x)
       y[face()][bfsi].saxpy(a, x[face()][bfsi]);
 }
 
-void mf_encap_saxpy(void *yp, sdc_dtype a, void *xp)
+void mf_encap_saxpy(void *yp, sdc_dtype a, void *xp, int flags)
 {
   RNSEncap& Qy = *((RNSEncap*) yp);
   RNSEncap& Qx = *((RNSEncap*) xp);

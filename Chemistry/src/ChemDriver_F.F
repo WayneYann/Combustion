@@ -1162,13 +1162,9 @@ c     Result in kg/kmole
       implicit none
 #include "cdwrk.H"
       REAL_T awt(*)
-#ifdef MIKE
       integer n
 c     Result in kg/kmole
       call CKAWT(IWRK(ckbi),RWRK(ckbr),awt)
-#else
-      call bl_abort("FORT_GETCKAWT not implemented")
-#endif
       end
 
       subroutine conpFY(N, TIME, Z, ZP, RPAR, IPAR)
