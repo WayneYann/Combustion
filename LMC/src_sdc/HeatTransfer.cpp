@@ -3447,7 +3447,7 @@ HeatTransfer::compute_differential_diffusion_fluxes (const Real& time,
 
 #if USE_WBAR
 
-    compute_Wbar_fluxes(time);
+    compute_Wbar_fluxes(time,0);
 
     // add grad Wbar fluxes (SpecDiffusionFluxWbar) to 
     // species diffusion fluxes (flux)
@@ -5740,7 +5740,8 @@ HeatTransfer::mac_sync ()
 }
 
 void
-HeatTransfer::compute_Wbar_fluxes(Real time)
+HeatTransfer::compute_Wbar_fluxes(Real time,
+				  Real inc)
 {
     MultiFab** betaWbar  = 0;
 
@@ -5862,7 +5863,7 @@ HeatTransfer::compute_Wbar_fluxes(Real time)
 			rhoDe.dataPtr(ispec), ARLIM(rhoDe.loVect()), ARLIM(rhoDe.hiVect()),
 			fluxfab.dataPtr(ispec), ARLIM(fluxfab.loVect()), ARLIM(fluxfab.hiVect()),
 			area.dataPtr(), ARLIM(area.loVect()), ARLIM(area.hiVect()),
-			&dx[d], &d, &mult);
+			&dx[d], &d, &mult, &inc);
 	}
       }
     }

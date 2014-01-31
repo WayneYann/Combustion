@@ -1910,7 +1910,7 @@ c     Get curvature at centers from nodal normal, get normal at centers
 
       subroutine FORT_GRADWBAR(lo, hi, Wbar, DIMS(Wbar),
      &     rDe, DIMS(rDe), flux, DIMS(flux),
-     &     area, DIMS(area), dx, dir, mult)
+     &     area, DIMS(area), dx, dir, mult, inc)
       implicit none
 #include <cdwrk.H>
       integer lo(SDIM), hi(SDIM)
@@ -1923,29 +1923,58 @@ c     Get curvature at centers from nodal normal, get normal at centers
       REAL_T  rDe(DIMV(rDe))
       REAL_T  flux(DIMV(flux))
       REAL_T  area(DIMV(area))
-      REAL_T  dx, mult
+      REAL_T  dx, mult, inc
 
       REAL_T Wgr, fac
       integer i,j
 
       fac = mult / dx
-      if (dir.eq.0) then
-         do j = lo(2),hi(2)
-            do i = lo(1),hi(1)+1
-               Wgr =   fac*(Wbar(i,j) - Wbar(i-1,j))
-               flux(i,j) = rDe(i,j) * Wgr * area(i,j)
+
+      if (inc .eq. 0) then
+
+!     compute grad wbar fluxes
+
+         if (dir.eq.0) then
+            do j = lo(2),hi(2)
+               do i = lo(1),hi(1)+1
+                  Wgr =   fac*(Wbar(i,j) - Wbar(i-1,j))
+                  flux(i,j) = rDe(i,j) * Wgr * area(i,j)
+               enddo
             enddo
-         enddo
-      else if (dir.eq.1) then
-         do j = lo(2),hi(2)+1
-            do i = lo(1),hi(1)
-               Wgr =   fac*(Wbar(i,j) - Wbar(i,j-1))
-               flux(i,j) = rDe(i,j) * Wgr * area(i,j)
+         else if (dir.eq.1) then
+            do j = lo(2),hi(2)+1
+               do i = lo(1),hi(1)
+                  Wgr =   fac*(Wbar(i,j) - Wbar(i,j-1))
+                  flux(i,j) = rDe(i,j) * Wgr * area(i,j)
+               enddo
             enddo
-         enddo
+         else
+            call bl_pd_abort('Bad dir in FORT_GRADWBAR')
+         endif
+
       else
-         call bl_pd_abort('Bad dir in FORT_GRADWBAR')
-      endif
+
+!     increment grad wbar fluxes by a factor of inc (can be negative)
+
+         if (dir.eq.0) then
+            do j = lo(2),hi(2)
+               do i = lo(1),hi(1)+1
+                  Wgr =   fac*(Wbar(i,j) - Wbar(i-1,j))
+                  flux(i,j) = flux(i,j) + inc * rDe(i,j) * Wgr * area(i,j)
+               enddo
+            enddo
+         else if (dir.eq.1) then
+            do j = lo(2),hi(2)+1
+               do i = lo(1),hi(1)
+                  Wgr =   fac*(Wbar(i,j) - Wbar(i,j-1))
+                  flux(i,j) = flux(i,j) + inc * rDe(i,j) * Wgr * area(i,j)
+               enddo
+            enddo
+         else
+            call bl_pd_abort('Bad dir in FORT_GRADWBAR')
+         endif
+      end if
+      
       end
 
       subroutine  FORT_RECOMP_UPDATE(lo, hi,

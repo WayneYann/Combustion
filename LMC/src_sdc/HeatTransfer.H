@@ -312,7 +312,8 @@ protected:
 						       Real      time,
 						       Real      dt);
 
-    void compute_Wbar_fluxes(Real time);
+    void compute_Wbar_fluxes(Real time,
+                             Real inc);
 
     enum YdotAction { HT_EstimateYdotNew, HT_ImproveYdotOld, HT_LeaveYdotAlone };
 
