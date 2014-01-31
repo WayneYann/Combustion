@@ -5331,26 +5331,129 @@ HeatTransfer::mac_sync ()
             // After exiting, SpecDiffusionFluxnp1 should contain rhoD grad (delta Y)^sync
             // Also, Ssync for species should contain rho^{n+1} * (delta Y)^sync
             //
-            differential_spec_diffuse_sync(dt);
+   	    differential_spec_diffuse_sync(dt,false);
 
 #if USE_WBAR
 
 	    // compute beta grad Wbar terms using the n+1,p state
 	    // store in SpecDiffusionFluxWbar
+	    compute_Wbar_fluxes(cur_time,0);
 
 	    // create an updated (but stil temporary) new state species
 	    // by adding Ssync plus DeltaSsync to the new state
+	    for (MFIter mfi(*Ssync); mfi.isValid(); ++mfi)
+	      {
+		const int i = mfi.index();
+		
+		int iconserved = -1;
+		
+		for (int istate = BL_SPACEDIM; istate < NUM_STATE; istate++)
+		  {
+		    if (istate != Density && advectionType[istate] == Conservative)
+		      {
+			iconserved++;
+	
+			// only actually update the species
+			if (istate >= first_spec && istate <= last_spec)
+			{
+			  (*Ssync)[i].plus((*DeltaSsync)[i],grids[i],iconserved,istate-BL_SPACEDIM,1);
+			}
+		      }
+		  }
+	      }
+	    for (MFIter mfi(S_new); mfi.isValid(); ++mfi)
+	      {
+		const int i = mfi.index();
+		
+		for (int sigma = 0; sigma < numscal; sigma++)
+		  {
+		    if (BL_SPACEDIM+sigma >= first_spec && BL_SPACEDIM+sigma <= last_spec)
+		      {
+			S_new[i].plus((*Ssync)[i],grids[i],sigma,BL_SPACEDIM+sigma,1);
+		      }
+		  }
+	      }
 
 	    // compute beta grad Wbar terms using the temporary new state
 	    // subtract these off from SpecDiffusionFluxWbar so it contains the delta
+	    compute_Wbar_fluxes(cur_time,-1);
 
-	    // take divergence of beta grad delta Wbar
+	    // subtract Ssync and DeltaSsync from the new state to restore the n+1,p state
+	    for (MFIter mfi(*Ssync); mfi.isValid(); ++mfi)
+	      {
+		const int i = mfi.index();
+		
+		int iconserved = -1;
+		
+		for (int istate = BL_SPACEDIM; istate < NUM_STATE; istate++)
+		  {
+		    if (istate != Density && advectionType[istate] == Conservative)
+		      {
+			iconserved++;
+	
+			// only actually update the species
+			if (istate >= first_spec && istate <= last_spec)
+			{
+			  (*Ssync)[i].minus((*DeltaSsync)[i],grids[i],iconserved,istate-BL_SPACEDIM,1);
+			}
+		      }
+		  }
+	      }
+	    for (MFIter mfi(S_new); mfi.isValid(); ++mfi)
+	      {
+		const int i = mfi.index();
+		
+		for (int sigma = 0; sigma < numscal; sigma++)
+		  {
+		    if (BL_SPACEDIM+sigma >= first_spec && BL_SPACEDIM+sigma <= last_spec)
+		      {
+			S_new[i].minus((*Ssync)[i],grids[i],sigma,BL_SPACEDIM+sigma,1);
+		      }
+		  }
+	      }
+
+	    // take divergence of beta grad delta Wbar and multiply divergence by dt/2
+	    MultiFab DWbar(grids,nspecies,nGrowAdvForcing);
+	    MultiFab* const * fluxWbar = SpecDiffusionFluxWbar;
+	    flux_divergence(DWbar,0,fluxWbar,0,nspecies,-1);
+	    DWbar.mult(dt/2.0);
 
 	    // reset Ssync to be the same RHS as above, but with the (dt/2) div beta grad delta Wbar term
 	    // use the code above, but add on the grad delta Wbar term
+	    for (MFIter mfi(S_new); mfi.isValid(); ++mfi)
+	    {
+	      const int  i   = mfi.index();
+	      const Box& grd = grids[i];
+	      const FArrayBox& DWbarFab = DWbar[mfi];
+		
+	      int iconserved = -1;
+		
+	      for (int istate = BL_SPACEDIM; istate < NUM_STATE; istate++)
+	      {
+		if (istate != Density && advectionType[istate] == Conservative)
+		{
+		  iconserved++;
+		  if (istate >= first_spec && istate <= last_spec)
+		  {
+		    delta_ssync.resize(grd,1);
+		    delta_ssync.copy(S_new[i],grd,istate,grd,0,1); // delta_ssync = (rho*q)^{n+1,p}
+		    delta_ssync.divide(S_new[i],grd,Density,0,1); // delta_ssync = q^{n+1,p}
+		    FArrayBox& s_sync = (*Ssync)[i]; // Ssync = RHS of Eq (18), (19) without the q^{n+1,p} * (delta rho)^sync terms
+		    delta_ssync.mult(s_sync,grd,Density-BL_SPACEDIM,0,1); // delta_ssync = q^{n+1,p} * (delta rho)^sync
+		    (*DeltaSsync)[i].copy(delta_ssync,grd,0,grd,iconserved,1); // DeltaSsync = q^{n+1,p} * (delta rho)^sync
+		    s_sync.minus(delta_ssync,grd,0,istate-BL_SPACEDIM,1); // Ssync = Ssync - q^{n+1,p} * (delta rho)^sync
+		    s_sync.plus(DWbarFab,grd,istate-first_spec,istate-BL_SPACEDIM,1); // add grad delta Wbar terms
+		  }
+		}
+	      }
+	    }
+	    
+	    delta_ssync.clear();
 
 	    // call differential_spec_diffuse_sync again, but this time the conservative
 	    // correction needs to be the sum of the delta Y_m and SpecDiffusionFluxWbar terms
+	    // FIXME
+            differential_spec_diffuse_sync(dt, true);
 
 #endif
 
@@ -5873,7 +5976,8 @@ HeatTransfer::compute_Wbar_fluxes(Real time,
 }
 
 void
-HeatTransfer::differential_spec_diffuse_sync (Real dt)
+HeatTransfer::differential_spec_diffuse_sync (Real dt,
+                                              bool Wbar_corrector)
 {
   
   // Diffuse the species syncs such that sum(SpecDiffSyncFluxes) = 0
@@ -5956,8 +6060,17 @@ HeatTransfer::differential_spec_diffuse_sync (Real dt)
 #ifdef USE_WBAR
 
     // if in the Wbar corrector, add the grad delta Wbar fluxes
-
-
+    if (Wbar_corrector)
+    {
+      for (int d=0; d<BL_SPACEDIM; ++d)
+	{
+	  for (MFIter mfi(*SpecDiffusionFluxWbar[d]); mfi.isValid(); ++mfi)
+	    {
+	      const Box& ebox = (*SpecDiffusionFluxWbar[d])[mfi].box();
+	      (*SpecDiffusionFluxnp1[d])[mfi].plus((*SpecDiffusionFluxWbar[d])[mfi],ebox,0,0,nspecies);
+	    }
+	}
+    }
 
 #endif
 
