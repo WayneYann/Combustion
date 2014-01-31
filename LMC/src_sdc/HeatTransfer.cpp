@@ -5335,9 +5335,16 @@ HeatTransfer::mac_sync ()
 
 #if USE_WBAR
 
+	    for (int dir=0; dir<BL_SPACEDIM; ++dir)
+	    {
+	      (*SpecDiffusionFluxWbar)[dir].setVal(0.);
+	    }
+
 	    // compute beta grad Wbar terms using the n+1,p state
+	    // we want this to have a negative sign since we will add
+	    // the beta grad Wbar terms using the updated state later to create the delta
 	    // store in SpecDiffusionFluxWbar
-	    compute_Wbar_fluxes(cur_time,0);
+	    compute_Wbar_fluxes(cur_time,-1);
 
 	    // create an updated (but stil temporary) new state species
 	    // by adding Ssync plus DeltaSsync to the new state
@@ -5354,6 +5361,7 @@ HeatTransfer::mac_sync ()
 			iconserved++;
 	
 			// only actually update the species
+			// this is the Y_m^{n+1,p} * delta rho^sync piece
 			if (istate >= first_spec && istate <= last_spec)
 			{
 			  (*Ssync)[i].plus((*DeltaSsync)[i],grids[i],iconserved,istate-BL_SPACEDIM,1);
@@ -5367,6 +5375,8 @@ HeatTransfer::mac_sync ()
 		
 		for (int sigma = 0; sigma < numscal; sigma++)
 		  {
+		    // only actually update the species
+		    // this is the rho^{n+1} * delta Y^sync piece
 		    if (BL_SPACEDIM+sigma >= first_spec && BL_SPACEDIM+sigma <= last_spec)
 		      {
 			S_new[i].plus((*Ssync)[i],grids[i],sigma,BL_SPACEDIM+sigma,1);
@@ -5375,8 +5385,8 @@ HeatTransfer::mac_sync ()
 	      }
 
 	    // compute beta grad Wbar terms using the temporary new state
-	    // subtract these off from SpecDiffusionFluxWbar so it contains the delta
-	    compute_Wbar_fluxes(cur_time,-1);
+	    // add these to SpecDiffusionFluxWbar so it contains the delta
+	    compute_Wbar_fluxes(cur_time,1);
 
 	    // subtract Ssync and DeltaSsync from the new state to restore the n+1,p state
 	    for (MFIter mfi(*Ssync); mfi.isValid(); ++mfi)
@@ -5392,6 +5402,7 @@ HeatTransfer::mac_sync ()
 			iconserved++;
 	
 			// only actually update the species
+			// this is the Y_m^{n+1,p} * delta rho^sync piece
 			if (istate >= first_spec && istate <= last_spec)
 			{
 			  (*Ssync)[i].minus((*DeltaSsync)[i],grids[i],iconserved,istate-BL_SPACEDIM,1);
@@ -5405,6 +5416,8 @@ HeatTransfer::mac_sync ()
 		
 		for (int sigma = 0; sigma < numscal; sigma++)
 		  {
+		    // only actually update the species
+		    // this is the rho^{n+1} * delta Y^sync piece
 		    if (BL_SPACEDIM+sigma >= first_spec && BL_SPACEDIM+sigma <= last_spec)
 		      {
 			S_new[i].minus((*Ssync)[i],grids[i],sigma,BL_SPACEDIM+sigma,1);
