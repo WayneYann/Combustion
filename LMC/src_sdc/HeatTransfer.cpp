@@ -6111,9 +6111,6 @@ HeatTransfer::differential_spec_diffuse_sync (Real dt,
             
             efab[d].copy((*SpecDiffusionFluxnp1[d])[mfi],ebox,0,ebox,0,nspecies);
             efab[d].mult(be_cn_theta);
-
-	    std::cout << "be_cn_theta " << be_cn_theta << std::endl;
-
         }
 
         update.resize(box,nspecies);
