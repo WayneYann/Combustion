@@ -312,6 +312,8 @@ protected:
 						       Real      time,
 						       Real      dt);
 
+    void compute_Wbar_fluxes(Real time);
+
     enum YdotAction { HT_EstimateYdotNew, HT_ImproveYdotOld, HT_LeaveYdotAlone };
 
     virtual void advance_chemistry (MultiFab&       mf_old,
