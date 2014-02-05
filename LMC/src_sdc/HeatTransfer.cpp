@@ -2043,6 +2043,23 @@ HeatTransfer::post_timestep (int crse_iteration)
                     const int cComp = pComp - 1;
                     tmf.setBndry(0,cComp,1);
                     MultiFab::Copy(tmf,MC,0,cComp,1,0);
+                    //
+                    // We want to guarantee that if do_curvature_sample is enabled
+                    // that "mean_progress_curvature" actually makes it into
+                    // the list of indices to be output.  This way folks don't have
+                    // to try and figure out the proper "timestamp_indices" to set.
+                    //
+                    static bool first = true;
+                    if (first)
+                    {
+                        first = false;
+                        bool found = false;
+                        for (int i = 0, N = timestamp_indices.size(); i < N; i++)
+                            if (timestamp_indices[i] == cComp)
+                                found = true;
+                        if (!found)
+                            timestamp_indices.push_back(cComp);
+                    }
                 }
 
                 for (FillPatchIterator fpi(amr,tmf,2,curr_time,State_Type,0,mf.nComp());
