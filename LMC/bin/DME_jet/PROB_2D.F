@@ -26,7 +26,8 @@
 
 c     A diffusion flame
          fuelZone = getZone(0.d0, domnlo(2))
-         airZone  = getZone(domnlo(1), domnlo(2))
+c        airZone  = getZone(domnlo(1), domnlo(2))
+         airZone  = getZone(domnhi(1), domnlo(2))
          num_zones_defined = 2
 
 c     Fuel
@@ -127,7 +128,8 @@ c ::: -----------------------------------------------------------
          
       if (probtype(1:len).eq.BL_PROB_JET_DIFFUSION) then
          
-         if (x .ge. -splitx) then
+c        if (x .ge. -splitx) then
+         if (x .ge. splitx) then
             getZone = BL_AMBIENT
          else
             getZone = BL_FUELPIPE
@@ -156,7 +158,7 @@ c ::: -----------------------------------------------------------
 #include <probdata.H>
 
       integer n, getZone, airZone,fuelZone, len
-      REAL_T eta, sigma, pi
+      REAL_T eta, sigma, pi, eta1
       data dimloc / 1,  1 /
 
       if (.not. bcinit) then
@@ -169,11 +171,18 @@ c ::: -----------------------------------------------------------
 
          if (RegionID .eq. BL_YLO) then
             fuelZone = getZone(0.d0, domnlo(2))
-            airZone  = getZone(domnlo(1), domnlo(2))
+            airZone  = getZone(domnhi(1), domnlo(2))
+c           airZone  = getZone(domnlo(1), domnlo(2))
 
-            sigma = 2.5d0*xfrontw*splitx
-            eta = 0.5d0 * ( tanh((x + splitx)/sigma) 
-     &                    - tanh((x - splitx)/sigma))
+c           sigma = 2.5d0*xfrontw*splitx
+c           eta = 0.5d0 * ( tanh((x + splitx)/sigma) 
+c    &                    - tanh((x - splitx)/sigma))
+c           eta = 0.5d0 * ( 1.d0 -  tanh(2.d0*(abs(x) - splitx)/Tfrontw))
+c           eta1 = 0.5d0 * ( 1.d0 -  tanh(2.d0*(abs(x) - blobr)/xfrontw))
+                  eta = 0.5d0 * (tanh((x + splitx)/Tfrontw) 
+     &                         - tanh((x - splitx)/Tfrontw))
+                  eta1 = 0.5d0 * (tanh((x + blobr)/xfrontw) 
+     &                         - tanh((x - blobr)/xfrontw))
                   
             do n=1,Nspec
               Yl(n-1) = Y_bc(n-1,airZone)*(1.d0-eta)
@@ -197,14 +206,17 @@ c           h = h_bc(airZone)*(1.d0-eta) + eta*h_bc(fuelZone)
 
             if (getuv .eqv. .TRUE.) then
 
-              u = u_bc(airZone)*(1.d0-eta) + eta*u_bc(fuelZone)
-              v = v_bc(airZone)*(1.d0-eta) + eta*v_bc(fuelZone)
+c             u = u_bc(airZone)*(1.d0-eta) + eta*u_bc(fuelZone)
+c             v = v_bc(airZone)*(1.d0-eta) + eta*v_bc(fuelZone)
+              u = u_bc(airZone)*(1.d0-eta1) + eta1*u_bc(fuelZone)
+              v = v_bc(airZone)*(1.d0-eta1) + eta1*v_bc(fuelZone)
 
-              if (.not. forceInflow) then
-                 ! sinusoidal variation of inflow
-                 pi = 4.d0*atan(1.d0)
-                 v = v + 10.d0*eta*sin(2.d0*pi*x/(domnhi(1)-domnlo(1)))*sin(2.d0*pi*time/1.d-5)
-              end if
+c JBB turn off sinusoidal variaition
+c             if (.not. forceInflow) then
+c                ! sinusoidal variation of inflow
+c                pi = 4.d0*atan(1.d0)
+c                v = v + 10.d0*eta*sin(2.d0*pi*x/(domnhi(1)-domnlo(1)))*sin(2.d0*pi*time/1.d-5)
+c             end if
 
             endif
 
@@ -320,14 +332,15 @@ c ::: -----------------------------------------------------------
 #include <probdata.H>
 
       integer i, j, n, airZone, fuelZone, getZone, len
-      REAL_T x, y, r, Patm, sigma, FORT_P1ATMMKS,eta
+      REAL_T x, y, r, Patm, sigma, FORT_P1ATMMKS,eta,eta1
 
       len = len_trim(probtype)
            
       if ((probtype(1:len).eq.BL_PROB_JET_DIFFUSION)) then
 
          fuelZone = getZone(0.d0, domnlo(2))
-         airZone  = getZone(domnlo(1), domnlo(2))
+         airZone  = getZone(domnhi(1), domnlo(2))
+c        airZone  = getZone(domnlo(1), domnlo(2))
 
          sigma = 2.5d0*xfrontw*splitx
 
@@ -343,15 +356,24 @@ c              if (blobr.lt.0) then
 
                   eta = 0.5d0 * (tanh((x + splitx)/sigma) 
      &                         - tanh((x - splitx)/sigma))
+c           eta = 0.5d0 * ( 1.d0 -  tanh(2.d0*(abs(x) - splitx)/Tfrontw))
+c           eta1 = 0.5d0 * ( 1.d0 -  tanh(2.d0*(abs(x) - blobr)/xfrontw))
+                  eta = 0.5d0 * (tanh((x + splitx)/Tfrontw) 
+     &                         - tanh((x - splitx)/Tfrontw))
+                  eta1 = 0.5d0 * (tanh((x + blobr)/xfrontw) 
+     &                         - tanh((x - blobr)/xfrontw))
                   
                   do n=1,Nspec
                    scal(i,j,FirstSpec-1+n) = Y_bc(n-1,airZone)*(1.d0-eta)
      &                  + eta*Y_bc(n-1,fuelZone)
                   enddo
                   scal(i,j,Temp) = T_bc(airZone)*(1.d0-eta) + eta*T_bc(fuelZone)
-                  vel(i,j,1) = u_bc(airZone)*(1.d0-eta) + eta*u_bc(fuelZone)
-                  vel(i,j,2) = v_bc(airZone)*(1.d0-eta) + eta*v_bc(fuelZone)
+                  vel(i,j,1) = u_bc(airZone)*(1.d0-eta1) + eta1*u_bc(fuelZone)
+                  vel(i,j,2) = v_bc(airZone)*(1.d0-eta1) + eta1*v_bc(fuelZone)
                   scal(i,j,Trac) = 0.d0
+c                 if(j.eq.0)then
+c                     write(6,*)"data",i,x,eta,eta1,vel(i,j,2)
+c                 endif
 c                 
 c                 eta = 0.5d0*(1.d0 - TANH(-2.d0*(y-bloby)/Tfrontw))
 c                 do n=1,Nspec
@@ -380,8 +402,8 @@ c     Superimpose blob of hot air
 c                 vel(i,j,1) = 0.d0
 c                 vel(i,j,2) = v_bc(airZone)
                   
-                  vel(i,j,1) = u_bc(airZone)*eta + (1.d0-eta)*u_bc(fuelZone)
-                  vel(i,j,2) = v_bc(airZone)*eta + (1.d0-eta)*v_bc(fuelZone)
+c                 vel(i,j,1) = u_bc(airZone)*eta + (1.d0-eta)*u_bc(fuelZone)
+c                 vel(i,j,2) = v_bc(airZone)*eta + (1.d0-eta)*v_bc(fuelZone)
 c                 scal(i,j,Trac) = 0.d0
                   
                endif

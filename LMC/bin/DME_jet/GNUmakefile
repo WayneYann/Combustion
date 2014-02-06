@@ -8,17 +8,18 @@ COMBUSTION_DIR = ${TOP}/Combustion
 #
 
 PRECISION       = DOUBLE
-DEBUG           = FALSE
 DEBUG           = TRUE
-DIM             = 2
+DEBUG           = FALSE
 DIM             = 3
+DIM             = 2
 COMP            = g++
 FCOMP           = gfortran
-USE_MPI         = TRUE
 USE_MPI         = FALSE
 USE_OMP         = FALSE
+USE_MPI         = TRUE
 USE_F90_SOLVERS = TRUE
 VERBOSE         = FALSE
+VERBOSE         = TRUE
 
 # Enable SDC code - add .SDC to executable
 # and compile in the #ifdef LMC_SDC
@@ -26,7 +27,7 @@ USE_LMC_SDC = FALSE
 USE_LMC_SDC = TRUE
 
 # Enable flctin namelist
-USE_FLCTS       = TRUE
+#USE_FLCTS       = TRUE
 
 USE_PARTICLES   = FALSE
 
