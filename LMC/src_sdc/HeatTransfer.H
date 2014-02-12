@@ -305,12 +305,16 @@ protected:
     // advance functions
     //
     virtual void set_reasonable_grow_cells_for_R(Real time);
-    virtual void differential_spec_diffuse_sync (Real dt);
+    virtual void differential_spec_diffuse_sync (Real dt,
+					         bool Wbar_corrector);
     virtual void compute_differential_diffusion_terms (MultiFab& D,
                                                        MultiFab& DD,
 						       MultiFab& DWbar,
 						       Real      time,
 						       Real      dt);
+
+    void compute_Wbar_fluxes(Real time,
+                             Real inc);
 
     enum YdotAction { HT_EstimateYdotNew, HT_ImproveYdotOld, HT_LeaveYdotAlone };
 

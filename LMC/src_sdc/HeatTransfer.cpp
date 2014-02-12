@@ -2043,6 +2043,23 @@ HeatTransfer::post_timestep (int crse_iteration)
                     const int cComp = pComp - 1;
                     tmf.setBndry(0,cComp,1);
                     MultiFab::Copy(tmf,MC,0,cComp,1,0);
+                    //
+                    // We want to guarantee that if do_curvature_sample is enabled
+                    // that "mean_progress_curvature" actually makes it into
+                    // the list of indices to be output.  This way folks don't have
+                    // to try and figure out the proper "timestamp_indices" to set.
+                    //
+                    static bool first = true;
+                    if (first)
+                    {
+                        first = false;
+                        bool found = false;
+                        for (int i = 0, N = timestamp_indices.size(); i < N; i++)
+                            if (timestamp_indices[i] == cComp)
+                                found = true;
+                        if (!found)
+                            timestamp_indices.push_back(cComp);
+                    }
                 }
 
                 for (FillPatchIterator fpi(amr,tmf,2,curr_time,State_Type,0,mf.nComp());
@@ -3337,21 +3354,14 @@ HeatTransfer::compute_differential_diffusion_fluxes (const Real& time,
     const Real b         = 1;
     const int  rho_flag  = 2;
     MultiFab** beta      = 0;
-    MultiFab** betaWbar  = 0;
     MultiFab&  S         = get_data(State_Type,time);
 
     // allocate edge-beta for species, RhoH, and Temp
     diffusion->allocFluxBoxesLevel(beta,0,nspecies+2);
 
-    // allocate edge-beta for Wbar
-    diffusion->allocFluxBoxesLevel(betaWbar,0,nspecies);
-
     // average transport coefficients for species, RhoH, and Temp to edges
     getDiffusivity(beta, time, first_spec, 0, nspecies+1);
     getDiffusivity(beta, time, Temp, nspecies+1, 1);
-
-    // average transport coefficients for Wbar to edges
-    getDiffusivity_Wbar(betaWbar,time);
 
     showMF("dd",S,"dd_preFP",level);
     //
@@ -3452,92 +3462,9 @@ HeatTransfer::compute_differential_diffusion_fluxes (const Real& time,
     for (int d=0; d < BL_SPACEDIM; ++d)
         flux[d]->mult(b/geom.CellSize()[d],0,nspecies+1);
 
-    int nGrowOp = 1;
-
-    FArrayBox tmp;
-    MultiFab rho_and_species(grids,nspecies+1,nGrowOp);
-
-    for (FillPatchIterator fpi(*this,rho_and_species,nGrowOp,time,State_Type,Density,nspecies+1);
-         fpi.isValid();
-	 ++fpi)
-    {
-      FArrayBox& rho_and_spec = rho_and_species[fpi];
-      rho_and_spec.copy(fpi(),0,0,nspecies+1);
-
-      tmp.resize(rho_and_spec.box(),1);
-      tmp.copy(rho_and_spec,0,0,1);
-      tmp.invert(1);
-
-      for (int comp = 0; comp < nspecies; ++comp) 
-	rho_and_spec.mult(tmp,0,comp+1,1);
-    }
-
 #if USE_WBAR
-    // add in grad wbar term
-    MultiFab Wbar;
 
-    Wbar.define(grids,1,nGrowOp,Fab_allocate);
-
-    for (MFIter mfi(rho_and_species); mfi.isValid(); ++mfi)
-    {
-      const Box gbox = Box(mfi.validbox()).grow(nGrowOp);
-      getChemSolve().getMwmixGivenY(Wbar[mfi],rho_and_species[mfi],gbox,1,0);
-    }
-
-    //
-    // Here, we'll use the same LinOp as Y for filling grow cells.
-    //
-    const Real* dx    = geom.CellSize();
-    const BCRec& bc = get_desc_lst()[State_Type].getBC(first_spec);
-    ViscBndry*     bndry   = new ViscBndry(grids,1,geom);
-    ABecLaplacian* visc_op = new ABecLaplacian(bndry,dx);
-
-    visc_op->maxOrder(diffusion->maxOrder());
-
-    if (level == 0)
-    {
-      bndry->setBndryValues(Wbar,0,0,1,bc);
-    }
-    else
-    {
-      BoxLib::Error("Wbar doesn't work for multilevel yet");
-    }
-
-    visc_op->setScalars(0,1);
-    visc_op->bCoefficients(1);
-    visc_op->applyBC(Wbar,0,1,0,LinOp::Inhomogeneous_BC);
-
-    delete visc_op;
-    
-    FArrayBox area;
-
-    for (MFIter mfi(Wbar); mfi.isValid(); ++mfi)
-    {
-      const int        i    = mfi.index();
-      const Box&       vbox = mfi.validbox();
-      const FArrayBox& wbar = Wbar[i];
-      const Real       mult = -1.0;
-
-      for (int d=0; d<BL_SPACEDIM; ++d) 
-      {
-	const FArrayBox& rhoDe = (*betaWbar[d])[i];
-	FArrayBox&       fluxfab  = (*SpecDiffusionFluxWbar[d])[i];
-		  
-	area.resize(BoxLib::surroundingNodes(grids[i],d),1);
-	geom.GetFaceArea(area,grids,i,d,GEOM_GROW);
-	
-	for (int ispec=0; ispec<nspecies; ++ispec)
-	{
-	  FORT_GRADWBAR(vbox.loVect(), vbox.hiVect(),
-			wbar.dataPtr(), ARLIM(wbar.loVect()),ARLIM(wbar.hiVect()),
-			rhoDe.dataPtr(ispec), ARLIM(rhoDe.loVect()), ARLIM(rhoDe.hiVect()),
-			fluxfab.dataPtr(ispec), ARLIM(fluxfab.loVect()), ARLIM(fluxfab.hiVect()),
-			area.dataPtr(), ARLIM(area.loVect()), ARLIM(area.hiVect()),
-			&dx[d], &d, &mult);
-	}
-      }
-    }
-    Wbar.clear();
+    compute_Wbar_fluxes(time,0);
 
     // add grad Wbar fluxes (SpecDiffusionFluxWbar) to 
     // species diffusion fluxes (flux)
@@ -3610,7 +3537,6 @@ HeatTransfer::compute_differential_diffusion_fluxes (const Real& time,
     compute_enthalpy_fluxes(time,beta);
 
     diffusion->removeFluxBoxesLevel(beta);
-    diffusion->removeFluxBoxesLevel(betaWbar);
     //
     // AJN FLUXREG
     // We have just computed "DD" given an input state.
@@ -4570,7 +4496,7 @@ HeatTransfer::advance (Real time,
       {
         int consumptionComp = getChemSolve().index(consumptionName[j]);
         MultiFab::Copy((*auxDiag["CONSUMPTION"]),get_new_data(RhoYdot_Type),consumptionComp,j,1,0);
-        auxDiag["CONSUMPTION"]->mult(-1); // Convert production to consumption
+        auxDiag["CONSUMPTION"]->mult(-1,j,1); // Convert production to consumption
       }
     }
 
@@ -5422,7 +5348,144 @@ HeatTransfer::mac_sync ()
             // After exiting, SpecDiffusionFluxnp1 should contain rhoD grad (delta Y)^sync
             // Also, Ssync for species should contain rho^{n+1} * (delta Y)^sync
             //
-            differential_spec_diffuse_sync(dt);
+   	    differential_spec_diffuse_sync(dt,false);
+
+#if USE_WBAR
+
+	    for (int dir=0; dir<BL_SPACEDIM; ++dir)
+	    {
+	      (*SpecDiffusionFluxWbar)[dir].setVal(0.);
+	    }
+
+	    // compute beta grad Wbar terms using the n+1,p state
+	    // we want this to have a negative sign since we will add
+	    // the beta grad Wbar terms using the updated state later to create the delta
+	    // store in SpecDiffusionFluxWbar
+	    compute_Wbar_fluxes(cur_time,-1);
+
+	    // create an updated (but stil temporary) new state species
+	    // by adding Ssync plus DeltaSsync to the new state
+	    for (MFIter mfi(*Ssync); mfi.isValid(); ++mfi)
+	      {
+		const int i = mfi.index();
+		
+		int iconserved = -1;
+		
+		for (int istate = BL_SPACEDIM; istate < NUM_STATE; istate++)
+		  {
+		    if (istate != Density && advectionType[istate] == Conservative)
+		      {
+			iconserved++;
+	
+			// only actually update the species
+			// this is the Y_m^{n+1,p} * delta rho^sync piece
+			if (istate >= first_spec && istate <= last_spec)
+			{
+			  (*Ssync)[i].plus((*DeltaSsync)[i],grids[i],iconserved,istate-BL_SPACEDIM,1);
+			}
+		      }
+		  }
+	      }
+	    for (MFIter mfi(S_new); mfi.isValid(); ++mfi)
+	      {
+		const int i = mfi.index();
+		
+		for (int sigma = 0; sigma < numscal; sigma++)
+		  {
+		    // only actually update the species
+		    // this is the rho^{n+1} * delta Y^sync piece
+		    if (BL_SPACEDIM+sigma >= first_spec && BL_SPACEDIM+sigma <= last_spec)
+		      {
+			S_new[i].plus((*Ssync)[i],grids[i],sigma,BL_SPACEDIM+sigma,1);
+		      }
+		  }
+	      }
+
+	    // compute beta grad Wbar terms using the temporary new state
+	    // add these to SpecDiffusionFluxWbar so it contains the delta
+	    compute_Wbar_fluxes(cur_time,1);
+
+	    // subtract Ssync and DeltaSsync from the new state to restore the n+1,p state
+	    for (MFIter mfi(*Ssync); mfi.isValid(); ++mfi)
+	      {
+		const int i = mfi.index();
+		
+		int iconserved = -1;
+		
+		for (int istate = BL_SPACEDIM; istate < NUM_STATE; istate++)
+		  {
+		    if (istate != Density && advectionType[istate] == Conservative)
+		      {
+			iconserved++;
+	
+			// only actually update the species
+			// this is the Y_m^{n+1,p} * delta rho^sync piece
+			if (istate >= first_spec && istate <= last_spec)
+			{
+			  (*Ssync)[i].minus((*DeltaSsync)[i],grids[i],iconserved,istate-BL_SPACEDIM,1);
+			}
+		      }
+		  }
+	      }
+	    for (MFIter mfi(S_new); mfi.isValid(); ++mfi)
+	      {
+		const int i = mfi.index();
+		
+		for (int sigma = 0; sigma < numscal; sigma++)
+		  {
+		    // only actually update the species
+		    // this is the rho^{n+1} * delta Y^sync piece
+		    if (BL_SPACEDIM+sigma >= first_spec && BL_SPACEDIM+sigma <= last_spec)
+		      {
+			S_new[i].minus((*Ssync)[i],grids[i],sigma,BL_SPACEDIM+sigma,1);
+		      }
+		  }
+	      }
+
+	    // take divergence of beta grad delta Wbar and multiply divergence by dt/2
+	    MultiFab DWbar(grids,nspecies,nGrowAdvForcing);
+	    MultiFab* const * fluxWbar = SpecDiffusionFluxWbar;
+	    flux_divergence(DWbar,0,fluxWbar,0,nspecies,-1);
+	    DWbar.mult(dt/2.0);
+
+	    // reset Ssync to be the same RHS as above, but with the (dt/2) div beta grad delta Wbar term
+	    // use the code above, but add on the grad delta Wbar term
+	    for (MFIter mfi(S_new); mfi.isValid(); ++mfi)
+	    {
+	      const int  i   = mfi.index();
+	      const Box& grd = grids[i];
+	      const FArrayBox& DWbarFab = DWbar[mfi];
+		
+	      int iconserved = -1;
+		
+	      for (int istate = BL_SPACEDIM; istate < NUM_STATE; istate++)
+	      {
+		if (istate != Density && advectionType[istate] == Conservative)
+		{
+		  iconserved++;
+		  if (istate >= first_spec && istate <= last_spec)
+		  {
+		    delta_ssync.resize(grd,1);
+		    delta_ssync.copy(S_new[i],grd,istate,grd,0,1); // delta_ssync = (rho*q)^{n+1,p}
+		    delta_ssync.divide(S_new[i],grd,Density,0,1); // delta_ssync = q^{n+1,p}
+		    FArrayBox& s_sync = (*Ssync)[i]; // Ssync = RHS of Eq (18), (19) without the q^{n+1,p} * (delta rho)^sync terms
+		    delta_ssync.mult(s_sync,grd,Density-BL_SPACEDIM,0,1); // delta_ssync = q^{n+1,p} * (delta rho)^sync
+		    (*DeltaSsync)[i].copy(delta_ssync,grd,0,grd,iconserved,1); // DeltaSsync = q^{n+1,p} * (delta rho)^sync
+		    s_sync.minus(delta_ssync,grd,0,istate-BL_SPACEDIM,1); // Ssync = Ssync - q^{n+1,p} * (delta rho)^sync
+		    s_sync.plus(DWbarFab,grd,istate-first_spec,istate-BL_SPACEDIM,1); // add grad delta Wbar terms
+		  }
+		}
+	      }
+	    }
+	    
+	    delta_ssync.clear();
+
+	    // call differential_spec_diffuse_sync again, but this time the conservative
+	    // correction needs to be the sum of the delta Y_m and SpecDiffusionFluxWbar terms
+	    // FIXME
+            differential_spec_diffuse_sync(dt, true);
+
+#endif
 
             const Real cur_time  = state[State_Type].curTime();
             const Real a = 1.0;     // Passed around, but not used
@@ -5810,7 +5873,141 @@ HeatTransfer::mac_sync ()
 }
 
 void
-HeatTransfer::differential_spec_diffuse_sync (Real dt)
+HeatTransfer::compute_Wbar_fluxes(Real time,
+				  Real inc)
+{
+    MultiFab** betaWbar  = 0;
+
+    // allocate edge-beta for Wbar
+    diffusion->allocFluxBoxesLevel(betaWbar,0,nspecies);
+
+    // average transport coefficients for Wbar to edges
+    getDiffusivity_Wbar(betaWbar,time);
+
+    int nGrowOp = 1;
+
+    FArrayBox tmp;
+    MultiFab rho_and_species(grids,nspecies+1,nGrowOp);
+
+    for (FillPatchIterator fpi(*this,rho_and_species,nGrowOp,time,State_Type,Density,nspecies+1);
+         fpi.isValid();
+	 ++fpi)
+    {
+      FArrayBox& rho_and_spec = rho_and_species[fpi];
+      rho_and_spec.copy(fpi(),0,0,nspecies+1);
+
+      tmp.resize(rho_and_spec.box(),1);
+      tmp.copy(rho_and_spec,0,0,1);
+      tmp.invert(1);
+
+      for (int comp = 0; comp < nspecies; ++comp) 
+	rho_and_spec.mult(tmp,0,comp+1,1);
+    }
+
+    // add in grad wbar term
+    MultiFab Wbar;
+
+    Wbar.define(grids,1,nGrowOp,Fab_allocate);
+
+    for (MFIter mfi(rho_and_species); mfi.isValid(); ++mfi)
+    {
+      const Box gbox = Box(mfi.validbox()).grow(nGrowOp);
+      getChemSolve().getMwmixGivenY(Wbar[mfi],rho_and_species[mfi],gbox,1,0);
+    }
+
+    //
+    // Here, we'll use the same LinOp as Y for filling grow cells.
+    //
+    const Real* dx    = geom.CellSize();
+    const BCRec& bc = get_desc_lst()[State_Type].getBC(first_spec);
+    ViscBndry*     bndry   = new ViscBndry(grids,1,geom);
+    ABecLaplacian* visc_op = new ABecLaplacian(bndry,dx);
+
+    visc_op->maxOrder(diffusion->maxOrder());
+
+    MultiFab rho_and_species_crse;
+    const int nGrowCrse = InterpBndryData::IBD_max_order_DEF - 1;
+
+    if (level == 0)
+    {
+      bndry->setBndryValues(Wbar,0,0,1,bc);
+    }
+    else
+    {
+      HeatTransfer& coarser = *(HeatTransfer*) &(parent->getLevel(level-1));
+
+      rho_and_species_crse.define(coarser.grids,nspecies+1,nGrowCrse,Fab_allocate);
+
+      for (FillPatchIterator fpi(coarser,rho_and_species_crse,nGrowCrse,time,State_Type,Density,nspecies+1);
+	   fpi.isValid();
+	   ++fpi)
+      {
+	FArrayBox& rho_and_spec = rho_and_species_crse[fpi];
+	rho_and_spec.copy(fpi(),0,0,nspecies+1);
+	tmp.resize(rho_and_spec.box(),1);
+	tmp.copy(rho_and_spec,0,0,1);
+	tmp.invert(1);
+	
+	for (int comp = 0; comp < nspecies; ++comp) 
+	  rho_and_spec.mult(tmp,0,comp+1,1);
+      }
+
+      BoxArray cgrids = grids;
+      cgrids.coarsen(crse_ratio);
+      BndryRegister crse_br(cgrids,0,1,nGrowCrse,1);
+      crse_br.setVal(1.e200);
+      MultiFab Wbar_crse(rho_and_species_crse.boxArray(),1,nGrowCrse);
+      for (MFIter mfi(rho_and_species_crse); mfi.isValid(); ++mfi)
+      {
+	const Box& box = rho_and_species_crse[mfi].box();
+	getChemSolve().getMwmixGivenY(Wbar_crse[mfi],rho_and_species_crse[mfi],box,1,0);
+      }	  
+      crse_br.copyFrom(Wbar_crse,nGrowCrse,0,0,1);
+      bndry->setBndryValues(crse_br,0,Wbar,0,0,1,crse_ratio,bc);
+    }
+
+    visc_op->setScalars(0,1);
+    visc_op->bCoefficients(1);
+    visc_op->applyBC(Wbar,0,1,0,LinOp::Inhomogeneous_BC);
+
+    delete visc_op;
+    
+    FArrayBox area;
+
+    for (MFIter mfi(Wbar); mfi.isValid(); ++mfi)
+    {
+      const int        i    = mfi.index();
+      const Box&       vbox = mfi.validbox();
+      const FArrayBox& wbar = Wbar[i];
+      const Real       mult = -1.0;
+
+      for (int d=0; d<BL_SPACEDIM; ++d) 
+      {
+	const FArrayBox& rhoDe = (*betaWbar[d])[i];
+	FArrayBox&       fluxfab  = (*SpecDiffusionFluxWbar[d])[i];
+		  
+	area.resize(BoxLib::surroundingNodes(grids[i],d),1);
+	geom.GetFaceArea(area,grids,i,d,GEOM_GROW);
+	
+	for (int ispec=0; ispec<nspecies; ++ispec)
+	{
+	  FORT_GRADWBAR(vbox.loVect(), vbox.hiVect(),
+			wbar.dataPtr(), ARLIM(wbar.loVect()),ARLIM(wbar.hiVect()),
+			rhoDe.dataPtr(ispec), ARLIM(rhoDe.loVect()), ARLIM(rhoDe.hiVect()),
+			fluxfab.dataPtr(ispec), ARLIM(fluxfab.loVect()), ARLIM(fluxfab.hiVect()),
+			area.dataPtr(), ARLIM(area.loVect()), ARLIM(area.hiVect()),
+			&dx[d], &d, &mult, &inc);
+	}
+      }
+    }
+    Wbar.clear();
+    diffusion->removeFluxBoxesLevel(betaWbar);
+
+}
+
+void
+HeatTransfer::differential_spec_diffuse_sync (Real dt,
+                                              bool Wbar_corrector)
 {
   
   // Diffuse the species syncs such that sum(SpecDiffSyncFluxes) = 0
@@ -5890,6 +6087,23 @@ HeatTransfer::differential_spec_diffuse_sync (Real dt)
     // (Be sure to pass the "normal" looking Rhs to this generic function)
     //
 
+#ifdef USE_WBAR
+
+    // if in the Wbar corrector, add the grad delta Wbar fluxes
+    if (Wbar_corrector)
+    {
+      for (int d=0; d<BL_SPACEDIM; ++d)
+	{
+	  for (MFIter mfi(*SpecDiffusionFluxWbar[d]); mfi.isValid(); ++mfi)
+	    {
+	      const Box& ebox = (*SpecDiffusionFluxWbar[d])[mfi].box();
+	      (*SpecDiffusionFluxnp1[d])[mfi].plus((*SpecDiffusionFluxWbar[d])[mfi],ebox,0,0,nspecies);
+	    }
+	}
+    }
+
+#endif
+
     // need to correct SpecDiffusionFluxnp1 to contain rhoD grad (delta Y)^sync
     adjust_spec_diffusion_fluxes(cur_time);
     //
@@ -5940,7 +6154,7 @@ HeatTransfer::differential_spec_diffuse_sync (Real dt)
 	// add RHS from diffusion solve
 	update.plus(Rhs[iGrid],box,0,0,nspecies);
 
-	// Ssync = "RHS from diffusion solve" - dt/2) div (delta gamma)
+	// Ssync = "RHS from diffusion solve" + (dt/2) * div (delta gamma)
 	(*Ssync)[mfi].copy(update,box,0,box,first_spec-BL_SPACEDIM,nspecies);
     }
 

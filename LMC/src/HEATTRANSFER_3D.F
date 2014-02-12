@@ -2595,7 +2595,7 @@ c     Fill normal on nodes (assumes 1 grow cell properly filled)
 
       subroutine FORT_GRADWBAR(lo, hi, Wbar, DIMS(Wbar),
      &     rDe, DIMS(rDe), flux, DIMS(flux),
-     &     area, DIMS(area), dx, dir, mult)
+     &     area, DIMS(area), dx, dir, mult, inc)
       implicit none
 #include <cdwrk.H>
       integer lo(SDIM), hi(SDIM)
@@ -2608,48 +2608,97 @@ c     Fill normal on nodes (assumes 1 grow cell properly filled)
       REAL_T  rDe(DIMV(rDe))
       REAL_T  flux(DIMV(flux))
       REAL_T  area(DIMV(area))
-      REAL_T  dx, mult
+      REAL_T  dx, mult, inc
 
       REAL_T Wgr, fac
       integer i,j,k
 
       fac = mult / dx
-      if (dir.eq.0) then
-!$omp parallel do private(i,j,k,Wgr)
-         do k = lo(3),hi(3)
-            do j = lo(2),hi(2)
-               do i = lo(1),hi(1)+1
-                  Wgr =   fac*(Wbar(i,j,k) - Wbar(i-1,j,k))
-                  flux(i,j,k) = flux(i,j,k) + rDe(i,j,k) * Wgr * area(i,j,k)
+
+      if (inc .eq. 0) then
+
+!     compute grad wbar fluxes
+
+         if (dir.eq.0) then
+!     $omp parallel do private(i,j,k,Wgr)
+            do k = lo(3),hi(3)
+               do j = lo(2),hi(2)
+                  do i = lo(1),hi(1)+1
+                     Wgr =   fac*(Wbar(i,j,k) - Wbar(i-1,j,k))
+                     flux(i,j,k) = rDe(i,j,k) * Wgr * area(i,j,k)
+                  enddo
                enddo
             enddo
-         enddo
-!$omp end parallel do
-      else if (dir.eq.1) then
-!$omp parallel do private(i,j,k,Wgr)
-         do k = lo(3),hi(3)
-            do j = lo(2),hi(2)+1
-               do i = lo(1),hi(1)
-                  Wgr =   fac*(Wbar(i,j,k) - Wbar(i,j-1,k))
-                  flux(i,j,k) = flux(i,j,k) + rDe(i,j,k) * Wgr * area(i,j,k)
+!     $omp end parallel do
+         else if (dir.eq.1) then
+!     $omp parallel do private(i,j,k,Wgr)
+            do k = lo(3),hi(3)
+               do j = lo(2),hi(2)+1
+                  do i = lo(1),hi(1)
+                     Wgr =   fac*(Wbar(i,j,k) - Wbar(i,j-1,k))
+                     flux(i,j,k) = rDe(i,j,k) * Wgr * area(i,j,k)
+                  enddo
                enddo
             enddo
-         enddo
-!$omp end parallel do
-      else if (dir.eq.2) then
-!$omp parallel do private(i,j,k,Wgr)
-         do k = lo(3),hi(3)+1
-            do j = lo(2),hi(2)
-               do i = lo(1),hi(1)
-                  Wgr =   fac*(Wbar(i,j,k) - Wbar(i,j,k-1))
-                  flux(i,j,k) = flux(i,j,k) + rDe(i,j,k) * Wgr * area(i,j,k)
+!     $omp end parallel do
+         else if (dir.eq.2) then
+!     $omp parallel do private(i,j,k,Wgr)
+            do k = lo(3),hi(3)+1
+               do j = lo(2),hi(2)
+                  do i = lo(1),hi(1)
+                     Wgr =   fac*(Wbar(i,j,k) - Wbar(i,j,k-1))
+                     flux(i,j,k) = rDe(i,j,k) * Wgr * area(i,j,k)
+                  enddo
                enddo
             enddo
-         enddo
-!$omp end parallel do
+!     $omp end parallel do
+         else
+            call bl_pd_abort('Bad dir in FORT_GRADWBAR')
+         endif
+
       else
-         call bl_pd_abort('Bad dir in FORT_GRADWBAR')
-      endif
+
+!     increment grad wbar fluxes by a factor of inc (can be negative)
+
+         if (dir.eq.0) then
+!     $omp parallel do private(i,j,k,Wgr)
+            do k = lo(3),hi(3)
+               do j = lo(2),hi(2)
+                  do i = lo(1),hi(1)+1
+                     Wgr =   fac*(Wbar(i,j,k) - Wbar(i-1,j,k))
+                     flux(i,j,k) = flux(i,j,k) + inc * rDe(i,j,k) * Wgr * area(i,j,k)
+                  enddo
+               enddo
+            enddo
+!     $omp end parallel do
+         else if (dir.eq.1) then
+!     $omp parallel do private(i,j,k,Wgr)
+            do k = lo(3),hi(3)
+               do j = lo(2),hi(2)+1
+                  do i = lo(1),hi(1)
+                     Wgr =   fac*(Wbar(i,j,k) - Wbar(i,j-1,k))
+                     flux(i,j,k) = flux(i,j,k) + inc * rDe(i,j,k) * Wgr * area(i,j,k)
+                  enddo
+               enddo
+            enddo
+!     $omp end parallel do
+         else if (dir.eq.2) then
+!     $omp parallel do private(i,j,k,Wgr)
+            do k = lo(3),hi(3)+1
+               do j = lo(2),hi(2)
+                  do i = lo(1),hi(1)
+                     Wgr =   fac*(Wbar(i,j,k) - Wbar(i,j,k-1))
+                     flux(i,j,k) = flux(i,j,k) + inc * rDe(i,j,k) * Wgr * area(i,j,k)
+                  enddo
+               enddo
+            enddo
+!     $omp end parallel do
+         else
+            call bl_pd_abort('Bad dir in FORT_GRADWBAR')
+         endif
+
+      end if
+
       end
 
       subroutine  FORT_RECOMP_UPDATE(lo, hi,

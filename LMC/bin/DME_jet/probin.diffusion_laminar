@@ -1,0 +1,53 @@
+ &fortin
+  probtype = 'dme_diffusion'
+
+  V_in = 21.
+
+  T_in = 400.
+
+  T_co = 900.
+  T_co = 1100.
+
+  V_co = 2.5
+  V_co = 3.5
+  phi_in = 0.7
+
+  max_vort_lev = 4
+  vorterr = 5.e4
+
+  flametracval = 1.e-8
+  max_trac_lev = 4
+
+  max_temp_lev = 2
+  tempgrad = 10.
+
+
+  blobr = -1.
+
+  splitx  = .00015
+  xfrontw = .000015
+  blobr   = .00018
+  blobr   = .00015
+  Tfrontw = .00001
+  Tfrontw = .00002
+  xfrontw = .00002
+  Tfrontw = .000075
+  xfrontw = .000075
+
+  blobT = 1500.
+  blobx = 0.
+  bloby = .00027
+
+ /
+ &heattransin
+  pamb = 101325.
+  pamb = 4053000.
+  dpdt_factor = 1.0
+  dpdt_factor = 0.3
+ /
+  &flctin
+  flct_file = "Turb.Hemanth"
+  forceInflow = .FALSE.
+ /
+  &control
+ /
