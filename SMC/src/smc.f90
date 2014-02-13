@@ -89,7 +89,7 @@ subroutine smc()
   call init_variables()
   call init_plot_variables()
 
-  if (advance_method > 1 .and. plot_get_rates_from_sdc .and. nburn>0) then
+  if (advance_sdc .and. plot_get_rates_from_sdc .and. nburn>0) then
      plot_use_U0 = .true.
   else
      plot_use_U0 = .false.
@@ -144,18 +144,18 @@ subroutine smc()
   ! preallocate sdc
   !
 
-  if (advance_method == 2) then
+  if (advance_sdc .and. .not. sdc_multirate) then
      call sdc_build_single_rate(sdc, sdc_qtype, sdc_nnodes, &
           c_funloc(single_sdc_feval), c_funloc(sdc_post_step_cb))
   end if
 
-  if (advance_method >= 3) then
+  if (advance_sdc .and. sdc_multirate) then
      call sdc_build_multi_rate(sdc, sdc_qtype, [ sdc_nnodes, sdc_nnodes_fine ], &
           c_funloc(multi_sdc_feval_slow), c_funloc(multi_sdc_feval_fast), &
           c_funloc(sdc_post_step_cb))
   end if
 
-  if (advance_method > 1) then
+  if (advance_sdc) then
      call sdc_setup(sdc, la, ncons, stencil_ng)
      sdc%dx           = dx
      sdc%iters        = sdc_iters
@@ -226,6 +226,24 @@ subroutine smc()
      init_step = 1
   else
      init_step = restart + 1
+  end if
+
+  if (advance_sdc) then
+     if (sdc_multirate) then
+        if (sdc_multirate_explicit) then
+           print*,"Using explicit multi-rate SDC integrator"
+           print*,"  coarse nodes:", sdc_nnodes
+           print*,"  fine nodes:  ", sdc_nnodes_fine, trim(sdc_multirate_type), sdc_multirate_repeat
+        else
+           print*,"Using semi-implicit multi-rate SDC integrator"
+           print*,"  coarse nodes:", sdc_nnodes
+           print*,"  fine nodes:  ", sdc_nnodes_fine, trim(sdc_multirate_type), sdc_multirate_repeat
+        end if
+     else
+        print*,"Using single-rate SDC integrator with: ", sdc_nnodes, "nodes"
+     end if
+  else
+     print*,"Using Runge-Kutta integrator of order: ", rk_order
   end if
 
 
@@ -442,7 +460,7 @@ subroutine smc()
   call destroy_smcdata(sdc)
   call destroy_threadbox()
 
-  if (advance_method > 1) then
+  if (advance_sdc) then
      call sdc_destroy(sdc)
   end if
 

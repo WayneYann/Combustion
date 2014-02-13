@@ -22,7 +22,7 @@ contains
     use variables_module, only : ncons, nprim
     use chemistry_module, only : nspecies
     use derivative_stencil_module, only : stencil_ng
-    use probin_module, only : advance_method
+    use probin_module, only : advance_sdc
     use threadbox_module, only : tb_multifab_setval
 
     implicit none
@@ -31,7 +31,7 @@ contains
     type(sdc_ctx), intent(inout) :: sdc
     integer :: err
 
-    if (advance_method .eq. 1) then ! RK
+    if (.not. advance_sdc) then
        call multifab_build(Uprime, la, ncons, 0)
        call multifab_build(Unew,   la, ncons, stencil_ng)
     else
@@ -59,13 +59,13 @@ contains
 
 
   subroutine destroy_smcdata(sdc)
-    use probin_module, only : advance_method
+    use probin_module, only : advance_sdc
     type(sdc_ctx), intent(inout) :: sdc
 
-    if (advance_method .eq. 1) then ! RK
+    if (.not. advance_sdc) then
        call destroy(Unew)
        call destroy(Uprime)
-    else 
+    else
        if (sdc%single_rate) then
           call sdc_imex_deallocate(sdc%imex)
        end if

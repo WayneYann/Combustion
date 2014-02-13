@@ -2,7 +2,9 @@
 
  verbose = 2
 
- advance_method = 3        ! 1=RK3, 2=SDC, 3=MRSDC
+ advance_sdc = .true.
+ sdc_multirate = .true.
+ sdc_multirate_explicit = .true.
  stencil_type = "narrow"   ! narrow or S3D
 
  stop_time = 3.d-3
