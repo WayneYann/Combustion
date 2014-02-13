@@ -31,6 +31,26 @@ module advance_module
 
   integer, public :: count_ad = 0, count_r = 0
 
+  double precision, parameter :: rk64_alpha(6) = [ &
+       +  3296351145737.d0/15110423921029.d0, &
+       +  1879360555526.d0/ 7321162733569.d0, &
+       + 10797097731880.d0/20472212111779.d0, &
+       +   754636544611.d0/15563872110659.d0, &
+       +  3260218886217.d0/ 2618290685819.d0, &
+       +  5069185909380.d0/12292927838509.d0 ]
+
+  double precision, parameter :: rk64_beta(6) = [ &
+       -  1204558336989.d0/10607789004752.d0, &
+       -  3028468927040.d0/14078136890693.d0, &
+       -   455570672869.d0/ 8930094212428.d0, &
+       - 17275898420483.d0/15997285579755.d0, &
+       -  2453906524165.d0/ 9868353053862.d0, &
+       +      0.d0 ]
+
+  character(len=7), save :: bpt_names(6) = [ &
+       "rkstep1", "rkstep2", "rkstep3", "rkstep4", "rkstep5", "rkstep6" ]
+
+
 contains
 
   subroutine advance(U, dtio, courno, dx, sdc, istep)
@@ -95,31 +115,26 @@ contains
 
     call tb_multifab_setval(Unew, 0.d0, .true.)
 
-    ! RK Step 1
-    call build(bpt_rkstep1, "rkstep1")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
-
+    call build(bpt_rkstep1, "rkstep1")
     call dUdt(U, Uprime, time, dt, dx, courno=courno)
-    call update_rk3(Zero,Unew, One,U, dt, Uprime)
+    call update_rk(Zero,Unew, One,U, dt, Uprime)
     call reset_density(Unew)
     call impose_hard_bc(Unew, time+OneThird*dt, dx)
+    call destroy(bpt_rkstep1)
 
-    call destroy(bpt_rkstep1)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
-
-    ! RK Step 2
-    call build(bpt_rkstep2, "rkstep2")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
+    call build(bpt_rkstep2, "rkstep2")
     call dUdt(Unew, Uprime, time+OneThird*dt, OneThird*dt, dx)
-    call update_rk3(OneQuarter, Unew, ThreeQuarters, U, OneQuarter*dt, Uprime)
+    call update_rk(OneQuarter, Unew, ThreeQuarters, U, OneQuarter*dt, Uprime)
     call reset_density(Unew)
     call impose_hard_bc(Unew, time+TwoThirds*dt, dx)
-    call destroy(bpt_rkstep2)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
+    call destroy(bpt_rkstep2)
 
-    ! RK Step 3
-    call build(bpt_rkstep3, "rkstep3")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
+    call build(bpt_rkstep3, "rkstep3")
     call dUdt(Unew, Uprime, time+TwoThirds*dt, TwoThirds*dt, dx)
-    call update_rk3(OneThird, U, TwoThirds, Unew, TwoThirds*dt, Uprime)
+    call update_rk(OneThird, U, TwoThirds, Unew, TwoThirds*dt, Uprime)
     call reset_density(U)
     call impose_hard_bc(U, time+dt, dx)
-    call destroy(bpt_rkstep3)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
+    call destroy(bpt_rkstep3)
 
   end subroutine advance_rk33
 
@@ -132,72 +147,39 @@ contains
     use smcdata_module, only : Unew, Uprime
     implicit none
 
-
-      ! rk_alpha(1) = +  3296351145737.d0/15110423921029.d0
-      ! rk_alpha(2) = +  1879360555526.d0/ 7321162733569.d0
-      ! rk_alpha(3) = + 10797097731880.d0/20472212111779.d0
-      ! rk_alpha(4) = +   754636544611.d0/15563872110659.d0
-      ! rk_alpha(5) = +  3260218886217.d0/ 2618290685819.d0
-      ! rk_alpha(6) = +  5069185909380.d0/12292927838509.d0
-
-      ! rk_beta(1)  = -  1204558336989.d0/10607789004752.d0
-      ! rk_beta(2)  = -  3028468927040.d0/14078136890693.d0
-      ! rk_beta(3)  = -   455570672869.d0/ 8930094212428.d0
-      ! rk_beta(4)  = - 17275898420483.d0/15997285579755.d0
-      ! rk_beta(5)  = -  2453906524165.d0/ 9868353053862.d0
-      ! rk_beta(6)  = +      0.d0
-
-      ! rk_time(1)  = +  3296351145737.d0/15110423921029.d0
-      ! rk_time(2)  = +  2703592154963.d0/ 7482974295227.d0
-      ! rk_time(3)  = +  7876405563010.d0/11693293791847.d0
-      ! rk_time(4)  = + 12920213460229.d0/19253602032679.d0
-      ! rk_time(5)  = +  7527523127717.d0/ 9001003553970.d0
-      ! rk_time(6)  = +      1.d0
-
-      ! rk_err(1) = -   530312978447.d0/ 9560368366154.d0
-      ! rk_err(2) = +   473021958881.d0/ 2984707536468.d0
-      ! rk_err(3) = -   947229622805.d0/10456009803779.d0
-      ! rk_err(4) = -  2921473878215.d0/13334914072261.d0
-      ! rk_err(5) = +  1519535112975.d0/ 9264196100452.d0
-      ! rk_err(6) = +   167623581683.d0/ 3930932046784.d0
-
-      ! rk_p  = +  3.0d0
-
-
     type(multifab),    intent(inout) :: U
     double precision,  intent(inout) :: courno
     double precision,  intent(in   ) :: dx(3)
 
-    type(bl_prof_timer), save :: bpt_rkstep1, bpt_rkstep2, bpt_rkstep3
+    type(bl_prof_timer), save :: bpt_rkstep(6)
+    integer :: j
 
     call tb_multifab_setval(Unew, 0.d0, .true.)
 
-    ! RK Step 1
-    call build(bpt_rkstep1, "rkstep1")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
+    ! init carry-over
+    call copy(Unew, U)
 
-    call dUdt(U, Uprime, time, dt, dx, courno=courno)
-    call update_rk3(Zero,Unew, One,U, dt, Uprime)
-    call reset_density(Unew)
-    call impose_hard_bc(Unew, time+OneThird*dt, dx)
+    do j = 1, 6
+       call build(bpt_rkstep(j), bpt_names(j))
+       if (j == 1) then
+          call dUdt(U, Uprime, time, dt, dx, courno=courno)
+       else
+          call dUdt(U, Uprime, time, rk64_alpha(j)*dt, dx) ! XXX, time
+       end if
 
-    call destroy(bpt_rkstep1)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
+       ! update solution
+       call update_rk(0.0d0, U, 1.0d0, Unew, rk64_alpha(j)*dt, Uprime)
 
-    ! RK Step 2
-    call build(bpt_rkstep2, "rkstep2")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
-    call dUdt(Unew, Uprime, time+OneThird*dt, OneThird*dt, dx)
-    call update_rk3(OneQuarter, Unew, ThreeQuarters, U, OneQuarter*dt, Uprime)
-    call reset_density(Unew)
-    call impose_hard_bc(Unew, time+TwoThirds*dt, dx)
-    call destroy(bpt_rkstep2)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
+       ! update carry-over
+       call update_rk(0.0d0, Unew, 1.0d0, U, rk64_beta(j)*dt, Uprime)
 
-    ! RK Step 3
-    call build(bpt_rkstep3, "rkstep3")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
-    call dUdt(Unew, Uprime, time+TwoThirds*dt, TwoThirds*dt, dx)
-    call update_rk3(OneThird, U, TwoThirds, Unew, TwoThirds*dt, Uprime)
-    call reset_density(U)
-    call impose_hard_bc(U, time+dt, dx)
-    call destroy(bpt_rkstep3)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
+       call reset_density(Unew)
+       call reset_density(U)
+       call impose_hard_bc(Unew, time, dx) ! XXX, time
+       call impose_hard_bc(U,    time, dx) ! XXX, time
 
+       call destroy(bpt_rkstep(j))
+    end do
   end subroutine advance_rk64
 
   !
@@ -622,7 +604,7 @@ contains
   !
   ! Compute U1 = a U1 + b U2 + c Uprime.
   !
-  subroutine update_rk3 (a,U1,b,U2,c,Uprime)
+  subroutine update_rk(a,U1,b,U2,c,Uprime)
 
     type(multifab),   intent(in   ) :: U2, Uprime
     type(multifab),   intent(inout) :: U1
@@ -660,7 +642,7 @@ contains
     end do
     !$omp end parallel
 
-  end subroutine update_rk3
+  end subroutine update_rk
 
 
   !
