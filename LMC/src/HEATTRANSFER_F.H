@@ -450,7 +450,7 @@ extern "C" {
                        Real* flx,  ARLIM_P(flxlo),  ARLIM_P(flxhi),
                        const Real* a,    ARLIM_P(alo),    ARLIM_P(ahi),
                        const Real* delta, const int* dir,
-                       const Real* mult);
+                       const Real* mult, const Real* inc);
     
 }
 #endif
