@@ -932,6 +932,9 @@ contains
 
        else if (stencil .eq. s3d) then
 
+          !$omp parallel private(n,iblock,lo,hi,qp,qlo,qhi) &
+          !$omp private(qxp,qxlo,qxhi,qyp,qylo,qyhi,qzp,qzlo,qzhi) &
+          !$omp private(fp,flo,fhi,mup,xip,dlo,dhi,blo,bhi)
           do n=1,nfabs(Q)
              if (.not.tb_worktodo(n)) cycle
 
@@ -978,6 +981,7 @@ contains
                 end if
              end do
           end do
+          !$omp end parallel
 
           call multifab_fill_boundary_nowait(qx, qx_fb_data, idim=1)
           call multifab_fill_boundary_nowait(qy, qy_fb_data, idim=2)
@@ -998,6 +1002,8 @@ contains
              end if
           end if
 
+          !$omp parallel private(n,iblock,lo,hi,up,ulo,uhi,upp,uplo,uphi,qp,qlo,qhi) &
+          !$omp private(dlo,dhi,blo,bhi)
           do n=1,nfabs(Q)
              if (.not.tb_worktodo(n)) cycle
 
@@ -1027,6 +1033,7 @@ contains
                 end if
              end do
           end do
+          !$omp end parallel
 
           if (overlap_comm_comp) then
              call multifab_fill_boundary_finish(qx, qx_fb_data)
@@ -1036,6 +1043,9 @@ contains
              end if
           end if
 
+          !$omp parallel private(n,iblock,lo,hi,upp,uplo,uphi,qp,qlo,qhi) &
+          !$omp private(qxp,qxlo,qxhi,qyp,qylo,qyhi,qzp,qzlo,qzhi) &
+          !$omp private(fp,flo,fhi,mup,xip,lamp,Ddp,dlo,dhi,blo,bhi)
           do n=1,nfabs(Q)
              if (.not.tb_worktodo(n)) cycle
 
@@ -1088,6 +1098,7 @@ contains
                 end if
              end do
           end do
+          !$omp end parallel
 
        else
           call bl_error("dUdt: unknown stencil type")
