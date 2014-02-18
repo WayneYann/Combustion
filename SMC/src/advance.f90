@@ -4,6 +4,7 @@ module advance_module
   use derivative_stencil_module
   use kernels_module
   use kernels_2d_module
+  use kernels_s3d_module
   use multifab_module
   use nscbc_module
   use smc_bc_module
@@ -646,13 +647,14 @@ contains
 
 
   !
-  ! Compute dU/dt given U using the narrow stencil.
+  ! Compute dU/dt given U.
   !
   ! The Courant number (courno) is also computed if passed.
   !
   subroutine dUdt (U, Uprime, t, dt_m, dx, courno, include_ad, include_r, Uprime_c)
 
-    use smcdata_module, only : Q, mu, xi, lam, Ddiag, Fdif, Upchem
+    use derivative_stencil_module, only : stencil, narrow, s3d
+    use smcdata_module, only : Q, mu, xi, lam, Ddiag, Fdif, Upchem, qx, qy, qz
     use probin_module, only : overlap_comm_comp, overlap_comm_gettrans, cfl_int, fixed_dt, &
          trans_int, mach_int
 
@@ -673,12 +675,14 @@ contains
     logical :: update_courno
     double precision :: courno_proc
 
-    type(mf_fb_data) :: U_fb_data
+    type(mf_fb_data) :: U_fb_data, qx_fb_data, qy_fb_data, qz_fb_data
 
     logical :: inc_ad, inc_r, rYt_only
 
-    integer :: qlo(4), qhi(4), uplo(4), uphi(4), ulo(4), uhi(4), flo(4), fhi(4), upclo(4), upchi(4)
-    double precision, pointer, dimension(:,:,:,:) :: up, qp, mup, xip, lamp, Ddp, upp, fp, upcp
+    integer :: qlo(4), qhi(4), uplo(4), uphi(4), ulo(4), uhi(4), flo(4), fhi(4), &
+         upclo(4), upchi(4), qxlo(4), qxhi(4), qylo(4), qyhi(4), qzlo(4), qzhi(4)
+    double precision, pointer, dimension(:,:,:,:) :: up, qp, mup, xip, lamp, Ddp, upp, fp, &
+         upcp, qxp, qyp, qzp
 
     type(bl_prof_timer), save :: bpt_ctoprim, bpt_gettrans, bpt_hypdiffterm
     type(bl_prof_timer), save :: bpt_chemterm, bpt_nscbc
@@ -875,56 +879,220 @@ contains
        ! Hyperbolic and Transport terms
        !
        call build(bpt_hypdiffterm, "hypdiffterm")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
-       !$omp parallel private(n,iblock,lo,hi,up,ulo,uhi,upp,uplo,uphi,qp,qlo,qhi) &
-       !$omp private(fp,flo,fhi,mup,xip,lamp,Ddp,dlo,dhi,blo,bhi)
-       do n=1,nfabs(Q)
+       if (stencil .eq. narrow) then
 
-          if (.not.tb_worktodo(n)) cycle
+          !$omp parallel private(n,iblock,lo,hi,up,ulo,uhi,upp,uplo,uphi,qp,qlo,qhi) &
+          !$omp private(fp,flo,fhi,mup,xip,lamp,Ddp,dlo,dhi,blo,bhi)
+          do n=1,nfabs(Q)
+             
+             if (.not.tb_worktodo(n)) cycle
+             
+             up => dataptr(U,n)
+             upp=> dataptr(Uprime,n)
+             fp => dataptr(Fdif,n)
+             qp => dataptr(Q,n)
+             mup  => dataptr(mu   , n)
+             xip  => dataptr(xi   , n)
+             lamp => dataptr(lam  , n)
+             Ddp  => dataptr(Ddiag, n)
+             
+             ulo = lbound(up)
+             uhi = ubound(up)
+             qlo = lbound(qp)
+             qhi = ubound(qp)
+             uplo = lbound(upp)
+             uphi = ubound(upp)
+             flo = lbound(fp)
+             fhi = ubound(fp)
+             
+             call get_data_lo_hi(n,dlo,dhi)
+             call get_boxbc(n,blo,bhi)
+             
+             do iblock = 1, tb_get_nblocks(n)
+                lo = tb_get_block_lo(iblock,n)
+                hi = tb_get_block_hi(iblock,n)
+                
+                if (dm .eq. 2) then
+                   call hypterm_2d(lo,hi,dx,up,ulo(1:2),uhi(1:2),qp,qlo(1:2),qhi(1:2),&
+                        upp,uplo(1:2),uphi(1:2),dlo,dhi,blo,bhi)
+                   
+                   call narrow_diffterm_2d(lo,hi,dx,qp,qlo(1:2),qhi(1:2),upp,uplo(1:2),uphi(1:2), &
+                        fp,flo(1:2),fhi(1:2),mup,xip,lamp,Ddp,dlo,dhi,blo,bhi)
+                else
+                   call hypterm_3d(lo,hi,dx,up,ulo(1:3),uhi(1:3),qp,qlo(1:3),qhi(1:3),&
+                        upp,uplo(1:3),uphi(1:3),dlo,dhi,blo,bhi)
+                   
+                   call narrow_diffterm_3d(lo,hi,dx,qp,qlo(1:3),qhi(1:3),upp,uplo(1:3),uphi(1:3), &
+                        fp,flo(1:3),fhi(1:3),mup,xip,lamp,Ddp,dlo,dhi,blo,bhi)
+                end if
+             end do
+             
+          end do
+          !$omp end parallel
 
-          up => dataptr(U,n)
-          upp=> dataptr(Uprime,n)
-          fp => dataptr(Fdif,n)
-          qp => dataptr(Q,n)
-          mup  => dataptr(mu   , n)
-          xip  => dataptr(xi   , n)
-          lamp => dataptr(lam  , n)
-          Ddp  => dataptr(Ddiag, n)
+       else if (stencil .eq. s3d) then
 
-          ulo = lbound(up)
-          uhi = ubound(up)
-          qlo = lbound(qp)
-          qhi = ubound(qp)
-          uplo = lbound(upp)
-          uphi = ubound(upp)
-          flo = lbound(fp)
-          fhi = ubound(fp)
+          do n=1,nfabs(Q)
+             if (.not.tb_worktodo(n)) cycle
 
-          call get_data_lo_hi(n,dlo,dhi)
-          call get_boxbc(n,blo,bhi)
+             qp => dataptr(Q,n)
+             qxp => dataptr(qx, n)
+             qyp => dataptr(qy, n)
+             if (dm .eq. 3) qzp => dataptr(qz, n)
 
-          do iblock = 1, tb_get_nblocks(n)
-             lo = tb_get_block_lo(iblock,n)
-             hi = tb_get_block_hi(iblock,n)
+             fp => dataptr(Fdif,n)
 
-             if (dm .eq. 2) then
-                call hypterm_2d(lo,hi,dx,up,ulo(1:2),uhi(1:2),qp,qlo(1:2),qhi(1:2),&
-                     upp,uplo(1:2),uphi(1:2),dlo,dhi,blo,bhi)
-
-                call narrow_diffterm_2d(lo,hi,dx,qp,qlo(1:2),qhi(1:2),upp,uplo(1:2),uphi(1:2), &
-                     fp,flo(1:2),fhi(1:2),mup,xip,lamp,Ddp,dlo,dhi,blo,bhi)
-             else
-                call hypterm_3d(lo,hi,dx,up,ulo(1:3),uhi(1:3),qp,qlo(1:3),qhi(1:3),&
-                     upp,uplo(1:3),uphi(1:3),dlo,dhi,blo,bhi)
-
-                call narrow_diffterm_3d(lo,hi,dx,qp,qlo(1:3),qhi(1:3),upp,uplo(1:3),uphi(1:3), &
-                     fp,flo(1:3),fhi(1:3),mup,xip,lamp,Ddp,dlo,dhi,blo,bhi)
+             mup  => dataptr(mu   , n)
+             xip  => dataptr(xi   , n)
+             
+             qlo = lbound(qp)
+             qhi = ubound(qp)
+             qxlo = lbound(qxp)
+             qxhi = ubound(qxp)
+             qylo = lbound(qyp)
+             qyhi = ubound(qyp)
+             if (dm .eq. 3) then
+                qzlo = lbound(qzp)
+                qzhi = ubound(qzp)                
              end if
+
+             flo = lbound(fp)
+             fhi = ubound(fp)
+             
+             call get_data_lo_hi(n,dlo,dhi)
+             call get_boxbc(n,blo,bhi)
+             
+             do iblock = 1, tb_get_nblocks(n)
+                lo = tb_get_block_lo(iblock,n)
+                hi = tb_get_block_hi(iblock,n)
+                
+                if (dm .eq. 2) then
+                   call bl_error("2D not supported for S3D mode")
+                else
+                   call s3d_diffterm_1_3d(lo,hi,dx,qp,qlo(1:3),qhi(1:3),  &
+                        fp,flo(1:3),fhi(1:3),    &
+                        qxp,qxlo(1:3),qxhi(1:3), &
+                        qyp,qylo(1:3),qyhi(1:3), &
+                        qzp,qzlo(1:3),qzhi(1:3), &
+                        mup,xip,dlo,dhi,blo,bhi)
+                end if
+             end do
           end do
 
-       end do
-       !$omp end parallel
-       call destroy(bpt_hypdiffterm)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
+          call multifab_fill_boundary_nowait(qx, qx_fb_data, idim=1)
+          call multifab_fill_boundary_nowait(qy, qy_fb_data, idim=2)
+          if (dm .eq. 3) then
+             call multifab_fill_boundary_nowait(qz, qz_fb_data, idim=3)
+          end if
+          if (overlap_comm_comp) then
+             call multifab_fill_boundary_test(qx, qx_fb_data)
+             call multifab_fill_boundary_test(qy, qy_fb_data)
+             if (dm .eq. 3) then
+                call multifab_fill_boundary_test(qz, qz_fb_data)
+             end if
+          else
+             call multifab_fill_boundary_finish(qx, qx_fb_data)
+             call multifab_fill_boundary_finish(qy, qy_fb_data)
+             if (dm .eq. 3) then
+                call multifab_fill_boundary_finish(qz, qz_fb_data)
+             end if
+          end if
 
+          do n=1,nfabs(Q)
+             if (.not.tb_worktodo(n)) cycle
+
+             up => dataptr(U,n)
+             upp=> dataptr(Uprime,n)
+             qp => dataptr(Q,n)
+             
+             ulo = lbound(up)
+             uhi = ubound(up)
+             qlo = lbound(qp)
+             qhi = ubound(qp)
+             uplo = lbound(upp)
+             uphi = ubound(upp)
+             
+             call get_data_lo_hi(n,dlo,dhi)
+             call get_boxbc(n,blo,bhi)
+
+             do iblock = 1, tb_get_nblocks(n)
+                lo = tb_get_block_lo(iblock,n)
+                hi = tb_get_block_hi(iblock,n)
+
+                if (dm .eq. 2) then
+                   call bl_error("2D not supported for S3D mode")
+                else
+                   call hypterm_3d(lo,hi,dx,up,ulo(1:3),uhi(1:3),qp,qlo(1:3),qhi(1:3),&
+                        upp,uplo(1:3),uphi(1:3),dlo,dhi,blo,bhi)   
+                end if
+             end do
+          end do
+
+          if (overlap_comm_comp) then
+             call multifab_fill_boundary_finish(qx, qx_fb_data)
+             call multifab_fill_boundary_finish(qy, qy_fb_data)
+             if (dm .eq. 3) then
+                call multifab_fill_boundary_finish(qz, qz_fb_data)
+             end if
+          end if
+
+          do n=1,nfabs(Q)
+             if (.not.tb_worktodo(n)) cycle
+
+             qp  => dataptr(Q , n)
+             qxp => dataptr(qx, n)
+             qyp => dataptr(qy, n)
+             if (dm .eq. 3) qzp => dataptr(qz, n)
+
+             upp=> dataptr(Uprime,n)
+             fp => dataptr(Fdif,n)
+
+             mup  => dataptr(mu   , n)
+             xip  => dataptr(xi   , n)
+             lamp => dataptr(lam  , n)
+             Ddp  => dataptr(Ddiag, n)
+             
+             qlo = lbound(qp)
+             qhi = ubound(qp)
+             qxlo = lbound(qxp)
+             qxhi = ubound(qxp)
+             qylo = lbound(qyp)
+             qyhi = ubound(qyp)
+             if (dm .eq. 3) then
+                qzlo = lbound(qzp)
+                qzhi = ubound(qzp)                
+             end if
+
+             uplo = lbound(upp)
+             uphi = ubound(upp)
+             flo = lbound(fp)
+             fhi = ubound(fp)
+             
+             call get_data_lo_hi(n,dlo,dhi)
+             call get_boxbc(n,blo,bhi)
+             
+             do iblock = 1, tb_get_nblocks(n)
+                lo = tb_get_block_lo(iblock,n)
+                hi = tb_get_block_hi(iblock,n)
+                
+                if (dm .eq. 2) then
+                   call bl_error("2D not supported for S3D mode")
+                else
+                   call s3d_diffterm_2_3d(lo,hi,dx,qp,qlo(1:3),qhi(1:3),  &
+                        upp,uplo(1:3),uphi(1:3), fp,flo(1:3),fhi(1:3),    &
+                        qxp,qxlo(1:3),qxhi(1:3), &
+                        qyp,qylo(1:3),qyhi(1:3), &
+                        qzp,qzlo(1:3),qzhi(1:3), &
+                        mup,xip,lamp, Ddp, &
+                        dlo,dhi,blo,bhi)
+                end if
+             end do
+          end do
+
+       else
+          call bl_error("dUdt: unknown stencil type")
+       end if
+       call destroy(bpt_hypdiffterm)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
 
        !
        ! NSCBC boundary

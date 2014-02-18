@@ -26,6 +26,8 @@ else
   endif
 endif
 
+f90sources += kernels_s3d.f90
+
 f90sources += make_plot_variables.f90
 f90sources += make_plotfile.f90
 f90sources += make_plotvar_2d.f90
