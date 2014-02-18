@@ -3,7 +3,8 @@ module kernels_s3d_module
   use bc_module
   use chemistry_module, only : nspecies
   use derivative_stencil_module, only : stencil_ng, first_deriv_8, first_deriv_6, &
-       first_deriv_4, first_deriv_l3, first_deriv_r3, first_deriv_rb, first_deriv_lb
+       first_deriv_4, first_deriv_l3, first_deriv_r3, first_deriv_rb, first_deriv_lb, &
+       BRB, BLB, D8, D6, D4
   use variables_module
 
   implicit none
