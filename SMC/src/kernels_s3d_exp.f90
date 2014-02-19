@@ -2192,10 +2192,37 @@ contains
     do k=lo(3),hi(3)
        do j=lo(2),hi(2)
 
+          ! mx: d/dx
+
           do i=dlo(1),dhi(1)
              tmpx(i) = vp(i,j,k)*qx(i,j,k,idu) 
           end do
-          !xxxxx
+
+          if (physbclo(1)) then
+             i = lo(1)
+             ! use completely right-biased stencil
+             rhs(i,j,k,imx) = rhs(i,j,k,imx) + dxinv(1) * first_deriv_rb(tmpx(i:i+3))
+
+             i = lo(1)+1
+             ! use 3rd-order slightly right-biased stencil
+             rhs(i,j,k,imx) = rhs(i,j,k,imx) + dxinv(1) * first_deriv_r3(tmpx(i-1:i+2))
+
+             i = lo(1)+2
+             ! use 4th-order stencil
+!EXPAND             rhs(i,j,k,imx) = rhs(i,j,k,imx) + dxinv(1) * first_deriv_4(tmpx(i-2:i+2))
+             rhs(i,j,k,imx) = rhs(i,j,k,imx) + dxinv(1) * &
+                ( D4(1)*(tmpx(i+1)-tmpx(i-1)) &
+                + D4(2)*(tmpx(i+2)-tmpx(i-2)) )
+
+             i = lo(1)+3
+             ! use 6th-order stencil
+!EXPAND             rhs(i,j,k,imx) = rhs(i,j,k,imx) + dxinv(1) * first_deriv_6(tmpx(i-3:i+3))
+             rhs(i,j,k,imx) = rhs(i,j,k,imx) + dxinv(1) * &
+                ( D6(1)*(tmpx(i+1)-tmpx(i-1)) &
+                + D6(2)*(tmpx(i+2)-tmpx(i-2)) &
+                + D6(3)*(tmpx(i+3)-tmpx(i-3)) )
+          end if
+
           do i=slo(1),shi(1)
 !EXPAND             rhs(i,j,k,imx) = rhs(i,j,k,imx) + dxinv(1) * first_deriv_8(tmpx(i-4:i+4))
              rhs(i,j,k,imx) = rhs(i,j,k,imx) + dxinv(1) * &
@@ -2204,12 +2231,63 @@ contains
                 + D8(3)*(tmpx(i+3)-tmpx(i-3)) &
                 + D8(4)*(tmpx(i+4)-tmpx(i-4)) )
           end do
-          !xxxxx
+
+          if (physbchi(1)) then
+             i = hi(1)-3
+             ! use 6th-order stencil
+!EXPAND             rhs(i,j,k,imx) = rhs(i,j,k,imx) + dxinv(1) * first_deriv_6(tmpx(i-3:i+3))
+             rhs(i,j,k,imx) = rhs(i,j,k,imx) + dxinv(1) * &
+                ( D6(1)*(tmpx(i+1)-tmpx(i-1)) &
+                + D6(2)*(tmpx(i+2)-tmpx(i-2)) &
+                + D6(3)*(tmpx(i+3)-tmpx(i-3)) )
+
+             i = hi(1)-2
+             ! use 4th-order stencil
+!EXPAND             rhs(i,j,k,imx) = rhs(i,j,k,imx) + dxinv(1) * first_deriv_4(tmpx(i-2:i+2))
+             rhs(i,j,k,imx) = rhs(i,j,k,imx) + dxinv(1) * &
+                ( D4(1)*(tmpx(i+1)-tmpx(i-1)) &
+                + D4(2)*(tmpx(i+2)-tmpx(i-2)) )
+
+             i = hi(1)-1
+             ! use 3rd-order slightly left-biased stencil
+             rhs(i,j,k,imx) = rhs(i,j,k,imx) + dxinv(1) * first_deriv_l3(tmpx(i-2:i+1))
+
+             i = hi(1)
+             ! use completely left-biased stencil
+             rhs(i,j,k,imx) = rhs(i,j,k,imx) + dxinv(1) * first_deriv_lb(tmpx(i-3:i))
+          end if
+
+          ! my: d/dx
 
           do i=dlo(1),dhi(1)
              tmpx(i) = mu(i,j,k)*qx(i,j,k,idv)
           end do
-          !xxxxx
+
+          if (physbclo(1)) then
+             i = lo(1)
+             ! use completely right-biased stencil
+             rhs(i,j,k,imy) = rhs(i,j,k,imy) + dxinv(1) * first_deriv_rb(tmpx(i:i+3))
+
+             i = lo(1)+1
+             ! use 3rd-order slightly right-biased stencil
+             rhs(i,j,k,imy) = rhs(i,j,k,imy) + dxinv(1) * first_deriv_r3(tmpx(i-1:i+2))
+
+             i = lo(1)+2
+             ! use 4th-order stencil
+!EXPAND             rhs(i,j,k,imy) = rhs(i,j,k,imy) + dxinv(1) * first_deriv_4(tmpx(i-2:i+2))
+             rhs(i,j,k,imy) = rhs(i,j,k,imy) + dxinv(1) * &
+                ( D4(1)*(tmpx(i+1)-tmpx(i-1)) &
+                + D4(2)*(tmpx(i+2)-tmpx(i-2)) )
+
+             i = lo(1)+3
+             ! use 6th-order stencil
+!EXPAND             rhs(i,j,k,imy) = rhs(i,j,k,imy) + dxinv(1) * first_deriv_6(tmpx(i-3:i+3))
+             rhs(i,j,k,imy) = rhs(i,j,k,imy) + dxinv(1) * &
+                ( D6(1)*(tmpx(i+1)-tmpx(i-1)) &
+                + D6(2)*(tmpx(i+2)-tmpx(i-2)) &
+                + D6(3)*(tmpx(i+3)-tmpx(i-3)) )
+          end if
+
           do i=slo(1),shi(1)
 !EXPAND             rhs(i,j,k,imy) = rhs(i,j,k,imy) + dxinv(1) * first_deriv_8(tmpx(i-4:i+4))
              rhs(i,j,k,imy) = rhs(i,j,k,imy) + dxinv(1) * &
@@ -2218,12 +2296,63 @@ contains
                 + D8(3)*(tmpx(i+3)-tmpx(i-3)) &
                 + D8(4)*(tmpx(i+4)-tmpx(i-4)) )
           end do
-          !xxxxx
+
+          if (physbchi(1)) then
+             i = hi(1)-3
+             ! use 6th-order stencil
+!EXPAND             rhs(i,j,k,imy) = rhs(i,j,k,imy) + dxinv(1) * first_deriv_6(tmpx(i-3:i+3))
+             rhs(i,j,k,imy) = rhs(i,j,k,imy) + dxinv(1) * &
+                ( D6(1)*(tmpx(i+1)-tmpx(i-1)) &
+                + D6(2)*(tmpx(i+2)-tmpx(i-2)) &
+                + D6(3)*(tmpx(i+3)-tmpx(i-3)) )
+
+             i = hi(1)-2
+             ! use 4th-order stencil
+!EXPAND             rhs(i,j,k,imy) = rhs(i,j,k,imy) + dxinv(1) * first_deriv_4(tmpx(i-2:i+2))
+             rhs(i,j,k,imy) = rhs(i,j,k,imy) + dxinv(1) * &
+                ( D4(1)*(tmpx(i+1)-tmpx(i-1)) &
+                + D4(2)*(tmpx(i+2)-tmpx(i-2)) )
+
+             i = hi(1)-1
+             ! use 3rd-order slightly left-biased stencil
+             rhs(i,j,k,imy) = rhs(i,j,k,imy) + dxinv(1) * first_deriv_l3(tmpx(i-2:i+1))
+
+             i = hi(1)
+             ! use completely left-biased stencil
+             rhs(i,j,k,imy) = rhs(i,j,k,imy) + dxinv(1) * first_deriv_lb(tmpx(i-3:i))
+          end if
+
+          ! mz: d/dx
 
           do i=dlo(1),dhi(1)
              tmpx(i) = mu(i,j,k)*qx(i,j,k,idw)
           end do
-          !xxxxx
+
+          if (physbclo(1)) then
+             i = lo(1)
+             ! use completely right-biased stencil
+             rhs(i,j,k,imz) = rhs(i,j,k,imz) + dxinv(1) * first_deriv_rb(tmpx(i:i+3))
+
+             i = lo(1)+1
+             ! use 3rd-order slightly right-biased stencil
+             rhs(i,j,k,imz) = rhs(i,j,k,imz) + dxinv(1) * first_deriv_r3(tmpx(i-1:i+2))
+
+             i = lo(1)+2
+             ! use 4th-order stencil
+!EXPAND             rhs(i,j,k,imz) = rhs(i,j,k,imz) + dxinv(1) * first_deriv_4(tmpx(i-2:i+2))
+             rhs(i,j,k,imz) = rhs(i,j,k,imz) + dxinv(1) * &
+                ( D4(1)*(tmpx(i+1)-tmpx(i-1)) &
+                + D4(2)*(tmpx(i+2)-tmpx(i-2)) )
+
+             i = lo(1)+3
+             ! use 6th-order stencil
+!EXPAND             rhs(i,j,k,imz) = rhs(i,j,k,imz) + dxinv(1) * first_deriv_6(tmpx(i-3:i+3))
+             rhs(i,j,k,imz) = rhs(i,j,k,imz) + dxinv(1) * &
+                ( D6(1)*(tmpx(i+1)-tmpx(i-1)) &
+                + D6(2)*(tmpx(i+2)-tmpx(i-2)) &
+                + D6(3)*(tmpx(i+3)-tmpx(i-3)) )
+          end if
+
           do i=slo(1),shi(1)
 !EXPAND             rhs(i,j,k,imz) = rhs(i,j,k,imz) + dxinv(1) * first_deriv_8(tmpx(i-4:i+4))
              rhs(i,j,k,imz) = rhs(i,j,k,imz) + dxinv(1) * &
@@ -2232,12 +2361,63 @@ contains
                 + D8(3)*(tmpx(i+3)-tmpx(i-3)) &
                 + D8(4)*(tmpx(i+4)-tmpx(i-4)) )
           end do
-          !xxxxx
+
+          if (physbchi(1)) then
+             i = hi(1)-3
+             ! use 6th-order stencil
+!EXPAND             rhs(i,j,k,imz) = rhs(i,j,k,imz) + dxinv(1) * first_deriv_6(tmpx(i-3:i+3))
+             rhs(i,j,k,imz) = rhs(i,j,k,imz) + dxinv(1) * &
+                ( D6(1)*(tmpx(i+1)-tmpx(i-1)) &
+                + D6(2)*(tmpx(i+2)-tmpx(i-2)) &
+                + D6(3)*(tmpx(i+3)-tmpx(i-3)) )
+
+             i = hi(1)-2
+             ! use 4th-order stencil
+!EXPAND             rhs(i,j,k,imz) = rhs(i,j,k,imz) + dxinv(1) * first_deriv_4(tmpx(i-2:i+2))
+             rhs(i,j,k,imz) = rhs(i,j,k,imz) + dxinv(1) * &
+                ( D4(1)*(tmpx(i+1)-tmpx(i-1)) &
+                + D4(2)*(tmpx(i+2)-tmpx(i-2)) )
+
+             i = hi(1)-1
+             ! use 3rd-order slightly left-biased stencil
+             rhs(i,j,k,imz) = rhs(i,j,k,imz) + dxinv(1) * first_deriv_l3(tmpx(i-2:i+1))
+
+             i = hi(1)
+             ! use completely left-biased stencil
+             rhs(i,j,k,imz) = rhs(i,j,k,imz) + dxinv(1) * first_deriv_lb(tmpx(i-3:i))
+          end if
+
+          ! ene: d/dx
 
           do i=dlo(1),dhi(1)
              tmpx(i) = lam(i,j,k)*qx(i,j,k,idT)
           end do
-          !xxxxx
+
+          if (physbclo(1)) then
+             i = lo(1)
+             ! use completely right-biased stencil
+             rhs(i,j,k,iene) = rhs(i,j,k,iene) + dxinv(1) * first_deriv_rb(tmpx(i:i+3))
+
+             i = lo(1)+1
+             ! use 3rd-order slightly right-biased stencil
+             rhs(i,j,k,iene) = rhs(i,j,k,iene) + dxinv(1) * first_deriv_r3(tmpx(i-1:i+2))
+
+             i = lo(1)+2
+             ! use 4th-order stencil
+!EXPAND             rhs(i,j,k,iene) = rhs(i,j,k,iene) + dxinv(1) * first_deriv_4(tmpx(i-2:i+2))
+             rhs(i,j,k,iene) = rhs(i,j,k,iene) + dxinv(1) * &
+                ( D4(1)*(tmpx(i+1)-tmpx(i-1)) &
+                + D4(2)*(tmpx(i+2)-tmpx(i-2)) )
+
+             i = lo(1)+3
+             ! use 6th-order stencil
+!EXPAND             rhs(i,j,k,iene) = rhs(i,j,k,iene) + dxinv(1) * first_deriv_6(tmpx(i-3:i+3))
+             rhs(i,j,k,iene) = rhs(i,j,k,iene) + dxinv(1) * &
+                ( D6(1)*(tmpx(i+1)-tmpx(i-1)) &
+                + D6(2)*(tmpx(i+2)-tmpx(i-2)) &
+                + D6(3)*(tmpx(i+3)-tmpx(i-3)) )
+          end if
+
           do i=slo(1),shi(1)
 !EXPAND             rhs(i,j,k,iene) = rhs(i,j,k,iene) + dxinv(1) * first_deriv_8(tmpx(i-4:i+4))
              rhs(i,j,k,iene) = rhs(i,j,k,iene) + dxinv(1) * &
@@ -2246,7 +2426,31 @@ contains
                 + D8(3)*(tmpx(i+3)-tmpx(i-3)) &
                 + D8(4)*(tmpx(i+4)-tmpx(i-4)) )
           end do
-          !xxxxx
+
+          if (physbchi(1)) then
+             i = hi(1)-3
+             ! use 6th-order stencil
+!EXPAND             rhs(i,j,k,iene) = rhs(i,j,k,iene) + dxinv(1) * first_deriv_6(tmpx(i-3:i+3))
+             rhs(i,j,k,iene) = rhs(i,j,k,iene) + dxinv(1) * &
+                ( D6(1)*(tmpx(i+1)-tmpx(i-1)) &
+                + D6(2)*(tmpx(i+2)-tmpx(i-2)) &
+                + D6(3)*(tmpx(i+3)-tmpx(i-3)) )
+
+             i = hi(1)-2
+             ! use 4th-order stencil
+!EXPAND             rhs(i,j,k,iene) = rhs(i,j,k,iene) + dxinv(1) * first_deriv_4(tmpx(i-2:i+2))
+             rhs(i,j,k,iene) = rhs(i,j,k,iene) + dxinv(1) * &
+                ( D4(1)*(tmpx(i+1)-tmpx(i-1)) &
+                + D4(2)*(tmpx(i+2)-tmpx(i-2)) )
+
+             i = hi(1)-1
+             ! use 3rd-order slightly left-biased stencil
+             rhs(i,j,k,iene) = rhs(i,j,k,iene) + dxinv(1) * first_deriv_l3(tmpx(i-2:i+1))
+
+             i = hi(1)
+             ! use completely left-biased stencil
+             rhs(i,j,k,iene) = rhs(i,j,k,iene) + dxinv(1) * first_deriv_lb(tmpx(i-3:i))
+          end if
 
        end do
     end do
@@ -2255,12 +2459,47 @@ contains
 
     do k=lo(3),hi(3)
 
+       ! mx: d/dy
+
        do j=dlo(2),dhi(2)
           do i=lo(1),hi(1)
              tmpy(i,j) = mu(i,j,k)*qy(i,j,k,idu)
           end do
        end do
-       !xxxxx
+
+       if (physbclo(2)) then
+          j = lo(2)
+          ! use completely right-biased stencil
+          do i=lo(1),hi(1)
+             rhs(i,j,k,imx) = rhs(i,j,k,imx) + dxinv(2) * first_deriv_rb(tmpy(i,j:j+3))
+          end do
+
+          j = lo(2)+1
+          ! use 3rd-order slightly right-biased stencil
+          do i=lo(1),hi(1)
+             rhs(i,j,k,imx) = rhs(i,j,k,imx) + dxinv(2) * first_deriv_r3(tmpy(i,j-1:j+2))
+          end do
+
+          j = lo(2)+2
+          ! use 4th-order stencil
+          do i=lo(1),hi(1)
+!EXPAND             rhs(i,j,k,imx) = rhs(i,j,k,imx) + dxinv(2) * first_deriv_4(tmpy(i,j-2:j+2))
+             rhs(i,j,k,imx) = rhs(i,j,k,imx) + dxinv(2) * &
+                ( D4(1)*(tmpy(i,j+1)-tmpy(i,j-1)) &
+                + D4(2)*(tmpy(i,j+2)-tmpy(i,j-2)) )
+          end do
+
+          j = lo(2)+3
+          ! use 6th-order stencil
+          do i=lo(1),hi(1)
+!EXPAND             rhs(i,j,k,imx) = rhs(i,j,k,imx) + dxinv(2) * first_deriv_6(tmpy(i,j-3:j+3))
+             rhs(i,j,k,imx) = rhs(i,j,k,imx) + dxinv(2) * &
+                ( D6(1)*(tmpy(i,j+1)-tmpy(i,j-1)) &
+                + D6(2)*(tmpy(i,j+2)-tmpy(i,j-2)) &
+                + D6(3)*(tmpy(i,j+3)-tmpy(i,j-3)) )
+          end do
+       end if
+
        do j=slo(2),shi(2)
           do i=lo(1),hi(1)
 !EXPAND             rhs(i,j,k,imx) = rhs(i,j,k,imx) + dxinv(2) * first_deriv_8(tmpy(i,j-4:j+4))
@@ -2271,14 +2510,81 @@ contains
                 + D8(4)*(tmpy(i,j+4)-tmpy(i,j-4)) )
           end do
        end do
-       !xxxxx
+
+       if (physbchi(2)) then
+          j = hi(2)-3
+          ! use 6th-order stencil
+          do i=lo(1),hi(1)
+!EXPAND             rhs(i,j,k,imx) = rhs(i,j,k,imx) + dxinv(2) * first_deriv_6(tmpy(i,j-3:j+3))
+             rhs(i,j,k,imx) = rhs(i,j,k,imx) + dxinv(2) * &
+                ( D6(1)*(tmpy(i,j+1)-tmpy(i,j-1)) &
+                + D6(2)*(tmpy(i,j+2)-tmpy(i,j-2)) &
+                + D6(3)*(tmpy(i,j+3)-tmpy(i,j-3)) )
+          end do
+
+          j = hi(2)-2
+          ! use 4th-order stencil
+          do i=lo(1),hi(1)
+!EXPAND             rhs(i,j,k,imx) = rhs(i,j,k,imx) + dxinv(2) * first_deriv_4(tmpy(i,j-2:j+2))
+             rhs(i,j,k,imx) = rhs(i,j,k,imx) + dxinv(2) * &
+                ( D4(1)*(tmpy(i,j+1)-tmpy(i,j-1)) &
+                + D4(2)*(tmpy(i,j+2)-tmpy(i,j-2)) )
+          end do
+
+          j = hi(2)-1
+          ! use 3rd-order slightly left-biased stencil
+          do i=lo(1),hi(1)
+             rhs(i,j,k,imx) = rhs(i,j,k,imx) + dxinv(2) * first_deriv_l3(tmpy(i,j-2:j+1))
+          end do
+
+          j = hi(2)
+          ! use completely left-biased stencil
+          do i=lo(1),hi(1)
+             rhs(i,j,k,imx) = rhs(i,j,k,imx) + dxinv(2) * first_deriv_lb(tmpy(i,j-3:j))
+          end do
+       end if
+
+       ! my: d/dy
 
        do j=dlo(2),dhi(2)
           do i=lo(1),hi(1)
              tmpy(i,j) = vp(i,j,k)*qy(i,j,k,idv)
           end do
        end do
-       !xxxxx
+
+       if (physbclo(2)) then
+          j = lo(2)
+          ! use completely right-biased stencil
+          do i=lo(1),hi(1)
+             rhs(i,j,k,imy) = rhs(i,j,k,imy) + dxinv(2) * first_deriv_rb(tmpy(i,j:j+3))
+          end do
+
+          j = lo(2)+1
+          ! use 3rd-order slightly right-biased stencil
+          do i=lo(1),hi(1)
+             rhs(i,j,k,imy) = rhs(i,j,k,imy) + dxinv(2) * first_deriv_r3(tmpy(i,j-1:j+2))
+          end do
+
+          j = lo(2)+2
+          ! use 4th-order stencil
+          do i=lo(1),hi(1)
+!EXPAND             rhs(i,j,k,imy) = rhs(i,j,k,imy) + dxinv(2) * first_deriv_4(tmpy(i,j-2:j+2))
+             rhs(i,j,k,imy) = rhs(i,j,k,imy) + dxinv(2) * &
+                ( D4(1)*(tmpy(i,j+1)-tmpy(i,j-1)) &
+                + D4(2)*(tmpy(i,j+2)-tmpy(i,j-2)) )
+          end do
+
+          j = lo(2)+3
+          ! use 6th-order stencil
+          do i=lo(1),hi(1)
+!EXPAND             rhs(i,j,k,imy) = rhs(i,j,k,imy) + dxinv(2) * first_deriv_6(tmpy(i,j-3:j+3))
+             rhs(i,j,k,imy) = rhs(i,j,k,imy) + dxinv(2) * &
+                ( D6(1)*(tmpy(i,j+1)-tmpy(i,j-1)) &
+                + D6(2)*(tmpy(i,j+2)-tmpy(i,j-2)) &
+                + D6(3)*(tmpy(i,j+3)-tmpy(i,j-3)) )
+          end do
+       end if
+
        do j=slo(2),shi(2)
           do i=lo(1),hi(1)
 !EXPAND             rhs(i,j,k,imy) = rhs(i,j,k,imy) + dxinv(2) * first_deriv_8(tmpy(i,j-4:j+4))
@@ -2289,14 +2595,81 @@ contains
                 + D8(4)*(tmpy(i,j+4)-tmpy(i,j-4)) )
           end do
        end do
-       !xxxxx
+
+       if (physbchi(2)) then
+          j = hi(2)-3
+          ! use 6th-order stencil
+          do i=lo(1),hi(1)
+!EXPAND             rhs(i,j,k,imy) = rhs(i,j,k,imy) + dxinv(2) * first_deriv_6(tmpy(i,j-3:j+3))
+             rhs(i,j,k,imy) = rhs(i,j,k,imy) + dxinv(2) * &
+                ( D6(1)*(tmpy(i,j+1)-tmpy(i,j-1)) &
+                + D6(2)*(tmpy(i,j+2)-tmpy(i,j-2)) &
+                + D6(3)*(tmpy(i,j+3)-tmpy(i,j-3)) )
+          end do
+
+          j = hi(2)-2
+          ! use 4th-order stencil
+          do i=lo(1),hi(1)
+!EXPAND             rhs(i,j,k,imy) = rhs(i,j,k,imy) + dxinv(2) * first_deriv_4(tmpy(i,j-2:j+2))
+             rhs(i,j,k,imy) = rhs(i,j,k,imy) + dxinv(2) * &
+                ( D4(1)*(tmpy(i,j+1)-tmpy(i,j-1)) &
+                + D4(2)*(tmpy(i,j+2)-tmpy(i,j-2)) )
+          end do
+
+          j = hi(2)-1
+          ! use 3rd-order slightly left-biased stencil
+          do i=lo(1),hi(1)
+             rhs(i,j,k,imy) = rhs(i,j,k,imy) + dxinv(2) * first_deriv_l3(tmpy(i,j-2:j+1))
+          end do
+
+          j = hi(2)
+          ! use completely left-biased stencil
+          do i=lo(1),hi(1)
+             rhs(i,j,k,imy) = rhs(i,j,k,imy) + dxinv(2) * first_deriv_lb(tmpy(i,j-3:j))
+          end do
+       end if
+
+       ! mz: d/dy
 
        do j=dlo(2),dhi(2)
           do i=lo(1),hi(1)
              tmpy(i,j) = mu(i,j,k)*qy(i,j,k,idw)
           end do
        end do
-       !xxxxx
+
+       if (physbclo(2)) then
+          j = lo(2)
+          ! use completely right-biased stencil
+          do i=lo(1),hi(1)
+             rhs(i,j,k,imz) = rhs(i,j,k,imz) + dxinv(2) * first_deriv_rb(tmpy(i,j:j+3))
+          end do
+
+          j = lo(2)+1
+          ! use 3rd-order slightly right-biased stencil
+          do i=lo(1),hi(1)
+             rhs(i,j,k,imz) = rhs(i,j,k,imz) + dxinv(2) * first_deriv_r3(tmpy(i,j-1:j+2))
+          end do
+
+          j = lo(2)+2
+          ! use 4th-order stencil
+          do i=lo(1),hi(1)
+!EXPAND             rhs(i,j,k,imz) = rhs(i,j,k,imz) + dxinv(2) * first_deriv_4(tmpy(i,j-2:j+2))
+             rhs(i,j,k,imz) = rhs(i,j,k,imz) + dxinv(2) * &
+                ( D4(1)*(tmpy(i,j+1)-tmpy(i,j-1)) &
+                + D4(2)*(tmpy(i,j+2)-tmpy(i,j-2)) )
+          end do
+
+          j = lo(2)+3
+          ! use 6th-order stencil
+          do i=lo(1),hi(1)
+!EXPAND             rhs(i,j,k,imz) = rhs(i,j,k,imz) + dxinv(2) * first_deriv_6(tmpy(i,j-3:j+3))
+             rhs(i,j,k,imz) = rhs(i,j,k,imz) + dxinv(2) * &
+                ( D6(1)*(tmpy(i,j+1)-tmpy(i,j-1)) &
+                + D6(2)*(tmpy(i,j+2)-tmpy(i,j-2)) &
+                + D6(3)*(tmpy(i,j+3)-tmpy(i,j-3)) )
+          end do
+       end if
+
        do j=slo(2),shi(2)
           do i=lo(1),hi(1)
 !EXPAND             rhs(i,j,k,imz) = rhs(i,j,k,imz) + dxinv(2) * first_deriv_8(tmpy(i,j-4:j+4))
@@ -2307,14 +2680,81 @@ contains
                 + D8(4)*(tmpy(i,j+4)-tmpy(i,j-4)) )
           end do
        end do
-       !xxxxx
+
+       if (physbchi(2)) then
+          j = hi(2)-3
+          ! use 6th-order stencil
+          do i=lo(1),hi(1)
+!EXPAND             rhs(i,j,k,imz) = rhs(i,j,k,imz) + dxinv(2) * first_deriv_6(tmpy(i,j-3:j+3))
+             rhs(i,j,k,imz) = rhs(i,j,k,imz) + dxinv(2) * &
+                ( D6(1)*(tmpy(i,j+1)-tmpy(i,j-1)) &
+                + D6(2)*(tmpy(i,j+2)-tmpy(i,j-2)) &
+                + D6(3)*(tmpy(i,j+3)-tmpy(i,j-3)) )
+          end do
+
+          j = hi(2)-2
+          ! use 4th-order stencil
+          do i=lo(1),hi(1)
+!EXPAND             rhs(i,j,k,imz) = rhs(i,j,k,imz) + dxinv(2) * first_deriv_4(tmpy(i,j-2:j+2))
+             rhs(i,j,k,imz) = rhs(i,j,k,imz) + dxinv(2) * &
+                ( D4(1)*(tmpy(i,j+1)-tmpy(i,j-1)) &
+                + D4(2)*(tmpy(i,j+2)-tmpy(i,j-2)) )
+          end do
+
+          j = hi(2)-1
+          ! use 3rd-order slightly left-biased stencil
+          do i=lo(1),hi(1)
+             rhs(i,j,k,imz) = rhs(i,j,k,imz) + dxinv(2) * first_deriv_l3(tmpy(i,j-2:j+1))
+          end do
+
+          j = hi(2)
+          ! use completely left-biased stencil
+          do i=lo(1),hi(1)
+             rhs(i,j,k,imz) = rhs(i,j,k,imz) + dxinv(2) * first_deriv_lb(tmpy(i,j-3:j))
+          end do
+       end if
+
+       ! ene: d/dy
 
        do j=dlo(2),dhi(2)
           do i=lo(1),hi(1)
              tmpy(i,j) = lam(i,j,k)*qy(i,j,k,idT)
           end do
        end do
-       !xxxxx
+
+       if (physbclo(2)) then
+          j = lo(2)
+          ! use completely right-biased stencil
+          do i=lo(1),hi(1)
+             rhs(i,j,k,iene) = rhs(i,j,k,iene) + dxinv(2) * first_deriv_rb(tmpy(i,j:j+3))
+          end do
+
+          j = lo(2)+1
+          ! use 3rd-order slightly right-biased stencil
+          do i=lo(1),hi(1)
+             rhs(i,j,k,iene) = rhs(i,j,k,iene) + dxinv(2) * first_deriv_r3(tmpy(i,j-1:j+2))
+          end do
+
+          j = lo(2)+2
+          ! use 4th-order stencil
+          do i=lo(1),hi(1)
+!EXPAND             rhs(i,j,k,iene) = rhs(i,j,k,iene) + dxinv(2) * first_deriv_4(tmpy(i,j-2:j+2))
+             rhs(i,j,k,iene) = rhs(i,j,k,iene) + dxinv(2) * &
+                ( D4(1)*(tmpy(i,j+1)-tmpy(i,j-1)) &
+                + D4(2)*(tmpy(i,j+2)-tmpy(i,j-2)) )
+          end do
+
+          j = lo(2)+3
+          ! use 6th-order stencil
+          do i=lo(1),hi(1)
+!EXPAND             rhs(i,j,k,iene) = rhs(i,j,k,iene) + dxinv(2) * first_deriv_6(tmpy(i,j-3:j+3))
+             rhs(i,j,k,iene) = rhs(i,j,k,iene) + dxinv(2) * &
+                ( D6(1)*(tmpy(i,j+1)-tmpy(i,j-1)) &
+                + D6(2)*(tmpy(i,j+2)-tmpy(i,j-2)) &
+                + D6(3)*(tmpy(i,j+3)-tmpy(i,j-3)) )
+          end do
+       end if
+
        do j=slo(2),shi(2)
           do i=lo(1),hi(1)
 !EXPAND             rhs(i,j,k,iene) = rhs(i,j,k,iene) + dxinv(2) * first_deriv_8(tmpy(i,j-4:j+4))
@@ -2325,9 +2765,44 @@ contains
                 + D8(4)*(tmpy(i,j+4)-tmpy(i,j-4)) )
           end do
        end do
-       !xxxxx
 
+       if (physbchi(2)) then
+          j = hi(2)-3
+          ! use 6th-order stencil
+          do i=lo(1),hi(1)
+!EXPAND             rhs(i,j,k,iene) = rhs(i,j,k,iene) + dxinv(2) * first_deriv_6(tmpy(i,j-3:j+3))
+             rhs(i,j,k,iene) = rhs(i,j,k,iene) + dxinv(2) * &
+                ( D6(1)*(tmpy(i,j+1)-tmpy(i,j-1)) &
+                + D6(2)*(tmpy(i,j+2)-tmpy(i,j-2)) &
+                + D6(3)*(tmpy(i,j+3)-tmpy(i,j-3)) )
+          end do
+
+          j = hi(2)-2
+          ! use 4th-order stencil
+          do i=lo(1),hi(1)
+!EXPAND             rhs(i,j,k,iene) = rhs(i,j,k,iene) + dxinv(2) * first_deriv_4(tmpy(i,j-2:j+2))
+             rhs(i,j,k,iene) = rhs(i,j,k,iene) + dxinv(2) * &
+                ( D4(1)*(tmpy(i,j+1)-tmpy(i,j-1)) &
+                + D4(2)*(tmpy(i,j+2)-tmpy(i,j-2)) )
+          end do
+
+          j = hi(2)-1
+          ! use 3rd-order slightly left-biased stencil
+          do i=lo(1),hi(1)
+             rhs(i,j,k,iene) = rhs(i,j,k,iene) + dxinv(2) * first_deriv_l3(tmpy(i,j-2:j+1))
+          end do
+
+          j = hi(2)
+          ! use completely left-biased stencil
+          do i=lo(1),hi(1)
+             rhs(i,j,k,iene) = rhs(i,j,k,iene) + dxinv(2) * first_deriv_lb(tmpy(i,j-3:j))
+          end do
+       end if
     end do
+
+    ! z-direction
+
+    ! mx: d/dz
 
     do k=dlo(3),dhi(3)
        do j=lo(2),hi(2)
@@ -2336,8 +2811,47 @@ contains
           end do
        end do
     end do
-    
-    !xxxxx
+
+    if (physbclo(3)) then
+       k = lo(3)
+       ! use completely right-biased stencil
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+             rhs(i,j,k,imx) = rhs(i,j,k,imx) + dxinv(3) * first_deriv_rb(tmpz(i,j,k:k+3))
+          end do
+       end do
+
+       k = lo(3)+1
+       ! use 3rd-order slightly right-biased stencil
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+             rhs(i,j,k,imx) = rhs(i,j,k,imx) + dxinv(3) * first_deriv_r3(tmpz(i,j,k-1:k+2))
+          end do
+       end do
+
+       k = lo(3)+2
+       ! use 4th-order stencil
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+!EXPAND             rhs(i,j,k,imx) = rhs(i,j,k,imx) + dxinv(3) * first_deriv_4(tmpz(i,j,k-2:k+2))
+             rhs(i,j,k,imx) = rhs(i,j,k,imx) + dxinv(3) * &
+                ( D4(1)*(tmpz(i,j,k+1)-tmpz(i,j,k-1)) &
+                + D4(2)*(tmpz(i,j,k+2)-tmpz(i,j,k-2)) )
+          end do
+       end do
+
+       k = lo(3)+3
+       ! use 6th-order stencil
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+!EXPAND             rhs(i,j,k,imx) = rhs(i,j,k,imx) + dxinv(3) * first_deriv_6(tmpz(i,j,k-3:k+3))
+             rhs(i,j,k,imx) = rhs(i,j,k,imx) + dxinv(3) * &
+                ( D6(1)*(tmpz(i,j,k+1)-tmpz(i,j,k-1)) &
+                + D6(2)*(tmpz(i,j,k+2)-tmpz(i,j,k-2)) &
+                + D6(3)*(tmpz(i,j,k+3)-tmpz(i,j,k-3)) )
+          end do
+       end do
+    end if
 
     do k=slo(3),shi(3)
        do j=lo(2),hi(2)
@@ -2352,7 +2866,48 @@ contains
        end do
     end do
 
-    !xxxxx
+    if (physbchi(3)) then
+       k = hi(3)-3
+       ! use 6th-order stencil
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+!EXPAND             rhs(i,j,k,imx) = rhs(i,j,k,imx) + dxinv(3) * first_deriv_6(tmpz(i,j,k-3:k+3))
+             rhs(i,j,k,imx) = rhs(i,j,k,imx) + dxinv(3) * &
+                ( D6(1)*(tmpz(i,j,k+1)-tmpz(i,j,k-1)) &
+                + D6(2)*(tmpz(i,j,k+2)-tmpz(i,j,k-2)) &
+                + D6(3)*(tmpz(i,j,k+3)-tmpz(i,j,k-3)) )
+          end do
+       end do
+
+       k = hi(3)-2
+       ! use 4th-order stencil
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+!EXPAND             rhs(i,j,k,imx) = rhs(i,j,k,imx) + dxinv(3) * first_deriv_4(tmpz(i,j,k-2:k+2))
+             rhs(i,j,k,imx) = rhs(i,j,k,imx) + dxinv(3) * &
+                ( D4(1)*(tmpz(i,j,k+1)-tmpz(i,j,k-1)) &
+                + D4(2)*(tmpz(i,j,k+2)-tmpz(i,j,k-2)) )
+          end do
+       end do
+
+       k = hi(3)-1
+       ! use 3rd-order slightly left-biased stencil
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+             rhs(i,j,k,imx) = rhs(i,j,k,imx) + dxinv(3) * first_deriv_l3(tmpz(i,j,k-2:k+1))
+          end do
+       end do
+
+       k = hi(3)
+       ! use completely left-biased stencil
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+             rhs(i,j,k,imx) = rhs(i,j,k,imx) + dxinv(3) * first_deriv_lb(tmpz(i,j,k-3:k))
+          end do
+       end do
+    end if
+
+    ! my: d/dz
 
     do k=dlo(3),dhi(3)
        do j=lo(2),hi(2)
@@ -2362,7 +2917,46 @@ contains
        end do
     end do
 
-    !xxxxx
+    if (physbclo(3)) then
+       k = lo(3)
+       ! use completely right-biased stencil
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+             rhs(i,j,k,imy) = rhs(i,j,k,imy) + dxinv(3) * first_deriv_rb(tmpz(i,j,k:k+3))
+          end do
+       end do
+
+       k = lo(3)+1
+       ! use 3rd-order slightly right-biased stencil
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+             rhs(i,j,k,imy) = rhs(i,j,k,imy) + dxinv(3) * first_deriv_r3(tmpz(i,j,k-1:k+2))
+          end do
+       end do
+
+       k = lo(3)+2
+       ! use 4th-order stencil
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+!EXPAND             rhs(i,j,k,imy) = rhs(i,j,k,imy) + dxinv(3) * first_deriv_4(tmpz(i,j,k-2:k+2))
+             rhs(i,j,k,imy) = rhs(i,j,k,imy) + dxinv(3) * &
+                ( D4(1)*(tmpz(i,j,k+1)-tmpz(i,j,k-1)) &
+                + D4(2)*(tmpz(i,j,k+2)-tmpz(i,j,k-2)) )
+          end do
+       end do
+
+       k = lo(3)+3
+       ! use 6th-order stencil
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+!EXPAND             rhs(i,j,k,imy) = rhs(i,j,k,imy) + dxinv(3) * first_deriv_6(tmpz(i,j,k-3:k+3))
+             rhs(i,j,k,imy) = rhs(i,j,k,imy) + dxinv(3) * &
+                ( D6(1)*(tmpz(i,j,k+1)-tmpz(i,j,k-1)) &
+                + D6(2)*(tmpz(i,j,k+2)-tmpz(i,j,k-2)) &
+                + D6(3)*(tmpz(i,j,k+3)-tmpz(i,j,k-3)) )
+          end do
+       end do
+    end if
 
     do k=slo(3),shi(3)
        do j=lo(2),hi(2)
@@ -2377,7 +2971,48 @@ contains
        end do
     end do
 
-    !xxxxx
+    if (physbchi(3)) then
+       k = hi(3)-3
+       ! use 6th-order stencil
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+!EXPAND             rhs(i,j,k,imy) = rhs(i,j,k,imy) + dxinv(3) * first_deriv_6(tmpz(i,j,k-3:k+3))
+             rhs(i,j,k,imy) = rhs(i,j,k,imy) + dxinv(3) * &
+                ( D6(1)*(tmpz(i,j,k+1)-tmpz(i,j,k-1)) &
+                + D6(2)*(tmpz(i,j,k+2)-tmpz(i,j,k-2)) &
+                + D6(3)*(tmpz(i,j,k+3)-tmpz(i,j,k-3)) )
+          end do
+       end do
+
+       k = hi(3)-2
+       ! use 4th-order stencil
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+!EXPAND             rhs(i,j,k,imy) = rhs(i,j,k,imy) + dxinv(3) * first_deriv_4(tmpz(i,j,k-2:k+2))
+             rhs(i,j,k,imy) = rhs(i,j,k,imy) + dxinv(3) * &
+                ( D4(1)*(tmpz(i,j,k+1)-tmpz(i,j,k-1)) &
+                + D4(2)*(tmpz(i,j,k+2)-tmpz(i,j,k-2)) )
+          end do
+       end do
+
+       k = hi(3)-1
+       ! use 3rd-order slightly left-biased stencil
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+             rhs(i,j,k,imy) = rhs(i,j,k,imy) + dxinv(3) * first_deriv_l3(tmpz(i,j,k-2:k+1))
+          end do
+       end do
+
+       k = hi(3)
+       ! use completely left-biased stencil
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+             rhs(i,j,k,imy) = rhs(i,j,k,imy) + dxinv(3) * first_deriv_lb(tmpz(i,j,k-3:k))
+          end do
+       end do
+    end if
+
+    ! mz: d/dz
 
     do k=dlo(3),dhi(3)
        do j=lo(2),hi(2)
@@ -2387,7 +3022,46 @@ contains
        end do
     end do
 
-    !xxxxx
+    if (physbclo(3)) then
+       k = lo(3)
+       ! use completely right-biased stencil
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+             rhs(i,j,k,imz) = rhs(i,j,k,imz) + dxinv(3) * first_deriv_rb(tmpz(i,j,k:k+3))
+          end do
+       end do
+
+       k = lo(3)+1
+       ! use 3rd-order slightly right-biased stencil
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+             rhs(i,j,k,imz) = rhs(i,j,k,imz) + dxinv(3) * first_deriv_r3(tmpz(i,j,k-1:k+2))
+          end do
+       end do
+
+       k = lo(3)+2
+       ! use 4th-order stencil
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+!EXPAND             rhs(i,j,k,imz) = rhs(i,j,k,imz) + dxinv(3) * first_deriv_4(tmpz(i,j,k-2:k+2))
+             rhs(i,j,k,imz) = rhs(i,j,k,imz) + dxinv(3) * &
+                ( D4(1)*(tmpz(i,j,k+1)-tmpz(i,j,k-1)) &
+                + D4(2)*(tmpz(i,j,k+2)-tmpz(i,j,k-2)) )
+          end do
+       end do
+
+       k = lo(3)+3
+       ! use 6th-order stencil
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+!EXPAND             rhs(i,j,k,imz) = rhs(i,j,k,imz) + dxinv(3) * first_deriv_6(tmpz(i,j,k-3:k+3))
+             rhs(i,j,k,imz) = rhs(i,j,k,imz) + dxinv(3) * &
+                ( D6(1)*(tmpz(i,j,k+1)-tmpz(i,j,k-1)) &
+                + D6(2)*(tmpz(i,j,k+2)-tmpz(i,j,k-2)) &
+                + D6(3)*(tmpz(i,j,k+3)-tmpz(i,j,k-3)) )
+          end do
+       end do
+    end if
 
     do k=slo(3),shi(3)
        do j=lo(2),hi(2)
@@ -2402,7 +3076,48 @@ contains
        end do
     end do
 
-    !xxxxx
+    if (physbchi(3)) then
+       k = hi(3)-3
+       ! use 6th-order stencil
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+!EXPAND             rhs(i,j,k,imz) = rhs(i,j,k,imz) + dxinv(3) * first_deriv_6(tmpz(i,j,k-3:k+3))
+             rhs(i,j,k,imz) = rhs(i,j,k,imz) + dxinv(3) * &
+                ( D6(1)*(tmpz(i,j,k+1)-tmpz(i,j,k-1)) &
+                + D6(2)*(tmpz(i,j,k+2)-tmpz(i,j,k-2)) &
+                + D6(3)*(tmpz(i,j,k+3)-tmpz(i,j,k-3)) )
+          end do
+       end do
+
+       k = hi(3)-2
+       ! use 4th-order stencil
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+!EXPAND             rhs(i,j,k,imz) = rhs(i,j,k,imz) + dxinv(3) * first_deriv_4(tmpz(i,j,k-2:k+2))
+             rhs(i,j,k,imz) = rhs(i,j,k,imz) + dxinv(3) * &
+                ( D4(1)*(tmpz(i,j,k+1)-tmpz(i,j,k-1)) &
+                + D4(2)*(tmpz(i,j,k+2)-tmpz(i,j,k-2)) )
+          end do
+       end do
+
+       k = hi(3)-1
+       ! use 3rd-order slightly left-biased stencil
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+             rhs(i,j,k,imz) = rhs(i,j,k,imz) + dxinv(3) * first_deriv_l3(tmpz(i,j,k-2:k+1))
+          end do
+       end do
+
+       k = hi(3)
+       ! use completely left-biased stencil
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+             rhs(i,j,k,imz) = rhs(i,j,k,imz) + dxinv(3) * first_deriv_lb(tmpz(i,j,k-3:k))
+          end do
+       end do
+    end if
+
+    ! ene: d/dz
 
     do k=dlo(3),dhi(3)
        do j=lo(2),hi(2)
@@ -2412,7 +3127,46 @@ contains
        end do
     end do
 
-    !xxxxx
+    if (physbclo(3)) then
+       k = lo(3)
+       ! use completely right-biased stencil
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+             rhs(i,j,k,iene) = rhs(i,j,k,iene) + dxinv(3) * first_deriv_rb(tmpz(i,j,k:k+3))
+          end do
+       end do
+
+       k = lo(3)+1
+       ! use 3rd-order slightly right-biased stencil
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+             rhs(i,j,k,iene) = rhs(i,j,k,iene) + dxinv(3) * first_deriv_r3(tmpz(i,j,k-1:k+2))
+          end do
+       end do
+
+       k = lo(3)+2
+       ! use 4th-order stencil
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+!EXPAND             rhs(i,j,k,iene) = rhs(i,j,k,iene) + dxinv(3) * first_deriv_4(tmpz(i,j,k-2:k+2))
+             rhs(i,j,k,iene) = rhs(i,j,k,iene) + dxinv(3) * &
+                ( D4(1)*(tmpz(i,j,k+1)-tmpz(i,j,k-1)) &
+                + D4(2)*(tmpz(i,j,k+2)-tmpz(i,j,k-2)) )
+          end do
+       end do
+
+       k = lo(3)+3
+       ! use 6th-order stencil
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+!EXPAND             rhs(i,j,k,iene) = rhs(i,j,k,iene) + dxinv(3) * first_deriv_6(tmpz(i,j,k-3:k+3))
+             rhs(i,j,k,iene) = rhs(i,j,k,iene) + dxinv(3) * &
+                ( D6(1)*(tmpz(i,j,k+1)-tmpz(i,j,k-1)) &
+                + D6(2)*(tmpz(i,j,k+2)-tmpz(i,j,k-2)) &
+                + D6(3)*(tmpz(i,j,k+3)-tmpz(i,j,k-3)) )
+          end do
+       end do
+    end if
 
     do k=slo(3),shi(3)
        do j=lo(2),hi(2)
@@ -2427,7 +3181,46 @@ contains
        end do
     end do
 
-    !xxxxx
+    if (physbchi(3)) then
+       k = hi(3)-3
+       ! use 6th-order stencil
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+!EXPAND             rhs(i,j,k,iene) = rhs(i,j,k,iene) + dxinv(3) * first_deriv_6(tmpz(i,j,k-3:k+3))
+             rhs(i,j,k,iene) = rhs(i,j,k,iene) + dxinv(3) * &
+                ( D6(1)*(tmpz(i,j,k+1)-tmpz(i,j,k-1)) &
+                + D6(2)*(tmpz(i,j,k+2)-tmpz(i,j,k-2)) &
+                + D6(3)*(tmpz(i,j,k+3)-tmpz(i,j,k-3)) )
+          end do
+       end do
+
+       k = hi(3)-2
+       ! use 4th-order stencil
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+!EXPAND             rhs(i,j,k,iene) = rhs(i,j,k,iene) + dxinv(3) * first_deriv_4(tmpz(i,j,k-2:k+2))
+             rhs(i,j,k,iene) = rhs(i,j,k,iene) + dxinv(3) * &
+                ( D4(1)*(tmpz(i,j,k+1)-tmpz(i,j,k-1)) &
+                + D4(2)*(tmpz(i,j,k+2)-tmpz(i,j,k-2)) )
+          end do
+       end do
+
+       k = hi(3)-1
+       ! use 3rd-order slightly left-biased stencil
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+             rhs(i,j,k,iene) = rhs(i,j,k,iene) + dxinv(3) * first_deriv_l3(tmpz(i,j,k-2:k+1))
+          end do
+       end do
+
+       k = hi(3)
+       ! use completely left-biased stencil
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+             rhs(i,j,k,iene) = rhs(i,j,k,iene) + dxinv(3) * first_deriv_lb(tmpz(i,j,k-3:k))
+          end do
+       end do
+    end if
 
     ! add kinetic energy
     do k=lo(3),hi(3)
@@ -2483,7 +3276,36 @@ contains
        iryn = iry1+n-1
        do k=lo(3),hi(3)
           do j=lo(2),hi(2)
-             !xxxxx
+
+             if (physbclo(1)) then
+                i = lo(1)
+                ! use completely right-biased stencil
+                rhs(i,j,k,iryn) = rhs(i,j,k,iryn) + &
+                     dxinv(1) * first_deriv_rb( FY(i:i+3,j,k,n) )
+
+                i = lo(1)+1
+                ! use 3rd-order slightly right-biased stencil
+                rhs(i,j,k,iryn) = rhs(i,j,k,iryn) + &
+                     dxinv(1) * first_deriv_r3( FY(i-1:i+2,j,k,n) )
+
+                i = lo(1)+2
+                ! use 4th-order stencil
+!EXPAND                rhs(i,j,k,iryn) = rhs(i,j,k,iryn) + &
+!EXPAND                     dxinv(1) * first_deriv_4( FY(i-2:i+2,j,k,n) )
+                rhs(i,j,k,iryn) = rhs(i,j,k,iryn) + dxinv(1) * &
+                   ( D4(1)*(FY(i+1,j,k,n)-FY(i-1,j,k,n)) &
+                   + D4(2)*(FY(i+2,j,k,n)-FY(i-2,j,k,n)) )
+
+                i = lo(1)+3
+                ! use 6th-order stencil
+!EXPAND                rhs(i,j,k,iryn) = rhs(i,j,k,iryn) + &
+!EXPAND                     dxinv(1) * first_deriv_6( FY(i-3:i+3,j,k,n) )
+                rhs(i,j,k,iryn) = rhs(i,j,k,iryn) + dxinv(1) * &
+                   ( D6(1)*(FY(i+1,j,k,n)-FY(i-1,j,k,n)) &
+                   + D6(2)*(FY(i+2,j,k,n)-FY(i-2,j,k,n)) &
+                   + D6(3)*(FY(i+3,j,k,n)-FY(i-3,j,k,n)) )
+             end if
+
              do i=slo(1),shi(1)
 !EXPAND                rhs(i,j,k,iryn) = rhs(i,j,k,iryn) + &
 !EXPAND                     dxinv(1) * first_deriv_8( FY(i-4:i+4,j,k,n) )
@@ -2493,14 +3315,72 @@ contains
                    + D8(3)*(FY(i+3,j,k,n)-FY(i-3,j,k,n)) &
                    + D8(4)*(FY(i+4,j,k,n)-FY(i-4,j,k,n)) )
              end do
-             !xxxxx
+
+             if (physbchi(1)) then
+                i = hi(1)-3
+                ! use 6th-order stencil
+!EXPAND                rhs(i,j,k,iryn) = rhs(i,j,k,iryn) + &
+!EXPAND                     dxinv(1) * first_deriv_6( FY(i-3:i+3,j,k,n) )
+                rhs(i,j,k,iryn) = rhs(i,j,k,iryn) + dxinv(1) * &
+                   ( D6(1)*(FY(i+1,j,k,n)-FY(i-1,j,k,n)) &
+                   + D6(2)*(FY(i+2,j,k,n)-FY(i-2,j,k,n)) &
+                   + D6(3)*(FY(i+3,j,k,n)-FY(i-3,j,k,n)) )
+
+                i = hi(1)-2
+                ! use 4th-order stencil
+!EXPAND                rhs(i,j,k,iryn) = rhs(i,j,k,iryn) + &
+!EXPAND                     dxinv(1) * first_deriv_4( FY(i-2:i+2,j,k,n) )
+                rhs(i,j,k,iryn) = rhs(i,j,k,iryn) + dxinv(1) * &
+                   ( D4(1)*(FY(i+1,j,k,n)-FY(i-1,j,k,n)) &
+                   + D4(2)*(FY(i+2,j,k,n)-FY(i-2,j,k,n)) )
+                
+                i = hi(1)-1
+                ! use 3rd-order slightly left-biased stencil
+                rhs(i,j,k,iryn) = rhs(i,j,k,iryn) + &
+                     dxinv(1) * first_deriv_l3( FY(i-2:i+1,j,k,n) )
+
+                i = hi(1)
+                ! use completely left-biased stencil
+                rhs(i,j,k,iryn) = rhs(i,j,k,iryn) + &
+                     dxinv(1) * first_deriv_lb( FY(i-3:i,j,k,n) )
+             end if
+
           end do
        end do
     end do
     
     do k=lo(3),hi(3)
        do j=lo(2),hi(2)
-          !xxxxx
+
+          if (physbclo(1)) then
+             i = lo(1)
+             ! use completely right-biased stencil
+             rhs(i,j,k,iene) = rhs(i,j,k,iene) + &
+                  dxinv(1) * first_deriv_rb( FE(i:i+3,j,k) )
+             
+             i = lo(1)+1
+             ! use 3rd-order slightly right-biased stencil
+             rhs(i,j,k,iene) = rhs(i,j,k,iene) + &
+                  dxinv(1) * first_deriv_r3( FE(i-1:i+2,j,k) )
+
+             i = lo(1)+2
+             ! use 4th-order stencil
+!EXPAND             rhs(i,j,k,iene) = rhs(i,j,k,iene) + &
+!EXPAND                  dxinv(1) * first_deriv_4( FE(i-2:i+2,j,k) )
+             rhs(i,j,k,iene) = rhs(i,j,k,iene) + dxinv(1) * &
+                ( D4(1)*(FE(i+1,j,k)-FE(i-1,j,k)) &
+                + D4(2)*(FE(i+2,j,k)-FE(i-2,j,k)) )
+                
+             i = lo(1)+3
+             ! use 6th-order stencil
+!EXPAND             rhs(i,j,k,iene) = rhs(i,j,k,iene) + &
+!EXPAND                  dxinv(1) * first_deriv_6( FE(i-3:i+3,j,k) )
+             rhs(i,j,k,iene) = rhs(i,j,k,iene) + dxinv(1) * &
+                ( D6(1)*(FE(i+1,j,k)-FE(i-1,j,k)) &
+                + D6(2)*(FE(i+2,j,k)-FE(i-2,j,k)) &
+                + D6(3)*(FE(i+3,j,k)-FE(i-3,j,k)) )
+          end if
+             
           do i=slo(1),shi(1)
 !EXPAND             rhs(i,j,k,iene) = rhs(i,j,k,iene) + &
 !EXPAND                  dxinv(1) * first_deriv_8( FE(i-4:i+4,j,k) )
@@ -2510,7 +3390,36 @@ contains
                 + D8(3)*(FE(i+3,j,k)-FE(i-3,j,k)) &
                 + D8(4)*(FE(i+4,j,k)-FE(i-4,j,k)) )
           end do
-          !xxxxx
+
+          if (physbchi(1)) then
+             i = hi(1)-3
+             ! use 6th-order stencil
+!EXPAND             rhs(i,j,k,iene) = rhs(i,j,k,iene) + &
+!EXPAND                  dxinv(1) * first_deriv_6( FE(i-3:i+3,j,k) )
+             rhs(i,j,k,iene) = rhs(i,j,k,iene) + dxinv(1) * &
+                ( D6(1)*(FE(i+1,j,k)-FE(i-1,j,k)) &
+                + D6(2)*(FE(i+2,j,k)-FE(i-2,j,k)) &
+                + D6(3)*(FE(i+3,j,k)-FE(i-3,j,k)) )
+             
+             i = hi(1)-2
+             ! use 4th-order stencil
+!EXPAND             rhs(i,j,k,iene) = rhs(i,j,k,iene) + &
+!EXPAND                  dxinv(1) * first_deriv_4( FE(i-2:i+2,j,k) )
+             rhs(i,j,k,iene) = rhs(i,j,k,iene) + dxinv(1) * &
+                ( D4(1)*(FE(i+1,j,k)-FE(i-1,j,k)) &
+                + D4(2)*(FE(i+2,j,k)-FE(i-2,j,k)) )
+             
+             i = hi(1)-1
+             ! use 3rd-order slightly left-biased stencil
+             rhs(i,j,k,iene) = rhs(i,j,k,iene) + &
+                  dxinv(1) * first_deriv_l3( FE(i-2:i+1,j,k) )
+             
+             i = hi(1)
+             ! use completely left-biased stencil
+             rhs(i,j,k,iene) = rhs(i,j,k,iene) + &
+                  dxinv(1) * first_deriv_lb( FE(i-3:i,j,k) )
+          end if
+
        end do
     end do
 
@@ -2555,7 +3464,44 @@ contains
     do n=1,nspecies    
        iryn = iry1+n-1
        do k=lo(3),hi(3)
-          !xxxxx
+
+          if (physbclo(2)) then
+             j = lo(2)
+             ! use completely right-biased stencil
+             do i=lo(1),hi(1)
+                rhs(i,j,k,iryn) = rhs(i,j,k,iryn) + &
+                     dxinv(2) * first_deriv_rb( FY(i,j:j+3,k,n) )
+             end do
+
+             j = lo(2)+1
+             ! use 3rd-order slightly right-biased stencil
+             do i=lo(1),hi(1)
+                rhs(i,j,k,iryn) = rhs(i,j,k,iryn) + &
+                     dxinv(2) * first_deriv_r3( FY(i,j-1:j+2,k,n) )
+             end do
+
+             j = lo(2)+2
+             ! use 4th-order stencil
+             do i=lo(1),hi(1)
+!EXPAND                rhs(i,j,k,iryn) = rhs(i,j,k,iryn) + &
+!EXPAND                     dxinv(2) * first_deriv_4( FY(i,j-2:j+2,k,n) )
+                rhs(i,j,k,iryn) = rhs(i,j,k,iryn) + dxinv(2) * &
+                   ( D4(1)*(FY(i,j+1,k,n)-FY(i,j-1,k,n)) &
+                   + D4(2)*(FY(i,j+2,k,n)-FY(i,j-2,k,n)) )
+             end do
+
+             j = lo(2)+3
+             ! use 6th-order stencil
+             do i=lo(1),hi(1)
+!EXPAND                rhs(i,j,k,iryn) = rhs(i,j,k,iryn) + &
+!EXPAND                     dxinv(2) * first_deriv_6( FY(i,j-3:j+3,k,n) )
+                rhs(i,j,k,iryn) = rhs(i,j,k,iryn) + dxinv(2) * &
+                   ( D6(1)*(FY(i,j+1,k,n)-FY(i,j-1,k,n)) &
+                   + D6(2)*(FY(i,j+2,k,n)-FY(i,j-2,k,n)) &
+                   + D6(3)*(FY(i,j+3,k,n)-FY(i,j-3,k,n)) )
+             end do
+          end if
+
           do j=slo(2),shi(2)
              do i=lo(1),hi(1)
 !EXPAND                rhs(i,j,k,iryn) = rhs(i,j,k,iryn) + &
@@ -2567,12 +3513,86 @@ contains
                    + D8(4)*(FY(i,j+4,k,n)-FY(i,j-4,k,n)) )
              end do
           end do
-          !xxxxx
+
+          if (physbchi(2)) then
+             j = hi(2)-3
+             ! use 6th-order stencil
+             do i=lo(1),hi(1)
+!EXPAND                rhs(i,j,k,iryn) = rhs(i,j,k,iryn) + &
+!EXPAND                     dxinv(2) * first_deriv_6( FY(i,j-3:j+3,k,n) )
+                rhs(i,j,k,iryn) = rhs(i,j,k,iryn) + dxinv(2) * &
+                   ( D6(1)*(FY(i,j+1,k,n)-FY(i,j-1,k,n)) &
+                   + D6(2)*(FY(i,j+2,k,n)-FY(i,j-2,k,n)) &
+                   + D6(3)*(FY(i,j+3,k,n)-FY(i,j-3,k,n)) )
+             end do
+
+             j = hi(2)-2
+             ! use 4th-order stencil
+             do i=lo(1),hi(1)
+!EXPAND                rhs(i,j,k,iryn) = rhs(i,j,k,iryn) + &
+!EXPAND                     dxinv(2) * first_deriv_4( FY(i,j-2:j+2,k,n) )
+                rhs(i,j,k,iryn) = rhs(i,j,k,iryn) + dxinv(2) * &
+                   ( D4(1)*(FY(i,j+1,k,n)-FY(i,j-1,k,n)) &
+                   + D4(2)*(FY(i,j+2,k,n)-FY(i,j-2,k,n)) )
+             end do
+
+             j = hi(2)-1
+             ! use 3rd-order slightly left-biased stencil
+             do i=lo(1),hi(1)
+                rhs(i,j,k,iryn) = rhs(i,j,k,iryn) + &
+                     dxinv(2) * first_deriv_l3( FY(i,j-2:j+1,k,n) )
+             end do
+
+             j = hi(2)
+             ! use completely left-biased stencil
+             do i=lo(1),hi(1)
+                rhs(i,j,k,iryn) = rhs(i,j,k,iryn) + &
+                     dxinv(2) * first_deriv_lb( FY(i,j-3:j,k,n) )
+             end do
+          end if
+
        end do
     end do
     
     do k=lo(3),hi(3)
-       !xxxxx
+
+       if (physbclo(2)) then
+          j = lo(2)
+          ! use completely right-biased stencil
+          do i=lo(1),hi(1)
+             rhs(i,j,k,iene) = rhs(i,j,k,iene) + &
+                  dxinv(2) * first_deriv_rb( FE(i,j:j+3,k) )
+          end do
+          
+          j = lo(2)+1
+          ! use 3rd-order slightly right-biased stencil
+          do i=lo(1),hi(1)
+             rhs(i,j,k,iene) = rhs(i,j,k,iene) + &
+                  dxinv(2) * first_deriv_r3( FE(i,j-1:j+2,k) )
+          end do
+          
+          j = lo(2)+2
+          ! use 4th-order stencil
+          do i=lo(1),hi(1)
+!EXPAND             rhs(i,j,k,iene) = rhs(i,j,k,iene) + &
+!EXPAND                  dxinv(2) * first_deriv_4( FE(i,j-2:j+2,k) )
+             rhs(i,j,k,iene) = rhs(i,j,k,iene) + dxinv(2) * &
+                ( D4(1)*(FE(i,j+1,k)-FE(i,j-1,k)) &
+                + D4(2)*(FE(i,j+2,k)-FE(i,j-2,k)) )
+          end do
+          
+          j = lo(2)+3
+          ! use 6th-order stencil
+          do i=lo(1),hi(1)
+!EXPAND             rhs(i,j,k,iene) = rhs(i,j,k,iene) + &
+!EXPAND                  dxinv(2) * first_deriv_6( FE(i,j-3:j+3,k) )
+             rhs(i,j,k,iene) = rhs(i,j,k,iene) + dxinv(2) * &
+                ( D6(1)*(FE(i,j+1,k)-FE(i,j-1,k)) &
+                + D6(2)*(FE(i,j+2,k)-FE(i,j-2,k)) &
+                + D6(3)*(FE(i,j+3,k)-FE(i,j-3,k)) )
+          end do
+       end if
+
        do j=slo(2),shi(2)
           do i=lo(1),hi(1)
 !EXPAND             rhs(i,j,k,iene) = rhs(i,j,k,iene) + &
@@ -2584,7 +3604,44 @@ contains
                 + D8(4)*(FE(i,j+4,k)-FE(i,j-4,k)) )
           end do
        end do
-       !xxxxx
+
+       if (physbchi(2)) then
+          j = hi(2)-3
+          ! use 6th-order stencil
+          do i=lo(1),hi(1)
+!EXPAND             rhs(i,j,k,iene) = rhs(i,j,k,iene) + &
+!EXPAND                  dxinv(2) * first_deriv_6( FE(i,j-3:j+3,k) )
+             rhs(i,j,k,iene) = rhs(i,j,k,iene) + dxinv(2) * &
+                ( D6(1)*(FE(i,j+1,k)-FE(i,j-1,k)) &
+                + D6(2)*(FE(i,j+2,k)-FE(i,j-2,k)) &
+                + D6(3)*(FE(i,j+3,k)-FE(i,j-3,k)) )
+          end do
+
+          j = hi(2)-2
+          ! use 4th-order stencil
+          do i=lo(1),hi(1)
+!EXPAND             rhs(i,j,k,iene) = rhs(i,j,k,iene) + &
+!EXPAND                  dxinv(2) * first_deriv_4( FE(i,j-2:j+2,k) )
+             rhs(i,j,k,iene) = rhs(i,j,k,iene) + dxinv(2) * &
+                ( D4(1)*(FE(i,j+1,k)-FE(i,j-1,k)) &
+                + D4(2)*(FE(i,j+2,k)-FE(i,j-2,k)) )
+          end do
+          
+          j = hi(2)-1
+          ! use 3rd-order slightly left-biased stencil
+          do i=lo(1),hi(1)
+             rhs(i,j,k,iene) = rhs(i,j,k,iene) + &
+                  dxinv(2) * first_deriv_l3( FE(i,j-2:j+1,k) )
+          end do
+          
+          j = hi(2)
+          ! use completely left-biased stencil
+          do i=lo(1),hi(1)
+             rhs(i,j,k,iene) = rhs(i,j,k,iene) + &
+                  dxinv(2) * first_deriv_lb( FE(i,j-3:j,k) )
+          end do
+       end if
+
     end do
 
     ! z-direction
@@ -2627,7 +3684,52 @@ contains
 
     do n=1,nspecies    
        iryn = iry1+n-1
-       !xxxxx
+
+       if (physbclo(3)) then
+          k = lo(3)
+          ! use completely right-biased stencil
+          do j=lo(2),hi(2)
+            do i=lo(1),hi(1)
+                rhs(i,j,k,iryn) = rhs(i,j,k,iryn) + &
+                     dxinv(3) * first_deriv_rb( FY(i,j,k:k+3,n) )
+             end do
+          end do
+
+          k = lo(3)+1
+          ! use 3rd-order slightly right-biased stencil
+          do j=lo(2),hi(2)
+            do i=lo(1),hi(1)
+                rhs(i,j,k,iryn) = rhs(i,j,k,iryn) + &
+                     dxinv(3) * first_deriv_r3( FY(i,j,k-1:k+2,n) )
+             end do
+          end do
+          
+          k = lo(3)+2
+          ! use 4th-order stencil
+          do j=lo(2),hi(2)
+            do i=lo(1),hi(1)
+!EXPAND                rhs(i,j,k,iryn) = rhs(i,j,k,iryn) + &
+!EXPAND                     dxinv(3) * first_deriv_4( FY(i,j,k-2:k+2,n) )
+                rhs(i,j,k,iryn) = rhs(i,j,k,iryn) + dxinv(3) * &
+                   ( D4(1)*(FY(i,j,k+1,n)-FY(i,j,k-1,n)) &
+                   + D4(2)*(FY(i,j,k+2,n)-FY(i,j,k-2,n)) )
+             end do
+          end do
+          
+          k = lo(3)+3
+          ! use 6th-order stencil
+          do j=lo(2),hi(2)
+            do i=lo(1),hi(1)
+!EXPAND                rhs(i,j,k,iryn) = rhs(i,j,k,iryn) + &
+!EXPAND                     dxinv(3) * first_deriv_6( FY(i,j,k-3:k+3,n) )
+                rhs(i,j,k,iryn) = rhs(i,j,k,iryn) + dxinv(3) * &
+                   ( D6(1)*(FY(i,j,k+1,n)-FY(i,j,k-1,n)) &
+                   + D6(2)*(FY(i,j,k+2,n)-FY(i,j,k-2,n)) &
+                   + D6(3)*(FY(i,j,k+3,n)-FY(i,j,k-3,n)) )
+             end do
+          end do
+       end if
+
        do k=slo(3),shi(3)
           do j=lo(2),hi(2)
             do i=lo(1),hi(1)
@@ -2641,10 +3743,99 @@ contains
              end do
           end do
        end do
-       !xxxxx
+
+       if (physbchi(3)) then
+          k = hi(3)-3
+          ! use 6th-order stencil
+          do j=lo(2),hi(2)
+            do i=lo(1),hi(1)
+!EXPAND                rhs(i,j,k,iryn) = rhs(i,j,k,iryn) + &
+!EXPAND                     dxinv(3) * first_deriv_6( FY(i,j,k-3:k+3,n) )
+                rhs(i,j,k,iryn) = rhs(i,j,k,iryn) + dxinv(3) * &
+                   ( D6(1)*(FY(i,j,k+1,n)-FY(i,j,k-1,n)) &
+                   + D6(2)*(FY(i,j,k+2,n)-FY(i,j,k-2,n)) &
+                   + D6(3)*(FY(i,j,k+3,n)-FY(i,j,k-3,n)) )
+             end do
+          end do
+
+          k = hi(3)-2
+          ! use 4th-order stencil
+          do j=lo(2),hi(2)
+            do i=lo(1),hi(1)
+!EXPAND                rhs(i,j,k,iryn) = rhs(i,j,k,iryn) + &
+!EXPAND                     dxinv(3) * first_deriv_4( FY(i,j,k-2:k+2,n) )
+                rhs(i,j,k,iryn) = rhs(i,j,k,iryn) + dxinv(3) * &
+                   ( D4(1)*(FY(i,j,k+1,n)-FY(i,j,k-1,n)) &
+                   + D4(2)*(FY(i,j,k+2,n)-FY(i,j,k-2,n)) )
+             end do
+          end do
+          
+          k = hi(3)-1
+          ! use 3rd-order slightly left-biased stencil
+          do j=lo(2),hi(2)
+            do i=lo(1),hi(1)
+                rhs(i,j,k,iryn) = rhs(i,j,k,iryn) + &
+                     dxinv(3) * first_deriv_l3( FY(i,j,k-2:k+1,n) )
+             end do
+          end do
+          
+          k = hi(3)
+          ! use completely left-biased stencil
+          do j=lo(2),hi(2)
+            do i=lo(1),hi(1)
+                rhs(i,j,k,iryn) = rhs(i,j,k,iryn) + &
+                     dxinv(3) * first_deriv_lb( FY(i,j,k-3:k,n) )
+             end do
+          end do
+       end if
+
     end do
 
-    !xxxxx
+    if (physbclo(3)) then
+       k = lo(3)
+       ! use completely right-biased stencil
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+             rhs(i,j,k,iene) = rhs(i,j,k,iene) + &
+                  dxinv(3) * first_deriv_rb( FE(i,j,k:k+3) )
+          end do
+       end do
+
+       k = lo(3)+1
+       ! use 3rd-order slightly right-biased stencil
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+             rhs(i,j,k,iene) = rhs(i,j,k,iene) + &
+                  dxinv(3) * first_deriv_r3( FE(i,j,k-1:k+2) )
+          end do
+       end do
+          
+       k = lo(3)+2
+       ! use 4th-order stencil
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+!EXPAND             rhs(i,j,k,iene) = rhs(i,j,k,iene) + &
+!EXPAND                  dxinv(3) * first_deriv_4( FE(i,j,k-2:k+2) )
+             rhs(i,j,k,iene) = rhs(i,j,k,iene) + dxinv(3) * &
+                ( D4(1)*(FE(i,j,k+1)-FE(i,j,k-1)) &
+                + D4(2)*(FE(i,j,k+2)-FE(i,j,k-2)) )
+          end do
+       end do
+          
+       k = lo(3)+3
+       ! use 6th-order stencil
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+!EXPAND             rhs(i,j,k,iene) = rhs(i,j,k,iene) + &
+!EXPAND                  dxinv(3) * first_deriv_6( FE(i,j,k-3:k+3) )
+             rhs(i,j,k,iene) = rhs(i,j,k,iene) + dxinv(3) * &
+                ( D6(1)*(FE(i,j,k+1)-FE(i,j,k-1)) &
+                + D6(2)*(FE(i,j,k+2)-FE(i,j,k-2)) &
+                + D6(3)*(FE(i,j,k+3)-FE(i,j,k-3)) )
+          end do
+       end do
+    end if
+
     do k=slo(3),shi(3)
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
@@ -2658,7 +3849,51 @@ contains
           end do
        end do
     end do
-    !xxxxx
+
+    if (physbchi(3)) then
+       k = hi(3)-3
+       ! use 6th-order stencil
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+!EXPAND             rhs(i,j,k,iene) = rhs(i,j,k,iene) + &
+!EXPAND                  dxinv(3) * first_deriv_6( FE(i,j,k-3:k+3) )
+             rhs(i,j,k,iene) = rhs(i,j,k,iene) + dxinv(3) * &
+                ( D6(1)*(FE(i,j,k+1)-FE(i,j,k-1)) &
+                + D6(2)*(FE(i,j,k+2)-FE(i,j,k-2)) &
+                + D6(3)*(FE(i,j,k+3)-FE(i,j,k-3)) )
+          end do
+       end do
+       
+       k = hi(3)-2
+       ! use 4th-order stencil
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+!EXPAND             rhs(i,j,k,iene) = rhs(i,j,k,iene) + &
+!EXPAND                  dxinv(3) * first_deriv_4( FE(i,j,k-2:k+2) )
+             rhs(i,j,k,iene) = rhs(i,j,k,iene) + dxinv(3) * &
+                ( D4(1)*(FE(i,j,k+1)-FE(i,j,k-1)) &
+                + D4(2)*(FE(i,j,k+2)-FE(i,j,k-2)) )
+          end do
+       end do
+       
+       k = hi(3)-1
+       ! use 3rd-order slightly left-biased stencil
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+             rhs(i,j,k,iene) = rhs(i,j,k,iene) + &
+                  dxinv(3) * first_deriv_l3( FE(i,j,k-2:k+1) )
+          end do
+       end do
+       
+       k = hi(3)
+       ! use completely left-biased stencil
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+             rhs(i,j,k,iene) = rhs(i,j,k,iene) + &
+                  dxinv(3) * first_deriv_lb( FE(i,j,k-3:k) )
+          end do
+       end do
+    end if
 
     deallocate(vp,dpy,dpe,FY,FE,rvc,tmpx,tmpy,tmpz)
 
