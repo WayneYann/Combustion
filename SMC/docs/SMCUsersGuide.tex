@@ -93,7 +93,7 @@ where $M$ is a $8 \times 8$ matrix.  {\tt SMC} also has a {\tt S3D}
 style algorithm for second derivatives, in which the first derivative
 operator is applied twice to obtain a second derivative.
 
-The system is evolved with either a 3rd-order Runge-Kutta method or a
+The system is evolved with either a Runge-Kutta method or a
 spectral deferred correction (SDC) method.  {\tt SMC} uses
 Navier-Stokes characteristic boundary conditions (NSCBC).  The cgs
 units are used in {\tt SMC}.
@@ -118,13 +118,14 @@ has the following options:
   version we use.  The possible values are {\tt src}, {\tt
     src\_tb\_min} and {\tt src\_min}.  The {\tt src\_min} version is
   now obsolete.  The {\tt src\_tb\_min} version only supports triple
-  periodic boundary conditions, and it only uses RK3 for time
-  stepping.  This is used as a proxy app for code analysis. The {\tt
-    src} version is the most sophisticated one.  It uses NSCBC for
-  non-periodic boundaries.  It can use either SDC or RK3 for time
-  stepping.  The {\tt src} version requires an additional
-  softwarepackage, {\tt SDCLib}, available from Matthew Emmett ({\tt
-    mwemmett@lbl.gov}) of CCSE upon request.
+  periodic boundary conditions, 3rd-order RK3 for time stepping, and
+  the narrow stencil for second derivatives.  This is used as a proxy
+  app for code analysis. The {\tt src} version is the most
+  sophisticated one.  It uses NSCBC for non-periodic boundaries.  It
+  can use either single-rate SDC, multi-rate SDC, 3-stage 3rd-oder RK,
+  or 6-stage 4th-order RK for time stepping.  The {\tt src} version
+  requires an additional softwarepackage, {\tt SDCLib}, available from
+  Matthew Emmett ({\tt mwemmett@lbl.gov}) of CCSE upon request.
 \item {\tt K\_USE\_STACK := t}\\
   This option is for the {\tt src\_tb\_min} version only. There are
   several versions of {\tt kernels.f90}.  If this is set, either {\tt
@@ -376,21 +377,33 @@ blocks.  The blocking makes the code more cache friendly.
 \subsection{Algorithm}
 
 \begin{itemize}
-\item {\tt advance\_method = 1}\\
-  The choices are 1 (3rd-order Runge-Kutta), 2 (SDC), and 3
-  (Multi-Rate SDC).
-% \item {\tt stencil\_type = "narrow"}\\
-%   This determines the stencil type for second derivatives. For the
-%   {\tt src\_min} version, the options are {\tt "narrow"} or {\tt
-%     "S3D"}. However, it must be {\tt narrow} for other versions.
+\item {\tt advance\_sdc = .true.}\\
+  This determines whether SDC or RK is used for time-stepping scheme.
+\item {\tt rk\_order = 4}\\
+  This determines the order of RK is it is used.
+\item {\tt stencil\_type = "narrow"}\\
+  This determines the stencil type for second derivatives.  The
+  options are {\tt "narrow"} or {\tt "S3D"}. 
 \end{itemize}
 
 \subsection{SDC}
 
 \begin{itemize}
+\item {\tt sdc\_multirate = .true.}\\
+  This determines whether multi-rate or single-rate SDC is used when
+  SDC is used for time-stepping.
+\item {\tt sdc\_multirate_explict = .true.}\\
+  This determines whether explicit or implicit method is used for
+  reaction in MRSDC.
+\item {\tt sdc\_multirate_repeat = 1}\\
+  This determines how many times the fine nodes are repeated in one
+  substep on the coarse nodes.
 \item {\tt sdc\_nnodes = 3}\\
   Number of SDC nodes.  Valid choices are any positive integer greater
   than 2.
+\item {\tt sdc\_nnodes_fine = 3}\\
+  Number of fine SDC nodes in MRSDC.  Valid choices are any positive
+  integer greater than 2.
 \item {\tt sdc\_iters = 5}\\
   Number of SDC iterations per time step.  Valid choices are any
   positive integer.
