@@ -228,24 +228,25 @@ subroutine smc()
      init_step = restart + 1
   end if
 
-  if (advance_sdc) then
-     if (sdc_multirate) then
-        if (sdc_multirate_explicit) then
-           print*,"Using explicit multi-rate SDC integrator"
-           print*,"  coarse nodes:", sdc_nnodes
-           print*,"  fine nodes:  ", sdc_nnodes_fine, trim(sdc_multirate_type), sdc_multirate_repeat
+  if (parallel_IOProcessor()) then
+     if (advance_sdc) then
+        if (sdc_multirate) then
+           if (sdc_multirate_explicit) then
+              print*,"Using explicit multi-rate SDC integrator"
+              print*,"  coarse nodes:", sdc_nnodes
+              print*,"  fine nodes:  ", sdc_nnodes_fine, trim(sdc_multirate_type), sdc_multirate_repeat
+           else
+              print*,"Using semi-implicit multi-rate SDC integrator"
+              print*,"  coarse nodes:", sdc_nnodes
+              print*,"  fine nodes:  ", sdc_nnodes_fine, trim(sdc_multirate_type), sdc_multirate_repeat
+           end if
         else
-           print*,"Using semi-implicit multi-rate SDC integrator"
-           print*,"  coarse nodes:", sdc_nnodes
-           print*,"  fine nodes:  ", sdc_nnodes_fine, trim(sdc_multirate_type), sdc_multirate_repeat
+           print*,"Using single-rate SDC integrator with: ", sdc_nnodes, "nodes"
         end if
      else
-        print*,"Using single-rate SDC integrator with: ", sdc_nnodes, "nodes"
+        print*,"Using Runge-Kutta integrator of order: ", rk_order
      end if
-  else
-     print*,"Using Runge-Kutta integrator of order: ", rk_order
   end if
-
 
   !
   ! evolve
