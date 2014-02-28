@@ -70,7 +70,7 @@ overlap_in_trial                    logical            .false.
 #-----------------------------------------------------------------------------
 
 # Time-stepping scheme
-advance_sdc                         logical           .true.
+advance_method                      character         "mrsdc"
 rk_order                            integer           4
 
 # "narrow" is the new stencil, and wide or S3D is the S3D type stencil
@@ -128,7 +128,6 @@ sdc_iters                           integer            5
 sdc_tol_residual                    real               -1.d100
 
 # multi-rate type
-sdc_multirate                       logical            .true.
 sdc_multirate_explicit              logical            .true.
 sdc_multirate_type                  character          "local"
 sdc_multirate_repeat                integer            1

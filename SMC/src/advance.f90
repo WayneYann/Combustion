@@ -31,31 +31,10 @@ module advance_module
 
   integer, public :: count_ad = 0, count_r = 0
 
-  double precision, parameter :: rk64_alpha(6) = [ &
-       +  3296351145737.d0/15110423921029.d0, &
-       +  1879360555526.d0/ 7321162733569.d0, &
-       + 10797097731880.d0/20472212111779.d0, &
-       +   754636544611.d0/15563872110659.d0, &
-       +  3260218886217.d0/ 2618290685819.d0, &
-       +  5069185909380.d0/12292927838509.d0 ]
-
-  double precision, parameter :: rk64_beta(6) = [ &
-       -  1204558336989.d0/10607789004752.d0, &
-       -  3028468927040.d0/14078136890693.d0, &
-       -   455570672869.d0/ 8930094212428.d0, &
-       - 17275898420483.d0/15997285579755.d0, &
-       -  2453906524165.d0/ 9868353053862.d0, &
-       +      0.d0 ]
-
-  character(len=7), save :: bpt_names(6) = [ &
-       "rkstep1", "rkstep2", "rkstep3", "rkstep4", "rkstep5", "rkstep6" ]
-
-
 contains
 
   subroutine advance(U, dtio, courno, dx, sdc, istep)
-
-    use probin_module, only : use_sdc => advance_sdc, sdc_multirate, rk_order, check_nans
+    use probin_module
 
     type(multifab),    intent(inout) :: U
     double precision,  intent(inout) :: dtio, courno
@@ -72,13 +51,12 @@ contains
 
     dt = dtio
 
-    if (use_sdc) then
-       if (sdc_multirate) then
-          call advance_multi_sdc(U,courno,dx,sdc,istep==istep_first)
-       else
-          call advance_sdc(U,courno,dx,sdc,istep==istep_first)
-       end if
-    else
+    select case (method)
+    case (SMC_ADVANCE_SDC)
+       call advance_sdc(U,courno,dx,sdc,istep==istep_first)
+    case (SMC_ADVANCE_MRSDC)
+       call advance_multi_sdc(U,courno,dx,sdc,istep==istep_first)
+    case (SMC_ADVANCE_RK)
        if (rk_order == 3) then
           call advance_rk33(U,courno,dx)
        else if (rk_order == 4) then
@@ -86,7 +64,9 @@ contains
        else
           call bl_error("Invalid rk_order.")
        end if
-    end if
+    case (SMC_ADVANCE_CUSTOM)
+       call bl_error("Not implemented yet.")
+    end select
 
     if (check_nans) then
        if (contains_nan(U)) then
@@ -147,14 +127,41 @@ contains
     use smcdata_module, only : Unew, Uprime
     implicit none
 
+
+    double precision, parameter :: rk64_alpha(6) = [ &
+         +  3296351145737.d0/15110423921029.d0, &
+         +  1879360555526.d0/ 7321162733569.d0, &
+         + 10797097731880.d0/20472212111779.d0, &
+         +   754636544611.d0/15563872110659.d0, &
+         +  3260218886217.d0/ 2618290685819.d0, &
+         +  5069185909380.d0/12292927838509.d0 ]
+
+    double precision, parameter :: rk64_beta(6) = [ &
+         -  1204558336989.d0/10607789004752.d0, &
+         -  3028468927040.d0/14078136890693.d0, &
+         -   455570672869.d0/ 8930094212428.d0, &
+         - 17275898420483.d0/15997285579755.d0, &
+         -  2453906524165.d0/ 9868353053862.d0, &
+         +      0.d0 ]
+
+    double precision, parameter :: rk64_time(6) = [ &
+         +  3296351145737.d0/15110423921029.d0, &
+         +  2703592154963.d0/ 7482974295227.d0, &
+         +  7876405563010.d0/11693293791847.d0, &
+         + 12920213460229.d0/19253602032679.d0, &
+         +  7527523127717.d0/ 9001003553970.d0, &
+         +      1.d0 ]
+
+    character(len=7), save :: bpt_names(6) = [ &
+         "rkstep1", "rkstep2", "rkstep3", "rkstep4", "rkstep5", "rkstep6" ]
+
     type(multifab),    intent(inout) :: U
     double precision,  intent(inout) :: courno
     double precision,  intent(in   ) :: dx(3)
 
     type(bl_prof_timer), save :: bpt_rkstep(6)
+    double precision :: t
     integer :: j
-
-    call tb_multifab_setval(Unew, 0.d0, .true.)
 
     ! init carry-over
     call copy(Unew, U)
@@ -162,24 +169,31 @@ contains
     do j = 1, 6
        call build(bpt_rkstep(j), bpt_names(j))
        if (j == 1) then
-          call dUdt(U, Uprime, time, dt, dx, courno=courno)
+          call dUdt(U, Uprime, time, rk64_time(j)*dt, dx, courno=courno)
        else
-          call dUdt(U, Uprime, time, rk64_alpha(j)*dt, dx) ! XXX, time
+          call dUdt(U, Uprime, t, rk64_time(j)*dt, dx)
        end if
+
+       t = time + rk64_time(j) * dt
 
        ! update solution
        call update_rk(0.0d0, U, 1.0d0, Unew, rk64_alpha(j)*dt, Uprime)
+       call reset_density(U)
+       ! call impose_hard_bc(U, t, dx)
 
        ! update carry-over
-       call update_rk(0.0d0, Unew, 1.0d0, U, rk64_beta(j)*dt, Uprime)
-
-       call reset_density(Unew)
-       call reset_density(U)
-       call impose_hard_bc(Unew, time, dx) ! XXX, time
-       call impose_hard_bc(U,    time, dx) ! XXX, time
+       if (j < 6) then
+          call update_rk(0.0d0, Unew, 1.0d0, U, rk64_beta(j)*dt, Uprime)
+          call reset_density(Unew)
+          ! call impose_hard_bc(Unew, t, dx)
+       end if
 
        call destroy(bpt_rkstep(j))
     end do
+
+       call reset_density(U)
+       ! call impose_hard_bc(U, time+dt, dx)
+
   end subroutine advance_rk64
 
   !

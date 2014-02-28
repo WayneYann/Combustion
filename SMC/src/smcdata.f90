@@ -22,7 +22,7 @@ contains
     use variables_module, only : ncons, nprim
     use chemistry_module, only : nspecies
     use derivative_stencil_module, only : stencil_ng
-    use probin_module, only : advance_sdc
+    use probin_module
     use threadbox_module, only : tb_multifab_setval
 
     implicit none
@@ -31,16 +31,13 @@ contains
     type(sdc_ctx), intent(inout) :: sdc
     integer :: err
 
-    if (.not. advance_sdc) then
+    if (method == SMC_ADVANCE_RK) then
        call multifab_build(Uprime, la, ncons, 0)
        call multifab_build(Unew,   la, ncons, stencil_ng)
-    else
-       if (sdc%single_rate) then
-          call sdc_imex_allocate(sdc%imex, err)
-       end if
-       if (sdc%multi_rate) then
-          call sdc_mrex_allocate(sdc%mrex, err)
-       end if
+    else if (method == SMC_ADVANCE_SDC) then
+       call sdc_imex_allocate(sdc%imex, err)
+    else if (method == SMC_ADVANCE_MRSDC) then
+       call sdc_mrex_allocate(sdc%mrex, err)
     end if
 
     call multifab_build(Q, la, nprim, stencil_ng)
@@ -59,19 +56,16 @@ contains
 
 
   subroutine destroy_smcdata(sdc)
-    use probin_module, only : advance_sdc
+    use probin_module
     type(sdc_ctx), intent(inout) :: sdc
 
-    if (.not. advance_sdc) then
+    if (method == SMC_ADVANCE_RK) then
        call destroy(Unew)
        call destroy(Uprime)
-    else
-       if (sdc%single_rate) then
-          call sdc_imex_deallocate(sdc%imex)
-       end if
-       if (sdc%multi_rate) then
-          call sdc_mrex_deallocate(sdc%mrex)
-       end if
+    else if (method == SMC_ADVANCE_SDC) then
+       call sdc_imex_deallocate(sdc%imex)
+    else if (method == SMC_ADVANCE_MRSDC) then
+       call sdc_mrex_deallocate(sdc%mrex)
     end if
 
     call destroy(Q)
