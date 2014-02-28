@@ -228,24 +228,26 @@ subroutine smc()
      init_step = restart + 1
   end if
 
-  select case (method)
-  case (SMC_ADVANCE_SDC)
-     print*,"Using single-rate SDC integrator with: ", sdc_nnodes, "nodes"
-  case (SMC_ADVANCE_MRSDC)
-     if (sdc_multirate_explicit) then
-        print*,"Using explicit multi-rate SDC integrator"
-        print*,"  coarse nodes:", sdc_nnodes
-        print*,"  fine nodes:  ", sdc_nnodes_fine, trim(sdc_multirate_type), sdc_multirate_repeat
-     else
-        print*,"Using semi-implicit multi-rate SDC integrator"
-        print*,"  coarse nodes:", sdc_nnodes
-        print*,"  fine nodes:  ", sdc_nnodes_fine, trim(sdc_multirate_type), sdc_multirate_repeat
-     end if
-  case (SMC_ADVANCE_RK)
-     print*,"Using Runge-Kutta integrator of order: ", rk_order
-  case (SMC_ADVANCE_CUSTOM)
-     print*,"Using custom integrator"
-  end select
+  if (parallel_IOProcessor()) then
+     select case (method)
+     case (SMC_ADVANCE_SDC)
+        print*,"Using single-rate SDC integrator with: ", sdc_nnodes, "nodes"
+     case (SMC_ADVANCE_MRSDC)
+        if (sdc_multirate_explicit) then
+           print*,"Using explicit multi-rate SDC integrator"
+           print*,"  coarse nodes:", sdc_nnodes
+           print*,"  fine nodes:  ", sdc_nnodes_fine, trim(sdc_multirate_type), sdc_multirate_repeat
+        else
+           print*,"Using semi-implicit multi-rate SDC integrator"
+           print*,"  coarse nodes:", sdc_nnodes
+           print*,"  fine nodes:  ", sdc_nnodes_fine, trim(sdc_multirate_type), sdc_multirate_repeat
+        end if
+     case (SMC_ADVANCE_RK)
+        print*,"Using Runge-Kutta integrator of order: ", rk_order
+     case (SMC_ADVANCE_CUSTOM)
+        print*,"Using custom integrator"
+     end select
+  end if
 
   !
   ! evolve

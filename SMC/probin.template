@@ -273,6 +273,10 @@ contains
     call layout_set_copyassoc_max(the_copy_cache_max)
     call layout_set_sfc_threshold(the_sfc_threshold)
 
+    if (sdc_multirate .and. (.not. sdc_multirate_explicit)) then
+       use_vode = .true.
+    end if
+
     call destroy(bpt)
 
   end subroutine runtime_init

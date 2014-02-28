@@ -344,6 +344,7 @@ use_bulk_viscosity                  logical            .true.
 trans_int                           integer            0
 
 # use VODE?
+# use_vode will be set to .true., if (sdc_multirate .and. (.not. sdc_multirate_explicit)).
 use_vode                            logical            .false.
 vode_verbose                        integer            0
 vode_itol                           integer            1

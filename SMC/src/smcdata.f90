@@ -2,6 +2,7 @@ module smcdata_module
 
   use multifab_module
   use sdcquad_module
+  use derivative_stencil_module, only : stencil, narrow, s3d, stencil_ng
 
   implicit none
 
@@ -10,16 +11,17 @@ module smcdata_module
   type(multifab),save :: mu, xi ! viscosity
   type(multifab),save :: lam ! partial thermal conductivity
   type(multifab),save :: Ddiag ! diagonal components of rho * Y_k * D
+  type(multifab),save :: qx, qy, qz  ! for S3D to store first-derivatives
 
   private
 
-  public :: Uprime, Unew, Q, Fdif, Upchem, mu, xi, lam, Ddiag
+  public :: Uprime, Unew, Q, Fdif, Upchem, mu, xi, lam, Ddiag, qx, qy, qz
   public :: build_smcdata, destroy_smcdata
 
 contains
 
   subroutine build_smcdata(la,sdc)
-    use variables_module, only : ncons, nprim
+    use variables_module, only : ncons, nprim, ndq
     use chemistry_module, only : nspecies
     use derivative_stencil_module, only : stencil_ng
     use probin_module
@@ -52,6 +54,15 @@ contains
     call multifab_build(lam, la, 1, stencil_ng)
     call multifab_build(Ddiag, la, nspecies, stencil_ng)
 
+    if (stencil .eq. s3d) then
+       call multifab_build(qx, la, ndq, stencil_ng)
+       call multifab_build(qy, la, ndq, stencil_ng)
+       call multifab_build(qz, la, ndq, stencil_ng)
+       call tb_multifab_setval(qx, 0.d0)
+       call tb_multifab_setval(qy, 0.d0)
+       call tb_multifab_setval(qz, 0.d0)
+    end if
+
   end subroutine build_smcdata
 
 
@@ -75,6 +86,13 @@ contains
     call destroy(xi)
     call destroy(lam)
     call destroy(Ddiag)
+
+    if (stencil .eq. s3d) then
+       call destroy(qx)
+       call destroy(qy)
+       call destroy(qz)
+    end if
+
   end subroutine destroy_smcdata
 
 end module smcdata_module

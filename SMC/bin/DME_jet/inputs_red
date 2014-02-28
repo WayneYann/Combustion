@@ -7,13 +7,16 @@
 
  check_nans = .true.
 
- advance_method = 4        ! 1=RK3, 2=SDC, 3=MRSDC
+ advance_sdc = .true.
+ 
+ sdc_multirate = .true.
+ sdc_multirate_explicit = .false.
+ sdc_multirate_repeat = 2
 
  sdc_nnodes_fine  = 3
  sdc_nnodes       = 5
  sdc_iters        = 4
  sdc_tol_residual = 1.0d-6
- sdc_multirate_repeat = 2
 
  stop_time = 5.97411d-5
  max_step  = 1000000
