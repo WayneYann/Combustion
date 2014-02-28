@@ -989,16 +989,16 @@ contains
              call multifab_fill_boundary_nowait(qz, qz_fb_data, idim=3)
           end if
           if (overlap_comm_comp) then
-             call multifab_fill_boundary_test(qx, qx_fb_data)
-             call multifab_fill_boundary_test(qy, qy_fb_data)
+             call multifab_fill_boundary_test(qx, qx_fb_data, idim=1)
+             call multifab_fill_boundary_test(qy, qy_fb_data, idim=2)
              if (dm .eq. 3) then
-                call multifab_fill_boundary_test(qz, qz_fb_data)
+                call multifab_fill_boundary_test(qz, qz_fb_data, idim=3)
              end if
           else
-             call multifab_fill_boundary_finish(qx, qx_fb_data)
-             call multifab_fill_boundary_finish(qy, qy_fb_data)
+             call multifab_fill_boundary_finish(qx, qx_fb_data, idim=1)
+             call multifab_fill_boundary_finish(qy, qy_fb_data, idim=2)
              if (dm .eq. 3) then
-                call multifab_fill_boundary_finish(qz, qz_fb_data)
+                call multifab_fill_boundary_finish(qz, qz_fb_data, idim=3)
              end if
           end if
 
@@ -1036,10 +1036,10 @@ contains
           !$omp end parallel
 
           if (overlap_comm_comp) then
-             call multifab_fill_boundary_finish(qx, qx_fb_data)
-             call multifab_fill_boundary_finish(qy, qy_fb_data)
+             call multifab_fill_boundary_finish(qx, qx_fb_data, idim=1)
+             call multifab_fill_boundary_finish(qy, qy_fb_data, idim=2)
              if (dm .eq. 3) then
-                call multifab_fill_boundary_finish(qz, qz_fb_data)
+                call multifab_fill_boundary_finish(qz, qz_fb_data, idim=3)
              end if
           end if
 

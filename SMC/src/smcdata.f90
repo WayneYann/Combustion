@@ -60,6 +60,9 @@ contains
        call multifab_build(qx, la, ndq, stencil_ng)
        call multifab_build(qy, la, ndq, stencil_ng)
        call multifab_build(qz, la, ndq, stencil_ng)
+       call tb_multifab_setval(qx, 0.d0)
+       call tb_multifab_setval(qy, 0.d0)
+       call tb_multifab_setval(qz, 0.d0)
     end if
 
   end subroutine build_smcdata
