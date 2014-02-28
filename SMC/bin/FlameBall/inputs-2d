@@ -7,8 +7,8 @@
 
  stencil_type = "narrow"   ! narrow or S3D
 
- advance_sdc = .true.
- sdc_multirate = .false.
+ advance_method = "sdc"
+
  sdc_nnodes = 5
  sdc_iters  = 8
  sdc_tol_residual = 1.0d-2

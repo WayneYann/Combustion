@@ -5,8 +5,7 @@
 
  verbose = 2
 
- advance_sdc = .true.
- sdc_multirate = .false.
+ advance_method = "sdc"
 
  stencil_type = "narrow"   ! narrow or S3D
 

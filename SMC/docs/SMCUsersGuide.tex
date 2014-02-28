@@ -377,10 +377,10 @@ blocks.  The blocking makes the code more cache friendly.
 \subsection{Algorithm}
 
 \begin{itemize}
-\item {\tt advance\_sdc = .true.}\\
-  This determines whether SDC or RK is used for time-stepping scheme.
+\item {\tt advance\_method = "mrsdc"}\\
+  Possible choices for time-stepping scheme are "mrsdc", "sdc", and "rk".
 \item {\tt rk\_order = 4}\\
-  This determines the order of RK is it is used.
+  This determines the order of RK if it is used.
 \item {\tt stencil\_type = "narrow"}\\
   This determines the stencil type for second derivatives.  The
   options are {\tt "narrow"} or {\tt "S3D"}. 
@@ -389,9 +389,6 @@ blocks.  The blocking makes the code more cache friendly.
 \subsection{SDC}
 
 \begin{itemize}
-\item {\tt sdc\_multirate = .true.}\\
-  This determines whether multi-rate or single-rate SDC is used when
-  SDC is used for time-stepping.
 \item {\tt sdc\_multirate_explict = .true.}\\
   This determines whether explicit or implicit method is used for
   reaction in MRSDC.
