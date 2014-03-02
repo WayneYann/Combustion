@@ -1268,11 +1268,11 @@ contains
   end subroutine overlapped_part
 
   subroutine sdc_get_q0(U0, sdc)
-    use probin_module, only : sdc_multirate
+    use probin_module
     type(multifab), intent(inout) :: U0
     type(sdc_ctx),  intent(inout) :: sdc
 
-    if (.not. sdc_multirate) then
+    if (method .eq. SMC_ADVANCE_SDC) then
        call sdc_imex_get_q0(sdc%imex, mfptr(U0))
     else
        call sdc_mrex_get_q0(sdc%mrex, mfptr(U0))
