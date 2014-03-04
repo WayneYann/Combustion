@@ -15,8 +15,7 @@
    $ fab -H hopper build:flamebox
 
    Note that the preferred setup on Hopper is: OMP3 branch of BoxLib,
-   intel/13.1.2.183 compiler.  This results in the fastest chemistry,
-   which results in the best MRSDC speedup.
+   intel/13.1.2.183 compiler.
 
    Next, run the speed tests, compare the results, and plot the results:
 
@@ -39,3 +38,10 @@
    $ fab -H hopper flameball_mrconv
    $ fab -H hopper flameball_mrconv_compare
    $ fab -H hopper flameball_mrconv_tabulate
+
+** Scaling tests
+
+   This test uses the FlameBall binary to do a strong scaling test.
+
+   $ fab -H hopper flameball_scaling
+   $ fab -H hopper flameball_scaling_plot

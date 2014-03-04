@@ -9,10 +9,12 @@ from fabric.api import *
 
 class HopperPBS(base.Container):
 
+    cores_per_node = 24
+
     def submit(self, job, rwd=None, exe=None, inputs=None, queue=None,
                width=None, depth=None, pernode=None,
                walltime=None, stdout=None, stderr=None,
-               pbs_opts=None, aprun_opts=None, verbose=False, dry_run=None, 
+               pbs_opts=None, aprun_opts=None, verbose=False, dry_run=None,
                cmds=None, **kwargs):
 
         #
@@ -71,7 +73,10 @@ class HopperPBS(base.Container):
         if queue:
             pbs.append("#PBS -q " + queue)
         if width and depth:
-            pbs.append("#PBS -l mppwidth=" + str(width*depth))
+            mppwidth = width*depth
+            if pernode:
+                mppwidth = self.cores_per_node * (width*depth/pernode)
+            pbs.append("#PBS -l mppwidth=" + str(mppwidth))
             opts.append("-n " + str(width))
             opts.append("-d " + str(depth))
         elif width:
@@ -110,7 +115,7 @@ class HopperPBS(base.Container):
         # push to remote host
         run_script = rwd + '/pbs.sh'
         put(strio(pbs), run_script)
-            
+
         if not dry_run:
             # submit to queue
             print 'SUBMITTING ', job.name, ' USING ', exe
