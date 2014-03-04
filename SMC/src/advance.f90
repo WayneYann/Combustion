@@ -83,7 +83,6 @@ contains
   ! Advance U using SSP RK3
   !
   subroutine advance_rk33 (U,courno,dx)
-
     use time_module, only : time
     use smcdata_module, only : Unew, Uprime
     implicit none
@@ -123,11 +122,13 @@ contains
   ! Advance U using 6-stage RK4 (same as S3D)
   !
   subroutine advance_rk64 (U,courno,dx)
-
     use time_module, only : time
     use smcdata_module, only : Unew, Uprime
     implicit none
 
+    type(multifab),    intent(inout) :: U
+    double precision,  intent(inout) :: courno
+    double precision,  intent(in   ) :: dx(3)
 
     double precision, parameter :: rk64_alpha(6) = [ &
          +  3296351145737.d0/15110423921029.d0, &
@@ -156,10 +157,6 @@ contains
     character(len=7), save :: bpt_names(6) = [ &
          "rkstep1", "rkstep2", "rkstep3", "rkstep4", "rkstep5", "rkstep6" ]
 
-    type(multifab),    intent(inout) :: U
-    double precision,  intent(inout) :: courno
-    double precision,  intent(in   ) :: dx(3)
-
     type(bl_prof_timer), save :: bpt_rkstep(6)
     double precision :: t
     integer :: j
@@ -180,20 +177,20 @@ contains
        ! update solution
        call update_rk(0.0d0, U, 1.0d0, Unew, rk64_alpha(j)*dt, Uprime)
        call reset_density(U)
-       ! call impose_hard_bc(U, t, dx)
+       call impose_hard_bc(U, t, dx)
 
        ! update carry-over
        if (j < 6) then
           call update_rk(0.0d0, Unew, 1.0d0, U, rk64_beta(j)*dt, Uprime)
           call reset_density(Unew)
-          ! call impose_hard_bc(Unew, t, dx)
+          call impose_hard_bc(Unew, t, dx)
        end if
 
        call destroy(bpt_rkstep(j))
     end do
 
-       call reset_density(U)
-       ! call impose_hard_bc(U, time+dt, dx)
+    call reset_density(U)
+    call impose_hard_bc(U, time+dt, dx)
 
   end subroutine advance_rk64
 
@@ -898,9 +895,9 @@ contains
           !$omp parallel private(n,iblock,lo,hi,up,ulo,uhi,upp,uplo,uphi,qp,qlo,qhi) &
           !$omp private(fp,flo,fhi,mup,xip,lamp,Ddp,dlo,dhi,blo,bhi)
           do n=1,nfabs(Q)
-             
+
              if (.not.tb_worktodo(n)) cycle
-             
+
              up => dataptr(U,n)
              upp=> dataptr(Uprime,n)
              fp => dataptr(Fdif,n)
@@ -909,7 +906,7 @@ contains
              xip  => dataptr(xi   , n)
              lamp => dataptr(lam  , n)
              Ddp  => dataptr(Ddiag, n)
-             
+
              ulo = lbound(up)
              uhi = ubound(up)
              qlo = lbound(qp)
@@ -918,29 +915,29 @@ contains
              uphi = ubound(upp)
              flo = lbound(fp)
              fhi = ubound(fp)
-             
+
              call get_data_lo_hi(n,dlo,dhi)
              call get_boxbc(n,blo,bhi)
-             
+
              do iblock = 1, tb_get_nblocks(n)
                 lo = tb_get_block_lo(iblock,n)
                 hi = tb_get_block_hi(iblock,n)
-                
+
                 if (dm .eq. 2) then
                    call hypterm_2d(lo,hi,dx,up,ulo(1:2),uhi(1:2),qp,qlo(1:2),qhi(1:2),&
                         upp,uplo(1:2),uphi(1:2),dlo,dhi,blo,bhi)
-                   
+
                    call narrow_diffterm_2d(lo,hi,dx,qp,qlo(1:2),qhi(1:2),upp,uplo(1:2),uphi(1:2), &
                         fp,flo(1:2),fhi(1:2),mup,xip,lamp,Ddp,dlo,dhi,blo,bhi)
                 else
                    call hypterm_3d(lo,hi,dx,up,ulo(1:3),uhi(1:3),qp,qlo(1:3),qhi(1:3),&
                         upp,uplo(1:3),uphi(1:3),dlo,dhi,blo,bhi)
-                   
+
                    call narrow_diffterm_3d(lo,hi,dx,qp,qlo(1:3),qhi(1:3),upp,uplo(1:3),uphi(1:3), &
                         fp,flo(1:3),fhi(1:3),mup,xip,lamp,Ddp,dlo,dhi,blo,bhi)
                 end if
              end do
-             
+
           end do
           !$omp end parallel
 
@@ -961,7 +958,7 @@ contains
 
              mup  => dataptr(mu   , n)
              xip  => dataptr(xi   , n)
-             
+
              qlo = lbound(qp)
              qhi = ubound(qp)
              qxlo = lbound(qxp)
@@ -970,19 +967,19 @@ contains
              qyhi = ubound(qyp)
              if (dm .eq. 3) then
                 qzlo = lbound(qzp)
-                qzhi = ubound(qzp)                
+                qzhi = ubound(qzp)
              end if
 
              flo = lbound(fp)
              fhi = ubound(fp)
-             
+
              call get_data_lo_hi(n,dlo,dhi)
              call get_boxbc(n,blo,bhi)
-             
+
              do iblock = 1, tb_get_nblocks(n)
                 lo = tb_get_block_lo(iblock,n)
                 hi = tb_get_block_hi(iblock,n)
-                
+
                 if (dm .eq. 2) then
                    call bl_error("2D not supported for S3D mode")
                 else
@@ -1024,14 +1021,14 @@ contains
              up => dataptr(U,n)
              upp=> dataptr(Uprime,n)
              qp => dataptr(Q,n)
-             
+
              ulo = lbound(up)
              uhi = ubound(up)
              qlo = lbound(qp)
              qhi = ubound(qp)
              uplo = lbound(upp)
              uphi = ubound(upp)
-             
+
              call get_data_lo_hi(n,dlo,dhi)
              call get_boxbc(n,blo,bhi)
 
@@ -1043,7 +1040,7 @@ contains
                    call bl_error("2D not supported for S3D mode")
                 else
                    call hypterm_3d(lo,hi,dx,up,ulo(1:3),uhi(1:3),qp,qlo(1:3),qhi(1:3),&
-                        upp,uplo(1:3),uphi(1:3),dlo,dhi,blo,bhi)   
+                        upp,uplo(1:3),uphi(1:3),dlo,dhi,blo,bhi)
                 end if
              end do
           end do
@@ -1075,7 +1072,7 @@ contains
              xip  => dataptr(xi   , n)
              lamp => dataptr(lam  , n)
              Ddp  => dataptr(Ddiag, n)
-             
+
              qlo = lbound(qp)
              qhi = ubound(qp)
              qxlo = lbound(qxp)
@@ -1084,21 +1081,21 @@ contains
              qyhi = ubound(qyp)
              if (dm .eq. 3) then
                 qzlo = lbound(qzp)
-                qzhi = ubound(qzp)                
+                qzhi = ubound(qzp)
              end if
 
              uplo = lbound(upp)
              uphi = ubound(upp)
              flo = lbound(fp)
              fhi = ubound(fp)
-             
+
              call get_data_lo_hi(n,dlo,dhi)
              call get_boxbc(n,blo,bhi)
-             
+
              do iblock = 1, tb_get_nblocks(n)
                 lo = tb_get_block_lo(iblock,n)
                 hi = tb_get_block_hi(iblock,n)
-                
+
                 if (dm .eq. 2) then
                    call bl_error("2D not supported for S3D mode")
                 else
