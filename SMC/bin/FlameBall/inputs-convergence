@@ -4,8 +4,7 @@
 
  stencil_type   = "narrow"
 
- advance_sdc = .true.
- sdc_multirate = .false.
+ advance_method = "sdc"
 
  sdc_nnodes = 5
  sdc_iters  = 8

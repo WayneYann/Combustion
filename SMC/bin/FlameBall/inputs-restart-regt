@@ -4,7 +4,8 @@
 
  stencil_type = "narrow"   ! narrow or S3D
 
- advance_sdc = .false.
+ advance_method = "rk"
+
  rk_order = 3
 
  stop_time = 3.d-3
