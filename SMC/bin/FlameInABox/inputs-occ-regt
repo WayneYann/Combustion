@@ -4,8 +4,11 @@
 
  verbose = 2
 
- advance_method = 1        ! 1=RK3, 2=SDC, 3=PFASST
  stencil_type = "narrow"   ! narrow or S3D
+
+ advance_method = "rk"
+
+ rk_order = 3
 
  stop_time = 3.d-3
  max_step  = 10

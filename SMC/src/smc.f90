@@ -89,7 +89,7 @@ subroutine smc()
   call init_variables()
   call init_plot_variables()
 
-  if (advance_method > 1 .and. plot_get_rates_from_sdc .and. nburn>0) then
+  if ((method == SMC_ADVANCE_SDC .or. method == SMC_ADVANCE_MRSDC) .and. plot_get_rates_from_sdc .and. nburn>0) then
      plot_use_U0 = .true.
   else
      plot_use_U0 = .false.
@@ -144,18 +144,18 @@ subroutine smc()
   ! preallocate sdc
   !
 
-  if (advance_method == 2) then
+  if (method == SMC_ADVANCE_SDC) then
      call sdc_build_single_rate(sdc, sdc_qtype, sdc_nnodes, &
           c_funloc(single_sdc_feval), c_funloc(sdc_post_step_cb))
   end if
 
-  if (advance_method >= 3) then
+  if (method == SMC_ADVANCE_MRSDC) then
      call sdc_build_multi_rate(sdc, sdc_qtype, [ sdc_nnodes, sdc_nnodes_fine ], &
           c_funloc(multi_sdc_feval_slow), c_funloc(multi_sdc_feval_fast), &
           c_funloc(sdc_post_step_cb))
   end if
 
-  if (advance_method > 1) then
+  if (method == SMC_ADVANCE_SDC .or. method == SMC_ADVANCE_MRSDC) then
      call sdc_setup(sdc, la, ncons, stencil_ng)
      sdc%dx           = dx
      sdc%iters        = sdc_iters
@@ -228,6 +228,26 @@ subroutine smc()
      init_step = restart + 1
   end if
 
+  if (parallel_IOProcessor()) then
+     select case (method)
+     case (SMC_ADVANCE_SDC)
+        print*,"Using single-rate SDC integrator with: ", sdc_nnodes, "nodes"
+     case (SMC_ADVANCE_MRSDC)
+        if (sdc_multirate_explicit) then
+           print*,"Using explicit multi-rate SDC integrator"
+           print*,"  coarse nodes:", sdc_nnodes
+           print*,"  fine nodes:  ", sdc_nnodes_fine, trim(sdc_multirate_type), sdc_multirate_repeat
+        else
+           print*,"Using semi-implicit multi-rate SDC integrator"
+           print*,"  coarse nodes:", sdc_nnodes
+           print*,"  fine nodes:  ", sdc_nnodes_fine, trim(sdc_multirate_type), sdc_multirate_repeat
+        end if
+     case (SMC_ADVANCE_RK)
+        print*,"Using Runge-Kutta integrator of order: ", rk_order
+     case (SMC_ADVANCE_CUSTOM)
+        print*,"Using custom integrator"
+     end select
+  end if
 
   !
   ! evolve
@@ -414,10 +434,10 @@ subroutine smc()
         end if
 
         if (plot_use_U0) then
-           call make_plotfile(plot_file_name,la,U,plot_names,dt,time,dx,write_pf_time,U0)
+           call make_plotfile(plot_file_name,la,U,plot_names,time,dt,dx,write_pf_time,U0)
            call destroy(U0)
         else
-           call make_plotfile(plot_file_name,la,U,plot_names,dt,time,dx,write_pf_time)
+           call make_plotfile(plot_file_name,la,U,plot_names,time,dt,dx,write_pf_time)
         end if
 
         call write_job_info(plot_file_name, la, write_pf_time)
@@ -442,7 +462,7 @@ subroutine smc()
   call destroy_smcdata(sdc)
   call destroy_threadbox()
 
-  if (advance_method > 1) then
+  if (method == SMC_ADVANCE_SDC .or. method == SMC_ADVANCE_MRSDC) then
      call sdc_destroy(sdc)
   end if
 

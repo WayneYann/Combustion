@@ -45,7 +45,7 @@ contains
     use variables_module, only : irho, imx,imy,imz,iene,iry1,ncons, iH2, iO2, iN2
     use chemistry_module, only : nspecies, patm
     use probin_module, only : prob_type, pertmag, rfire, Tinit, uinit, vinit, winit, &
-         prob_dim, cellshift
+         prob_dim, cellshift, T0, T1
 
     integer,          intent(in   ) :: lo(3),hi(3),ng,dm,dim3
     double precision, intent(in   ) :: dx(dm),phlo(dm),phhi(dm)
@@ -182,7 +182,7 @@ contains
              else if (prob_type .eq. 3) then
 
                 Pt = Patm
-                Tt = 300.0d0
+                Tt = T0
 
                 do kk = -nimages, nimages
                    do jj = -nimages, nimages
@@ -198,7 +198,7 @@ contains
                          r = sqrt(x**2+y**2+z**2)
                          
                          ! Tt = (1400.0d0-300.0d0)/2.0d0*tanh((rfire-r)*20.0d0) + (1400.0d0+300.0d0)/2.0d0
-                         Tt = Tt + 1100.0d0 * exp(-(r / rfire)**2)
+                         Tt = Tt + (T1-T0) * exp(-(r / rfire)**2)
 
                       end do
                    end do
@@ -219,7 +219,7 @@ contains
              else if (prob_type .eq. 4 ) then
 
                 Pt = Patm
-                Tt = 300.0d0
+                Tt = T0
 
                 Xt = 0.0d0
                 Xt(iH2) = 0.10d0
@@ -238,8 +238,8 @@ contains
                          x = phlo(1) + dx(1)*(i+cellshift) + ii * (phhi(1) - phlo(1))
                          r = sqrt(x**2+y**2+z**2)
                          
-                         Pt = Pt    + 0.1d0*patm * exp(-(r / rfire)**2)
-                         Tt = Tt      + 1100.0d0 * exp(-(r / rfire)**2)
+                         Pt = Pt        + 0.1d0*patm * exp(-(r / rfire)**2)
+                         Tt = Tt           + (T1-T0) * exp(-(r / rfire)**2)
                          Xt(iH2) = Xt(iH2) + 0.025d0 * exp(-(r / rfire)**2)
                          Xt(iO2) = Xt(iO2) - 0.050d0 * exp(-(r / rfire)**2)
 

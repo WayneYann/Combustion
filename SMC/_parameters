@@ -69,8 +69,9 @@ overlap_in_trial                    logical            .false.
 # category: algorithm
 #-----------------------------------------------------------------------------
 
-# Time-stepping scheme (1=RK3, 2=SDC, 3=MRSDC)
-advance_method                      integer           1
+# Time-stepping scheme
+advance_method                      character         "mrsdc"
+rk_order                            integer           4
 
 # "narrow" is the new stencil, and wide or S3D is the S3D type stencil
 stencil_type                        character         "narrow"
@@ -126,7 +127,8 @@ sdc_iters                           integer            5
 # iterations are cut short
 sdc_tol_residual                    real               -1.d100
 
-# multi-rate type (1 = repeated, 2 = local)
+# multi-rate type
+sdc_multirate_explicit              logical            .true.
 sdc_multirate_type                  character          "local"
 sdc_multirate_repeat                integer            1
 
@@ -336,19 +338,20 @@ inactive_species_name               character          "N2"
 # use bulk viscosity?
 use_bulk_viscosity                  logical            .true.
 
-# How often do we compute transport coefficients?  
+# How often do we compute transport coefficients?
 # 0 means every substep for every time step
 # 1 means once every time step
 trans_int                           integer            0
 
 # use VODE?
+# use_vode will be set to .true., if (sdc_multirate .and. (.not. sdc_multirate_explicit)).
 use_vode                            logical            .false.
 vode_verbose                        integer            0
 vode_itol                           integer            1
 vode_rtol                           real               1.d-10
 vode_atol                           real               1.d-10
 # vode will reduce order to a lower value
-vode_order                          integer            100    
+vode_order                          integer            100
 vode_maxstep                        integer            2000
 vode_use_ajac                       logical            .true.
 vode_save_ajac                      logical            .true.

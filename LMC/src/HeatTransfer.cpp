@@ -1903,7 +1903,6 @@ HeatTransfer::post_timestep (int crse_iteration)
     if (plot_reactions && level == 0)
     {
         const int Ndiag = auxDiag["REACTIONS"]->nComp();
-
         //
         // Multiply by the inverse of the coarse timestep.
         //
@@ -5533,6 +5532,12 @@ HeatTransfer::advance_setup (Real time,
     //
     for (int i = 0; i < spec_diffusion_flux_computed.size(); ++i)
 	spec_diffusion_flux_computed[i] = HT_None;
+
+    if (plot_reactions && level == 0)
+    {
+        for (int i = parent->finestLevel(); i >= 0; --i)
+            getLevel(i).auxDiag["REACTIONS"]->setVal(0);
+    }
 }
 
 void
