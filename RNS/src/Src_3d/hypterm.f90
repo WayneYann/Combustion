@@ -10,7 +10,32 @@ contains
 
   subroutine hypterm(lo,hi,U,Ulo,Uhi,fx,fxlo,fxhi,fy,fylo,fyhi,fz,fzlo,fzhi,dx)
 
-    use meth_params_module, only : NVAR, difmag
+    use meth_params_module, only : NVAR, difmag, do_quadrature_weno
+
+    integer, intent(in) :: lo(3), hi(3), Ulo(3), Uhi(3), fxlo(3), fxhi(3), &
+         fylo(3), fyhi(3), fzlo(3), fzhi(3)
+    double precision,intent(in   )::dx(3)
+    double precision,intent(in   ):: U( Ulo(1): Uhi(1), Ulo(2): Uhi(2), Ulo(3): Uhi(3),NVAR)
+    double precision,intent(inout)::fx(fxlo(1):fxhi(1),fxlo(2):fxhi(2),fxlo(3):fxhi(3),NVAR)
+    double precision,intent(inout)::fy(fylo(1):fyhi(1),fylo(2):fyhi(2),fylo(3):fyhi(3),NVAR)
+    double precision,intent(inout)::fz(fzlo(1):fzhi(1),fzlo(2):fzhi(2),fzlo(3):fzhi(3),NVAR)
+
+    if (do_quadrature_weno) then
+       call hypterm_q(lo,hi,U,Ulo,Uhi,fx,fxlo,fxhi,fy,fylo,fyhi,fz,fzlo,fzhi,dx)
+    else
+!       call hypterm_nq(lo,hi,U,Ulo,Uhi,fx,fxlo,fxhi,fy,fylo,fyhi,fz,fzlo,fzhi,dx)
+       call hypterm_q(lo,hi,U,Ulo,Uhi,fx,fxlo,fxhi,fy,fylo,fyhi,fz,fzlo,fzhi,dx)
+    end if
+    
+    if (difmag .gt. 0.0d0) then
+       call add_artifical_viscocity(lo,hi,U,Ulo,Uhi,fx,fxlo,fxhi,fy,fylo,fyhi,fz,fzlo,fzhi,dx)
+    end if
+
+  end subroutine hypterm
+
+  subroutine hypterm_q(lo,hi,U,Ulo,Uhi,fx,fxlo,fxhi,fy,fylo,fyhi,fz,fzlo,fzhi,dx)
+
+    use meth_params_module, only : NVAR
     use reconstruct_module, only : reconstruct
     use hypterm_xy_module, only : hypterm_xy
 
@@ -67,11 +92,7 @@ contains
 
     deallocate(ULz,URz)
 
-    if (difmag .gt. 0.0d0) then
-       call add_artifical_viscocity(lo,hi,U,Ulo,Uhi,fx,fxlo,fxhi,fy,fylo,fyhi,fz,fzlo,fzhi,dx)
-    end if
-
-  end subroutine hypterm
+  end subroutine hypterm_q
 
 
   subroutine hypterm_z(lo,hi,U,Ulo,Uhi,UL,UR,zlo,zhi,fz,fzlo,fzhi,dx)
@@ -234,6 +255,110 @@ contains
     deallocate(UL11,UL12,UL21,UL22,UR11,UR12,UR21,UR22,UG1y,UG2y,U0,flx)
 
   end subroutine hypterm_z
+
+
+  subroutine hypterm_nq(lo,hi,U,Ulo,Uhi,fx,fxlo,fxhi,fy,fylo,fyhi,fz,fzlo,fzhi,dx)
+
+    use meth_params_module, only : NVAR
+    use reconstruct_module, only : reconstruct
+    use riemann_module, only : riemann
+    use convert_module, only : cc2cellavg_2d, cellavg2cc_2d
+
+    integer, intent(in) :: lo(3), hi(3), Ulo(3), Uhi(3), fxlo(3), fxhi(3), &
+         fylo(3), fyhi(3), fzlo(3), fzhi(3)
+    double precision,intent(in   )::dx(3)
+    double precision,intent(in   ):: U( Ulo(1): Uhi(1), Ulo(2): Uhi(2), Ulo(3): Uhi(3),NVAR)
+    double precision,intent(inout)::fx(fxlo(1):fxhi(1),fxlo(2):fxhi(2),fxlo(3):fxhi(3),NVAR)
+    double precision,intent(inout)::fy(fylo(1):fyhi(1),fylo(2):fyhi(2),fylo(3):fyhi(3),NVAR)
+    double precision,intent(inout)::fz(fzlo(1):fzhi(1),fzlo(2):fzhi(2),fzlo(3):fzhi(3),NVAR)
+
+    integer :: dir, i, j, k, n, tlo(3), thi(3)
+    double precision, allocatable, dimension(:,:,:,:) :: UL_a, UR_a, UL_c, UR_c, f_c
+    double precision, allocatable, dimension(:,:,:) :: f_a
+    
+    allocate(UL_a(lo(1)-2:hi(1)+2,lo(2)-2:hi(2)+2,lo(3)-2:hi(3)+2,NVAR))
+    allocate(UR_a(lo(1)-2:hi(1)+2,lo(2)-2:hi(2)+2,lo(3)-2:hi(3)+2,NVAR))
+    allocate(UL_c(lo(1)-1:hi(1)+1,lo(2)-1:hi(2)+1,lo(3)-1:hi(3)+1,NVAR))
+    allocate(UR_c(lo(1)-1:hi(1)+1,lo(2)-1:hi(2)+1,lo(3)-1:hi(3)+1,NVAR))
+    allocate( f_c(lo(1)-1:hi(1)+1,lo(2)-1:hi(2)+1,lo(3)-1:hi(3)+1,NVAR))
+    allocate( f_a(lo(1)-1:hi(1)+1,lo(2)-1:hi(2)+1,lo(3)-1:hi(3)+1))
+
+    !----- x-direction first -----
+    dir = 1
+
+    do k=lo(3)-2, hi(3)+2
+    do j=lo(2)-2, hi(2)+2
+       if ( j.ge.lo(2).and.j.le.hi(2) .or. &
+            k.ge.lo(3).and.k.le.hi(3) .or. &
+            j.eq.lo(2)-1.and.k.eq.lo(3)-1 .or. &
+            j.eq.lo(2)-1.and.k.eq.hi(3)+1 .or. &
+            j.eq.hi(2)+1.and.k.eq.lo(3)-1 .or. &
+            j.eq.hi(2)+1.and.k.eq.hi(3)+1 ) then
+
+          call reconstruct(lo(1),hi(1), & 
+               Ulo(1)  , Uhi(1),   &  ! for input data array
+                lo(1)-2,  hi(1)+2, &  ! for UL & UR
+               0, 0,               &  ! for UG1 & UG2
+               0, 0,               &  ! for U0
+               U(:,j,k,:), &
+               UL = UL_a(:,j,k,:), UR = UR_a (:,j,k,:), &
+               dir=dir)       
+       else
+          UL_a(:,j,k,:) = 0.d0
+          UR_a(:,j,k,:) = 0.d0
+       end if
+    end do
+    end do
+
+    ! x-face average -> x-face cell-center
+    tlo(1) = lo(1)
+    tlo(2) = lo(2)-1
+    tlo(3) = lo(3)-1
+    thi(1) = hi(1)+1
+    thi(2) = hi(2)+1
+    thi(3) = hi(3)+1
+    do n=1, NVAR
+       call cellavg2cc_2d(tlo,thi,UL_a(:,:,:,n),lo-2,hi+2,UL_c(:,:,:,n),lo-1,hi+1,dir)
+    end do
+    do n=1, NVAR
+       call cellavg2cc_2d(tlo,thi,UR_a(:,:,:,n),lo-2,hi+2,UR_c(:,:,:,n),lo-1,hi+1,dir)
+    end do
+
+    do k=lo(3)-1, hi(3)+1
+    do j=lo(2)-1, hi(2)+1
+       if ( j.eq.lo(2)-1.and.k.eq.lo(3)-1 .or. &
+            j.eq.lo(2)-1.and.k.eq.hi(3)+1 .or. &
+            j.eq.hi(2)+1.and.k.eq.lo(3)-1 .or. &
+            j.eq.hi(2)+1.and.k.eq.hi(3)+1 ) then
+          f_c(:,j,k,:) = 0.d0
+       else
+          call riemann(lo(1),hi(1),UL_c(:,j,k,:),UR_c(:,j,k,:),lo(1)-1,hi(1)+1, &
+               f_c(:,j,k,:), lo(1)-1,hi(1)+1, dir=dir)
+       end if
+    end do
+    end do
+
+    ! x-flux: x-face cell-center --> xface average
+    tlo(1) = lo(1)
+    tlo(2) = lo(2)
+    tlo(3) = lo(3)
+    thi(1) = hi(1)+1
+    thi(2) = hi(2)
+    thi(3) = hi(3)
+    do n=1, NVAR
+       call cc2cellavg_2d(tlo,thi,f_c(:,:,:,n),lo-1,hi+1,f_a,lo-1,hi+1,dir)
+       fx      (lo(1):hi(1)+1,lo(2):hi(2),lo(3):hi(3),n) = &
+            fx (lo(1):hi(1)+1,lo(2):hi(2),lo(3):hi(3),n) + &
+            f_a(lo(1):hi(1)+1,lo(2):hi(2),lo(3):hi(3))
+    end do
+
+
+    ! xxxxx uncomment !       call hypterm_nq(lo,hi,U,Ulo,Uhi,fx,fxlo,fxhi,fy,fylo,fyhi,fz,fzlo,fzhi,dx)
+
+
+    deallocate(UL_a, UR_a, UL_c, UR_c, f_c, f_a)
+
+  end subroutine hypterm_nq
 
 
   subroutine add_artifical_viscocity(lo,hi,U,Ulo,Uhi,fx,fxlo,fxhi,fy,fylo,fyhi,fz,fzlo,fzhi,dx)
