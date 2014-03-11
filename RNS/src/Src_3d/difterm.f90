@@ -10,7 +10,7 @@ contains
     use meth_params_module, only : NVAR, NSPEC, QFVAR, QU, QV, QW
     use polyinterp_module, only : cc2zgauss_3d, cc2DzGauss_3d, cc2xyGauss_3d, &
          cc2xyGaussDx_3d, cc2xyGaussDy_3d
-    use convert_3d_module, only : cellavg2cc_3d
+    use convert_module, only : cellavg2cc_3d
     use variables_module, only : ctoprim
     use transport_properties, only : get_transport_properties
 

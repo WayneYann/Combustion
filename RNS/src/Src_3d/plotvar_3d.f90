@@ -2,7 +2,7 @@ subroutine rns_ctoprim(lo, hi, &
      cons, c_l1, c_l2, c_l3, c_h1, c_h2, c_h3, &
      prim, p_l1, p_l2, p_l3, p_h1, p_h2, p_h3 )
   use meth_params_module, only : NVAR, xblksize, yblksize, zblksize
-  use convert_3d_module, only : cellavg2cc_3d
+  use convert_module, only : cellavg2cc_3d
   use variables_module, only : ctoprim
   implicit none
 

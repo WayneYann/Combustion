@@ -66,7 +66,7 @@ contains
 
     use meth_params_module, only : NVAR
     use reconstruct_module, only : reconstruct
-    use convert_2d_module, only : cellavg2cc_2d, cc2cellavg_2d
+    use convert_module, only : cellavg2cc_1d, cc2cellavg_1d
     use riemann_module, only : riemann
 
     integer, intent(in) :: lo(2), hi(2), Ulo(2), Uhi(2), fxlo(2), fxhi(2), fylo(2), fyhi(2)
@@ -105,10 +105,10 @@ contains
     thi(1) = hi(1)+1
     thi(2) = hi(2)+1
     do n=1, NVAR
-       call cellavg2cc_2d(tlo,thi,UL_a(:,:,n),lo-2,hi+2,UL_c(:,:,n),lo-1,hi+1,idir=2)
+       call cellavg2cc_1d(tlo,thi,UL_a(:,:,n),lo-2,hi+2,UL_c(:,:,n),lo-1,hi+1,2)
     end do
     do n=1, NVAR
-       call cellavg2cc_2d(tlo,thi,UR_a(:,:,n),lo-2,hi+2,UR_c(:,:,n),lo-1,hi+1,idir=2)
+       call cellavg2cc_1d(tlo,thi,UR_a(:,:,n),lo-2,hi+2,UR_c(:,:,n),lo-1,hi+1,2)
     end do
 
     do j=lo(2)-1, hi(2)+1
@@ -122,7 +122,7 @@ contains
     thi(1) = hi(1)+1
     thi(2) = hi(2)
     do n=1, NVAR
-       call cc2cellavg_2d(tlo,thi,f_c(:,:,n),lo-1,hi+1,f_a,lo-1,hi+1,idir=2)
+       call cc2cellavg_1d(tlo,thi,f_c(:,:,n),lo-1,hi+1,f_a,lo-1,hi+1,2)
        fx(lo(1):hi(1)+1,lo(2):hi(2),n) = fx(lo(1):hi(1)+1,lo(2):hi(2),n) &
             +                           f_a(lo(1):hi(1)+1,lo(2):hi(2))
     end do
@@ -146,10 +146,10 @@ contains
     thi(1) = hi(1)+1
     thi(2) = hi(2)+1
     do n=1, NVAR
-       call cellavg2cc_2d(tlo,thi,UL_a(:,:,n),lo-2,hi+2,UL_c(:,:,n),lo-1,hi+1,idir=1)
+       call cellavg2cc_1d(tlo,thi,UL_a(:,:,n),lo-2,hi+2,UL_c(:,:,n),lo-1,hi+1,1)
     end do
     do n=1, NVAR
-       call cellavg2cc_2d(tlo,thi,UR_a(:,:,n),lo-2,hi+2,UR_c(:,:,n),lo-1,hi+1,idir=1)
+       call cellavg2cc_1d(tlo,thi,UR_a(:,:,n),lo-2,hi+2,UR_c(:,:,n),lo-1,hi+1,1)
     end do
     
     do i=lo(1)-1, hi(1)+1
@@ -163,7 +163,7 @@ contains
     thi(1) = hi(1)
     thi(2) = hi(2)+1
     do n=1, NVAR
-       call cc2cellavg_2d(tlo,thi,f_c(:,:,n),lo-1,hi+1,f_a,lo-1,hi+1,idir=1)
+       call cc2cellavg_1d(tlo,thi,f_c(:,:,n),lo-1,hi+1,f_a,lo-1,hi+1,1)
        fy(lo(1):hi(1),lo(2):hi(2)+1,n) = fy(lo(1):hi(1),lo(2):hi(2)+1,n) &
             +                           f_a(lo(1):hi(1),lo(2):hi(2)+1)
     end do
