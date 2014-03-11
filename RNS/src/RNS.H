@@ -345,6 +345,7 @@ protected:
     static int         do_quartic_interp;
 
     static int         do_weno;
+    static int         do_quadrature_weno;
     static int         do_component_weno;
 
     static int         use_vode;

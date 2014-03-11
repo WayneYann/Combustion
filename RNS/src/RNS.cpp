@@ -136,8 +136,9 @@ std::vector<int> RNS::blocksize(BL_SPACEDIM, 2048);
 
 int          RNS::do_quartic_interp   = 1;
 
-int          RNS::do_weno;
-int          RNS::do_component_weno;
+int          RNS::do_weno             = 1;
+int          RNS::do_quadrature_weno  = 0;
+int          RNS::do_component_weno   = 0;
 
 int          RNS::do_chemistry        = 1;
 int          RNS::use_vode            = 0;
@@ -308,19 +309,14 @@ RNS::read_params ()
 
     pp.query("do_quartic_interp", do_quartic_interp);
 
+    pp.query("do_weno", do_weno);
+    pp.query("do_quadrature_weno", do_quadrature_weno);
+    pp.query("do_component_weno", do_component_weno);
+
     if (ChemDriver::isNull())
     {
-	do_weno = 1;
-	do_component_weno = 0;
+	do_weno = 1;  // must do weno
     }
-    else
-    {
-	do_weno = 1;
-	pp.query("do_weno", do_weno);
-
-	do_component_weno = 1;
-    }
-    pp.query("do_component_weno", do_component_weno);
 
     pp.query("do_chemistry", do_chemistry);
     pp.query("use_vode", use_vode);
