@@ -75,7 +75,7 @@ contains
     double precision, intent(inout) :: fx(fxlo(1):fxhi(1),fxlo(2):fxhi(2),NVAR)
     double precision, intent(inout) :: fy(fylo(1):fyhi(1),fylo(2):fyhi(2),NVAR)
 
-    integer :: i, j, n, tlo(2), thi(2)
+    integer :: i, j, n, tlo(2), thi(2), dir
     double precision, allocatable, dimension(:,:,:) :: UL_a, UR_a, UL_c, UR_c, f_c
     double precision, allocatable, dimension(:,:) :: f_a
 
@@ -87,6 +87,7 @@ contains
     allocate( f_a(lo(1)-1:hi(1)+1,lo(2)-1:hi(2)+1))
 
     !----- x-direction first -----
+    dir = 1
     
     do j=lo(2)-2, hi(2)+2
        call reconstruct(lo(1),hi(1), & 
@@ -96,7 +97,7 @@ contains
             0, 0,               &  ! for U0
             U(:,j,:), &
             UL = UL_a(:,j,:), UR = UR_a (:,j,:), &
-            dir=1)       
+            dir=dir)       
     end do
 
     ! y-average --> y-cell-center
@@ -105,15 +106,15 @@ contains
     thi(1) = hi(1)+1
     thi(2) = hi(2)+1
     do n=1, NVAR
-       call cellavg2cc_1d(tlo,thi,UL_a(:,:,n),lo-2,hi+2,UL_c(:,:,n),lo-1,hi+1,2)
+       call cellavg2cc_1d(tlo,thi,UL_a(:,:,n),lo-2,hi+2,UL_c(:,:,n),lo-1,hi+1,dir)
     end do
     do n=1, NVAR
-       call cellavg2cc_1d(tlo,thi,UR_a(:,:,n),lo-2,hi+2,UR_c(:,:,n),lo-1,hi+1,2)
+       call cellavg2cc_1d(tlo,thi,UR_a(:,:,n),lo-2,hi+2,UR_c(:,:,n),lo-1,hi+1,dir)
     end do
 
     do j=lo(2)-1, hi(2)+1
        call riemann(lo(1),hi(1),UL_c(:,j,:),UR_c(:,j,:),lo(1)-1,hi(1)+1, &
-            f_c(:,j,:), lo(1)-1,hi(1)+1, dir=1)
+            f_c(:,j,:), lo(1)-1,hi(1)+1, dir=dir)
     end do
 
     ! x-flux: y-cell-center --> y-average
@@ -122,12 +123,13 @@ contains
     thi(1) = hi(1)+1
     thi(2) = hi(2)
     do n=1, NVAR
-       call cc2cellavg_1d(tlo,thi,f_c(:,:,n),lo-1,hi+1,f_a,lo-1,hi+1,2)
+       call cc2cellavg_1d(tlo,thi,f_c(:,:,n),lo-1,hi+1,f_a,lo-1,hi+1,dir)
        fx(lo(1):hi(1)+1,lo(2):hi(2),n) = fx(lo(1):hi(1)+1,lo(2):hi(2),n) &
             +                           f_a(lo(1):hi(1)+1,lo(2):hi(2))
     end do
 
     !----- y-direction -----
+    dir = 2
 
     do i=lo(1)-2, hi(1)+2
        call reconstruct(lo(2),hi(2), &
@@ -137,7 +139,7 @@ contains
             0, 0,               &  ! for U0
             U(i,:,:), &
             UL = UL_a(i,:,:), UR = UR_a (i,:,:), &
-            dir=2)       
+            dir=dir)       
     end do
 
     ! x-average --> x-cell-center
@@ -146,15 +148,15 @@ contains
     thi(1) = hi(1)+1
     thi(2) = hi(2)+1
     do n=1, NVAR
-       call cellavg2cc_1d(tlo,thi,UL_a(:,:,n),lo-2,hi+2,UL_c(:,:,n),lo-1,hi+1,1)
+       call cellavg2cc_1d(tlo,thi,UL_a(:,:,n),lo-2,hi+2,UL_c(:,:,n),lo-1,hi+1,dir)
     end do
     do n=1, NVAR
-       call cellavg2cc_1d(tlo,thi,UR_a(:,:,n),lo-2,hi+2,UR_c(:,:,n),lo-1,hi+1,1)
+       call cellavg2cc_1d(tlo,thi,UR_a(:,:,n),lo-2,hi+2,UR_c(:,:,n),lo-1,hi+1,dir)
     end do
     
     do i=lo(1)-1, hi(1)+1
        call riemann(lo(2),hi(2),UL_c(i,:,:),UR_c(i,:,:),lo(2)-1,hi(2)+1, &
-            f_c(i,:,:), lo(2)-1,hi(2)+1, dir=2)
+            f_c(i,:,:), lo(2)-1,hi(2)+1, dir=dir)
     end do
 
     ! y-flux: x-cell-center --> x-average
@@ -163,7 +165,7 @@ contains
     thi(1) = hi(1)
     thi(2) = hi(2)+1
     do n=1, NVAR
-       call cc2cellavg_1d(tlo,thi,f_c(:,:,n),lo-1,hi+1,f_a,lo-1,hi+1,1)
+       call cc2cellavg_1d(tlo,thi,f_c(:,:,n),lo-1,hi+1,f_a,lo-1,hi+1,dir)
        fy(lo(1):hi(1),lo(2):hi(2)+1,n) = fy(lo(1):hi(1),lo(2):hi(2)+1,n) &
             +                           f_a(lo(1):hi(1),lo(2):hi(2)+1)
     end do
