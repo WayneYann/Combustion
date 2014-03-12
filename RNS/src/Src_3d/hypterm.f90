@@ -23,8 +23,7 @@ contains
     if (do_quadrature_weno) then
        call hypterm_q(lo,hi,U,Ulo,Uhi,fx,fxlo,fxhi,fy,fylo,fyhi,fz,fzlo,fzhi,dx)
     else
-!       call hypterm_nq(lo,hi,U,Ulo,Uhi,fx,fxlo,fxhi,fy,fylo,fyhi,fz,fzlo,fzhi,dx)
-       call hypterm_q(lo,hi,U,Ulo,Uhi,fx,fxlo,fxhi,fy,fylo,fyhi,fz,fzlo,fzhi,dx)
+       call hypterm_nq(lo,hi,U,Ulo,Uhi,fx,fxlo,fxhi,fy,fylo,fyhi,fz,fzlo,fzhi,dx)
     end if
     
     if (difmag .gt. 0.0d0) then
@@ -304,8 +303,9 @@ contains
                UL = UL_a(:,j,k,:), UR = UR_a (:,j,k,:), &
                dir=dir)       
        else
-          UL_a(:,j,k,:) = 0.d0
-          UR_a(:,j,k,:) = 0.d0
+          cycle
+!          UL_a(:,j,k,:) = 0.d0
+!          UR_a(:,j,k,:) = 0.d0
        end if
     end do
     end do
@@ -330,7 +330,8 @@ contains
             j.eq.lo(2)-1.and.k.eq.hi(3)+1 .or. &
             j.eq.hi(2)+1.and.k.eq.lo(3)-1 .or. &
             j.eq.hi(2)+1.and.k.eq.hi(3)+1 ) then
-          f_c(:,j,k,:) = 0.d0
+          cycle
+          !          f_c(:,j,k,:) = 0.d0
        else
           call riemann(lo(1),hi(1),UL_c(:,j,k,:),UR_c(:,j,k,:),lo(1)-1,hi(1)+1, &
                f_c(:,j,k,:), lo(1)-1,hi(1)+1, dir=dir)
@@ -338,7 +339,7 @@ contains
     end do
     end do
 
-    ! x-flux: x-face cell-center --> xface average
+    ! x-flux: x-face cell-center --> x-face average
     tlo(1) = lo(1)
     tlo(2) = lo(2)
     tlo(3) = lo(3)
@@ -352,9 +353,147 @@ contains
             f_a(lo(1):hi(1)+1,lo(2):hi(2),lo(3):hi(3))
     end do
 
+    !----- y-direction -----
+    dir = 2
 
-    ! xxxxx uncomment !       call hypterm_nq(lo,hi,U,Ulo,Uhi,fx,fxlo,fxhi,fy,fylo,fyhi,fz,fzlo,fzhi,dx)
+    do k=lo(3)-2, hi(3)+2
+    do i=lo(1)-2, hi(1)+2
+       if ( i.ge.lo(1).and.i.le.hi(1) .or. &
+            k.ge.lo(3).and.k.le.hi(3) .or. &
+            i.eq.lo(1)-1.and.k.eq.lo(3)-1 .or. &
+            i.eq.lo(1)-1.and.k.eq.hi(3)+1 .or. &
+            i.eq.hi(1)+1.and.k.eq.lo(3)-1 .or. &
+            i.eq.hi(1)+1.and.k.eq.hi(3)+1 ) then
 
+          call reconstruct(lo(2),hi(2), & 
+               Ulo(2)  , Uhi(2),   &  ! for input data array
+                lo(2)-2,  hi(2)+2, &  ! for UL & UR
+               0, 0,               &  ! for UG1 & UG2
+               0, 0,               &  ! for U0
+               U(i,:,k,:), &
+               UL = UL_a(i,:,k,:), UR = UR_a (i,:,k,:), &
+               dir=dir)       
+       else
+          cycle
+!          UL_a(i,:,k,:) = 0.d0
+!          UR_a(i,:,k,:) = 0.d0
+       end if
+    end do
+    end do
+
+    ! y-face average -> y-face cell-center
+    tlo(1) = lo(1)-1
+    tlo(2) = lo(2)
+    tlo(3) = lo(3)-1
+    thi(1) = hi(1)+1
+    thi(2) = hi(2)+1
+    thi(3) = hi(3)+1
+    do n=1, NVAR
+       call cellavg2cc_2d(tlo,thi,UL_a(:,:,:,n),lo-2,hi+2,UL_c(:,:,:,n),lo-1,hi+1,dir)
+    end do
+    do n=1, NVAR
+       call cellavg2cc_2d(tlo,thi,UR_a(:,:,:,n),lo-2,hi+2,UR_c(:,:,:,n),lo-1,hi+1,dir)
+    end do
+
+    do k=lo(3)-1, hi(3)+1
+    do i=lo(1)-1, hi(1)+1
+       if ( i.eq.lo(1)-1.and.k.eq.lo(3)-1 .or. &
+            i.eq.lo(1)-1.and.k.eq.hi(3)+1 .or. &
+            i.eq.hi(1)+1.and.k.eq.lo(3)-1 .or. &
+            i.eq.hi(1)+1.and.k.eq.hi(3)+1 ) then
+          cycle
+          !          f_c(i,:,k,:) = 0.d0
+       else
+          call riemann(lo(2),hi(2),UL_c(i,:,k,:),UR_c(i,:,k,:),lo(2)-1,hi(2)+1, &
+               f_c(i,:,k,:), lo(2)-1,hi(2)+1, dir=dir)
+       end if
+    end do
+    end do
+
+    ! y-flux: y-face cell-center --> y-face average
+    tlo(1) = lo(1)
+    tlo(2) = lo(2)
+    tlo(3) = lo(3)
+    thi(1) = hi(1)
+    thi(2) = hi(2)+1
+    thi(3) = hi(3)
+    do n=1, NVAR
+       call cc2cellavg_2d(tlo,thi,f_c(:,:,:,n),lo-1,hi+1,f_a,lo-1,hi+1,dir)
+       fy      (lo(1):hi(1),lo(2):hi(2)+1,lo(3):hi(3),n) = &
+            fy (lo(1):hi(1),lo(2):hi(2)+1,lo(3):hi(3),n) + &
+            f_a(lo(1):hi(1),lo(2):hi(2)+1,lo(3):hi(3))
+    end do
+
+    !----- z-direction -----
+    dir = 3
+
+    do j=lo(2)-2, hi(2)+2
+    do i=lo(1)-2, hi(1)+2
+       if ( i.ge.lo(1).and.i.le.hi(1) .or. &
+            j.ge.lo(2).and.j.le.hi(2) .or. &
+            i.eq.lo(1)-1.and.j.eq.lo(2)-1 .or. &
+            i.eq.lo(1)-1.and.j.eq.hi(2)+1 .or. &
+            i.eq.hi(1)+1.and.j.eq.lo(2)-1 .or. &
+            i.eq.hi(1)+1.and.j.eq.hi(2)+1 ) then
+
+          call reconstruct(lo(3),hi(3), & 
+               Ulo(3)  , Uhi(3),   &  ! for input data array
+                lo(3)-2,  hi(3)+2, &  ! for UL & UR
+               0, 0,               &  ! for UG1 & UG2
+               0, 0,               &  ! for U0
+               U(i,j,:,:), &
+               UL = UL_a(i,j,:,:), UR = UR_a (i,j,:,:), &
+               dir=dir)       
+       else
+          cycle
+!          UL_a(i,j,:,:) = 0.d0
+!          UR_a(i,j,:,:) = 0.d0
+       end if
+    end do
+    end do
+
+    ! z-face average -> z-face cell-center
+    tlo(1) = lo(1)-1
+    tlo(2) = lo(2)-1
+    tlo(3) = lo(3)
+    thi(1) = hi(1)+1
+    thi(2) = hi(2)+1
+    thi(3) = hi(3)+1
+    do n=1, NVAR
+       call cellavg2cc_2d(tlo,thi,UL_a(:,:,:,n),lo-2,hi+2,UL_c(:,:,:,n),lo-1,hi+1,dir)
+    end do
+    do n=1, NVAR
+       call cellavg2cc_2d(tlo,thi,UR_a(:,:,:,n),lo-2,hi+2,UR_c(:,:,:,n),lo-1,hi+1,dir)
+    end do
+
+    do j=lo(2)-1, hi(2)+1
+    do i=lo(1)-1, hi(1)+1
+       if ( i.eq.lo(1)-1.and.j.eq.lo(2)-1 .or. &
+            i.eq.lo(1)-1.and.j.eq.hi(2)+1 .or. &
+            i.eq.hi(1)+1.and.j.eq.lo(2)-1 .or. &
+            i.eq.hi(1)+1.and.j.eq.hi(2)+1 ) then
+          cycle
+          !          f_c(i,j,:,:) = 0.d0
+       else
+          call riemann(lo(3),hi(3),UL_c(i,j,:,:),UR_c(i,j,:,:),lo(3)-1,hi(3)+1, &
+               f_c(i,j,:,:), lo(3)-1,hi(3)+1, dir=dir)
+       end if
+    end do
+    end do
+
+    ! z-flux: z-face cell-center --> z-face average
+    tlo(1) = lo(1)
+    tlo(2) = lo(2)
+    tlo(3) = lo(3)
+    thi(1) = hi(1)
+    thi(2) = hi(2)
+    thi(3) = hi(3)+1
+    do n=1, NVAR
+       call cc2cellavg_2d(tlo,thi,f_c(:,:,:,n),lo-1,hi+1,f_a,lo-1,hi+1,dir)
+       fz      (lo(1):hi(1),lo(2):hi(2),lo(3):hi(3)+1,n) = &
+            fz (lo(1):hi(1),lo(2):hi(2),lo(3):hi(3)+1,n) + &
+            f_a(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3)+1)
+    end do
 
     deallocate(UL_a, UR_a, UL_c, UR_c, f_c, f_a)
 
