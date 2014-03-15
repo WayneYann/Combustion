@@ -56,7 +56,7 @@
                ay = ABS(den(i,j+1,1) - den(i,j,1))
                ax = MAX(ax,ABS(den(i,j,1) - den(i-1,j,1)))
                ay = MAX(ay,ABS(den(i,j,1) - den(i,j-1,1)))
-               if ( sqrt(ax*ax+ay*ay) .ge. dengrad * den(i,j,1) * delta(1)**2 ) then
+               if ( sqrt(ax*ax+ay*ay) .ge. dengrad * den(i,j,1) * delta(1) ) then
                   tag(i,j) = set
                endif
             enddo
