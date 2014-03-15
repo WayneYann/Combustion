@@ -129,6 +129,7 @@ void mlsdc_amr_interpolate(void *Fp, void *Gp, sdc_state *state, void *ctxF, voi
     UC.copy(UG);
   }
   else if (touch_periodic) {
+
       // This case is more complicated because level F might touch only one
       // of the periodic boundaries.
       Box box_C = ba_C.minimalBox();
@@ -138,8 +139,10 @@ void mlsdc_amr_interpolate(void *Fp, void *Gp, sdc_state *state, void *ctxF, voi
 
       MultiFab* UG_safe;
       MultiFab UGG;
+
       if (ng_C > ng_G) {
 	  UGG.define(ba_G, ncomp, ng_C, Fab_allocate);
+	  RNS_SETNAN(UGG);
 	  MultiFab::Copy(UGG, UG, 0, 0, ncomp, 0);
 	  UG_safe = &UGG;
       }
@@ -147,8 +150,7 @@ void mlsdc_amr_interpolate(void *Fp, void *Gp, sdc_state *state, void *ctxF, voi
 	  UG_safe = &UG;
       }
 
-      // set periodic and physical boundaries
-      levelG.fill_boundary(*UG_safe, state->t, RNS::set_PhysBoundary);
+      levelG.fill_boundary(*UG_safe, state->t, RNS::use_FillBoundary);
 
       // We cannot do FabArray::copy() directly on UG because it copies only form
       // valid regions.  So we need to make the ghost cells of UG valid.
