@@ -132,8 +132,16 @@ void mlsdc_amr_interpolate(void *Fp, void *Gp, sdc_state *state, void *ctxF, voi
 
       // This case is more complicated because level F might touch only one
       // of the periodic boundaries.
-      Box box_C = ba_C.minimalBox();
-      int ng_C = box_C.bigEnd(0) - crse_domain_box.bigEnd(0);
+      int ng_C = 0;
+      {
+	  Box box_C = ba_C.minimalBox();
+	  for (int idim=0; idim < BL_SPACEDIM; idim++) {
+	      int gap_hi = box_C.bigEnd(idim) - crse_domain_box.bigEnd(idim);
+	      int gap_lo = crse_domain_box.smallEnd(idim) - box_C.smallEnd(idim);
+	      ng_C = std::max(ng_C, gap_hi);
+	      ng_C = std::max(ng_C, gap_lo);
+	  }
+      }
       int ng_G = UG.nGrow();
       const BoxArray& ba_G = UG.boxArray();
 
