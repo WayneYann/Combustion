@@ -10,12 +10,12 @@ subroutine PROBINIT (init,name,namlen,problo,probhi)
 
   integer untin,i
 
-  namelist /fortin/ idir
+  namelist /fortin/ idir, max_denerr_lev, max_dengrad_lev, dengrad
 
   ! Build "probin" filename -- the name of file containing fortin namelist.
   integer, parameter :: maxlen = 256
   character probin*(maxlen)
-  
+
   if (namlen .gt. maxlen) then
      call bl_error('probin file name too long')
   end if
@@ -26,6 +26,9 @@ subroutine PROBINIT (init,name,namlen,problo,probhi)
   
   ! set namelist defaults here
   idir = 0
+  max_denerr_lev = 10
+  max_dengrad_lev = -1
+  dengrad = 0.2
 
   ! Read namelists
   untin = 9
