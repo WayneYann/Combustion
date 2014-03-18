@@ -277,6 +277,7 @@ protected:
     //
     static bool      dump_old;
     static Real      cfl;
+    static Real      diff_cfl;
     static Real      init_shrink;
     static Real      change_max;
     static int       do_reflux;

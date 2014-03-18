@@ -50,6 +50,7 @@ bool         RNS::dump_old      = false;
 
 int          RNS::verbose       = 0;
 Real         RNS::cfl           = 0.8;
+Real         RNS::diff_cfl      = 0.8;
 Real         RNS::init_shrink   = 1.0;
 Real         RNS::change_max    = 1.1;
 BCRec        RNS::phys_bc;
@@ -171,6 +172,7 @@ RNS::read_params ()
     pp.query("v",verbose);
     pp.get("init_shrink",init_shrink);
     pp.get("cfl",cfl);
+    pp.query("diff_cfl",diff_cfl);
     pp.query("change_max",change_max);
     pp.query("fixed_dt",fixed_dt);
     pp.query("initial_dt",initial_dt);
@@ -495,28 +497,47 @@ RNS::estTimeStep (Real dt_old)
     }
     estdt *= cfl;
 
-#ifndef NULLCHEMISTRY
-    if ( ! ChemDriver::isNull() )
-    {
-	for (MFIter mfi(stateMF); mfi.isValid(); ++mfi)
-	{
-	    const Box& box = mfi.validbox();
-	    Real dt = estdt;
-	    BL_FORT_PROC_CALL(RNS_ESTDT_DIFF,rns_estdt_diff)
-		(BL_TO_FORTRAN(stateMF[mfi]),
-		 box.loVect(),box.hiVect(),dx,&dt);
-	    
-	    estdt = std::min(estdt,dt);
-	}
-    }
-#endif
+#ifdef NULLCHEMISTRY
 
     ParallelDescriptor::ReduceRealMin(estdt);
-    
+
     if (verbose && ParallelDescriptor::IOProcessor())
-	cout << "RNS::estTimeStep at level " << level << ":  estdt = " << estdt << '\n';
-    
+	cout << "RNS::estTimeStep at level " << level << ":  estdt = " << estdt << std::endl;
+
     return estdt;
+    
+#else
+
+    Real estdt_diff = 1.e+20;
+    for (MFIter mfi(stateMF); mfi.isValid(); ++mfi)
+    {
+	const Box& box = mfi.validbox();
+	Real dt = estdt_diff;
+	BL_FORT_PROC_CALL(RNS_ESTDT_DIFF,rns_estdt_diff)
+	    (BL_TO_FORTRAN(stateMF[mfi]),
+	     box.loVect(),box.hiVect(),dx,&dt);
+	
+	estdt_diff = std::min(estdt_diff,dt);
+    }
+    estdt_diff *= diff_cfl;
+
+    Real estdts[2];
+    estdts[0] = estdt;
+    estdts[1] = estdt_diff;
+
+    ParallelDescriptor::ReduceRealMin(estdts, 2);
+
+    Real estdt_min = std::min(estdts[0], estdts[1]);
+
+    if (verbose && ParallelDescriptor::IOProcessor()){
+	cout << "RNS::estTimeStep at level " << level << ":  estdt = " << estdt_min << "\n";
+	cout << "                   hyperbolic estdt = " << estdts[0] << "\n";
+	cout << "                    diffusive estdt = " << estdts[1] << std::endl;
+    }
+
+    return estdt_min;
+    
+#endif
 }
 
 void
