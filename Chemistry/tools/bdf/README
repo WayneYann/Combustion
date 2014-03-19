@@ -1,5 +1,4 @@
 Tests and examples for CCSE's variable step/order BDF implementation.
 
-To run the tests:
-
-$ make tests
+The BDF code lives in Combustion/Chemistry/src_common/bdf.f90.  Please
+see tests/t1.f90 for example usage.
