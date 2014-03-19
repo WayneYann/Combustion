@@ -10,7 +10,7 @@ subroutine PROBINIT (init,name,namlen,problo,probhi)
 
   integer untin,i
 
-  namelist /fortin/ prob_type, pertmag, rfire, uinit, vinit, winit
+  namelist /fortin/ prob_type, pertmag, rfire, uinit, vinit, winit, T0, T1
 
 !
 !     Build "probin" filename -- the name of file containing fortin namelist.
@@ -37,6 +37,9 @@ subroutine PROBINIT (init,name,namlen,problo,probhi)
   uinit   = 0.d0
   vinit   = 0.d0
   winit   = 0.d0
+
+  T0 = 1100.d0
+  T1 = 1500.d0
 
 !     Read namelists
   untin = 9
@@ -173,7 +176,7 @@ subroutine rns_initdata(level,time,lo,hi,nscal, &
               else if (prob_type .eq. 4) then
                  
                  Pt = Patm
-                 Tt = 300.0d0
+                 Tt = T0
 
                  Xt = 0.0d0
                  Xt(iH2) = 0.10d0
@@ -188,7 +191,7 @@ subroutine rns_initdata(level,time,lo,hi,nscal, &
                        r = sqrt(xgi**2+ygi**2)
                        
                        Pt = Pt    + 0.1d0*patm * exp(-(r / rfire)**2)
-                       Tt = Tt      + 1100.0d0 * exp(-(r / rfire)**2)
+                       Tt = Tt       + (T1-T0) * exp(-(r / rfire)**2)
                        Xt(iH2) = Xt(iH2) + 0.025d0 * exp(-(r / rfire)**2)
                        Xt(iO2) = Xt(iO2) - 0.050d0 * exp(-(r / rfire)**2)
                        

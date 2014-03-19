@@ -130,7 +130,7 @@ subroutine rns_initdata(level,time,lo,hi,nscal, &
   Pi = 4.d0*atan(1.d0)
 
   nimages = 0
-  if (prob_type .eq. 4) nimages = 1
+  if (prob_type .eq. 4) nimages = 3
 
   do k = state_l3, state_h3
      zcen = xlo(3) + delta(3)*(dble(k-lo(3)) + 0.5d0)
