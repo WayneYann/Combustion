@@ -330,7 +330,7 @@ void SDCAmr::timeStep(int level, Real time,
     }
   }
 
-  sdc_mg_picard(&mg, time, dt, 0);
+  sdc_mg_final_integrate(&mg, time, dt);
 
   BL_PROFILE_VAR_STOP(sdc_iters);
 
