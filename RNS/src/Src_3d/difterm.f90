@@ -465,8 +465,8 @@ contains
              ek = 0.5d0*(Qf(i,j,QU)**2+Qf(i,j,QV)**2+Qf(i,j,QW)**2)
              flx(i,j,k,UEDEN) = flx(i,j,k,UEDEN) + rhovn*ek
              do n=1,NSPEC
-                flx(i,j,k,UEDEN) = flx(i,j,k,UEDEN) + rhovn*Qf(i,j,QFH+n-1)
-                flx(i,j,k,UFS+n-1) = flx(i,j,k,UFS+n-1) + rhovn*Qf(i,j,QFY+n-1)
+                flx(i,j,k,UEDEN)   = flx(i,j,k,UEDEN)   + (rhovn*Qf(i,j,QFY+n-1))*Qf(i,j,QFH+n-1)
+                flx(i,j,k,UFS+n-1) = flx(i,j,k,UFS+n-1) + (rhovn*Qf(i,j,QFY+n-1))
              end do
           end do
        end do
@@ -584,8 +584,8 @@ contains
              ek = 0.5d0*(Qf(i,j,QU)**2+Qf(i,j,QV)**2+Qf(i,j,QW)**2)
              flx(i,j,k,UEDEN) = flx(i,j,k,UEDEN) + rhovn*ek
              do n=1,NSPEC
-                flx(i,j,k,UEDEN) = flx(i,j,k,UEDEN) + rhovn*Qf(i,j,QFH+n-1)
-                flx(i,j,k,UFS+n-1) = flx(i,j,k,UFS+n-1) + rhovn*Qf(i,j,QFY+n-1)
+                flx(i,j,k,UEDEN)   = flx(i,j,k,UEDEN)   + (rhovn*Qf(i,j,QFY+n-1))*Qf(i,j,QFH+n-1)
+                flx(i,j,k,UFS+n-1) = flx(i,j,k,UFS+n-1) + (rhovn*Qf(i,j,QFY+n-1))
              end do
           end do
        end do
@@ -757,8 +757,8 @@ contains
              ek = 0.5d0*(Qf(i,j,k,QU)**2+Qf(i,j,k,QV)**2+Qf(i,j,k,QW)**2)
              flx(i,j,k,UEDEN) = flx(i,j,k,UEDEN) + rhovn*ek
              do n=1,NSPEC
-                flx(i,j,k,UEDEN) = flx(i,j,k,UEDEN) + rhovn*Qf(i,j,k,QFH+n-1)
-                flx(i,j,k,UFS+n-1) = flx(i,j,k,UFS+n-1) + rhovn*Qf(i,j,k,QFY+n-1)
+                flx(i,j,k,UEDEN)   = flx(i,j,k,UEDEN)   + (rhovn*Qf(i,j,k,QFY+n-1))*Qf(i,j,k,QFH+n-1)
+                flx(i,j,k,UFS+n-1) = flx(i,j,k,UFS+n-1) + (rhovn*Qf(i,j,k,QFY+n-1))
              end do                
              end do
           end do
