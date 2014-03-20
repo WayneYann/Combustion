@@ -272,8 +272,8 @@ contains
              ek = 0.5d0*(Qf(i,j,QU)**2+Qf(i,j,QV)**2)
              flx(i,j,UEDEN) = flx(i,j,UEDEN) + rhovn*ek
              do n=1,NSPEC
-                flx(i,j,UEDEN) = flx(i,j,UEDEN) + rhovn*Qf(i,j,QFH+n-1)
-                flx(i,j,UFS+n-1) = flx(i,j,UFS+n-1) + rhovn*Qf(i,j,QFY+n-1)
+                flx(i,j,UEDEN)   = flx(i,j,UEDEN)   + (rhovn*Qf(i,j,QFY+n-1))*Qf(i,j,QFH+n-1)
+                flx(i,j,UFS+n-1) = flx(i,j,UFS+n-1) + (rhovn*Qf(i,j,QFY+n-1))
              end do
           end do
        end do
@@ -383,8 +383,8 @@ contains
              ek = 0.5d0*(Qf(i,j,QU)**2+Qf(i,j,QV)**2)
              flx(i,j,UEDEN) = flx(i,j,UEDEN) + rhovn*ek
              do n=1,NSPEC
-                flx(i,j,UEDEN) = flx(i,j,UEDEN) + rhovn*Qf(i,j,QFH+n-1)
-                flx(i,j,UFS+n-1) = flx(i,j,UFS+n-1) + rhovn*Qf(i,j,QFY+n-1)
+                flx(i,j,UEDEN)   = flx(i,j,UEDEN)   + (rhovn*Qf(i,j,QFY+n-1))*Qf(i,j,QFH+n-1)
+                flx(i,j,UFS+n-1) = flx(i,j,UFS+n-1) + (rhovn*Qf(i,j,QFY+n-1))
              end do
           end do
        end do
