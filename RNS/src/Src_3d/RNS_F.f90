@@ -129,6 +129,7 @@ subroutine rns_dudt_ad (lo, hi, &
      end do
      end do
   end do
+  !$omp end do
 
   !$omp do
   do n=1, NVAR
@@ -436,7 +437,7 @@ end subroutine rns_sum_cons
       lratx   = lrat(1)
       lraty   = lrat(2)
       lratz   = lrat(3)
-      volfrac = 1.d0/float(lrat(1)*lrat(2)*lrat(3))
+      volfrac = 1.d0/dble(lrat(1)*lrat(2)*lrat(3))
 
       !$omp parallel do private(i,j,k,n,ic,jc,kc,ioff,joff,koff)
       do n = 1, nvar
