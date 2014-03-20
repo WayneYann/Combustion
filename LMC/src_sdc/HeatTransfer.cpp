@@ -3190,8 +3190,6 @@ HeatTransfer::getViscTerms (MultiFab& visc_terms,
     // to give the true divided difference approximation to the divergence of the
     // intensive flux.
     //
-    int        icomp     = src_comp; // This is the current related state comp.
-    int        load_comp = 0;        // Comp for result of current calculation.
     MultiFab** vel_visc  = 0;        // Potentially reused, raise scope
     const int  nGrow     = visc_terms.nGrow();
     //
@@ -3214,8 +3212,6 @@ HeatTransfer::getViscTerms (MultiFab& visc_terms,
         int viscComp = 0;
         diffusion->getTensorViscTerms(visc_terms,time,vel_visc,viscComp);
         showMF("velVT",visc_terms,"velVT_visc_terms_1",level);
-
-        icomp = load_comp = BL_SPACEDIM;
     }
     else
     {
@@ -6889,8 +6885,8 @@ HeatTransfer::setPlotVariables ()
 
     ParmParse pp("ht");
 
-    bool plot_ydot,plot_rhoY,plot_massFrac,plot_moleFrac,plot_conc;
-    plot_ydot=plot_rhoY=plot_massFrac=plot_moleFrac=plot_conc = false;
+    bool plot_rhoY,plot_massFrac,plot_moleFrac,plot_conc;
+    plot_rhoY=plot_massFrac=plot_moleFrac=plot_conc = false;
 
     if (pp.query("plot_massfrac",plot_massFrac))
     {
