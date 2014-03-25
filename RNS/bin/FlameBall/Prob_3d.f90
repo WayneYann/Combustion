@@ -10,7 +10,7 @@ subroutine PROBINIT (init,name,namlen,problo,probhi)
 
   integer untin,i
 
-  namelist /fortin/ prob_type, pertmag, rfire, uinit, vinit, winit, T0, T1
+  namelist /fortin/ prob_type, prob_dim, pertmag, rfire, uinit, vinit, winit, T0, T1
 
 !
 !     Build "probin" filename -- the name of file containing fortin namelist.
@@ -30,6 +30,7 @@ subroutine PROBINIT (init,name,namlen,problo,probhi)
          
 ! set namelist defaults
   prob_type = 1
+  prob_dim  = 3
 
   pertmag = 0.d0
   rfire   = 0.15d0
@@ -145,7 +146,13 @@ subroutine rns_initdata(level,time,lo,hi,nscal, &
            state(i,j,k,:) = 0.d0
 
            do kk = 1, ngp
-              zg = zcen + 0.5d0*delta(3)*gp(kk)
+
+              if (prob_dim .eq. 2) then
+                 zg = 0.d0
+              else
+                 zg = zcen + 0.5d0*delta(3)*gp(kk)
+              end if
+
               do jj = 1, ngp
                  yg = ycen + 0.5d0*delta(2)*gp(jj)
                  do ii = 1, ngp
@@ -195,7 +202,12 @@ subroutine rns_initdata(level,time,lo,hi,nscal, &
 
                                 xgi = xg + iii*Length(1)
                                 ygi = yg + jjj*Length(2)
-                                zgi = zg + kkk*Length(3)
+
+                                if (prob_dim .eq. 2) then
+                                   zgi = 0.d0
+                                else
+                                   zgi = zg + kkk*Length(3)
+                                end if
                        
                                 r = sqrt(xgi**2+ygi**2+zgi**2)
                        
@@ -206,6 +218,9 @@ subroutine rns_initdata(level,time,lo,hi,nscal, &
 
                              end do
                           end do
+
+                          if (prob_dim .eq. 2) exit  ! only one image in z-direction
+
                        end do
 
                        kx = 2.d0*Pi/Length(1)
