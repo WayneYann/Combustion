@@ -36,7 +36,11 @@
       double precision ax,ay,az,xcen,ycen,zcen,rtag
       integer i, j, k
 
-      rtag = 0.25d0*Length(1) - 2.d0*delta(1)
+      if (level .eq. 0) then
+         rtag = 0.25d0*Length(1) - 2.d0*delta(1)
+      else
+         rtag = 0.125d0*Length(1) - 2.d0*delta(1)
+      end if
 
       !$omp parallel private(i,j,k,ax,ay,az,xcen,ycen,zcen)
 

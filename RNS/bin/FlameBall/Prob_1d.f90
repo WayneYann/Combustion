@@ -11,7 +11,7 @@ subroutine PROBINIT (init,name,namlen,problo,probhi)
   integer untin,i
 
   namelist /fortin/ prob_type, pertmag, rfire, uinit, vinit, winit, T0, T1, &
-       max_denerr_lev, max_tracerr_lev, tracerr
+       max_denerr_lev, max_tracerr_lev, max_temperr_lev, temperr, tracerr
 
 !
 !     Build "probin" filename -- the name of file containing fortin namelist.
@@ -43,7 +43,9 @@ subroutine PROBINIT (init,name,namlen,problo,probhi)
   T1 = 1500.d0
 
   max_denerr_lev = -1
+  max_temperr_lev = -1
   max_tracerr_lev = -1
+  temperr = 1300.d0
   tracerr = 3.d-11
 
 !     Read namelists
