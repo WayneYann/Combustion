@@ -10,7 +10,7 @@ amr.plot_int          = 100     # number of timesteps between plotfiles
 rns.plot_cons     = 1
 rns.plot_primplus = 0
 
-max_step     = 200000000
+max_step  = 3
 stop_time = 8.e-7
 
 rns.do_density_ref = 1
