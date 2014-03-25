@@ -321,11 +321,11 @@ contains
                Ddia1(:,:,n),Ddia2(:,:,n),Qflo,Qfhi, tmp1, tmp2, g2lo, g2hi)
        end do
 
-       ! dU/dz
-       call cc2yface_2d(lo(1:2),hi(1:2),dveldz(:,:,k,1),qlo(1:2),qhi(1:2), &
-            dveldz1(:,:,1),dveldz2(:,:,1),Qflo,Qfhi, tmp1, tmp2, g2lo, g2hi)
        ! dV/dz
        call cc2yface_2d(lo(1:2),hi(1:2),dveldz(:,:,k,2),qlo(1:2),qhi(1:2), &
+            dveldz1(:,:,1),dveldz2(:,:,1),Qflo,Qfhi, tmp1, tmp2, g2lo, g2hi)
+       ! dW/dz
+       call cc2yface_2d(lo(1:2),hi(1:2),dveldz(:,:,k,3),qlo(1:2),qhi(1:2), &
             dveldz1(:,:,2),dveldz2(:,:,2),Qflo,Qfhi, tmp1, tmp2, g2lo, g2hi)
 
        ! cell-center => Qc: center-in-y and Gauss-point-in-x
