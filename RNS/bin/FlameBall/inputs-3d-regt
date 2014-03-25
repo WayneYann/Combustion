@@ -68,4 +68,4 @@ amr.plot_files_output = 1
 amr.plot_file         = plt     # root name of plotfile
 
 #PROBIN FILENAME
-amr.probin_file = probin
+amr.probin_file = probin-3d-regt
