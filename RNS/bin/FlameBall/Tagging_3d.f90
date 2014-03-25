@@ -33,22 +33,23 @@
       double precision den(denl1:denh1,denl2:denh2,denl3:denh3,nd)
       double precision delta(3), xlo(3), problo(3), time
 
-      double precision ax,ay,az,r,xcen,ycen,zcen
+      double precision ax,ay,az,xcen,ycen,zcen,rtag
       integer i, j, k
 
-      !$omp parallel private(i,j,k,ax,ay,az,r,xcen,ycen,zcen)
+      rtag = 0.25d0*Length(1) - 2.d0*delta(1)
+
+      !$omp parallel private(i,j,k,ax,ay,az,xcen,ycen,zcen)
 
 !     Tag on regions of high density
       if (level .lt. max_denerr_lev) then
          !$omp do
          do k = lo(3), hi(3)
-            zcen = xlo(3) + delta(3)*(dble(k-lo(3)) + 0.5d0) - center(3)
+            zcen = abs(xlo(3) + delta(3)*(dble(k-lo(3)) + 0.5d0) - center(3))
             do j = lo(2), hi(2)
-               ycen = xlo(2) + delta(2)*(dble(j-lo(2)) + 0.5d0) - center(2)
+               ycen = abs(xlo(2) + delta(2)*(dble(j-lo(2)) + 0.5d0) - center(2))
                do i = lo(1), hi(1)
-                  xcen = xlo(1) + delta(1)*(dble(i-lo(1)) + 0.5d0) - center(1)
-                  r = sqrt(xcen*xcen+ycen*ycen+zcen*zcen)
-                  if (r < 2.d0*delta(1)) then
+                  xcen = abs(xlo(1) + delta(1)*(dble(i-lo(1)) + 0.5d0) - center(1))
+                  if (xcen<rtag .and. ycen<rtag .and. zcen<rtag) then
                      tag(i,j,k) = set
                   endif
                enddo
