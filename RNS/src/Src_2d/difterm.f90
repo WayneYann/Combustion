@@ -11,7 +11,7 @@ contains
   subroutine difterm(lo,hi,U,Ulo,Uhi,fx,fxlo,fxhi,fy,fylo,fyhi,dxinv)
 
     use meth_params_module, only : NVAR, NSPEC, QCVAR, QFVAR, QU, QV
-    use convert_2d_module, only : cellavg2cc_2d
+    use convert_module, only : cellavg2cc_2d
     use polyinterp_module, only : cc2xface_2d, cc2yface_2d, cc2DxYface_2d, cc2DyXface_2d
     use variables_module, only : ctoprim
     use transport_properties, only : get_transport_properties
@@ -272,8 +272,8 @@ contains
              ek = 0.5d0*(Qf(i,j,QU)**2+Qf(i,j,QV)**2)
              flx(i,j,UEDEN) = flx(i,j,UEDEN) + rhovn*ek
              do n=1,NSPEC
-                flx(i,j,UEDEN) = flx(i,j,UEDEN) + rhovn*Qf(i,j,QFH+n-1)
-                flx(i,j,UFS+n-1) = flx(i,j,UFS+n-1) + rhovn*Qf(i,j,QFY+n-1)
+                flx(i,j,UEDEN)   = flx(i,j,UEDEN)   + (rhovn*Qf(i,j,QFY+n-1))*Qf(i,j,QFH+n-1)
+                flx(i,j,UFS+n-1) = flx(i,j,UFS+n-1) + (rhovn*Qf(i,j,QFY+n-1))
              end do
           end do
        end do
@@ -383,8 +383,8 @@ contains
              ek = 0.5d0*(Qf(i,j,QU)**2+Qf(i,j,QV)**2)
              flx(i,j,UEDEN) = flx(i,j,UEDEN) + rhovn*ek
              do n=1,NSPEC
-                flx(i,j,UEDEN) = flx(i,j,UEDEN) + rhovn*Qf(i,j,QFH+n-1)
-                flx(i,j,UFS+n-1) = flx(i,j,UFS+n-1) + rhovn*Qf(i,j,QFY+n-1)
+                flx(i,j,UEDEN)   = flx(i,j,UEDEN)   + (rhovn*Qf(i,j,QFY+n-1))*Qf(i,j,QFH+n-1)
+                flx(i,j,UFS+n-1) = flx(i,j,UFS+n-1) + (rhovn*Qf(i,j,QFY+n-1))
              end do
           end do
        end do

@@ -129,17 +129,28 @@ void mlsdc_amr_interpolate(void *Fp, void *Gp, sdc_state *state, void *ctxF, voi
     UC.copy(UG);
   }
   else if (touch_periodic) {
+
       // This case is more complicated because level F might touch only one
       // of the periodic boundaries.
-      Box box_C = ba_C.minimalBox();
-      int ng_C = box_C.bigEnd(0) - crse_domain_box.bigEnd(0);
+      int ng_C = 0;
+      {
+	  Box box_C = ba_C.minimalBox();
+	  for (int idim=0; idim < BL_SPACEDIM; idim++) {
+	      int gap_hi = box_C.bigEnd(idim) - crse_domain_box.bigEnd(idim);
+	      int gap_lo = crse_domain_box.smallEnd(idim) - box_C.smallEnd(idim);
+	      ng_C = std::max(ng_C, gap_hi);
+	      ng_C = std::max(ng_C, gap_lo);
+	  }
+      }
       int ng_G = UG.nGrow();
       const BoxArray& ba_G = UG.boxArray();
 
       MultiFab* UG_safe;
       MultiFab UGG;
+
       if (ng_C > ng_G) {
 	  UGG.define(ba_G, ncomp, ng_C, Fab_allocate);
+	  RNS_SETNAN(UGG);
 	  MultiFab::Copy(UGG, UG, 0, 0, ncomp, 0);
 	  UG_safe = &UGG;
       }
@@ -147,8 +158,7 @@ void mlsdc_amr_interpolate(void *Fp, void *Gp, sdc_state *state, void *ctxF, voi
 	  UG_safe = &UG;
       }
 
-      // set periodic and physical boundaries
-      levelG.fill_boundary(*UG_safe, state->t, RNS::set_PhysBoundary);
+      levelG.fill_boundary(*UG_safe, state->t, RNS::use_FillBoundary);
 
       // We cannot do FabArray::copy() directly on UG because it copies only form
       // valid regions.  So we need to make the ghost cells of UG valid.
@@ -298,7 +308,7 @@ void SDCAmr::timeStep(int level, Real time,
   BL_PROFILE_VAR("SDCAmr::timeStep-iters", sdc_iters);
 
   for (int k=0; k<max_iters; k++) {
-    sdc_mg_sweep(&mg, time, dt, k==max_iters-1 ? SDC_MG_HALFSWEEP : 0);
+    sdc_mg_sweep(&mg, time, dt, SDC_MG_MIXEDINTERP | (k==max_iters-1 ? SDC_MG_HALFSWEEP : 0));
 
     if (verbose > 0) {
       for (int lev=0; lev<=finest_level; lev++) {
@@ -320,7 +330,7 @@ void SDCAmr::timeStep(int level, Real time,
     }
   }
 
-  sdc_mg_picard(&mg, time, dt, 0);
+  sdc_mg_final_integrate(&mg, time, dt);
 
   BL_PROFILE_VAR_STOP(sdc_iters);
 
@@ -419,7 +429,11 @@ SDCAmr::SDCAmr ()
   if (!ppsdc.query("nnodes0",   nnodes0))   nnodes0 = 3;
   if (!ppsdc.query("trat",      trat))      trat = 2;
 
-  if (verbose > 1) sdc_log_set_stdout(SDC_LOG_INFO);
+  if (verbose > 2)
+    sdc_log_set_stdout(SDC_LOG_DEBUG);
+  else if (verbose > 1)
+    sdc_log_set_stdout(SDC_LOG_INFO);
+
   sdc_mg_build(&mg, max_level+1);
   sdc_hooks_add(mg.hooks, SDC_HOOK_POST_TRANS, sdc_poststep_hook);
 

@@ -57,3 +57,6 @@ amr.plot_files_output = 1
 amr.plot_file         = plt     # root name of plotfile
 amr.plot_int          = 100     # number of timesteps between plotfiles
 rns.plot_cons         = 1
+
+# PROBIN FILENAME
+amr.probin_file     = probin

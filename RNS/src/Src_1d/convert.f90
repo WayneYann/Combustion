@@ -1,4 +1,4 @@
-module convert_1d_module
+module convert_module
 
   implicit none
 
@@ -22,4 +22,4 @@ contains
 
   end subroutine cellavg2cc_1d
 
-end module convert_1d_module
+end module convert_module

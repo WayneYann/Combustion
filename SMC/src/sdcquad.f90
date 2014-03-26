@@ -50,12 +50,12 @@ contains
   ! Build/create multi-rate SDC object.
   !
   subroutine sdc_build_multi_rate(sdc, qtype, nnodes, f1eval, f2eval, post)
-    use probin_module, only: sdc_multirate_type, sdc_multirate_repeat, advance_method
+    use probin_module, only: sdc_multirate_type, sdc_multirate_repeat, sdc_multirate_explicit
 
     type(sdc_ctx), intent(out), target :: sdc
     integer,         intent(in)          :: qtype, nnodes(2)
     type(c_funptr),  intent(in), value   :: f1eval, f2eval, post
-    
+
     integer :: err
 
     sdc%single_rate = .false.
@@ -99,7 +99,7 @@ contains
     ! components are evaluated.  we always want chemistry to be
     ! evaluated first (so that up-to-date chemistry can be used when
     ! computing the boundary conditions for the adv/diff term)
-    if (advance_method == 3) then
+    if (sdc_multirate_explicit) then
        ! chemistry is on the "fast" component
        sdc%mrex%order = 1
     else
@@ -110,7 +110,7 @@ contains
   end subroutine sdc_build_multi_rate
 
   function sdc_get_chemterm(ctx, node_advdif) result(r)
-    use probin_module, only : advance_method
+    use probin_module, only : sdc_multirate_explicit
 
     type(sdc_ctx), intent(in) :: ctx
     integer,         intent(in) :: node_advdif
@@ -127,7 +127,7 @@ contains
 
     trat = (nset2%nnodes - 1) / (nset1%nnodes - 1)
 
-    if (advance_method == 3) then
+    if (sdc_multirate_explicit) then
        node_chem = node_advdif * trat
        call c_f_pointer(nset2%F, p, [ nset2%nnodes ])
        call c_f_pointer(p(node_chem+1), r)
@@ -168,11 +168,11 @@ contains
 
     if (sdc%single_rate) then
        call sdc_imex_setup(sdc%imex, sdc%encap, c_loc(sdc), err)
-    else 
+    else
        call sdc_mrex_setup(sdc%mrex, err)
        ! call sdc_mrex_print(sdc%mrex, 2)
     end if
-    
+
     if (err .ne. 0) then
        stop "FAILED TO SETUP SDC SETS"
     end if

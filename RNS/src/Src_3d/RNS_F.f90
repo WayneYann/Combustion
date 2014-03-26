@@ -129,6 +129,7 @@ subroutine rns_dudt_ad (lo, hi, &
      end do
      end do
   end do
+  !$omp end do
 
   !$omp do
   do n=1, NVAR
@@ -231,13 +232,17 @@ subroutine rns_compute_temp(lo,hi,U,U_l1,U_l2,U_l3,U_h1,U_h2,U_h3)
   integer, intent(in) :: U_l1, U_l2, U_l3, U_h1, U_h2, U_h3
   double precision, intent(inout) :: U(U_l1:U_h1,U_l2:U_h2,U_l3:U_h3,NVAR)
 
-  integer :: i, j, k
+  integer :: i, j, k, pt_index(3)
   double precision :: rhoInv, e, vx, vy, vz, Y(NSPEC)
 
-  !$omp parallel do private(i,j,k,rhoInv,e,vx,vy,vz,Y) collapse(2)
+  !$omp parallel do private(i,j,k,rhoInv,e,vx,vy,vz,Y,pt_index) collapse(2)
   do k=lo(3),hi(3)
   do j=lo(2),hi(2)
   do i=lo(1),hi(1)
+     pt_index(1) = i
+     pt_index(2) = i
+     pt_index(3) = i
+
      rhoInv = 1.0d0/U(i,j,k,URHO)
 
      vx = U(i,j,k,UMX)*rhoInv     
@@ -247,7 +252,7 @@ subroutine rns_compute_temp(lo,hi,U,U_l1,U_l2,U_l3,U_h1,U_h2,U_h3)
 
      Y = U(i,j,k,UFS:UFS+NSPEC-1)*rhoInv
 
-     call eos_get_T(U(i,j,k,UTEMP), e, Y)
+     call eos_get_T(U(i,j,k,UTEMP), e, Y, pt_index)
   end do
   end do
   end do
@@ -436,7 +441,7 @@ end subroutine rns_sum_cons
       lratx   = lrat(1)
       lraty   = lrat(2)
       lratz   = lrat(3)
-      volfrac = 1.d0/float(lrat(1)*lrat(2)*lrat(3))
+      volfrac = 1.d0/dble(lrat(1)*lrat(2)*lrat(3))
 
       !$omp parallel do private(i,j,k,n,ic,jc,kc,ioff,joff,koff)
       do n = 1, nvar

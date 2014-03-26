@@ -2,16 +2,18 @@
 
  verbose = 2
 
- advance_method = 3        ! 1=RK3, 2=SDC, 3=MRSDC
  stencil_type = "narrow"   ! narrow or S3D
+
+ advance_method = "mrsdc"
+
+ sdc_multirate_explicit = .true.
+ sdc_nnodes = 5
+ sdc_iters  = 12
+ sdc_tol_residual = 1.0d-3
 
  stop_time = 3.d-3
  max_step  = 10
  restart = -1
-
- sdc_nnodes = 5
- sdc_iters  = 12
- sdc_tol_residual = 1.0d-3
 
  plot_int = 10
  chk_int  = -1

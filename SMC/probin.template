@@ -14,6 +14,13 @@ module probin_module
 
   @@declarationsA@@
 
+  ! Advance method parameters
+  integer, parameter, public :: SMC_ADVANCE_SDC    = 1
+  integer, parameter, public :: SMC_ADVANCE_MRSDC  = 2
+  integer, parameter, public :: SMC_ADVANCE_RK     = 3
+  integer, parameter, public :: SMC_ADVANCE_CUSTOM = 4
+  integer, save, public      :: method
+
 
   ! Keep track of the inputs file that was used to read in runtime
   ! parameters.  This filename will be written into the job_info file.
@@ -57,7 +64,7 @@ contains
     use cluster_module
     use layout_module
     use bc_module
-    
+
     integer    :: narg, farg
 
     character(len=128) :: fname
@@ -104,7 +111,7 @@ contains
        if (myset .eq. iset) then
 
           pistart = parallel_wtime()
-          
+
           call get_environment_variable('PROBIN', probin_env, status = ierr)
           if ( need_inputs .AND. ierr == 0 ) then
              un = unit_new()
@@ -145,7 +152,7 @@ contains
           ibuff(1)  = 0
           wakeuppid = myproc + natonce
           tag       = mod(myproc,natonce)
-          
+
           if (wakeuppid < nprocs) call parallel_send(ibuff, wakeuppid, tag)
 
        end if
@@ -201,7 +208,7 @@ contains
     ! some sanity checks and set some defaults
     !-------------------------------------------------------------------------
 
-    ! if the string versions of the boundary conditions were set, then	
+    ! if the string versions of the boundary conditions were set, then
     ! these override the integer values
     if (.not. xlo_boundary_type == "") &
          bcx_lo = bc_string_to_integer(trim(xlo_boundary_type))
@@ -220,7 +227,7 @@ contains
 
     if (.not. zhi_boundary_type == "") &
          bcz_hi = bc_string_to_integer(trim(zhi_boundary_type))
-    
+
     if (bcx_lo == UNDEFINED) call bl_error("xlo_boundary_type invalid")
     if (bcx_hi == UNDEFINED) call bl_error("xhi_boundary_type invalid")
     if (bcy_lo == UNDEFINED) call bl_error("ylo_boundary_type invalid")
@@ -248,14 +255,29 @@ contains
        tb_split_dim = min(tb_split_dim, 2)
     end if
 
+    ! set advance
+    if (trim(advance_method) == "sdc") then
+      method = SMC_ADVANCE_SDC
+    else if (trim(advance_method) == "mrsdc") then
+      method = SMC_ADVANCE_MRSDC
+    else if (trim(advance_method) == "rk") then
+      method = SMC_ADVANCE_RK
+    else
+      method = SMC_ADVANCE_CUSTOM
+    end if
+
     call knapsack_set_verbose(the_knapsack_verbosity)
 
     call layout_set_verbosity(the_layout_verbosity)
     call layout_set_copyassoc_max(the_copy_cache_max)
     call layout_set_sfc_threshold(the_sfc_threshold)
 
+    if (method .eq. SMC_ADVANCE_MRSDC .and. (.not. sdc_multirate_explicit)) then
+       use_vode = .true.
+    end if
+
     call destroy(bpt)
-    
+
   end subroutine runtime_init
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!

@@ -20,6 +20,8 @@ USE_OMP       = TRUE
 USE_SDCLIB    = FALSE
 USE_ARRAYVIEW = FALSE
 
+USE_SDCLIB = TRUE
+
 CHEMISTRY_MODEL = LUDME
 
 Bpack   := ./Make.package

@@ -4,6 +4,7 @@ module advance_module
   use derivative_stencil_module
   use kernels_module
   use kernels_2d_module
+  use kernels_s3d_module
   use multifab_module
   use nscbc_module
   use smc_bc_module
@@ -34,8 +35,7 @@ module advance_module
 contains
 
   subroutine advance(U, dtio, courno, dx, sdc, istep)
-
-    use probin_module, only : advance_method, check_nans
+    use probin_module
 
     type(multifab),    intent(inout) :: U
     double precision,  intent(inout) :: dtio, courno
@@ -52,15 +52,21 @@ contains
 
     dt = dtio
 
-    select case(advance_method)
-    case(1)
-       call advance_rk3(U,courno,dx)
-    case (2)
+    select case (method)
+    case (SMC_ADVANCE_SDC)
        call advance_sdc(U,courno,dx,sdc,istep==istep_first)
-    case(3,4)
+    case (SMC_ADVANCE_MRSDC)
        call advance_multi_sdc(U,courno,dx,sdc,istep==istep_first)
-    case default
-       call bl_error("Invalid advance_method.")
+    case (SMC_ADVANCE_RK)
+       if (rk_order == 3) then
+          call advance_rk33(U,courno,dx)
+       else if (rk_order == 4) then
+          call advance_rk64(U,courno,dx)
+       else
+          call bl_error("Invalid rk_order.")
+       end if
+    case (SMC_ADVANCE_CUSTOM)
+       call bl_error("Not implemented yet.")
     end select
 
     if (check_nans) then
@@ -76,8 +82,7 @@ contains
   !
   ! Advance U using SSP RK3
   !
-  subroutine advance_rk3 (U,courno,dx)
-
+  subroutine advance_rk33 (U,courno,dx)
     use time_module, only : time
     use smcdata_module, only : Unew, Uprime
     implicit none
@@ -90,34 +95,104 @@ contains
 
     call tb_multifab_setval(Unew, 0.d0, .true.)
 
-    ! RK Step 1
-    call build(bpt_rkstep1, "rkstep1")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
-
+    call build(bpt_rkstep1, "rkstep1")
     call dUdt(U, Uprime, time, dt, dx, courno=courno)
-    call update_rk3(Zero,Unew, One,U, dt, Uprime)
+    call update_rk(Zero,Unew, One,U, dt, Uprime)
     call reset_density(Unew)
     call impose_hard_bc(Unew, time+OneThird*dt, dx)
+    call destroy(bpt_rkstep1)
 
-    call destroy(bpt_rkstep1)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
-
-    ! RK Step 2
-    call build(bpt_rkstep2, "rkstep2")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
+    call build(bpt_rkstep2, "rkstep2")
     call dUdt(Unew, Uprime, time+OneThird*dt, OneThird*dt, dx)
-    call update_rk3(OneQuarter, Unew, ThreeQuarters, U, OneQuarter*dt, Uprime)
+    call update_rk(OneQuarter, Unew, ThreeQuarters, U, OneQuarter*dt, Uprime)
     call reset_density(Unew)
     call impose_hard_bc(Unew, time+TwoThirds*dt, dx)
-    call destroy(bpt_rkstep2)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
+    call destroy(bpt_rkstep2)
 
-    ! RK Step 3
-    call build(bpt_rkstep3, "rkstep3")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
+    call build(bpt_rkstep3, "rkstep3")
     call dUdt(Unew, Uprime, time+TwoThirds*dt, TwoThirds*dt, dx)
-    call update_rk3(OneThird, U, TwoThirds, Unew, TwoThirds*dt, Uprime)
+    call update_rk(OneThird, U, TwoThirds, Unew, TwoThirds*dt, Uprime)
     call reset_density(U)
     call impose_hard_bc(U, time+dt, dx)
-    call destroy(bpt_rkstep3)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
+    call destroy(bpt_rkstep3)
 
-  end subroutine advance_rk3
+  end subroutine advance_rk33
 
+  !
+  ! Advance U using 6-stage RK4 (same as S3D)
+  !
+  subroutine advance_rk64 (U,courno,dx)
+    use time_module, only : time
+    use smcdata_module, only : Unew, Uprime
+    implicit none
+
+    type(multifab),    intent(inout) :: U
+    double precision,  intent(inout) :: courno
+    double precision,  intent(in   ) :: dx(3)
+
+    double precision, parameter :: rk64_alpha(6) = [ &
+         +  3296351145737.d0/15110423921029.d0, &
+         +  1879360555526.d0/ 7321162733569.d0, &
+         + 10797097731880.d0/20472212111779.d0, &
+         +   754636544611.d0/15563872110659.d0, &
+         +  3260218886217.d0/ 2618290685819.d0, &
+         +  5069185909380.d0/12292927838509.d0 ]
+
+    double precision, parameter :: rk64_beta(6) = [ &
+         -  1204558336989.d0/10607789004752.d0, &
+         -  3028468927040.d0/14078136890693.d0, &
+         -   455570672869.d0/ 8930094212428.d0, &
+         - 17275898420483.d0/15997285579755.d0, &
+         -  2453906524165.d0/ 9868353053862.d0, &
+         +      0.d0 ]
+
+    double precision, parameter :: rk64_time(6) = [ &
+         +  3296351145737.d0/15110423921029.d0, &
+         +  2703592154963.d0/ 7482974295227.d0, &
+         +  7876405563010.d0/11693293791847.d0, &
+         + 12920213460229.d0/19253602032679.d0, &
+         +  7527523127717.d0/ 9001003553970.d0, &
+         +      1.d0 ]
+
+    character(len=7), save :: bpt_names(6) = [ &
+         "rkstep1", "rkstep2", "rkstep3", "rkstep4", "rkstep5", "rkstep6" ]
+
+    type(bl_prof_timer), save :: bpt_rkstep(6)
+    double precision :: t
+    integer :: j
+
+    ! init carry-over
+    call copy(Unew, U)
+
+    do j = 1, 6
+       call build(bpt_rkstep(j), bpt_names(j))
+       if (j == 1) then
+          call dUdt(U, Uprime, time, rk64_time(j)*dt, dx, courno=courno)
+       else
+          call dUdt(U, Uprime, t, rk64_time(j)*dt, dx)
+       end if
+
+       t = time + rk64_time(j) * dt
+
+       ! update solution
+       call update_rk(0.0d0, U, 1.0d0, Unew, rk64_alpha(j)*dt, Uprime)
+       call reset_density(U)
+       call impose_hard_bc(U, t, dx)
+
+       ! update carry-over
+       if (j < 6) then
+          call update_rk(0.0d0, Unew, 1.0d0, U, rk64_beta(j)*dt, Uprime)
+          call reset_density(Unew)
+          call impose_hard_bc(Unew, t, dx)
+       end if
+
+       call destroy(bpt_rkstep(j))
+    end do
+
+    call reset_density(U)
+    call impose_hard_bc(U, time+dt, dx)
+
+  end subroutine advance_rk64
 
   !
   ! Advance U using single-rate SDC time-stepping
@@ -212,7 +287,7 @@ contains
     end do
     call destroy(bpt_sdc_iter)
 
-    call sdc_imex_get_qend(sdc%imex, mfptr(U))    
+    call sdc_imex_get_qend(sdc%imex, mfptr(U))
 
     call reset_density(U)
     call impose_hard_bc(U, time+dt, dx)
@@ -273,7 +348,7 @@ contains
   end subroutine sdc_post_step_cb
 
   subroutine multi_sdc_feval_slow(Fptr, Uptr, t, state, ctxptr) bind(c)
-    use probin_module, only : advance_method
+    use probin_module, only : sdc_multirate_explicit
 
     type(c_ptr),     intent(in), value :: Fptr, Uptr, ctxptr
     type(sdc_state), intent(in)        :: state
@@ -302,7 +377,7 @@ contains
        dt_m = dt * (nodes(node+1) - nodes(node))
     end if
 
-    if (advance_method == 3) then
+    if (sdc_multirate_explicit) then
        Uprime_chem => sdc_get_chemterm(ctx, state%node)
        call dUdt(U, Uprime, t, dt_m, ctx%dx, include_r=.false., Uprime_c=Uprime_chem)
     else
@@ -311,7 +386,7 @@ contains
   end subroutine multi_sdc_feval_slow
 
   subroutine multi_sdc_feval_fast(Fptr, Uptr, t, state, ctxptr) bind(c)
-    use probin_module, only : advance_method
+    use probin_module, only : sdc_multirate_explicit
     type(c_ptr),     intent(in), value :: Fptr, Uptr, ctxptr
     type(sdc_state), intent(in)        :: state
     real(c_double),  intent(in), value :: t
@@ -339,7 +414,7 @@ contains
        dt_m = dt * (nodes(node+1) - nodes(node))
     end if
 
-    if (advance_method == 3) then
+    if (sdc_multirate_explicit) then
        call dUdt(U, Uprime, t, dt_m, ctx%dx, include_ad=.false.)
     else
        Uprime_chem => sdc_get_chemterm(ctx, state%node)
@@ -541,7 +616,7 @@ contains
   !
   ! Compute U1 = a U1 + b U2 + c Uprime.
   !
-  subroutine update_rk3 (a,U1,b,U2,c,Uprime)
+  subroutine update_rk(a,U1,b,U2,c,Uprime)
 
     type(multifab),   intent(in   ) :: U2, Uprime
     type(multifab),   intent(inout) :: U1
@@ -579,17 +654,18 @@ contains
     end do
     !$omp end parallel
 
-  end subroutine update_rk3
+  end subroutine update_rk
 
 
   !
-  ! Compute dU/dt given U using the narrow stencil.
+  ! Compute dU/dt given U.
   !
   ! The Courant number (courno) is also computed if passed.
   !
   subroutine dUdt (U, Uprime, t, dt_m, dx, courno, include_ad, include_r, Uprime_c)
 
-    use smcdata_module, only : Q, mu, xi, lam, Ddiag, Fdif, Upchem
+    use derivative_stencil_module, only : stencil, narrow, s3d
+    use smcdata_module, only : Q, mu, xi, lam, Ddiag, Fdif, Upchem, qx, qy, qz
     use probin_module, only : overlap_comm_comp, overlap_comm_gettrans, cfl_int, fixed_dt, &
          trans_int, mach_int
 
@@ -610,12 +686,14 @@ contains
     logical :: update_courno
     double precision :: courno_proc
 
-    type(mf_fb_data) :: U_fb_data
+    type(mf_fb_data) :: U_fb_data, qx_fb_data, qy_fb_data, qz_fb_data
 
     logical :: inc_ad, inc_r, rYt_only
 
-    integer :: qlo(4), qhi(4), uplo(4), uphi(4), ulo(4), uhi(4), flo(4), fhi(4), upclo(4), upchi(4)
-    double precision, pointer, dimension(:,:,:,:) :: up, qp, mup, xip, lamp, Ddp, upp, fp, upcp
+    integer :: qlo(4), qhi(4), uplo(4), uphi(4), ulo(4), uhi(4), flo(4), fhi(4), &
+         upclo(4), upchi(4), qxlo(4), qxhi(4), qylo(4), qyhi(4), qzlo(4), qzhi(4)
+    double precision, pointer, dimension(:,:,:,:) :: up, qp, mup, xip, lamp, Ddp, upp, fp, &
+         upcp, qxp, qyp, qzp
 
     type(bl_prof_timer), save :: bpt_ctoprim, bpt_gettrans, bpt_hypdiffterm
     type(bl_prof_timer), save :: bpt_chemterm, bpt_nscbc
@@ -635,7 +713,7 @@ contains
 
     if (trans_int .le. 0) then
        update_trans = .true.
-    else 
+    else
        if (trans_called) then
           update_trans = .false.
        else if (mod((istep_this-istep_first), trans_int) .eq. 0) then
@@ -733,26 +811,26 @@ contains
           uphi = ubound(upp)
           upclo = lbound(upcp)
           upchi = ubound(upcp)
-          
+
           lo = tb_get_valid_lo(n)
           hi = tb_get_valid_hi(n)
-          
+
           if (dm .eq. 2) then
              call chemterm_2d(lo,hi,qp,qlo(1:2),qhi(1:2),upp,uplo(1:2),uphi(1:2), &
                   upcp,upclo(1:2),upchi(1:2), dt_m)
-          else 
+          else
              call chemterm_3d(lo,hi,qp,qlo(1:3),qhi(1:3),upp,uplo(1:3),uphi(1:3), &
                   upcp,upclo(1:3),upchi(1:3), dt_m)
           end if
        end do
-       !$omp end parallel 
+       !$omp end parallel
        call destroy(bpt_chemterm)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
     end if
 
     !
     ! AD
     !
-    if (inc_ad) then       
+    if (inc_ad) then
 
        if (overlap_comm_comp) then
           if (overlap_comm_gettrans) then
@@ -767,13 +845,13 @@ contains
        else
           ng_gettrans = 0
        end if
-       
+
        ! Fill ghost cells here for get_transport_properties
        if (ng_gettrans .eq. ng .and. ng_ctoprim .eq. 0) then
           call build(bpt_ctoprim, "ctoprim")    !! vvvvvvvvvvvvvvvvvvvvvvv timer
           call ctoprim(U, Q, ghostcells_only=.true.)
           call destroy(bpt_ctoprim)             !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
-          ng_ctoprim = ng 
+          ng_ctoprim = ng
        end if
 
        if (overlap_comm_comp) then
@@ -787,12 +865,12 @@ contains
           call build(bpt_gettrans, "gettrans")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
           call get_transport_properties(Q, mu, xi, lam, Ddiag, ng_gettrans)
           trans_called = .true.
-          call destroy(bpt_gettrans)               !! ^^^^^^^^^^^^^^^^^^^^^^^ timer  
+          call destroy(bpt_gettrans)               !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
        end if
 
        if (overlap_comm_comp) then
           call multifab_fill_boundary_waitrecv(U, U_fb_data)
-          
+
           if (ng_ctoprim .eq. 0) then
              call build(bpt_ctoprim, "ctoprim")    !! vvvvvvvvvvvvvvvvvvvvvvv timer
              call ctoprim(U, Q, ghostcells_only=.true.)
@@ -812,56 +890,231 @@ contains
        ! Hyperbolic and Transport terms
        !
        call build(bpt_hypdiffterm, "hypdiffterm")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
-       !$omp parallel private(n,iblock,lo,hi,up,ulo,uhi,upp,uplo,uphi,qp,qlo,qhi) &
-       !$omp private(fp,flo,fhi,mup,xip,lamp,Ddp,dlo,dhi,blo,bhi)
-       do n=1,nfabs(Q)
-          
-          if (.not.tb_worktodo(n)) cycle
-          
-          up => dataptr(U,n)
-          upp=> dataptr(Uprime,n)
-          fp => dataptr(Fdif,n)
-          qp => dataptr(Q,n)
-          mup  => dataptr(mu   , n)
-          xip  => dataptr(xi   , n)
-          lamp => dataptr(lam  , n)
-          Ddp  => dataptr(Ddiag, n)
-          
-          ulo = lbound(up)
-          uhi = ubound(up)
-          qlo = lbound(qp)
-          qhi = ubound(qp)
-          uplo = lbound(upp)
-          uphi = ubound(upp)
-          flo = lbound(fp)
-          fhi = ubound(fp)
+       if (stencil .eq. narrow) then
 
-          call get_data_lo_hi(n,dlo,dhi)
-          call get_boxbc(n,blo,bhi)
-          
-          do iblock = 1, tb_get_nblocks(n)
-             lo = tb_get_block_lo(iblock,n)
-             hi = tb_get_block_hi(iblock,n)
+          !$omp parallel private(n,iblock,lo,hi,up,ulo,uhi,upp,uplo,uphi,qp,qlo,qhi) &
+          !$omp private(fp,flo,fhi,mup,xip,lamp,Ddp,dlo,dhi,blo,bhi)
+          do n=1,nfabs(Q)
 
-             if (dm .eq. 2) then
-                call hypterm_2d(lo,hi,dx,up,ulo(1:2),uhi(1:2),qp,qlo(1:2),qhi(1:2),&
-                     upp,uplo(1:2),uphi(1:2),dlo,dhi,blo,bhi)
-                
-                call narrow_diffterm_2d(lo,hi,dx,qp,qlo(1:2),qhi(1:2),upp,uplo(1:2),uphi(1:2), &
-                     fp,flo(1:2),fhi(1:2),mup,xip,lamp,Ddp,dlo,dhi,blo,bhi)
-             else
-                call hypterm_3d(lo,hi,dx,up,ulo(1:3),uhi(1:3),qp,qlo(1:3),qhi(1:3),&
-                     upp,uplo(1:3),uphi(1:3),dlo,dhi,blo,bhi)
-                
-                call narrow_diffterm_3d(lo,hi,dx,qp,qlo(1:3),qhi(1:3),upp,uplo(1:3),uphi(1:3), &
-                     fp,flo(1:3),fhi(1:3),mup,xip,lamp,Ddp,dlo,dhi,blo,bhi)
-             end if
+             if (.not.tb_worktodo(n)) cycle
+
+             up => dataptr(U,n)
+             upp=> dataptr(Uprime,n)
+             fp => dataptr(Fdif,n)
+             qp => dataptr(Q,n)
+             mup  => dataptr(mu   , n)
+             xip  => dataptr(xi   , n)
+             lamp => dataptr(lam  , n)
+             Ddp  => dataptr(Ddiag, n)
+
+             ulo = lbound(up)
+             uhi = ubound(up)
+             qlo = lbound(qp)
+             qhi = ubound(qp)
+             uplo = lbound(upp)
+             uphi = ubound(upp)
+             flo = lbound(fp)
+             fhi = ubound(fp)
+
+             call get_data_lo_hi(n,dlo,dhi)
+             call get_boxbc(n,blo,bhi)
+
+             do iblock = 1, tb_get_nblocks(n)
+                lo = tb_get_block_lo(iblock,n)
+                hi = tb_get_block_hi(iblock,n)
+
+                if (dm .eq. 2) then
+                   call hypterm_2d(lo,hi,dx,up,ulo(1:2),uhi(1:2),qp,qlo(1:2),qhi(1:2),&
+                        upp,uplo(1:2),uphi(1:2),dlo,dhi,blo,bhi)
+
+                   call narrow_diffterm_2d(lo,hi,dx,qp,qlo(1:2),qhi(1:2),upp,uplo(1:2),uphi(1:2), &
+                        fp,flo(1:2),fhi(1:2),mup,xip,lamp,Ddp,dlo,dhi,blo,bhi)
+                else
+                   call hypterm_3d(lo,hi,dx,up,ulo(1:3),uhi(1:3),qp,qlo(1:3),qhi(1:3),&
+                        upp,uplo(1:3),uphi(1:3),dlo,dhi,blo,bhi)
+
+                   call narrow_diffterm_3d(lo,hi,dx,qp,qlo(1:3),qhi(1:3),upp,uplo(1:3),uphi(1:3), &
+                        fp,flo(1:3),fhi(1:3),mup,xip,lamp,Ddp,dlo,dhi,blo,bhi)
+                end if
+             end do
+
           end do
+          !$omp end parallel
 
-       end do
-       !$omp end parallel
+       else if (stencil .eq. s3d) then
+
+          !$omp parallel private(n,iblock,lo,hi,qp,qlo,qhi) &
+          !$omp private(qxp,qxlo,qxhi,qyp,qylo,qyhi,qzp,qzlo,qzhi) &
+          !$omp private(fp,flo,fhi,mup,xip,dlo,dhi,blo,bhi)
+          do n=1,nfabs(Q)
+             if (.not.tb_worktodo(n)) cycle
+
+             qp => dataptr(Q,n)
+             qxp => dataptr(qx, n)
+             qyp => dataptr(qy, n)
+             if (dm .eq. 3) qzp => dataptr(qz, n)
+
+             fp => dataptr(Fdif,n)
+
+             mup  => dataptr(mu   , n)
+             xip  => dataptr(xi   , n)
+
+             qlo = lbound(qp)
+             qhi = ubound(qp)
+             qxlo = lbound(qxp)
+             qxhi = ubound(qxp)
+             qylo = lbound(qyp)
+             qyhi = ubound(qyp)
+             if (dm .eq. 3) then
+                qzlo = lbound(qzp)
+                qzhi = ubound(qzp)
+             end if
+
+             flo = lbound(fp)
+             fhi = ubound(fp)
+
+             call get_data_lo_hi(n,dlo,dhi)
+             call get_boxbc(n,blo,bhi)
+
+             do iblock = 1, tb_get_nblocks(n)
+                lo = tb_get_block_lo(iblock,n)
+                hi = tb_get_block_hi(iblock,n)
+
+                if (dm .eq. 2) then
+                   call bl_error("2D not supported for S3D mode")
+                else
+                   call s3d_diffterm_1_3d(lo,hi,dx,qp,qlo(1:3),qhi(1:3),  &
+                        fp,flo(1:3),fhi(1:3),    &
+                        qxp,qxlo(1:3),qxhi(1:3), &
+                        qyp,qylo(1:3),qyhi(1:3), &
+                        qzp,qzlo(1:3),qzhi(1:3), &
+                        mup,xip,dlo,dhi,blo,bhi)
+                end if
+             end do
+          end do
+          !$omp end parallel
+
+          call multifab_fill_boundary_nowait(qx, qx_fb_data, idim=1)
+          call multifab_fill_boundary_nowait(qy, qy_fb_data, idim=2)
+          if (dm .eq. 3) then
+             call multifab_fill_boundary_nowait(qz, qz_fb_data, idim=3)
+          end if
+          if (overlap_comm_comp) then
+             call multifab_fill_boundary_test(qx, qx_fb_data, idim=1)
+             call multifab_fill_boundary_test(qy, qy_fb_data, idim=2)
+             if (dm .eq. 3) then
+                call multifab_fill_boundary_test(qz, qz_fb_data, idim=3)
+             end if
+          else
+             call multifab_fill_boundary_finish(qx, qx_fb_data, idim=1)
+             call multifab_fill_boundary_finish(qy, qy_fb_data, idim=2)
+             if (dm .eq. 3) then
+                call multifab_fill_boundary_finish(qz, qz_fb_data, idim=3)
+             end if
+          end if
+
+          !$omp parallel private(n,iblock,lo,hi,up,ulo,uhi,upp,uplo,uphi,qp,qlo,qhi) &
+          !$omp private(dlo,dhi,blo,bhi)
+          do n=1,nfabs(Q)
+             if (.not.tb_worktodo(n)) cycle
+
+             up => dataptr(U,n)
+             upp=> dataptr(Uprime,n)
+             qp => dataptr(Q,n)
+
+             ulo = lbound(up)
+             uhi = ubound(up)
+             qlo = lbound(qp)
+             qhi = ubound(qp)
+             uplo = lbound(upp)
+             uphi = ubound(upp)
+
+             call get_data_lo_hi(n,dlo,dhi)
+             call get_boxbc(n,blo,bhi)
+
+             do iblock = 1, tb_get_nblocks(n)
+                lo = tb_get_block_lo(iblock,n)
+                hi = tb_get_block_hi(iblock,n)
+
+                if (dm .eq. 2) then
+                   call bl_error("2D not supported for S3D mode")
+                else
+                   call hypterm_3d(lo,hi,dx,up,ulo(1:3),uhi(1:3),qp,qlo(1:3),qhi(1:3),&
+                        upp,uplo(1:3),uphi(1:3),dlo,dhi,blo,bhi)
+                end if
+             end do
+          end do
+          !$omp end parallel
+
+          if (overlap_comm_comp) then
+             call multifab_fill_boundary_finish(qx, qx_fb_data, idim=1)
+             call multifab_fill_boundary_finish(qy, qy_fb_data, idim=2)
+             if (dm .eq. 3) then
+                call multifab_fill_boundary_finish(qz, qz_fb_data, idim=3)
+             end if
+          end if
+
+          !$omp parallel private(n,iblock,lo,hi,upp,uplo,uphi,qp,qlo,qhi) &
+          !$omp private(qxp,qxlo,qxhi,qyp,qylo,qyhi,qzp,qzlo,qzhi) &
+          !$omp private(fp,flo,fhi,mup,xip,lamp,Ddp,dlo,dhi,blo,bhi)
+          do n=1,nfabs(Q)
+             if (.not.tb_worktodo(n)) cycle
+
+             qp  => dataptr(Q , n)
+             qxp => dataptr(qx, n)
+             qyp => dataptr(qy, n)
+             if (dm .eq. 3) qzp => dataptr(qz, n)
+
+             upp=> dataptr(Uprime,n)
+             fp => dataptr(Fdif,n)
+
+             mup  => dataptr(mu   , n)
+             xip  => dataptr(xi   , n)
+             lamp => dataptr(lam  , n)
+             Ddp  => dataptr(Ddiag, n)
+
+             qlo = lbound(qp)
+             qhi = ubound(qp)
+             qxlo = lbound(qxp)
+             qxhi = ubound(qxp)
+             qylo = lbound(qyp)
+             qyhi = ubound(qyp)
+             if (dm .eq. 3) then
+                qzlo = lbound(qzp)
+                qzhi = ubound(qzp)
+             end if
+
+             uplo = lbound(upp)
+             uphi = ubound(upp)
+             flo = lbound(fp)
+             fhi = ubound(fp)
+
+             call get_data_lo_hi(n,dlo,dhi)
+             call get_boxbc(n,blo,bhi)
+
+             do iblock = 1, tb_get_nblocks(n)
+                lo = tb_get_block_lo(iblock,n)
+                hi = tb_get_block_hi(iblock,n)
+
+                if (dm .eq. 2) then
+                   call bl_error("2D not supported for S3D mode")
+                else
+                   call s3d_diffterm_2_3d(lo,hi,dx,qp,qlo(1:3),qhi(1:3),  &
+                        upp,uplo(1:3),uphi(1:3), fp,flo(1:3),fhi(1:3),    &
+                        qxp,qxlo(1:3),qxhi(1:3), &
+                        qyp,qylo(1:3),qyhi(1:3), &
+                        qzp,qzlo(1:3),qzhi(1:3), &
+                        mup,xip,lamp, Ddp, &
+                        dlo,dhi,blo,bhi)
+                end if
+             end do
+          end do
+          !$omp end parallel
+
+       else
+          call bl_error("dUdt: unknown stencil type")
+       end if
        call destroy(bpt_hypdiffterm)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
-
 
        !
        ! NSCBC boundary
@@ -903,7 +1156,7 @@ contains
 
        lo = tb_get_valid_lo(n)
        hi = tb_get_valid_hi(n)
-       
+
        courno_thread = 0.d0
 
        if (dm .eq. 2) then
@@ -941,7 +1194,7 @@ contains
 
     call multifab_build(Q, la, nprim, ng)
     call tb_multifab_setval(Q, 0.d0, .true.)
-    
+
     call multifab_build(Uprime, la, ncons, 0)
     call tb_multifab_setval(Uprime, 0.d0)
 
@@ -957,7 +1210,7 @@ contains
     end if
 
     call multifab_fill_boundary_test(U, U_fb_data)
-    
+
     ng_ctoprim = 0
     call ctoprim(U, Q, ng_ctoprim)
 
@@ -991,8 +1244,8 @@ contains
                upcp,upclo(1:3),upchi(1:3), dt)
        end if
     end do
-    !$omp end parallel 
-    
+    !$omp end parallel
+
     call multifab_fill_boundary_test(U, U_fb_data)
 
     if (overlap_comm_gettrans) then
@@ -1012,17 +1265,15 @@ contains
   end subroutine overlapped_part
 
   subroutine sdc_get_q0(U0, sdc)
-    use probin_module, only : advance_method
+    use probin_module
     type(multifab), intent(inout) :: U0
     type(sdc_ctx),  intent(inout) :: sdc
-    select case(advance_method)
-    case (2)
+
+    if (method .eq. SMC_ADVANCE_SDC) then
        call sdc_imex_get_q0(sdc%imex, mfptr(U0))
-    case(3,4)
+    else
        call sdc_mrex_get_q0(sdc%mrex, mfptr(U0))
-    case default
-       call bl_error("Invalid advance_method in sdc_get_q0")
-    end select
+    end if
   end subroutine sdc_get_q0
 
 end module advance_module

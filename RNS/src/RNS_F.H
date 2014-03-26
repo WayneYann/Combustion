@@ -41,7 +41,7 @@ BL_FORT_PROC_DECL(SET_METHOD_PARAMS,set_method_params)
      const Real& small_dens, const Real& small_temp, const Real& small_pres,
      const Real& gamma, const Real& gravity, const Real& Treference,
      const int& riemann, const Real& difmag, const int* blocksize,
-     const int& do_weno, const int& do_component_weno,
+     const int& do_weno, const int& do_quadrature_weno, const int& do_component_weno,
      const int& use_vode, const int& do_cc_burning, const int& split_burning);
 
 BL_FORT_PROC_DECL(SET_PROBLEM_PARAMS,set_problem_params)

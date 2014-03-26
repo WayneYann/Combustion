@@ -5,8 +5,9 @@
 
  verbose = 2
 
- advance_method = 2        ! 1=RK3, 2=SDC
  stencil_type = "narrow"   ! narrow or S3D
+
+ advance_method = "sdc"
 
  sdc_nnodes = 5
  sdc_iters  = 8

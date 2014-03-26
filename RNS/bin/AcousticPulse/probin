@@ -2,4 +2,9 @@
 
   idir = 0
 
+  max_denerr_lev = 10
+
+  max_dengrad_lev = -1
+  dengrad = 0.2
+
 /

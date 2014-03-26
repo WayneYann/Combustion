@@ -2,15 +2,16 @@
 
  verbose = 2
 
- advance_method = 2        ! 1=RK3, 2=SDC, 3=PFASST
  stencil_type = "narrow"   ! narrow or S3D
+
+ advance_method = "sdc"
+
+ sdc_nnodes = 5
+ sdc_iters  = 12
 
  stop_time = 3.d-3
  max_step  = 10
  restart = -1
-
- sdc_nnodes = 5
- sdc_iters  = 12
 
  plot_int = 10
  chk_int  = -1

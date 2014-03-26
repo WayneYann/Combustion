@@ -13,7 +13,7 @@ module variables_module
   integer, save :: ncons, nprim
 
   ! Indices for S3D style first-derivatives
-  integer, parameter :: idu=1, idv=2, idw=3, idT=4, idp=5, idX1=6 
+  integer, save :: idu, idv, idw, idp, idT, idX1, ndq
 
   ! Arithmetic constants 
   double precision, parameter :: Zero          = 0.d0
@@ -69,6 +69,20 @@ contains
     qh1 = qx1 + nspecies
 
     nprim = qh1-1 + nspecies
+
+    ! for S3D
+    idu=1 
+    idv=2
+    if (dm_in .eq. 3) then
+       idw=3 
+       idp=4 
+    else
+       idw=-1
+       idp=3
+    end if
+    idT  = idp + 1 
+    idX1 = idT + 1
+    ndq  = idX1 - 1 + nspecies
     
     iN2 = get_species_index("N2")
     iH2 = get_species_index("H2")

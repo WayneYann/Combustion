@@ -5,7 +5,8 @@
 
  verbose = 2
 
- advance_method = 2        ! 1=RK3, 2=SDC
+ advance_method = "sdc"
+
  stencil_type = "narrow"   ! narrow or S3D
 
  stop_time = 6.d-5

@@ -34,13 +34,17 @@ SpeedTuple = namedtuple('SpeedTuple',
                         [ 'scheme', 'dt', 'error', 'runtime', 'ad_evals', 'r_evals' ])
 
 pens = {
-    'gl3':     { 'marker': 'o', 'ms': 12, 'color': 'black', 'label': 'SR GL 3', 'lw': 2 },
-    'gl3.3r4': { 'marker': '^', 'ms': 12, 'color': 'black', 'label': 'SR GL 3x4', 'lw': 2 },
-    'gl3.3r6': { 'marker': 'v', 'ms': 12, 'color': 'black', 'label': 'SR GL 3x6', 'lw': 2 },
-    'gl3.3r8': { 'marker': 's', 'ms': 12, 'color': 'black', 'label': 'SR GL 3x8', 'lw': 2 },
-    'gl3.5r2': { 'marker': 'd', 'ms': 12, 'color': 'black', 'label': 'SR GL 5x2', 'lw': 2 },
-    'gl3.9':   { 'marker': 's', 'ms': 12, 'color': 'blue',  'label': 'MR GL 3, 9', 'lw': 2 },
-    'gl3.13':  { 'marker': '^', 'ms': 12, 'color': 'red' ,  'label': 'MR GL 3, 13', 'lw': 2 },
+    'rk4':     { 'marker': 'o', 'ms': 12, 'color': 'red',  'label': 'RK4', 'lw': 2 },
+    'rk4w':    { 'marker': 's', 'ms': 12, 'color': 'red',  'label': 'RK4W', 'lw': 2 },
+    'gl3':     { 'marker': 'o', 'ms': 12, 'color': 'blue', 'label': 'SR 3 GL', 'lw': 2 },
+    'gl3.3r4': { 'marker': '^', 'ms': 12, 'color': 'black', 'label': 'barfy', 'lw': 2 },
+    'gl3.3r6': { 'marker': 'v', 'ms': 12, 'color': 'black', 'label': 'barfy', 'lw': 2 },
+    'gl3.3r8': { 'marker': 's', 'ms': 12, 'color': 'black', 'label': 'MR 3 GL / 3x8', 'lw': 2 },
+    'gl3.5r2': { 'marker': 'd', 'ms': 12, 'color': 'black', 'label': 'MR 3 GL / 5x2', 'lw': 2, 'ls': '--' },
+    'gl3.9':   { 'marker': 's', 'ms': 12, 'color': 'black', 'label': 'MR 3 GL / 9', 'lw': 2 },
+    'gl3.13':  { 'marker': '^', 'ms': 12, 'color': 'black', 'label': 'MR 3 GL / 13', 'lw': 2 },
+    'narrow': { 'marker': 'o', 'ls': '-', 'color': 'black', 'label': 'narrow' },
+    'wide': { 'marker': 's', 'ls': '--', 'color': 'black', 'label': 'wide' },
     }
 
 @task
@@ -54,26 +58,44 @@ def flamebox_speed():
   max_grid_size = 16
   nprocs        = fbox.nx**3 / max_grid_size**3
 
-  # # reference run
-  # dt   = fbox.dt_ref
-  # name = 'gl3_dt%e' % dt
-  # job  = Job(name=name, param_file='inputs-flamebox', rwd='speed/'+name, width=nprocs)
-  # job.update_params(
-  #   advance_method=2, stop_time=fbox.stop_time, max_step=int(fbox.stop_time/dt),
-  #   sdc_nnodes=3, sdc_nnodes_fine=0, sdc_iters=4, repeat=1,
-  #   fixed_dt=dt, nx=fbox.nx, max_grid_size=max_grid_size).add_to(jobs)
+  # reference run
+  dt   = fbox.dt_ref
+  name = 'gl3_dt%e_ref' % dt
+  job  = Job(name=name, param_file='inputs-flamebox', rwd='speed/'+name, width=nprocs)
+  job.update_params(
+    advance_method="sdc", stop_time=fbox.stop_time, max_step=int(fbox.stop_time/dt),
+    sdc_nnodes=3, sdc_nnodes_fine=0, sdc_iters=4, repeat=1,
+    fixed_dt=dt, nx=fbox.nx, max_grid_size=max_grid_size).add_to(jobs)
 
   # timing runs
   for dt0 in fbox.dt:
+
+    # runge-kutta runs, narrow stencil
+    dt   = dt0
+    name = 'rk4_dt%e' % dt
+    job = Job(name=name, param_file='inputs-flamebox', rwd='speed/'+name, width=nprocs)
+    job.update_params(
+      advance_method="rk", stop_time=fbox.stop_time, max_step=int(fbox.stop_time/dt),
+      sdc_nnodes=0, sdc_nnodes_fine=0, sdc_iters=4, repeat=1,
+      fixed_dt=dt, nx=fbox.nx, max_grid_size=max_grid_size, stencil="narrow").add_to(jobs)
+
+    # runge-kutta runs, wide stencil
+    dt   = dt0
+    name = 'rk4w_dt%e' % dt
+    job = Job(name=name, param_file='inputs-flamebox', rwd='speed/'+name, width=nprocs)
+    job.update_params(
+      advance_method="rk", stop_time=fbox.stop_time, max_step=int(fbox.stop_time/dt),
+      sdc_nnodes=0, sdc_nnodes_fine=0, sdc_iters=4, repeat=1,
+      fixed_dt=dt, nx=fbox.nx, max_grid_size=max_grid_size, stencil="wide").add_to(jobs)
 
     # single-rate sdc run
     dt   = dt0
     name = 'gl3_dt%e' % dt
     job = Job(name=name, param_file='inputs-flamebox', rwd='speed/'+name, width=nprocs)
     job.update_params(
-      advance_method=2, stop_time=fbox.stop_time, max_step=int(fbox.stop_time/dt),
+      advance_method="sdc", stop_time=fbox.stop_time, max_step=int(fbox.stop_time/dt),
       sdc_nnodes=3, sdc_nnodes_fine=0, sdc_iters=4, repeat=1,
-      fixed_dt=dt, nx=fbox.nx, max_grid_size=max_grid_size).add_to(jobs)
+      fixed_dt=dt, nx=fbox.nx, max_grid_size=max_grid_size, stencil='narrow').add_to(jobs)
 
     # multi-rate sdc runs
     for trat, nnodes in fbox.mrruns:
@@ -82,9 +104,9 @@ def flamebox_speed():
       job  = Job(name=name, rwd='speed/'+name, param_file='inputs-flamebox',
                  width=nprocs)
       job.update_params(
-        advance_method=3, stop_time=fbox.stop_time, max_step=int(fbox.stop_time/dt),
+        advance_method="mrsdc", stop_time=fbox.stop_time, max_step=int(fbox.stop_time/dt),
         sdc_nnodes=3, sdc_nnodes_fine=nnodes, sdc_iters=4, repeat=1,
-        fixed_dt=dt, nx=fbox.nx, max_grid_size=max_grid_size).add_to(jobs)
+        fixed_dt=dt, nx=fbox.nx, max_grid_size=max_grid_size, stencil='narrow').add_to(jobs)
 
     for trat, nnodes, nrep in fbox.mrreps:
       dt   = trat*dt0
@@ -92,13 +114,13 @@ def flamebox_speed():
       job  = Job(name=name, rwd='speed/'+name, param_file='inputs-flamebox',
                  width=nprocs)
       job.update_params(
-        advance_method=3, stop_time=fbox.stop_time, max_step=int(fbox.stop_time/dt),
+        advance_method="mrsdc", stop_time=fbox.stop_time, max_step=int(fbox.stop_time/dt),
         sdc_nnodes=3, sdc_nnodes_fine=nnodes, sdc_iters=4, repeat=nrep,
-        fixed_dt=dt, nx=fbox.nx, max_grid_size=max_grid_size).add_to(jobs)
+        fixed_dt=dt, nx=fbox.nx, max_grid_size=max_grid_size, stencil='narrow').add_to(jobs)
 
   jobs.submit_all()
 
-  
+
 @task
 def flamebox_speed_compare():
   """Compute flamebox timing and errors."""
@@ -112,10 +134,22 @@ def flamebox_speed_compare():
 
   for dt0 in fbox.dt:
 
+    name = 'rk4_dt%e' % dt0
+    rt, nad, nr = compare.runtime(name)
+    error = compare.error(name, ref, fbox.stop_time,
+                          refratio=1, norm=norm, variables=['density'])
+    errors.append(SpeedTuple('rk4', dt0, error, rt, nad, nr))
+
+    name = 'rk4w_dt%e' % dt0
+    rt, nad, nr = compare.runtime(name)
+    error = compare.error(name, ref, fbox.stop_time,
+                          refratio=1, norm=norm, variables=['density'])
+    errors.append(SpeedTuple('rk4w', dt0, error, rt, nad, nr))
+
     name = 'gl3_dt%e' % dt0
     rt, nad, nr = compare.runtime(name)
     error = compare.error(name, ref, fbox.stop_time,
-                          refratio=1, norm=norm, variables=['pressure'])
+                          refratio=1, norm=norm, variables=['density'])
     errors.append(SpeedTuple('gl3', dt0, error, rt, nad, nr))
 
     for trat, nnodes in fbox.mrruns:
@@ -123,7 +157,7 @@ def flamebox_speed_compare():
       name = 'gl3.%d_dt%e' % (nnodes, dt)
       rt, nad, nr = compare.runtime(name)
       error = compare.error(name, ref, fbox.stop_time,
-                            refratio=1, norm=norm, variables=['pressure'])
+                            refratio=1, norm=norm, variables=['density'])
       errors.append(SpeedTuple('gl3.%d' % nnodes, dt, error, rt, nad, nr))
 
     for trat, nnodes, nrep in fbox.mrreps:
@@ -131,13 +165,15 @@ def flamebox_speed_compare():
       name = 'gl3.%dr%d_dt%e' % (nnodes, nrep, dt)
       rt, nad, nr = compare.runtime(name)
       error = compare.error(name, ref, fbox.stop_time,
-                            refratio=1, norm=norm, variables=['pressure'])
+                            refratio=1, norm=norm, variables=['density'])
       errors.append(SpeedTuple('gl3.%dr%d' % (nnodes, nrep), dt, error, rt, nad, nr))
+
+  pprint(sorted([ (r.scheme, r.dt, r.r_evals, r.ad_evals, r.runtime, r.error) for r in errors ]))
 
   with open('speed.pkl', 'w') as f:
     pickle.dump(errors, f)
 
-    
+
 @task
 def flamebox_speed_plot(interactive=False):
   """Plot flamebox timing and speed results."""
@@ -146,11 +182,14 @@ def flamebox_speed_plot(interactive=False):
     speed = pickle.load(f)
 
   schemes = set([ x.scheme for x in speed ])
+  schemes.remove('gl3.13')
+  schemes.remove('gl3.3r8')
+  schemes = sorted(schemes)
 
   # runtime vs dt
   figure()
   for scheme in schemes:
-      x, y = np.asarray(sorted([ (r.dt, r.runtime) for r in speed 
+      x, y = np.asarray(sorted([ (r.dt, r.runtime) for r in speed
                                  if r.scheme == scheme ])).transpose()
       semilogx(x, y, **pens[scheme])
 
@@ -163,7 +202,7 @@ def flamebox_speed_plot(interactive=False):
   # adv/diff evals vs dt
   figure()
   for scheme in schemes:
-      x, y = np.asarray(sorted([ (r.dt, r.ad_evals) for r in speed 
+      x, y = np.asarray(sorted([ (r.dt, r.ad_evals) for r in speed
                                  if r.scheme == scheme ])).transpose()
       semilogx(x, y, **pens[scheme])
 
@@ -177,7 +216,7 @@ def flamebox_speed_plot(interactive=False):
   # runtime vs error
   figure()
   for scheme in schemes:
-      x, y = np.asarray(sorted([ (r.error, r.runtime) for r in speed 
+      x, y = np.asarray(sorted([ (r.error, r.runtime) for r in speed
                                  if r.scheme == scheme ])).transpose()
       semilogx(x, y, **pens[scheme])
 
@@ -190,7 +229,7 @@ def flamebox_speed_plot(interactive=False):
   # adv/diff evals vs error
   figure()
   for scheme in schemes:
-      x, y = np.asarray(sorted([ (r.error, r.ad_evals) for r in speed 
+      x, y = np.asarray(sorted([ (r.error, r.ad_evals) for r in speed
                                  if r.scheme == scheme ])).transpose()
       semilogx(x, y, **pens[scheme])
 
@@ -202,7 +241,7 @@ def flamebox_speed_plot(interactive=False):
   # error vs dt
   figure()
   for scheme in schemes:
-      x, y = np.asarray(sorted([ (r.dt, r.error) for r in speed 
+      x, y = np.asarray(sorted([ (r.dt, r.error) for r in speed
                                  if r.scheme == scheme ])).transpose()
       loglog(x, y, **pens[scheme])
 
@@ -308,7 +347,7 @@ def flameball_mrconv_compare():
 
 @task
 def flameball_mrconv_tabulate():
-    
+
   with open('mrconv.pkl', 'r') as f:
     errors = pickle.load(f)
 
@@ -323,7 +362,7 @@ def flameball_mrconv_tabulate():
           row = 'GL %d / GL %d $\\times$n %d & ' % (coarse, fine, repeat)
         else:
           row = ' & '
-        
+
         if k == 0:
           row += '%s & %.2f & %.3e & & %.3e & \\\\' % (texvar[variable], dt/1e-9, l0, l2)
         else:
@@ -335,6 +374,96 @@ def flameball_mrconv_tabulate():
           row += ' & %.2f & %.3e & %.2f & %.3e & %.2f \\\\' % (dt/1e-9, l0, l0r, l2, l2r)
 
         print row
+
+
+###############################################################################
+# flameball strong scaling
+
+scaling = Container()
+
+dt = 1e-9
+
+scaling.dt         = dt
+scaling.stop_time  = dt * 10
+scaling.nx         = 64
+scaling.processors = [ 1, 8, 64, 512 ]
+scaling.grid_size  = [ 64, 32, 16, 8 ]
+scaling.stencils   = [ "narrow", "wide" ]
+
+@task
+def flameball_scaling():
+  """Strong scaling tests for the FlameBall example using SDC."""
+
+  setenv('Combustion/SMC/bin/FlameBall', find_exe=True)
+
+  jobs = JobQueue(queue='regular', walltime="01:00:00", depth=1)
+
+  for stencil in scaling.stencils:
+      for nprocs, max_grid_size in zip(scaling.processors, scaling.grid_size):
+          name = 'p%d_%s' % (nprocs, stencil)
+          job  = Job(name=name, param_file='inputs-strongscaling', rwd='scaling/'+name,
+                     width=nprocs)
+          job.update_params(
+              fixed_dt=scaling.dt, stop_time=scaling.stop_time, nx=scaling.nx,
+              max_grid_size=max_grid_size, stencil=stencil)
+          jobs.add(job)
+
+  jobs.submit_all()
+
+@task
+def flameball_scaling_plot():
+  """Strong scaling tests for the FlameBall example using SDC."""
+
+  setenv('Combustion/SMC/bin/FlameBall')
+
+  for stencil in scaling.stencils:
+      times = []
+      for nprocs in scaling.processors:
+          name = 'p%d_%s' % (nprocs, stencil)
+          with cd(env.rwd):
+              out = run("cat scaling.mrsdc/%s/stdout | grep 'SMC Advance + I/O  Time ='" % name)
+              time = float(out.split()[-1])
+
+              times.append((nprocs, time))
+
+      x, y = map(np.asarray, zip(*times))
+
+      figure(1)
+      loglog(x, y[0]/y, **pens[stencil])
+
+      figure(2)
+      semilogx(x, y[0]*x[0]/x/y, **pens[stencil])
+
+      print stencil
+      print "speedup:        ", y[0]/y
+      print "rel. efficiency:", y[0]*x[0]/x/y
+      print "efficiency:     ", y[0]/y/x
+
+  figure(1)
+  minorticks_off()
+  # xlabel("no. of processors")
+  xlim([1, max(scaling.processors)])
+  ylim([1, max(scaling.processors)])
+  xticks(scaling.processors, [ "64^3", "32^3", "16^3", "8^3" ])
+  yticks(scaling.processors, scaling.processors)
+  xlabel("grid size per processor")
+  ylabel("speedup")
+  legend()
+
+  figure(2)
+  minorticks_off()
+  xlim([1, max(scaling.processors)])
+  ylim([0, 1])
+  #xlabel("no. of processors")
+  xlabel("grid size per processor")
+  xticks(scaling.processors, [ "64^3", "32^3", "16^3", "8^3" ])
+  ylabel("relative efficiency")
+  legend()
+
+  show()
+
+
+
 
 
 ###############################################################################
@@ -388,7 +517,8 @@ def setenv(rwd=None, bin=None, find_exe=False):
     env.scratch     = '/scratch/scratchdirs/memmett/'
     env.scheduler   = 'hopper'
     env.host_string = 'hopper.nersc.gov'
-    env.ffdcompare  = env.scratch + 'AmrPostprocessing/F_Src/ffdcompare.Linux.Intel.exe'
+#    env.ffdcompare  = env.scratch + 'AmrPostprocessing/F_Src/ffdcompare.Linux.Intel.exe'
+    env.ffdcompare  = env.scratch + 'AmrPostprocessing/F_Src/ffdcompare.Linux.gfortran.exe'
 
     env.depth   = 6
     env.pernode = 4
@@ -426,4 +556,4 @@ def echo_env():
   run('env')
   print green("=== remote modules ===")
   run('module list')
-  
+
