@@ -87,4 +87,14 @@
  vode_stiff     = .true.
  vode_always_new_j = .false.
 
+ plot_wbar = .true.
+ plot_eint = .true.
+ plot_h    = .true.
+ plot_cs   = .true.
+ plot_magvel = .true.
+ plot_mach   = .true.
+ plot_heatRelease = .true.
+ plot_fuelConsumption = .true.
+ fuel_name = "CH3OCH3"
+ 
 /
