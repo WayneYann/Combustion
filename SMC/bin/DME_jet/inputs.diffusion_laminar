@@ -5,7 +5,7 @@
 
  verbose = 2
 
- check_nans = .true.
+ check_nans = .false.
 
  advance_method = "mrsdc"
 
@@ -14,7 +14,7 @@
  sdc_nnodes_fine  = 3
  sdc_nnodes       = 5
  sdc_iters        = 4
- sdc_tol_residual = 1.0d-6
+ sdc_tol_residual = 1.0d-3
 
  stop_time = 1.0
  max_step  = 1000000
@@ -25,8 +25,8 @@
 
 ! fixed_dt    = 1.d-10
 ! max_dt      = 1.d-10
- cflfac      = 0.333d0
- cfl_int     = 10
+ cflfac      = 2.d0
+ cfl_int     = 100
  init_shrink = 0.1d0
 
  n_cellx = 1024
@@ -73,6 +73,8 @@
  blobT = 1500.d0
  blobx = 0.d0
  bloby = .027d0
+
+ prob_type = 1
 
  use_vode = .true.
  vode_verbose = 0
