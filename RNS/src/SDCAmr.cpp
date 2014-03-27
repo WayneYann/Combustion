@@ -342,6 +342,9 @@ void SDCAmr::timeStep(int level, Real time,
     MultiFab& Uend   = *Qend.U;
 
     MultiFab::Copy(Unew, Uend, 0, 0, Uend.nComp(), 0);
+    
+    RNS& rns = *dynamic_cast<RNS*>(&getLevel(lev));
+    rns.post_update(Unew);
   }
 
   for (int lev = finest_level-1; lev>= 0; lev--) {
