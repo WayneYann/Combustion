@@ -409,8 +409,6 @@ void sdc_f1eval(void *Fp, void *Qp, double t, sdc_state *state, void *ctx)
 //
 //   * Uprime doesn't have ghost cells
 //
-//   * Calling advance_chemistry with dt=0.0 puts dU_R/dt into tmp.
-//
 void sdc_f2eval(void *Fp, void *Qp, double t, sdc_state *state, void *ctx)
 {
   RNS&      rns    = *((RNS*) ctx);
