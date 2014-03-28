@@ -27,6 +27,6 @@
   vorterr = 5.d4
 
   max_tempgrad_lev = 2
-  temp_grad = 10.d0
+  tempgrad = 10.d0
 
 /

@@ -12,7 +12,7 @@ subroutine PROBINIT (init,name,namlen,problo,probhi)
 
   namelist /fortin/ prob_type, pamb, phi_in, T_in, vn_in, T_co, vn_co, &
        splitx, xfrontw, Tfrontw, blobr, blobx, bloby, blobT, inflow_period, inflow_vnmag, &
-       max_tracerr_lev, tracerr, max_vorterr_lev, vorterr, max_tempgrad_lev, temp_grad
+       max_tracerr_lev, tracerr, max_vorterr_lev, vorterr, max_tempgrad_lev, tempgrad
 
 !
 !     Build "probin" filename -- the name of file containing fortin namelist.
