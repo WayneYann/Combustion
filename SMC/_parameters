@@ -89,6 +89,7 @@ max_step                            integer            1
 
 # CFL factor to use in the computation of the advection timestep constraint
 cflfac                              real               0.5d0
+diff_cfl                            real               0.5d0
 
 # How often do we update Courant number
 cfl_int                             integer            10
