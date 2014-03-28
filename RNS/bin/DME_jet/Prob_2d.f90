@@ -60,7 +60,7 @@ subroutine PROBINIT (init,name,namlen,problo,probhi)
   vorterr = 5.d4
 
   max_tempgrad_lev = -1
-  temp_grad = 10.d0
+  tempgrad = 10.d0
 
   !     Read namelists
   untin = 9
