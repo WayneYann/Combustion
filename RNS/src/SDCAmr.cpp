@@ -61,11 +61,11 @@ BEGIN_EXTERN_C
 /*
  * Spatial interpolation between MultiFabs.  Called by SDCLib.
  */
-// xxxxx TODO: need to distinguish correction from solution, because they have
-//             different physical boundary conditions
 void mlsdc_amr_interpolate(void *Fp, void *Gp, sdc_state *state, void *ctxF, void *ctxG)
 {
   BL_PROFILE("MLSDC_AMR_INTERPOLATE()");
+
+  bool isCorrection = state->kind == SDC_CORRECTION;
 
   RNSEncap& F      = *((RNSEncap*) Fp);
   RNSEncap& G      = *((RNSEncap*) Gp);
@@ -158,7 +158,7 @@ void mlsdc_amr_interpolate(void *Fp, void *Gp, sdc_state *state, void *ctxF, voi
 	  UG_safe = &UG;
       }
 
-      levelG.fill_boundary(*UG_safe, state->t, RNS::use_FillBoundary);
+      levelG.fill_boundary(*UG_safe, state->t, RNS::use_FillBoundary, isCorrection);
 
       // We cannot do FabArray::copy() directly on UG because it copies only form
       // valid regions.  So we need to make the ghost cells of UG valid.
@@ -179,7 +179,7 @@ void mlsdc_amr_interpolate(void *Fp, void *Gp, sdc_state *state, void *ctxF, voi
   }
   else {
     UC.copy(UG);
-    levelG.fill_boundary(UC, state->t, RNS::set_PhysBoundary);
+    levelG.fill_boundary(UC, state->t, RNS::set_PhysBoundary, isCorrection);
   }
 
   RNS_ASSERTNONAN(UC);
@@ -198,7 +198,7 @@ void mlsdc_amr_interpolate(void *Fp, void *Gp, sdc_state *state, void *ctxF, voi
                crse_geom, fine_geom, bcr, 0, 0);
   }
 
-  levelF.fill_boundary(UF, state->t, RNS::set_PhysBoundary);
+  levelF.fill_boundary(UF, state->t, RNS::set_PhysBoundary, isCorrection);
   RNS_ASSERTNONAN(UF);
 }
 
