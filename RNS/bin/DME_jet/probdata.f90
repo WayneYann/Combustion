@@ -3,7 +3,10 @@ module probdata_module
   implicit none
 
   ! parameters for DME_jet
-  double precision, save :: pamb, phi_in, T_in, vn_in, T_co, vn_co, splitx, xfrontw
+  integer, save :: prob_type
+  double precision, save :: pamb, phi_in, T_in, vn_in, T_co, vn_co
+  double precision, save :: splitx, xfrontw, Tfrontw
+  double precision, save :: blobr, blobx, bloby, blobT
   double precision, save :: inflow_period, inflow_vnmag
   double precision, allocatable, save :: fuel_Y(:), air_Y(:)
   double precision, allocatable, save :: fuel_state(:), air_state(:)

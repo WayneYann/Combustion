@@ -93,7 +93,7 @@ contains
           if (prob_type .eq. 0) then 
              u1t = eta  * vt_in + (1.d0-eta ) * vt_co
              u2t = eta  * vn_in + (1.d0-eta ) * vn_co
-          else 
+          else if (prob_type .eq. 1) then
              u1t = eta1 * vt_in + (1.d0-eta1) * vt_co
              u2t = eta1 * vn_in + (1.d0-eta1) * vn_co
           end if

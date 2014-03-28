@@ -14,7 +14,7 @@ subroutine rns_grpfill(adv,adv_l1,adv_l2,adv_h1,adv_h2, &
   double precision adv(adv_l1:adv_h1,adv_l2:adv_h2,NVAR)
   
   integer i, j, n, iwrk, ii
-  double precision :: x, xg, facx, fact, sigma, eta, Pi
+  double precision :: x, xg, facx, fact, sigma, eta, Pi, eta1
   double precision rhot,u1t,u2t,Tt,et,Yt(NSPEC),rwrk
   double precision, parameter :: gp(2) = (/ -1.d0/sqrt(3.d0), 1.d0/sqrt(3.d0) /)
 
@@ -37,7 +37,7 @@ subroutine rns_grpfill(adv,adv_l1,adv_l2,adv_h1,adv_h2, &
         sigma = 2.5d0*xfrontw*splitx
 
         ! fill the corners too
-        !$omp parallel do private(i,j,n,iwrk,ii,x,xg,eta,rhot,u1t,u2t,Tt,et,Yt,rwrk) &
+        !$omp parallel do private(i,j,n,iwrk,ii,x,xg,eta,eta1,rhot,u1t,u2t,Tt,et,Yt,rwrk) &
         !$omp collapse(2)
         do j = adv_l2, domlo(2)-1 
            do i = adv_l1,adv_h1
@@ -49,16 +49,27 @@ subroutine rns_grpfill(adv,adv_l1,adv_l2,adv_h1,adv_h2, &
               do ii=1,2
                  xg = x + 0.5d0*delta(1)*gp(ii)
 
-                 eta = 0.5d0 * (tanh((xg + splitx)/sigma)   &
-                      &       - tanh((xg - splitx)/sigma))
+                 if (prob_type .eq. 0) then
+                    eta = 0.5d0 * (tanh((xg + splitx)/sigma)   &
+                         &       - tanh((xg - splitx)/sigma))
+                 else if (prob_type .eq. 1) then
+                    eta = 0.5d0 * (tanh((xg + splitx)/Tfrontw)  &
+                         &       - tanh((xg - splitx)/Tfrontw))
+                    eta1 = 0.5d0 * (tanh((xg + blobr)/xfrontw)  &
+                         &        - tanh((xg - blobr)/xfrontw))
+                 end if
 
                  do n=1,nspec
                     Yt(n) = eta*fuel_Y(n) + (1.d0-eta)*air_Y(n)
                  end do
                  Tt  = eta * T_in + (1.d0-eta) * T_co
                  u1t = 0.d0
-                 u2t = eta *vn_in + (1.d0-eta) *vn_co &
-                      + inflow_vnmag*eta*sin(xg*facx)*fact
+                 if (prob_type .eq. 0) then 
+                    u2t = eta *vn_in + (1.d0-eta) *vn_co &
+                         + inflow_vnmag*eta*sin(xg*facx)*fact
+                 else if (prob_type .eq. 1) then
+                    u2t = eta1 * vn_in + (1.d0-eta1) * vn_co
+                 end if
        
                  CALL CKRHOY(pamb,Tt,Yt,IWRK,RWRK,rhot)
                  call CKUBMS(Tt,Yt,IWRK,RWRK,et)
@@ -196,8 +207,13 @@ subroutine rns_denfill(adv,adv_l1,adv_l2,adv_h1,adv_h2, &
 
                  xg = x + 0.5d0*delta(1)*gp(ii)
 
-                 eta = 0.5d0 * (tanh((xg + splitx)/sigma)   &
-                      &       - tanh((xg - splitx)/sigma))
+                 if (prob_type .eq. 0) then
+                    eta = 0.5d0 * (tanh((xg + splitx)/sigma)   &
+                         &       - tanh((xg - splitx)/sigma))
+                 else if (prob_type .eq. 1) then
+                    eta = 0.5d0 * (tanh((xg + splitx)/Tfrontw)  &
+                         &       - tanh((xg - splitx)/Tfrontw))
+                 end if
 
                  do n=1,nspec
                     Yt(n) = eta*fuel_Y(n) + (1.d0-eta)*air_Y(n)
@@ -325,7 +341,7 @@ subroutine rns_myfill(adv,adv_l1,adv_l2,adv_h1,adv_h2, &
   double precision adv(adv_l1:adv_h1,adv_l2:adv_h2)
   
   integer :: i, j, n, iwrk, ii
-  double precision :: x, xg, facx, fact, sigma, eta, Pi
+  double precision :: x, xg, facx, fact, sigma, eta, Pi, eta1
   double precision rhot,u2t,Tt,Yt(NSPEC),rwrk
   double precision, parameter :: gp(2) = (/ -1.d0/sqrt(3.d0), 1.d0/sqrt(3.d0) /)
 
@@ -342,7 +358,7 @@ subroutine rns_myfill(adv,adv_l1,adv_l2,adv_h1,adv_h2, &
         sigma = 2.5d0*xfrontw*splitx
 
         ! fill the corners too
-        !$omp parallel do private(i,j,n,iwrk,ii,x,xg,eta,rhot,u2t,Tt,Yt,rwrk) &
+        !$omp parallel do private(i,j,n,iwrk,ii,x,xg,eta,eta1,rhot,u2t,Tt,Yt,rwrk) &
         !$omp collapse(2)
         do j = adv_l2, domlo(2)-1 
            do i = adv_l1,adv_h1
@@ -353,16 +369,27 @@ subroutine rns_myfill(adv,adv_l1,adv_l2,adv_h1,adv_h2, &
 
               do ii=1,2
                  xg = x + 0.5d0*delta(1)*gp(ii)
-
-                 eta = 0.5d0 * (tanh((xg + splitx)/sigma)   &
-                      &       - tanh((xg - splitx)/sigma))
+                 
+                 if (prob_type .eq. 0) then
+                    eta = 0.5d0 * (tanh((xg + splitx)/sigma)   &
+                         &       - tanh((xg - splitx)/sigma))
+                 else if (prob_type .eq. 1) then
+                    eta = 0.5d0 * (tanh((xg + splitx)/Tfrontw)  &
+                         &       - tanh((xg - splitx)/Tfrontw))
+                    eta1 = 0.5d0 * (tanh((xg + blobr)/xfrontw)  &
+                         &        - tanh((xg - blobr)/xfrontw))
+                 end if
 
                  do n=1,nspec
                     Yt(n) = eta*fuel_Y(n) + (1.d0-eta)*air_Y(n)
                  end do
                  Tt  = eta * T_in + (1.d0-eta) * T_co
-                 u2t = eta *vn_in + (1.d0-eta) *vn_co &
-                      + inflow_vnmag*eta*sin(xg*facx)*fact
+                 if (prob_type .eq. 0) then 
+                    u2t = eta *vn_in + (1.d0-eta) *vn_co &
+                         + inflow_vnmag*eta*sin(xg*facx)*fact
+                 else if (prob_type .eq. 1) then
+                    u2t = eta1 * vn_in + (1.d0-eta1) * vn_co
+                 end if
        
                  CALL CKRHOY(pamb,Tt,Yt,IWRK,RWRK,rhot)
 

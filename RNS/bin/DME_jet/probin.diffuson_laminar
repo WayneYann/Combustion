@@ -1,0 +1,32 @@
+&fortin
+
+  prob_type = 1
+
+  pamb = 4.053d7  ! 40 Patm
+  
+  phi_in = 0.7d0   ! mole fraction of CH3OCH3 in fuel
+  T_in   = 400.d0  ! temperature of fuel
+  vn_in  = 2.1d3  ! fuel injection velocity
+  
+  T_co  = 1100.d0   ! temperature of air
+  vn_co = 3.5d2    ! air injection velocity
+  
+  splitx  = 0.015d0   ! where fuel and air split
+  xfrontw = 0.0075d0  ! controls the width of split
+  Tfrontw = 0.0075d0
+
+  blobr = 0.015d0
+  blobT = 1500.d0
+  blobx = 0.0d0
+  bloby = 0.027d0
+
+  max_tracerr_lev = 4
+  tracerr = 1.d-8
+
+  max_vorterr_lev = 4
+  vorterr = 5.d4
+
+  max_tempgrad_lev = 2
+  temp_grad = 10.d0
+
+/
