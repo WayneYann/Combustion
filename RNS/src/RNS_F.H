@@ -154,6 +154,12 @@ BL_FORT_PROC_DECL(RNS_MZFILL,rns_mzfill)
      const Real dx[], const Real glo[], 
      const Real* time, const int bc[]);
 
+BL_FORT_PROC_DECL(RNS_TEMPFILL,rns_tempfill)
+    (BL_FORT_FAB_ARG(state),
+     const int dlo[], const int dhi[],
+     const Real dx[], const Real glo[], 
+     const Real* time, const int bc[]);
+
 BL_FORT_PROC_DECL(RNS_ESTDT,rns_estdt)
     (const BL_FORT_FAB_ARG(state),
      const int lo[], const int hi[],

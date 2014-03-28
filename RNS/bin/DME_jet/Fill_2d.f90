@@ -229,7 +229,7 @@ subroutine rns_denfill(adv,adv_l1,adv_l2,adv_h1,adv_h2, &
         end do
         !$omp end parallel do
      else
-        print *,'SHOULD NEVER GET HERE bc(1,1,1) .ne. EXT_DIR) '
+        print *,'SHOULD NEVER GET HERE bc(2,1,1) .ne. EXT_DIR) '
         stop
      end if
   end if
@@ -431,3 +431,87 @@ subroutine rns_myfill(adv,adv_l1,adv_l2,adv_h1,adv_h2, &
   end if
   
 end subroutine rns_myfill
+
+
+! Fill temperature
+subroutine rns_tempfill(adv,adv_l1,adv_l2,adv_h1,adv_h2, &
+     domlo,domhi,delta,xlo,time,bc)
+
+  use probdata_module
+  
+  implicit none
+  include 'bc_types.fi'
+  integer adv_l1,adv_l2,adv_h1,adv_h2
+  integer bc(2,2,*)
+  integer domlo(2), domhi(2)
+  double precision delta(2), xlo(2), time
+  double precision adv(adv_l1:adv_h1,adv_l2:adv_h2)
+  
+  integer :: i, j, ii
+  double precision :: x, xg, sigma, eta
+  double precision :: Tt
+  double precision, parameter :: gp(2) = (/ -1.d0/sqrt(3.d0), 1.d0/sqrt(3.d0) /)
+
+  call filcc(adv,adv_l1,adv_l2,adv_h1,adv_h2,domlo,domhi,delta,xlo,bc)
+  
+  !     XLO
+  if ( bc(1,1,1).eq.EXT_DIR .and. adv_l1.lt.domlo(1)) then
+     print *,'tempfill: SHOULD NEVER GET HERE bc(1,1,1) .eq. EXT_DIR) '
+     stop
+  end if
+  
+  !     XHI
+  if ( bc(1,2,1).eq.EXT_DIR .and. adv_h1.gt.domhi(1)) then
+     print *,'tempfill: SHOULD NEVER GET HERE bc(1,2,1) .eq. EXT_DIR) '
+     stop
+  end if
+  
+  !     YLO
+   if (adv_l2.lt.domlo(2)) then
+     if (bc(2,1,1).eq.EXT_DIR) then
+
+        sigma = 2.5d0*xfrontw*splitx
+
+        ! fill the corners too
+        !$omp parallel do private(i,j,ii,x,xg,eta,Tt) collapse(2)
+        do j = adv_l2, domlo(2)-1 
+           do i = adv_l1,adv_h1
+
+              x = (DBLE(i-adv_l1)+.5d0)*delta(1)+xlo(1)
+              
+              adv(i,j) = 0.d0
+
+              do ii=1,2
+
+                 xg = x + 0.5d0*delta(1)*gp(ii)
+
+                 if (prob_type .eq. 0) then
+                    eta = 0.5d0 * (tanh((xg + splitx)/sigma)   &
+                         &       - tanh((xg - splitx)/sigma))
+                 else if (prob_type .eq. 1) then
+                    eta = 0.5d0 * (tanh((xg + splitx)/Tfrontw)  &
+                         &       - tanh((xg - splitx)/Tfrontw))
+                 end if
+
+                 Tt  = eta * T_in + (1.d0-eta) * T_co
+
+                 adv(i,j) = adv(i,j) + 0.5d0*Tt
+              
+              end do
+
+           end do
+        end do
+        !$omp end parallel do
+     else
+        print *,'SHOULD NEVER GET HERE bc(2,1,1) .ne. EXT_DIR) '
+        stop
+     end if
+  end if
+  
+  !     YHI
+  if ( bc(2,2,1).eq.EXT_DIR .and. adv_h2.gt.domhi(2)) then
+     print *,'tempfill: SHOULD NEVER GET HERE bc(2,2,1) .eq. EXT_DIR) '
+     stop
+  end if
+  
+end subroutine rns_tempfill

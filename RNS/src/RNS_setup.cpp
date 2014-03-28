@@ -266,6 +266,12 @@ RNS::variableSetUp ()
 			       BndryFunc(BL_FORT_PROC_CALL(RNS_MZFILL,rns_mzfill),
 					 BL_FORT_PROC_CALL(RNS_GRPFILL,rns_grpfill)));
 #endif
+
+    desc_lst.resetComponentBCs(State_Type,
+			       Temp,
+			       bcs[Temp],
+			       BndryFunc(BL_FORT_PROC_CALL(RNS_MXFILL,rns_tempfill),
+					 BL_FORT_PROC_CALL(RNS_GRPFILL,rns_grpfill)));
 			           
     //
     // DEFINE DERIVED QUANTITIES

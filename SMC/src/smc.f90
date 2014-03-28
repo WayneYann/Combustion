@@ -114,7 +114,7 @@ subroutine smc()
 
      if (parallel_IOProcessor() .and. verbose.ge.1) then
         print*,""
-        print*,"Restarting from", check_file_name
+        print*,"Restarting from ", check_file_name
      end if
 
      call initialize_from_restart(check_file_name, la,dt,courno,dx,U)
