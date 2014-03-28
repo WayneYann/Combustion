@@ -62,6 +62,10 @@ contains
     integer :: iwrk
     double precision :: rwrk
 
+    if (prob_type .ne. 0 .and. prob_type .ne. 1) then
+       call bl_error('unsupported prob_type')
+    end if
+
     sigma = 2.5d0*xfrontw*splitx
 
     do j=lo(2),hi(2)
@@ -86,8 +90,13 @@ contains
              Yt(n) = eta*fuel_Y(n) + (1.d0-eta)*air_Y(n)
           end do
           Tt  = eta  *  T_in + (1.d0-eta ) * T_co
-          u1t = eta1 * vt_in + (1.d0-eta1) *vt_co
-          u2t = eta1 * vn_in + (1.d0-eta1) *vn_co
+          if (prob_type .eq. 0) then 
+             u1t = eta  * vt_in + (1.d0-eta ) * vt_co
+             u2t = eta  * vn_in + (1.d0-eta ) * vn_co
+          else 
+             u1t = eta1 * vt_in + (1.d0-eta1) * vt_co
+             u2t = eta1 * vn_in + (1.d0-eta1) * vn_co
+          end if
        
           if (blobr .gt. 0.d0) then
              eta = 0.5d0*(1.d0 - TANH(-2.d0*(y-bloby)/Tfrontw))

@@ -50,11 +50,11 @@
  reset_inactive_species = .false.
 
  outlet_Pinfty = 4.053d7   ! 1.01325d6 
- outlet_sigma  = 0.25d0
+ outlet_sigma  = 6.28d0
  outlet_eta    = 50.d0
  inlet_eta     = 30.d0
  mach_int      = 10
- nscbc_burn    = .false.
+ nscbc_burn    = .true.
 
  pamb = 4.053d7  ! 40 Patm
 
