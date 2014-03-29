@@ -131,8 +131,6 @@ RNS::fill_boundary(MultiFab& U, Real time, int type_in, bool isCorrection)
 
     case use_FillBoundary:
 
-	if (isCorrection) U.setBndry(0.0);
-
 	U.FillBoundary();
 
 	// no break; so it will go to next case and set physical boundaries

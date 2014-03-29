@@ -36,6 +36,8 @@
  *
  * 2. We're using Gauss-Lobatto nodes, but Gauss-Radau would probably
  *    be better for chemistry.
+ *
+ * 3. mlsdc_amr_interpolate won't work for correcton at wall boundary. 
  */
 
 #include <SDCAmr.H>
@@ -158,6 +160,8 @@ void mlsdc_amr_interpolate(void *Fp, void *Gp, sdc_state *state, void *ctxF, voi
 	  UG_safe = &UG;
       }
 
+      if (isCorrection) UG_safe->setBndry(0.0);
+
       levelG.fill_boundary(*UG_safe, state->t, RNS::use_FillBoundary, isCorrection);
 
       // We cannot do FabArray::copy() directly on UG because it copies only form
@@ -178,8 +182,22 @@ void mlsdc_amr_interpolate(void *Fp, void *Gp, sdc_state *state, void *ctxF, voi
 
   }
   else {
-    UC.copy(UG);
-    levelG.fill_boundary(UC, state->t, RNS::set_PhysBoundary, isCorrection);
+      if (isCorrection) {
+#ifdef NDEBUG
+	  UC.setVal(0.0);
+	  UC.copy(UG);
+#else
+	  UC.copy(UG);
+	  const Box& crse_domain_box = levelG.Domain();
+	  for (MFIter mfi(UC); mfi.isValid(); ++mfi) {
+	      UC[mfi].setComplement(0.0, crse_domain_box, 0, ncomp);
+	  }
+#endif
+      }
+      else {
+	  UC.copy(UG);
+	  levelG.fill_boundary(UC, state->t, RNS::set_PhysBoundary, isCorrection);
+      }
   }
 
   RNS_ASSERTNONAN(UC);
@@ -198,6 +216,7 @@ void mlsdc_amr_interpolate(void *Fp, void *Gp, sdc_state *state, void *ctxF, voi
                crse_geom, fine_geom, bcr, 0, 0);
   }
 
+  if (isCorrection) UF.setBndry(0.0);
   levelF.fill_boundary(UF, state->t, RNS::set_PhysBoundary, isCorrection);
   RNS_ASSERTNONAN(UF);
 }
