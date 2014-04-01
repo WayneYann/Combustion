@@ -418,19 +418,37 @@ void sdc_f2eval(void *Fp, void *Qp, double t, sdc_state *state, void *ctx)
   RNSEncap& F      = *((RNSEncap*) Fp);
   MultiFab& U      = *Q.U;
   MultiFab& Uprime = *F.U;
+  Real dt = state->dt;
 
-  Uprime.setVal(0.0);
-
-  if (ChemDriver::isNull() || !RNS::do_chemistry) return;
+  if (ChemDriver::isNull() || !RNS::do_chemistry) {
+      Uprime.setVal(0.0);      
+      return;
+  }
 
   if (rns.verbose > 1 && ParallelDescriptor::IOProcessor()) {
     cout << "MLSDC evaluating chemistry:"
 	 << " level: " << rns.Level() << ", node: " << state->node << endl;
   }
 
-  rns.fill_boundary(U, state->t, RNS::use_FillBoundary);
-  BL_ASSERT(U.contains_nan() == false);
-  rns.dUdt_chemistry(U, Uprime);
+  if (1) {
+    MultiFab Unew(U.boxArray(), U.nComp(), 2);
+    MultiFab::Copy(Unew, U, 0, 0, U.nComp(), 0);
+
+    rns.fill_boundary(Unew, state->t, RNS::use_FillBoundary);
+    BL_ASSERT(Unew.contains_nan() == false);
+
+    rns.advance_chemistry(Unew, dt);
+
+    MultiFab::Copy(Uprime, Unew, 0, 0, U.nComp(), 0);
+    Uprime.minus(U, 0, U.nComp(), 0);
+    Uprime.mult(1./dt);
+  }
+  else {
+    rns.fill_boundary(U, state->t, RNS::use_FillBoundary);
+    BL_ASSERT(U.contains_nan() == false);
+    rns.dUdt_chemistry(U, Uprime);
+  }
+
   BL_ASSERT(Uprime.contains_nan() == false);
 }
 
