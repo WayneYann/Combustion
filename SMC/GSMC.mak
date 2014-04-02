@@ -30,6 +30,8 @@ endif
 ifeq ($(strip $(SDCLIB_HOME)),)
   ifeq ($(strip $(SMC_SRC)),src)
     $(error "Must define SDCLIB_HOME when SMC_SRC=$(SMC_SRC)")
+  else ifeq ($(strip $(SMC_SRC)),src_s3d)
+    $(error "Must define SDCLIB_HOME when SMC_SRC=$(SMC_SRC)")
   endif
 endif
 
@@ -95,6 +97,12 @@ else ifeq ($(CHEMISTRY_MODEL),LUDMERED)
   fsources += ckwyp.f
   vpath %.c   $(VPATH_LOCATIONS) $(CHEMISTRY_DIR)/data/Lu-red
   vpath %.f   $(VPATH_LOCATIONS) $(CHEMISTRY_DIR)/data/Lu-red
+endif
+
+ifeq ($(strip $(SMC_SRC)),src_s3d)
+  ifneq ($(CHEMISTRY_MODEL),LUDMERED)
+    $(error "For src_s3d, only LUDMERED is supported")
+  endif
 endif
 
 ifdef CONVERGENCE
