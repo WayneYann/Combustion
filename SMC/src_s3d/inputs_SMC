@@ -1,0 +1,54 @@
+&PROBIN
+
+ verbose = 2
+
+ advance_method = 1        ! 1=RK3, 2=SDC, 3=Multi-Rate SDC
+
+ cflfac = 0.1d0
+
+ stop_time = 1.d-6
+ restart = -1
+ max_step  = 5000000
+
+ init_shrink = 1.d0
+
+ plot_int = 100
+ chk_int  = 100
+
+ n_cellx = 32
+ n_celly = 32
+ n_cellz = 32
+ max_grid_size = 32
+
+ prob_lo_x = -0.05d0
+ prob_lo_y = -0.05d0
+ prob_lo_z = -0.05d0
+ prob_hi_x =  0.05d0
+ prob_hi_y =  0.05d0
+ prob_hi_z =  0.05d0
+
+ xlo_boundary_type = "periodic"
+ xhi_boundary_type = "periodic"
+
+ ylo_boundary_type = "periodic"
+ yhi_boundary_type = "periodic"
+
+ zlo_boundary_type = "periodic"
+ zhi_boundary_type = "periodic"
+
+ prob_type = 3
+
+ ! for prob_type 1
+ pertmag = 1.5d0
+
+ ! for prob_type 2
+ Tinit = 800.d0
+
+ ! for prob_type 2 & 3
+ uinit =  800.d0
+ vinit =  100.d0
+ winit =  0.0d0
+
+ rfire = 0.01d0
+
+/

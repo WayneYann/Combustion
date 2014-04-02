@@ -56,6 +56,7 @@ contains
     case (SMC_ADVANCE_SDC)
        call advance_sdc(U,courno,dx,sdc,istep==istep_first)
     case (SMC_ADVANCE_MRSDC)
+       call bl_error("mrsdc not supported in src_s3d.")
        call advance_multi_sdc(U,courno,dx,sdc,istep==istep_first)
     case (SMC_ADVANCE_RK)
        if (rk_order == 3) then
@@ -96,7 +97,7 @@ contains
     call tb_multifab_setval(Unew, 0.d0, .true.)
 
     call build(bpt_rkstep1, "rkstep1")
-    call dUdt(U, Uprime, time, -1.d0, dx, courno=courno)
+    call dUdt(U, Uprime, time, dt, dx, courno=courno)
     call update_rk(Zero,Unew, One,U, dt, Uprime)
     call reset_density(Unew)
     call impose_hard_bc(Unew, time+OneThird*dt, dx)
@@ -167,11 +168,9 @@ contains
     do j = 1, 6
        call build(bpt_rkstep(j), bpt_names(j))
        if (j == 1) then
-          ! -rk64_time(j) is a hack.
-          ! for the first step, dt is not set yet 
-          call dUdt(U, Uprime, time, -rk64_time(j), dx, courno=courno)
+          call dUdt(U, Uprime, time, -rk64_time(j), dx, courno=courno) ! -dt: hack
        else
-          call dUdt(U, Uprime, t, rk64_time(j)*dt, dx)
+          call dUdt(U, Uprime, t, -rk64_time(j), dx)
        end if
 
        t = time + rk64_time(j) * dt
@@ -786,59 +785,26 @@ contains
        call set_dt(courno, istep_this)
     end if
 
+
     if (dt_m .lt. 0.) then ! rk64
        dt_m_safe = -dt_m * dt
     else
        dt_m_safe = dt_m
     end if
 
+
     if (inc_ad .and. overlap_comm_comp) then
        call multifab_fill_boundary_test(U, U_fb_data)
     end if
 
-    !
-    ! R
-    !
-    if (inc_r) then
-       !
-       ! chemistry
-       !
-       call build(bpt_chemterm, "chemterm")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
-       !$omp parallel private(n,qp,upp,upcp,qlo,qhi,uplo,uphi,lo,hi,upclo,upchi)
-       do n=1,nfabs(Q)
 
-          if (.not.tb_worktodo(n)) cycle
+    call tb_multifab_setval(Uprime, 0.d0)
 
-          qp   => dataptr(Q,n)
-          upp  => dataptr(Uprime,n)
-          upcp => dataptr(Upchem,n)
-
-          qlo = lbound(qp)
-          qhi = ubound(qp)
-          uplo = lbound(upp)
-          uphi = ubound(upp)
-          upclo = lbound(upcp)
-          upchi = ubound(upcp)
-
-          lo = tb_get_valid_lo(n)
-          hi = tb_get_valid_hi(n)
-
-          if (dm .eq. 2) then
-             call chemterm_2d(lo,hi,qp,qlo(1:2),qhi(1:2),upp,uplo(1:2),uphi(1:2), &
-                  upcp,upclo(1:2),upchi(1:2), dt_m_safe)
-          else
-             call chemterm_3d(lo,hi,qp,qlo(1:3),qhi(1:3),upp,uplo(1:3),uphi(1:3), &
-                  upcp,upclo(1:3),upchi(1:3), dt_m_safe)
-          end if
-       end do
-       !$omp end parallel
-       call destroy(bpt_chemterm)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
-    end if
 
     !
     ! AD
     !
-    if (inc_ad) then
+!xxx    if (inc_ad) then
 
        if (overlap_comm_comp) then
           if (overlap_comm_gettrans) then
@@ -1124,6 +1090,51 @@ contains
        end if
        call destroy(bpt_hypdiffterm)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
 
+
+    !
+    ! R
+    !
+!xxx    if (inc_r) then
+       !
+       ! chemistry
+       !
+       call build(bpt_chemterm, "chemterm")   !! vvvvvvvvvvvvvvvvvvvvvvv timer
+       !$omp parallel private(n,qp,upp,upcp,qlo,qhi,uplo,uphi,lo,hi,upclo,upchi) &
+       !$omp private(fp,flo,fhi)
+       do n=1,nfabs(Q)
+
+          if (.not.tb_worktodo(n)) cycle
+
+          qp   => dataptr(Q,n)
+          upp  => dataptr(Uprime,n)
+          upcp => dataptr(Upchem,n)
+          fp   => dataptr(Fdif,n)
+
+          qlo = lbound(qp)
+          qhi = ubound(qp)
+          uplo = lbound(upp)
+          uphi = ubound(upp)
+          upclo = lbound(upcp)
+          upchi = ubound(upcp)
+          flo = lbound(fp)
+          fhi = ubound(fp)
+
+          lo = tb_get_valid_lo(n)
+          hi = tb_get_valid_hi(n)
+
+          if (dm .eq. 2) then
+             call chemterm_2d(lo,hi,qp,qlo(1:2),qhi(1:2),upp,uplo(1:2),uphi(1:2), &
+                  upcp,upclo(1:2),upchi(1:2), fp,flo(1:2),fhi(1:2), dt_m_safe)
+          else
+             call chemterm_3d(lo,hi,qp,qlo(1:3),qhi(1:3),upp,uplo(1:3),uphi(1:3), &
+                  upcp,upclo(1:3),upchi(1:3), fp,flo(1:3),fhi(1:3), dt_m_safe)
+          end if
+       end do
+       !$omp end parallel
+       call destroy(bpt_chemterm)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
+!xxx    end if
+
+
        !
        ! NSCBC boundary
        !
@@ -1136,7 +1147,7 @@ contains
        if (update_mach) mach_computed = .true.
        call destroy(bpt_nscbc)          !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
 
-    end if
+!xxx    end if
 
   end subroutine dUdt
 
@@ -1194,6 +1205,10 @@ contains
     type(multifab)   :: Q, Uprime, Upchem, mu, xi, lam, Ddiag
     double precision, pointer, dimension(:,:,:,:) :: qp, upp, upcp
 
+
+    stop
+
+
     call multifab_fill_boundary_test(U, U_fb_data)
 
     dm = U%dim
@@ -1245,11 +1260,11 @@ contains
 
        dt = 1.d-10
        if (dm .eq. 2) then
-          call chemterm_2d(lo,hi,qp,qlo(1:2),qhi(1:2),upp,uplo(1:2),uphi(1:2), &
-               upcp,upclo(1:2),upchi(1:2), dt)
+!          call chemterm_2d(lo,hi,qp,qlo(1:2),qhi(1:2),upp,uplo(1:2),uphi(1:2), &
+!               upcp,upclo(1:2),upchi(1:2), dt)
        else
-          call chemterm_3d(lo,hi,qp,qlo(1:3),qhi(1:3),upp,uplo(1:3),uphi(1:3), &
-               upcp,upclo(1:3),upchi(1:3), dt)
+!          call chemterm_3d(lo,hi,qp,qlo(1:3),qhi(1:3),upp,uplo(1:3),uphi(1:3), &
+!               upcp,upclo(1:3),upchi(1:3), dt)
        end if
     end do
     !$omp end parallel

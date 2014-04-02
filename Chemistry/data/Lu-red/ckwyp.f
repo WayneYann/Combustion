@@ -17,6 +17,30 @@ C     July 18, 2009
 C                                                                      C
 C----------------------------------------------------------------------C
 C                                                                      C
+      SUBROUTINE GETRATES  (P, T, Y, DIFF, DT, ICKWRK, RCKWRK, WDOT)
+      IMPLICIT DOUBLE PRECISION (A-H, O-Z), INTEGER (I-N)
+      DIMENSION Y(*),WDOT(*),ICKWRK(*),RCKWRK(*),DIFF(*)
+      DIMENSION RF(175),RB(175),RKLOW(11),C(30)
+      DIMENSION XQ(9)
+CESR, I have had problems giving this chemical model time steps less than 1ns
+CESR  and it does not like a zero timestep, protection against small timesteps has
+CESR  has been moved to the input file stiff.in and chemkin_m.f90.
+C
+      CALL YTCP(P, T, Y, C)
+      CALL RATT(T, RF, RB, RKLOW)
+      CALL RATX(T, C, RF, RB, RKLOW)
+      CALL QSSA(RF, RB, XQ)
+Cwqz      CALL STIF(RF, RB, DIFF, DT, C)
+      CALL STIF(RF, RB, DIFF, max(1.d-9,DT), C)
+      CALL RDOT(RF, RB, WDOT)
+C
+      END
+C                                                                      C
+C----------------------------------------------------------------------C
+C                                                                      C
+C                                                                      C
+C----------------------------------------------------------------------C
+C                                                                      C
 Cwqz      SUBROUTINE GETRATES  (P, T, Y, DIFF, DT, ICKWRK, RCKWRK, WDOT)
       SUBROUTINE DSCKWYP (P, T, Y, ICKWRK, RCKWRK, WDOT)
       IMPLICIT DOUBLE PRECISION (A-H, O-Z), INTEGER (I-N)
