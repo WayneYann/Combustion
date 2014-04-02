@@ -3,6 +3,7 @@ module advance_module
   use bl_error_module
   use derivative_stencil_module
   use kernels_module
+  use kernels_1d_module
   use kernels_2d_module
   use kernels_s3d_module
   use multifab_module

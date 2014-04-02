@@ -8,6 +8,8 @@ f90sources += cputime.f90
 f90sources += derivative_stencil.f90
 f90sources += initialize.f90
 
+f90sources += kernels_1d.f90
+
 ifdef EXPAND
   ifdef K_USE_STACK
     f90sources += kernels_stack_exp.f90
