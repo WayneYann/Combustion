@@ -12,7 +12,7 @@ contains
 
     use meth_params_module, only : NVAR, NSPEC, QCVAR, QFVAR
     use weno_module, only : cellavg2face_1d
-    use convert_1d_module, only : cellavg2cc_1d
+    use convert_module, only : cellavg2cc_1d
     use variables_module, only : ctoprim
     use transport_properties, only : get_transport_properties
 

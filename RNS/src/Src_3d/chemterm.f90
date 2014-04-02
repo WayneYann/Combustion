@@ -105,7 +105,7 @@ contains
 
 
   subroutine chemterm_cellcenter(lo, hi, U, Ulo, Uhi, dt)
-    use convert_3d_module, only : cellavg2cc_3d, cc2cellavg_3d
+    use convert_module, only : cellavg2cc_3d, cc2cellavg_3d
     integer, intent(in) :: lo(3), hi(3), Ulo(3), Uhi(3)
     double precision, intent(inout) :: U(Ulo(1):Uhi(1),Ulo(2):Uhi(2),Ulo(3):Uhi(3),NVAR)
     double precision, intent(in) :: dt

@@ -2,10 +2,10 @@
 
  verbose = 2
 
- stencil_type = "narrow"
+ stencil_type = "{stencil}"
 
  restart   = -1
- plot_int  =  1
+ plot_int  =  10000
  chk_int   = -1
 
  advance_method = {advance_method}
@@ -19,6 +19,7 @@
  sdc_tol_residual     = 1.0d-20
  sdc_multirate_type   = "local"
  sdc_multirate_repeat = {repeat}
+ sdc_multirate_explicit = .true.
 
  fixed_dt = {fixed_dt}
 
@@ -41,7 +42,8 @@
  zlo_boundary_type = "periodic"
  zhi_boundary_type = "periodic"
 
- prob_type = 4
+! prob_type = 4
+ prob_type = 1
  prob_dim  = 3
  rfire     = 0.01d0
 

@@ -10,7 +10,8 @@ subroutine PROBINIT (init,name,namlen,problo,probhi)
 
   integer untin,i
 
-  namelist /fortin/ prob_type, pertmag, rfire, uinit, vinit, winit
+  namelist /fortin/ prob_type, prob_dim, pertmag, rfire, uinit, vinit, winit, T0, T1, &
+       max_denerr_lev, max_tracerr_lev, max_temperr_lev, temperr, tracerr
 
 !
 !     Build "probin" filename -- the name of file containing fortin namelist.
@@ -30,13 +31,22 @@ subroutine PROBINIT (init,name,namlen,problo,probhi)
          
 ! set namelist defaults
   prob_type = 1
+  prob_dim  = 3
 
-! problem type 1
   pertmag = 0.d0
   rfire   = 0.15d0
   uinit   = 0.d0
   vinit   = 0.d0
   winit   = 0.d0
+
+  T0 = 1100.d0
+  T1 = 1500.d0
+
+  max_denerr_lev = -1
+  max_temperr_lev = -1
+  max_tracerr_lev = -1
+  temperr = 1250.d0
+  tracerr = 3.d-11
 
 !     Read namelists
   untin = 9
@@ -128,7 +138,7 @@ subroutine rns_initdata(level,time,lo,hi,nscal, &
   Pi = 4.d0*atan(1.d0)
 
   nimages = 0
-  if (prob_type .eq. 4) nimages = 1
+  if (prob_type .eq. 4) nimages = 3
 
   do k = state_l3, state_h3
      zcen = xlo(3) + delta(3)*(dble(k-lo(3)) + 0.5d0)
@@ -143,7 +153,13 @@ subroutine rns_initdata(level,time,lo,hi,nscal, &
            state(i,j,k,:) = 0.d0
 
            do kk = 1, ngp
-              zg = zcen + 0.5d0*delta(3)*gp(kk)
+
+              if (prob_dim .eq. 2) then
+                 zg = 0.d0
+              else
+                 zg = zcen + 0.5d0*delta(3)*gp(kk)
+              end if
+
               do jj = 1, ngp
                  yg = ycen + 0.5d0*delta(2)*gp(jj)
                  do ii = 1, ngp
@@ -181,7 +197,7 @@ subroutine rns_initdata(level,time,lo,hi,nscal, &
                     else if (prob_type .eq. 4) then
                        
                        Pt = Patm
-                       Tt = 300.0d0
+                       Tt = T0
                        
                        Xt = 0.0d0
                        Xt(iH2) = 0.10d0
@@ -193,17 +209,25 @@ subroutine rns_initdata(level,time,lo,hi,nscal, &
 
                                 xgi = xg + iii*Length(1)
                                 ygi = yg + jjj*Length(2)
-                                zgi = zg + kkk*Length(3)
+
+                                if (prob_dim .eq. 2) then
+                                   zgi = 0.d0
+                                else
+                                   zgi = zg + kkk*Length(3)
+                                end if
                        
                                 r = sqrt(xgi**2+ygi**2+zgi**2)
                        
                                 Pt = Pt    + 0.1d0*patm * exp(-(r / rfire)**2)
-                                Tt = Tt      + 1100.0d0 * exp(-(r / rfire)**2)
+                                Tt = Tt       + (T1-T0) * exp(-(r / rfire)**2)
                                 Xt(iH2) = Xt(iH2) + 0.025d0 * exp(-(r / rfire)**2)
                                 Xt(iO2) = Xt(iO2) - 0.050d0 * exp(-(r / rfire)**2)
 
                              end do
                           end do
+
+                          if (prob_dim .eq. 2) exit  ! only one image in z-direction
+
                        end do
 
                        kx = 2.d0*Pi/Length(1)

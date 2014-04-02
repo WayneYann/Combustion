@@ -13,10 +13,13 @@
  sdc_nnodes         = {sdc_nnodes}
  sdc_nnodes_fine    = {sdc_nnodes_fine}
  sdc_tol_residual   = 1.d-10
+ sdc_multirate_explicit = .true.
  sdc_multirate_type = "local"
  sdc_multirate_repeat = {repeat}
 
- plot_int = -1
+ rk_order = 4
+
+ plot_int = 10000
  chk_int  = -1
 
  fixed_dt = {fixed_dt}
@@ -42,7 +45,7 @@
  zlo_boundary_type = "periodic"
  zhi_boundary_type = "periodic"
 
- outlet_Pinfty = 1.01325d6 
+ outlet_Pinfty = 1.01325d6
  outlet_sigma  = 0.25d0
  outlet_eta    = 50.d0
  inlet_eta     = 30.d0

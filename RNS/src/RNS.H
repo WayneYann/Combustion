@@ -128,7 +128,7 @@ public:
     //
     // fill boundary
     //
-    void fill_boundary(MultiFab& U, Real time, int type);
+    void fill_boundary(MultiFab& U, Real time, int type, bool isCorrection=false);
     // choices for "type" in fill_boundary:
     static const int no_fill               = 0;
     static const int use_FillPatchIterator = 1;
@@ -277,6 +277,7 @@ protected:
     //
     static bool      dump_old;
     static Real      cfl;
+    static Real      diff_cfl;
     static Real      init_shrink;
     static Real      change_max;
     static int       do_reflux;
@@ -345,6 +346,7 @@ protected:
     static int         do_quartic_interp;
 
     static int         do_weno;
+    static int         do_quadrature_weno;
     static int         do_component_weno;
 
     static int         use_vode;

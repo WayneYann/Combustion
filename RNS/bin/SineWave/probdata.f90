@@ -8,7 +8,7 @@ module probdata_module
   double precision, parameter :: drho0  = 1.4d-1
   double precision, parameter :: u0     = 0.5d0
 
-  integer, save :: idir = 0
+  integer, save :: idir = 1
 
   double precision, save :: center(3), length(3)
 

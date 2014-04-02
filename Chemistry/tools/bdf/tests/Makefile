@@ -1,12 +1,23 @@
 
-F90 ?= gfortran
+F90    ?= gfortran
+FFLAGS  = -Ibuild -Jbuild -g -Wall -Wno-unused-dummy-argument
 
-FFLAGS = -Ibuild -Jbuild -g -Wall -Wno-unused-dummy-argument
-
-BDF = ../../../src_common/bdf.f90 ../../../src_common/LinAlg.f
-
-%.exe: %.f90 $(BDF)
-	@mkdir -p build
-	$(F90) $(FFLAGS) $^ -o $@
+vpath %.f90 ../../../src_common
+vpath %.f   ../../../src_common
 
 all: coeffs.exe t1.exe
+
+#
+# rules
+#
+
+%.exe: %.f90 build/bdf.o build/LinAlg.o
+	$(F90) $(FFLAGS) $^ -o $@
+
+build/%.o: %.f
+	@mkdir -p build
+	$(F90) -c $(FFLAGS) $^ -o $@
+
+build/%.o: %.f90
+	@mkdir -p build
+	$(F90) -c $(FFLAGS) $^ -o $@

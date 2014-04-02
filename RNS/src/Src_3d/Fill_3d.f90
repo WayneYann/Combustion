@@ -332,3 +332,57 @@ subroutine rns_mzfill(adv,adv_l1,adv_l2,adv_l3,adv_h1,adv_h2,adv_h3, &
   end if
   
 end subroutine rns_mzfill
+
+
+! Fill temperature
+subroutine rns_tempfill(adv,adv_l1,adv_l2,adv_l3,adv_h1,adv_h2,adv_h3, &
+     domlo,domhi,delta,xlo,time,bc)
+  
+  implicit none
+  include 'bc_types.fi'
+  integer adv_l1,adv_l2,adv_l3,adv_h1,adv_h2,adv_h3
+  integer bc(3,2,*)
+  integer domlo(3), domhi(3)
+  double precision delta(3), xlo(3), time
+  double precision adv(adv_l1:adv_h1,adv_l2:adv_h2,adv_l3:adv_h3)
+
+  call filcc(adv,adv_l1,adv_l2,adv_l3,adv_h1,adv_h2,adv_h3, &
+       domlo,domhi,delta,xlo,bc)
+  
+  !     XLO
+  if ( bc(1,1,1).eq.EXT_DIR .and. adv_l1.lt.domlo(1)) then
+     print *,'tempfill: SHOULD NEVER GET HERE bc(1,1,1) .eq. EXT_DIR) '
+     stop
+  end if
+  
+  !     XHI
+  if ( bc(1,2,1).eq.EXT_DIR .and. adv_h1.gt.domhi(1)) then
+     print *,'tempfill: SHOULD NEVER GET HERE bc(1,2,1) .eq. EXT_DIR) '
+     stop
+  end if
+  
+  !     YLO
+  if ( bc(2,1,1).eq.EXT_DIR .and. adv_l2.lt.domlo(2)) then
+     print *,'tempfill: SHOULD NEVER GET HERE bc(2,1,1) .eq. EXT_DIR) '
+     stop
+  end if
+  
+  !     YHI
+  if ( bc(2,2,1).eq.EXT_DIR .and. adv_h2.gt.domhi(2)) then
+     print *,'tempfill: SHOULD NEVER GET HERE bc(2,2,1) .eq. EXT_DIR) '
+     stop
+  end if
+
+  !     ZLO
+  if ( bc(3,1,1).eq.EXT_DIR .and. adv_l3.lt.domlo(3)) then
+     print *,'tempfill: SHOULD NEVER GET HERE bc(3,1,1) .eq. EXT_DIR) '
+     stop
+  end if
+  
+  !     ZHI
+  if ( bc(3,2,1).eq.EXT_DIR .and. adv_h3.gt.domhi(3)) then
+     print *,'tempfill: SHOULD NEVER GET HERE bc(3,2,1) .eq. EXT_DIR) '
+     stop
+  end if
+  
+end subroutine rns_tempfill

@@ -1,0 +1,51 @@
+&PROBIN
+
+ verbose = 2
+
+ advance_method = "mrsdc"
+ stencil_type   = "{stencil}"
+
+ restart   = -1
+ plot_int  = -1
+ chk_int   = -1
+
+ stop_time = {stop_time}
+ max_step  = 10000
+
+ sdc_iters            = 4
+ sdc_nnodes           = 3
+ sdc_nnodes_fine      = 5
+ sdc_tol_residual     = 1.0d-20
+ sdc_multirate_type   = "local"
+ sdc_multirate_repeat = 2
+ sdc_multirate_explicit = .true.
+
+ fixed_dt = {fixed_dt}
+
+ n_cellx = {nx}
+ n_celly = {nx}
+ n_cellz = {nx}
+ max_grid_size = {max_grid_size}
+
+ prob_lo_x = -0.05d0
+ prob_lo_y = -0.05d0
+ prob_hi_x =  0.05d0
+ prob_hi_y =  0.05d0
+ prob_lo_z = -0.05d0
+ prob_hi_z =  0.05d0
+
+ xlo_boundary_type = "periodic"
+ xhi_boundary_type = "periodic"
+ ylo_boundary_type = "periodic"
+ yhi_boundary_type = "periodic"
+ zlo_boundary_type = "periodic"
+ zhi_boundary_type = "periodic"
+
+ prob_type = 4
+ prob_dim  = 3
+ rfire     = 0.01d0
+
+ tb_split_dim  = 1
+ reset_inactive_species = T
+
+/

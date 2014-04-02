@@ -10,7 +10,7 @@ contains
     use meth_params_module, only : NVAR, NSPEC, QFVAR, QU, QV, QW
     use polyinterp_module, only : cc2zgauss_3d, cc2DzGauss_3d, cc2xyGauss_3d, &
          cc2xyGaussDx_3d, cc2xyGaussDy_3d
-    use convert_3d_module, only : cellavg2cc_3d
+    use convert_module, only : cellavg2cc_3d
     use variables_module, only : ctoprim
     use transport_properties, only : get_transport_properties
 
@@ -321,11 +321,11 @@ contains
                Ddia1(:,:,n),Ddia2(:,:,n),Qflo,Qfhi, tmp1, tmp2, g2lo, g2hi)
        end do
 
-       ! dU/dz
-       call cc2yface_2d(lo(1:2),hi(1:2),dveldz(:,:,k,1),qlo(1:2),qhi(1:2), &
-            dveldz1(:,:,1),dveldz2(:,:,1),Qflo,Qfhi, tmp1, tmp2, g2lo, g2hi)
        ! dV/dz
        call cc2yface_2d(lo(1:2),hi(1:2),dveldz(:,:,k,2),qlo(1:2),qhi(1:2), &
+            dveldz1(:,:,1),dveldz2(:,:,1),Qflo,Qfhi, tmp1, tmp2, g2lo, g2hi)
+       ! dW/dz
+       call cc2yface_2d(lo(1:2),hi(1:2),dveldz(:,:,k,3),qlo(1:2),qhi(1:2), &
             dveldz1(:,:,2),dveldz2(:,:,2),Qflo,Qfhi, tmp1, tmp2, g2lo, g2hi)
 
        ! cell-center => Qc: center-in-y and Gauss-point-in-x
@@ -465,8 +465,8 @@ contains
              ek = 0.5d0*(Qf(i,j,QU)**2+Qf(i,j,QV)**2+Qf(i,j,QW)**2)
              flx(i,j,k,UEDEN) = flx(i,j,k,UEDEN) + rhovn*ek
              do n=1,NSPEC
-                flx(i,j,k,UEDEN) = flx(i,j,k,UEDEN) + rhovn*Qf(i,j,QFH+n-1)
-                flx(i,j,k,UFS+n-1) = flx(i,j,k,UFS+n-1) + rhovn*Qf(i,j,QFY+n-1)
+                flx(i,j,k,UEDEN)   = flx(i,j,k,UEDEN)   + (rhovn*Qf(i,j,QFY+n-1))*Qf(i,j,QFH+n-1)
+                flx(i,j,k,UFS+n-1) = flx(i,j,k,UFS+n-1) + (rhovn*Qf(i,j,QFY+n-1))
              end do
           end do
        end do
@@ -584,8 +584,8 @@ contains
              ek = 0.5d0*(Qf(i,j,QU)**2+Qf(i,j,QV)**2+Qf(i,j,QW)**2)
              flx(i,j,k,UEDEN) = flx(i,j,k,UEDEN) + rhovn*ek
              do n=1,NSPEC
-                flx(i,j,k,UEDEN) = flx(i,j,k,UEDEN) + rhovn*Qf(i,j,QFH+n-1)
-                flx(i,j,k,UFS+n-1) = flx(i,j,k,UFS+n-1) + rhovn*Qf(i,j,QFY+n-1)
+                flx(i,j,k,UEDEN)   = flx(i,j,k,UEDEN)   + (rhovn*Qf(i,j,QFY+n-1))*Qf(i,j,QFH+n-1)
+                flx(i,j,k,UFS+n-1) = flx(i,j,k,UFS+n-1) + (rhovn*Qf(i,j,QFY+n-1))
              end do
           end do
        end do
@@ -757,8 +757,8 @@ contains
              ek = 0.5d0*(Qf(i,j,k,QU)**2+Qf(i,j,k,QV)**2+Qf(i,j,k,QW)**2)
              flx(i,j,k,UEDEN) = flx(i,j,k,UEDEN) + rhovn*ek
              do n=1,NSPEC
-                flx(i,j,k,UEDEN) = flx(i,j,k,UEDEN) + rhovn*Qf(i,j,k,QFH+n-1)
-                flx(i,j,k,UFS+n-1) = flx(i,j,k,UFS+n-1) + rhovn*Qf(i,j,k,QFY+n-1)
+                flx(i,j,k,UEDEN)   = flx(i,j,k,UEDEN)   + (rhovn*Qf(i,j,k,QFY+n-1))*Qf(i,j,k,QFH+n-1)
+                flx(i,j,k,UFS+n-1) = flx(i,j,k,UFS+n-1) + (rhovn*Qf(i,j,k,QFY+n-1))
              end do                
              end do
           end do

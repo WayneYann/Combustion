@@ -2,8 +2,13 @@
 
  verbose = 2
 
- advance_method = 2
  stencil_type   = "narrow"
+
+ advance_method = "sdc"
+
+ sdc_nnodes = 5
+ sdc_iters  = 8
+ sdc_tol_residual = 1.0d-2
 
  reset_inactive_species = .true. 
 
@@ -13,10 +18,6 @@
 
  stop_time = 1d-06
  max_step  = 400
-
- sdc_nnodes = 5
- sdc_iters  = 8
- sdc_tol_residual = 1.0d-2
 
  ! cflfac        = 0.1
  ! init_shrink   = 0.5d0

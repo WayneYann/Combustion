@@ -78,7 +78,7 @@ RNS::advance (Real time,
 
 
 void
-RNS::fill_boundary(MultiFab& U, Real time, int type_in)
+RNS::fill_boundary(MultiFab& U, Real time, int type_in, bool isCorrection)
 {
     BL_PROFILE("RNS::fill_boundary()");
 
@@ -139,6 +139,8 @@ RNS::fill_boundary(MultiFab& U, Real time, int type_in)
 
 	geom.FillPeriodicBoundary(U, true);
 
+	if (isCorrection) break;
+ 
 	for (MFIter mfi(U); mfi.isValid(); ++mfi)
 	{
 	    setPhysBoundaryValues(U[mfi],
@@ -409,8 +411,6 @@ void sdc_f1eval(void *Fp, void *Qp, double t, sdc_state *state, void *ctx)
 //
 //   * Uprime doesn't have ghost cells
 //
-//   * Calling advance_chemistry with dt=0.0 puts dU_R/dt into tmp.
-//
 void sdc_f2eval(void *Fp, void *Qp, double t, sdc_state *state, void *ctx)
 {
   RNS&      rns    = *((RNS*) ctx);
@@ -418,19 +418,36 @@ void sdc_f2eval(void *Fp, void *Qp, double t, sdc_state *state, void *ctx)
   RNSEncap& F      = *((RNSEncap*) Fp);
   MultiFab& U      = *Q.U;
   MultiFab& Uprime = *F.U;
+  Real dt = state->dt;
 
-  Uprime.setVal(0.0);
-
-  if (ChemDriver::isNull() || !RNS::do_chemistry) return;
+  if (ChemDriver::isNull() || !RNS::do_chemistry) {
+      Uprime.setVal(0.0);      
+      return;
+  }
 
   if (rns.verbose > 1 && ParallelDescriptor::IOProcessor()) {
     cout << "MLSDC evaluating chemistry:"
-	 << " level: " << rns.Level() << ", node: " << state->node << endl;
+	 << " level: " << rns.Level() << ", node: " << state->node 
+	 << ", dt = " << dt << endl;
   }
 
   rns.fill_boundary(U, state->t, RNS::use_FillBoundary);
   BL_ASSERT(U.contains_nan() == false);
-  rns.dUdt_chemistry(U, Uprime);
+
+  if (1) {
+    MultiFab Unew(U.boxArray(), U.nComp(), 2);
+    MultiFab::Copy(Unew, U, 0, 0, U.nComp(), 2);
+
+    rns.advance_chemistry(Unew, dt);
+
+    MultiFab::Copy(Uprime, Unew, 0, 0, U.nComp(), 0);
+    Uprime.minus(U, 0, U.nComp(), 0);
+    Uprime.mult(1./dt);
+  }
+  else {
+    rns.dUdt_chemistry(U, Uprime);
+  }
+
   BL_ASSERT(Uprime.contains_nan() == false);
 }
 

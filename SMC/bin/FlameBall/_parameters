@@ -15,3 +15,8 @@ prob_dim                integer         2
 
 # For cell i, x = prob_lo_x + dx*(i+shift)
 cellshift               real            0.0d0
+
+# Temperature profile for prob_type 3 & 4
+T0                      real            300.d0
+T1                      real           1400.d0
+           

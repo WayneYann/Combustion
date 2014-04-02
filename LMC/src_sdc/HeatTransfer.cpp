@@ -139,6 +139,7 @@ int  HeatTransfer::hack_nochem;
 int  HeatTransfer::hack_nospecdiff;
 int  HeatTransfer::hack_nomcddsync;
 int  HeatTransfer::hack_noavgdivu;
+int  HeatTransfer::use_tranlib;
 Real HeatTransfer::trac_diff_coef;
 Real HeatTransfer::P1atm_MKS;
 bool HeatTransfer::plot_reactions;
@@ -294,6 +295,7 @@ HeatTransfer::Initialize ()
     HeatTransfer::hack_nospecdiff           = 0;
     HeatTransfer::hack_nomcddsync           = 1;
     HeatTransfer::hack_noavgdivu            = 0;
+    HeatTransfer::use_tranlib               = 0;
     HeatTransfer::trac_diff_coef            = 0.0;
     HeatTransfer::P1atm_MKS                 = -1.0;
     HeatTransfer::turbFile                  = "";
@@ -412,6 +414,17 @@ HeatTransfer::Initialize ()
     pp.query("do_heat_sink",do_heat_sink);
     do_heat_sink = (do_heat_sink ? 1 : 0);
 
+    pp.query("use_tranlib",use_tranlib);
+    if (use_tranlib == 1) {
+      chemSolve->SetTransport(ChemDriver::CD_TRANLIB);
+      if (verbose && ParallelDescriptor::IOProcessor())
+        std::cout << "HeatTransfer::read_params: Using Tranlib transport " << '\n';
+    }
+    else {
+      chemSolve->SetTransport(ChemDriver::CD_EG);
+      if (verbose && ParallelDescriptor::IOProcessor())
+        std::cout << "HeatTransfer::read_params: Using EGLib transport " << '\n';
+    }
     chemSolve = new ChemDriver();
 
     pp.query("turbFile",turbFile);
@@ -2104,7 +2117,12 @@ HeatTransfer::post_timestep (int crse_iteration)
 void
 HeatTransfer::post_restart ()
 {
-    NavierStokes::post_restart();
+    //
+    // We used to call NavierStokes::post_restart here, but it only did the
+    // make_rho's and particle stuff (which we don't want).
+    //
+    make_rho_prev_time();
+    make_rho_curr_time();
 
     Real dummy  = 0;
     int MyProc  = ParallelDescriptor::MyProc();
@@ -3190,8 +3208,6 @@ HeatTransfer::getViscTerms (MultiFab& visc_terms,
     // to give the true divided difference approximation to the divergence of the
     // intensive flux.
     //
-    int        icomp     = src_comp; // This is the current related state comp.
-    int        load_comp = 0;        // Comp for result of current calculation.
     MultiFab** vel_visc  = 0;        // Potentially reused, raise scope
     const int  nGrow     = visc_terms.nGrow();
     //
@@ -3214,8 +3230,6 @@ HeatTransfer::getViscTerms (MultiFab& visc_terms,
         int viscComp = 0;
         diffusion->getTensorViscTerms(visc_terms,time,vel_visc,viscComp);
         showMF("velVT",visc_terms,"velVT_visc_terms_1",level);
-
-        icomp = load_comp = BL_SPACEDIM;
     }
     else
     {
@@ -6889,8 +6903,8 @@ HeatTransfer::setPlotVariables ()
 
     ParmParse pp("ht");
 
-    bool plot_ydot,plot_rhoY,plot_massFrac,plot_moleFrac,plot_conc;
-    plot_ydot=plot_rhoY=plot_massFrac=plot_moleFrac=plot_conc = false;
+    bool plot_rhoY,plot_massFrac,plot_moleFrac,plot_conc;
+    plot_rhoY=plot_massFrac=plot_moleFrac=plot_conc = false;
 
     if (pp.query("plot_massfrac",plot_massFrac))
     {

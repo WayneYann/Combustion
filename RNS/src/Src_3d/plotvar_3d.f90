@@ -1,8 +1,8 @@
 subroutine rns_ctoprim(lo, hi, &
      cons, c_l1, c_l2, c_l3, c_h1, c_h2, c_h3, &
      prim, p_l1, p_l2, p_l3, p_h1, p_h2, p_h3 )
-  use meth_params_module, only : NVAR, xblksize, yblksize, zblksize
-  use convert_3d_module, only : cellavg2cc_3d
+  use meth_params_module, only : NVAR, xblksize, yblksize, zblksize, nthreads
+  use convert_module, only : cellavg2cc_3d
   use variables_module, only : ctoprim
   implicit none
 
@@ -35,8 +35,11 @@ subroutine rns_ctoprim(lo, hi, &
   end do
   !$omp end parallel do
 
-
-  blocksize(1) = xblksize
+  if (nthreads*yblksize*zblksize .le. (hi(2)-lo(2)+1)*(hi(3)-lo(3)+1)) then
+     blocksize(1) = hi(1) - lo(1) + 1  ! blocking in y and z-direction only
+  else
+     blocksize(1) = xblksize 
+  end if
   blocksize(2) = yblksize
   blocksize(3) = zblksize
 

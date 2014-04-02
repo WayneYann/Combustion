@@ -385,6 +385,7 @@ c              else
                if (blobr.gt.0) then
 
                   eta = 0.5d0*(1.d0 - TANH(-2.d0*(y-bloby)/Tfrontw))
+                  scal(i,j,Temp) = T_bc(airZone)*eta + (1.d0-eta)*scal(i,j,Temp)
                   do n=1,Nspec
                      scal(i,j,FirstSpec-1+n) = Y_bc(n-1,airZone)*eta
      &                    + (1.d0-eta)*scal(i,j,FirstSpec-1+n)

@@ -1,4 +1,5 @@
 BOXLIB_HOME ?= /path/to/BoxLib
+SDCLIB_HOME ?= /path/to/SDCLib
 
 TOP = ../..
 
@@ -15,6 +16,8 @@ FCOMP	   = gfortran
 
 USE_MPI    = FALSE
 USE_OMP    = FALSE
+
+USE_SDCLIB = TRUE
 
 CHEMISTRY_MODEL = NULL
 

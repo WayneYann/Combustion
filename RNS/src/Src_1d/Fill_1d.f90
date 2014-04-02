@@ -120,3 +120,31 @@ subroutine rns_mxfill(adv,adv_l1,adv_h1,domlo,domhi,delta,xlo,time,bc)
   end if
   
 end subroutine rns_mxfill
+
+! Fill temperature
+subroutine rns_tempfill(adv,adv_l1,adv_h1,domlo,domhi,delta,xlo,time,bc)
+  
+  implicit none
+  include 'bc_types.fi'
+  
+  integer          :: adv_l1,adv_h1
+  integer          :: bc(1,2,*)
+  integer          :: domlo(1), domhi(1)
+  double precision :: delta(1), xlo(1), time
+  double precision :: adv(adv_l1:adv_h1)
+  
+  call filcc(adv,adv_l1,adv_h1,domlo,domhi,delta,xlo,bc)
+  
+  !     XLO
+  if ( bc(1,1,1).eq.EXT_DIR .and. adv_l1.lt.domlo(1)) then
+     print *,'tempfill: SHOULD NEVER GET HERE bc(1,1,1) .eq. EXT_DIR) '
+     stop
+  end if
+  
+  !     XHI
+  if ( bc(1,2,1).eq.EXT_DIR .and. adv_h1.gt.domhi(1)) then
+     print *,'tempfill: SHOULD NEVER GET HERE bc(1,2,1) .eq. EXT_DIR) '
+     stop
+  end if
+  
+end subroutine rns_tempfill

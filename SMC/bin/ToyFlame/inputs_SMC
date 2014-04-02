@@ -2,6 +2,10 @@
 
  verbose = 2
 
+ advance_method = "rk"
+
+ rk_order = 3
+
  stop_time = 3.d-3
  max_step  = 10
  restart = -1
