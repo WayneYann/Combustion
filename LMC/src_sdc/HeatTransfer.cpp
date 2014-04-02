@@ -2117,7 +2117,12 @@ HeatTransfer::post_timestep (int crse_iteration)
 void
 HeatTransfer::post_restart ()
 {
-    NavierStokes::post_restart();
+    //
+    // We used to call NavierStokes::post_restart here, but it only did the
+    // make_rho's and particle stuff (which we don't want).
+    //
+    make_rho_prev_time();
+    make_rho_curr_time();
 
     Real dummy  = 0;
     int MyProc  = ParallelDescriptor::MyProc();
