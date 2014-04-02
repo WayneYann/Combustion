@@ -231,6 +231,9 @@ contains
     call build(chk, qin%la, qin%nc, ng=0, stencil=.false.)
 
     dm = chk%dim
+
+    lo = 1
+    hi = 1
     
     do n=1,nfabs(chk)
 
@@ -239,11 +242,6 @@ contains
        if (isValid(qin,n)) then
           lo(1:dm) = lwb(get_box(chk,n))
           hi(1:dm) = upb(get_box(chk,n))
-
-          if (dm .eq. 2) then
-             lo(3) = 1
-             hi(3) = 1
-          end if
 
           qp => dataptr(qin%data, n)
 
