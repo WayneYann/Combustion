@@ -96,7 +96,7 @@ contains
     call tb_multifab_setval(Unew, 0.d0, .true.)
 
     call build(bpt_rkstep1, "rkstep1")
-    call dUdt(U, Uprime, time, dt, dx, courno=courno)
+    call dUdt(U, Uprime, time, -1.d0, dx, courno=courno)
     call update_rk(Zero,Unew, One,U, dt, Uprime)
     call reset_density(Unew)
     call impose_hard_bc(Unew, time+OneThird*dt, dx)
@@ -167,7 +167,9 @@ contains
     do j = 1, 6
        call build(bpt_rkstep(j), bpt_names(j))
        if (j == 1) then
-          call dUdt(U, Uprime, time, rk64_time(j)*dt, dx, courno=courno)
+          ! -rk64_time(j) is a hack.
+          ! for the first step, dt is not set yet 
+          call dUdt(U, Uprime, time, -rk64_time(j), dx, courno=courno)
        else
           call dUdt(U, Uprime, t, rk64_time(j)*dt, dx)
        end if
@@ -684,7 +686,7 @@ contains
     logical :: update_trans, update_mach
 
     logical :: update_courno
-    double precision :: courno_proc
+    double precision :: courno_proc, dt_m_safe
 
     type(mf_fb_data) :: U_fb_data, qx_fb_data, qy_fb_data, qz_fb_data
 
@@ -784,6 +786,12 @@ contains
        call set_dt(courno, istep_this)
     end if
 
+    if (dt_m .lt. 0.) then ! rk64
+       dt_m_safe = -dt_m * dt
+    else
+       dt_m_safe = dt_m
+    end if
+
     if (inc_ad .and. overlap_comm_comp) then
        call multifab_fill_boundary_test(U, U_fb_data)
     end if
@@ -817,10 +825,10 @@ contains
 
           if (dm .eq. 2) then
              call chemterm_2d(lo,hi,qp,qlo(1:2),qhi(1:2),upp,uplo(1:2),uphi(1:2), &
-                  upcp,upclo(1:2),upchi(1:2), dt_m)
+                  upcp,upclo(1:2),upchi(1:2), dt_m_safe)
           else
              call chemterm_3d(lo,hi,qp,qlo(1:3),qhi(1:3),upp,uplo(1:3),uphi(1:3), &
-                  upcp,upclo(1:3),upchi(1:3), dt_m)
+                  upcp,upclo(1:3),upchi(1:3), dt_m_safe)
           end if
        end do
        !$omp end parallel
