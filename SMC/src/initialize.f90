@@ -140,7 +140,7 @@ contains
        call destroy(lachk)
     end if
 
-    if (bcy_lo .eq. INLET) then
+    if (dm .ge. 2 .and. bcy_lo .eq. INLET) then
        call physbndry_reg_build(chqin_ylo,la,qin_ylo%nc,qin_ylo%idim,qin_ylo%iface,.false.)
        call multifab_copy_c(chqin_ylo%data,1,chkylo(1),1,chqin_ylo%nc)
        call physbndry_reg_copy(chqin_ylo, qin_ylo)
@@ -170,7 +170,7 @@ contains
        call destroy(lachk)
     end if
 
-    if (bcy_hi .eq. INLET) then
+    if (dm .ge. 2 .and. bcy_hi .eq. INLET) then
        call physbndry_reg_build(chqin_yhi,la,qin_yhi%nc,qin_yhi%idim,qin_yhi%iface,.false.)
        call multifab_copy_c(chqin_yhi%data,1,chkyhi(1),1,chqin_yhi%nc)
        call physbndry_reg_copy(chqin_yhi, qin_yhi)
