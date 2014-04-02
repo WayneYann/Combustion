@@ -42,13 +42,20 @@ contains
     integer, intent(in) :: dm_in
     dm = dm_in
     iuin=1 
-    ivin=2 
-    if (dm .eq. 3) then
+    if (dm .eq. 1) then
+       ivin=-1
+       iwin=-1
+       iTin=2
+    else if (dm .eq. 2) then
+       ivin=2
+       iwin=-1
+       iTin=3
+    elseif (dm .eq. 3) then
+       ivin=2
        iwin=3
        iTin=4
     else
-       iwin=-1
-       iTin=3
+       call bl_error("nscbc_init: how did this happen?")
     end if
     iYin1 = iTin + 1
     Lxdomain = prob_hi_x - prob_lo_x
@@ -70,12 +77,14 @@ contains
 !       call physbndry_reg_setval(qin_xlo, 0.d0)
     end if
 
-    if (bcy_lo .eq. OUTLET) then 
-       call physbndry_reg_build(aux_ylo, la, naux, 2, -1, .true.)
-    else if (bcy_lo .eq. INLET) then
-       call physbndry_reg_build(aux_ylo, la, naux, 2, -1, .true.)
-       call physbndry_reg_build(qin_ylo, la, nqin, 2, -1, .true.)
-!       call physbndry_reg_setval(qin_ylo, 0.d0)
+    if (dm.ge.2) then
+       if (bcy_lo .eq. OUTLET) then 
+          call physbndry_reg_build(aux_ylo, la, naux, 2, -1, .true.)
+       else if (bcy_lo .eq. INLET) then
+          call physbndry_reg_build(aux_ylo, la, naux, 2, -1, .true.)
+          call physbndry_reg_build(qin_ylo, la, nqin, 2, -1, .true.)
+          !       call physbndry_reg_setval(qin_ylo, 0.d0)
+       end if
     end if
 
     if (dm.eq.3) then
@@ -96,12 +105,14 @@ contains
 !       call physbndry_reg_setval(qin_xhi, 0.d0)
     end if
 
-    if (bcy_hi .eq. OUTLET) then 
-       call physbndry_reg_build(aux_yhi, la, naux, 2, +1, .true.)
-    else if (bcy_hi .eq. INLET) then
-       call physbndry_reg_build(aux_yhi, la, naux, 2, +1, .true.)
-       call physbndry_reg_build(qin_yhi, la, nqin, 2, +1, .true.)
-!       call physbndry_reg_setval(qin_yhi, 0.d0)
+    if (dm.ge.2) then
+       if (bcy_hi .eq. OUTLET) then 
+          call physbndry_reg_build(aux_yhi, la, naux, 2, +1, .true.)
+       else if (bcy_hi .eq. INLET) then
+          call physbndry_reg_build(aux_yhi, la, naux, 2, +1, .true.)
+          call physbndry_reg_build(qin_yhi, la, nqin, 2, +1, .true.)
+          !       call physbndry_reg_setval(qin_yhi, 0.d0)
+       end if
     end if
 
     if (dm.eq.3) then
@@ -144,7 +155,7 @@ contains
        call store_inflow(qin_xlo, U)
     end if
 
-    if (bcy_lo .eq. INLET) then
+    if (dm.ge.2 .and. bcy_lo .eq. INLET) then
        call store_inflow(qin_ylo, U)
     end if
 
@@ -156,7 +167,7 @@ contains
        call store_inflow(qin_xhi, U)
     end if
 
-    if (bcy_hi .eq. INLET) then
+    if (dm.ge.2 .and. bcy_hi .eq. INLET) then
        call store_inflow(qin_yhi, U)
     end if
 
@@ -262,7 +273,9 @@ contains
 
           auxp => dataptr(aux_xlo%data,n)
 
-          if (dm.eq.2) then
+          if (dm.eq.1) then
+             call compute_aux_1d(1,lo,hi,ngq,qp,upcp,auxp,alo,ahi,proc_Ma2_xlo)
+          else if (dm.eq.2) then
              call compute_aux_2d(1,lo,hi,ngq,qp,upcp,auxp,alo,ahi,proc_Ma2_xlo)
           else
              call compute_aux_3d(1,lo,hi,ngq,qp,upcp,auxp,alo,ahi,proc_Ma2_xlo)
@@ -275,36 +288,40 @@ contains
 
           auxp => dataptr(aux_xhi%data,n)
 
-          if (dm.eq.2) then
+          if (dm.eq.1) then
+             call compute_aux_1d(1,lo,hi,ngq,qp,upcp,auxp,alo,ahi,proc_Ma2_xhi)
+          else if (dm.eq.2) then
              call compute_aux_2d(1,lo,hi,ngq,qp,upcp,auxp,alo,ahi,proc_Ma2_xhi)
           else
              call compute_aux_3d(1,lo,hi,ngq,qp,upcp,auxp,alo,ahi,proc_Ma2_xhi)
           end if
        end if
 
-       if (isValid(aux_ylo,n)) then
-          alo = lwb(get_box(aux_ylo%data,n))
-          ahi = upb(get_box(aux_ylo%data,n))
-
-          auxp => dataptr(aux_ylo%data,n)
-
-          if (dm.eq.2) then
-             call compute_aux_2d(2,lo,hi,ngq,qp,upcp,auxp,alo,ahi,proc_Ma2_ylo)
-          else
-             call compute_aux_3d(2,lo,hi,ngq,qp,upcp,auxp,alo,ahi,proc_Ma2_ylo)
+       if (dm.ge.2) then
+          if (isValid(aux_ylo,n)) then
+             alo = lwb(get_box(aux_ylo%data,n))
+             ahi = upb(get_box(aux_ylo%data,n))
+             
+             auxp => dataptr(aux_ylo%data,n)
+             
+             if (dm.eq.2) then
+                call compute_aux_2d(2,lo,hi,ngq,qp,upcp,auxp,alo,ahi,proc_Ma2_ylo)
+             else
+                call compute_aux_3d(2,lo,hi,ngq,qp,upcp,auxp,alo,ahi,proc_Ma2_ylo)
+             end if
           end if
-       end if
-
-       if (isValid(aux_yhi,n)) then
-          alo = lwb(get_box(aux_yhi%data,n))
-          ahi = upb(get_box(aux_yhi%data,n))
-
-          auxp => dataptr(aux_yhi%data,n)
-
-          if (dm.eq.2) then
-             call compute_aux_2d(2,lo,hi,ngq,qp,upcp,auxp,alo,ahi,proc_Ma2_yhi)
-          else
-             call compute_aux_3d(2,lo,hi,ngq,qp,upcp,auxp,alo,ahi,proc_Ma2_yhi)
+          
+          if (isValid(aux_yhi,n)) then
+             alo = lwb(get_box(aux_yhi%data,n))
+             ahi = upb(get_box(aux_yhi%data,n))
+             
+             auxp => dataptr(aux_yhi%data,n)
+             
+             if (dm.eq.2) then
+                call compute_aux_2d(2,lo,hi,ngq,qp,upcp,auxp,alo,ahi,proc_Ma2_yhi)
+             else
+                call compute_aux_3d(2,lo,hi,ngq,qp,upcp,auxp,alo,ahi,proc_Ma2_yhi)
+             end if
           end if
        end if
 
@@ -413,14 +430,19 @@ contains
        if (isValid(aux_xlo,n)) then
           auxp => dataptr(aux_xlo%data,n)          
           if (blo(1) .eq. OUTLET) then
-             if (dm.eq.2) then
+             if (dm.eq.1) then
+                call outlet_xlo_1d(lo,hi,ngq,ngc,dx,qp,cp,fdp,rhp,auxp(:,lo(1),1,1),dlo,dhi)
+             else if (dm.eq.2) then
                 call outlet_xlo_2d(lo,hi,ngq,ngc,dx,qp,cp,fdp,rhp,auxp(:,lo(1),:,1),dlo,dhi)
              else
                 call outlet_xlo_3d(lo,hi,ngq,ngc,dx,qp,cp,fdp,rhp,auxp(:,lo(1),:,:),dlo,dhi)
              end if
           else
              qinp => dataptr(qin_xlo%data,n)
-             if (dm.eq.2) then
+             if (dm.eq.1) then
+                call update_inlet_xlo_1d(lo,hi,qinp(:,lo(1),1,1),t,dx)
+                call inlet_xlo_1d(lo,hi,ngq,ngc,dx,qp,cp,fdp,rhp,auxp(:,lo(1),1,1),qinp(:,lo(1),1,1),dlo,dhi)
+             else if (dm.eq.2) then
                 call update_inlet_xlo_2d(lo,hi,qinp(:,lo(1),:,1),t,dx)
                 call inlet_xlo_2d(lo,hi,ngq,ngc,dx,qp,cp,fdp,rhp,auxp(:,lo(1),:,1),qinp(:,lo(1),:,1),dlo,dhi)
              else
@@ -433,7 +455,9 @@ contains
        if (isValid(aux_xhi,n)) then
           auxp => dataptr(aux_xhi%data,n)
           if (bhi(1) .eq. OUTLET) then
-             if (dm.eq.2) then
+             if (dm.eq.1) then
+                call outlet_xhi_1d(lo,hi,ngq,ngc,dx,qp,cp,fdp,rhp,auxp(:,hi(1),1,1),dlo,dhi)
+             else if (dm.eq.2) then
                 call outlet_xhi_2d(lo,hi,ngq,ngc,dx,qp,cp,fdp,rhp,auxp(:,hi(1),:,1),dlo,dhi)
              else
                 call outlet_xhi_3d(lo,hi,ngq,ngc,dx,qp,cp,fdp,rhp,auxp(:,hi(1),:,:),dlo,dhi)
@@ -445,39 +469,43 @@ contains
           end if
        end if
 
-       if (isValid(aux_ylo,n)) then
-          auxp => dataptr(aux_ylo%data,n)          
-          if (blo(2) .eq. OUTLET) then
-             if (dm.eq.2) then
-                call outlet_ylo_2d(lo,hi,ngq,ngc,dx,qp,cp,fdp,rhp,auxp(:,:,lo(2),1),dlo,dhi)
-             else
-                call outlet_ylo_3d(lo,hi,ngq,ngc,dx,qp,cp,fdp,rhp,auxp(:,:,lo(2),:),dlo,dhi)
-             end if
-          else
-             qinp => dataptr(qin_ylo%data,n)
-             if (dm .eq. 2) then
-                call update_inlet_ylo_2d(lo,hi,qinp(:,:,lo(2),1),t,dx)
-                call inlet_ylo_2d(lo,hi,ngq,ngc,dx,qp,cp,fdp,rhp,auxp(:,:,lo(2),1),qinp(:,:,lo(2),1),dlo,dhi)
-             else
-                call update_inlet_ylo_3d(lo,hi,qinp(:,:,lo(2),:),t,dx)
-                call inlet_ylo_3d(lo,hi,ngq,ngc,dx,qp,cp,fdp,rhp,auxp(:,:,lo(2),:),qinp(:,:,lo(2),:),dlo,dhi)
-             end if
-          end if
-       end if
+       if (dm.ge.2) then
 
-       if (isValid(aux_yhi,n)) then
-          auxp => dataptr(aux_yhi%data,n)
-          if (bhi(2) .eq. OUTLET) then
-             if (dm.eq.2) then
-                call outlet_yhi_2d(lo,hi,ngq,ngc,dx,qp,cp,fdp,rhp,auxp(:,:,hi(2),1),dlo,dhi)
+          if (isValid(aux_ylo,n)) then
+             auxp => dataptr(aux_ylo%data,n)          
+             if (blo(2) .eq. OUTLET) then
+                if (dm.eq.2) then
+                   call outlet_ylo_2d(lo,hi,ngq,ngc,dx,qp,cp,fdp,rhp,auxp(:,:,lo(2),1),dlo,dhi)
+                else
+                   call outlet_ylo_3d(lo,hi,ngq,ngc,dx,qp,cp,fdp,rhp,auxp(:,:,lo(2),:),dlo,dhi)
+                end if
              else
-                call outlet_yhi_3d(lo,hi,ngq,ngc,dx,qp,cp,fdp,rhp,auxp(:,:,hi(2),:),dlo,dhi)
+                qinp => dataptr(qin_ylo%data,n)
+                if (dm .eq. 2) then
+                   call update_inlet_ylo_2d(lo,hi,qinp(:,:,lo(2),1),t,dx)
+                   call inlet_ylo_2d(lo,hi,ngq,ngc,dx,qp,cp,fdp,rhp,auxp(:,:,lo(2),1),qinp(:,:,lo(2),1),dlo,dhi)
+                else
+                   call update_inlet_ylo_3d(lo,hi,qinp(:,:,lo(2),:),t,dx)
+                   call inlet_ylo_3d(lo,hi,ngq,ngc,dx,qp,cp,fdp,rhp,auxp(:,:,lo(2),:),qinp(:,:,lo(2),:),dlo,dhi)
+                end if
              end if
-          else
-             qinp => dataptr(qin_yhi%data,n)
-             call bl_error("inlet_yhi not implemented")
-!            call inlet_yhi(lo,hi,ngq,ngc,dx,qp,cp,fdp,rhp,auxp(:,:,hi(2),:),qinp(:,:,hi(2),:),dlo,dhi)
           end if
+          
+          if (isValid(aux_yhi,n)) then
+             auxp => dataptr(aux_yhi%data,n)
+             if (bhi(2) .eq. OUTLET) then
+                if (dm.eq.2) then
+                   call outlet_yhi_2d(lo,hi,ngq,ngc,dx,qp,cp,fdp,rhp,auxp(:,:,hi(2),1),dlo,dhi)
+                else
+                   call outlet_yhi_3d(lo,hi,ngq,ngc,dx,qp,cp,fdp,rhp,auxp(:,:,hi(2),:),dlo,dhi)
+                end if
+             else
+                qinp => dataptr(qin_yhi%data,n)
+                call bl_error("inlet_yhi not implemented")
+                !            call inlet_yhi(lo,hi,ngq,ngc,dx,qp,cp,fdp,rhp,auxp(:,:,hi(2),:),qinp(:,:,hi(2),:),dlo,dhi)
+             end if
+          end if
+
        end if
 
        if (dm.eq.3) then
@@ -510,6 +538,49 @@ contains
 
   end subroutine nscbc
 
+
+  subroutine compute_aux_1d(idim,lo,hi,ng,Q,Upc,A,alo,ahi,mach2)
+    integer, intent(in) :: idim,ng
+    integer, dimension(1), intent(in) :: lo, hi, alo, ahi
+    double precision, intent(in ) :: Q  (  -ng+lo(1): hi(1)+ng,nprim)
+    double precision, intent(in ) :: Upc(      lo(1): hi(1)   ,ncons)
+    double precision, intent(out) :: A  (naux,alo(1):ahi(1)         )
+    double precision, intent(inout) :: mach2
+
+    integer :: i, iwrk
+    double precision :: Tt, rwrk, cv, cp, gamma, Wbar, vel2, cs2
+    double precision :: Yt(nspecies)
+
+    do i=alo(1),ahi(1)
+       
+       Tt = q(i,qtemp)
+       Yt = q(i,qy1:qy1+nspecies-1)
+
+       call ckcvbs(Tt, Yt, iwrk, rwrk, cv)
+       call ckmmwy(Yt, iwrk, rwrk, Wbar)
+          
+       cp = cv + Ru/Wbar
+       gamma = cp / cv
+       cs2 = gamma*q(i,qpres)/q(i,qrho)
+          
+       vel2 = q(i,qu+idim-1)**2
+       mach2 = max(mach2, vel2/cs2)
+
+       A(igamma,i) = gamma
+       A(iWbar ,i) = Wbar
+       A(icp   ,i) = cp
+       A(icv   ,i) = cv
+       A(ics   ,i) = sqrt(cs2)
+       
+       if (nscbc_burn) then
+          A(iwdot1:,i) = Upc(i,iry1:iry1+nspecies-1)
+       else
+          A(iwdot1:,i) = 0.d0
+       end if
+
+    end do
+
+  end subroutine compute_aux_1d
 
   subroutine compute_aux_2d(idim,lo,hi,ng,Q,Upc,A,alo,ahi,mach2)
     integer, intent(in) :: idim,ng
@@ -614,6 +685,35 @@ contains
   end subroutine compute_aux_3d
 
 
+  subroutine LtoLHS_1d(idim, L, lhs, aux, rho, u, T, Y, h, rhoE)
+    integer, intent(in) :: idim
+    double precision, intent(in) :: L(3+nspecies)
+    double precision, intent(in) :: aux(naux)
+    double precision, intent(in) :: rho, u, T, Y(nspecies), h(nspecies), rhoE
+    double precision, intent(out) :: lhs(ncons)
+
+    double precision :: du, drho, dp, dY(nspecies), rhode, cpWT
+
+    if (idim .eq. 1) then ! x-direction
+       du = (L(3)-L(1))/(rho*aux(ics))
+       call bl_error('Unknow idim in LtoLHS()')
+    end if
+
+    drho = L(2) + (L(3)+L(1))/aux(ics)**2
+    dp = L(3) + L(1)
+    dY = L(4:)
+
+    cpWT = aux(icp)*aux(iWbar)*T
+    rhode = dp/(aux(igamma)-1.d0) - aux(icv)*T*drho + &
+         rho*sum((h-cpWT*inv_mwt)*dY)
+
+    lhs(irho) = drho
+    lhs(imx) = drho*u + rho*du
+    lhs(iene) = rho*(u*du) + drho/rho*rhoE + rhode
+    lhs(iry1:) = rho*dY + drho*Y
+    
+  end subroutine LtoLHS_1d
+
   subroutine LtoLHS_2d(idim, L, lhs, aux, rho, u, v, T, Y, h, rhoE)
     integer, intent(in) :: idim
     double precision, intent(in) :: L(4+nspecies)
@@ -695,6 +795,7 @@ include 'hardbc.f90'
 include 'nscbc_x.f90'  
 include 'nscbc_y.f90'  
 include 'nscbc_z.f90'  
+include 'inlet_x_1d.f90'
 include 'inlet_x_2d.f90'
 include 'inlet_x_3d.f90'
 include 'inlet_y_2d.f90'
