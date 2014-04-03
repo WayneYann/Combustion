@@ -123,14 +123,14 @@ contains
        do n=1,nspecies
           qxn = qx1+n-1
           do i=istart,iend
-             XZ(i,n) = q(i,qxn)
+             XZ(i-istart+1,n) = q(i,qxn)
           end do
        end do
           
        if (use_bulk_viscosity) then
           do i=istart,iend
              call ckcpms(q(i,qtemp), iwrk, rwrk, Cp)
-             CPZ(i,:) = Cp
+             CPZ(i-istart+1,:) = Cp
           end do
        else
           CPZ = 0.d0
@@ -153,7 +153,7 @@ contains
        call EGZVR1(q(istart:iend,qtemp), DZ)
        do n=1,nspecies
           do i=istart,iend
-             Ddiag(i,n) = DZ(i,n)
+             Ddiag(i,n) = DZ(i-istart+1,n)
           end do
        end do
        

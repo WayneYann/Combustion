@@ -184,10 +184,8 @@ contains
     integer :: llo(1), lhi(1)
 
     ! be safe
-    do i=1,2
-       llo(i) = max(lo(i)-ngto, dlo(i))
-       lhi(i) = min(hi(i)+ngto, dhi(i))
-    end do
+    llo(1) = max(lo(1)-ngto, dlo(1))
+    lhi(1) = min(hi(1)+ngto, dhi(1))
 
     !$omp parallel private(i, n, iwrk, rho, rhoinv, rwrk) &
     !$omp private(X, Y, h, ei, Tt, Pt, ierr)
