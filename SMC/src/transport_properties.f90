@@ -101,7 +101,7 @@ contains
     integer :: i, n, nptot, qxn, iwrk, ib, nb, istart, iend
     double precision :: rwrk, Cp(nspecies)
     double precision :: L1Z(np), L2Z(np), DZ(np,nspecies), XZ(np,nspecies), &
-         CPZ(np,nspecies), TZ(np), EZ(np), KZ(np)
+         CPZ(np,nspecies)
 
     if (gco) call bl_error("get_trans_prop_1d: ghost-cells-only not supported")
 

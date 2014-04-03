@@ -62,7 +62,9 @@ contains
           whi(idim) = min(whi(idim), hi(idim)+ngwork)
        end do
 
-       if (dm .ne. 3) then
+       if (dm .eq. 1) then
+          call get_trans_prop_1d(lo,hi,ngq,qp,mup,xip,lamp,dp,wlo,whi,lgco)
+       else if (dm .eq. 2) then
           call get_trans_prop_2d(lo,hi,ngq,qp,mup,xip,lamp,dp,wlo,whi,lgco)
        else
           call get_trans_prop_3d(lo,hi,ngq,qp,mup,xip,lamp,dp,wlo,whi,lgco)
@@ -71,6 +73,81 @@ contains
     end do
 
   end subroutine get_transport_properties
+
+  subroutine get_trans_prop_1d(lo,hi,ng,q,mu,xi,lam,Ddiag,wlo,whi,gco)
+    use probin_module, only : use_bulk_viscosity
+    logical, intent(in) :: gco  ! ghost cells only
+    integer, intent(in) :: lo(1), hi(1), ng, wlo(1), whi(1)
+    double precision,intent(in )::    q(lo(1)-ng:hi(1)+ng,nprim)
+    double precision,intent(out)::   mu(lo(1)-ng:hi(1)+ng)
+    double precision,intent(out)::   xi(lo(1)-ng:hi(1)+ng)
+    double precision,intent(out)::  lam(lo(1)-ng:hi(1)+ng)
+    double precision,intent(out)::Ddiag(lo(1)-ng:hi(1)+ng,nspecies)
+
+    integer, parameter :: np = 4
+
+    integer :: i, n, nptot, qxn, iwrk, ib, nb, istart, iend
+    double precision :: rwrk, Cp(nspecies)
+    double precision :: L1Z(np), L2Z(np), DZ(np,nspecies), XZ(np,nspecies), &
+         CPZ(np,nspecies), E1Z(np), E2Z(np)
+
+    if (gco) call bl_error("get_trans_prop_1d: ghost-cells-only not supported")
+
+    nptot = whi(1) - wlo(1) + 1
+    nb = nptot / np
+    if (nb*np .ne. nptot) call bl_error("get_trans_prop_1d: grid size not supported")
+
+    !$omp parallel private(i,n,qxn,iwrk,ib,istart,iend,rwrk) &
+    !$omp private(Cp,E1Z,E2Z,L1Z,L2Z,DZ,XZ,CPZ)
+
+    call egzini(np)
+              
+    !$omp do
+    do ib=0,nb-1
+       
+       istart = wlo(1) + ib*np
+       iend = istart + np - 1
+
+       do n=1,nspecies
+          qxn = qx1+n-1
+          do i=istart,iend
+             XZ(i,n) = q(i,qxn)
+          end do
+       end do
+          
+       if (iflag > 3) then
+          do i=istart,iend
+             call ckcpms(q(i,qtemp), iwrk, rwrk, Cp)
+             CPZ(i,:) = Cp
+          end do
+       else
+          CPZ = 0.d0
+       end if
+       
+       call egzpar(q(istart:iend,qtemp), XZ, CPZ)
+       
+       call egze1( 1.d0, XZ, E1Z)
+       call egze1(-1.d0, XZ, E2Z)
+       mu(istart:iend) = 0.5d0*(E1Z+E2Z)
+
+       xi(istart:iend) = 0.d0
+       
+       call egzl1( 1.d0, XZ, L1Z)
+       call egzl1(-1.d0, XZ, L2Z)
+       lam(istart:iend) = 0.5d0*(L1Z+L2Z)
+       
+       call EGZVR1(q(istart:iend,qtemp), DZ)
+       do n=1,nspecies
+          do i=istart,iend
+             Ddiag(i,n) = DZ(i,n)
+          end do
+       end do
+       
+    end do
+    !$omp end do
+    !$omp end parallel
+
+  end subroutine get_trans_prop_1d
 
   subroutine get_trans_prop_2d(lo,hi,ng,q,mu,xi,lam,Ddiag,wlo,whi,gco)
     logical, intent(in) :: gco  ! ghost cells only
