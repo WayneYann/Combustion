@@ -131,10 +131,6 @@ subroutine smc()
   end if
 
   dm = dm_in
-  if (dm .eq. 1) then
-     call bl_error('SMC cannot do 1D')
-  end if
-
   if (dm .ne. get_dim(la)) then
      call bl_error('dm_in not properly set in inputs file')
   end if

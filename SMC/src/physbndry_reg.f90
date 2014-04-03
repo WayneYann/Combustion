@@ -140,15 +140,13 @@ contains
 
     dm = get_dim(pbrou%la)
 
+    lo = 1
+    hi = 1
+
     do n=1,nfabs(pbrin%data)
        if (isValid(pbrin,n)) then          
           lo(1:dm) = lwb(get_box(pbrin%data,n))
           hi(1:dm) = upb(get_box(pbrin%data,n))
-
-          if (dm .eq. 2) then
-             lo(3) = 1
-             hi(3) = 1
-          end if
 
           ip => dataptr(pbrin%data, n)
           op => dataptr(pbrou%data,n)
