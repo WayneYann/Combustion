@@ -60,8 +60,8 @@ contains
     !$omp private(i,n,x,r,pmf_vals,Pt,Xt,Yt,rhot,u1t,Tt,et,iwrk,rwrk)
     do i=lo(1),hi(1)
        x = phlo(1) + dx(1)*(i+0.5d0)
-       r = x - 0.5d0*(phhi(1)-phlo(1)) + 3.011d0
-       ! 3.011d0 is roughly the sufrace of fire for pmf.
+       r = x + 3.0d0
+       ! the magic number is roughly the sufrace of fire for pmf.
 
        call pmf(r,r,pmf_vals,n)
 

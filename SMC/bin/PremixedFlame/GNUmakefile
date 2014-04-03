@@ -7,7 +7,7 @@ EXPAND := t
 # convergence study? 
 CONVERGENCE :=
 
-NDEBUG := 
+NDEBUG := t
 PROF   := 
 MPI    := t
 OMP    := 
