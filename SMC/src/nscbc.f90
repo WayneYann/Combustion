@@ -696,6 +696,7 @@ contains
 
     if (idim .eq. 1) then ! x-direction
        du = (L(3)-L(1))/(rho*aux(ics))
+    else
        call bl_error('Unknow idim in LtoLHS()')
     end if
 

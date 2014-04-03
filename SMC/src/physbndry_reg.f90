@@ -97,7 +97,13 @@ contains
        do ibox=1, nlb
           lo = lwb(get_box(pbr%data,ibox))
           hi = upb(get_box(pbr%data,ibox))
-          if (any(lo.ne.hi)) then
+          if (idim_in.eq.1) then
+             if (lo(1) .eq. plo(1) .or. lo(1) .eq. phi(1)) then
+                pbr%localstatus(ibox) = .true.
+             else
+                pbr%localstatus(ibox) = .false.
+             end if
+          else if (any(lo.ne.hi)) then
              pbr%localstatus(ibox) = .true.
           else
              pbr%localstatus(ibox) = .false.
