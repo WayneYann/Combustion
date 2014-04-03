@@ -75,7 +75,13 @@ contains
     nb = nlocal(la) ! number of local boxes
     numthreads = omp_get_max_threads()
 
-    if (tb_idim_more .eq. tb_idim_less) then
+    if (ndim .eq. 1) then
+       tb_idim_more = 1
+       tb_idim_less = 1
+       tb_split_dim = 1
+    end if
+
+    if (tb_idim_more .eq. tb_idim_less .and. ndim.gt.1) then
        call bl_error("threadbox_module: tb_idim_more .eq. tb_idim_less")
     end if
     if (tb_idim_more < 1 .or. tb_idim_more > ndim) then
@@ -332,16 +338,16 @@ contains
              ! valid box
              !
              call split_domain(my_box_size(1), nthreads_d(1), xsize, xstart)
-             call split_domain(my_box_size(2), nthreads_d(2), ysize, ystart)
-             if (ndim.eq.3) then
-                call split_domain(my_box_size(3), nthreads_d(3), zsize, zstart)
-             end if
+             if (ndim.gt.1) call split_domain(my_box_size(2), nthreads_d(2), ysize, ystart)
+             if (ndim.gt.2) call split_domain(my_box_size(3), nthreads_d(3), zsize, zstart)
              
              zero_lo(1) = xstart(i)
-             zero_lo(2) = ystart(j)
              zero_hi(1) = xstart(i) + xsize(i) - 1
-             zero_hi(2) = ystart(j) + ysize(j) - 1
-             if (ndim.eq.3) then
+             if (ndim.gt.1) then
+                zero_lo(2) = ystart(j)
+                zero_hi(2) = ystart(j) + ysize(j) - 1
+             end if
+             if (ndim.gt.2) then
                 zero_lo(3) = zstart(k)
                 zero_hi(3) = zstart(k) + zsize(k) - 1
              end if
@@ -353,16 +359,16 @@ contains
              ! grown box
              !
              call split_domain(my_box_size(1)+2*ng, nthreads_d(1), xsize, xstart)
-             call split_domain(my_box_size(2)+2*ng, nthreads_d(2), ysize, ystart)
-             if (ndim.eq.3) then
-                call split_domain(my_box_size(3)+2*ng, nthreads_d(3), zsize, zstart)
-             end if
+             if (ndim.gt.1) call split_domain(my_box_size(2)+2*ng, nthreads_d(2), ysize, ystart)
+             if (ndim.gt.2) call split_domain(my_box_size(3)+2*ng, nthreads_d(3), zsize, zstart)
 
              zero_lo(1) = xstart(i)
-             zero_lo(2) = ystart(j)
              zero_hi(1) = xstart(i) + xsize(i) - 1
-             zero_hi(2) = ystart(j) + ysize(j) - 1
-             if (ndim.eq.3) then
+             if (ndim.gt.1) then
+                zero_lo(2) = ystart(j)
+                zero_hi(2) = ystart(j) + ysize(j) - 1
+             end if
+             if (ndim.gt.2) then
                 zero_lo(3) = zstart(k)
                 zero_hi(3) = zstart(k) + zsize(k) - 1
              end if
@@ -414,10 +420,8 @@ contains
     integer, allocatable :: xstart(:), ystart(:), zstart(:)
 
     bksize(1) = blksizex
-    bksize(2) = blksizey
-    if (ndim.eq.3) then
-       bksize(3) = blksizez
-    end if
+    if (ndim.gt.1) bksize(2) = blksizey
+    if (ndim.gt.2) bksize(3) = blksizez
 
     do ibox=1,nb
 
@@ -444,14 +448,16 @@ contains
           allocate(allblocks(ibox)%hi(ndim,nblk))
 
           allocate(xsize (nbk(1)))
-          allocate(ysize (nbk(2)))
           allocate(xstart(nbk(1)))
-          allocate(ystart(nbk(2)))
-
           call split_domain(tbsize(1), nbk(1), xsize, xstart)
-          call split_domain(tbsize(2), nbk(2), ysize, ystart)
 
-          if (ndim.eq.3) then
+          if (ndim.gt.1) then
+             allocate(ysize (nbk(2)))
+             allocate(ystart(nbk(2)))
+             call split_domain(tbsize(2), nbk(2), ysize, ystart)
+          end if
+
+          if (ndim.gt.2) then
              allocate(zsize (nbk(3)))
              allocate(zstart(nbk(3)))
              call split_domain(tbsize(3), nbk(3), zsize, zstart)
@@ -476,7 +482,7 @@ contains
                    end do
                 end do
              end do
-          else
+          else if (ndim.eq.2) then
              do j = 1, nbk(2)
                 do i = 1, nbk(1)                      
                    zero_lo(1) = xstart(i)
@@ -490,10 +496,21 @@ contains
                    ibk = ibk + 1
                 end do
              end do
+          else 
+             do i = 1, nbk(1)                      
+                zero_lo(1) = xstart(i)
+                zero_hi(1) = xstart(i) + xsize(i) - 1
+                
+                allblocks(ibox)%lo(:,ibk) = zero_lo + tb_lo(:,ibox)
+                allblocks(ibox)%hi(:,ibk) = zero_hi + tb_lo(:,ibox)
+                
+                ibk = ibk + 1
+             end do
           end if
 
-          deallocate(xsize,ysize,xstart,ystart)
-          if (ndim.eq.3) deallocate(zstart,zsize)
+          deallocate(xsize,xstart)
+          if (ndim.gt.1) deallocate(ystart,ysize)
+          if (ndim.gt.2) deallocate(zstart,zsize)
 
        end if
     end do
@@ -578,8 +595,8 @@ contains
 
     if (lall .and. ngmf.eq.ng) then
        !$omp parallel private(ib, wlo, whi, p)
-       wlo(3) = 1
-       whi(3) = 1
+       wlo = 1
+       whi = 1
        do ib = 1, nfabs(mf)
           if (.not.tb_worktodo(ib)) cycle
           p => dataptr(mf, ib)
@@ -590,8 +607,8 @@ contains
        !$omp end parallel
     else
        !$omp parallel private(ib, wlo, whi, p)
-       wlo(3) = 1
-       whi(3) = 1
+       wlo = 1
+       whi = 1
        do ib = 1, nfabs(mf)
           if (.not.tb_worktodo(ib)) cycle
           p => dataptr(mf, ib)
