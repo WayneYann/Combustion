@@ -107,7 +107,10 @@ contains
 
     nptot = whi(1) - wlo(1) + 1
     nb = nptot / np
-    if (nb*np .ne. nptot) call bl_error("get_trans_prop_1d: grid size not supported")
+    if (nb*np .ne. nptot) then
+       print * , 'grid size: ', nptot
+       call bl_error("get_trans_prop_1d: grid size not supported")
+    end if
 
     !$omp parallel private(i,n,qxn,iwrk,ib,istart,iend,rwrk) &
     !$omp private(Cp,L1Z,L2Z,DZ,XZ,CPZ)

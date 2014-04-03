@@ -423,7 +423,7 @@ contains
     !$omp do
     do i = lo(1),hi(1)
           
-       rhoy_under = 0.d0
+       rho = 0.d0
        do n=1, nspecies
           rho = rho + U(i,iry1+n-1)
        end do
