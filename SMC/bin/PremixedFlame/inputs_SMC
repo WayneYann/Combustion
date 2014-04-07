@@ -6,32 +6,37 @@
 
  stencil_type = "narrow"   ! narrow or S3D
 
- advance_method = "sdc"
- sdc_iters = 4
- sdc_tol_residual = 1.d-10
+ advance_method = "mrsdc"
+
+ sdc_multirate_explicit = .false.
+ sdc_multirate_repeat = 4
+ sdc_nnodes_fine  = 3
+ sdc_nnodes       = 3
+ sdc_iters        = 4
+ sdc_tol_residual = 1.0d-6
 
  use_bulk_viscosity = .false.
- trans_int = 10
+ trans_int = 2
 
  stop_time = 1.d-3
- max_step  = 100000000
+ max_step  = 1000000
  restart = -1
 
- plot_deltat = 1.d-6
- plot_int = 100000
- chk_int  = 100000
+ plot_deltat = 1.d-5
+ plot_int = 10000
+ chk_int  = 10000
 
- cflfac = 0.1d0
+ cflfac = 4.0d0
  init_shrink = 0.1d0
 
  dm_in = 1
- n_cellx = 4096
+ n_cellx = 1024
  n_celly = 1
  n_cellz = 1
- max_grid_size = 512
+ max_grid_size = 256
 
- prob_lo_x = -0.15d0
- prob_hi_x =  0.35d0
+ prob_lo_x = -0.5d0
+ prob_hi_x =  0.5d0
 
  xlo_boundary_type = "inlet"
  xhi_boundary_type = "outlet"

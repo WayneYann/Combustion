@@ -23,10 +23,10 @@ SMC_TOP_DIR := ../..
 CHEMISTRY_DIR := ../../../Chemistry
 
 # Chemistry models
-CHEMISTRY_MODEL := LIDRYER
+#CHEMISTRY_MODEL := LIDRYER
 #CHEMISTRY_MODEL := DRM19
 #CHEMISTRY_MODEL := GRI30
-
+CHEMISTRY_MODEL := NULL
 
 # include the SMC build stuff
 include $(SMC_TOP_DIR)/GSMC.mak
