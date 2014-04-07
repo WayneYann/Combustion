@@ -29,11 +29,13 @@ module bdf
   integer, parameter :: BDF_ERR_SUCCESS  = 0
   integer, parameter :: BDF_ERR_SOLVER   = 1
   integer, parameter :: BDF_ERR_MAXSTEPS = 2
+  integer, parameter :: BDF_ERR_DTMIN    = 3
 
-  character(len=64), parameter :: errors(0:2) = [ &
+  character(len=64), parameter :: errors(0:3) = [ &
        'Success.                                                ', &
        'Newton solver failed to converge several times in a row.', &
-       'Too many steps were taken.                              ' ]
+       'Too many steps were taken.                              ', &
+       'Minimum time-step reached several times in a row.       ' ]
 
   !
   ! bdf time-stepper
@@ -93,6 +95,7 @@ module bdf
      integer :: nse                       ! number of non-linear solver errors
      integer :: ncse                      ! number of consecutive non-linear solver errors
      integer :: ncit                      ! number of current non-linear solver iterations
+     integer :: ncdtmin                   ! number of consecutive times we tried to shrink beyound the minimum time step
 
   end type bdf_ts
 
@@ -128,11 +131,14 @@ contains
     end interface
 
     integer  :: k
-    logical  :: qcycle, qerror
+    logical  :: retry
+
 
     if (reset) call bdf_reset(ts, f, y0, dt0, reuse)
 
-    ts%t = t0; ts%ncse = 0
+    ierr = BDF_ERR_SUCCESS
+
+    ts%t = t0; ts%ncse = 0; ts%ncdtmin = 0;
     do k = 1, bdf_max_iters + 1
        if (ts%n > ts%max_steps .or. k > bdf_max_iters) then
           ierr = BDF_ERR_MAXSTEPS; return
@@ -141,13 +147,10 @@ contains
        call bdf_update(ts)                ! update various coeffs (l, tq) based on time-step history
        call bdf_predict(ts)               ! predict nordsieck array using pascal matrix
        call bdf_solve(ts, f, Jac)         ! solve for y_n based on predicted y and yd
-       call bdf_check(ts, qcycle, qerror) ! check for solver errors and test error estimate
+       call bdf_check(ts, retry, ierr)    ! check for solver errors and test error estimate
 
-       if (qerror) then
-          ierr = BDF_ERR_SOLVER; return
-       end if
-
-       if (qcycle) cycle
+       if (ierr /= BDF_ERR_SUCCESS) return
+       if (retry) cycle
 
        call bdf_correct(ts)               ! new solution looks good, correct history and advance
        if (ts%t >= t1) exit
@@ -158,7 +161,6 @@ contains
          print '("BDF: n:",i6,", fe:",i6,", je: ",i3,", lu: ",i3,", it: ",i3,", se: ",i3,", dt: ",e15.8,", k: ",i2)', &
          ts%n, ts%nfe, ts%nje, ts%nlu, ts%nit, ts%nse, ts%dt, ts%k
 
-    ierr = BDF_ERR_SUCCESS
     y1   = ts%z(:,:,0)
 
   end subroutine bdf_advance
@@ -365,18 +367,19 @@ contains
   !
   ! Check error estimates.
   !
-  subroutine bdf_check(ts, qcycle, qerror)
+  subroutine bdf_check(ts, retry, err)
     type(bdf_ts), intent(inout) :: ts
-    logical,      intent(out)   :: qcycle, qerror
+    logical,      intent(out)   :: retry
+    integer,      intent(out)   :: err
 
     real(dp) :: error, eta
     integer  :: p
 
-    qcycle = .false.; qerror = .false.
+    retry = .false.; err = BDF_ERR_SUCCESS
 
     ! if solver failed many times, bail
     if (ts%ncit >= ts%max_iters .and. ts%ncse > 7) then
-       qerror = .true.
+       err = BDF_ERR_SOLVER
        return
     end if
 
@@ -384,7 +387,7 @@ contains
     if (ts%ncit >= ts%max_iters) then
        ts%refactor = .true.; ts%nse = ts%nse + 1; ts%ncse = ts%ncse + 1
        call rescale_timestep(ts, 0.25d0)
-       qcycle = .true.
+       retry = .true.
        return
     end if
     ts%ncse = 0
@@ -395,10 +398,13 @@ contains
        if (error > one) then
           eta = one / ( (6.d0 * error) ** (one / ts%k) + 1.d-6 )
           call rescale_timestep(ts, eta)
-          qcycle = .true.
+          retry = .true.
+          if (ts%dt < ts%dt_min + epsilon(ts%dt_min)) ts%ncdtmin = ts%ncdtmin + 1
+          if (ts%ncdtmin > 7) err = BDF_ERR_DTMIN
           return
        end if
     end do
+    ts%ncdtmin = 0
 
   end subroutine bdf_check
 
