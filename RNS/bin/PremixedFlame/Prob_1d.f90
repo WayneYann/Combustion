@@ -43,7 +43,42 @@ subroutine PROBINIT (init,name,namlen,problo,probhi)
 
   Length(1) = probhi(1) - problo(1)
 
+
+  iH2 = get_species_index("H2")
+  iO2 = get_species_index("O2")
+  iN2 = get_species_index("N2")
+  iH2O = get_species_index("H2O")
+  iHO2 = get_species_index("HO2")
+  iO = get_species_index("O")
+  iH2O2 = get_species_index("H2O2")
+  iH = get_species_index("H")
+  iOH = get_species_index("OH")
   
+  allocate(X_reac(nspecies))
+  allocate(X_prod(nspecies))
+  allocate(X_intm(nspecies))
+
+  X_reac = 0.d0
+  X_reac(iH2) = 0.296d0
+  X_reac(iO2) = 0.148d0
+  X_reac(iN2) = 0.556d0
+
+  X_prod = 0.d0
+  X_prod(iH2O) = 0.296d0
+  X_prod(iO2)  = 0.000d0
+  X_prod(iN2)  = 0.556d0
+
+  X_intm = 0.d0
+  X_intm(iHO2)  = 0.0001d0
+  X_intm(iO)    = 0.0001d0
+  X_intm(iH2O2) = 0.0001d0
+  X_intm(iH)    = 0.0100d0
+  X_intm(iOH)   = 0.0100d0
+
+  T_reac = 298.d0
+  T_prod = 2300.d0
+  massFlux = 0.07d0
+  pres = 1.d0 * patm
 
 end subroutine PROBINIT
 
@@ -71,10 +106,10 @@ end subroutine PROBINIT
 subroutine rns_initdata(level,time,lo,hi,nscal, &
      state,state_l1,state_h1,delta,xlo,xhi)
 
-  use eos_module, only : eos_given_PTX
   use probdata_module
   use meth_params_module, only : NVAR, URHO, UMX, UEDEN, UTEMP, UFS, NSPEC
-  use chemistry_module, only : Patm, nspecies, get_species_index
+  use chemistry_module, only : nspecies, get_species_index
+  use inflow_module
 
   implicit none
   integer level, nscal
@@ -84,9 +119,8 @@ subroutine rns_initdata(level,time,lo,hi,nscal, &
   double precision time, delta(1)
   double precision xlo(1), xhi(1)
   
-  integer :: i, n
-  integer, save :: iH2=-100, iO2, iN2, iH2O, iHO2, iO, iH2O2, iH, iOH
-  double precision :: Xt(nspec), Yt(nspec), Yti(nspecies)
+  integer :: i, n, iwrk, iN2
+  double precision :: Xt(nspec), Yt(nspec), Yti(nspecies), rwrk
   double precision :: xcen, rhot,Tt,et,Pt, eta, eta01, eta00
 
   if (nspecies .ne. NSPEC) then
@@ -94,23 +128,54 @@ subroutine rns_initdata(level,time,lo,hi,nscal, &
      stop
   end if
 
-  if (iH2 .eq. -100) then
-     iH2 = get_species_index("H2")
-     iO2 = get_species_index("O2")
-     iN2 = get_species_index("N2")
-     iH2O = get_species_index("H2O")
-     iHO2 = get_species_index("HO2")
-     iO = get_species_index("O")
-     iH2O2 = get_species_index("H2O2")
-     iH = get_species_index("H")
-     iOH = get_species_index("OH")
-  end if
+  if (.not. allocated(inflow_state)) call init_inflow()
+
+  iN2 = get_species_index("N2")
 
   do i = state_l1, state_h1
 
-     xcen = xlo(1) + delta(1)*(dble(i-lo(1)) + 0.5d0)
+     xcen = xlo(1) + delta(1)*(dble(i-lo(1)) + 0.5d0) - init_flm_position
 
      state(i,:) = 0.d0
+
+     Pt = pres
+
+     if (xcen .lt. -10.d0*init_flm_width) then
+        Tt = T_reac
+        Xt = X_reac
+        Xt = Xt/sum(Xt)
+        CALL CKXTY (Xt, IWRK, RWRK, Yt)
+     else if (xcen .gt. 10.d0*init_flm_width) then
+        Tt = T_prod
+        Xt = X_prod
+        Xt = Xt/sum(Xt)
+        CALL CKXTY (Xt, IWRK, RWRK, Yt)
+     else
+        eta = tanh(xcen/init_flm_width)
+        eta01 = (eta+1.d0)*0.5d0
+        Tt = (1.d0-eta01)*T_reac + eta01*T_prod
+        Xt = (1.d0-eta01)*X_reac + eta01*X_prod
+        Xt = Xt/sum(Xt)
+        CALL CKXTY (Xt, IWRK, RWRK, Yti)
+        ! add flame
+        eta00 = 1.d0 - abs(eta)
+        Xt = Xt + eta00*X_intm
+        Xt = Xt/sum(Xt)
+        CALL CKXTY (Xt, IWRK, RWRK, Yt)
+        Yt = Yt*(1.d0-Yti(iN2))/(1.d0-Yt(iN2))
+        Yt(iN2) = Yti(iN2)          
+     end if
+     
+     CALL CKRHOY(Pt,Tt,Yt,IWRK,RWRK,rhot)
+     call CKUBMS(Tt,Yt,IWRK,RWRK,et)
+     
+     state(i,URHO) = rhot
+     state(i,UMX)  = massFlux
+     state(i,UEDEN) = rhot*et + 0.5d0*state(i,UMX)**2/state(i,URHO)
+     state(i,UTEMP) = Tt
+     do n=1,nspecies
+        state(i,UFS-1+n) = Yt(n)*rhot
+     end do
 
   end do
 

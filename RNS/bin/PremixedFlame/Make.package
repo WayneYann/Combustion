@@ -1,4 +1,4 @@
-f90EXE_sources += Prob_${DIM}d.f90  probdata.f90
+f90EXE_sources += Prob_${DIM}d.f90  probdata.f90  inflow.f90
 
 cEXE_sources += davis.c
 

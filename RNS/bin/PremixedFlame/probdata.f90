@@ -5,7 +5,7 @@ module probdata_module
   double precision, save :: massFlux, pres
 
   double precision, save :: init_flm_position, init_flm_width
-  
+
   double precision, save :: Length(1)
 
   ! These determine the refinement criteria
