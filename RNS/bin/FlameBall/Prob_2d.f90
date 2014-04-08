@@ -11,7 +11,8 @@ subroutine PROBINIT (init,name,namlen,problo,probhi)
   integer untin,i
 
   namelist /fortin/ prob_type, pertmag, rfire, uinit, vinit, winit, T0, T1, &
-       max_denerr_lev, max_tracerr_lev, max_temperr_lev, temperr, tracerr
+       max_denerr_lev, max_tracerr_lev, max_temperr_lev, temperr, tracerr, &
+       fuel_name
 
 !
 !     Build "probin" filename -- the name of file containing fortin namelist.
@@ -45,8 +46,10 @@ subroutine PROBINIT (init,name,namlen,problo,probhi)
   max_denerr_lev = -1
   max_temperr_lev = -1
   max_tracerr_lev = -1
-  temperr = 1300.d0
+  temperr = 1250.d0
   tracerr = 3.d-11
+
+  fuel_name = "H2"
 
 !     Read namelists
   untin = 9
@@ -101,7 +104,7 @@ subroutine rns_initdata(level,time,lo,hi,nscal, &
   double precision state(state_l1:state_h1,state_l2:state_h2,NVAR)
   
   ! local variables
-  integer :: i, j, n, ii, jj, nimages, iii, jjj, iH2, iO2, iN2
+  integer :: i, j, n, ii, jj, nimages, iii, jjj, ifuel, iO2, iN2
   double precision :: xcen, ycen, xg, yg, r, rfront, xgi, ygi
   double precision :: pmf_vals(NSPEC+3), Xt(nspec), Yt(nspec)
   double precision :: rhot, et, Pt, Tt, u1t, u2t, kx, ky, Pi
@@ -129,7 +132,7 @@ subroutine rns_initdata(level,time,lo,hi,nscal, &
      stop
   end if
 
-  iH2 = get_species_index("H2")
+  ifuel = get_species_index(fuel_name)
   iO2 = get_species_index("O2")
   iN2 = get_species_index("N2")
 
@@ -186,7 +189,7 @@ subroutine rns_initdata(level,time,lo,hi,nscal, &
                  Tt = T0
 
                  Xt = 0.0d0
-                 Xt(iH2) = 0.10d0
+                 Xt(ifuel) = 0.10d0
                  Xt(iO2) = 0.25d0
 
                  do jjj = -nimages, nimages
@@ -199,7 +202,7 @@ subroutine rns_initdata(level,time,lo,hi,nscal, &
                        
                        Pt = Pt    + 0.1d0*patm * exp(-(r / rfire)**2)
                        Tt = Tt       + (T1-T0) * exp(-(r / rfire)**2)
-                       Xt(iH2) = Xt(iH2) + 0.025d0 * exp(-(r / rfire)**2)
+                       Xt(ifuel) = Xt(ifuel) + 0.025d0 * exp(-(r / rfire)**2)
                        Xt(iO2) = Xt(iO2) - 0.050d0 * exp(-(r / rfire)**2)
                        
                     end do
@@ -211,7 +214,7 @@ subroutine rns_initdata(level,time,lo,hi,nscal, &
                  u1t =  sin(kx*xg)*cos(ky*yg) * 300.d0
                  u2t = -cos(kx*xg)*sin(ky*yg) * 300.d0
               
-                 Xt(iN2) = 1.0d0 - Xt(iH2) - Xt(iO2)
+                 Xt(iN2) = 1.0d0 - Xt(ifuel) - Xt(iO2)
 
               end if
               
