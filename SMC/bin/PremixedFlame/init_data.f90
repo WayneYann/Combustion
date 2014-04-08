@@ -53,7 +53,7 @@ contains
     integer :: iwrk
     double precision :: rwrk
 
-    double precision, parameter :: flrt = 0.07d0
+    double precision, parameter :: flrt = 0.0d0 ! 0.07d0
     double precision, parameter :: pres = 1.d0
     !
     double precision, parameter :: reac_H2  = 0.296d0
