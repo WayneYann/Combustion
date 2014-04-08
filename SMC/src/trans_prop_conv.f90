@@ -111,7 +111,7 @@ contains
        do n=1,nspecies
           qxn = qx1+n-1
           do i=istart,iend
-             XZ(i-start+1,n) = q(i,qxn)
+             XZ(i-istart+1,n) = q(i,qxn)
           end do
        end do
           

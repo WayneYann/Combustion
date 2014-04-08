@@ -29,8 +29,8 @@ subroutine rns_grpfill(adv,adv_l1,adv_h1, &
            end do
         end do
      else
-        print *,'grpfill: SHOULD NEVER GET HERE bc(1,1,n) .eq. EXT_DIR) '
-        stop
+!zzz        print *,'grpfill: SHOULD NEVER GET HERE bc(1,1,n) .eq. EXT_DIR) '
+!zzz        stop
      end if
   end if
      
@@ -91,8 +91,8 @@ subroutine rns_denfill(adv,adv_l1,adv_h1,domlo,domhi,delta,xlo,time,bc)
      if ( bc(1,1,1).eq.EXT_DIR) then
         adv(adv_l1:domlo(1)-1) = inflow_state(URHO)
      else
-        print *,'denfill: SHOULD NEVER GET HERE bc(1,1,1) .eq. EXT_DIR) '
-        stop
+!zzz        print *,'denfill: SHOULD NEVER GET HERE bc(1,1,1) .eq. EXT_DIR) '
+!zzz        stop
      end if
   end if
   
@@ -125,8 +125,8 @@ subroutine rns_mxfill(adv,adv_l1,adv_h1,domlo,domhi,delta,xlo,time,bc)
      if ( bc(1,1,1).eq.EXT_DIR) then
         adv(adv_l1:domlo(1)-1) = inflow_state(UMX)
      else
-        print *,'mxfill: SHOULD NEVER GET HERE bc(1,1,1) .eq. EXT_DIR) '
-        stop
+!zzz        print *,'mxfill: SHOULD NEVER GET HERE bc(1,1,1) .eq. EXT_DIR) '
+!zzz        stop
      end if
   end if
   
@@ -159,8 +159,8 @@ subroutine rns_tempfill(adv,adv_l1,adv_h1,domlo,domhi,delta,xlo,time,bc)
      if ( bc(1,1,1).eq.EXT_DIR) then
         adv(adv_l1:domlo(1)-1) = inflow_state(UTEMP)
      else
-        print *,'tempfill: SHOULD NEVER GET HERE bc(1,1,1) .eq. EXT_DIR) '
-        stop
+!zzz        print *,'tempfill: SHOULD NEVER GET HERE bc(1,1,1) .eq. EXT_DIR) '
+!zzz        stop
      endif
   end if
   
