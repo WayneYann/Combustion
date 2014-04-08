@@ -25,7 +25,6 @@
 #    define FORT_RADLOSS                radloss
 #    define FORT_ZEROVISC               zerovisc
 #    define FORT_DERCONCENTRATION       derconcentration
-#    define FORT_ACTIVECONTROL          activecontrol
 #    define FORT_DERFORCING             drforcing
 #    define FORT_DERFORCEX              drforcex
 #    define FORT_DERFORCEY              drforcey
@@ -53,7 +52,6 @@
 #    define FORT_RADLOSS                RADLOSS
 #    define FORT_ZEROVISC               ZEROVISC
 #    define FORT_DERCONCENTRATION       DERCONCENTRATION
-#    define FORT_ACTIVECONTROL          ACTIVECONTROL
 #    define FORT_DERFORCING             DRFORCING
 #    define FORT_DERFORCEX              DRFORCEX
 #    define FORT_DERFORCEY              DRFORCEY
@@ -79,7 +77,6 @@
 #    define FORT_RADLOSS                radloss
 #    define FORT_ZEROVISC               zerovisc
 #    define FORT_DERCONCENTRATION       derconcentration
-#    define FORT_ACTIVECONTROL          activecontrol
 #    define FORT_DERFORCING             drforcing
 #    define FORT_DERFORCEX              drforcex
 #    define FORT_DERFORCEY              drforcey
@@ -106,7 +103,6 @@
 #    define FORT_RADLOSS                radloss_
 #    define FORT_ZEROVISC               zerovisc_
 #    define FORT_DERCONCENTRATION       derconcentration_
-#    define FORT_ACTIVECONTROL          activecontrol_
 #    define FORT_DERFORCING             drforcing_
 #    define FORT_DERFORCEX              drforcex_
 #    define FORT_DERFORCEY              drforcey_
@@ -132,19 +128,10 @@
                                  const Real* dx,
                                  const Real* xlo, const Real* xhi);
 
-
       void FORT_SET_PROB_SPEC(const int* fuelID,
 			      const int* oxidID,
 			      const int* prodID,
 			      const int* numspec);
-
-      void FORT_ACTIVECONTROL(const Real* fuelmass,
-			      const Real* time,
-			      const Real* crsedt,
-                              const int*  myproc,
-                              const int*  step,
-                              const int*  restart,
-                              const int*  usetemp);
 
      void FORT_CENTERLINE_TEMP_STATS(ARLIM_P(templo), ARLIM_P(temphi),
 				     const Real* tempdat, const Real* zcen,
