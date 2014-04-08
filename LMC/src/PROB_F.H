@@ -143,7 +143,8 @@
 			      const Real* crsedt,
                               const int*  myproc,
                               const int*  step,
-                              const int*  restart);
+                              const int*  restart,
+                              const int*  usetemp);
 
      void FORT_CENTERLINE_TEMP_STATS(ARLIM_P(templo), ARLIM_P(temphi),
 				     const Real* tempdat, const Real* zcen,

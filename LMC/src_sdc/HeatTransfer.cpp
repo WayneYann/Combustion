@@ -96,6 +96,8 @@ namespace
     FABio::Format         ShowMF_Fab_Format;
     bool                  do_not_use_funccount;
     bool                  do_active_control;
+    bool                  do_active_control_temp;
+    Real                  temp_control;
     Real                  crse_dt;
     int                   chem_box_chop_threshold;
 }
@@ -253,6 +255,8 @@ HeatTransfer::Initialize ()
     ShowMF_Fab_Format       = ShowMF_Fab_Format_map["ASCII"];
     do_not_use_funccount    = false;
     do_active_control       = false;
+    do_active_control_temp  = false;
+    temp_control            = -1;
     crse_dt                 = -1;
     chem_box_chop_threshold = -1;
 
@@ -343,6 +347,11 @@ HeatTransfer::Initialize ()
     pp.query("dpdt_option",dpdt_option);
     BL_ASSERT(dpdt_option >= 0 && dpdt_option <= 2);
     pp.query("do_active_control",do_active_control);
+    pp.query("do_active_control_temp",do_active_control_temp);
+    pp.query("temp_control",temp_control);
+
+    if (do_active_control_temp && temp_control <= 0)
+        BoxLib::Error("temp_control MUST be set with do_active_control_temp");
 
     verbose = pp.contains("v");
 
@@ -2130,7 +2139,15 @@ HeatTransfer::post_restart ()
     int restart = 1;
 
     if (do_active_control)
-        FORT_ACTIVECONTROL(&dummy,&dummy,&crse_dt,&MyProc,&step,&restart);
+    {
+        int usetemp = 0;
+        FORT_ACTIVECONTROL(&dummy,&dummy,&crse_dt,&MyProc,&step,&restart,&usetemp);
+    }
+    else if (do_active_control_temp)
+    {
+        int usetemp = 1;
+        FORT_ACTIVECONTROL(&dummy,&dummy,&crse_dt,&MyProc,&step,&restart,&usetemp);
+    }
 
 #ifdef PARTICLES
     if (level == 0)
@@ -2414,20 +2431,57 @@ HeatTransfer::sum_integrated_quantities ()
 
     if (getChemSolve().index(fuelName) >= 0)
     {
-        Real fuelmass = 0.0;
-        std::string fuel = "rho.Y(" + fuelName + ")";
-        for (int lev = 0; lev <= finest_level; lev++)
-            fuelmass += getLevel(lev).volWgtSum(fuel,time);
-
-        if (verbose && ParallelDescriptor::IOProcessor())
-            std::cout << " FUELMASS= " << fuelmass;
-
         int MyProc  = ParallelDescriptor::MyProc();
         int step    = parent->levelSteps(0);
         int restart = 0;
 
         if (do_active_control)
-            FORT_ACTIVECONTROL(&fuelmass,&time,&crse_dt,&MyProc,&step,&restart);
+        {
+            Real fuelmass = 0.0;
+            std::string fuel = "rho.Y(" + fuelName + ")";
+            for (int lev = 0; lev <= finest_level; lev++)
+                fuelmass += getLevel(lev).volWgtSum(fuel,time);
+
+            if (verbose && ParallelDescriptor::IOProcessor())
+                std::cout << " FUELMASS= " << fuelmass;
+
+            int usetemp = 0;
+
+            FORT_ACTIVECONTROL(&fuelmass,&time,&crse_dt,&MyProc,&step,&restart,&usetemp);
+        }
+        else if (do_active_control_temp)
+        {
+            const int   DM     = BL_SPACEDIM-1;
+            const Real* dx     = geom.CellSize();
+            const Real* problo = geom.ProbLo();
+            Real        hival  = geom.ProbHi(DM);
+            MultiFab&   state  = get_new_data(State_Type);
+
+            for (MFIter mfi(state); mfi.isValid(); ++mfi)
+            {
+                const FArrayBox& fab  = state[mfi];
+                const Box&       vbox = state.boxArray()[mfi.index()];
+
+                for (IntVect iv = vbox.smallEnd(); iv <= vbox.bigEnd(); vbox.next(iv))
+                {
+                    if (fab(iv,Temp) >= temp_control)
+                    {
+                        const Real hi = problo[DM] + (iv[DM] + .5) * dx[DM];
+
+                        if (hi < hival) hival = hi;
+                    }
+                }
+            }
+
+            ParallelDescriptor::ReduceRealMin(hival);
+
+            if (verbose && ParallelDescriptor::IOProcessor())
+                std::cout << " HIVAL= " << hival;
+
+            int usetemp = 1;
+
+            FORT_ACTIVECONTROL(&hival,&time,&crse_dt,&MyProc,&step,&restart,&usetemp);
+        }
     }
 
     if (verbose && ParallelDescriptor::IOProcessor())
