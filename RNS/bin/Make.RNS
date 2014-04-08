@@ -63,6 +63,8 @@ else ifeq (${CHEMISTRY_MODEL}, LUDME)
   vpath %.c $(VPATH_LOCATIONS) ${MECHDIR}/Lu
 else ifeq (${CHEMISTRY_MODEL}, NULL)
   DEFINES += -DNULLCHEMISTRY
+else ifeq (${CHEMISTRY_MODEL}, LOCAL)
+  # chemistry files are in local problem directory 
 else
   $(error "Unknown CHEMISTRY_MODEL: $(CHEMISTRY_MODEL)")
 endif
