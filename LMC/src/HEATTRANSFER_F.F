@@ -191,7 +191,7 @@ c     -- rbp
 #include <cdwrk.H>
 #include <bc.H>
 
-      REAL_T coft,time,dt,vslope,slocal,V_new,dVmax
+      REAL_T coft,time,dt,vslope,slocal,V_new,dVmax,dVmin
       integer myproc,step,ierr,restart,usetemp
       REAL_T r1,r2,r3,r4,r5,r6,r7
       REAL_T alpha,xsmb,vpmax,exp1 
@@ -245,7 +245,7 @@ c
          return
       end if
 
-      if (coft_old .lt. zero) coft_old = coft
+      if (usetemp.eq.0 .and. coft_old .lt. zero) coft_old = coft
 
       zbase_control = zbase_control + V_in*dt + dV_control*dt**2
       V_in_old = V_in
@@ -254,10 +254,16 @@ c
       slocal = half*(V_in_old + V_in) - (coft - coft_old)/(dt*scale_control)
       sest = (one - corr)*sest + corr*slocal
 #if 1
-      vslope = two*((cfix-coft)/(scale_control*tau_control) + sest - V_in)/tau_control
+c     vslope = two*((cfix-coft)/(scale_control*tau_control) + sest - V_in)/tau_control
 
-      V_new = V_in + dt*vslope
+c     V_new = V_in + dt*vslope
+
+      vslope = 3.d0*((cfix-coft)/(scale_control*tau_control) + sest - V_in)/tau_control
+
+      V_new = V_in + (dt-0.5d0*dt**2/tau_control)*vslope
+
       dVmax = changeMax_control * one
+      dVmin = changeMax_control * max(one,V_in)
 #else
 
 
@@ -275,7 +281,7 @@ c
 
       dVmax = changeMax_control * max(one,V_in)
 #endif
-      V_new = MIN(MAX(V_new,V_in-dVmax),V_in+dVmax)
+      V_new = MIN(MAX(V_new,V_in-dVmin),V_in+dVmax)
       V_new = MAX(zero,V_new)
 
       tbase_control = time
@@ -283,7 +289,7 @@ c
 
       if (myproc.eq.0) then
          print *
-         print *,'****************** control:'
+         print *,'****************** control:', scale_control
          print *,'time,dt,coft,V_new:',time,dt,coft,V_new
          print *,'changeMax_control: ', changeMax_control
 #if 1
@@ -292,6 +298,7 @@ c
          print *,'alpha,sest,cfix,slocal:',alpha,sest,cfix,slocal
 #endif
          print *,'coft_old,V_in_old:',coft_old,V_in_old
+         call flush(6)
       endif
 
       coft_old = coft

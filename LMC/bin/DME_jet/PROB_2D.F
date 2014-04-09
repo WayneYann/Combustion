@@ -74,7 +74,7 @@ c     set bc's
          end do
          T_bc(fuelZone) = T_in
          u_bc(fuelZone) = 0.d0
-         v_bc(fuelZone) = V_in
+         v_bc(fuelZone) = V_jet
 
 c     Air 
          do n=1,Nspec
@@ -1425,7 +1425,7 @@ c     that the bc values may often be set up ahead of time.
             do i = lo(1), hi(1)
                x = (DBLE(i)+.5d0)*delta(1)+domnlo(1)
                call bcfunction(BL_YLO, x, y, time, u, v, rho, Yl, T, h, delta,.true.)
-               yvel(i,j) = v
+               yvel(i,j) = v+ V_in
 #if defined(BL_DO_FLCT)
                if (forceLo .and. strmwse_dir .eq. 2) then
                   yvel(i,j) = yvel(i,j) + vflct(i,1)*turb_scale

@@ -10,7 +10,9 @@ ht.vode_itol = 2
 #ht.vode_rtol = 1.e-13
 #ht.vode_atol = 1.e-13
 
-ns.do_active_control = 0
+ns.do_active_control_temp = 1
+ns.temp_control = 1400
+
 mg.smooth_on_cg_unstable=1
 
 stop_time = 4.0
@@ -193,8 +195,8 @@ fab.format = NATIVE
 
 #ns.hack_nochem=1
 #ns.hack_nospecdiff=1
-ns.init_iter=0
-ns.do_init_proj=0
+#ns.init_iter=0
+#ns.do_init_proj=0
 #ShowMF_Sets = mac velVT dd estate
 #ShowMF_Sets = dddt dd divu 1D mac
 #ShowMF_Sets = 1D
