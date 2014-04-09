@@ -2455,20 +2455,42 @@ HeatTransfer::sum_integrated_quantities ()
             const Real* dx     = geom.CellSize();
             const Real* problo = geom.ProbLo();
             Real        hival  = geom.ProbHi(DM);
-            MultiFab&   state  = get_new_data(State_Type);
+            const Real  time   = state[State_Type].curTime();
+            MultiFab&   mf     = get_new_data(State_Type);
 
-            for (MFIter mfi(state); mfi.isValid(); ++mfi)
+            for (FillPatchIterator Tfpi(*this,mf,1,time,State_Type,Temp,1);
+                 Tfpi.isValid();
+                 ++Tfpi)
             {
-                const FArrayBox& fab  = state[mfi];
-                const Box&       vbox = state.boxArray()[mfi.index()];
+                const FArrayBox& fab  = Tfpi();
+                const Box&       vbox = Tfpi.validbox();
 
                 for (IntVect iv = vbox.smallEnd(); iv <= vbox.bigEnd(); vbox.next(iv))
                 {
-                    if (fab(iv,Temp) >= temp_control)
+                    const Real T_hi = fab(iv);
+
+                    if (T_hi > temp_control)
                     {
                         const Real hi = problo[DM] + (iv[DM] + .5) * dx[DM];
 
-                        if (hi < hival) hival = hi;
+                        if (hi < hival)
+                        {
+                            hival = hi;
+
+                            IntVect lo_iv = iv;
+
+                            lo_iv[DM] -= 1;
+
+                            const Real T_lo = fab(lo_iv);
+
+                            if (T_lo < temp_control)
+                            {
+                                const Real lo    = problo[DM] + (lo_iv[DM] + .5) * dx[DM];
+                                const Real slope = (T_hi - T_lo) / (hi - lo);
+
+                                hival = (temp_control - T_lo) / slope + lo;
+                            }
+                        }
                     }
                 }
             }
