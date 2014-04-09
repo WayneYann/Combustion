@@ -53,7 +53,7 @@ c ::: -----------------------------------------------------------
 #include <forcedata.H>
 #endif
 
-      integer i
+      integer i, istemp
       REAL_T FORT_P1ATMMKS, area
 
       namelist /fortin/ vorterr, temperr, adverr, tempgrad, 
@@ -63,14 +63,14 @@ c ::: -----------------------------------------------------------
      $                  turb_scale, V_in, V_co, H2_frac,T_switch,
      $                  standoff, pertmag, nchemdiag, splitx, xfrontw,
      &                  splity, yfrontw, blobx, bloby, blobz, blobr,
-     &                  blobT, Tfrontw, stTh, fuel_N2_vol_percent
+     &                  blobT, Tfrontw, stTh, fuel_N2_vol_percent,V_jet
       namelist /heattransin/ pamb, dpdt_factor
 #if defined(BL_DO_FLCT)
       namelist /flctin/ tstart_turb, forceInflow, numInflPlanesStore, forceLo, forceHi,
      &     strmwse_dir, nCompInflow, flct_file, convVelInit
 #endif
       namelist /control/ tau_control, sest, cfix, changeMax_control, h_control, 
-     &     zbase_control, pseudo_gravity
+     &     zbase_control, pseudo_gravity, istemp,corr
 #ifdef DO_LMC_FORCE
       REAL_T  twicePi, kxd, kyd, kzd
       REAL_T  thetaTmp, phiTmp
@@ -248,7 +248,11 @@ c     Set up boundary functions
       do i=1,SDIM-1
          area = area*(domnhi(i)-domnlo(i))
       enddo
+      if(istemp.eq.0)then
       scale_control = Y_bc(fuelID-1,BL_FUELPIPE) * rho_bc(BL_FUELPIPE) * area
+      else
+      scale_control = 1.d0
+      endif
       if (isioproc.eq.1) then
          write(6,*)" control setup", area, Y_bc(fuelID-1,BL_FUELPIPE), rho_bc(BL_FUELPIPE)
          write(6,*)" fuelpipe",BL_FUELPIPE

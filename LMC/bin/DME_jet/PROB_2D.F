@@ -74,7 +74,7 @@ c     set bc's
          end do
          T_bc(fuelZone) = T_in
          u_bc(fuelZone) = 0.d0
-         v_bc(fuelZone) = V_in
+         v_bc(fuelZone) = V_jet
 
 c     Air 
          do n=1,Nspec
@@ -382,23 +382,26 @@ c    &                    + (1.d0-eta)*scal(i,j,FirstSpec-1+n)
 c                 enddo
 
 c              else
-               if (blobr.gt.0) then
+c              if (blobr.gt.0) then
 
-                  eta = 0.5d0*(1.d0 - TANH(-2.d0*(y-bloby)/Tfrontw))
-                  scal(i,j,Temp) = T_bc(airZone)*eta + (1.d0-eta)*scal(i,j,Temp)
-                  do n=1,Nspec
-                     scal(i,j,FirstSpec-1+n) = Y_bc(n-1,airZone)*eta
-     &                    + (1.d0-eta)*scal(i,j,FirstSpec-1+n)
-                  enddo
+c                 eta = 0.5d0*(1.d0 - TANH(-2.d0*(y-bloby)/Tfrontw))
+c                 scal(i,j,Temp) = T_bc(airZone)*eta + (1.d0-eta)*scal(i,j,Temp)
+c                 do n=1,Nspec
+c                    scal(i,j,FirstSpec-1+n) = Y_bc(n-1,airZone)*eta
+c    &                    + (1.d0-eta)*scal(i,j,FirstSpec-1+n)
+c                 enddo
                
                   
 c     Superimpose blob of hot air
                   r = SQRT((x-blobx)**2 + (y-bloby)**2)
                   eta = 0.5d0*(1.d0 - TANH(2.d0*(r-blobr)/Tfrontw))
-                  do n=1,Nspec
-                     scal(i,j,FirstSpec-1+n) = Y_bc(n-1,airZone)*eta
-     &                    + (1.d0-eta)*scal(i,j,FirstSpec-1+n)
-                  enddo
+                  eta = ( dexp(-((x + splitx)**2 + (y-bloby)**2)/Tfrontw**2) 
+     &               +  dexp(-((x - splitx)**2 + (y-bloby)**2)/Tfrontw**2) )
+ 
+c                 do n=1,Nspec
+c                    scal(i,j,FirstSpec-1+n) = Y_bc(n-1,airZone)*eta
+c    &                    + (1.d0-eta)*scal(i,j,FirstSpec-1+n)
+c                 enddo
                   scal(i,j,Temp) = blobT*eta + (1.d0-eta)*scal(i,j,Temp)
 c                 vel(i,j,1) = 0.d0
 c                 vel(i,j,2) = v_bc(airZone)
@@ -407,7 +410,7 @@ c                 vel(i,j,1) = u_bc(airZone)*eta + (1.d0-eta)*u_bc(fuelZone)
 c                 vel(i,j,2) = v_bc(airZone)*eta + (1.d0-eta)*v_bc(fuelZone)
 c                 scal(i,j,Trac) = 0.d0
                   
-               endif
+c              endif
 
             enddo
          enddo
@@ -1422,7 +1425,7 @@ c     that the bc values may often be set up ahead of time.
             do i = lo(1), hi(1)
                x = (DBLE(i)+.5d0)*delta(1)+domnlo(1)
                call bcfunction(BL_YLO, x, y, time, u, v, rho, Yl, T, h, delta,.true.)
-               yvel(i,j) = v
+               yvel(i,j) = v+ V_in
 #if defined(BL_DO_FLCT)
                if (forceLo .and. strmwse_dir .eq. 2) then
                   yvel(i,j) = yvel(i,j) + vflct(i,1)*turb_scale
