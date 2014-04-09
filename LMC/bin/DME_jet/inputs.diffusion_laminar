@@ -54,13 +54,11 @@ cg.cg_solver=1
 
 geometry.prob_lo    = -0.00114 0.0
 geometry.prob_hi    =  0.00114 0.00228
-geometry.prob_lo    = -0.0009 0.0
-geometry.prob_hi    =  0.0009 0.0036
-geometry.prob_lo    = -0.00045 0.0
-geometry.prob_hi    =  0.00045 0.0018
+geometry.prob_lo    = -0.0015 0.0
+geometry.prob_hi    =  0.0015 0.003
 amr.n_cell          = 96 96
 amr.n_cell          = 64 256
-amr.n_cell          = 128 256
+amr.n_cell          = 384 384
 amr.max_grid_size   = 32
 #amr.max_grid_size   = 256 64 64
 amr.refine_grid_layout = 0
@@ -81,7 +79,7 @@ ns.cfl              = 0.25
 ns.cfl              = 0.7
 
 amr.v=1
-amr.max_level        = 2
+amr.max_level        = 0
 amr.ref_ratio       = 2 2 2 2 # refinement ratio
 amr.regrid_int      = 2       # how often to regrid
 amr.n_error_buf     = 2 2 4 4 # number of buffer cells in error est
@@ -195,8 +193,8 @@ fab.format = NATIVE
 
 #ns.hack_nochem=1
 #ns.hack_nospecdiff=1
-#ns.init_iter=0
-#ns.do_init_proj=0
+ns.init_iter=0
+ns.do_init_proj=0
 #ShowMF_Sets = mac velVT dd estate
 #ShowMF_Sets = dddt dd divu 1D mac
 #ShowMF_Sets = 1D

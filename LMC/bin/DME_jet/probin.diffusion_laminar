@@ -34,9 +34,9 @@
   Tfrontw = .000075
   xfrontw = .000075
 
-  blobT = 2000.
+  blobT = 1500.
   blobx = 0.
-  bloby = .00027
+  bloby = .00075
 
  /
  &heattransin
