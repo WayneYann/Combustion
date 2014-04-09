@@ -34,7 +34,7 @@
   Tfrontw = .000075
   xfrontw = .000075
 
-  blobT = 1500.
+  blobT = 2000.
   blobx = 0.
   bloby = .00027
 
