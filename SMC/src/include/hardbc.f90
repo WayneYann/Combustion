@@ -21,7 +21,9 @@
           qp => dataptr(qin%data, n)
           up => dataptr(U,n)
 
-          if (dm .eq. 2) then
+          if (dm .eq. 1) then
+             call ctoprim_inflow_1d(lo,hi,ng,up,qlo,qhi,qp)
+          else if (dm .eq. 2) then
              call ctoprim_inflow_2d(lo,hi,ng,up,qlo,qhi,qp)
           else
              call ctoprim_inflow_3d(lo,hi,ng,up,qlo,qhi,qp)
@@ -30,6 +32,25 @@
     end do
 
   end subroutine store_inflow
+
+  subroutine ctoprim_inflow_1d(lo,hi,ng,cons,qlo,qhi,qin)
+    integer, intent(in) :: lo(1), hi(1), ng, qlo(1), qhi(1)
+    double precision, intent(in) :: cons(-ng+lo(1):hi(1)+ng,ncons)
+    double precision, intent(out) :: qin(nqin,qlo(1):qhi(1))
+
+    integer :: i, iwrk, ierr
+    double precision :: rhoinv, ei, rwrk
+
+    do i=qlo(1),qhi(1)
+       rhoinv = 1.d0/cons(i,irho)
+       qin(iuin,i) = cons(i,imx)*rhoinv
+       qin(iYin1:,i) = cons(i,iry1:iry1+nspecies-1)*rhoinv
+       
+       ei = rhoinv*cons(i,iene) - 0.5d0*qin(iuin,i)**2
+       qin(iTin,i) = 0.d0
+       call get_t_given_ey(ei, qin(iYin1:,i), iwrk, rwrk, qin(iTin,i), ierr)
+    end do
+  end subroutine ctoprim_inflow_1d
 
   subroutine ctoprim_inflow_2d(lo,hi,ng,cons,qlo,qhi,qin)
     integer, intent(in) :: lo(2), hi(2), ng, qlo(2), qhi(2)
@@ -111,7 +132,10 @@
           qlo = lwb(get_box(qin_xlo%data,n))
           qhi = upb(get_box(qin_xlo%data,n))
           qp  => dataptr(   qin_xlo%data,n)
-          if (dm .eq. 2) then
+          if (dm .eq. 1) then
+             call update_inlet_xlo_1d(lo,hi,qp(:,lo(1),1,1),t,dx)
+             call impose_inflow_1d(lo,hi,ng,up,qlo,qhi,qp,1)
+          else if (dm .eq. 2) then
              call update_inlet_xlo_2d(lo,hi,qp(:,lo(1),:,1),t,dx)
              call impose_inflow_2d(lo,hi,ng,up,qlo,qhi,qp,1)
           else
@@ -125,35 +149,39 @@
           qhi = upb(get_box(qin_xhi%data,n))
           qp  => dataptr(   qin_xhi%data,n)
           call bl_error("inflow for xhi not implemented")
-          if (dm .eq. 2) then
+          if (dm .eq. 1) then
+             call impose_inflow_1d(lo,hi,ng,up,qlo,qhi,qp,1)
+          else if (dm .eq. 2) then
              call impose_inflow_2d(lo,hi,ng,up,qlo,qhi,qp,1)
           else
              call impose_inflow_3d(lo,hi,ng,up,qlo,qhi,qp,1)
           end if
        end if
 
-       if (isValid(qin_ylo,n)) then
-          qlo = lwb(get_box(qin_ylo%data,n))
-          qhi = upb(get_box(qin_ylo%data,n))
-          qp  => dataptr(   qin_ylo%data,n)
-          if (dm .eq. 2) then
-             call update_inlet_ylo_2d(lo,hi,qp(:,:,lo(2),1),t,dx)
-             call impose_inflow_2d(lo,hi,ng,up,qlo,qhi,qp,2)
-          else
-             call update_inlet_ylo_3d(lo,hi,qp(:,:,lo(2),:),t,dx)
-             call impose_inflow_3d(lo,hi,ng,up,qlo,qhi,qp,2)
+       if (dm.ge.2) then
+          if (isValid(qin_ylo,n)) then
+             qlo = lwb(get_box(qin_ylo%data,n))
+             qhi = upb(get_box(qin_ylo%data,n))
+             qp  => dataptr(   qin_ylo%data,n)
+             if (dm .eq. 2) then
+                call update_inlet_ylo_2d(lo,hi,qp(:,:,lo(2),1),t,dx)
+                call impose_inflow_2d(lo,hi,ng,up,qlo,qhi,qp,2)
+             else
+                call update_inlet_ylo_3d(lo,hi,qp(:,:,lo(2),:),t,dx)
+                call impose_inflow_3d(lo,hi,ng,up,qlo,qhi,qp,2)
+             end if
           end if
-       end if
-
-       if (isValid(qin_yhi,n)) then
-          qlo = lwb(get_box(qin_yhi%data,n))
-          qhi = upb(get_box(qin_yhi%data,n))
-          qp  => dataptr(   qin_yhi%data,n)
-          call bl_error("inflow for yhi not implemented")
-          if (dm .eq. 2) then
-             call impose_inflow_3d(lo,hi,ng,up,qlo,qhi,qp,2)
-          else
-             call impose_inflow_3d(lo,hi,ng,up,qlo,qhi,qp,2)
+          
+          if (isValid(qin_yhi,n)) then
+             qlo = lwb(get_box(qin_yhi%data,n))
+             qhi = upb(get_box(qin_yhi%data,n))
+             qp  => dataptr(   qin_yhi%data,n)
+             call bl_error("inflow for yhi not implemented")
+             if (dm .eq. 2) then
+                call impose_inflow_3d(lo,hi,ng,up,qlo,qhi,qp,2)
+             else
+                call impose_inflow_3d(lo,hi,ng,up,qlo,qhi,qp,2)
+             end if
           end if
        end if
 
@@ -179,6 +207,23 @@
 
   end subroutine impose_hard_bc
 
+
+  subroutine impose_inflow_1d(lo,hi,ng,cons,qlo,qhi,qin,idim)
+    integer, intent(in) :: lo(1), hi(1), ng, qlo(1), qhi(1), idim
+    double precision, intent(inout) :: cons(-ng+lo(1):hi(1)+ng,ncons)
+    double precision, intent(in) :: qin(nqin,qlo(1):qhi(1))
+
+    integer :: i, iwrk
+    double precision :: ei, rwrk
+
+    do i=qlo(1),qhi(1)
+       cons(i,iry1:iry1+nspecies-1) = cons(i,irho) * qin(iYin1:,i)
+
+       call CKUBMS(qin(iTin,i),qin(iYin1:,i),iwrk,rwrk,ei)
+
+       cons(i,iene) = cons(i,irho)*ei + cons(i,imx)**2 / (2.d0*cons(i,irho))
+    end do
+  end subroutine impose_inflow_1d
 
   subroutine impose_inflow_2d(lo,hi,ng,cons,qlo,qhi,qin,idim)
     integer, intent(in) :: lo(2), hi(2), ng, qlo(2), qhi(2), idim

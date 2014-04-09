@@ -25,6 +25,13 @@ CHEMISTRY_DIR := ../../../Chemistry
 CHEMISTRY_MODEL := LUDME
 #CHEMISTRY_MODEL := LUDMERED
 
+
+# To use the reduced DME that uses diffusion flux to further destiffen the chemistry,
+# set the following
+# SMC_SRC := src_s3d
+# CHEMISTRY_MODEL := LUDMERED
+
+
 # include the SMC build stuff
 include $(SMC_TOP_DIR)/GSMC.mak
 

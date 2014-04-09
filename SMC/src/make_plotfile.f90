@@ -74,6 +74,7 @@ contains
        icomp_divu = get_next_plot_index(1)
     end if
 
+    if (dm_in.eq.1) plot_magvort = .false.
     if (plot_magvort) then
        icomp_magvort = get_next_plot_index(1)
     end if
@@ -144,7 +145,9 @@ contains
 
     plot_names(icomp_rho  ) = "density"
     plot_names(icomp_vel  ) = "x_vel"
-    plot_names(icomp_vel+1) = "y_vel"
+    if (dm_in .ge. 2) then
+       plot_names(icomp_vel+1) = "y_vel"
+    end if
     if (dm_in .eq. 3) then
        plot_names(icomp_vel+2) = "z_vel"
     end if

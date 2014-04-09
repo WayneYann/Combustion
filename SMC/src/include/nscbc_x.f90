@@ -1228,3 +1228,226 @@
     end if
 
   end subroutine comp_trans_deriv_x2_2d
+
+
+! ----------------- 1D routine --------------------------
+
+  subroutine outlet_xlo_1d(lo,hi,ngq,ngc,dx,Q,con,fd,rhs,aux,dlo,dhi)
+    integer, intent(in) :: lo(1), hi(1), ngq, ngc, dlo(1), dhi(1)
+    double precision,intent(in   )::dx(1)
+    double precision,intent(in   )::Q  (-ngq+lo(1):hi(1)+ngq,nprim)
+    double precision,intent(in   )::con(-ngc+lo(1):hi(1)+ngc,ncons)
+    double precision,intent(in   )::fd (lo(1):hi(1),ncons)
+    double precision,intent(inout)::rhs(lo(1):hi(1),ncons)
+    double precision,intent(in   )::aux(naux)
+
+    integer :: i,n
+    double precision :: dxinv(1)
+    double precision :: rho, u, T, pres, Y(nspecies), h(nspecies), rhoE
+    double precision :: dpdn, dudn, drhodn, dYdn(nspecies)
+    double precision :: L(3+nspecies), lhs(ncons)
+    double precision :: S_p, S_Y(nspecies), d_u, d_p
+    double precision :: hcal, cpWT, gam1
+
+    i = lo(1)
+
+    dxinv(1) = 1.0d0 / dx(1)
+          
+    rho  = q  (i,qrho)
+    u    = q  (i,qu)
+    pres = q  (i,qpres)
+    T    = q  (i,qtemp)
+    Y    = q  (i,qy1:qy1+nspecies-1)
+    h    = q  (i,qh1:qh1+nspecies-1)
+    rhoE = con(i,iene)
+          
+    drhodn     = dxinv(1)*first_deriv_rb(q(i:i+3,qrho))
+    dudn       = dxinv(1)*first_deriv_rb(q(i:i+3,qu))
+    dpdn       = dxinv(1)*first_deriv_rb(q(i:i+3,qpres))
+    do n=1,nspecies
+       dYdn(n) = dxinv(1)*first_deriv_rb(q(i:i+3,qy1+n-1))
+    end do
+       
+    ! Simple 1D LODI 
+    L(1) = (u-aux(ics))*0.5d0*(dpdn-rho*aux(ics)*dudn)
+    L(2) = u*(drhodn-dpdn/aux(ics)**2)
+    L(3) = sigma*aux(ics)*(1.d0-Ma2_xlo)/(2.d0*Lxdomain)*(pres-Pinfty)
+    L(4:) = u*dYdn
+          
+    ! viscous and reaction effects
+    d_u = fd(i,imx) / rho
+       
+    S_p = 0.d0
+    d_p = fd(i,iene) - d_u*con(i,imx)
+    cpWT = aux(icp)*aux(iWbar)*T
+    gam1 = aux(igamma) - 1.d0
+    do n=1,nspecies
+       hcal = h(n) - cpWT*inv_mwt(n)
+       S_p    = S_p - hcal*aux(iwdot1+n-1)
+       S_Y(n) = aux(iwdot1+n-1) / rho
+       d_p    = d_p - hcal*fd(i,iry1+n-1)
+    end do
+    S_p = gam1 * S_p
+    d_p = gam1 * d_p 
+       
+    L(3) = L(3) + 0.5d0*(S_p + d_p + rho*aux(ics)*d_u)
+          
+    if (u > 0.d0) then
+       L(2) = -S_p/aux(ics)**2
+       L(4:) = S_Y      
+             
+       L(3) = 0.5d0*(S_p + d_p + rho*aux(ics)*d_u) &
+            + outlet_eta*aux(igamma)*pres*(1.d0-Ma2_xlo)/(2.d0*Lxdomain)*u
+    end if
+          
+    call LtoLHS_1d(1, L, lhs, aux, rho, u, T, Y, h, rhoE)
+          
+    rhs(i,:) = rhs(i,:) - lhs
+       
+  end subroutine outlet_xlo_1d
+
+
+  subroutine inlet_xlo_1d(lo,hi,ngq,ngc,dx,Q,con,fd,rhs,aux,qin,dlo,dhi)
+    integer, intent(in) :: lo(1), hi(1), ngq, ngc, dlo(1), dhi(1)
+    double precision,intent(in   )::dx(1)
+    double precision,intent(in   )::Q  (-ngq+lo(1):hi(1)+ngq,nprim)
+    double precision,intent(in   )::con(-ngc+lo(1):hi(1)+ngc,ncons)
+    double precision,intent(in   )::fd (lo(1):hi(1),ncons)
+    double precision,intent(inout)::rhs(lo(1):hi(1),ncons)
+    double precision,intent(in   )::aux(naux)
+    double precision,intent(in   )::qin(nqin)
+
+    integer :: i,n
+    double precision :: dxinv(1)
+    double precision :: rho, u, v, T, Y(nspecies), h(nspecies), rhoE
+    double precision :: dpdn, dudn
+    double precision :: L(3+nspecies), lhs(ncons)
+    double precision :: S_p, S_Y(nspecies), d_u, d_p, d_Y(nspecies)
+    double precision :: hcal, cpWT, gam1, cs2
+
+    i = lo(1)
+
+    dxinv(1) = 1.0d0 / dx(1)
+
+    rho  = q  (i,qrho)
+    u    = q  (i,qu)
+    T    = q  (i,qtemp)
+    Y    = q  (i,qy1:qy1+nspecies-1)
+    h    = q  (i,qh1:qh1+nspecies-1)
+    rhoE = con(i,iene)
+       
+    dudn = dxinv(1)*first_deriv_rb(q(i:i+3,qu))
+    dpdn = dxinv(1)*first_deriv_rb(q(i:i+3,qpres))
+       
+    cs2 = aux(ics)**2
+       
+    ! Simple 1D LODI 
+    L(1) = (u-aux(ics))*0.5d0*(dpdn-rho*aux(ics)*dudn)
+    L(2) = -inlet_eta*Ru*rho*(T-qin(iTin)) & 
+         / (Lxdomain*aux(ics)*aux(iWbar))
+    L(3) = inlet_eta*rho*cs2*(1.d0-Ma2_xlo)/(2.d0*Lxdomain) &
+         * (u-qin(iuin))
+    L(4:) = inlet_eta*aux(ics)/Lxdomain*(Y-qin(iYin1:))
+          
+    ! viscous and reaction effects
+    d_u = fd(i,imx) / rho
+          
+    S_p = 0.d0
+    d_p = fd(i,iene) - d_u*con(i,imx)
+    cpWT = aux(icp)*aux(iWbar)*T
+    gam1 = aux(igamma) - 1.d0
+    do n=1,nspecies
+       hcal = h(n) - cpWT*inv_mwt(n)
+       S_p    = S_p - hcal*aux(iwdot1+n-1)
+       S_Y(n) = aux(iwdot1+n-1) / rho
+       d_p    = d_p - hcal*fd(i,iry1+n-1)
+       d_Y(n) = fd(i,iry1+n-1) / rho
+    end do
+    S_p = gam1 * S_p
+    d_p = gam1 * d_p 
+       
+    L(2)  = L(2)  - (d_p + S_p) / cs2
+    L(3)  = L(3)  + 0.5d0*(S_p + d_p + rho*aux(ics)*d_u)
+    L(4:) = L(4:) + S_Y + d_Y
+
+    call LtoLHS_1d(1, L, lhs, aux, rho, u, T, Y, h, rhoE)
+          
+    rhs(i,:) = rhs(i,:) - lhs
+
+  end subroutine inlet_xlo_1d
+
+
+  subroutine outlet_xhi_1d(lo,hi,ngq,ngc,dx,Q,con,fd,rhs,aux,dlo,dhi)
+    integer, intent(in) :: lo(1), hi(1), ngq, ngc, dlo(1), dhi(1)
+    double precision,intent(in   )::dx(1)
+    double precision,intent(in   )::Q  (-ngq+lo(1):hi(1)+ngq,nprim)
+    double precision,intent(in   )::con(-ngc+lo(1):hi(1)+ngc,ncons)
+    double precision,intent(in   )::fd (lo(1):hi(1),ncons)
+    double precision,intent(inout)::rhs(lo(1):hi(1),ncons)
+    double precision,intent(in   )::aux(naux)
+
+    integer :: i,n
+    double precision :: dxinv(1)
+    double precision :: rho, u, T, pres, Y(nspecies), h(nspecies), rhoE
+    double precision :: dpdn, dudn, drhodn, dYdn(nspecies)
+    double precision :: L(3+nspecies), lhs(ncons)
+    double precision :: S_p, S_Y(nspecies), d_u, d_p
+    double precision :: hcal, cpWT, gam1
+
+    i = hi(1)
+
+    dxinv(1) = 1.0d0 / dx(1)
+          
+    rho  = q  (i,qrho)
+    u    = q  (i,qu)
+    pres = q  (i,qpres)
+    T    = q  (i,qtemp)
+    Y    = q  (i,qy1:qy1+nspecies-1)
+    h    = q  (i,qh1:qh1+nspecies-1)
+    rhoE = con(i,iene)
+       
+    drhodn     = dxinv(1)*first_deriv_lb(q(i-3:i,qrho))
+    dudn       = dxinv(1)*first_deriv_lb(q(i-3:i,qu))
+    dpdn       = dxinv(1)*first_deriv_lb(q(i-3:i,qpres))
+    do n=1,nspecies
+       dYdn(n) = dxinv(1)*first_deriv_lb(q(i-3:i,qy1+n-1))
+    end do
+    
+    ! Simple 1D LODI 
+    L(1) = sigma*aux(ics)*(1.d0-Ma2_xhi)/(2.d0*Lxdomain)*(pres-Pinfty)
+    L(2) = u*(drhodn-dpdn/aux(ics)**2)
+    L(3) = (u+aux(ics))*0.5d0*(dpdn+rho*aux(ics)*dudn)
+    L(4:) = u*dYdn
+          
+    ! viscous and reaction effects
+    d_u = fd(i,imx) / rho
+
+    S_p = 0.d0
+    d_p = fd(i,iene) - d_u*con(i,imx)
+    cpWT = aux(icp)*aux(iWbar)*T
+    gam1 = aux(igamma) - 1.d0
+    do n=1,nspecies
+       hcal = h(n) - cpWT*inv_mwt(n)
+       S_p    = S_p - hcal*aux(iwdot1+n-1)
+       S_Y(n) = aux(iwdot1+n-1) / rho
+       d_p    = d_p - hcal*fd(i,iry1+n-1)
+    end do
+    S_p = gam1 * S_p
+    d_p = gam1 * d_p 
+
+    L(1) = L(1) + 0.5d0*(S_p + d_p - rho*aux(ics)*d_u)
+          
+    if (u < 0.d0) then
+       L(2) = -S_p/aux(ics)**2
+       L(4:) = S_Y      
+             
+       L(1) = 0.5d0*(S_p + d_p - rho*aux(ics)*d_u) & 
+            - outlet_eta*aux(igamma)*pres*(1.d0-Ma2_xhi)/(2.d0*Lxdomain)*u
+    end if
+          
+    call LtoLHS_1d(1, L, lhs, aux, rho, u, T, Y, h, rhoE)
+       
+    rhs(i,:) = rhs(i,:) - lhs
+       
+  end subroutine outlet_xhi_1d
+

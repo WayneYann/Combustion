@@ -36,6 +36,8 @@
  *
  * 2. We're using Gauss-Lobatto nodes, but Gauss-Radau would probably
  *    be better for chemistry.
+ *
+ * 3. mlsdc_amr_interpolate won't work for correcton at wall boundary. 
  */
 
 #include <SDCAmr.H>
@@ -61,11 +63,11 @@ BEGIN_EXTERN_C
 /*
  * Spatial interpolation between MultiFabs.  Called by SDCLib.
  */
-// xxxxx TODO: need to distinguish correction from solution, because they have
-//             different physical boundary conditions
 void mlsdc_amr_interpolate(void *Fp, void *Gp, sdc_state *state, void *ctxF, void *ctxG)
 {
   BL_PROFILE("MLSDC_AMR_INTERPOLATE()");
+
+  bool isCorrection = state->kind == SDC_CORRECTION;
 
   RNSEncap& F      = *((RNSEncap*) Fp);
   RNSEncap& G      = *((RNSEncap*) Gp);
@@ -158,7 +160,9 @@ void mlsdc_amr_interpolate(void *Fp, void *Gp, sdc_state *state, void *ctxF, voi
 	  UG_safe = &UG;
       }
 
-      levelG.fill_boundary(*UG_safe, state->t, RNS::use_FillBoundary);
+      if (isCorrection) UG_safe->setBndry(0.0);
+
+      levelG.fill_boundary(*UG_safe, state->t, RNS::use_FillBoundary, isCorrection);
 
       // We cannot do FabArray::copy() directly on UG because it copies only form
       // valid regions.  So we need to make the ghost cells of UG valid.
@@ -178,8 +182,22 @@ void mlsdc_amr_interpolate(void *Fp, void *Gp, sdc_state *state, void *ctxF, voi
 
   }
   else {
-    UC.copy(UG);
-    levelG.fill_boundary(UC, state->t, RNS::set_PhysBoundary);
+      if (isCorrection) {
+#ifdef NDEBUG
+	  UC.setVal(0.0);
+	  UC.copy(UG);
+#else
+	  UC.copy(UG);
+	  const Box& crse_domain_box = levelG.Domain();
+	  for (MFIter mfi(UC); mfi.isValid(); ++mfi) {
+	      UC[mfi].setComplement(0.0, crse_domain_box, 0, ncomp);
+	  }
+#endif
+      }
+      else {
+	  UC.copy(UG);
+	  levelG.fill_boundary(UC, state->t, RNS::set_PhysBoundary, isCorrection);
+      }
   }
 
   RNS_ASSERTNONAN(UC);
@@ -198,7 +216,8 @@ void mlsdc_amr_interpolate(void *Fp, void *Gp, sdc_state *state, void *ctxF, voi
                crse_geom, fine_geom, bcr, 0, 0);
   }
 
-  levelF.fill_boundary(UF, state->t, RNS::set_PhysBoundary);
+  if (isCorrection) UF.setBndry(0.0);
+  levelF.fill_boundary(UF, state->t, RNS::set_PhysBoundary, isCorrection);
   RNS_ASSERTNONAN(UF);
 }
 
@@ -342,6 +361,9 @@ void SDCAmr::timeStep(int level, Real time,
     MultiFab& Uend   = *Qend.U;
 
     MultiFab::Copy(Unew, Uend, 0, 0, Uend.nComp(), 0);
+    
+    RNS& rns = *dynamic_cast<RNS*>(&getLevel(lev));
+    rns.post_update(Unew);
   }
 
   for (int lev = finest_level-1; lev>= 0; lev--) {
