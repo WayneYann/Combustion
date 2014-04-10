@@ -15,11 +15,11 @@ c     Note: Requires ckdwrk.H to obtain the value of maxspec
       character(50) ac_hist_file
       REAL_T tau_control, cfix, coft_old, sest, V_in_old, corr,
      &     changeMax_control, tbase_control, dV_control, scale_control,
-     &     zbase_control, h_control
+     &     zbase_control, h_control, controlVelMax
 
       common / control1 / tau_control, cfix, coft_old, sest, V_in_old,
      &     corr, changeMax_control, tbase_control, dV_control, scale_control,
-     &     zbase_control, h_control, ac_hist_file
+     &     zbase_control, h_control, controlVelMax,ac_hist_file
 
       integer pseudo_gravity
       common / control2 / pseudo_gravity
