@@ -283,6 +283,7 @@ c     V_new = V_in + dt*vslope
 #endif
       V_new = MIN(MAX(V_new,V_in-dVmin),V_in+dVmax)
       V_new = MAX(zero,V_new)
+      V_new = Min(V_new,controlVelMax)
 
       tbase_control = time
       dV_control = (V_new - V_in)/dt
