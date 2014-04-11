@@ -144,7 +144,11 @@ int          RNS::do_component_weno   = 0;
 int          RNS::do_chemistry        = 1;
 int          RNS::use_vode            = 0;
 int          RNS::do_cc_burning       = 0; // do_cc_burning has no effect when split_burning is true
+#ifdef USE_SDCLIB
 int          RNS::split_burning       = 1;
+#else
+int          RNS::split_burning       = 0;
+#endif
 int          RNS::new_J_cell          = 0; // new Jacobian for each cell?
 
 // this will be reset upon restart
