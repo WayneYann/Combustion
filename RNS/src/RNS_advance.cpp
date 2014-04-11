@@ -140,7 +140,7 @@ RNS::fill_boundary(MultiFab& U, Real time, int type_in, bool isCorrection)
 	geom.FillPeriodicBoundary(U, true);
 
 	if (isCorrection) break;
- 
+
 	for (MFIter mfi(U); mfi.isValid(); ++mfi)
 	{
 	    setPhysBoundaryValues(U[mfi],
@@ -421,13 +421,13 @@ void sdc_f2eval(void *Fp, void *Qp, double t, sdc_state *state, void *ctx)
   Real dt = state->dt;
 
   if (ChemDriver::isNull() || !RNS::do_chemistry) {
-      Uprime.setVal(0.0);      
+      Uprime.setVal(0.0);
       return;
   }
 
   if (rns.verbose > 1 && ParallelDescriptor::IOProcessor()) {
     cout << "MLSDC evaluating chemistry:"
-	 << " level: " << rns.Level() << ", node: " << state->node 
+	 << " level: " << rns.Level() << ", node: " << state->node
 	 << ", dt = " << dt << endl;
   }
 
@@ -488,9 +488,11 @@ void sdc_f2comp(void *Fp, void *Qp, double t, double dt, void *RHSp, sdc_state *
   BL_ASSERT(U.contains_nan() == false);
   rns.advance_chemistry(U, dt);
 
-  Uprime.copy(U);
-  Uprime.minus(Urhs, 0, Uprime.nComp(), 0);
-  Uprime.mult(1./dt);
+  sdc_f2eval(Fp, Qp, t, state, ctx);
+
+  // Uprime.copy(U);
+  // Uprime.minus(Urhs, 0, Uprime.nComp(), 0);
+  // Uprime.mult(1./dt);
 }
 
 void sdc_poststep_hook(void *Qp, sdc_state *state, void *ctx)

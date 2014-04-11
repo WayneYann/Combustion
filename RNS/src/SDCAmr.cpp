@@ -37,7 +37,7 @@
  * 2. We're using Gauss-Lobatto nodes, but Gauss-Radau would probably
  *    be better for chemistry.
  *
- * 3. mlsdc_amr_interpolate won't work for correcton at wall boundary. 
+ * 3. mlsdc_amr_interpolate won't work for correcton at wall boundary.
  */
 
 #include <SDCAmr.H>
@@ -278,24 +278,32 @@ void SDCAmr::timeStep(int level, Real time,
 
   BL_ASSERT(level == 0);
 
-  // build sdc hierarchy
-  if (sweepers[0] == NULL) rebuild_mlsdc();
-
   // regrid
+  bool grids_changed = false;
   int lev_top = min(finest_level, max_level-1);
   for (int i=level; i<=lev_top; i++) {
     const int post_regrid_flag = 1;
     const int old_finest = finest_level;
 
-    regrid(i,time);
+    grids_changed = grids_changed || regrid(i,time);
     amr_level[0].computeNewDt(finest_level, sub_cycle, n_cycle, ref_ratio,
   			      dt_min, dt_level, stop_time, post_regrid_flag);
 
-    for (int k=i; k<=finest_level; k++) level_count[k] = 0;
-    if (old_finest > finest_level) lev_top = min(finest_level, max_level-1);
+    for (int k=i; k<=finest_level; k++)
+      level_count[k] = 0;
+
+    if (old_finest > finest_level)
+      lev_top = min(finest_level, max_level-1);
   }
 
-  rebuild_mlsdc();
+  if (mg.sweepers[0] == NULL) grids_changed = true;
+
+  if (grids_changed)
+    rebuild_mlsdc();
+
+    // amr_level[0].computeNewDt(finest_level, sub_cycle, n_cycle, ref_ratio,
+    // 			      dt_min, dt_level, stop_time, post_regrid_flag);
+
 
   // echo
   double dt = dt_level[0];
@@ -304,25 +312,36 @@ void SDCAmr::timeStep(int level, Real time,
     cout << "MLSDC advancing with dt: " << dt << " (" << dt_level[0] << ")" << endl;
   }
 
-  // set intial conditions and times
-  for (int lev=0; lev<=finest_level; lev++) {
-    MultiFab& Unew = getLevel(lev).get_new_data(0);
-    RNSEncap& Q0   = *((RNSEncap*) mg.sweepers[lev]->nset->Q[0]);
-    MultiFab& U0   = *Q0.U;
-    MultiFab::Copy(U0, Unew, 0, 0, U0.nComp(), U0.nGrow());
-    getLevel(lev).get_state_data(0).setTimeLevel(time+dt, dt, dt);
-  }
+  // set intial conditions
+  // if (grids_changed) {
 
-  // fill fine boundaries using coarse data
+    for (int lev=0; lev<=finest_level; lev++) {
+      MultiFab& Unew = getLevel(lev).get_new_data(0);
+      RNSEncap& Q0   = *((RNSEncap*) mg.sweepers[lev]->nset->Q[0]);
+      MultiFab& U0   = *Q0.U;
+      MultiFab::Copy(U0, Unew, 0, 0, U0.nComp(), U0.nGrow());
+    }
+
+    // sdc_mg_spread(&mg, time, dt);
+
+  // } else {
+
+  //   // XXX
+  //   sdc_mg_spread_qend(&mg, time, dt);
+
+  // }
+
+  // // fill fine boundaries using coarse data
   for (int lev=0; lev<=finest_level; lev++) {
     RNS&      rns  = *dynamic_cast<RNS*>(&getLevel(lev));
     RNSEncap& Q0   = *((RNSEncap*) mg.sweepers[lev]->nset->Q[0]);
     MultiFab& U0   = *Q0.U;
-    rns.fill_boundary(U0, time, RNS::use_FillCoarsePatch);
-  }
 
-  // spread and iterate
-  sdc_mg_spread(&mg, time, dt);
+    getLevel(lev).get_state_data(0).setTimeLevel(time+dt, dt, dt);
+
+    // if (grids_changed)
+      rns.fill_boundary(U0, time, RNS::use_FillCoarsePatch);
+  }
 
   BL_PROFILE_VAR("SDCAmr::timeStep-iters", sdc_iters);
 
@@ -361,7 +380,7 @@ void SDCAmr::timeStep(int level, Real time,
     MultiFab& Uend   = *Qend.U;
 
     MultiFab::Copy(Unew, Uend, 0, 0, Uend.nComp(), 0);
-    
+
     RNS& rns = *dynamic_cast<RNS*>(&getLevel(lev));
     rns.post_update(Unew);
   }
@@ -395,15 +414,13 @@ sdc_sweeper* SDCAmr::build_level(int lev)
   else
     nnodes = 1 + (nnodes0 - 1) * ((int) pow((double) trat, lev-first_refinement_level+1));
 
-  sdc_nodes* nodes = sdc_nodes_create(nnodes, SDC_UNIFORM);
-  sdc_imex*  imex  = sdc_imex_create(nodes, sdc_f1eval, sdc_f2eval, sdc_f2comp);
-
-  if (lev > 0 && trat > 1)
-    sdc_sweeper_nest((sdc_sweeper*) imex, sweepers[lev-1]);
+  double nodes[3] = { 0.0, 0.5, 1.0 };
+  sdc_imex* imex = sdc_imex_create(nodes, nnodes, (nnodes-1)/2, SDC_IMEX_HO,
+				   sdc_f1eval, sdc_f2eval, sdc_f2comp);
 
   sdc_imex_setup(imex, NULL, NULL);
   sdc_hooks_add(imex->hooks, SDC_HOOK_POST_STEP, sdc_poststep_hook);
-  sdc_nodes_destroy(nodes);
+
   return (sdc_sweeper*) imex;
 }
 
