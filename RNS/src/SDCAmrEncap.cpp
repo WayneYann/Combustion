@@ -145,6 +145,17 @@ void mf_encap_saxpy(void *yp, sdc_dtype a, void *xp, int flags)
   if ((Qy.type==SDC_TAU) && (Qx.crse_flux!=NULL)) mf_encap_saxpy_flux(*Qy.crse_flux, a, *Qx.crse_flux);
 }
 
+void mf_encap_norm(void *qp, double *n)
+{
+  RNSEncap& Q = *((RNSEncap*) qp);
+  MultiFab& U = *Q.U;
+
+  double m = 0.0;
+  for (int c=0; c<U.nComp(); c++)
+    m += U.norm0(c);
+  *n = m / U.nComp();
+}
+
 END_EXTERN_C
 
 
@@ -169,6 +180,7 @@ sdc_encap* SDCAmr::build_encap(int lev)
   encap->setval  = mf_encap_setval;
   encap->copy    = mf_encap_copy;
   encap->saxpy   = mf_encap_saxpy;
+  encap->norm    = mf_encap_norm;
   encap->ctx     = ctx;
 
   return encap;

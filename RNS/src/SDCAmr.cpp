@@ -279,13 +279,13 @@ void SDCAmr::timeStep(int level, Real time,
   BL_ASSERT(level == 0);
 
   // regrid
-  bool grids_changed = false;
   int lev_top = min(finest_level, max_level-1);
   for (int i=level; i<=lev_top; i++) {
     const int post_regrid_flag = 1;
     const int old_finest = finest_level;
 
-    grids_changed = grids_changed || regrid(i,time);
+    // grids_changed = grids_changed || regrid(i,time);
+    regrid(i,time);
     amr_level[0].computeNewDt(finest_level, sub_cycle, n_cycle, ref_ratio,
   			      dt_min, dt_level, stop_time, post_regrid_flag);
 
@@ -296,13 +296,9 @@ void SDCAmr::timeStep(int level, Real time,
       lev_top = min(finest_level, max_level-1);
   }
 
-  if (mg.sweepers[0] == NULL) grids_changed = true;
-
-  if (grids_changed)
-    rebuild_mlsdc();
-
-    // amr_level[0].computeNewDt(finest_level, sub_cycle, n_cycle, ref_ratio,
-    // 			      dt_min, dt_level, stop_time, post_regrid_flag);
+  // if (mg.sweepers[0] == NULL) grids_changed = true;
+  // if (grids_changed)
+  rebuild_mlsdc();
 
 
   // echo
@@ -313,40 +309,30 @@ void SDCAmr::timeStep(int level, Real time,
   }
 
   // set intial conditions
-  // if (grids_changed) {
+  for (int lev=0; lev<=finest_level; lev++) {
+    MultiFab& Unew = getLevel(lev).get_new_data(0);
+    RNSEncap& Q0   = *((RNSEncap*) mg.sweepers[lev]->nset->Q[0]);
+    MultiFab& U0   = *Q0.U;
+    MultiFab::Copy(U0, Unew, 0, 0, U0.nComp(), U0.nGrow());
+    getLevel(lev).get_state_data(0).setTimeLevel(time+dt, dt, dt);
+  }
 
-    for (int lev=0; lev<=finest_level; lev++) {
-      MultiFab& Unew = getLevel(lev).get_new_data(0);
-      RNSEncap& Q0   = *((RNSEncap*) mg.sweepers[lev]->nset->Q[0]);
-      MultiFab& U0   = *Q0.U;
-      MultiFab::Copy(U0, Unew, 0, 0, U0.nComp(), U0.nGrow());
-    }
-
-    // sdc_mg_spread(&mg, time, dt);
-
-  // } else {
-
-  //   // XXX
-  //   sdc_mg_spread_qend(&mg, time, dt);
-
-  // }
-
-  // // fill fine boundaries using coarse data
+  // fill fine boundaries using coarse data
   for (int lev=0; lev<=finest_level; lev++) {
     RNS&      rns  = *dynamic_cast<RNS*>(&getLevel(lev));
     RNSEncap& Q0   = *((RNSEncap*) mg.sweepers[lev]->nset->Q[0]);
     MultiFab& U0   = *Q0.U;
-
-    getLevel(lev).get_state_data(0).setTimeLevel(time+dt, dt, dt);
-
-    // if (grids_changed)
-      rns.fill_boundary(U0, time, RNS::use_FillCoarsePatch);
+    rns.fill_boundary(U0, time, RNS::use_FillCoarsePatch);
   }
 
   BL_PROFILE_VAR("SDCAmr::timeStep-iters", sdc_iters);
 
   for (int k=0; k<max_iters; k++) {
-    sdc_mg_sweep(&mg, time, dt, SDC_MG_MIXEDINTERP | (k==max_iters-1 ? SDC_MG_HALFSWEEP : 0));
+    int flags = SDC_MG_MIXEDINTERP | SDC_SWEEP_MONITOR;
+    if (k==max_iters-1) flags |= SDC_MG_HALFSWEEP;
+    if (k==0)           flags |= SDC_SWEEP_FIRST;
+
+    sdc_mg_sweep(&mg, time, dt, flags);
 
     if (verbose > 0) {
       for (int lev=0; lev<=finest_level; lev++) {
@@ -354,8 +340,14 @@ void SDCAmr::timeStep(int level, Real time,
         MultiFab& R      = *Rencap->U;
 
 	sdc_sweeper_residual(mg.sweepers[lev], dt, Rencap);
-	double    r0     = R.norm0();
-	double    r2     = R.norm2();
+	double r0 = 0.0, r2 = 0.0;
+	for (int c=0; c<R.nComp(); c++) {
+	  r0 += R.norm0(c);
+	  r2 += R.norm2(c);
+	}
+	r0 /= R.nComp();
+	r2 /= R.nComp();
+
 	encaps[lev]->destroy(Rencap);
 
 	if (ParallelDescriptor::IOProcessor()) {
