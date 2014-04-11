@@ -504,7 +504,7 @@ RNS::estTimeStep (Real dt_old)
     ParallelDescriptor::ReduceRealMin(estdt);
 
     if (verbose && ParallelDescriptor::IOProcessor())
-	cout << "RNS::estTimeStep at level " << level << ":  estdt = " << estdt << std::endl;
+	cout << "At level " << level << ":  estdt = " << estdt << std::endl;
 
     return estdt;
     
@@ -532,9 +532,8 @@ RNS::estTimeStep (Real dt_old)
     Real estdt_min = std::min(estdts[0], estdts[1]);
 
     if (verbose && ParallelDescriptor::IOProcessor()){
-	cout << "RNS::estTimeStep at level " << level << ":  estdt = " << estdt_min << "\n";
-	cout << "                   hyperbolic estdt = " << estdts[0] << "\n";
-	cout << "                    diffusive estdt = " << estdts[1] << std::endl;
+	cout << "At level " << level << ":  estdt = " 
+	     << estdts[0] << " (advection),  " << estdts[1] << " (diffusion)" << std::endl;
     }
 
     return estdt_min;
