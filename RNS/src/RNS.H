@@ -352,6 +352,7 @@ protected:
     static int         use_vode;
     static int         do_cc_burning;
     static int         split_burning;
+    static int         new_J_cell;
 
     // for keeping track of the amount of CPU time used -- this will persist
     // after restarts

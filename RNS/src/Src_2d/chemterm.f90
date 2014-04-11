@@ -1,7 +1,7 @@
 module chemterm_module
 
   use meth_params_module, only : NVAR, URHO, UEDEN, UMX, UMY, UTEMP, UFS, NSPEC, &
-       do_cc_burning, split_burning
+       do_cc_burning, split_burning, new_J_cell
   use burner_module, only : burn, compute_rhodYdt, splitburn
   use eos_module, only : eos_get_T
 
@@ -50,7 +50,7 @@ contains
     end do
     !$omp end do
 
-    force_new_J = .true.  ! always recompute Jacobina when a new FAB starts
+    force_new_J = .true.  ! always recompute Jacobian when a new FAB starts
 
     !$omp do collapse(2)
     do j=lo(2),hi(2)
@@ -78,7 +78,7 @@ contains
           Yt0 = Yt
           call burn(4, rhot, Yt, dt, force_new_J)
 
-          force_new_J = .false.
+          force_new_J = new_J_cell
 
           dry = 0.d0
           do g=1,4
@@ -148,7 +148,7 @@ contains
           Yt0 = Yt(1:nspec)
           call burn(1, rhot, Yt, dt, force_new_J)
 
-          force_new_J = .false.
+          force_new_J = new_J_cell
 
           do n=1,nspec
              Ucc(i,j,UFS+n-1) = rhot(1)*(Yt(n)-Yt0(n))
@@ -309,7 +309,7 @@ contains
 
           call burn(1, rho0(1), Y0, dt, force_new_J)
 
-          force_new_J = .false.
+          force_new_J = new_J_cell
 
           call splitburn(4, rho0(1), Y0, rhot, Yt, dt)
 
