@@ -1,5 +1,5 @@
 rns.split_burning = 0
-rns. new_J_cell   = 1
+rns.new_J_cell   = 1
 
 # ------------------  INPUTS TO MAIN PROGRAM  -------------------
 max_step  = 1000000
