@@ -145,6 +145,7 @@ int          RNS::do_chemistry        = 1;
 int          RNS::use_vode            = 0;
 int          RNS::do_cc_burning       = 0; // do_cc_burning has no effect when split_burning is true
 int          RNS::split_burning       = 1;
+int          RNS::new_J_cell          = 0; // new Jacobian for each cell?
 
 // this will be reset upon restart
 Real         RNS::previousCPUTimeUsed = 0.0;
@@ -324,6 +325,7 @@ RNS::read_params ()
     pp.query("use_vode", use_vode);
     pp.query("do_cc_burning", do_cc_burning);
     pp.query("split_burning", split_burning);
+    pp.query("new_J_cell", new_J_cell);
 }
 
 RNS::RNS ()

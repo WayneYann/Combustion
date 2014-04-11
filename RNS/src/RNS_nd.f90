@@ -17,7 +17,7 @@ subroutine set_method_params(dm,Density,Xmom,Eden,Temp,FirstSpec, &
      NUM_STATE, NumSpec, small_dens_in, small_temp_in, small_pres_in, &
      gamma_in, grav_in, Tref_in, riemann_in, difmag_in, blocksize, &
      do_weno_in, do_quadrature_weno_in, do_comp_weno_in, &
-     use_vode_in, do_cc_burning_in, split_burning_in)
+     use_vode_in, do_cc_burning_in, split_burning_in, new_J_cell_in)
 
   use meth_params_module
   use eos_module
@@ -27,7 +27,7 @@ subroutine set_method_params(dm,Density,Xmom,Eden,Temp,FirstSpec, &
   integer, intent(in) :: dm
   integer, intent(in) :: Density, Xmom, Eden, Temp, FirstSpec, NUM_STATE, NumSpec, &
        riemann_in, blocksize(*), do_weno_in, do_quadrature_weno_in, do_comp_weno_in, &
-       use_vode_in, do_cc_burning_in, split_burning_in
+       use_vode_in, do_cc_burning_in, split_burning_in, new_J_cell_in
   double precision, intent(in) :: small_dens_in, small_temp_in, small_pres_in, &
        gamma_in, grav_in, Tref_in, difmag_in
   
@@ -110,6 +110,7 @@ subroutine set_method_params(dm,Density,Xmom,Eden,Temp,FirstSpec, &
   use_vode = (use_vode_in .ne. 0)
   do_cc_burning = (do_cc_burning_in .ne. 0)
   split_burning = (split_burning_in .ne. 0)
+  new_J_cell    = (new_J_cell_in    .ne. 0)
 
 end subroutine set_method_params
 

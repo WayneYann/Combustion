@@ -181,7 +181,7 @@ RNS::variableSetUp ()
 	(dm, Density, Xmom, Eden, Temp, FirstSpec, NUM_STATE, NumSpec, 
 	 small_dens, small_temp, small_pres, gamma, gravity, Treference,
 	 riemann, difmag, &blocksize[0], do_weno, do_quadrature_weno, do_component_weno,
-	 use_vode, do_cc_burning, split_burning);
+	 use_vode, do_cc_burning, split_burning, new_J_cell);
     
     int coord_type = Geometry::Coord();
     const Real* prob_lo   = Geometry::ProbLo();

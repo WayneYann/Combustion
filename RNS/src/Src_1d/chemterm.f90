@@ -1,6 +1,7 @@
 module chemterm_module
 
-  use meth_params_module, only : NVAR, URHO, UEDEN, UMX, UTEMP, UFS, NSPEC
+  use meth_params_module, only : NVAR, URHO, UEDEN, UMX, UTEMP, UFS, NSPEC, &
+       new_J_cell
   use burner_module, only : burn, compute_rhodYdt
   use eos_module, only : eos_get_T
   use weno_module, only : cellavg2gausspt_1d
@@ -55,7 +56,7 @@ contains
        YT0 = YT
        call burn(2, rho, YT, dt, force_new_J)
 
-       force_new_J = .false.
+       force_new_J = new_J_cell
 
        dry = 0.d0
        do g=1,2

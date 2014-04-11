@@ -38,5 +38,6 @@ module meth_params_module
 
   logical, save :: use_vode
   logical, save :: do_cc_burning, split_burning
+  logical, save :: new_J_cell
 
 end module meth_params_module
