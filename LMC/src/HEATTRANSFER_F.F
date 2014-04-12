@@ -195,6 +195,7 @@ c     -- rbp
       integer myproc,step,ierr,restart,usetemp
       REAL_T r1,r2,r3,r4,r5,r6,r7
       REAL_T alpha,xsmb,vpmax,exp1 
+      REAL_T rhs1,rhs2,vt_tay,vtt_tay
       integer i1
       logical found_it
 
@@ -254,13 +255,23 @@ c
       slocal = half*(V_in_old + V_in) - (coft - coft_old)/(dt*scale_control)
       sest = (one - corr)*sest + corr*slocal
 #if 1
+c    linear
 c     vslope = two*((cfix-coft)/(scale_control*tau_control) + sest - V_in)/tau_control
 
 c     V_new = V_in + dt*vslope
 
-      vslope = 3.d0*((cfix-coft)/(scale_control*tau_control) + sest - V_in)/tau_control
+c    quadratic 1
+c     vslope = 3.d0*((cfix-coft)/(scale_control*tau_control) + sest - V_in)/tau_control
+c     V_new = V_in + (dt-0.5d0*dt**2/tau_control)*vslope
 
-      V_new = V_in + (dt-0.5d0*dt**2/tau_control)*vslope
+c    quadratic 2
+      rhs2 = 2.d0*((cfix-coft)/(scale_control*tau_control) + sest - V_in)/tau_control
+      rhs1 = (sest - V_in)/tau_control
+
+      vt_tay = 3.d0*rhs2 - 2.d0*rhs1
+      vtt_tay = 6.d0*(rhs1-rhs2)/tau_control
+      V_new = V_in + dt*vt_tay + 0.5d0*dt**2*vtt_tay
+
 
       dVmax = changeMax_control * one
       dVmin = changeMax_control * max(one,V_in)
