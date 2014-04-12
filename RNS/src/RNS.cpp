@@ -144,7 +144,11 @@ int          RNS::do_component_weno   = 0;
 int          RNS::do_chemistry        = 1;
 int          RNS::use_vode            = 0;
 int          RNS::do_cc_burning       = 0; // do_cc_burning has no effect when split_burning is true
+#ifdef USE_SDCLIB
 int          RNS::split_burning       = 1;
+#else
+int          RNS::split_burning       = 0;
+#endif
 int          RNS::new_J_cell          = 0; // new Jacobian for each cell?
 
 // this will be reset upon restart
@@ -504,7 +508,7 @@ RNS::estTimeStep (Real dt_old)
     ParallelDescriptor::ReduceRealMin(estdt);
 
     if (verbose && ParallelDescriptor::IOProcessor())
-	cout << "RNS::estTimeStep at level " << level << ":  estdt = " << estdt << std::endl;
+	cout << "At level " << level << ":  estdt = " << estdt << std::endl;
 
     return estdt;
     
@@ -532,9 +536,8 @@ RNS::estTimeStep (Real dt_old)
     Real estdt_min = std::min(estdts[0], estdts[1]);
 
     if (verbose && ParallelDescriptor::IOProcessor()){
-	cout << "RNS::estTimeStep at level " << level << ":  estdt = " << estdt_min << "\n";
-	cout << "                   hyperbolic estdt = " << estdts[0] << "\n";
-	cout << "                    diffusive estdt = " << estdts[1] << std::endl;
+	cout << "At level " << level << ":  estdt = " 
+	     << estdts[0] << " (advection),  " << estdts[1] << " (diffusion)" << std::endl;
     }
 
     return estdt_min;

@@ -50,7 +50,7 @@ contains
     end do
     !$omp end do
 
-    force_new_J = .true.  ! always recompute Jacobina when a new FAB starts
+    force_new_J = .true.  ! always recompute Jacobian when a new FAB starts
 
     !$omp do collapse(2)
     do k=lo(3),hi(3)
