@@ -227,7 +227,8 @@ c
 
                   found_it = .true.
                   V_in = r2
-                  tbase_control = r3
+c                 tbase_control = r3
+                  tbase_control = r1
                   zbase_control = r4
                   dV_control = r5
                   sest = r6
@@ -278,7 +279,7 @@ c
       time_points(0) = time
       vel_points(0) = V_in
       cntl_points(0) = coft
-      sest = (one - corr)*sest + corr*slocal
+c     sest = (one - corr)*sest + corr*slocal
  
       if(nfilled .le. 0)then
 c           if (myproc.eq.0) then
@@ -369,7 +370,7 @@ c    quadratic 2
       if (myproc.eq.0) then
          open(13,file=ac_hist_file,form='formatted',position='append')
 c        write(13,1000) step,time,V_in,tbase_control,zbase_control,
-         write(13,1000) step,time,V_in,sest_test,zbase_control,
+         write(13,1000) step,time,V_in,slocal,zbase_control,
      &        dV_control,sest,coft_old
          close(13)
       endif
