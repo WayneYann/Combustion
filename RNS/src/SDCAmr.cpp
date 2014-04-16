@@ -419,7 +419,7 @@ sdc_sweeper* SDCAmr::build_level(int lev)
     nnodes = 1 + (nnodes0 - 1) * ((int) pow((double) trat, lev-first_refinement_level+1));
 
   double nodes[3] = { 0.0, 0.5, 1.0 };
-  int imex_order_flag = 0;
+  int imex_order_flag = SDC_IMEX_HO;
   sdc_imex* imex = sdc_imex_create(nodes, nnodes, (nnodes-1)/2, imex_order_flag,
 				   sdc_f1eval, sdc_f2eval, sdc_f2comp);
 

@@ -82,16 +82,23 @@ contains
 
           force_new_J = new_J_cell
 
-          dry = 0.d0
+          ! dry = 0.d0
+          ! do g=1,4
+          !    do n=1,nspec
+          !       dry(n) = dry(n) + rhot(g)*(Yt(n,g)-Yt0(n,g))
+          !    end do
+          ! end do
+
+          ! ! note that the sum of dry is zero
+          ! do n=1,nspec
+          !    U(i,j,UFS+n-1) = U(i,j,UFS+n-1) + 0.25d0*dry(n)
+          ! end do
+
+          U(i,j,UFS:UFS+nspec-1) = 0.d0 
           do g=1,4
              do n=1,nspec
-                dry(n) = dry(n) + rhot(g)*(Yt(n,g)-Yt0(n,g))
+                U(i,j,UFS+n-1) = U(i,j,UFS+n-1) + 0.25d0*rhot(g)*Yt(n,g)
              end do
-          end do
-
-          ! note that the sum of dry is zero
-          do n=1,nspec
-             U(i,j,UFS+n-1) = U(i,j,UFS+n-1) + 0.25d0*dry(n)
           end do
 
        end do
@@ -153,7 +160,8 @@ contains
           force_new_J = new_J_cell
 
           do n=1,nspec
-             Ucc(i,j,UFS+n-1) = rhot(1)*(Yt(n)-Yt0(n))
+!             Ucc(i,j,UFS+n-1) = rhot(1)*(Yt(n)-Yt0(n))
+             Ucc(i,j,UFS+n-1) = rhot(1)*Yt(n)
           end do
 
        end do
@@ -162,12 +170,13 @@ contains
 
     !$omp do
     do n=UFS,UFS+nspec-1
-       call cc2cellavg_2d(lo,hi, Ucc(:,:,n), lo-1,hi+1, Ucc(:,:,UTEMP), lo-1,hi+1)
-       do j=lo(2),hi(2)
-          do i=lo(1),hi(1)
-             U(i,j,n) = U(i,j,n) + Ucc(i,j,UTEMP)
-          end do
-       end do
+       call cc2cellavg_2d(lo,hi, Ucc(:,:,n), lo-1,hi+1, Ucc(:,:,n), lo-1,hi+1)
+       ! call cc2cellavg_2d(lo,hi, Ucc(:,:,n), lo-1,hi+1, Ucc(:,:,UTEMP), lo-1,hi+1)
+       ! do j=lo(2),hi(2)
+       !    do i=lo(1),hi(1)
+       !       U(i,j,n) = U(i,j,n) + Ucc(i,j,UTEMP)
+       !    end do
+       ! end do
     end do
     !$omp end do
 
@@ -315,9 +324,17 @@ contains
 
           call splitburn(4, rho0(1), Y0, rhot, Yt, dt)
 
+          ! do g=1,4
+          !    do n=1,nspec
+          !       U(i,j,UFS+n-1) = U(i,j,UFS+n-1) + 0.25d0*rhot(g)*Yt(n,g)
+          !    end do
+          ! end do
+
+          U(i,j,UFS:UFS+nspec-1) = 0.d0 
           do g=1,4
              do n=1,nspec
-                U(i,j,UFS+n-1) = U(i,j,UFS+n-1) + 0.25d0*rhot(g)*Yt(n,g)
+                U(i,j,UFS+n-1) = U(i,j,UFS+n-1) +  &
+                     0.25d0*(UG(i,j,g,UFS+n-1) + rhot(g)*Yt(n,g))
              end do
           end do
 

@@ -475,9 +475,12 @@ void sdc_f2comp(void *Fp, void *Qp, double t, double dt, void *RHSp, sdc_state *
   BL_ASSERT(U.contains_nan() == false);
   rns.advance_chemistry(U, dt);
 
-  Uprime.copy(U);
-  Uprime.minus(Urhs, 0, Uprime.nComp(), 0);
-  Uprime.mult(1./dt);
+//  Uprime.copy(U);
+//  Uprime.minus(Urhs, 0, Uprime.nComp(), 0);
+//  Uprime.mult(1./dt);
+  
+  rns.fill_boundary(U, state->t, RNS::use_FillBoundary);
+  rns.dUdt_chemistry(U, Uprime);
 }
 
 void sdc_poststep_hook(void *Qp, sdc_state *state, void *ctx)
