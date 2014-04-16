@@ -11,7 +11,7 @@ module burner_module
 
   private
 
-  public :: burn, compute_rhodYdt, splitburn
+  public :: burn, compute_rhodYdt, splitburn, beburn
 
 contains
 
@@ -258,5 +258,79 @@ contains
     end do
 
   end subroutine splitburn
+
+
+  subroutine beburn(rho0, Y0, rho, YT, dt)
+    double precision, intent(in   ) :: rho0, rho, dt
+    double precision, intent(in   ) :: Y0(nspecies+1)
+    double precision, intent(inout) :: YT(nspecies+1)
+
+    integer :: iwrk, iter, n, i, j, info
+    double precision :: rwrk, rhoinv, cv
+    double precision, dimension(nspecies) :: uk, C
+    double precision, dimension(nspecies+1) :: YT_init, r, dYTdt, ipvt
+    integer, parameter :: consP = 0
+    integer, parameter :: J_int = 5
+
+    if (.not. allocated(A)) then
+       allocate(Jac(nspecies+1,nspecies+1))
+       allocate(A(nspecies+1,nspecies+1))
+    end if
+
+    rhoinv = 1.d0/rho
+
+    YT_init = YT
+    YT = Y0
+
+    do iter = 0, 100
+
+       call vckwyr(1, rho, YT(nspecies+1), YT(1), iwrk, rwrk, dYTdt)
+       call ckums(YT(nspecies+1), iwrk, rwrk, uk)
+       call ckcvbs(YT(nspecies+1),YT(1),iwrk,rwrk,cv)       
+       dYTdt(nspecies+1) = 0.d0
+       do n=1,nspecies
+          dYTdt(n) = dYTdt(n) * molecular_weight(n) * rhoinv
+          dYTdt(nspecies+1) = dYTdt(nspecies+1) - dYTdt(n)*uk(n)
+       end do
+       dYTdt(nspecies+1) = dYTdt(nspecies+1) / cv
+
+       r = YT - YT_init - dt * dYTdt
+
+       if (maxval(abs(r(1:nspecies))) .le. 1.d-12) exit 
+
+       call ckytcr(rho, YT(nspecies+1), YT(1), iwrk, rwrk, C)
+       call DWDOT(Jac, C, YT(nspecies+1), consP)
+
+       if (mod(iter, J_int) .eq. 0) then
+          do j=1,nspecies
+             do i=1,nspecies
+                Jac(i,j) = Jac(i,j) * molecular_weight(i) * inv_mwt(j)
+             end do
+             i=nspecies+1
+             Jac(i,j) = Jac(i,j) * inv_mwt(j) * rho
+          end do
+          !
+          j = nspecies+1
+          do i=1,nspecies
+             Jac(i,j) = Jac(i,j) * molecular_weight(i) * rhoinv
+          end do
+          
+          A = -dt*Jac
+          do i=1,nspecies+1
+             A(i,i) = 1.d0 + A(i,i)
+          end do
+
+          call dgefa(A, nspecies+1, nspecies+1, ipvt, info)
+       end if
+
+       call dgesl(A, nspecies+1, nspecies+1, ipvt, r, 0)
+
+       YT = YT - r
+
+    end do
+
+    if (iter .gt. 100) call bl_error("beburn failed")
+
+  end subroutine beburn
 
 end module burner_module

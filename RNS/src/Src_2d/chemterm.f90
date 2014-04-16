@@ -1,8 +1,8 @@
 module chemterm_module
 
   use meth_params_module, only : NVAR, URHO, UEDEN, UMX, UMY, UTEMP, UFS, NSPEC, &
-       do_cc_burning, split_burning, new_J_cell
-  use burner_module, only : burn, compute_rhodYdt, splitburn
+       do_cc_burning, split_burning, do_BE_burning, new_J_cell
+  use burner_module, only : burn, compute_rhodYdt, splitburn, beburn
   use eos_module, only : eos_get_T
 
   implicit none
@@ -18,7 +18,9 @@ contains
     double precision, intent(inout) :: U(Ulo(1):Uhi(1),Ulo(2):Uhi(2),NVAR)
     double precision, intent(in) :: dt
 
-    if (split_burning) then
+    if (do_BE_burning) then
+       call chemterm_be(lo, hi, U, Ulo, Uhi, dt)
+    else if (split_burning) then
        call chemterm_split(lo, hi, U, Ulo, Uhi, dt)
     else if (do_cc_burning) then
        call chemterm_cellcenter(lo, hi, U, Ulo, Uhi, dt)
@@ -327,5 +329,92 @@ contains
     deallocate(UG)
 
   end subroutine chemterm_split
+
+
+  subroutine chemterm_be(lo, hi, U, Ulo, Uhi, dt)
+    use weno_module, only : cellavg2gausspt_2d
+    integer, intent(in) :: lo(2), hi(2), Ulo(2), Uhi(2)
+    double precision, intent(inout) :: U(Ulo(1):Uhi(1),Ulo(2):Uhi(2),NVAR)
+    double precision, intent(in) :: dt
+
+    integer :: i, j, n, g
+    logical :: force_new_J
+    double precision :: rhot(4), rhoinv, ei, rho0(1)
+    double precision :: Yt(nspec+1,4), Y0(nspec+1), Yg0(nspec), dry(nspec)
+    double precision, allocatable :: UG(:,:,:,:)
+
+    allocate(UG(lo(1):hi(1),lo(2):hi(2),4,NVAR))
+
+    !$omp parallel private(i,j,n,g,rhot,rhoinv,ei,Yt,force_new_J,rho0,Y0,Yg0,dry)
+
+    !$omp do
+    do n=1,NVAR
+       call cellavg2gausspt_2d(lo,hi, U(:,:,n), Ulo,Uhi, UG(:,:,:,n), lo,hi)
+    end do
+    !$omp end do
+
+    force_new_J = .true.  ! always recompute Jacobina when a new FAB starts
+
+    !$omp do collapse(2)
+    do j=lo(2),hi(2)
+       do i=lo(1),hi(1)
+
+          Y0 = 0.d0
+          rho0(1) = 0.d0
+
+          do g=1,4
+
+             rhot(g) = 0.d0
+             do n=1,NSPEC
+                Yt(n,g) = UG(i,j,g,UFS+n-1)
+                rhot(g) = rhot(g) + Yt(n,g)
+             end do
+             rhoinv = 1.d0/rhot(g)
+
+             Yt(1:nspec,g) = Yt(1:nspec,g) * rhoinv
+             Yt(nspec+1,g) = UG(i,j,g,UTEMP)
+
+             ei = rhoinv*( UG(i,j,g,UEDEN) - 0.5d0*rhoinv*(UG(i,j,g,UMX)**2 &
+                  + UG(i,j,g,UMY)**2) )
+
+             call eos_get_T(Yt(nspec+1,g), ei, Yt(1:nspec,g))
+
+             Y0 = Y0 + 0.25d0*Yt(:,g)
+             rho0(1) = rho0(1) + 0.25d0*rhot(g)
+
+          end do
+
+          call burn(1, rho0(1), Y0, dt, force_new_J)
+
+          force_new_J = new_J_cell
+
+          ! dry = 0.d0
+          ! do g=1,4
+          !    Yg0 = YT(1:nspec,g)
+          !    call beburn(rho0(1), Y0, rhot(g), Yt(:,g), dt)
+          !    dry = dry + rhot(g)*(Yt(1:nspec,g)-Yg0)
+          ! end do
+
+          ! ! note that the sum of dry is zero
+          ! do n=1,nspec
+          !    U(i,j,UFS+n-1) = U(i,j,UFS+n-1) + 0.25d0*dry(n)
+          ! end do
+
+          U(i,j,UFS:UFS+nspec-1) = 0.d0 
+          do g=1,4
+             call beburn(rho0(1), Y0, rhot(g), Yt(:,g), dt)
+             do n=1,nspec
+                U(i,j,UFS+n-1) = U(i,j,UFS+n-1) + 0.25d0*rhot(g)*Yt(n,g)
+             end do
+          end do
+
+       end do
+    end do
+    !$omp end do
+    !$omp end parallel
+
+    deallocate(UG)
+
+  end subroutine chemterm_be
 
 end module chemterm_module

@@ -144,10 +144,11 @@ int          RNS::do_component_weno   = 0;
 int          RNS::do_chemistry        = 1;
 int          RNS::use_vode            = 0;
 int          RNS::do_cc_burning       = 0; // do_cc_burning has no effect when split_burning is true
+int          RNS::split_burning       = 0; // do_cc_burning has no effect when do_BE_burning is true
 #ifdef USE_SDCLIB
-int          RNS::split_burning       = 1;
+int          RNS::do_BE_burning       = 1;
 #else
-int          RNS::split_burning       = 0;
+int          RNS::do_BE_burning       = 0;
 #endif
 int          RNS::new_J_cell          = 0; // new Jacobian for each cell?
 
@@ -329,6 +330,7 @@ RNS::read_params ()
     pp.query("use_vode", use_vode);
     pp.query("do_cc_burning", do_cc_burning);
     pp.query("split_burning", split_burning);
+    pp.query("do_BE_burning", do_BE_burning);
     pp.query("new_J_cell", new_J_cell);
 }
 

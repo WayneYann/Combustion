@@ -1,5 +1,6 @@
-rns.split_burning = 0
 rns.new_J_cell   = 1
+
+rns.fuelName = CH3OCH3
 
 # ------------------  INPUTS TO MAIN PROGRAM  -------------------
 max_step  = 1000000
@@ -18,7 +19,7 @@ geometry.prob_lo     =  -0.05    -0.05    -0.05
 geometry.prob_hi     =   0.05     0.05     0.05  
 amr.n_cell           =   32       32       32
 
-eglib.use_bulk_visc = 1
+eglib.use_bulk_visc = 0
 
 rns.Riemann    = 0     # 0: HLL,  1: JBB,  2: HLLC
 rns.Treference = 298.0

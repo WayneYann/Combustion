@@ -434,20 +434,7 @@ void sdc_f2eval(void *Fp, void *Qp, double t, sdc_state *state, void *ctx)
   rns.fill_boundary(U, state->t, RNS::use_FillBoundary);
   BL_ASSERT(U.contains_nan() == false);
 
-  if (1) {
-    MultiFab Unew(U.boxArray(), U.nComp(), 2);
-    MultiFab::Copy(Unew, U, 0, 0, U.nComp(), 2);
-
-    rns.advance_chemistry(Unew, dt);
-
-    MultiFab::Copy(Uprime, Unew, 0, 0, U.nComp(), 0);
-    Uprime.minus(U, 0, U.nComp(), 0);
-    Uprime.mult(1./dt);
-  }
-  else {
-    rns.dUdt_chemistry(U, Uprime);
-  }
-
+  rns.dUdt_chemistry(U, Uprime);
   BL_ASSERT(Uprime.contains_nan() == false);
 }
 
@@ -488,13 +475,9 @@ void sdc_f2comp(void *Fp, void *Qp, double t, double dt, void *RHSp, sdc_state *
   BL_ASSERT(U.contains_nan() == false);
   rns.advance_chemistry(U, dt);
 
-  // rns.fill_boundary(U, state->t, RNS::use_FillBoundary);
-  // rns.dUdt_chemistry(U, Uprime);
-
- Uprime.copy(U);
- Uprime.minus(Urhs, 0, Uprime.nComp(), 0);
- Uprime.mult(1./dt);
-
+  Uprime.copy(U);
+  Uprime.minus(Urhs, 0, Uprime.nComp(), 0);
+  Uprime.mult(1./dt);
 }
 
 void sdc_poststep_hook(void *Qp, sdc_state *state, void *ctx)

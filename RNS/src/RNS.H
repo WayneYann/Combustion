@@ -238,6 +238,16 @@ public:
     static int verbose;
     static int do_chemistry;
 
+    // species information
+    static std::string  fuelName     ;
+    static int          fuelID       ;
+    static std::string  oxidizerName ;
+    static int          oxidizerID   ;
+    static std::string  productName  ;
+    static int          productID    ;
+    static std::string  flameTracName;
+    static int          flameTracID  ;
+
     void avgDown ();
     void avgDown (int state_indx);
     void avgDown (MultiFab& S_crse, const MultiFab& S_fine);
@@ -311,16 +321,6 @@ protected:
     static RiemannType Riemann;
     static Real        difmag; // for JBB & HLLC Riemann solvers
 
-    // species information
-    static std::string  fuelName     ;
-    static int          fuelID       ;
-    static std::string  oxidizerName ;
-    static int          oxidizerID   ;
-    static std::string  productName  ;
-    static int          productID    ;
-    static std::string  flameTracName;
-    static int          flameTracID  ;
-
     // what to store in plotfiles
     static int         plot_cons;
     static int         plot_prim;
@@ -352,6 +352,7 @@ protected:
     static int         use_vode;
     static int         do_cc_burning;
     static int         split_burning;
+    static int         do_BE_burning;
     static int         new_J_cell;
 
     // for keeping track of the amount of CPU time used -- this will persist

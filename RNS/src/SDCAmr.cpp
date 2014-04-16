@@ -340,27 +340,39 @@ void SDCAmr::timeStep(int level, Real time,
         MultiFab& R      = *Rencap->U;
 
 	sdc_sweeper_residual(mg.sweepers[lev], dt, Rencap);
-	double r0 = 0.0, r2 = 0.0;
-	for (int c=0; c<R.nComp(); c++) {
-	  r0 += R.norm0(c);
-	  r2 += R.norm2(c);
+	double r0, r2, r0f, r2f;
+	r0 = R.norm0(0);
+	r2 = R.norm2(0);
+
+	RNS& rns = *dynamic_cast<RNS*>(&getLevel(lev));
+	if (rns.fuelID >= 0) {
+	    int ifuel = rns.FirstSpec + rns.fuelID - 1;
+	    r0f = R.norm0(ifuel);
+	    r2f = R.norm2(ifuel);
 	}
-	r0 /= R.nComp();
-	r2 /= R.nComp();
 
 	encaps[lev]->destroy(Rencap);
 
 	if (ParallelDescriptor::IOProcessor()) {
+
 	  std::ios_base::fmtflags ff = cout.flags();
-	  cout << "MLSDC iter: " << k << ", level: " << lev
-	       << ", res norm0: " << scientific << r0 << ", res norm2: " << r2 << endl;
+	  if (rns.fuelID < 0) {
+	      cout << "MLSDC iter: " << k << ", level: " << lev
+		   << ", res norm0: " << scientific << r0 << ", res norm2: " << r2 << endl;
+	  }
+	  else {
+	      cout << " iter: " << k << ", level: " << lev
+		   << ", res norm0: " << scientific << r0 << " (rho) " << r0f << " (fuel)" << endl;
+	      cout << "                    res norm2: " 
+		   << r2 << " (rho) " << r2f << " (fuel)" << endl;	      
+	  }
 	  cout.flags(ff);
 	}
       }
     }
   }
 
-  sdc_mg_final_integrate(&mg, time, dt);
+//  sdc_mg_final_integrate(&mg, time, dt);
 
   BL_PROFILE_VAR_STOP(sdc_iters);
 
@@ -407,7 +419,8 @@ sdc_sweeper* SDCAmr::build_level(int lev)
     nnodes = 1 + (nnodes0 - 1) * ((int) pow((double) trat, lev-first_refinement_level+1));
 
   double nodes[3] = { 0.0, 0.5, 1.0 };
-  sdc_imex* imex = sdc_imex_create(nodes, nnodes, (nnodes-1)/2, SDC_IMEX_HO,
+  int imex_order_flag = 0;
+  sdc_imex* imex = sdc_imex_create(nodes, nnodes, (nnodes-1)/2, imex_order_flag,
 				   sdc_f1eval, sdc_f2eval, sdc_f2comp);
 
   sdc_imex_setup(imex, NULL, NULL);
