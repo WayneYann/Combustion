@@ -266,6 +266,16 @@ void mlsdc_amr_restrict(void *Fp, void *Gp, sdc_state *state, void *ctxF, void *
 
 END_EXTERN_C
 
+
+void SDCAmr::final_integrate(double t, double dt)
+{
+  int nlevs = mg.nlevels;
+  for (int l=0; l<nlevs; l++) {
+    sdc_sweeper* swp    = mg.sweepers[l];
+    swp->sweep(swp, t, dt, SDC_SWEEP_NOEVAL);
+  }
+}
+
 /*
  * Take one SDC+AMR time step.
  *
@@ -383,25 +393,25 @@ void SDCAmr::timeStep(int level, Real time,
 		   <<    "  norm2: " << r2 << endl;
 	      if (!fname.empty()) {
 		  cout << fname << " res norm0: " << r0f << "         "
-		       <<             "  norm2: " << r2f << endl;	      
+		       <<             "  norm2: " << r2f << endl;
 	      }
 	      if (!tname.empty()) {
 		  cout << tname << " res norm0: " << r0t << "         "
-		       <<             "  norm2: " << r2t << endl;	      
+		       <<             "  norm2: " << r2t << endl;
 	      }
 	  }
 	  else {
 	      cout << " iter: " << k << ", level: " << lev << ",   rho"
-		   << " res norm0: " << r0 << " " << r0_prev[lev]/(r0+1.e-80) 
+		   << " res norm0: " << r0 << " " << r0_prev[lev]/(r0+1.e-80)
 		   <<    ", norm2: " << r2 << " " << r2_prev[lev]/(r2+1.e-80) << endl;
 	      if (!fname.empty()) {
-		  cout << fname << " res norm0: " << r0f << " " << r0f_prev[lev]/(r0f+1.e-80) 
-		       <<             ", norm2: " << r2f << " " << r2f_prev[lev]/(r2f+1.e-80) 
+		  cout << fname << " res norm0: " << r0f << " " << r0f_prev[lev]/(r0f+1.e-80)
+		       <<             ", norm2: " << r2f << " " << r2f_prev[lev]/(r2f+1.e-80)
 		       << endl;
 	      }
 	      if (!tname.empty()) {
-		  cout << tname << " res norm0: " << r0t << " " << r0t_prev[lev]/(r0t+1.e-80) 
-		       <<          ", norm2: " << r2t << " " << r2t_prev[lev]/(r2t+1.e-80) 
+		  cout << tname << " res norm0: " << r0t << " " << r0t_prev[lev]/(r0t+1.e-80)
+		       <<          ", norm2: " << r2t << " " << r2t_prev[lev]/(r2t+1.e-80)
 		       << endl;
 	      }
 	  }
@@ -418,7 +428,7 @@ void SDCAmr::timeStep(int level, Real time,
     }
   }
 
-//  sdc_mg_final_integrate(&mg, time, dt);
+  final_integrate(time, dt);
 
   BL_PROFILE_VAR_STOP(sdc_iters);
 
