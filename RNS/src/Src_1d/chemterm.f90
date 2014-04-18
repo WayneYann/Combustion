@@ -1,7 +1,6 @@
 module chemterm_module
 
-  use meth_params_module, only : NVAR, URHO, UEDEN, UMX, UTEMP, UFS, NSPEC, &
-       do_cc_burning, split_burning, new_J_cell
+  use meth_params_module
   use burner_module, only : burn, compute_rhodYdt, splitburn
   use eos_module, only : eos_get_T
   use weno_module, only : cellavg2gausspt_1d
@@ -20,13 +19,18 @@ contains
     double precision, intent(inout) :: U(Ulo(1):Uhi(1),NVAR)
     double precision, intent(in) :: dt
 
-    if (split_burning) then
-       call chemterm_split(lo, hi, U, Ulo, Uhi, dt)
-    else if (do_cc_burning) then
-       call chemterm_cellcenter(lo, hi, U, Ulo, Uhi, dt)
-    else
-       call chemterm_gauss(lo, hi, U, Ulo, Uhi, dt)
-    end if
+    select case (chem_solver)
+       case (cc_burning)
+          call chemterm_cellcenter(lo, hi, U, Ulo, Uhi, dt)
+       case (Gauss_burning)
+          call chemterm_gauss(lo, hi, U, Ulo, Uhi, dt)
+       case (split_burning)
+          call chemterm_split(lo, hi, U, Ulo, Uhi, dt)
+       case (BE_burning)
+          call chemterm_be(lo, hi, U, Ulo, Uhi, dt)
+       case default
+          call bl_error("unknown chem_solver")
+       end select
 
   end subroutine chemterm
 
@@ -275,5 +279,7 @@ contains
     deallocate(UG)
 
   end subroutine chemterm_split
+
+
 
 end module chemterm_module

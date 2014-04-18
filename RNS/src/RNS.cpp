@@ -143,14 +143,12 @@ int          RNS::do_component_weno   = 0;
 
 int          RNS::do_chemistry        = 1;
 int          RNS::use_vode            = 0;
-int          RNS::do_cc_burning       = 0; // do_cc_burning has no effect when split_burning is true
-int          RNS::split_burning       = 0; // do_cc_burning has no effect when do_BE_burning is true
-#ifdef USE_SDCLIB
-int          RNS::do_BE_burning       = 1;
-#else
-int          RNS::do_BE_burning       = 0;
-#endif
 int          RNS::new_J_cell          = 0; // new Jacobian for each cell?
+#ifdef USE_SDCLIB
+RNS::ChemSolverType RNS::chem_solver  = RNS::BE_BURNING;
+#else
+RNS::ChemSolverType RNS::chem_solver  = RNS::GAUSS_BURNING;
+#endif
 int          RNS::f2comp_simple_dUdt  = 1; // set dUdt = \Delta U / \Delta t in f2comp
 
 // this will be reset upon restart
@@ -329,10 +327,13 @@ RNS::read_params ()
 
     pp.query("do_chemistry", do_chemistry);
     pp.query("use_vode", use_vode);
-    pp.query("do_cc_burning", do_cc_burning);
-    pp.query("split_burning", split_burning);
-    pp.query("do_BE_burning", do_BE_burning);
     pp.query("new_J_cell", new_J_cell);
+    {
+	int chem_solver_i = RNS::chem_solver;
+	pp.query("chem_solver", chem_solver_i);
+	chem_solver = static_cast<ChemSolverType>(chem_solver_i);
+    }
+    pp.query("f2comp_simple_dUdt", f2comp_simple_dUdt);
 }
 
 RNS::RNS ()
