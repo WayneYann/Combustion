@@ -353,10 +353,14 @@ protected:
     static int         do_component_weno;
 
     static int         use_vode;
-    static int         do_cc_burning;
-    static int         split_burning;
-    static int         do_BE_burning;
     static int         new_J_cell;
+
+    enum ChemSolverType { CC_BURNING = 0,
+			  GAUSS_BURNING,
+			  SPLIT_BURNING,
+			  BE_BURNING,
+			  NUM_CHEMSOLVER_TYPE };
+    static ChemSolverType chem_solver;
 
     // for keeping track of the amount of CPU time used -- this will persist
     // after restarts

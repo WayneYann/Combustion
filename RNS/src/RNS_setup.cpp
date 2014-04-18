@@ -109,7 +109,7 @@ RNS::variableSetUp ()
     if (chemSolve == 0) 
     {
 	int max_points;
-	if ( use_vode || split_burning || do_cc_burning || do_BE_burning ) 
+	if ( use_vode || chem_solver != GAUSS_BURNING ) 
 	{
 	    max_points = 1;
 	}
@@ -165,23 +165,31 @@ RNS::variableSetUp ()
 
     int nriemann = NUM_RIEMANN_TYPE;
     int nriemann_F;
+    int nchemsolver = NUM_CHEMSOLVER_TYPE;
+    int nchemsolver_F;
 
     // Define NUM_GROW from the f90 module.
-    BL_FORT_PROC_CALL(GET_METHOD_PARAMS, get_method_params)(&NUM_GROW, &nriemann_F);
+    BL_FORT_PROC_CALL(GET_METHOD_PARAMS, get_method_params)(&NUM_GROW, &nriemann_F, &nchemsolver_F);
     
     if (nriemann_F != nriemann)
     {
 	BoxLib::Abort("Something is wrong with RiemannType");
     }
 
+    if (nchemsolver_F != nchemsolver)
+    {
+	BoxLib::Abort("Something is wrong with ChemSolverType");
+    }
+
     int dm = BL_SPACEDIM;    
     int riemann = RNS::Riemann;
+    int chem_solver_i = RNS::chem_solver;
 
     BL_FORT_PROC_CALL(SET_METHOD_PARAMS, set_method_params)
 	(dm, Density, Xmom, Eden, Temp, FirstSpec, NUM_STATE, NumSpec, 
 	 small_dens, small_temp, small_pres, gamma, gravity, Treference,
 	 riemann, difmag, &blocksize[0], do_weno, do_quadrature_weno, do_component_weno,
-	 use_vode, do_cc_burning, split_burning, do_BE_burning, new_J_cell);
+	 use_vode, new_J_cell, chem_solver_i);
     
     int coord_type = Geometry::Coord();
     const Real* prob_lo   = Geometry::ProbLo();
