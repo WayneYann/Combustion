@@ -151,6 +151,7 @@ int          RNS::do_BE_burning       = 1;
 int          RNS::do_BE_burning       = 0;
 #endif
 int          RNS::new_J_cell          = 0; // new Jacobian for each cell?
+int          RNS::f2comp_simple_dUdt  = 1; // set dUdt = \Delta U / \Delta t in f2comp
 
 // this will be reset upon restart
 Real         RNS::previousCPUTimeUsed = 0.0;

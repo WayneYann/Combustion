@@ -442,10 +442,8 @@ void sdc_f2eval(void *Fp, void *Qp, double t, sdc_state *state, void *ctx)
 // Solve U - dt dU_R/dt (U) = RHS for U.
 //
 // This advances chemistry from 0 to dt using RHS as the initial
-// condition to obtain U.  Then, dU_R/dt is set to (U - RHS) / dt.
-//
-// XXX: it might be interesting to track the difference between Uprime
-// as calculated above and calling f2eval...
+// condition to obtain U.  Then, dU_R/dt is either set to (U - RHS) / dt
+// or computed by calling dUdt_chmistry.
 //
 void sdc_f2comp(void *Fp, void *Qp, double t, double dt, void *RHSp, sdc_state *state, void *ctx)
 {
@@ -475,12 +473,15 @@ void sdc_f2comp(void *Fp, void *Qp, double t, double dt, void *RHSp, sdc_state *
   BL_ASSERT(U.contains_nan() == false);
   rns.advance_chemistry(U, dt);
 
-//  Uprime.copy(U);
-//  Uprime.minus(Urhs, 0, Uprime.nComp(), 0);
-//  Uprime.mult(1./dt);
-  
-  rns.fill_boundary(U, state->t, RNS::use_FillBoundary);
-  rns.dUdt_chemistry(U, Uprime);
+  if (rns.f2comp_simple_dUdt) {
+      Uprime.copy(U);
+      Uprime.minus(Urhs, 0, Uprime.nComp(), 0);
+      Uprime.mult(1./dt);
+  }
+  else {
+      rns.fill_boundary(U, state->t, RNS::use_FillBoundary);
+      rns.dUdt_chemistry(U, Uprime);
+  }
 }
 
 void sdc_poststep_hook(void *Qp, sdc_state *state, void *ctx)

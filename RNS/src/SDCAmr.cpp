@@ -48,6 +48,7 @@
 #include <Interpolater.H>
 #include <FabArray.H>
 #include <cmath>
+#include <iomanip>
 
 #include "RNS.H"
 #include "RNS_F.H"
@@ -327,6 +328,13 @@ void SDCAmr::timeStep(int level, Real time,
 
   BL_PROFILE_VAR("SDCAmr::timeStep-iters", sdc_iters);
 
+  Array<Real> r0_prev(finest_level+1);
+  Array<Real> r2_prev(finest_level+1);
+  Array<Real> r0f_prev(finest_level+1);
+  Array<Real> r2f_prev(finest_level+1);
+  Array<Real> r0t_prev(finest_level+1);
+  Array<Real> r2t_prev(finest_level+1);
+
   for (int k=0; k<max_iters; k++) {
     int flags = SDC_MG_MIXEDINTERP | SDC_SWEEP_MONITOR;
     if (k==max_iters-1) flags |= SDC_MG_HALFSWEEP;
@@ -340,34 +348,72 @@ void SDCAmr::timeStep(int level, Real time,
         MultiFab& R      = *Rencap->U;
 
 	sdc_sweeper_residual(mg.sweepers[lev], dt, Rencap);
-	double r0, r2, r0f, r2f;
+	double r0=0., r2=0., r0f=0., r2f=0., r0t=0., r2t=0.;
 	r0 = R.norm0(0);
 	r2 = R.norm2(0);
 
 	RNS& rns = *dynamic_cast<RNS*>(&getLevel(lev));
+	string fname, tname;
+	int len=string(" iter: 0, level: 0,   rho").size();
 	if (rns.fuelID >= 0) {
-	    int ifuel = rns.FirstSpec + rns.fuelID - 1;
+	    int ifuel = rns.FirstSpec + rns.fuelID;
 	    r0f = R.norm0(ifuel);
 	    r2f = R.norm2(ifuel);
+	    string vname = "rho*Y(" + rns.fuelName + ")";
+	    string space(len-vname.size(), ' ');
+	    fname = space + vname;
+	}
+	if (rns.flameTracID >= 0 && rns.flameTracID != rns.fuelID) {
+	    int itrac = rns.FirstSpec + rns.flameTracID;
+	    r0t = R.norm0(itrac);
+	    r2t = R.norm2(itrac);
+	    string vname = "rho*Y(" + rns.flameTracName + ")";
+	    string space(len-vname.size(), ' ');
+	    tname = space + vname;
 	}
 
 	encaps[lev]->destroy(Rencap);
 
 	if (ParallelDescriptor::IOProcessor()) {
-
 	  std::ios_base::fmtflags ff = cout.flags();
-	  if (rns.fuelID < 0) {
-	      cout << "MLSDC iter: " << k << ", level: " << lev
-		   << ", res norm0: " << scientific << r0 << ", res norm2: " << r2 << endl;
+	  cout << scientific << setprecision(2);
+	  if (k == 0) {
+	      cout << " iter: " << k << ", level: " << lev << ",   rho"
+		   << " res norm0: " << r0 << "         "
+		   <<    "  norm2: " << r2 << endl;
+	      if (!fname.empty()) {
+		  cout << fname << " res norm0: " << r0f << "         "
+		       <<             "  norm2: " << r2f << endl;	      
+	      }
+	      if (!tname.empty()) {
+		  cout << tname << " res norm0: " << r0t << "         "
+		       <<             "  norm2: " << r2t << endl;	      
+	      }
 	  }
 	  else {
-	      cout << " iter: " << k << ", level: " << lev
-		   << ", res norm0: " << scientific << r0 << " (rho) " << r0f << " (fuel)" << endl;
-	      cout << "                    res norm2: " 
-		   << r2 << " (rho) " << r2f << " (fuel)" << endl;	      
+	      cout << " iter: " << k << ", level: " << lev << ",   rho"
+		   << " res norm0: " << r0 << " " << r0_prev[lev]/(r0+1.e-80) 
+		   <<    ", norm2: " << r2 << " " << r2_prev[lev]/(r2+1.e-80) << endl;
+	      if (!fname.empty()) {
+		  cout << fname << " res norm0: " << r0f << " " << r0f_prev[lev]/(r0f+1.e-80) 
+		       <<             ", norm2: " << r2f << " " << r2f_prev[lev]/(r2f+1.e-80) 
+		       << endl;
+	      }
+	      if (!tname.empty()) {
+		  cout << tname << " res norm0: " << r0t << " " << r0t_prev[lev]/(r0t+1.e-80) 
+		       <<          ", norm2: " << r2t << " " << r2t_prev[lev]/(r2t+1.e-80) 
+		       << endl;
+	      }
 	  }
 	  cout.flags(ff);
 	}
+
+	r0_prev[lev] = r0;
+	r2_prev[lev] = r2;
+	r0f_prev[lev] = r0f;
+	r2f_prev[lev] = r2f;
+	r0t_prev[lev] = r0t;
+	r2t_prev[lev] = r2t;
       }
     }
   }
@@ -419,8 +465,9 @@ sdc_sweeper* SDCAmr::build_level(int lev)
     nnodes = 1 + (nnodes0 - 1) * ((int) pow((double) trat, lev-first_refinement_level+1));
 
   double nodes[3] = { 0.0, 0.5, 1.0 };
-  int imex_order_flag = SDC_IMEX_HO;
-  sdc_imex* imex = sdc_imex_create(nodes, nnodes, (nnodes-1)/2, imex_order_flag,
+  int nrepeat = (nnodes-1)/2;
+  int imex_order_flag = 0;  // SDC_IMEX_HO;
+  sdc_imex* imex = sdc_imex_create(nodes, nnodes, nrepeat, imex_order_flag,
 				   sdc_f1eval, sdc_f2eval, sdc_f2comp);
 
   sdc_imex_setup(imex, NULL, NULL);

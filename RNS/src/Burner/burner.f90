@@ -266,7 +266,7 @@ contains
     double precision, intent(inout) :: YT(nspecies+1)
 
     integer :: iwrk, iter, n, i, j, info
-    double precision :: rwrk, rhoinv, cv
+    double precision :: rwrk, rhoinv, cv, rmax
     double precision, dimension(nspecies) :: uk, C
     double precision, dimension(nspecies+1) :: YT_init, r, dYTdt, ipvt
     integer, parameter :: consP = 0
@@ -296,7 +296,11 @@ contains
 
        r = YT - YT_init - dt * dYTdt
 
-       if (maxval(abs(r(1:nspecies))) .le. 1.d-12) exit 
+       rmax = maxval(abs(r(1:nspecies)))
+       if (rmax .le. 1.d-14 &
+            .or. (iter.ge.5 .and.  rmax.le. 1.d-12)) then
+          exit 
+       endif
 
        call ckytcr(rho, YT(nspecies+1), YT(1), iwrk, rwrk, C)
        call DWDOT(Jac, C, YT(nspecies+1), consP)

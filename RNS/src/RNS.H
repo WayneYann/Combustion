@@ -248,6 +248,9 @@ public:
     static std::string  flameTracName;
     static int          flameTracID  ;
 
+    // how to compute dUdt in f2comp; "simple" means setting dUdt = \Delta U / \Delta t
+    static int f2comp_simple_dUdt;
+
     void avgDown ();
     void avgDown (int state_indx);
     void avgDown (MultiFab& S_crse, const MultiFab& S_fine);
