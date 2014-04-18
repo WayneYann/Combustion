@@ -302,8 +302,14 @@ void SDCAmr::timeStep(int level, Real time,
 
 
   // echo
+  if (fixed_dt > 0.0) {
+    dt_level[0] = fixed_dt;
+  }
+
   double dt = dt_level[0];
-  for (int lev=1; lev<first_refinement_level; lev++) dt /= trat;
+  for (int lev=1; lev<first_refinement_level; lev++)
+    dt /= trat;
+
   if (verbose > 0 && ParallelDescriptor::IOProcessor()) {
     cout << "MLSDC advancing with dt: " << dt << " (" << dt_level[0] << ")" << endl;
   }
@@ -472,6 +478,7 @@ SDCAmr::SDCAmr ()
   if (!ppsdc.query("max_trefs", max_trefs)) max_trefs = 2;
   if (!ppsdc.query("nnodes0",   nnodes0))   nnodes0 = 3;
   if (!ppsdc.query("trat",      trat))      trat = 2;
+  if (!ppsdc.query("fixed_dt",  fixed_dt))  fixed_dt = -1.0;
 
   if (verbose > 2)
     sdc_log_set_stdout(SDC_LOG_DEBUG);
