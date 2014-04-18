@@ -41,12 +41,12 @@ contains
     integer :: i, j, n, g
     logical :: force_new_J
     double precision :: rhot(4), rhoinv, ei
-    double precision :: Yt0(nspec+1,4), Yt(nspec+1,4), dry(nspec)
+    double precision :: Yt(nspec+1,4)
     double precision, allocatable :: UG(:,:,:,:)
 
     allocate(UG(lo(1):hi(1),lo(2):hi(2),4,NVAR))
 
-    !$omp parallel private(i,j,n,g,rhot,rhoinv,ei,Yt0,Yt,dry,force_new_J)
+    !$omp parallel private(i,j,n,g,rhot,rhoinv,ei,Yt,force_new_J)
 
     !$omp do
     do n=1,NVAR
@@ -79,22 +79,9 @@ contains
 
           end do
 
-          Yt0 = Yt
           call burn(4, rhot, Yt, dt, force_new_J)
 
           force_new_J = new_J_cell
-
-          ! dry = 0.d0
-          ! do g=1,4
-          !    do n=1,nspec
-          !       dry(n) = dry(n) + rhot(g)*(Yt(n,g)-Yt0(n,g))
-          !    end do
-          ! end do
-
-          ! ! note that the sum of dry is zero
-          ! do n=1,nspec
-          !    U(i,j,UFS+n-1) = U(i,j,UFS+n-1) + 0.25d0*dry(n)
-          ! end do
 
           U(i,j,UFS:UFS+nspec-1) = 0.d0 
           do g=1,4
@@ -122,12 +109,12 @@ contains
     integer :: i, j, n
     logical :: force_new_J
     double precision :: rhot(1), rhoinv, ei
-    double precision :: Yt0(nspec), Yt(nspec+1)
+    double precision :: Yt(nspec+1)
     double precision, allocatable :: Ucc(:,:,:)
 
     allocate(Ucc(lo(1)-1:hi(1)+1,lo(2)-1:hi(2)+1,NVAR))
 
-    !$omp parallel private(i,j,n,rhot,rhoinv,ei,Yt0,Yt,force_new_J)
+    !$omp parallel private(i,j,n,rhot,rhoinv,ei,Yt,force_new_J)
 
     !$omp do
     do n=1,NVAR
@@ -156,13 +143,11 @@ contains
 
           call eos_get_T(Yt(nspec+1), ei, Yt(1:nspec))
 
-          Yt0 = Yt(1:nspec)
           call burn(1, rhot, Yt, dt, force_new_J)
 
           force_new_J = new_J_cell
 
           do n=1,nspec
-!             Ucc(i,j,UFS+n-1) = rhot(1)*(Yt(n)-Yt0(n))
              Ucc(i,j,UFS+n-1) = rhot(1)*Yt(n)
           end do
 
@@ -172,13 +157,7 @@ contains
 
     !$omp do
     do n=UFS,UFS+nspec-1
-       call cc2cellavg_2d(lo,hi, Ucc(:,:,n), lo-1,hi+1, Ucc(:,:,n), lo-1,hi+1)
-       ! call cc2cellavg_2d(lo,hi, Ucc(:,:,n), lo-1,hi+1, Ucc(:,:,UTEMP), lo-1,hi+1)
-       ! do j=lo(2),hi(2)
-       !    do i=lo(1),hi(1)
-       !       U(i,j,n) = U(i,j,n) + Ucc(i,j,UTEMP)
-       !    end do
-       ! end do
+       call cc2cellavg_2d(lo,hi, Ucc(:,:,n), lo-1,hi+1, U(:,:,n), Ulo,Uhi)
     end do
     !$omp end do
 
@@ -324,13 +303,8 @@ contains
 
           force_new_J = new_J_cell
 
-          call splitburn(4, rho0(1), Y0, rhot, Yt, dt)
-
-          ! do g=1,4
-          !    do n=1,nspec
-          !       U(i,j,UFS+n-1) = U(i,j,UFS+n-1) + 0.25d0*rhot(g)*Yt(n,g)
-          !    end do
-          ! end do
+          call splitburn(4, rho0(1), Y0, rhot, Yt, dt) 
+          ! Now Yt is \Delta Y and T
 
           U(i,j,UFS:UFS+nspec-1) = 0.d0 
           do g=1,4
@@ -359,12 +333,12 @@ contains
     integer :: i, j, n, g
     logical :: force_new_J
     double precision :: rhot(4), rhoinv, ei, rho0(1)
-    double precision :: Yt(nspec+1,4), Y0(nspec+1), Yg0(nspec), dry(nspec)
+    double precision :: Yt(nspec+1,4), Y0(nspec+1)
     double precision, allocatable :: UG(:,:,:,:)
 
     allocate(UG(lo(1):hi(1),lo(2):hi(2),4,NVAR))
 
-    !$omp parallel private(i,j,n,g,rhot,rhoinv,ei,Yt,force_new_J,rho0,Y0,Yg0,dry)
+    !$omp parallel private(i,j,n,g,rhot,rhoinv,ei,Yt,force_new_J,rho0,Y0)
 
     !$omp do
     do n=1,NVAR
@@ -406,18 +380,6 @@ contains
           call burn(1, rho0(1), Y0, dt, force_new_J)
 
           force_new_J = new_J_cell
-
-          ! dry = 0.d0
-          ! do g=1,4
-          !    Yg0 = YT(1:nspec,g)
-          !    call beburn(rho0(1), Y0, rhot(g), Yt(:,g), dt)
-          !    dry = dry + rhot(g)*(Yt(1:nspec,g)-Yg0)
-          ! end do
-
-          ! ! note that the sum of dry is zero
-          ! do n=1,nspec
-          !    U(i,j,UFS+n-1) = U(i,j,UFS+n-1) + 0.25d0*dry(n)
-          ! end do
 
           U(i,j,UFS:UFS+nspec-1) = 0.d0 
           do g=1,4
