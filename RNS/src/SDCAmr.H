@@ -59,8 +59,6 @@ public:
   int trat;			// time refinement ratio
   int first_refinement_level;   // first amr level that has time refinement
 
-  double fixed_dt;
-
   sdc_mg mg;
   vector<sdc_sweeper*> sweepers;
   vector<sdc_encap*>   encaps;
