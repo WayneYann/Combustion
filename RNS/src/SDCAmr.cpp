@@ -386,7 +386,8 @@ void SDCAmr::timeStep(int level, Real time,
 
 	if (ParallelDescriptor::IOProcessor()) {
 	  std::ios_base::fmtflags ff = cout.flags();
-	  cout << scientific << setprecision(2);
+	  int oldprec = cout.precision(2);
+	  cout << scientific;
 	  if (k == 0) {
 	      cout << " iter: " << k << ", level: " << lev << ",   rho"
 		   << " res norm0: " << r0 << "         "
@@ -415,6 +416,7 @@ void SDCAmr::timeStep(int level, Real time,
 		       << endl;
 	      }
 	  }
+	  cout.precision(oldprec);
 	  cout.flags(ff);
 	}
 
