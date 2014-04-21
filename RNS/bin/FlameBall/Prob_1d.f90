@@ -129,6 +129,9 @@ subroutine rns_initdata(level,time,lo,hi,nscal, &
   end if
 
   ifuel = get_species_index(fuel_name)
+  if (ifuel .le. 0) then
+     stop "wrong fuel name"
+  end if
   iO2 = get_species_index("O2")
   iN2 = get_species_index("N2")
 
