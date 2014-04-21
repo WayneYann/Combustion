@@ -12,10 +12,11 @@ module chemterm_module
 
 contains
 
-  subroutine chemterm(lo, hi, U, Ulo, Uhi, dt)
+  subroutine chemterm(lo, hi, U, Ulo, Uhi, dt, Up)
     integer, intent(in) :: lo(3), hi(3), Ulo(3), Uhi(3)
     double precision, intent(inout) :: U(Ulo(1):Uhi(1),Ulo(2):Uhi(2),Ulo(3):Uhi(3),NVAR)
     double precision, intent(in) :: dt
+    double precision, intent(in), optional :: Up(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),NVAR)
 
     select case (chem_solver)
        case (cc_burning)
@@ -25,7 +26,7 @@ contains
        case (split_burning)
           call chemterm_split(lo, hi, U, Ulo, Uhi, dt)
        case (BE_burning)
-          call chemterm_be(lo, hi, U, Ulo, Uhi, dt)
+          call chemterm_be(lo, hi, U, Ulo, Uhi, dt, Up)
        case default
           call bl_error("unknown chem_solver")
        end select
@@ -253,11 +254,12 @@ contains
   end subroutine chemterm_split
 
 
-  subroutine chemterm_be(lo, hi, U, Ulo, Uhi, dt)
+  subroutine chemterm_be(lo, hi, U, Ulo, Uhi, dt, Up)
     use weno_module, only : cellavg2gausspt_3d
     integer, intent(in) :: lo(3), hi(3), Ulo(3), Uhi(3)
     double precision, intent(inout) :: U(Ulo(1):Uhi(1),Ulo(2):Uhi(2),Ulo(3):Uhi(3),NVAR)
     double precision, intent(in) :: dt
+    double precision, intent(in), optional :: Up(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),NVAR)
 
     integer :: i, j, k, n, g
     logical :: force_new_J
@@ -307,9 +309,15 @@ contains
 
              end do
 
-             call burn(1, rho0(1), Y0, dt, force_new_J)
-
-             force_new_J = new_J_cell
+             if (present(Up)) then
+                rho0(1) = Up(i,j,k,URHO)
+                rhoinv = 1.d0/rho0(1)
+                Y0(1:nspec) = Up(i,j,k,UFS:UFS+nspec-1)*rhoinv
+                Y0(nspec+1) = Up(i,j,k,UTEMP)
+             else
+                call burn(1, rho0(1), Y0, dt, force_new_J)
+                force_new_J = new_J_cell
+             end if
 
              U(i,j,k,UFS:UFS+nspec-1) = 0.d0 
              do g=1,8

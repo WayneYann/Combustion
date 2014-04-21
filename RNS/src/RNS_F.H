@@ -18,6 +18,12 @@ BL_FORT_PROC_DECL(RNS_ADVCHEM, rns_advchem)
      BL_FORT_FAB_ARG(U),
      const Real& dt);
 
+BL_FORT_PROC_DECL(RNS_ADVCHEM2, rns_advchem2)
+    (const int lo[], const int hi[],
+     BL_FORT_FAB_ARG(U),
+     const BL_FORT_FAB_ARG(Uguess),
+     const Real& dt);
+
 BL_FORT_PROC_DECL(RNS_DUDT_CHEM, rns_dudt_chem)
     (const int lo[], const int hi[],
      const BL_FORT_FAB_ARG(U),
