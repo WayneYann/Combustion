@@ -4,7 +4,7 @@ module burner_module
 
   private
 
-  public :: burn, compute_rhodYdt, splitburn
+  public :: burn, compute_rhodYdt, splitburn, beburn
 
 contains
 
@@ -32,6 +32,14 @@ contains
     double precision, intent(inout) :: YT(*)
     return
   end subroutine splitburn
+
+
+  subroutine beburn(rho0, Y0, rho, YT, dt)
+    double precision, intent(in   ) :: rho0, rho, dt
+    double precision, intent(in   ) :: Y0(nspecies+1)
+    double precision, intent(inout) :: YT(nspecies+1)
+    return
+  end subroutine beburn
 
 end module burner_module
 

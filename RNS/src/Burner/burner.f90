@@ -23,15 +23,6 @@ contains
     double precision, intent(inout) :: YT(nspecies+1,np)
     logical, intent(in) :: force_new_J
 
-    double precision :: YTdot(nspecies+1,np)
-
-    if (dt == 0.d0) then
-       rho_feval(1:np) = rho
-       call f_rhs(nspecies+1, np, YT, 0.d0, YTdot)
-       YT = YTdot
-       return
-    end if
-
     if (use_vode) then
        call burn_vode(np, rho, YT, dt, force_new_J)
     else
@@ -297,8 +288,7 @@ contains
        r = YT - YT_init - dt * dYTdt
 
        rmax = maxval(abs(r(1:nspecies)))
-       if (rmax .le. 1.d-14 &
-            .or. (iter.ge.5 .and.  rmax.le. 1.d-12)) then
+       if (rmax .le. 1.d-14) then 
           exit 
        endif
 

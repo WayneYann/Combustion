@@ -57,6 +57,27 @@
 #include <ArrayView.H>
 #endif
 
+#ifdef USE_COLOROUTPUT
+// only works on some systems
+#define RESETCOLOR       "\033[0m" 
+#define BOLDFONT         "\033[1m"
+#define REDCOLOR         "\033[31m"      /* Red */
+#define GREENCOLOR       "\033[32m"      /* Green */
+#define YELLOWCOLOR      "\033[33m"      /* Yellow */
+#define BLUECOLOR        "\033[34m"      /* Blue */
+#define MAGENTACOLOR     "\033[35m"      /* Magenta */
+#define CYANCOLOR        "\033[36m"      /* Cyan */
+#else
+#define RESETCOLOR       "" 
+#define BOLDFONT         ""
+#define REDCOLOR         "" 
+#define GREENCOLOR       "" 
+#define YELLOWCOLOR      "" 
+#define BLUECOLOR        "" 
+#define MAGENTACOLOR     "" 
+#define CYANCOLOR        "" 
+#endif
+
 using namespace std;
 
 BEGIN_EXTERN_C
@@ -386,35 +407,45 @@ void SDCAmr::timeStep(int level, Real time,
 
 	if (ParallelDescriptor::IOProcessor()) {
 	  std::ios_base::fmtflags ff = cout.flags();
-	  cout << scientific << setprecision(2);
+	  int oldprec = cout.precision(2);
+	  cout << scientific;
+	  if (level > 0) cout << BOLDFONT;
 	  if (k == 0) {
+	      cout << REDCOLOR;
 	      cout << " iter: " << k << ", level: " << lev << ",   rho"
 		   << " res norm0: " << r0 << "         "
 		   <<    "  norm2: " << r2 << endl;
 	      if (!fname.empty()) {
+		  cout << GREENCOLOR;
 		  cout << fname << " res norm0: " << r0f << "         "
 		       <<             "  norm2: " << r2f << endl;
 	      }
 	      if (!tname.empty()) {
+		  cout << BLUECOLOR;
 		  cout << tname << " res norm0: " << r0t << "         "
 		       <<             "  norm2: " << r2t << endl;
 	      }
 	  }
 	  else {
+	      cout << REDCOLOR;
 	      cout << " iter: " << k << ", level: " << lev << ",   rho"
 		   << " res norm0: " << r0 << " " << r0_prev[lev]/(r0+1.e-80)
 		   <<    ", norm2: " << r2 << " " << r2_prev[lev]/(r2+1.e-80) << endl;
 	      if (!fname.empty()) {
+		  cout << GREENCOLOR;
 		  cout << fname << " res norm0: " << r0f << " " << r0f_prev[lev]/(r0f+1.e-80)
 		       <<             ", norm2: " << r2f << " " << r2f_prev[lev]/(r2f+1.e-80)
 		       << endl;
 	      }
 	      if (!tname.empty()) {
+		  cout << BLUECOLOR;
 		  cout << tname << " res norm0: " << r0t << " " << r0t_prev[lev]/(r0t+1.e-80)
 		       <<          ", norm2: " << r2t << " " << r2t_prev[lev]/(r2t+1.e-80)
 		       << endl;
 	      }
 	  }
+	  cout << RESETCOLOR;
+	  cout.precision(oldprec);
 	  cout.flags(ff);
 	}
 
