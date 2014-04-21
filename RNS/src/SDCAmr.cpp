@@ -267,12 +267,12 @@ void mlsdc_amr_restrict(void *Fp, void *Gp, sdc_state *state, void *ctxF, void *
 END_EXTERN_C
 
 
-void SDCAmr::final_integrate(double t, double dt)
+void SDCAmr::final_integrate(double t, double dt, int niter)
 {
   int nlevs = mg.nlevels;
   for (int l=0; l<nlevs; l++) {
     sdc_sweeper* swp    = mg.sweepers[l];
-    swp->sweep(swp, t, dt, SDC_SWEEP_NOEVAL);
+    swp->sweep(swp, t, dt, niter, SDC_SWEEP_NOEVAL);
   }
 }
 
@@ -350,7 +350,7 @@ void SDCAmr::timeStep(int level, Real time,
     if (k==max_iters-1) flags |= SDC_MG_HALFSWEEP;
     if (k==0)           flags |= SDC_SWEEP_FIRST;
 
-    sdc_mg_sweep(&mg, time, dt, flags);
+    sdc_mg_sweep(&mg, time, dt, k, flags);
 
     if (verbose > 0) {
       for (int lev=0; lev<=finest_level; lev++) {
@@ -428,7 +428,7 @@ void SDCAmr::timeStep(int level, Real time,
     }
   }
 
-  final_integrate(time, dt);
+  final_integrate(time, dt, max_iters);
 
   BL_PROFILE_VAR_STOP(sdc_iters);
 

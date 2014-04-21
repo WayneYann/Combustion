@@ -70,7 +70,7 @@ public:
   sdc_sweeper* build_level(int lev);
   void         rebuild_mlsdc();
   void         destroy_mlsdc();
-  void         final_integrate(double t, double dt);
+  void         final_integrate(double t, double dt, int niter);
 
   virtual void timeStep(int level,
 			Real time,
