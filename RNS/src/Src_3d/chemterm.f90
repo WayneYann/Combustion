@@ -313,7 +313,9 @@ contains
 
              U(i,j,k,UFS:UFS+nspec-1) = 0.d0 
              do g=1,8
-                call beburn(rho0(1), Y0, rhot(g), Yt(:,g), dt)
+                call beburn(rho0(1), Y0, rhot(g), Yt(:,g), dt, g)
+                rho0(1) = rhot(g)
+                Y0 = Yt(:,g)
                 do n=1,nspec
                    U(i,j,k,UFS+n-1) = U(i,j,k,UFS+n-1) + 0.125d0*rhot(g)*Yt(n,g)
                 end do

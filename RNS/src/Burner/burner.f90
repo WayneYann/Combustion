@@ -6,8 +6,9 @@ module burner_module
   implicit none
 
   double precision, allocatable, save :: Jac(:,:), A(:,:)
+  integer, allocatable, save :: ipvt(:)
   integer, save :: nstep
-  !$omp threadprivate(Jac,A,nstep) 
+  !$omp threadprivate(Jac,A,ipvt,nstep) 
 
   private
 
@@ -196,7 +197,7 @@ contains
     double precision, intent(inout) :: YT(nspecies+1,np)
 
     integer :: i, j, n, iwrk, info
-    double precision :: ipvt(nspecies), C(nspecies)
+    double precision :: C(nspecies)
     double precision :: Y(np,nspecies), T(np), rdYdt(np,nspecies)
     double precision :: rwrk, dt_step, fac
     integer, parameter :: consP = 0
@@ -204,6 +205,7 @@ contains
     if (.not. allocated(Jac)) then
        allocate(Jac(nspecies+1,nspecies+1))
        allocate(A(nspecies,nspecies))
+       allocate(ipvt(nspecies))
     end if
 
     ! form A
@@ -251,21 +253,22 @@ contains
   end subroutine splitburn
 
 
-  subroutine beburn(rho0, Y0, rho, YT, dt)
+  subroutine beburn(rho0, Y0, rho, YT, dt, g)
+    integer, intent(in) :: g
     double precision, intent(in   ) :: rho0, rho, dt
     double precision, intent(in   ) :: Y0(nspecies+1)
     double precision, intent(inout) :: YT(nspecies+1)
 
-    integer :: iwrk, iter, n, i, j, info
+    integer :: iwrk, iter, n, info
     double precision :: rwrk, rhoinv, cv, rmax
-    double precision, dimension(nspecies) :: uk, C
-    double precision, dimension(nspecies+1) :: YT_init, r, dYTdt, ipvt
-    integer, parameter :: consP = 0
+    double precision, dimension(nspecies) :: uk
+    double precision, dimension(nspecies+1) :: YT_init, r, dYTdt
     integer, parameter :: J_int = 5
 
     if (.not. allocated(A)) then
        allocate(Jac(nspecies+1,nspecies+1))
        allocate(A(nspecies+1,nspecies+1))
+       allocate(ipvt(nspecies+1))
     end if
 
     rhoinv = 1.d0/rho
@@ -292,29 +295,9 @@ contains
           exit 
        endif
 
-       call ckytcr(rho, YT(nspecies+1), YT(1), iwrk, rwrk, C)
-       call DWDOT(Jac, C, YT(nspecies+1), consP)
-
-       if (mod(iter, J_int) .eq. 0) then
-          do j=1,nspecies
-             do i=1,nspecies
-                Jac(i,j) = Jac(i,j) * molecular_weight(i) * inv_mwt(j)
-             end do
-             i=nspecies+1
-             Jac(i,j) = Jac(i,j) * inv_mwt(j) * rho
-          end do
-          !
-          j = nspecies+1
-          do i=1,nspecies
-             Jac(i,j) = Jac(i,j) * molecular_weight(i) * rhoinv
-          end do
-          
-          A = -dt*Jac
-          do i=1,nspecies+1
-             A(i,i) = 1.d0 + A(i,i)
-          end do
-
-          call dgefa(A, nspecies+1, nspecies+1, ipvt, info)
+       if ( mod(iter, J_int) .eq. 0 .and.  &
+            (g.eq.1 .or. iter.gt.0) ) then
+          call LUA(rho, YT, dt)
        end if
 
        call dgesl(A, nspecies+1, nspecies+1, ipvt, r, 0)
@@ -324,6 +307,40 @@ contains
     end do
 
     if (iter .gt. 100) call bl_error("beburn failed")
+
+  contains
+
+    subroutine LUA(rho, YT, dt)
+      double precision, intent(in) :: rho, YT(nspecies+1), dt
+      integer :: i, j, iwrk, info
+      double precision :: rwrk
+      double precision, dimension(nspecies) :: C
+      integer, parameter :: consP = 0
+
+      call ckytcr(rho, YT(nspecies+1), YT(1), iwrk, rwrk, C)
+      call DWDOT(Jac, C, YT(nspecies+1), consP)
+
+      do j=1,nspecies
+         do i=1,nspecies
+            Jac(i,j) = Jac(i,j) * molecular_weight(i) * inv_mwt(j)
+         end do
+         i=nspecies+1
+         Jac(i,j) = Jac(i,j) * inv_mwt(j) * rho
+      end do
+      !
+      j = nspecies+1
+      do i=1,nspecies
+         Jac(i,j) = Jac(i,j) * molecular_weight(i) * rhoinv
+      end do
+      
+      A = -dt*Jac
+      do i=1,nspecies+1
+         A(i,i) = 1.d0 + A(i,i)
+      end do
+      
+      call dgefa(A, nspecies+1, nspecies+1, ipvt, info)
+      
+    end subroutine LUA
 
   end subroutine beburn
 

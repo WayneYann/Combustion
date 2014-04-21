@@ -263,7 +263,9 @@ contains
        
        U(i,UFS:UFS+n-1) = 0.d0
        do g=1,2
-          call beburn(rho0(1), Y0, rhot(g), Yt(:,g), dt)
+          call beburn(rho0(1), Y0, rhot(g), Yt(:,g), dt, g)
+          rho0(1) = rhot(g)
+          Y0 = Yt(:,g)
           do n=1,nspec
              U(i,UFS+n-1) = U(i,UFS+n-1) + 0.5d0*rhot(g)*Yt(n,g)
           end do
