@@ -356,9 +356,9 @@ protected:
     static int         new_J_cell;
 
     enum ChemSolverType { CC_BURNING = 0,
-			  GAUSS_BURNING,
-			  SPLIT_BURNING,
-			  BE_BURNING,
+			  GAUSS_BURNING,  // 1
+			  SPLIT_BURNING,  // 2
+			  BE_BURNING,     // 3
 			  NUM_CHEMSOLVER_TYPE };
     static ChemSolverType chem_solver;
 
