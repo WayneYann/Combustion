@@ -47,7 +47,6 @@
 #include <AmrLevel.H>
 #include <Interpolater.H>
 #include <FabArray.H>
-#include <cmath>
 #include <iomanip>
 
 #include "RNS.H"
@@ -59,7 +58,7 @@
 
 #ifdef USE_COLOROUTPUT
 // only works on some systems
-#define RESETCOLOR       "\033[0m" 
+#define RESETCOLOR       "\033[0m"
 #define BOLDFONT         "\033[1m"
 #define REDCOLOR         "\033[31m"      /* Red */
 #define GREENCOLOR       "\033[32m"      /* Green */
@@ -68,14 +67,14 @@
 #define MAGENTACOLOR     "\033[35m"      /* Magenta */
 #define CYANCOLOR        "\033[36m"      /* Cyan */
 #else
-#define RESETCOLOR       "" 
+#define RESETCOLOR       ""
 #define BOLDFONT         ""
-#define REDCOLOR         "" 
-#define GREENCOLOR       "" 
-#define YELLOWCOLOR      "" 
-#define BLUECOLOR        "" 
-#define MAGENTACOLOR     "" 
-#define CYANCOLOR        "" 
+#define REDCOLOR         ""
+#define GREENCOLOR       ""
+#define YELLOWCOLOR      ""
+#define BLUECOLOR        ""
+#define MAGENTACOLOR     ""
+#define CYANCOLOR        ""
 #endif
 
 using namespace std;
@@ -498,19 +497,13 @@ sdc_sweeper* SDCAmr::build_level(int lev)
   else
     first_refinement_level = 1;
 
-  // if (lev < first_refinement_level)
-  //   nnodes = nnodes0;
-  // else
-  //   nnodes = 1 + (nnodes0 - 1) * ((int) pow((double) trat, lev-first_refinement_level+1));
-
   int nnodes = nnodes0;
-  for (int l=first_refinement_level; l<lev; l++)
+  for (int l=first_refinement_level; l<=lev; l++)
       nnodes = (nnodes-1)*trat + 1;
 
   double nodes[3] = { 0.0, 0.5, 1.0 };
-  int nrepeat = (nnodes-1)/2;
-  int imex_order_flag = 0;  // SDC_IMEX_HO;
-  sdc_imex* imex = sdc_imex_create(nodes, nnodes, nrepeat, imex_order_flag,
+  int nrepeat     = (nnodes-1)/2;
+  sdc_imex* imex = sdc_imex_create(nodes, 3, nrepeat, 0,
 				   sdc_f1eval, sdc_f2eval, sdc_f2comp);
 
   sdc_imex_setup(imex, NULL, NULL);
