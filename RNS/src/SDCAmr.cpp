@@ -493,17 +493,19 @@ sdc_sweeper* SDCAmr::build_level(int lev)
 {
   BL_PROFILE("SDCAmr::build_level()");
 
-  int nnodes;
-
   if (finest_level - max_trefs > 0)
     first_refinement_level = finest_level - max_trefs + 1;
   else
     first_refinement_level = 1;
 
-  if (lev < first_refinement_level)
-    nnodes = nnodes0;
-  else
-    nnodes = 1 + (nnodes0 - 1) * ((int) pow((double) trat, lev-first_refinement_level+1));
+  // if (lev < first_refinement_level)
+  //   nnodes = nnodes0;
+  // else
+  //   nnodes = 1 + (nnodes0 - 1) * ((int) pow((double) trat, lev-first_refinement_level+1));
+
+  int nnodes = nnodes0;
+  for (int l=first_refinement_level; l<lev; l++)
+      nnodes = (nnodes-1)*trat + 1;
 
   double nodes[3] = { 0.0, 0.5, 1.0 };
   int nrepeat = (nnodes-1)/2;
