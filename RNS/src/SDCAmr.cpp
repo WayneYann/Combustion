@@ -551,7 +551,7 @@ void SDCAmr::rebuild_mlsdc()
 SDCAmr::SDCAmr ()
 {
   ParmParse ppsdc("mlsdc");
-  if (!ppsdc.query("max_iters", max_iters)) max_iters = 8;
+  if (!ppsdc.query("max_iters", max_iters)) max_iters = 4;
   if (!ppsdc.query("max_trefs", max_trefs)) max_trefs = 2;
   if (!ppsdc.query("nnodes0",   nnodes0))   nnodes0 = 3;
   if (!ppsdc.query("trat",      trat))      trat = 2;

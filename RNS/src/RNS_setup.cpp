@@ -163,20 +163,14 @@ RNS::variableSetUp ()
 	plot_X = plot_omegadot = plot_dYdt = plot_heatRelease = plot_fuelConsumption = 0;
     }
 
-    int nriemann = NUM_RIEMANN_TYPE;
-    int nriemann_F;
-    int nchemsolver = NUM_CHEMSOLVER_TYPE;
-    int nchemsolver_F;
-
+    int nriemann_F, nchemsolver_F;
     // Define NUM_GROW from the f90 module.
     BL_FORT_PROC_CALL(GET_METHOD_PARAMS, get_method_params)(&NUM_GROW, &nriemann_F, &nchemsolver_F);
-    
-    if (nriemann_F != nriemann)
+    if (nriemann_F != NUM_RIEMANN_TYPE)
     {
 	BoxLib::Abort("Something is wrong with RiemannType");
     }
-
-    if (nchemsolver_F != nchemsolver)
+    if (nchemsolver_F != NUM_CHEMSOLVER_TYPE)
     {
 	BoxLib::Abort("Something is wrong with ChemSolverType");
     }

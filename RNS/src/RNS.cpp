@@ -85,11 +85,11 @@ Real             RNS::difmag    = -1.0;  // for JBB & HLLC Riemann solvers
 
 std::string  RNS::fuelName           = "";
 int          RNS::fuelID             = -1;
-std::string  RNS::oxidizerName       = "";
+std::string  RNS::oxidizerName       = "O2";
 int          RNS::oxidizerID         = -1;
 std::string  RNS::productName        = "";
 int          RNS::productID          = -1;
-std::string  RNS::flameTracName      = "";
+std::string  RNS::flameTracName      = "H";
 int          RNS::flameTracID        = -1;
 
 ErrorList    RNS::err_list;
@@ -200,9 +200,10 @@ RNS::read_params ()
     pp.query("RK_order",RK_order);
 
     {
-	int riemann = RNS::Riemann;
-	pp.query("Riemann", riemann);
-	Riemann = static_cast<RiemannType>(riemann);
+	int riemann;
+	if (pp.query("Riemann", riemann)) {
+	    Riemann = static_cast<RiemannType>(riemann);
+	}
     }
 
     // some Riemann solvers need artificial viscosity to suppress odd-even decouping
@@ -287,7 +288,6 @@ RNS::read_params ()
     pp.query("fuelName"     , fuelName);
     pp.query("oxidizerName" , oxidizerName);
     pp.query("productName"  , productName);
-    flameTracName = fuelName;
     pp.query("flameTracName", flameTracName);
     
     pp.query("allow_untagging"   , allow_untagging);
@@ -320,7 +320,6 @@ RNS::read_params ()
     pp.query("do_weno", do_weno);
     pp.query("do_quadrature_weno", do_quadrature_weno);
     pp.query("do_component_weno", do_component_weno);
-
     if (ChemDriver::isNull())
     {
 	do_weno = 1;  // must do weno
@@ -330,17 +329,20 @@ RNS::read_params ()
     pp.query("use_vode", use_vode);
     pp.query("new_J_cell", new_J_cell);
     {
-	int chem_solver_i = RNS::chem_solver;
-	pp.query("chem_solver", chem_solver_i);
-	chem_solver = static_cast<ChemSolverType>(chem_solver_i);
+	int chem_solver_i;
+	if (pp.query("chem_solver", chem_solver_i)) {
+	    chem_solver = static_cast<ChemSolverType>(chem_solver_i);
+	}
     }
-    pp.query("f2comp_simple_dUdt", f2comp_simple_dUdt);
     if (chem_solver == RNS::BE_BURNING) {
+	f2comp_simple_dUdt = 1;
 	f2comp_niter_good = 1;
     }
     else {
+	f2comp_simple_dUdt = 0;
 	f2comp_niter_good = 100000;
     }
+    pp.query("f2comp_simple_dUdt", f2comp_simple_dUdt);
     pp.query("f2comp_niter_good" , f2comp_niter_good);
 }
 
