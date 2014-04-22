@@ -150,6 +150,7 @@ RNS::ChemSolverType RNS::chem_solver  = RNS::BE_BURNING;
 RNS::ChemSolverType RNS::chem_solver  = RNS::GAUSS_BURNING;
 #endif
 int          RNS::f2comp_simple_dUdt  = 1; // set dUdt = \Delta U / \Delta t in f2comp
+int          RNS::f2comp_niter_good   = 1; // starting from iter ?, U is considered good.
 
 // this will be reset upon restart
 Real         RNS::previousCPUTimeUsed = 0.0;
@@ -334,6 +335,13 @@ RNS::read_params ()
 	chem_solver = static_cast<ChemSolverType>(chem_solver_i);
     }
     pp.query("f2comp_simple_dUdt", f2comp_simple_dUdt);
+    if (chem_solver == RNS::BE_BURNING) {
+	f2comp_niter_good = 1;
+    }
+    else {
+	f2comp_niter_good = 100000;
+    }
+    pp.query("f2comp_niter_good" , f2comp_niter_good);
 }
 
 RNS::RNS ()

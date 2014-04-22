@@ -76,6 +76,23 @@ subroutine rns_advchem(lo,hi,U,U_l1,U_h1,dt)
   call chemterm(lo, hi, U, Ulo, Uhi, dt)
 end subroutine rns_advchem
 
+subroutine rns_advchem2(lo,hi,U,U_l1,U_h1,Up,Up_l1,Up_h1,dt)
+  use meth_params_module, only : NVAR
+  use chemterm_module, only : chemterm
+  implicit none
+  integer, intent(in) :: lo(1), hi(1)
+  integer, intent(in) ::  U_l1, U_h1, Up_l1, Up_h1
+  double precision, intent(inout) :: U(U_l1: U_h1,NVAR)
+  double precision, intent(in) :: Up(Up_l1: Up_h1,NVAR)
+  double precision, intent(in) :: dt
+
+  integer :: Ulo(1), Uhi(1)
+
+  Ulo(1) = U_l1
+  Uhi(1) = U_h1
+  call chemterm(lo, hi, U, Ulo, Uhi, dt, Up)
+end subroutine rns_advchem2
+
 ! :::
 ! ::: ------------------------------------------------------------------
 ! :::

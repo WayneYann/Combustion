@@ -34,7 +34,8 @@ contains
   end subroutine splitburn
 
 
-  subroutine beburn(rho0, Y0, rho, YT, dt)
+  subroutine beburn(rho0, Y0, rho, YT, dt, g)
+    integer, intent(in) :: g
     double precision, intent(in   ) :: rho0, rho, dt
     double precision, intent(in   ) :: Y0(nspecies+1)
     double precision, intent(inout) :: YT(nspecies+1)

@@ -1,6 +1,7 @@
 rns.new_J_cell   = 1
 
 rns.fuelName = CH3OCH3
+rns.flameTracName = H
 
 # ------------------  INPUTS TO MAIN PROGRAM  -------------------
 max_step  = 1000000

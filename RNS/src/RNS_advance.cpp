@@ -320,6 +320,29 @@ RNS::advance_chemistry(MultiFab& U, Real dt)
 
 
 void
+RNS::advance_chemistry(MultiFab& U, const MultiFab& Uguess, Real dt)
+{
+    BL_PROFILE("RNS::advance_chemistry()");
+
+    BL_ASSERT( ! ChemDriver::isNull() );
+    BL_ASSERT( Uguess.nGrow() == 0 );
+
+    for (MFIter mfi(U); mfi.isValid(); ++mfi)
+    {
+	const int   i = mfi.index();
+	const Box& bx = mfi.validbox();
+	const int* lo = bx.loVect();
+	const int* hi = bx.hiVect();
+
+	BL_FORT_PROC_CALL(RNS_ADVCHEM2, rns_advchem2)
+	    (lo, hi, BL_TO_FORTRAN(U[i]), BL_TO_FORTRAN(Uguess[i]), dt);
+    }
+
+    post_update(U);
+}
+
+
+void
 RNS::advance_AD(MultiFab& Unew, Real time, Real dt)
 {
     MultiFab Uprime(grids,NUM_STATE,0);
@@ -456,22 +479,37 @@ void sdc_f2comp(void *Fp, void *Qp, double t, double dt, void *RHSp, sdc_state *
   MultiFab& Urhs   = *RHS.U;
 
   BL_ASSERT(Urhs.contains_nan() == false);
-  MultiFab::Copy(U, Urhs, 0, 0, U.nComp(), 0);
 
   if (ChemDriver::isNull() || !RNS::do_chemistry) {
-    Uprime.setVal(0.0);
-    return;
+      MultiFab::Copy(U, Urhs, 0, 0, U.nComp(), 0);
+      Uprime.setVal(0.0);
+      return;
   }
 
   if (rns.verbose > 1 && ParallelDescriptor::IOProcessor()) {
-    cout << "MLSDC advancing  chemistry:"
-	 << " level: " << rns.Level() << ", node: " << state->node << endl;
+      cout << "MLSDC advancing  chemistry:"
+	   << " level: " << rns.Level() << ", node: " << state->node << endl;
   }
+
+  MultiFab Uguess;
+  int goodUguess = (state->iter >= rns.f2comp_niter_good) ? 1 : 0;
+  if (goodUguess) {
+      Uguess.define(U.boxArray(), U.nComp(), 0, Fab_allocate);
+      MultiFab::Copy(Uguess, U, 0, 0, U.nComp(), 0);      
+  }
+
+  MultiFab::Copy(U, Urhs, 0, 0, U.nComp(), 0);
 
   rns.fill_boundary(U, state->t, RNS::use_FillBoundary);
 
   BL_ASSERT(U.contains_nan() == false);
-  rns.advance_chemistry(U, dt);
+  
+  if (goodUguess) {
+      rns.advance_chemistry(U, Uguess, dt);
+  }
+  else {
+      rns.advance_chemistry(U, dt);
+  }
 
   if (rns.f2comp_simple_dUdt) {
       Uprime.copy(U);

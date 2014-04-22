@@ -120,6 +120,7 @@ public:
     // When it's called, 2 ghost cells of U should have already been filled properly.
     //
     void advance_chemistry(MultiFab& U, Real dt);
+    void advance_chemistry(MultiFab& U, const MultiFab& Uguess, Real dt);
     //
     // do advection and diffusion
     // When it's called, Unew including ghost cells should have the state at t=time.
@@ -250,6 +251,7 @@ public:
 
     // how to compute dUdt in f2comp; "simple" means setting dUdt = \Delta U / \Delta t
     static int f2comp_simple_dUdt;
+    static int f2comp_niter_good;  // starting from iter ?, U is considered good.
 
     void avgDown ();
     void avgDown (int state_indx);
