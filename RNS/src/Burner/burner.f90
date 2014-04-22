@@ -264,6 +264,9 @@ contains
     double precision, dimension(nspecies) :: uk
     double precision, dimension(nspecies+1) :: YT_init, r, dYTdt
     integer, parameter :: J_int = 5
+    logical, save :: A_is_invalid
+
+    if (g .eq. 1) A_is_invalid = .true.
 
     if (.not. allocated(A)) then
        allocate(Jac(nspecies+1,nspecies+1))
@@ -295,9 +298,10 @@ contains
           exit 
        endif
 
-       if ( mod(iter, J_int) .eq. 0 .and.  &
-            (g.eq.1 .or. iter.gt.0) ) then
+       if ( A_is_invalid .or.  &
+            (iter.gt.0 .and. mod(iter, J_int).eq.0) ) then
           call LUA(rho, YT, dt)
+          A_is_invalid = .false.
        end if
 
        call dgesl(A, nspecies+1, nspecies+1, ipvt, r, 0)
