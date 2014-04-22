@@ -49,8 +49,16 @@ static Real dt_cutoff    = 0.0;
 bool         RNS::dump_old      = false;
 
 int          RNS::verbose       = 0;
+#if (BL_SPACEDIM == 1) 
 Real         RNS::cfl           = 0.8;
 Real         RNS::diff_cfl      = 0.8;
+#elif (BL_SPACEDIM == 2)
+Real         RNS::cfl           = 0.4;
+Real         RNS::diff_cfl      = 0.4;
+#else
+Real         RNS::cfl           = 0.27;
+Real         RNS::diff_cfl      = 0.27;
+#endif
 Real         RNS::init_shrink   = 1.0;
 Real         RNS::change_max    = 1.1;
 BCRec        RNS::phys_bc;
