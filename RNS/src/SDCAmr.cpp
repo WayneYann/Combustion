@@ -509,6 +509,11 @@ sdc_sweeper* SDCAmr::build_level(int lev)
   sdc_imex_setup(imex, NULL, NULL);
   sdc_hooks_add(imex->hooks, SDC_HOOK_POST_STEP, sdc_poststep_hook);
 
+  if (lev < first_refinement_level)
+    mg.nsweeps[lev] = nsweeps[0];
+  else
+    mg.nsweeps[lev] = nsweeps[lev-first_refinement_level+1];
+
   return (sdc_sweeper*) imex;
 }
 
@@ -532,16 +537,16 @@ void SDCAmr::rebuild_mlsdc()
     sdc_mg_add_level(&mg, sweepers[lev], mlsdc_amr_interpolate, mlsdc_amr_restrict);
   }
 
-  if (max_level > 0) mg.nsweeps[0] = 2;
   sdc_mg_setup(&mg, 0);
   sdc_mg_allocate(&mg);
-  // sdc_mg_print(&mg, 0);
 
   if (verbose > 0 && ParallelDescriptor::IOProcessor()) {
     cout << "Rebuilt MLSDC: " << mg.nlevels << ", nnodes: ";
     for (int lev=0; lev<=finest_level; lev++)
       cout << sweepers[lev]->nset->nnodes << " ";
     cout << endl;
+    if (verbose > 2)
+      sdc_mg_print(&mg, 2);
   }
 }
 
@@ -566,8 +571,17 @@ SDCAmr::SDCAmr ()
 
   sweepers.resize(max_level+1);
   encaps.resize(max_level+1);
+  nsweeps.resize(max_trefs+1);
 
-  for (int i=0; i<=max_level; i++) sweepers[i] = NULL;
+  if (!ppsdc.queryarr("nsweeps", nsweeps)) {
+    nsweeps[0] = 2;
+    for (int l=1; l<max_trefs+1; l++)
+      nsweeps[l] = 1;
+  }
+
+
+  for (int i=0; i<=max_level; i++)
+    sweepers[i] = NULL;
 
   if (max_level > 0)
     for (int i=0; i<=max_level; i++)

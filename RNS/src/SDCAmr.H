@@ -62,6 +62,7 @@ public:
   sdc_mg mg;
   vector<sdc_sweeper*> sweepers;
   vector<sdc_encap*>   encaps;
+  vector<int>          nsweeps;
 
   SDCAmr();
   ~SDCAmr();
