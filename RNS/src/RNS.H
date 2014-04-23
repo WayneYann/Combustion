@@ -357,10 +357,10 @@ protected:
     static int         use_vode;
     static int         new_J_cell;
 
-    enum ChemSolverType { CC_BURNING = 0,
-			  GAUSS_BURNING,  // 1
-			  SPLIT_BURNING,  // 2
-			  BE_BURNING,     // 3
+    enum ChemSolverType { CC_BURNING = 0, // 0: burn at cell centers
+			  GAUSS_BURNING,  // 1: burn at Gauss points using BDF/VODE 
+			  SPLIT_BURNING,  // 2: burn at Gauss points by splitting
+			  BE_BURNING,     // 3: burn at Gauss points using backward Euler
 			  NUM_CHEMSOLVER_TYPE };
     static ChemSolverType chem_solver;
 
