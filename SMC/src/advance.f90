@@ -169,7 +169,7 @@ contains
        call build(bpt_rkstep(j), bpt_names(j))
        if (j == 1) then
           ! -rk64_time(j) is a hack.
-          ! for the first step, dt is not set yet 
+          ! for the first step, dt is not set yet
           call dUdt(U, Uprime, time, -rk64_time(j), dx, courno=courno)
        else
           call dUdt(U, Uprime, t, rk64_time(j)*dt, dx)
@@ -265,7 +265,7 @@ contains
 
     call build(bpt_sdc_iter, "sdc_iter")
     do k = 1, sdc%iters
-       call sdc_imex_sweep(sdc%imex, time, dt, 0)
+       call sdc_imex_sweep(sdc%imex, time, dt, k, 0)
 
        ! check residual
        if (sdc%tol_residual > 0.d0) then
@@ -360,21 +360,21 @@ contains
     type(multifab), pointer :: U, Uprime, Uprime_chem
     type(sdc_ctx),  pointer :: ctx
 
-    type(sdc_nodes), pointer :: nds
-    real(c_double),  pointer :: nodes(:)
-    real(c_double)           :: dt_m
-    integer                  :: node
+    type(sdc_nset), pointer :: nsets(:)
+    real(c_double), pointer :: nodes(:)
+    real(c_double)          :: dt_m
+    integer                 :: node
 
     call c_f_pointer(Uptr, U)
     call c_f_pointer(Fptr, Uprime)
     call c_f_pointer(ctxptr, ctx)
 
     ! hack: compute sub-step dt and wrap around appropriately
-    nds => ctx%nodes1
-    call c_f_pointer(nds%nodes, nodes, [ nds%nnodes ])
+    call c_f_pointer(ctx%mrex%nsets, nsets, [ ctx%mrex%ncomps ])
+    call c_f_pointer(nsets(1)%nodes, nodes, [ nsets(1)%nnodes ])
 
     node = state%node + 1
-    if (node >= nds%nnodes) then
+    if (node >= nsets(1)%nnodes) then
        dt_m = dt * (nodes(2) - nodes(1))
     else
        dt_m = dt * (nodes(node+1) - nodes(node))
@@ -483,7 +483,7 @@ contains
     call build(bpt_sdc_prep, "sdc_prep")
     if (first_step) then
        call sdc_mrex_set_q0(sdc%mrex, mfptr(U))
-       call sdc_mrex_spread(sdc%mrex, time)
+       call sdc_mrex_spread(sdc%mrex, time, dt)
     else
        call sdc_mrex_spread_qend(sdc%mrex)
     end if
@@ -498,7 +498,7 @@ contains
 
     call build(bpt_sdc_iter, "sdc_iter")
     do k = 1, sdc%iters
-       call sdc_mrex_sweep(sdc%mrex, time, dt, 0);
+       call sdc_mrex_sweep(sdc%mrex, time, dt, k, 0);
 
        ! check residual
        if (sdc%tol_residual > 0.d0) then
@@ -1080,7 +1080,7 @@ contains
 
           if (overlap_comm_comp) then
              call multifab_fill_boundary_finish(qx, qx_fb_data, idim=1)
-             if (dm .ge. 2) then 
+             if (dm .ge. 2) then
                 call multifab_fill_boundary_finish(qy, qy_fb_data, idim=2)
              end if
              if (dm .eq. 3) then
