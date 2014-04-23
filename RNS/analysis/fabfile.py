@@ -11,7 +11,7 @@ from fabric.utils import *
 from fabric.contrib.files import exists
 
 
-def run_rns(dname='', exe=None, inputs='inputs', args='', probin=None, dry_run=False):
+def RNS(dname='', exe=None, inputs='inputs', args='', probin=None, dry_run=False):
 
     puts(green("running trial " + dname))
 
@@ -79,7 +79,7 @@ def dme_flameball_convergence(force_run=False):
         dname = os.path.join(base, 'dt_%.2g' % dt)
         args  = 'stop_time=%g mlsdc.fixed_dt=%g mlsdc.max_iters=8' % (stop_time, dt)
         if not exists(dname) or force_run:
-            run_rns(dname, exe, inputs, args, probin)
+            RNS(dname, exe, inputs, args, probin)
 
     diffs = []
     for crse, fine in zip(dts[:-1], dts[1:]):
@@ -126,7 +126,7 @@ def acoustic_pulse_convergence(trial, force_run=False):
         dname = os.path.join(base, trial, 'nx' + str(nx))
         if not exists(dname) or force_run:
             args  = "amr.n_cell=%d amr.blocking_factor=%d" % (nx, nx/2)
-            run_rns(dname, exe, inputs, args)
+            RNS(dname, exe, inputs, args)
         runs.append(dname)
 
     # test convergence
@@ -147,3 +147,17 @@ def acoustic_pulse_convergence(trial, force_run=False):
             e2 = np.asarray(fine[lev])
 
             puts(yellow(), False)
+
+
+@task
+def test_final_integrate():
+
+    base   = os.path.abspath('../bin/FlameBall')
+    exe    = os.path.join(base, 'RNS2d.SDC.Linux.gcc.gfortran.DEBUG.OMP.ex')
+    inputs = os.path.join(base, 'inputs.dme')
+    probin = os.path.join(base, 'probin.dme')
+
+    with cd(base):
+        run("make -j 8")
+        RNS(os.path.join(base, 'test'), exe, inputs, probin=probin)
+
