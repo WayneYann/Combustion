@@ -358,12 +358,8 @@ void SDCAmr::timeStep(int level, Real time,
 
   BL_PROFILE_VAR("SDCAmr::timeStep-iters", sdc_iters);
 
-  Array<Real> r0_prev(finest_level+1);
-  Array<Real> r2_prev(finest_level+1);
-  Array<Real> r0f_prev(finest_level+1);
-  Array<Real> r2f_prev(finest_level+1);
-  Array<Real> r0t_prev(finest_level+1);
-  Array<Real> r2t_prev(finest_level+1);
+  Array< Array<Real> > r0p(finest_level+1, Array<Real>(3));
+  Array< Array<Real> > r2p(finest_level+1, Array<Real>(3));
 
   for (int k=0; k<max_iters; k++) {
     int flags = SDC_MG_MIXEDINTERP | SDC_SWEEP_MONITOR;
@@ -373,34 +369,45 @@ void SDCAmr::timeStep(int level, Real time,
     sdc_mg_sweep(&mg, time, dt, k, flags);
 
     if (verbose > 0) {
+
+      int len=string(" iter: 0, level: 0,   rho").size();
+
+      int ncomps = 1;
+      if (RNS::fuelID >= 0) ncomps++;
+      if (RNS::flameTracID >= 0) ncomps++;
+      Array<int> comps(ncomps);
+      Array<string> names(ncomps);
+      Array<string> colors(ncomps);
+
+      int ic=0;
+      comps[ic] = 0;
+      names[ic] = "rho";
+      colors[ic] = REDCOLOR;
+      if (RNS::fuelID >= 0) {
+	ic++;
+        comps[ic] = RNS::FirstSpec + RNS::fuelID;
+	string vname = "rho*Y(" + RNS::fuelName + ")";
+	string space(len-vname.size(), ' ');
+	names[ic] = space + vname;
+	colors[ic] = GREENCOLOR;
+      }
+      if (RNS::flameTracID >= 0) {
+	ic++;
+        comps[ic] = RNS::FirstSpec + RNS::flameTracID;
+	string vname = "rho*Y(" + RNS::flameTracName + ")";
+	string space(len-vname.size(), ' ');
+	names[ic] = space + vname;
+	colors[ic] = BLUECOLOR;
+      }
+
       for (int lev=0; lev<=finest_level; lev++) {
 	RNSEncap* Rencap = (RNSEncap*) encaps[lev]->create(SDC_INTEGRAL, encaps[lev]->ctx);
         MultiFab& R      = *Rencap->U;
 
 	sdc_sweeper_residual(mg.sweepers[lev], dt, Rencap);
-	double r0=0., r2=0., r0f=0., r2f=0., r0t=0., r2t=0.;
-	r0 = R.norm0(0);
-	r2 = R.norm2(0);
 
-	RNS& rns = *dynamic_cast<RNS*>(&getLevel(lev));
-	string fname, tname;
-	int len=string(" iter: 0, level: 0,   rho").size();
-	if (rns.fuelID >= 0) {
-	    int ifuel = rns.FirstSpec + rns.fuelID;
-	    r0f = R.norm0(ifuel);
-	    r2f = R.norm2(ifuel);
-	    string vname = "rho*Y(" + rns.fuelName + ")";
-	    string space(len-vname.size(), ' ');
-	    fname = space + vname;
-	}
-	if (rns.flameTracID >= 0 && rns.flameTracID != rns.fuelID) {
-	    int itrac = rns.FirstSpec + rns.flameTracID;
-	    r0t = R.norm0(itrac);
-	    r2t = R.norm2(itrac);
-	    string vname = "rho*Y(" + rns.flameTracName + ")";
-	    string space(len-vname.size(), ' ');
-	    tname = space + vname;
-	}
+	Array<Real> r0(R.norm0(comps));
+	Array<Real> r2(R.norm2(comps));
 
 	encaps[lev]->destroy(Rencap);
 
@@ -410,37 +417,19 @@ void SDCAmr::timeStep(int level, Real time,
 	  cout << scientific;
 	  if (level%2 == 1) cout << BOLDFONT;
 	  if (k == 0) {
-	      cout << REDCOLOR;
-	      cout << " iter: " << k << ", level: " << lev << ",   rho"
-		   << " res norm0: " << r0 << "         "
-		   <<    "  norm2: " << r2 << endl;
-	      if (!fname.empty()) {
-		  cout << GREENCOLOR;
-		  cout << fname << " res norm0: " << r0f << "         "
-		       <<             "  norm2: " << r2f << endl;
-	      }
-	      if (!tname.empty()) {
-		  cout << BLUECOLOR;
-		  cout << tname << " res norm0: " << r0t << "         "
-		       <<             "  norm2: " << r2t << endl;
+	      cout << " iter: " << k << ", level: " << lev << ",   ";
+	      for (int ic=0; ic<ncomps; ic++) {
+		  cout << colors[ic] << names[ic] 
+		       << " res norm0: " << r0[ic] << "         "
+		       <<    "  norm2: " << r2[ic] << endl;
 	      }
 	  }
 	  else {
-	      cout << REDCOLOR;
-	      cout << " iter: " << k << ", level: " << lev << ",   rho"
-		   << " res norm0: " << r0 << " " << r0_prev[lev]/(r0+1.e-80)
-		   <<    ", norm2: " << r2 << " " << r2_prev[lev]/(r2+1.e-80) << endl;
-	      if (!fname.empty()) {
-		  cout << GREENCOLOR;
-		  cout << fname << " res norm0: " << r0f << " " << r0f_prev[lev]/(r0f+1.e-80)
-		       <<             ", norm2: " << r2f << " " << r2f_prev[lev]/(r2f+1.e-80)
-		       << endl;
-	      }
-	      if (!tname.empty()) {
-		  cout << BLUECOLOR;
-		  cout << tname << " res norm0: " << r0t << " " << r0t_prev[lev]/(r0t+1.e-80)
-		       <<          ", norm2: " << r2t << " " << r2t_prev[lev]/(r2t+1.e-80)
-		       << endl;
+	      cout << " iter: " << k << ", level: " << lev << ",   ";
+	      for (int ic=0; ic<ncomps; ic++) {
+		  cout << colors[ic] << names[ic] 
+		       << " res norm0: " << r0[ic] << " " << r0p[lev][ic]/(r0[ic]+1.e-80)
+		       <<    ", norm2: " << r2[ic] << " " << r2p[lev][ic]/(r2[ic]+1.e-80) << endl;
 	      }
 	  }
 	  cout << RESETCOLOR;
@@ -448,12 +437,10 @@ void SDCAmr::timeStep(int level, Real time,
 	  cout.flags(ff);
 	}
 
-	r0_prev[lev] = r0;
-	r2_prev[lev] = r2;
-	r0f_prev[lev] = r0f;
-	r2f_prev[lev] = r2f;
-	r0t_prev[lev] = r0t;
-	r2t_prev[lev] = r2t;
+	for (int ic=0; ic<ncomps; ic++) {
+	    r0p[lev][ic] = r0[ic];
+	    r2p[lev][ic] = r2[ic];	    
+	}
       }
     }
   }
@@ -551,7 +538,7 @@ void SDCAmr::rebuild_mlsdc()
 SDCAmr::SDCAmr ()
 {
   ParmParse ppsdc("mlsdc");
-  if (!ppsdc.query("max_iters", max_iters)) max_iters = 8;
+  if (!ppsdc.query("max_iters", max_iters)) max_iters = 4;
   if (!ppsdc.query("max_trefs", max_trefs)) max_trefs = 2;
   if (!ppsdc.query("nnodes0",   nnodes0))   nnodes0 = 3;
   if (!ppsdc.query("trat",      trat))      trat = 2;
