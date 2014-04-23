@@ -37,8 +37,8 @@ contains
   subroutine beburn(rho0, Y0, rho, YT, dt, g)
     integer, intent(in) :: g
     double precision, intent(in   ) :: rho0, rho, dt
-    double precision, intent(in   ) :: Y0(nspecies+1)
-    double precision, intent(inout) :: YT(nspecies+1)
+    double precision, intent(in   ) :: Y0(*)
+    double precision, intent(inout) :: YT(*)
     return
   end subroutine beburn
 
