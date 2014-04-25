@@ -33,6 +33,15 @@ module advance_module
 
   integer, public :: count_ad = 0, count_r = 0
 
+  interface
+     function get_dt_m(mrex, comp, m) result(r) bind(c)
+       import sdc_mrex, c_int, c_double
+       type(sdc_mrex), intent(in) :: mrex
+       integer(c_int), intent(in), value :: comp, m
+       real(c_double) :: r
+     end function get_dt_m
+  end interface
+
 contains
 
   subroutine advance(U, dtio, courno, dx, sdc, istep)
@@ -359,26 +368,13 @@ contains
 
     type(multifab), pointer :: U, Uprime, Uprime_chem
     type(sdc_ctx),  pointer :: ctx
-
-    type(sdc_nset), pointer :: nsets(:)
-    real(c_double), pointer :: nodes(:)
     real(c_double)          :: dt_m
-    integer                 :: node
 
     call c_f_pointer(Uptr, U)
     call c_f_pointer(Fptr, Uprime)
     call c_f_pointer(ctxptr, ctx)
 
-    ! hack: compute sub-step dt and wrap around appropriately
-    call c_f_pointer(ctx%mrex%nsets, nsets, [ ctx%mrex%ncomps ])
-    call c_f_pointer(nsets(1)%nodes, nodes, [ nsets(1)%nnodes ])
-
-    node = state%node + 1
-    if (node >= nsets(1)%nnodes) then
-       dt_m = dt * (nodes(2) - nodes(1))
-    else
-       dt_m = dt * (nodes(node+1) - nodes(node))
-    end if
+    dt_m = dt * get_dt_m(ctx%mrex, 0, state%node)
 
     if (sdc_multirate_explicit) then
        Uprime_chem => sdc_get_chemterm(ctx, state%node)
@@ -396,26 +392,13 @@ contains
 
     type(multifab), pointer :: U, Uprime, Uprime_chem
     type(sdc_ctx),  pointer :: ctx
-
-    type(sdc_nset), pointer :: nset
-    real(c_double), pointer :: nodes(:)
     real(c_double)          :: dt_m
-    integer                 :: node
 
     call c_f_pointer(Uptr, U)
     call c_f_pointer(Fptr, Uprime)
     call c_f_pointer(ctxptr, ctx)
 
-    ! hack: compute sub-step dt and wrap around appropriately
-    call c_f_pointer(ctx%mrex%nset, nset)
-    call c_f_pointer(nset%nodes, nodes, [ nset%nnodes ])
-
-    node = state%node + 1
-    if (node >= nset%nnodes) then
-       dt_m = dt * (nodes(2) - nodes(1))
-    else
-       dt_m = dt * (nodes(node+1) - nodes(node))
-    end if
+    dt_m = dt * get_dt_m(ctx%mrex, 1, state%node)
 
     if (sdc_multirate_explicit) then
        call dUdt(U, Uprime, t, dt_m, ctx%dx, include_ad=.false.)
