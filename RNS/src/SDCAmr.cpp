@@ -361,6 +361,8 @@ void SDCAmr::timeStep(int level, Real time,
   Array< Array<Real> > r0p(finest_level+1, Array<Real>(3));
   Array< Array<Real> > r2p(finest_level+1, Array<Real>(3));
 
+  sdc_mg_spread_per_level(&mg, time, dt);
+
   for (int k=0; k<max_iters; k++) {
     int flags = SDC_MG_MIXEDINTERP | SDC_SWEEP_MONITOR;
     if (k==max_iters-1) flags |= SDC_MG_HALFSWEEP;
@@ -419,7 +421,7 @@ void SDCAmr::timeStep(int level, Real time,
 	  if (k == 0) {
 	      cout << " iter: " << k << ", level: " << lev << ",   ";
 	      for (int ic=0; ic<ncomps; ic++) {
-		  cout << colors[ic] << names[ic] 
+		  cout << colors[ic] << names[ic]
 		       << " res norm0: " << r0[ic] << "         "
 		       <<    "  norm2: " << r2[ic] << endl;
 	      }
@@ -427,7 +429,7 @@ void SDCAmr::timeStep(int level, Real time,
 	  else {
 	      cout << " iter: " << k << ", level: " << lev << ",   ";
 	      for (int ic=0; ic<ncomps; ic++) {
-		  cout << colors[ic] << names[ic] 
+		  cout << colors[ic] << names[ic]
 		       << " res norm0: " << r0[ic] << " " << r0p[lev][ic]/(r0[ic]+1.e-80)
 		       <<    ", norm2: " << r2[ic] << " " << r2p[lev][ic]/(r2[ic]+1.e-80) << endl;
 	      }
@@ -439,7 +441,7 @@ void SDCAmr::timeStep(int level, Real time,
 
 	for (int ic=0; ic<ncomps; ic++) {
 	    r0p[lev][ic] = r0[ic];
-	    r2p[lev][ic] = r2[ic];	    
+	    r2p[lev][ic] = r2[ic];
 	}
       }
     }
