@@ -50,25 +50,44 @@ subroutine rns_grpfill(adv,adv_l1,adv_l2,adv_h1,adv_h2, &
                  xg = x + 0.5d0*delta(1)*gp(ii)
 
                  if (prob_type .eq. 0) then
+
                     eta = 0.5d0 * (tanh((xg + splitx)/sigma)   &
                          &       - tanh((xg - splitx)/sigma))
+
+                    do n=1,nspec
+                       Yt(n) = eta*fuel_Y(n) + (1.d0-eta)*air_Y(n)
+                    end do
+                    Tt  = eta * T_in + (1.d0-eta) * T_co
+                    u1t = 0.d0
+                    u2t = eta *vn_in + (1.d0-eta) *vn_co &
+                         + inflow_vnmag*eta*sin(xg*facx)*fact
+
                  else if (prob_type .eq. 1) then
+
                     eta = 0.5d0 * (tanh((xg + splitx)/Tfrontw)  &
                          &       - tanh((xg - splitx)/Tfrontw))
                     eta1 = 0.5d0 * (tanh((xg + blobr)/xfrontw)  &
                          &        - tanh((xg - blobr)/xfrontw))
-                 end if
 
-                 do n=1,nspec
-                    Yt(n) = eta*fuel_Y(n) + (1.d0-eta)*air_Y(n)
-                 end do
-                 Tt  = eta * T_in + (1.d0-eta) * T_co
-                 u1t = 0.d0
-                 if (prob_type .eq. 0) then 
-                    u2t = eta *vn_in + (1.d0-eta) *vn_co &
-                         + inflow_vnmag*eta*sin(xg*facx)*fact
-                 else if (prob_type .eq. 1) then
+                    do n=1,nspec
+                       Yt(n) = eta*fuel_Y(n) + (1.d0-eta)*air_Y(n)
+                    end do
+                    Tt  = eta * T_in + (1.d0-eta) * T_co
+                    u1t = 0.d0
                     u2t = eta1 * vn_in + (1.d0-eta1) * vn_co
+
+                 else 
+
+                    eta = 0.5d0 * (tanh((xg + splitx)/xfrontw)  &
+                         &       - tanh((xg - splitx)/xfrontw))
+
+                    do n=1,nspec
+                       Yt(n) = eta*fuel_Y(n) + (1.d0-eta)*air_Y(n)
+                    end do
+                    Tt  = eta * T_in + (1.d0-eta) * T_co
+                    u1t = 0.d0
+                    u2t = eta * vn_in + (1.d0-eta) * vn_co                    
+                    
                  end if
        
                  CALL CKRHOY(pamb,Tt,Yt,IWRK,RWRK,rhot)
@@ -213,6 +232,9 @@ subroutine rns_denfill(adv,adv_l1,adv_l2,adv_h1,adv_h2, &
                  else if (prob_type .eq. 1) then
                     eta = 0.5d0 * (tanh((xg + splitx)/Tfrontw)  &
                          &       - tanh((xg - splitx)/Tfrontw))
+                 else if (prob_type .eq. 2) then
+                    eta = 0.5d0 * (tanh((xg + splitx)/xfrontw)  &
+                         &       - tanh((xg - splitx)/xfrontw))
                  end if
 
                  do n=1,nspec
@@ -378,6 +400,9 @@ subroutine rns_myfill(adv,adv_l1,adv_l2,adv_h1,adv_h2, &
                          &       - tanh((xg - splitx)/Tfrontw))
                     eta1 = 0.5d0 * (tanh((xg + blobr)/xfrontw)  &
                          &        - tanh((xg - blobr)/xfrontw))
+                 else if (prob_type .eq. 2) then
+                    eta = 0.5d0 * (tanh((xg + splitx)/xfrontw)  &
+                         &       - tanh((xg - splitx)/xfrontw))
                  end if
 
                  do n=1,nspec
@@ -389,6 +414,8 @@ subroutine rns_myfill(adv,adv_l1,adv_l2,adv_h1,adv_h2, &
                          + inflow_vnmag*eta*sin(xg*facx)*fact
                  else if (prob_type .eq. 1) then
                     u2t = eta1 * vn_in + (1.d0-eta1) * vn_co
+                 else if (prob_type .eq. 2) then
+                    u2t = eta * vn_in + (1.d0-eta) * vn_co
                  end if
        
                  CALL CKRHOY(pamb,Tt,Yt,IWRK,RWRK,rhot)
@@ -491,6 +518,9 @@ subroutine rns_tempfill(adv,adv_l1,adv_l2,adv_h1,adv_h2, &
                  else if (prob_type .eq. 1) then
                     eta = 0.5d0 * (tanh((xg + splitx)/Tfrontw)  &
                          &       - tanh((xg - splitx)/Tfrontw))
+                 else if (prob_type .eq. 2) then
+                    eta = 0.5d0 * (tanh((xg + splitx)/xfrontw)  &
+                         &       - tanh((xg - splitx)/xfrontw))
                  end if
 
                  Tt  = eta * T_in + (1.d0-eta) * T_co

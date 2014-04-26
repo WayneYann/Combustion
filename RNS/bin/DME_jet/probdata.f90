@@ -8,6 +8,7 @@ module probdata_module
   double precision, save :: splitx, xfrontw, Tfrontw
   double precision, save :: blobr, blobx, bloby, blobT
   double precision, save :: inflow_period, inflow_vnmag
+  double precision, save :: splity, yfrontw
   double precision, allocatable, save :: fuel_Y(:), air_Y(:)
   double precision, allocatable, save :: fuel_state(:), air_state(:)
   logical, save :: probdata_initialized = .false.
