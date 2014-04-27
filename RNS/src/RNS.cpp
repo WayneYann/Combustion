@@ -157,7 +157,7 @@ RNS::ChemSolverType RNS::chem_solver  = RNS::BE_BURNING;
 #else
 RNS::ChemSolverType RNS::chem_solver  = RNS::GAUSS_BURNING;
 #endif
-int          RNS::f2comp_simple_dUdt  = 1; // set dUdt = \Delta U / \Delta t in f2comp
+int          RNS::f2comp_simple_dUdt  = 0; // set dUdt = \Delta U / \Delta t in f2comp?
 int          RNS::f2comp_niter_good   = 1; // starting from iter ?, U is considered good.
 
 // this will be reset upon restart
