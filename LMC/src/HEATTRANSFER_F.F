@@ -190,9 +190,24 @@ c     -- rbp
 #include <probdata.H>
 #include <cdwrk.H>
 #include <bc.H>
+      !
+      ! Just stuff in the calling sequence.
+      !
+      REAL_T coft,time,dt
+      integer myproc,step,restart,usetemp
+!
+! ACTIVE_CONTROL_IS_USABLE should be defined in your probdata.H
+! if you want to call FORT_ACTIVECONTROL.  This is how we enforce
+! that all the necessary variables get defined and included in
+! the proper problem-specific common blocks.
+!
+#if !defined(ACTIVE_CONTROL_IS_USABLE)
 
-      REAL_T coft,time,dt,vslope,slocal,V_new,dVmax,dVmin
-      integer myproc,step,ierr,restart,usetemp
+      call bl_abort('FORT_ACTIVECONTROL is NOT enabled')
+
+#else
+      REAL_T vslope,slocal,V_new,dVmax,dVmin
+      integer ierr
       REAL_T r1,r2,r3,r4,r5,r6,r7
       REAL_T alpha,xsmb,vpmax,exp1 
       REAL_T rhs1,rhs2,vt_tay,vtt_tay,velintegral,sest_test
@@ -375,4 +390,7 @@ c        write(13,1000) step,time,V_in,tbase_control,zbase_control,
          close(13)
       endif
  1000 format(i7,7g26.18)
+
+#endif /*ACTIVE_CONTROL_IS_USABLE*/
+
       end

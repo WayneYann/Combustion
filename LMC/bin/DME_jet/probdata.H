@@ -1,3 +1,8 @@
+!
+!     This means that FORT_ACTIVECONTROL is callable.
+!     Otherwise FORT_ACTIVECONTROL will abort if it is called.
+!
+#define ACTIVE_CONTROL_IS_USABLE
       
       REAL_T vorterr, temperr, adverr, tempgrad, flametracval, twall
       REAL_T splitx, splity, traceSpecVal, xfrontw, yfrontw
