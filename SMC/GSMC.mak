@@ -62,7 +62,9 @@ ifdef SDCLIB_HOME
   Fmpack += $(SDCLIB_HOME)/GPackage.mak
   Fmlocs += $(SDCLIB_HOME)/src $(SDCLIB_HOME)/src/encap
   INCLUDE_LOCATIONS += $(SDCLIB_HOME)/include
-  csources += getdt.c
+  ifeq ($(strip $(SMC_SRC)),src)
+    csources += getdt.c
+  endif
 endif
 
 # Chemistry & Transport
