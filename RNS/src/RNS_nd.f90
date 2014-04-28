@@ -159,3 +159,15 @@ subroutine rns_set_special_tagging_flag(dummy,flag)
   double precision :: dummy 
   integer          :: flag
 end subroutine rns_set_special_tagging_flag
+
+
+subroutine set_sdc_boundary_flag()
+  use sdc_boundary_module, only : isFEval
+  isFEval = .true.
+end subroutine set_sdc_boundary_flag
+
+subroutine unset_sdc_boundary_flag()
+  use sdc_boundary_module, only : isFEval
+  isFEval = .false.
+end subroutine unset_sdc_boundary_flag
+

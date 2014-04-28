@@ -1,5 +1,3 @@
-// This file needs cleanup
-
 #ifndef _RNS_F_H_
 #define _RNS_F_H_
 #include <BLFort.H>
@@ -211,5 +209,9 @@ BL_FORT_PROC_DECL(RNS_MAKEPLOTVAR, rns_makeplotvar)
      const int& icomp_X, const int& icomp_omegadot, const int& icomp_dYdt, 
      const int& icomp_heatRelease, const int& icomp_fuelConsumption,
      const int& fuelID);
+
+
+BL_FORT_PROC_DECL(  SET_SDC_BOUNDARY_FLAG,   set_sdc_boundary_flag)();
+BL_FORT_PROC_DECL(UNSET_SDC_BOUNDARY_FLAG, unset_sdc_boundary_flag)();
 
 #endif

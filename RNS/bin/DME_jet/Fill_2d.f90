@@ -1,14 +1,15 @@
 ! Fill the entire state
 subroutine rns_grpfill(adv,adv_l1,adv_l2,adv_h1,adv_h2, &
-     domlo,domhi,delta,xlo,time,bc)
+     domlo,domhi,delta,xlo,time,bc_in)
  
   use meth_params_module
   use probdata_module
+  use sdc_boundary_module, only : isFEval
   
   implicit none
   include 'bc_types.fi'
   integer adv_l1,adv_l2,adv_h1,adv_h2
-  integer bc(2,2,*)
+  integer bc_in(2,2,*)
   integer domlo(2), domhi(2)
   double precision delta(2), xlo(2), time
   double precision adv(adv_l1:adv_h1,adv_l2:adv_h2,NVAR)
@@ -17,6 +18,11 @@ subroutine rns_grpfill(adv,adv_l1,adv_l2,adv_h1,adv_h2, &
   double precision :: x, xg, facx, fact, sigma, eta, Pi, eta1
   double precision rhot,u1t,u2t,Tt,et,Yt(NSPEC),rwrk
   double precision, parameter :: gp(2) = (/ -1.d0/sqrt(3.d0), 1.d0/sqrt(3.d0) /)
+
+  integer bc(2,2,NVAR)
+
+  bc = bc_in(:,:,1:NVAR)
+  if (isFEval) bc(2,1,1) = FOEXTRAP
 
   !$omp parallel do private(n)
   do n = 1,NVAR

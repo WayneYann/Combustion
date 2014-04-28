@@ -89,6 +89,7 @@ void mlsdc_amr_interpolate(void *Fp, void *Gp, sdc_state *state, void *ctxF, voi
   BL_PROFILE("MLSDC_AMR_INTERPOLATE()");
 
   bool isCorrection = state->kind == SDC_CORRECTION;
+  bool isFEval      = state->kind == SDC_FEVAL;
 
   RNSEncap& F      = *((RNSEncap*) Fp);
   RNSEncap& G      = *((RNSEncap*) Gp);
@@ -183,7 +184,7 @@ void mlsdc_amr_interpolate(void *Fp, void *Gp, sdc_state *state, void *ctxF, voi
 
       if (isCorrection) UG_safe->setBndry(0.0);
 
-      levelG.fill_boundary(*UG_safe, state->t, RNS::use_FillBoundary, isCorrection);
+      levelG.fill_boundary(*UG_safe, state->t, RNS::use_FillBoundary, isCorrection, isFEval);
 
       // We cannot do FabArray::copy() directly on UG because it copies only form
       // valid regions.  So we need to make the ghost cells of UG valid.
@@ -217,7 +218,7 @@ void mlsdc_amr_interpolate(void *Fp, void *Gp, sdc_state *state, void *ctxF, voi
       }
       else {
 	  UC.copy(UG);
-	  levelG.fill_boundary(UC, state->t, RNS::set_PhysBoundary, isCorrection);
+	  levelG.fill_boundary(UC, state->t, RNS::set_PhysBoundary, isCorrection, isFEval);
       }
   }
 

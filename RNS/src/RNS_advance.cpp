@@ -78,7 +78,7 @@ RNS::advance (Real time,
 
 
 void
-RNS::fill_boundary(MultiFab& U, Real time, int type_in, bool isCorrection)
+RNS::fill_boundary(MultiFab& U, Real time, int type_in, bool isCorrection, bool isFEval)
 {
     BL_PROFILE("RNS::fill_boundary()");
 
@@ -141,6 +141,8 @@ RNS::fill_boundary(MultiFab& U, Real time, int type_in, bool isCorrection)
 
 	if (isCorrection) break;
 
+	if (isFEval) BL_FORT_PROC_CALL(SET_SDC_BOUNDARY_FLAG, set_sdc_boundary_flag)();
+
 	for (MFIter mfi(U); mfi.isValid(); ++mfi)
 	{
 	    setPhysBoundaryValues(U[mfi],
@@ -150,6 +152,8 @@ RNS::fill_boundary(MultiFab& U, Real time, int type_in, bool isCorrection)
 				  0,
 				  NUM_STATE);
 	}
+
+	if (isFEval) BL_FORT_PROC_CALL(UNSET_SDC_BOUNDARY_FLAG, unset_sdc_boundary_flag)();
 
 	break;
     }

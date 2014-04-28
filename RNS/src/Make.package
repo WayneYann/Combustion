@@ -4,3 +4,4 @@ CEXE_sources += main.cpp RNS.cpp RNSBld.cpp RNS_error.cpp RNS_setup.cpp \
 
 FEXE_headers += RNS_F.H Derive_F.H
 f90EXE_sources += meth_params.f90 prob_params.f90 RNS_nd.f90 Problem.f90
+f90EXE_sources += sdc_boundary.f90
