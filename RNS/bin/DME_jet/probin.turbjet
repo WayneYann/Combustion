@@ -6,7 +6,7 @@
   
   phi_in = 0.7d0   ! mole fraction of CH3OCH3 in fuel
   T_in   = 400.d0  ! temperature of fuel
-  vn_in  = 1.5d4   ! fuel injection velocity
+  vn_in  = 1.0d4   ! fuel injection velocity
   
   T_co  = 1300.d0  ! temperature of air
   vn_co = 1.d3     ! air injection velocity
@@ -14,14 +14,14 @@
   splitx  = 0.015d0   ! where fuel and air split
   xfrontw = 0.0075d0  ! controls the width of split
 
-  splity  = 0.0010d0   ! where fuel and air split
-  yfrontw = 0.0004d0  ! controls the width of split
+  splity  = 0.0040d0  ! where fuel and air split
+  yfrontw = 0.0013d0  ! controls the width of split
 
   max_tracerr_lev = 4
-  tracerr = 1.d-8
+  tracerr = 5.d-9
 
   max_vorterr_lev = 4
-  vorterr = 5.d5
+  vorterr = 2.d4
 
   max_tempgrad_lev = 4
   tempgrad = 10.d0
