@@ -26,25 +26,25 @@ subroutine rns_grpfill(adv,adv_l1,adv_l2,adv_h1,adv_h2, &
 
      !     XLO
      if ( bc(1,1,n).eq.EXT_DIR .and. adv_l1.lt.domlo(1)) then
-        print *,'myfill: SHOULD NEVER GET HERE bc(1,1,n) .eq. EXT_DIR) '
+        print *,'grpfill: SHOULD NEVER GET HERE bc(1,1,n) .eq. EXT_DIR) '
         stop
      end if
      
      !     XHI
      if ( bc(1,2,n).eq.EXT_DIR .and. adv_h1.gt.domhi(1)) then
-        print *,'myfill: SHOULD NEVER GET HERE bc(1,2,n) .eq. EXT_DIR) '
+        print *,'grpfill: SHOULD NEVER GET HERE bc(1,2,n) .eq. EXT_DIR) '
         stop
      end if
      
      !     YLO
      if ( bc(2,1,n).eq.EXT_DIR .and. adv_l2.lt.domlo(2)) then
-        print *,'myfill: SHOULD NEVER GET HERE bc(2,1,n) .eq. EXT_DIR) '
+        print *,'grpfill: SHOULD NEVER GET HERE bc(2,1,n) .eq. EXT_DIR) '
         stop
      end if
      
      !     YHI
      if ( bc(2,2,n).eq.EXT_DIR .and. adv_h2.gt.domhi(2)) then
-        print *,'myfill: SHOULD NEVER GET HERE bc(2,2,n) .eq. EXT_DIR) '
+        print *,'grpfill: SHOULD NEVER GET HERE bc(2,2,n) .eq. EXT_DIR) '
         stop
      end if
      

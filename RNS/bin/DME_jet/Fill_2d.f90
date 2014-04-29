@@ -18,11 +18,12 @@ subroutine rns_grpfill(adv,adv_l1,adv_l2,adv_h1,adv_h2, &
   double precision :: x, xg, facx, fact, sigma, eta, Pi, eta1
   double precision rhot,u1t,u2t,Tt,et,Yt(NSPEC),rwrk
   double precision, parameter :: gp(2) = (/ -1.d0/sqrt(3.d0), 1.d0/sqrt(3.d0) /)
+  double precision, parameter :: wgt = 0.5d0
 
   integer bc(2,2,NVAR)
 
   bc = bc_in(:,:,1:NVAR)
-  if (isFEval) bc(2,1,1) = FOEXTRAP
+  if (isFEval) bc(2,1,:) = FOEXTRAP
 
   !$omp parallel do private(n)
   do n = 1,NVAR
@@ -31,6 +32,8 @@ subroutine rns_grpfill(adv,adv_l1,adv_l2,adv_h1,adv_h2, &
           domlo,domhi,delta,xlo,bc(1,1,n))
   enddo
   !$omp end parallel do
+
+  if (isFEval) return
 
 !        YLO
   if (adv_l2.lt.domlo(2)) then
@@ -99,13 +102,13 @@ subroutine rns_grpfill(adv,adv_l1,adv_l2,adv_h1,adv_h2, &
                  CALL CKRHOY(pamb,Tt,Yt,IWRK,RWRK,rhot)
                  call CKUBMS(Tt,Yt,IWRK,RWRK,et)
 
-                 adv(i,j,URHO ) = adv(i,j,URHO ) + 0.5d0*rhot
-                 adv(i,j,UMX  ) = adv(i,j,UMX  ) + 0.5d0*rhot*u1t
-                 adv(i,j,UMY  ) = adv(i,j,UMY  ) + 0.5d0*rhot*u2t
-                 adv(i,j,UEDEN) = adv(i,j,UEDEN) + 0.5d0*rhot*(et + 0.5d0*(u1t**2+u2t**2))
-                 adv(i,j,UTEMP) = adv(i,j,UTEMP) + 0.5d0*Tt
+                 adv(i,j,URHO ) = adv(i,j,URHO ) + wgt*rhot
+                 adv(i,j,UMX  ) = adv(i,j,UMX  ) + wgt*rhot*u1t
+                 adv(i,j,UMY  ) = adv(i,j,UMY  ) + wgt*rhot*u2t
+                 adv(i,j,UEDEN) = adv(i,j,UEDEN) + wgt*rhot*(et + 0.5d0*(u1t**2+u2t**2))
+                 adv(i,j,UTEMP) = adv(i,j,UTEMP) + wgt*Tt
                  do n=1, NSPEC
-                    adv(i,j,UFS+n-1) = adv(i,j,UFS+n-1) + 0.5d0*rhot*Yt(n)
+                    adv(i,j,UFS+n-1) = adv(i,j,UFS+n-1) + wgt*rhot*Yt(n)
                  end do
               
               end do
@@ -114,7 +117,7 @@ subroutine rns_grpfill(adv,adv_l1,adv_l2,adv_h1,adv_h2, &
         end do
         !$omp end parallel do
      else
-        print *,'SHOULD NEVER GET HERE bc(1,1,1) .ne. EXT_DIR) '
+        print *,'grpfill: SHOULD NEVER GET HERE bc(2,1,1) .ne. EXT_DIR) '
         stop
      end if
   end if
@@ -123,25 +126,25 @@ subroutine rns_grpfill(adv,adv_l1,adv_l2,adv_h1,adv_h2, &
 
      !     XLO
      if ( bc(1,1,n).eq.EXT_DIR .and. adv_l1.gt.domlo(1)) then
-        print *,'myfill: SHOULD NEVER GET HERE bc(1,1,n) .eq. EXT_DIR) '
+        print *,'grpfill: SHOULD NEVER GET HERE bc(1,1,n) .eq. EXT_DIR) '
         stop
      end if
 
      !     XHI
      if ( bc(1,2,n).eq.EXT_DIR .and. adv_h1.gt.domhi(1)) then
-        print *,'myfill: SHOULD NEVER GET HERE bc(1,2,n) .eq. EXT_DIR) '
+        print *,'grpfill: SHOULD NEVER GET HERE bc(1,2,n) .eq. EXT_DIR) '
         stop
      end if
      
      !     YLO
 !     if ( bc(2,1,n).eq.EXT_DIR .and. adv_l2.lt.domlo(2)) then
-!        print *,'myfill: SHOULD NEVER GET HERE bc(2,1,n) .eq. EXT_DIR) '
+!        print *,'grpfill: SHOULD NEVER GET HERE bc(2,1,n) .eq. EXT_DIR) '
 !        stop
 !     end if
      
      !     YHI
      if ( bc(2,2,n).eq.EXT_DIR .and. adv_h2.gt.domhi(2)) then
-        print *,'myfill: SHOULD NEVER GET HERE bc(2,2,n) .eq. EXT_DIR) '
+        print *,'grpfill: SHOULD NEVER GET HERE bc(2,2,n) .eq. EXT_DIR) '
         stop
      end if
      
@@ -209,7 +212,8 @@ subroutine rns_denfill(adv,adv_l1,adv_l2,adv_h1,adv_h2, &
   double precision :: x, xg, sigma, eta
   double precision rhot,Tt,Yt(NSPEC),rwrk
   double precision, parameter :: gp(2) = (/ -1.d0/sqrt(3.d0), 1.d0/sqrt(3.d0) /)
-  
+  double precision, parameter :: wgt = 0.5d0
+
   call filcc(adv,adv_l1,adv_l2,adv_h1,adv_h2,domlo,domhi,delta,xlo,bc)
 
   !        YLO
@@ -249,7 +253,7 @@ subroutine rns_denfill(adv,adv_l1,adv_l2,adv_h1,adv_h2, &
                  Tt  = eta * T_in + (1.d0-eta) * T_co
        
                  CALL CKRHOY(pamb,Tt,Yt,IWRK,RWRK,rhot)
-                 adv(i,j) = adv(i,j) + 0.5d0*rhot
+                 adv(i,j) = adv(i,j) + wgt*rhot
               
               end do
 
@@ -372,6 +376,7 @@ subroutine rns_myfill(adv,adv_l1,adv_l2,adv_h1,adv_h2, &
   double precision :: x, xg, facx, fact, sigma, eta, Pi, eta1
   double precision rhot,u2t,Tt,Yt(NSPEC),rwrk
   double precision, parameter :: gp(2) = (/ -1.d0/sqrt(3.d0), 1.d0/sqrt(3.d0) /)
+  double precision, parameter :: wgt = 0.5d0
 
   call filcc(adv,adv_l1,adv_l2,adv_h1,adv_h2,domlo,domhi,delta,xlo,bc)
 
@@ -426,7 +431,7 @@ subroutine rns_myfill(adv,adv_l1,adv_l2,adv_h1,adv_h2, &
        
                  CALL CKRHOY(pamb,Tt,Yt,IWRK,RWRK,rhot)
 
-                 adv(i,j) = adv(i,j) + 0.5d0*rhot*u2t
+                 adv(i,j) = adv(i,j) + wgt*rhot*u2t
               
               end do
 
@@ -484,6 +489,7 @@ subroutine rns_tempfill(adv,adv_l1,adv_l2,adv_h1,adv_h2, &
   double precision :: x, xg, sigma, eta
   double precision :: Tt
   double precision, parameter :: gp(2) = (/ -1.d0/sqrt(3.d0), 1.d0/sqrt(3.d0) /)
+  double precision, parameter :: wgt = 0.5d0
 
   call filcc(adv,adv_l1,adv_l2,adv_h1,adv_h2,domlo,domhi,delta,xlo,bc)
   
@@ -531,7 +537,7 @@ subroutine rns_tempfill(adv,adv_l1,adv_l2,adv_h1,adv_h2, &
 
                  Tt  = eta * T_in + (1.d0-eta) * T_co
 
-                 adv(i,j) = adv(i,j) + 0.5d0*Tt
+                 adv(i,j) = adv(i,j) + wgt*Tt
               
               end do
 
