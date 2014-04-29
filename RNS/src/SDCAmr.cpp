@@ -222,12 +222,6 @@ void mlsdc_amr_interpolate(void *Fp, void *Gp, sdc_state *state, void *ctxF, voi
       }
   }
 
-//  if (ParallelDescriptor::IOProcessor()) {
-//      cout << "before assert: " << isCorrection << ", " << isFEval << endl;
-//  }
-
-//  UG.contains_nan()
-
   RNS_ASSERTNONAN(UC);
 
   // now that UF is completely contained within UC, cycle through each
@@ -581,8 +575,8 @@ SDCAmr::SDCAmr ()
 
   if (max_level > 0)
     for (int i=0; i<=max_level; i++)
-      if (blockingFactor(i) < 4)
-	BoxLib::Abort("For AMR runs, set blocking_factor to at least 4.");
+      if (blockingFactor(i) < 8)
+	BoxLib::Abort("For AMR runs, set blocking_factor to at least 8.");
 }
 
 SDCAmr::~SDCAmr()

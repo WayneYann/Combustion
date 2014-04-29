@@ -44,7 +44,7 @@ rns.do_density_ref  = 1
 amr.max_level       = 1       # maximum level number allowed
 amr.ref_ratio       = 2 2 2 2 # refinement ratio
 amr.regrid_int      = 2 2 2 2 # how often to regrid
-amr.blocking_factor = 4      # must be >=4 for MLSDC
+amr.blocking_factor = 8       # must be >=4 for MLSDC
 amr.max_grid_size   = 8
 amr.n_error_buf     = 2 2 2 2 # number of buffer cells in error est
 amr.grid_eff        = 0.7     # what constitutes an efficient grid
