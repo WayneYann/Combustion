@@ -238,6 +238,11 @@ void mlsdc_amr_interpolate(void *Fp, void *Gp, sdc_state *state, void *ctxF, voi
                crse_geom, fine_geom, bcr, 0, 0);
   }
 
+#if 0
+  int comp = RNS::FirstSpec + RNS::fuelID;
+  dgp_send_mf(UF, 0, comp, 1);
+#endif
+
   if (isCorrection) UF.setBndry(0.0);
   levelF.fill_boundary(UF, state->t, RNS::set_PhysBoundary, isCorrection);
   RNS_ASSERTNONAN(UF);
