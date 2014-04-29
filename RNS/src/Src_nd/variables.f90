@@ -37,7 +37,7 @@ contains
 
              ei = Q(i,j,k,UEDEN)*rhoInv - ek
 
-           !  rhoInv = 1.d0/sum(Q(i,j,k,QFY:QFY+nspec-1))
+             rhoInv = 1.d0/sum(Q(i,j,k,QFY:QFY+nspec-1))
              do n=1,nspec
                 Q(i,j,k,QFY+n-1) = Q(i,j,k,QFY+n-1)*rhoInv
                 Yt(n) = Q(i,j,k,QFY+n-1)
