@@ -121,10 +121,10 @@ subroutine rns_grpfill(adv,adv_l1,adv_l2,adv_l3,adv_h1,adv_h2,adv_h3, &
      end if
 
      !     ZLO
-     if ( bc(3,1,n).eq.EXT_DIR .and. adv_l3.lt.domlo(3)) then
-        print *,'grpfill: SHOULD NEVER GET HERE bc(3,1,n) .eq. EXT_DIR) '
-        stop
-     end if
+     ! if ( bc(3,1,n).eq.EXT_DIR .and. adv_l3.lt.domlo(3)) then
+     !    print *,'grpfill: SHOULD NEVER GET HERE bc(3,1,n) .eq. EXT_DIR) '
+     !    stop
+     ! end if
      
      !     ZHI
      if ( bc(3,2,n).eq.EXT_DIR .and. adv_h3.gt.domhi(3)) then
