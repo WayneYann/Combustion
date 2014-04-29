@@ -222,11 +222,11 @@ void mlsdc_amr_interpolate(void *Fp, void *Gp, sdc_state *state, void *ctxF, voi
       }
   }
 
-  if (ParallelDescriptor::IOProcessor()) {
-      cout << "before assert: " << isCorrection << ", " << isFEval << endl;
-  }
+//  if (ParallelDescriptor::IOProcessor()) {
+//      cout << "before assert: " << isCorrection << ", " << isFEval << endl;
+//  }
 
-  UG.contains_nan()
+//  UG.contains_nan()
 
   RNS_ASSERTNONAN(UC);
 
