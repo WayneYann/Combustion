@@ -42,7 +42,7 @@ subroutine rns_grpfill(adv,adv_l1,adv_l2,adv_l3,adv_h1,adv_h2,adv_h3, &
         !$omp collapse(3)
         do k = adv_l3, domlo(3)-1
         do j = adv_l2, adv_h2
-        do i = adv_l2, adv_h1
+        do i = adv_l1, adv_h1
 
            x = (DBLE(i-adv_l1)+.5d0)*delta(1)+xlo(1)
            y = (DBLE(j-adv_l2)+.5d0)*delta(2)+xlo(2)
@@ -222,7 +222,7 @@ subroutine rns_denfill(adv,adv_l1,adv_l2,adv_l3,adv_h1,adv_h2,adv_h3, &
         !$omp collapse(3)
         do k = adv_l3, domlo(3)-1
         do j = adv_l2, adv_h2
-        do i = adv_l2, adv_h1
+        do i = adv_l1, adv_h1
 
            x = (DBLE(i-adv_l1)+.5d0)*delta(1)+xlo(1)
            y = (DBLE(j-adv_l2)+.5d0)*delta(2)+xlo(2)
@@ -324,7 +324,7 @@ subroutine rns_mxfill(adv,adv_l1,adv_l2,adv_l3,adv_h1,adv_h2,adv_h3, &
      if (bc(3,1,1) .eq. EXT_DIR) then
         do k = adv_l3, domlo(3)-1
            do j = adv_l2, adv_h2
-              do i = adv_l2, adv_h1
+              do i = adv_l1, adv_h1
                  adv(i,j,k) = 0.d0
               end do
            end do
@@ -396,7 +396,7 @@ subroutine rns_myfill(adv,adv_l1,adv_l2,adv_l3,adv_h1,adv_h2,adv_h3, &
      if (bc(3,1,1) .eq. EXT_DIR) then
         do k = adv_l3, domlo(3)-1
            do j = adv_l2, adv_h2
-              do i = adv_l2, adv_h1
+              do i = adv_l1, adv_h1
                  adv(i,j,k) = 0.d0
               end do
            end do
@@ -476,7 +476,7 @@ subroutine rns_mzfill(adv,adv_l1,adv_l2,adv_l3,adv_h1,adv_h2,adv_h3, &
         !$omp collapse(3)
         do k = adv_l3, domlo(3)-1
         do j = adv_l2, adv_h2
-        do i = adv_l2, adv_h1
+        do i = adv_l1, adv_h1
 
            x = (DBLE(i-adv_l1)+.5d0)*delta(1)+xlo(1)
            y = (DBLE(j-adv_l2)+.5d0)*delta(2)+xlo(2)
@@ -586,7 +586,7 @@ subroutine rns_tempfill(adv,adv_l1,adv_l2,adv_l3,adv_h1,adv_h2,adv_h3, &
         !$omp collapse(3)
         do k = adv_l3, domlo(3)-1
         do j = adv_l2, adv_h2
-        do i = adv_l2, adv_h1
+        do i = adv_l1, adv_h1
 
            x = (DBLE(i-adv_l1)+.5d0)*delta(1)+xlo(1)
            y = (DBLE(j-adv_l2)+.5d0)*delta(2)+xlo(2)
