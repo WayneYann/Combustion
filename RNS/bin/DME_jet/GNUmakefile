@@ -24,8 +24,6 @@ USE_SDCLIB = TRUE
 
 CHEMISTRY_MODEL = LUDME
 
-USE_TURBINFLOW = FALSE
-
 Bpack   := ./Make.package
 Blocs   := .
 

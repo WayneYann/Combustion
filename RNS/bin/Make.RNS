@@ -7,18 +7,13 @@ USE_WORK_SPACE_MODULE := TRUE
 
 include $(BOXLIB_HOME)/Tools/C_mk/Make.defs
 
-Bdirs 	:= src src/Src_$(DIM)d src/Src_nd src/EOS src/Burner
+Bdirs 	:= src src/Src_$(DIM)d src/Src_nd src/EOS src/Burner src/TurbInflow
 
 # Chemistry
 ifneq (${CHEMISTRY_MODEL}, NULL)
   Bdirs += $(CHEMISTRY_DIR)/src_common
 endif
 Bdirs += $(CHEMISTRY_DIR)/src_f90
-
-# Turbulent Inflow
-ifeq ($(USE_TURBINFLOW), TRUE)
-  Bdirs += src/TurbInflow
-endif
 
 Bpack	+= $(foreach dir, $(Bdirs), $(TOP)/$(dir)/Make.package)
 Blocs	+= $(foreach dir, $(Bdirs), $(TOP)/$(dir))
