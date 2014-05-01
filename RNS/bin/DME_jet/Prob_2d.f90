@@ -189,8 +189,8 @@ subroutine rns_initdata(level,time,lo,hi,nscal, &
 
               else if (prob_type .eq. 2) then
 
-                 eta = 0.5d0 * (tanh((xg + splitx)/Tfrontw)  &
-                      &       - tanh((xg - splitx)/Tfrontw))
+                 eta = 0.5d0 * (tanh((xg + splitx)/xfrontw)  &
+                      &       - tanh((xg - splitx)/xfrontw))
                  if ((yg-splity) < 5.d0*yfrontw) then
                     eta = eta * 0.5d0*(1.d0-tanh((yg -splity)/yfrontw))
                  else

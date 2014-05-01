@@ -63,8 +63,7 @@ subroutine rns_grpfill(adv,adv_l1,adv_l2,adv_l3,adv_h1,adv_h2,adv_h3, &
                     
                  r = sqrt(xg*xg+yg*yg)
                  
-                 eta = 0.5d0 * (tanh((r + splitx)/xfrontw)  &
-                      &       - tanh((r - splitx)/xfrontw))
+                 eta = 0.5d0*(1.d0-tanh((r -splitx)/xfrontw))
 
                  do n=1,nspec
                     Yt(n) = eta*fuel_Y(n) + (1.d0-eta)*air_Y(n)
@@ -113,13 +112,12 @@ subroutine rns_grpfill(adv,adv_l1,adv_l2,adv_l3,adv_h1,adv_h2,adv_h3, &
         do j = adv_l2, adv_h2
            do i = adv_l1, adv_h1
               r = sqrt(xturb(i)**2+yturb(j)**2)
-              etaturb(i,j) = 0.5d0 * (tanh((r + splitx)/xfrontw)  &
-                   &                - tanh((r - splitx)/xfrontw))
+              etaturb(i,j) = 0.5d0*(1.d0-tanh((r-splitx)/xfrontw))
            end do
         end do
 
         do k = adv_l3, domlo(3)-1
-           zturb = (DBLE(k-adv_l3)+.5d0)*delta(3) + vn_in*time
+           zturb = (DBLE(k-adv_l3)+.5d0)*delta(3)+xlo(3) + vn_in*time
 
            call get_turbvelocity(adv_l1,adv_l2,adv_h1,adv_h2,xturb,yturb,zturb,vturb)
 
@@ -290,9 +288,8 @@ subroutine rns_denfill(adv,adv_l1,adv_l2,adv_l3,adv_h1,adv_h2,adv_h3, &
                  xg = x + 0.5d0*delta(1)*gp(ii)
                     
                  r = sqrt(xg*xg+yg*yg)
-                 
-                 eta = 0.5d0 * (tanh((r + splitx)/xfrontw)  &
-                      &       - tanh((r - splitx)/xfrontw))
+
+                 eta = 0.5d0*(1.d0-tanh((r -splitx)/xfrontw))
 
                  do n=1,nspec
                     Yt(n) = eta*fuel_Y(n) + (1.d0-eta)*air_Y(n)
@@ -548,9 +545,8 @@ subroutine rns_mzfill(adv,adv_l1,adv_l2,adv_l3,adv_h1,adv_h2,adv_h3, &
                  xg = x + 0.5d0*delta(1)*gp(ii)
                     
                  r = sqrt(xg*xg+yg*yg)
-                 
-                 eta = 0.5d0 * (tanh((r + splitx)/xfrontw)  &
-                      &       - tanh((r - splitx)/xfrontw))
+
+                 eta = 0.5d0*(1.d0-tanh((r -splitx)/xfrontw))
 
                  do n=1,nspec
                     Yt(n) = eta*fuel_Y(n) + (1.d0-eta)*air_Y(n)
@@ -664,8 +660,7 @@ subroutine rns_tempfill(adv,adv_l1,adv_l2,adv_l3,adv_h1,adv_h2,adv_h3, &
                     
                  r = sqrt(xg*xg+yg*yg)
                  
-                 eta = 0.5d0 * (tanh((r + splitx)/xfrontw)  &
-                      &       - tanh((r - splitx)/xfrontw))
+                 eta = 0.5d0*(1.d0-tanh((r -splitx)/xfrontw))
 
                  Tt  = eta * T_in + (1.d0-eta) * T_co
 
