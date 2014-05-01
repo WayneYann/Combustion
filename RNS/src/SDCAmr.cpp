@@ -238,6 +238,11 @@ void mlsdc_amr_interpolate(void *Fp, void *Gp, sdc_state *state, void *ctxF, voi
                crse_geom, fine_geom, bcr, 0, 0);
   }
 
+#if 0
+  int comp = RNS::FirstSpec + RNS::fuelID;
+  dgp_send_mf(UF, 0, comp, 1);
+#endif
+
   if (isCorrection) UF.setBndry(0.0);
   levelF.fill_boundary(UF, state->t, RNS::set_PhysBoundary, isCorrection);
   RNS_ASSERTNONAN(UF);
@@ -362,7 +367,7 @@ void SDCAmr::timeStep(int level, Real time,
   Array< Array<Real> > r0p(finest_level+1, Array<Real>(3));
   Array< Array<Real> > r2p(finest_level+1, Array<Real>(3));
 
-  sdc_mg_spread_per_level(&mg, time, dt);
+  sdc_mg_spread(&mg, time, dt);
 
   for (int k=0; k<max_iters; k++) {
     int flags = SDC_MG_MIXEDINTERP | SDC_SWEEP_MONITOR;
