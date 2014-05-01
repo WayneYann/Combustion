@@ -95,13 +95,13 @@ contains
        call store_planes(z)
     end if
 
-    zz = z*dxinv(3)
+    zz = (z-szlo)*dxinv(3)
     k0 = nint(zz) - 1
     zz = zz - dble(k0)
     cz(0) = 0.5d0*(zz-1.d0)*(zz-2.d0)
     cz(1) = zz*(2.d0-zz)
     cz(2) = 0.5d0*zz*(zz-1.d0)
-    k0 = modulo(k0, npboxcells(3)) + 1
+    k0 = k0 + 1 ! because it's Fortran
 
     do n=1,3
        do j=lo2,hi2
