@@ -4,6 +4,7 @@ module probdata_module
 
   ! parameters for DME_jet
   integer, save :: prob_type
+  character (len=128), save :: turbfile = ""  
   double precision, save :: pamb, phi_in, T_in, vn_in, T_co, vn_co
   double precision, save :: splitx, xfrontw, Tfrontw
   double precision, save :: blobr, blobx, bloby, blobT
@@ -11,7 +12,10 @@ module probdata_module
   double precision, save :: splity, yfrontw
   double precision, allocatable, save :: fuel_Y(:), air_Y(:)
   double precision, allocatable, save :: fuel_state(:), air_state(:)
-  logical, save :: probdata_initialized = .false.
+
+  logical, save :: dmejet_initialized = .false.
+
+  double precision, save :: center(3)
 
   ! These determine the refinement criteria
   double precision, save :: denerr,   dengrad
@@ -110,7 +114,7 @@ contains
        air_Y(n) = Yt(n)
     end do
     
-    probdata_initialized = .true.
+    dmejet_initialized = .true.
   end subroutine init_DME_jet
 
 end module probdata_module

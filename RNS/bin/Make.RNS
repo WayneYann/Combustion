@@ -15,6 +15,11 @@ ifneq (${CHEMISTRY_MODEL}, NULL)
 endif
 Bdirs += $(CHEMISTRY_DIR)/src_f90
 
+# Turbulent Inflow
+ifeq ($(USE_TURBINFLOW), TRUE)
+  Bdirs += src/TurbInflow
+endif
+
 Bpack	+= $(foreach dir, $(Bdirs), $(TOP)/$(dir)/Make.package)
 Blocs	+= $(foreach dir, $(Bdirs), $(TOP)/$(dir))
 

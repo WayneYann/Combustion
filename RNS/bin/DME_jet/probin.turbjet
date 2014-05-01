@@ -2,6 +2,8 @@
 
   prob_type = 2
 
+  turbfile = "TurbFile_0650_new"
+
   pamb = 1.01325d7  ! 10 Patm
   
   phi_in = 0.7d0   ! mole fraction of CH3OCH3 in fuel

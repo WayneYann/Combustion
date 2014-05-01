@@ -10,7 +10,7 @@ subroutine PROBINIT (init,name,namlen,problo,probhi)
 
   integer untin,i
 
-  namelist /fortin/ prob_type, pamb, phi_in, T_in, vn_in, T_co, vn_co, &
+  namelist /fortin/ prob_type, turbfile, pamb, phi_in, T_in, vn_in, T_co, vn_co, &
        splitx, xfrontw, Tfrontw, blobr, blobx, bloby, blobT, inflow_period, inflow_vnmag, &
        splity, yfrontw, &
        max_tracerr_lev, tracerr, max_vorterr_lev, vorterr, max_tempgrad_lev, tempgrad
@@ -72,6 +72,8 @@ subroutine PROBINIT (init,name,namlen,problo,probhi)
   read(untin,fortin)
   close(unit=untin)
 
+  center = 0.5d0*(problo+probhi)
+
 end subroutine PROBINIT
 
 ! ::: -----------------------------------------------------------
@@ -126,10 +128,9 @@ subroutine rns_initdata(level,time,lo,hi,nscal, &
      stop
   end if
 
-  if (.not. probdata_initialized) then
+  if (.not. dmejet_initialized) then
      call init_DME_jet()
   end if
-
 
   do k = state_l3, state_h3
      zcen = xlo(3) + delta(3)*(dble(k-lo(3)) + 0.5d0)

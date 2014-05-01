@@ -22,6 +22,10 @@ subroutine rns_grpfill(adv,adv_l1,adv_l2,adv_h1,adv_h2, &
 
   integer bc(2,2,NVAR)
 
+  if (.not. dmejet_initialized) then
+     call init_DME_jet()
+  end if
+
   bc = bc_in(:,:,1:NVAR)
   if (isFEval) bc(2,1,:) = FOEXTRAP
 
@@ -214,6 +218,10 @@ subroutine rns_denfill(adv,adv_l1,adv_l2,adv_h1,adv_h2, &
   double precision, parameter :: gp(2) = (/ -1.d0/sqrt(3.d0), 1.d0/sqrt(3.d0) /)
   double precision, parameter :: wgt = 0.5d0
 
+  if (.not. dmejet_initialized) then
+     call init_DME_jet()
+  end if
+
   call filcc(adv,adv_l1,adv_l2,adv_h1,adv_h2,domlo,domhi,delta,xlo,bc)
 
   !        YLO
@@ -309,6 +317,10 @@ subroutine rns_mxfill(adv,adv_l1,adv_l2,adv_h1,adv_h2, &
   double precision adv(adv_l1:adv_h1,adv_l2:adv_h2)
 
   integer :: i, j
+
+  if (.not. dmejet_initialized) then
+     call init_DME_jet()
+  end if
   
   call filcc(adv,adv_l1,adv_l2,adv_h1,adv_h2,domlo,domhi,delta,xlo,bc)
 
@@ -377,6 +389,10 @@ subroutine rns_myfill(adv,adv_l1,adv_l2,adv_h1,adv_h2, &
   double precision rhot,u2t,Tt,Yt(NSPEC),rwrk
   double precision, parameter :: gp(2) = (/ -1.d0/sqrt(3.d0), 1.d0/sqrt(3.d0) /)
   double precision, parameter :: wgt = 0.5d0
+
+  if (.not. dmejet_initialized) then
+     call init_DME_jet()
+  end if
 
   call filcc(adv,adv_l1,adv_l2,adv_h1,adv_h2,domlo,domhi,delta,xlo,bc)
 
@@ -490,6 +506,10 @@ subroutine rns_tempfill(adv,adv_l1,adv_l2,adv_h1,adv_h2, &
   double precision :: Tt
   double precision, parameter :: gp(2) = (/ -1.d0/sqrt(3.d0), 1.d0/sqrt(3.d0) /)
   double precision, parameter :: wgt = 0.5d0
+
+  if (.not. dmejet_initialized) then
+     call init_DME_jet()
+  end if
 
   call filcc(adv,adv_l1,adv_l2,adv_h1,adv_h2,domlo,domhi,delta,xlo,bc)
   

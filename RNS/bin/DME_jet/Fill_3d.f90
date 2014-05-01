@@ -5,6 +5,7 @@ subroutine rns_grpfill(adv,adv_l1,adv_l2,adv_l3,adv_h1,adv_h2,adv_h3, &
   use meth_params_module
   use probdata_module
   use sdc_boundary_module, only : isFEval
+  use turbinflow_module
   
   implicit none
   include 'bc_types.fi'
@@ -19,6 +20,12 @@ subroutine rns_grpfill(adv,adv_l1,adv_l2,adv_l3,adv_h1,adv_h2,adv_h3, &
   double precision, parameter :: gp(2) = (/ -1.d0/sqrt(3.d0), 1.d0/sqrt(3.d0) /)
   double precision, parameter :: wgt = 0.25d0
   integer bc(3,2,NVAR)
+  double precision, allocatable :: vturb(:,:,:), xturb(:), yturb(:), etaturb(:,:)
+  double precision :: zturb, Ek, Eknew, rhoeta
+
+  if (.not. dmejet_initialized) call init_DME_jet()
+
+  if (.not. turbinflow_initialized) call init_turbinflow(turbfile)
 
   bc = bc_in(:,:,1:NVAR)
   if (isFEval) bc(3,1,:) = FOEXTRAP
@@ -87,6 +94,50 @@ subroutine rns_grpfill(adv,adv_l1,adv_l2,adv_l3,adv_h1,adv_h2,adv_h3, &
         end do
         end do
         end do
+        !$omp end parallel do
+
+        ! add turbuence
+        allocate(vturb  (adv_l1:adv_h1,adv_l2:adv_h2,3))
+        allocate(xturb  (adv_l1:adv_h1))
+        allocate(yturb  (adv_l2:adv_h2))
+        allocate(etaturb(adv_l1:adv_h1,adv_l2:adv_h2))
+
+        do i = adv_l1, adv_h1
+           xturb(i) = (DBLE(i-adv_l1)+.5d0)*delta(1)+xlo(1)
+        end do
+
+        do j = adv_l2, adv_h2
+           yturb(j) = (DBLE(j-adv_l2)+.5d0)*delta(2)+xlo(2)
+        end do
+
+        do j = adv_l2, adv_h2
+           do i = adv_l1, adv_h1
+              r = sqrt(xturb(i)**2+yturb(j)**2)
+              etaturb(i,j) = 0.5d0 * (tanh((r + splitx)/xfrontw)  &
+                   &                - tanh((r - splitx)/xfrontw))
+           end do
+        end do
+
+        do k = adv_l3, domlo(3)-1
+           zturb = (DBLE(k-adv_l3)+.5d0)*delta(3) + vn_in*time
+
+           call get_turbvelocity(adv_l1,adv_l2,adv_h1,adv_h2,xturb,yturb,zturb,vturb)
+
+           do j = adv_l2, adv_h2
+              do i = adv_l1, adv_h1
+                 Ek = adv(i,j,k,UMX)**2+adv(i,j,k,UMY)**2+adv(i,j,k,UMZ)**2
+                 rhoeta = adv(i,j,k,URHO)*etaturb(i,j)
+                 adv(i,j,k,UMX) = adv(i,j,k,UMX) + vturb(i,j,1)*rhoeta
+                 adv(i,j,k,UMY) = adv(i,j,k,UMY) + vturb(i,j,2)*rhoeta
+                 adv(i,j,k,UMZ) = adv(i,j,k,UMZ) + vturb(i,j,3)*rhoeta
+                 Eknew = adv(i,j,k,UMX)**2+adv(i,j,k,UMY)**2+adv(i,j,k,UMZ)**2
+                 adv(i,j,k,UEDEN) = adv(i,j,k,UEDEN) + &
+                      0.5d0*(Eknew-Ek)/adv(i,j,k,URHO)
+              end do
+           end do
+        end do
+
+        deallocate(vturb,xturb,yturb,etaturb)
 
      else
         print *,'grpfill: SHOULD NEVER GET HERE bc(3,1,1) .ne. EXT_DIR) '
@@ -210,6 +261,10 @@ subroutine rns_denfill(adv,adv_l1,adv_l2,adv_l3,adv_h1,adv_h2,adv_h3, &
   double precision, parameter :: gp(2) = (/ -1.d0/sqrt(3.d0), 1.d0/sqrt(3.d0) /)
   double precision, parameter :: wgt = 0.25d0
 
+  if (.not. dmejet_initialized) then
+     call init_DME_jet()
+  end if
+
   call filcc(adv,adv_l1,adv_l2,adv_l3,adv_h1,adv_h2,adv_h3, &
        domlo,domhi,delta,xlo,bc)
 
@@ -253,6 +308,7 @@ subroutine rns_denfill(adv,adv_l1,adv_l2,adv_l3,adv_h1,adv_h2,adv_h3, &
         end do
         end do
         end do
+        !$omp end parallel do
 
      else
         print *,'denfill: SHOULD NEVER GET HERE bc(3,1,1) .ne. EXT_DIR) '
@@ -463,9 +519,12 @@ subroutine rns_mzfill(adv,adv_l1,adv_l2,adv_l3,adv_h1,adv_h2,adv_h3, &
   double precision, parameter :: gp(2) = (/ -1.d0/sqrt(3.d0), 1.d0/sqrt(3.d0) /)
   double precision, parameter :: wgt = 0.25d0
 
+  if (.not. dmejet_initialized) then
+     call init_DME_jet()
+  end if
+
   call filcc(adv,adv_l1,adv_l2,adv_l3,adv_h1,adv_h2,adv_h3, &
        domlo,domhi,delta,xlo,bc)
-
 
   ! zlo
   if (adv_l3.lt.domlo(3)) then
@@ -509,6 +568,7 @@ subroutine rns_mzfill(adv,adv_l1,adv_l2,adv_l3,adv_h1,adv_h2,adv_h3, &
         end do
         end do
         end do
+        !$omp end parallel do
 
      else
         print *,'mzfill: SHOULD NEVER GET HERE bc(3,1,1) .ne. EXT_DIR) '
@@ -575,6 +635,10 @@ subroutine rns_tempfill(adv,adv_l1,adv_l2,adv_l3,adv_h1,adv_h2,adv_h3, &
   double precision, parameter :: gp(2) = (/ -1.d0/sqrt(3.d0), 1.d0/sqrt(3.d0) /)
   double precision, parameter :: wgt = 0.25d0
 
+  if (.not. dmejet_initialized) then
+     call init_DME_jet()
+  end if
+
   call filcc(adv,adv_l1,adv_l2,adv_l3,adv_h1,adv_h2,adv_h3, &
        domlo,domhi,delta,xlo,bc)
   
@@ -613,6 +677,7 @@ subroutine rns_tempfill(adv,adv_l1,adv_l2,adv_l3,adv_h1,adv_h2,adv_h3, &
         end do
         end do
         end do
+        !$omp end parallel do
 
      else
         print *,'grpfill: SHOULD NEVER GET HERE bc(3,1,1) .ne. EXT_DIR) '
