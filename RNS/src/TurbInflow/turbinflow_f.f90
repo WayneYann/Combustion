@@ -105,6 +105,8 @@ contains
     cz(2) = 0.5d0*zz*(zz-1.d0)
     k0 = k0 + 1 ! because it's Fortran
 
+    !$omp parallel do private(i,j,k,n,i0,j0,ii,jj,xx,yy,zdata,ydata,cx,cy) &
+    !$omp collapse(2)
     do n=1,3
        do j=lo2,hi2
           yy = (y(j)-pboxlo(2))*dxinv(2)
@@ -140,6 +142,7 @@ contains
           end do
        end do
     end do
+    !$omp end parallel do
 
   end subroutine get_turbvelocity
 
