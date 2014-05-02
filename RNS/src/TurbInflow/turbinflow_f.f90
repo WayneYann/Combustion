@@ -135,10 +135,10 @@ contains
              end do
 
              do ii=0,2
-                ydata(ii) = cy(0)*zdata(ii,0) + cy(0)*zdata(ii,1) + cy(2)*zdata(ii,2)
+                ydata(ii) = cy(0)*zdata(ii,0) + cy(1)*zdata(ii,1) + cy(2)*zdata(ii,2)
              end do
 
-             v(i,j,n) = cx(0)*ydata(0) + cx(0)*ydata(1) + cx(2)*ydata(2)
+             v(i,j,n) = cx(0)*ydata(0) + cx(1)*ydata(1) + cx(2)*ydata(2)
 
           end do
        end do
