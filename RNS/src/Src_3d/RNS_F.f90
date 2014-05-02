@@ -91,7 +91,7 @@ subroutine rns_dudt_ad (lo, hi, &
         if (do_weno) then
            call hypterm(tlo,thi,U,Ulo,Uhi,bxflx,fxlo,fxhi,byflx,fylo,fyhi,bzflx,fzlo,fzhi,dx)
         end if
-!xxxxx        call difterm(tlo,thi,U,Ulo,Uhi,bxflx,fxlo,fxhi,byflx,fylo,fyhi,bzflx,fzlo,fzhi,dxinv)
+        call difterm(tlo,thi,U,Ulo,Uhi,bxflx,fxlo,fxhi,byflx,fylo,fyhi,bzflx,fzlo,fzhi,dxinv)
 
         ! Note that fluxes are on faces.  So don't double count!
         if (thi(1) .ne. hi(1)) fxhi(1) = fxhi(1) - 1
