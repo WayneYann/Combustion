@@ -10,7 +10,7 @@ module turbinflow_module
   integer, save :: npboxcells(3)
   double precision, save :: pboxlo(3), dx(3), dxinv(3)
 
-  integer, parameter :: nplane = 8
+  integer, parameter :: nplane = 32
   double precision, allocatable, save :: sdata(:,:,:,:)
   double precision, save :: szlo=0.d0, szhi=0.d0
 
@@ -71,7 +71,7 @@ contains
     ! period box covers -0.5*pboxsize(1) <= x <= 0.5*pboxsize(1)
     !                   -0.5*pboxsize(2) <= y <= 0.5*pboxsize(2)
     !                                  0 <= z <= pboxsize(3)
-    pboxlo(1:2) = -0.5d0*pboxsize(1)
+    pboxlo(1:2) = -0.5d0*pboxsize(1:2)
     pboxlo(3) = 0.d0
 
     allocate(sdata(npts(1),npts(2),nplane,3))
@@ -104,6 +104,7 @@ contains
     cz(1) = zz*(2.d0-zz)
     cz(2) = 0.5d0*zz*(zz-1.d0)
     k0 = k0 + 1 ! because it's Fortran
+    k0 = min(max(k0,1),nplane-2)
 
     !$omp parallel do private(i,j,k,n,i0,j0,ii,jj,xx,yy,zdata,ydata,cx,cy) &
     !$omp collapse(2)
