@@ -122,6 +122,7 @@ subroutine rns_initdata(level,time,lo,hi,nscal, &
   integer :: iwrk
   double precision :: rwrk
   double precision, parameter :: gp(2) = (/ -1.d0/sqrt(3.d0), 1.d0/sqrt(3.d0) /)
+  double precision, parameter :: wgt = 0.125d0
 
   if (nspecies .ne. NSPEC) then
      write(6,*)"nspecies, nspec ", nspecies, NSPEC
@@ -173,14 +174,14 @@ subroutine rns_initdata(level,time,lo,hi,nscal, &
                     CALL CKRHOY(pamb,Tt,Yt,IWRK,RWRK,rhot)
                     call CKUBMS(Tt,Yt,IWRK,RWRK,et)
                     
-                    state(i,j,k,URHO ) = state(i,j,k,URHO ) + 0.25d0*rhot
-                    state(i,j,k,UMX  ) = state(i,j,k,UMX  ) + 0.25d0*rhot*u1t
-                    state(i,j,k,UMY  ) = state(i,j,k,UMY  ) + 0.25d0*rhot*u2t
-                    state(i,j,k,UMZ  ) = state(i,j,k,UMZ  ) + 0.25d0*rhot*u3t
-                    state(i,j,k,UEDEN) = state(i,j,k,UEDEN) + 0.25d0*rhot*(et + 0.5d0*(u1t**2+u2t**2+u3t**2))
-                    state(i,j,k,UTEMP) = state(i,j,k,UTEMP) + 0.25d0*Tt
+                    state(i,j,k,URHO ) = state(i,j,k,URHO ) + wgt*rhot
+                    state(i,j,k,UMX  ) = state(i,j,k,UMX  ) + wgt*rhot*u1t
+                    state(i,j,k,UMY  ) = state(i,j,k,UMY  ) + wgt*rhot*u2t
+                    state(i,j,k,UMZ  ) = state(i,j,k,UMZ  ) + wgt*rhot*u3t
+                    state(i,j,k,UEDEN) = state(i,j,k,UEDEN) + wgt*rhot*(et + 0.5d0*(u1t**2+u2t**2+u3t**2))
+                    state(i,j,k,UTEMP) = state(i,j,k,UTEMP) + wgt*Tt
                     do n=1, NSPEC
-                       state(i,j,k,UFS+n-1) = state(i,j,k,UFS+n-1) + 0.25d0*rhot*Yt(n)
+                       state(i,j,k,UFS+n-1) = state(i,j,k,UFS+n-1) + wgt*rhot*Yt(n)
                     end do
                     
                  end do
