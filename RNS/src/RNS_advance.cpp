@@ -428,6 +428,10 @@ void sdc_f1eval(void *Fp, void *Qp, double t, sdc_state *state, void *ctx)
   if (F.fine_flux != NULL)
     F.fine_flux->setVal(0.0);
 
+  if (state->flags & SDC_POSTRESTRICT) {
+    // XXX
+  }
+
   rns.dUdt_AD(U, Uprime, t, RNS::use_FillBoundary, F.crse_flux, F.fine_flux, 1.0);
 }
 
@@ -450,6 +454,10 @@ void sdc_f2eval(void *Fp, void *Qp, double t, sdc_state *state, void *ctx)
   if (ChemDriver::isNull() || !RNS::do_chemistry) {
       Uprime.setVal(0.0);
       return;
+  }
+
+  if (state->flags & SDC_POSTRESTRICT) {
+    // XXX
   }
 
   if (rns.verbose > 1 && ParallelDescriptor::IOProcessor()) {
@@ -499,7 +507,7 @@ void sdc_f2comp(void *Fp, void *Qp, double t, double dt, void *RHSp, sdc_state *
   int goodUguess = (state->iter >= rns.f2comp_niter_good) ? 1 : 0;
   if (goodUguess) {
       Uguess.define(U.boxArray(), U.nComp(), 0, Fab_allocate);
-      MultiFab::Copy(Uguess, U, 0, 0, U.nComp(), 0);      
+      MultiFab::Copy(Uguess, U, 0, 0, U.nComp(), 0);
   }
 
   MultiFab::Copy(U, Urhs, 0, 0, U.nComp(), 0);
@@ -507,7 +515,7 @@ void sdc_f2comp(void *Fp, void *Qp, double t, double dt, void *RHSp, sdc_state *
   rns.fill_boundary(U, state->t, RNS::use_FillBoundary);
 
   BL_ASSERT(U.contains_nan() == false);
-  
+
   if (goodUguess) {
       rns.advance_chemistry(U, Uguess, dt);
   }
