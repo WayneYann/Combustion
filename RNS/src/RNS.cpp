@@ -947,3 +947,26 @@ RNS::getCPUTime()
     
     return T;
 }
+
+void
+RNS::buildTouchFine ()
+{
+    MultiFab& S_new = get_new_data(State_Type);
+    const BoxArray& fba = getLevel(level+1).boxArray();
+
+    touchFine.resize(S_new.size());
+
+    for (MFIter mfi(S_new); mfi.isValid(); ++mfi)
+    {
+	int i = mfi.index();
+	const Box& cgbox = S_new[i].box();
+	std::vector< std::pair<int,Box> > isects;
+	fba.intersections(cgbox,isects);
+	if (isects.size() > 0) {
+	    touchFine[i] = 1;
+	}
+	else {
+	    touchFine[i] = 0;
+	}
+    }
+}

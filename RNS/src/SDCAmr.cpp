@@ -345,6 +345,12 @@ void SDCAmr::timeStep(int level, Real time,
     cout << "MLSDC advancing with dt: " << dt << " (" << dt_level[0] << ")" << endl;
   }
 
+  // clear grid overlap information
+  for (int lev=0; lev<finest_level; lev++) {
+    RNS& rns  = *dynamic_cast<RNS*>(&getLevel(lev));
+    rns.clearTouchFine();
+  }
+
   // set intial conditions
   for (int lev=0; lev<=finest_level; lev++) {
     MultiFab& Unew = getLevel(lev).get_new_data(0);

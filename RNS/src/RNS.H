@@ -141,12 +141,13 @@ public:
     // Given U, compute Uprime (i.e., dUdt) for AD
     //
     void dUdt_AD(MultiFab& U, MultiFab& Uprime, Real time, int fill_boundary_type,
-	      FluxRegister* fine=0, FluxRegister* current=0, Real dt=0.0);
+		 FluxRegister* fine=0, FluxRegister* current=0, Real dt=0.0, 
+		 bool partialUpdate = false);
     //
     // Given U, compute Uprime (i.e., dUdt) for chemistry
     // When it's called, 2 ghost cells of U should have already been filled properly.
     //
-    void dUdt_chemistry(const MultiFab& U, MultiFab& Uprime);
+    void dUdt_chemistry(const MultiFab& U, MultiFab& Uprime, bool partialUpdate = false);
     //
     // Compute U1 = U2 + c Uprime.
     //
@@ -264,6 +265,7 @@ public:
     SDCAmr* getSDCAmr() { return (SDCAmr*) parent; }
 #endif
 
+    void clearTouchFine() { touchFine.clear(); }
 
 protected:
 
@@ -371,6 +373,10 @@ protected:
     static Real        startCPUTime;
 
     Real getCPUTime();
+
+    // which grids touch fine?
+    std::vector<int> touchFine;
+    void buildTouchFine();
 };
 
 //
