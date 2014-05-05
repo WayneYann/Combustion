@@ -952,7 +952,9 @@ void
 RNS::buildTouchFine ()
 {
     MultiFab& S_new = get_new_data(State_Type);
+
     const BoxArray& fba = getLevel(level+1).boxArray();
+    const Box fb = fba.minimalBox();
 
     touchFine.resize(S_new.size());
 
@@ -960,9 +962,8 @@ RNS::buildTouchFine ()
     {
 	int i = mfi.index();
 	const Box& cgbox = S_new[i].box();
-	std::vector< std::pair<int,Box> > isects;
-	fba.intersections(cgbox,isects);
-	if (isects.size() > 0) {
+
+	if (fb.intersects(cgbox) || fba.intersects(cgbox)) {
 	    touchFine[i] = 1;
 	}
 	else {
