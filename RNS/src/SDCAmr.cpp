@@ -88,8 +88,8 @@ void mlsdc_amr_interpolate(void *Fp, void *Gp, sdc_state *state, void *ctxF, voi
 {
   BL_PROFILE("MLSDC_AMR_INTERPOLATE()");
 
-  bool isCorrection = state->kind == SDC_CORRECTION;
-  bool isFEval      = state->kind == SDC_FEVAL;
+  bool isCorrection = state->flags & SDC_CORRECTION;
+  bool isFEval      = state->flags & SDC_FEVAL;
 
   RNSEncap& F      = *((RNSEncap*) Fp);
   RNSEncap& G      = *((RNSEncap*) Gp);
