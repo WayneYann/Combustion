@@ -951,6 +951,8 @@ RNS::getCPUTime()
 void
 RNS::buildTouchFine ()
 {
+    if (level == parent->finestLevel()) return;
+
     MultiFab& S_new = get_new_data(State_Type);
 
     const BoxArray& fba = getLevel(level+1).boxArray();
@@ -961,9 +963,10 @@ RNS::buildTouchFine ()
     for (MFIter mfi(S_new); mfi.isValid(); ++mfi)
     {
 	int i = mfi.index();
-	const Box& cgbox = S_new[i].box();
 
-	if (fb.intersects(cgbox) || fba.intersects(cgbox)) {
+	const Box tbox = BoxLib::refine(S_new[i].box(), parent->refRatio(level));
+
+	if (fb.intersects(tbox) || fba.intersects(tbox)) {
 	    touchFine[i] = 1;
 	}
 	else {
