@@ -558,7 +558,7 @@ void sdc_f2comp(void *Fp, void *Qp, double t, double dt, void *RHSp, sdc_state *
       Uprime.mult(1./dt);
   }
   else {
-      rns.fill_boundary(U, state->t, RNS::use_FillBoundary);
+      rns.fill_boundary(U, state->t+dt, RNS::use_FillBoundary);
       rns.dUdt_chemistry(U, Uprime);
   }
 }
