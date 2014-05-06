@@ -124,7 +124,7 @@ subroutine rns_grpfill(adv,adv_l1,adv_l2,adv_l3,adv_h1,adv_h2,adv_h3, &
            do j = adv_l2, adv_h2
               do i = adv_l1, adv_h1
                  Ek = adv(i,j,k,UMX)**2+adv(i,j,k,UMY)**2+adv(i,j,k,UMZ)**2
-                 rhoeta = adv(i,j,k,URHO)*etaturb(i,j)
+                 rhoeta = adv(i,j,k,URHO)*etaturb(i,j)*turb_boost_factor
                  adv(i,j,k,UMX) = adv(i,j,k,UMX) + vturb(i,j,1)*rhoeta
                  adv(i,j,k,UMY) = adv(i,j,k,UMY) + vturb(i,j,2)*rhoeta
                  adv(i,j,k,UMZ) = adv(i,j,k,UMZ) + vturb(i,j,3)*rhoeta

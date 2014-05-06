@@ -5,6 +5,7 @@ module probdata_module
   ! parameters for DME_jet
   integer, save :: prob_type
   character (len=128), save :: turbfile = ""  
+  double precision, save :: turb_boost_factor
   double precision, save :: pamb, phi_in, T_in, vn_in, T_co, vn_co
   double precision, save :: splitx, xfrontw, Tfrontw
   double precision, save :: blobr, blobx, bloby, blobT

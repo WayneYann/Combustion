@@ -12,7 +12,7 @@ subroutine PROBINIT (init,name,namlen,problo,probhi)
 
   namelist /fortin/ prob_type, turbfile, pamb, phi_in, T_in, vn_in, T_co, vn_co, &
        splitx, xfrontw, Tfrontw, blobr, blobx, bloby, blobT, inflow_period, inflow_vnmag, &
-       splity, yfrontw, &
+       splity, yfrontw, turb_boost_factor, &
        max_tracerr_lev, tracerr, max_vorterr_lev, vorterr, max_tempgrad_lev, tempgrad
 
 !
@@ -56,6 +56,8 @@ subroutine PROBINIT (init,name,namlen,problo,probhi)
 
   splity  = 0.001d0
   yfrontw = 0.0004d0
+
+  turb_boost_factor = 200.d0
 
   max_tracerr_lev = -1
   tracerr = 1.d-8
