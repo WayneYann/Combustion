@@ -57,7 +57,7 @@ subroutine PROBINIT (init,name,namlen,problo,probhi)
   splity  = 0.001d0
   yfrontw = 0.0004d0
 
-  turb_boost_factor = 200.d0
+  turb_boost_factor = 1.d0
 
   max_tracerr_lev = -1
   tracerr = 1.d-8
