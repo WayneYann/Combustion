@@ -279,7 +279,7 @@ contains
 
     force_new_J = .true.  ! always recompute Jacobina when a new FAB starts
 
-    !$omp do collapse(2)
+    !$omp do schedule(dynamic,8) collapse(2)
     do k=lo(3),hi(3)
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
@@ -377,43 +377,45 @@ contains
     end do
     !$omp end do
 
-    do g=1,8
-       !$omp do collapse(2)
-       do k=lo(3),hi(3)
+    !$omp do collapse(2)
+    do k=lo(3),hi(3)
        do j=lo(2),hi(2)
 
-          do i=lo(1),hi(1)
-             rho(i) = 0.d0
-             do n=1,nspec
-                Y(i,n) = UG(i,j,k,g,UFS+n-1)
-                rho(i) = rho(i) + Y(i,n)
-             end do
-             rhoinv = 1.d0/rho(i)
+          do g=1,8
 
-             do n=1,nspec
-                Y(i,n) = Y(i,n) * rhoinv
-                Ytmp(n) = Y(i,n)
-             end do
-
-             ei = rhoinv*( UG(i,j,k,g,UEDEN) - 0.5d0*rhoinv*(UG(i,j,k,g,UMX)**2 &
-                  + UG(i,j,k,g,UMY)**2 + UG(i,j,k,g,UMZ)**2) )
-
-             T(i) = UG(i,j,k,g,UTEMP)
-             call eos_get_T(T(i), ei, Ytmp)
-          end do
-
-          call compute_rhodYdt(np,rho,T,Y,rdYdt)
-
-          do n=1,nspec
              do i=lo(1),hi(1)
-                Ut(i,j,k,UFS+n-1) = Ut(i,j,k,UFS+n-1) + 0.125d0*rdYdt(i,n)
+                rho(i) = 0.d0
+                do n=1,nspec
+                   Y(i,n) = UG(i,j,k,g,UFS+n-1)
+                   rho(i) = rho(i) + Y(i,n)
+                end do
+                rhoinv = 1.d0/rho(i)
+                
+                do n=1,nspec
+                   Y(i,n) = Y(i,n) * rhoinv
+                   Ytmp(n) = Y(i,n)
+                end do
+                
+                ei = rhoinv*( UG(i,j,k,g,UEDEN) - 0.5d0*rhoinv*(UG(i,j,k,g,UMX)**2 &
+                     + UG(i,j,k,g,UMY)**2 + UG(i,j,k,g,UMZ)**2) )
+                
+                T(i) = UG(i,j,k,g,UTEMP)
+                call eos_get_T(T(i), ei, Ytmp)
              end do
+             
+             call compute_rhodYdt(np,rho,T,Y,rdYdt)
+             
+             do n=1,nspec
+                do i=lo(1),hi(1)
+                   Ut(i,j,k,UFS+n-1) = Ut(i,j,k,UFS+n-1) + 0.125d0*rdYdt(i,n)
+                end do
+             end do
+             
           end do
 
        end do
-       end do
-       !$omp end do
     end do
+    !$omp end do 
 
     !$omp end parallel
 

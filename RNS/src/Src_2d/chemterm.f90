@@ -367,10 +367,11 @@ contains
     end do
     !$omp end do
 
-    do g=1,4
-       !$omp do
-       do j=lo(2),hi(2)
+    !$omp do
+    do j=lo(2),hi(2)
 
+       do g=1,4
+          
           do i=lo(1),hi(1)
              rho(i) = 0.d0
              do n=1,nspec
@@ -400,8 +401,8 @@ contains
           end do
 
        end do
-       !$omp end do
     end do
+    !$omp end do
 
     !$omp end parallel
 
