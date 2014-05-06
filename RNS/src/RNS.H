@@ -253,7 +253,12 @@ public:
 
     // how to compute dUdt in f2comp; "simple" means setting dUdt = \Delta U / \Delta t
     static int f2comp_simple_dUdt;
-    static int f2comp_niter_good;  // starting from iter ?, U is considered good.
+    static int f2comp_nbdf;  // only use bdf/vode for the first ? times on each node
+    std::vector<int> f2comp_timer; // how many times f2comp has been called on each sdc node
+    void reset_f2comp_timer(int nnodes) {
+	f2comp_timer.clear();
+	f2comp_timer.resize(nnodes-1,0); // last node doesn't call f2comp
+    }
 
     void avgDown ();
     void avgDown (int state_indx);
@@ -265,6 +270,9 @@ public:
     SDCAmr* getSDCAmr() { return (SDCAmr*) parent; }
 #endif
 
+    // which grids touch fine?
+    std::vector<int> touchFine;
+    void buildTouchFine();
     void clearTouchFine() { touchFine.clear(); }
 
 protected:
@@ -373,10 +381,6 @@ protected:
     static Real        startCPUTime;
 
     Real getCPUTime();
-
-    // which grids touch fine?
-    std::vector<int> touchFine;
-    void buildTouchFine();
 };
 
 //

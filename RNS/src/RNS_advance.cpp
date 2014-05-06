@@ -533,8 +533,7 @@ void sdc_f2comp(void *Fp, void *Qp, double t, double dt, void *RHSp, sdc_state *
   }
 
   MultiFab Uguess;
-  int goodUguess = (state->iter >= rns.f2comp_niter_good) ? 1 : 0;
-  if (goodUguess) {
+  if ( rns.f2comp_timer[state->node] >= rns.f2comp_nbdf ) {
       Uguess.define(U.boxArray(), U.nComp(), 0, Fab_allocate);
       MultiFab::Copy(Uguess, U, 0, 0, U.nComp(), 0);
   }
@@ -545,7 +544,7 @@ void sdc_f2comp(void *Fp, void *Qp, double t, double dt, void *RHSp, sdc_state *
 
   BL_ASSERT(U.contains_nan() == false);
 
-  if (goodUguess) {
+  if (Uguess.ok()) {
       rns.advance_chemistry(U, Uguess, dt);
   }
   else {
@@ -561,6 +560,8 @@ void sdc_f2comp(void *Fp, void *Qp, double t, double dt, void *RHSp, sdc_state *
       rns.fill_boundary(U, state->t+dt, RNS::use_FillBoundary);
       rns.dUdt_chemistry(U, Uprime);
   }
+
+  rns.f2comp_timer[state->node]++;
 }
 
 void sdc_poststep_hook(void *Qp, sdc_state *state, void *ctx)
