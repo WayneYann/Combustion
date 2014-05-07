@@ -1,7 +1,7 @@
 subroutine rns_ctoprim(lo, hi, &
      cons, c_l1, c_l2, c_l3, c_h1, c_h2, c_h3, &
      prim, p_l1, p_l2, p_l3, p_h1, p_h2, p_h3 )
-  use meth_params_module, only : NVAR, xblksize, yblksize, zblksize, nthreads
+  use meth_params_module, only : NVAR, xblksize, yblksize, zblksize
   use convert_module, only : cellavg2cc_3d
   use variables_module, only : ctoprim
   implicit none
@@ -29,23 +29,20 @@ subroutine rns_ctoprim(lo, hi, &
   phi(2) = p_h2
   phi(3) = p_h3
 
-  !$omp parallel do private(n)
-  do n=1,NVAR
-     call cellavg2cc_3d(lo, hi, cons(:,:,:,n), clo, chi, prim(:,:,:,n), plo, phi)
-  end do
-  !$omp end parallel do
-
-  if (nthreads*yblksize*zblksize .le. (hi(2)-lo(2)+1)*(hi(3)-lo(3)+1)) then
-     blocksize(1) = hi(1) - lo(1) + 1  ! blocking in y and z-direction only
-  else
-     blocksize(1) = xblksize 
-  end if
+  blocksize(1) = xblksize 
   blocksize(2) = yblksize
   blocksize(3) = zblksize
 
   nb = (hi-lo+blocksize)/blocksize
 
-  !$omp parallel do private(ib,jb,kb,tlo,thi) collapse(3)
+  !$omp parallel private(n,ib,jb,kb,tlo,thi)
+  !$omp do
+  do n=1,NVAR
+     call cellavg2cc_3d(lo, hi, cons(:,:,:,n), clo, chi, prim(:,:,:,n), plo, phi)
+  end do
+  !$omp end do
+
+  !$omp do schedule(dynamic) collapse(3)
   do kb=0,nb(3)-1
      do jb=0,nb(2)-1
         do ib=0,nb(1)-1
@@ -62,7 +59,8 @@ subroutine rns_ctoprim(lo, hi, &
         end do
      end do
   end do
-  !$omp end parallel do
+  !$omp end do
+  !$omp end parallel
 
 end subroutine rns_ctoprim
 

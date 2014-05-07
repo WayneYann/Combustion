@@ -6,7 +6,7 @@ subroutine rns_dudt_ad (lo, hi, &
      yflx, yf_l1, yf_l2, yf_h1, yf_h2, &
      dx)
   use meth_params_module, only : NVAR, gravity, URHO, UMY, UEDEN, do_weno, &
-       xblksize, yblksize, nthreads
+       xblksize, yblksize
   use hypterm_module, only : hypterm
   use difterm_module, only : difterm
   implicit none
@@ -35,18 +35,14 @@ subroutine rns_dudt_ad (lo, hi, &
   Uhi(1) = U_h1
   Uhi(2) = U_h2
 
-  if (nthreads*yblksize .le. hi(2)-lo(2)+1) then
-     blocksize(1) = hi(1) - lo(1) + 1  ! blocking in y-direction only
-  else
-     blocksize(1) = xblksize 
-  end if
+  blocksize(1) = xblksize 
   blocksize(2) = yblksize
 
   nb = (hi-lo+blocksize)/blocksize
 
   !$omp parallel private(fxlo,fxhi,fylo,fyhi,tlo,thi,i,j,n,ib,jb,bxflx,byflx)
   
-  !$omp do collapse(2)
+  !$omp do schedule(dynamic) collapse(2)
   do jb=0,nb(2)-1
      do ib=0,nb(1)-1
 
@@ -112,7 +108,7 @@ subroutine rns_dudt_ad (lo, hi, &
   !$omp end do
 
   if (gravity .ne. 0.d0) then
-     !$omp do collapse(2)
+     !$omp do
      do j=lo(2),hi(2)
         do i=lo(1),hi(1)
            dUdt(i,j,UMY  ) = dUdt(i,j,UMY  ) + U(i,j,URHO)*gravity
@@ -210,7 +206,7 @@ subroutine rns_compute_temp(lo,hi,U,U_l1,U_l2,U_h1,U_h2)
   integer :: i, j
   double precision :: rhoInv, e, vx, vy, Y(NSPEC)
 
-  !$omp parallel do private(i,j,rhoInv,e,vx,vy,Y) collapse(2)
+  !$omp parallel do private(i,j,rhoInv,e,vx,vy,Y)
   do j=lo(2),hi(2)
   do i=lo(1),hi(1)
      rhoInv = 1.0d0/U(i,j,URHO)
@@ -248,7 +244,7 @@ subroutine rns_enforce_consistent_Y(lo,hi,U,U_l1,U_l2,U_h1,U_h2)
   double precision, parameter :: eps = -1.d-16
 
   !$omp parallel do private(i,j,n,int_dom_spec,any_negative,dom_spec) &
-  !$omp private(x,rhoInv,sumrY,fac) collapse(2)
+  !$omp private(x,rhoInv,sumrY,fac)
   do j = lo(2),hi(2)
   do i = lo(1),hi(1)
 
@@ -500,8 +496,7 @@ end subroutine rns_sum_cons
         integer :: i, j
         double precision :: rhoInv, vx, vy, T, e, c, Y(NSPEC)
 
-        !$omp parallel do private(i,j,rhoInv,vx,vy,T,e,c,Y) reduction(min:dt) &
-        !$omp collapse(2)
+        !$omp parallel do private(i,j,rhoInv,vx,vy,T,e,c,Y) reduction(min:dt)
         do j = lo(2), hi(2)
         do i = lo(1), hi(1)
            rhoInv = 1.d0/u(i,j,URHO)

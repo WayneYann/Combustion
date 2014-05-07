@@ -99,11 +99,6 @@ subroutine set_method_params(dm,Density,Xmom,Eden,Temp,FirstSpec, &
      zblksize = blocksize(3)
   end if
 
-  nthreads=0
-  !$omp parallel reduction(+:nthreads)
-  nthreads = nthreads + 1
-  !$omp end parallel
-
   do_weno = (do_weno_in .ne. 0)
   do_quadrature_weno = (do_quadrature_weno_in .ne. 0)
   do_component_weno = (do_comp_weno_in .ne. 0)

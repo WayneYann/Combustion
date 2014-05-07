@@ -30,18 +30,19 @@ subroutine rns_ctoprim(lo, hi, &
   phi(2) = p_h2
   phi(3) = 1
 
-  !$omp parallel do private(n)
-  do n=1,NVAR
-     call cellavg2cc_2d(lo, hi, cons(:,:,n), clo(1:2), chi(1:2), prim(:,:,n), plo(1:2), phi(1:2))
-  end do
-  !$omp end parallel do
-
   blocksize(1) = xblksize
   blocksize(2) = yblksize
 
   nb = (hi-lo+blocksize)/blocksize
 
-  !$omp parallel do private(ib,jb,tlo,thi) collapse(2)
+  !$omp parallel private(n,ib,jb,tlo,thi)
+  !$omp do
+  do n=1,NVAR
+     call cellavg2cc_2d(lo, hi, cons(:,:,n), clo(1:2), chi(1:2), prim(:,:,n), plo(1:2), phi(1:2))
+  end do
+  !$omp end do
+
+  !$omp do schedule(dynamic) collapse(2)
   do jb=0,nb(2)-1
      do ib=0,nb(1)-1
 
@@ -56,7 +57,8 @@ subroutine rns_ctoprim(lo, hi, &
         call ctoprim(tlo, thi, prim, plo, phi, NVAR)
      end do
   end do
-  !$omp end parallel do
+  !$omp end do
+  !$omp end parallel
 
 end subroutine rns_ctoprim
 

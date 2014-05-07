@@ -7,7 +7,7 @@ subroutine rns_dudt_ad (lo, hi, &
      zflx,zf_l1,zf_l2,zf_l3,zf_h1,zf_h2,zf_h3, &
      dx)
   use meth_params_module, only : NVAR, gravity, URHO, UMZ, UEDEN, do_weno, &
-       xblksize, yblksize, zblksize, nthreads
+       xblksize, yblksize, zblksize
   use hypterm_module, only : hypterm
   use difterm_module, only : difterm
   implicit none
@@ -39,11 +39,7 @@ subroutine rns_dudt_ad (lo, hi, &
   Uhi(2) = U_h2
   Uhi(3) = U_h3
 
-  if (nthreads*yblksize*zblksize .le. (hi(2)-lo(2)+1)*(hi(3)-lo(3)+1)) then
-     blocksize(1) = hi(1) - lo(1) + 1  ! blocking in y and z-direction only
-  else
-     blocksize(1) = xblksize 
-  end if
+  blocksize(1) = xblksize 
   blocksize(2) = yblksize
   blocksize(3) = zblksize
 
@@ -52,7 +48,7 @@ subroutine rns_dudt_ad (lo, hi, &
   !$omp parallel private(fxlo,fxhi,fylo,fyhi,fzlo,fzhi,tlo,thi) &
   !$omp private(i,j,k,n,ib,jb,kb,bxflx,byflx,bzflx)
 
-  !$omp do collapse(3)
+  !$omp do schedule(dynamic) collapse(3)
   do    kb=0,nb(3)-1
      do jb=0,nb(2)-1
      do ib=0,nb(1)-1

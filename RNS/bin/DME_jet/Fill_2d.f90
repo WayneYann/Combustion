@@ -50,8 +50,7 @@ subroutine rns_grpfill(adv,adv_l1,adv_l2,adv_h1,adv_h2, &
         sigma = 2.5d0*xfrontw*splitx
 
         ! fill the corners too
-        !$omp parallel do private(i,j,n,iwrk,ii,x,xg,eta,eta1,rhot,u1t,u2t,Tt,et,Yt,rwrk) &
-        !$omp collapse(2)
+        !$omp parallel do private(i,j,n,iwrk,ii,x,xg,eta,eta1,rhot,u1t,u2t,Tt,et,Yt,rwrk)
         do j = adv_l2, domlo(2)-1 
            do i = adv_l1,adv_h1
         
@@ -231,8 +230,7 @@ subroutine rns_denfill(adv,adv_l1,adv_l2,adv_h1,adv_h2, &
         sigma = 2.5d0*xfrontw*splitx
 
         ! fill the corners too
-        !$omp parallel do private(i,j,n,iwrk,ii,x,xg,eta,rhot,Tt,Yt,rwrk) &
-        !$omp collapse(2)
+        !$omp parallel do private(i,j,n,iwrk,ii,x,xg,eta,rhot,Tt,Yt,rwrk)
         do j = adv_l2, domlo(2)-1 
            do i = adv_l1,adv_h1
 
@@ -407,8 +405,7 @@ subroutine rns_myfill(adv,adv_l1,adv_l2,adv_h1,adv_h2, &
         sigma = 2.5d0*xfrontw*splitx
 
         ! fill the corners too
-        !$omp parallel do private(i,j,n,iwrk,ii,x,xg,eta,eta1,rhot,u2t,Tt,Yt,rwrk) &
-        !$omp collapse(2)
+        !$omp parallel do private(i,j,n,iwrk,ii,x,xg,eta,eta1,rhot,u2t,Tt,Yt,rwrk)
         do j = adv_l2, domlo(2)-1 
            do i = adv_l1,adv_h1
 
@@ -532,7 +529,7 @@ subroutine rns_tempfill(adv,adv_l1,adv_l2,adv_h1,adv_h2, &
         sigma = 2.5d0*xfrontw*splitx
 
         ! fill the corners too
-        !$omp parallel do private(i,j,ii,x,xg,eta,Tt) collapse(2)
+        !$omp parallel do private(i,j,ii,x,xg,eta,Tt)
         do j = adv_l2, domlo(2)-1 
            do i = adv_l1,adv_h1
 
