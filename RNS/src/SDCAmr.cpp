@@ -315,26 +315,16 @@ void SDCAmr::timeStep(int level, Real time,
 
   BL_ASSERT(level == 0);
 
-  // regrid
-  int lev_top = min(finest_level, max_level-1);
-  for (int i=level; i<=lev_top; i++) {
-    const int post_regrid_flag = 1;
-    const int old_finest = finest_level;
+  regrid(0,time);
 
-    // grids_changed = grids_changed || regrid(i,time);
-    regrid(i,time);
-    amr_level[0].computeNewDt(finest_level, sub_cycle, n_cycle, ref_ratio,
-  			      dt_min, dt_level, stop_time, post_regrid_flag);
+  for (int lev=0; lev<=finest_level; lev++) {
+      level_count[lev] = 0;
+  }      
+  
+  // const int post_regrid_flag = 1;
+  // amr_level[0].computeNewDt(finest_level, sub_cycle, n_cycle, ref_ratio,
+  // 			    dt_min, dt_level, stop_time, post_regrid_flag);
 
-    for (int k=i; k<=finest_level; k++)
-      level_count[k] = 0;
-
-    if (old_finest > finest_level)
-      lev_top = min(finest_level, max_level-1);
-  }
-
-  // if (mg.sweepers[0] == NULL) grids_changed = true;
-  // if (grids_changed)
   rebuild_mlsdc();
 
   double dt = dt_level[0];
@@ -430,7 +420,7 @@ void SDCAmr::timeStep(int level, Real time,
 	  std::ios_base::fmtflags ff = cout.flags();
 	  int oldprec = cout.precision(2);
 	  cout << scientific;
-	  if (level%2 == 1) cout << BOLDFONT;
+	  if (lev%2 == 1) cout << BOLDFONT;
 	  if (k == 0) {
 	      cout << " iter: " << k << ", level: " << lev << ",   ";
 	      for (int ic=0; ic<ncomps; ic++) {
