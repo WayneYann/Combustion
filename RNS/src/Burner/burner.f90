@@ -265,6 +265,7 @@ contains
     double precision, dimension(nspecies+1) :: YT_init, r, dYTdt
     integer, parameter :: J_int = 5
     logical, save :: A_is_invalid
+    !$omp threadprivate(A_is_invalid)
 
     if (g .eq. 1) A_is_invalid = .true.
 

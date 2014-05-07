@@ -46,7 +46,7 @@ subroutine rns_grpfill(adv,adv_l1,adv_l2,adv_l3,adv_h1,adv_h2,adv_h3, &
 
         !$omp parallel do private(i,j,k,n,ii,jj,iwrk,x,y,xg,yg,r,eta) &
         !$omp private(Yt,Tt,u1t,u2t,u3t,rhot,et,rwrk) &
-        !$omp collapse(3)
+        !$omp collapse(2)
         do k = adv_l3, domlo(3)-1
         do j = adv_l2, adv_h2
         do i = adv_l1, adv_h1
@@ -272,7 +272,7 @@ subroutine rns_denfill(adv,adv_l1,adv_l2,adv_l3,adv_h1,adv_h2,adv_h3, &
 
         !$omp parallel do private(i,j,k,n,ii,jj,iwrk,x,y,xg,yg,r,eta) &
         !$omp private(Yt,Tt,rhot,rwrk) &
-        !$omp collapse(3)
+        !$omp collapse(2)
         do k = adv_l3, domlo(3)-1
         do j = adv_l2, adv_h2
         do i = adv_l1, adv_h1
@@ -529,7 +529,7 @@ subroutine rns_mzfill(adv,adv_l1,adv_l2,adv_l3,adv_h1,adv_h2,adv_h3, &
 
         !$omp parallel do private(i,j,k,n,ii,jj,iwrk,x,y,xg,yg,r,eta) &
         !$omp private(Yt,Tt,u3t,rhot,rwrk) &
-        !$omp collapse(3)
+        !$omp collapse(2)
         do k = adv_l3, domlo(3)-1
         do j = adv_l2, adv_h2
         do i = adv_l1, adv_h1
@@ -643,7 +643,7 @@ subroutine rns_tempfill(adv,adv_l1,adv_l2,adv_l3,adv_h1,adv_h2,adv_h3, &
      if (bc(3,1,1) .eq. EXT_DIR) then
 
         !$omp parallel do private(i,j,k,ii,jj,x,y,xg,yg,r,eta,Tt) &
-        !$omp collapse(3)
+        !$omp collapse(2)
         do k = adv_l3, domlo(3)-1
         do j = adv_l2, adv_h2
         do i = adv_l1, adv_h1

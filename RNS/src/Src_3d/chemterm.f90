@@ -56,7 +56,7 @@ contains
     end do
     !$omp end do
 
-    force_new_J = .true.  ! always recompute Jacobina when a new FAB starts
+    force_new_J = .true.  ! always recompute Jacobian when a new FAB starts
 
     !$omp do collapse(2)
     do k=lo(3)-1,hi(3)+1
@@ -279,8 +279,8 @@ contains
 
     force_new_J = .true.  ! always recompute Jacobina when a new FAB starts
 
-    !$omp do schedule(dynamic,8) collapse(2)
-    do k=lo(3),hi(3)
+    !$omp do schedule(dynamic) collapse(2)
+     do k=lo(3),hi(3)
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
 

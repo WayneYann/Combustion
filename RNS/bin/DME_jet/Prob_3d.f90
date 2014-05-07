@@ -135,14 +135,15 @@ subroutine rns_initdata(level,time,lo,hi,nscal, &
      call init_DME_jet()
   end if
 
+  !$omp parallel do private(i,j,k,n,ii,jj,kk,xcen,ycen,zcen,xg,yg,zg,r,Yt) &
+  !$omp private(rhot,u1t,u2t,u3t,Tt,et, eta, iwrk, rwrk) collapse(2)
   do k = state_l3, state_h3
-     zcen = xlo(3) + delta(3)*(dble(k-lo(3)) + 0.5d0)
-
-     do j = state_l2, state_h2
-        ycen = xlo(2) + delta(2)*(dble(j-lo(2)) + 0.5d0)
-        
+     do j = state_l2, state_h2        
         do i = state_l1, state_h1
+
            xcen = xlo(1) + delta(1)*(dble(i-lo(1)) + 0.5d0)
+           ycen = xlo(2) + delta(2)*(dble(j-lo(2)) + 0.5d0)
+           zcen = xlo(3) + delta(3)*(dble(k-lo(3)) + 0.5d0)
            
            state(i,j,k,:) = 0.d0
 
@@ -193,6 +194,7 @@ subroutine rns_initdata(level,time,lo,hi,nscal, &
         end do
      end do
   end do
+  !$omp end parallel do
 
 end subroutine rns_initdata
 
