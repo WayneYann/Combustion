@@ -346,10 +346,10 @@ void SDCAmr::timeStep(int level, Real time,
   }
 
   // reset SDC stuff in RNS
-  for (int lev=0; lev<finest_level; lev++) {
+  for (int lev=0; lev<=finest_level; lev++) {
     RNS& rns  = *dynamic_cast<RNS*>(&getLevel(lev));
     rns.clearTouchFine();
-    rns.reset_f2comp_timer(sweepers[lev]->nset->nnodes);
+    rns.reset_f2comp_timer(mg.sweepers[lev]->nset->nnodes);
   }
 
   // set intial conditions
