@@ -343,7 +343,7 @@ RNS::advance_chemistry(MultiFab& U, Real dt)
 void
 RNS::advance_chemistry(MultiFab& U, const MultiFab& Uguess, Real dt)
 {
-    BL_PROFILE("RNS::advance_chemistry()");
+    BL_PROFILE("RNS::advance_chemistry() w/ guess");
 
     BL_ASSERT( ! ChemDriver::isNull() );
     BL_ASSERT( Uguess.nGrow() == 0 );
