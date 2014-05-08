@@ -7,9 +7,10 @@ subroutine rns_dudt_ad (lo, hi, &
      zflx,zf_l1,zf_l2,zf_l3,zf_h1,zf_h2,zf_h3, &
      dx)
   use meth_params_module, only : NVAR, gravity, URHO, UMZ, UEDEN, do_weno, &
-       xblksize, yblksize, zblksize
+       xblksize, yblksize, zblksize, nthreads
   use hypterm_module, only : hypterm
   use difterm_module, only : difterm
+  use threadbox_module, only : build_threadbox
   implicit none
 
   integer, intent(in) :: lo(3), hi(3)
@@ -26,9 +27,11 @@ subroutine rns_dudt_ad (lo, hi, &
   double precision,intent(in) :: dx(3)
 
   integer :: Ulo(3),Uhi(3),fxlo(3),fxhi(3),fylo(3),fyhi(3),fzlo(3),fzhi(3),tlo(3),thi(3)
-  integer :: i, j, k, n, blocksize(3), ib, jb, kb, nb(3)
+  integer :: i, j, k, n, blocksize(3), ib, jb, kb, nb(3), boxsize(3), nleft(3)
   double precision :: dxinv(3)
   double precision, allocatable :: bxflx(:,:,:,:), byflx(:,:,:,:), bzflx(:,:,:,:)
+
+  integer, parameter :: blocksize_min = 4
 
   dxinv = 1.d0/dx
 
@@ -39,11 +42,22 @@ subroutine rns_dudt_ad (lo, hi, &
   Uhi(2) = U_h2
   Uhi(3) = U_h3
 
-  blocksize(1) = xblksize 
-  blocksize(2) = yblksize
-  blocksize(3) = zblksize
+  boxsize = hi-lo+1
 
-  nb = (hi-lo+blocksize)/blocksize
+  if (nthreads > 1) then
+     call build_threadbox(nthreads, boxsize, blocksize_min, nb)
+     if (nb(1).eq.0) then
+        nb = boxsize/blocksize_min
+     end if
+     blocksize = boxsize/nb
+  else
+     blocksize(1) = xblksize 
+     blocksize(2) = yblksize
+     blocksize(3) = zblksize
+     nb = boxsize/blocksize
+  end if
+
+  nleft = boxsize - blocksize*nb
 
   !$omp parallel private(fxlo,fxhi,fylo,fyhi,fzlo,fzhi,tlo,thi) &
   !$omp private(i,j,k,n,ib,jb,kb,bxflx,byflx,bzflx)
@@ -53,13 +67,17 @@ subroutine rns_dudt_ad (lo, hi, &
      do jb=0,nb(2)-1
      do ib=0,nb(1)-1
 
-        tlo(1) = lo(1) + ib*blocksize(1)
-        tlo(2) = lo(2) + jb*blocksize(2)
-        tlo(3) = lo(3) + kb*blocksize(3)
+        tlo(1) = lo(1) + ib*blocksize(1) + min(nleft(1),ib)
+        tlo(2) = lo(2) + jb*blocksize(2) + min(nleft(2),jb)
+        tlo(3) = lo(3) + kb*blocksize(3) + min(nleft(3),kb)
 
-        thi(1) = min(tlo(1)+blocksize(1)-1, hi(1))
-        thi(2) = min(tlo(2)+blocksize(2)-1, hi(2))
-        thi(3) = min(tlo(3)+blocksize(3)-1, hi(3))
+        thi(1) = tlo(1)+blocksize(1)-1
+        thi(2) = tlo(2)+blocksize(2)-1
+        thi(3) = tlo(3)+blocksize(3)-1
+
+        if (ib < nleft(1)) thi(1) = thi(1) + 1
+        if (jb < nleft(2)) thi(2) = thi(2) + 1
+        if (kb < nleft(3)) thi(3) = thi(3) + 1
 
         fxlo = tlo
         fxhi(1) = thi(1)+1

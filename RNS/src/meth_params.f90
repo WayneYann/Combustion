@@ -32,6 +32,7 @@ module meth_params_module
 
   ! blocking, values will be reset in set_method_params
   integer, save :: xblksize=2048, yblksize=2048, zblksize=2048
+  integer, save :: nthreads=1
 
   logical, save :: do_weno, do_quadrature_weno, do_component_weno;
 
