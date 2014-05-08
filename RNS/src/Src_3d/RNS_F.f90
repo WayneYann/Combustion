@@ -62,7 +62,7 @@ subroutine rns_dudt_ad (lo, hi, &
   !$omp parallel private(fxlo,fxhi,fylo,fyhi,fzlo,fzhi,tlo,thi) &
   !$omp private(i,j,k,n,ib,jb,kb,bxflx,byflx,bzflx)
 
-  !$omp do schedule(dynamic) collapse(3)
+  !$omp do collapse(3)
   do    kb=0,nb(3)-1
      do jb=0,nb(2)-1
      do ib=0,nb(1)-1
