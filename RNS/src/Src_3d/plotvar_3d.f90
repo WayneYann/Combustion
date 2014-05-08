@@ -1,9 +1,10 @@
 subroutine rns_ctoprim(lo, hi, &
      cons, c_l1, c_l2, c_l3, c_h1, c_h2, c_h3, &
      prim, p_l1, p_l2, p_l3, p_h1, p_h2, p_h3 )
-  use meth_params_module, only : NVAR, xblksize, yblksize, zblksize
+  use meth_params_module, only : NVAR, xblksize, yblksize, zblksize, nthreads
   use convert_module, only : cellavg2cc_3d
   use variables_module, only : ctoprim
+  use threadbox_module, only : build_threadbox
   implicit none
 
   integer, intent(in) :: lo(3), hi(3)
@@ -13,7 +14,8 @@ subroutine rns_ctoprim(lo, hi, &
   double precision,intent(out)::prim(p_l1:p_h1,p_l2:p_h2,p_l3:p_h3,NVAR) 
 
   integer :: n, clo(3), chi(3), plo(3), phi(3), tlo(3), thi(3)
-  integer :: ib, jb, kb, nb(3), blocksize(3)
+  integer :: ib, jb, kb, nb(3), blocksize(3), boxsize(3), nleft(3)
+  integer, parameter :: blocksize_min = 4
 
   clo(1) = c_l1
   clo(2) = c_l2
@@ -29,11 +31,22 @@ subroutine rns_ctoprim(lo, hi, &
   phi(2) = p_h2
   phi(3) = p_h3
 
-  blocksize(1) = xblksize 
-  blocksize(2) = yblksize
-  blocksize(3) = zblksize
+  boxsize = hi-lo+1
 
-  nb = (hi-lo+blocksize)/blocksize
+  if (nthreads > 1) then
+     call build_threadbox(nthreads, boxsize, blocksize_min, nb)
+     if (nb(1).eq.0) then
+        nb = boxsize/blocksize_min
+     end if
+     blocksize = boxsize/nb
+  else
+     blocksize(1) = xblksize 
+     blocksize(2) = yblksize
+     blocksize(3) = zblksize
+     nb = boxsize/blocksize
+  end if
+
+  nleft = boxsize - blocksize*nb
 
   !$omp parallel private(n,ib,jb,kb,tlo,thi)
   !$omp do
@@ -42,18 +55,22 @@ subroutine rns_ctoprim(lo, hi, &
   end do
   !$omp end do
 
-  !$omp do schedule(dynamic) collapse(3)
+  !$omp do collapse(3)
   do kb=0,nb(3)-1
      do jb=0,nb(2)-1
         do ib=0,nb(1)-1
 
-           tlo(1) = lo(1) + ib*blocksize(1)
-           tlo(2) = lo(2) + jb*blocksize(2)
-           tlo(3) = lo(3) + kb*blocksize(3)
-
-           thi(1) = min(tlo(1)+blocksize(1)-1, hi(1))
-           thi(2) = min(tlo(2)+blocksize(2)-1, hi(2))
-           thi(3) = min(tlo(3)+blocksize(3)-1, hi(3))
+           tlo(1) = lo(1) + ib*blocksize(1) + min(nleft(1),ib)
+           tlo(2) = lo(2) + jb*blocksize(2) + min(nleft(2),jb)
+           tlo(3) = lo(3) + kb*blocksize(3) + min(nleft(3),kb)
+           
+           thi(1) = tlo(1)+blocksize(1)-1
+           thi(2) = tlo(2)+blocksize(2)-1
+           thi(3) = tlo(3)+blocksize(3)-1
+           
+           if (ib < nleft(1)) thi(1) = thi(1) + 1
+           if (jb < nleft(2)) thi(2) = thi(2) + 1
+           if (kb < nleft(3)) thi(3) = thi(3) + 1
 
            call ctoprim(tlo, thi, prim, plo, phi, NVAR)
         end do
