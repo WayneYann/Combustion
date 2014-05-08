@@ -420,7 +420,7 @@ void SDCAmr::timeStep(int level, Real time,
 	  std::ios_base::fmtflags ff = cout.flags();
 	  int oldprec = cout.precision(2);
 	  cout << scientific;
-	  if (lev%2 == 1) cout << BOLDFONT;
+	  if (lev == finest_level) cout << BOLDFONT;
 	  if (k == 0) {
 	      cout << " iter: " << k << ", level: " << lev << ",   ";
 	      for (int ic=0; ic<ncomps; ic++) {
