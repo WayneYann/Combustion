@@ -151,7 +151,7 @@ int          RNS::do_component_weno   = 0;
 
 int          RNS::do_chemistry        = 1;
 int          RNS::use_vode            = 0;
-int          RNS::new_J_cell          = 0; // new Jacobian for each cell?
+int          RNS::new_J_cell          = 1; // new Jacobian for each cell?
 #ifdef USE_SDCLIB
 RNS::ChemSolverType RNS::chem_solver  = RNS::BE_BURNING;
 #else
