@@ -428,6 +428,7 @@ subroutine rns_sum_cons ( &
 
   integer :: i, j, k, n
 
+  !$omp parallel do private(i,j,k,n)
   do n=1,5
      do k=m_l3,m_h3
         do j=m_l2,m_h2
@@ -437,6 +438,7 @@ subroutine rns_sum_cons ( &
         end do
      end do
   end do
+  !$omp end parallel do
 
 end subroutine rns_sum_cons
 
