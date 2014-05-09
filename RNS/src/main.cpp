@@ -65,10 +65,10 @@ int main (int argc, char* argv[])
     if (max_step < 0 && stop_time < 0.0)
 	BoxLib::Abort("Exiting because neither max_step nor stop_time is non-negative.");
 
-    {
-	ParmParse pp("amr"); 
-	pp.add("use_efficient_regrid", 1);
-    }
+    // {
+    // 	ParmParse pp("amr"); 
+    // 	pp.add("use_efficient_regrid", 1);
+    // }
 
 #ifndef USE_SDCLIB
     Amr* amrptr = new Amr;
