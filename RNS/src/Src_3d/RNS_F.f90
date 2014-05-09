@@ -80,7 +80,7 @@ subroutine rns_dudt_ad (lo, hi, &
         if (kb < nleft(3)) thi(3) = thi(3) + 1
 
         thi(1) = min(hi(1), thi(1))
-        thi(3) = min(hi(2), thi(2))
+        thi(2) = min(hi(2), thi(2))
         thi(3) = min(hi(3), thi(3))
 
         fxlo = tlo
