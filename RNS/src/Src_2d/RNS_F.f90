@@ -6,9 +6,10 @@ subroutine rns_dudt_ad (lo, hi, &
      yflx, yf_l1, yf_l2, yf_h1, yf_h2, &
      dx)
   use meth_params_module, only : NVAR, gravity, URHO, UMY, UEDEN, do_weno, &
-       xblksize, yblksize
+       xblksize, yblksize, nthreads
   use hypterm_module, only : hypterm
   use difterm_module, only : difterm
+  use threadbox_module, only : build_threadbox_2d
   implicit none
 
   integer, intent(in) :: lo(2), hi(2)
@@ -23,9 +24,11 @@ subroutine rns_dudt_ad (lo, hi, &
   double precision, intent(in)  :: dx(2)
 
   integer :: Ulo(2), Uhi(2), fxlo(2), fxhi(2), fylo(2), fyhi(2), tlo(2), thi(2)
-  integer :: i, j, n, blocksize(2), ib, jb, nb(2)
+  integer :: i, j, n, blocksize(2), ib, jb, nb(2), boxsize(2), nleft(2)
   double precision :: dxinv(2)
   double precision, allocatable :: bxflx(:,:,:), byflx(:,:,:)
+
+  integer, parameter :: blocksize_min = 4
 
   dxinv(1) = 1.d0/dx(1)
   dxinv(2) = 1.d0/dx(2)
@@ -35,22 +38,39 @@ subroutine rns_dudt_ad (lo, hi, &
   Uhi(1) = U_h1
   Uhi(2) = U_h2
 
-  blocksize(1) = xblksize 
-  blocksize(2) = yblksize
+  boxsize = hi-lo+1
 
-  nb = (hi-lo+blocksize)/blocksize
+  if (nthreads > 1) then
+     call build_threadbox_2d(nthreads, boxsize, blocksize_min, nb)
+     if (nb(1).eq.0) then
+        nb = boxsize/blocksize_min
+     end if
+     blocksize = boxsize/nb
+  else
+     blocksize(1) = xblksize 
+     blocksize(2) = yblksize
+     nb = boxsize/blocksize
+  end if
+
+  nleft = boxsize - blocksize*nb
 
   !$omp parallel private(fxlo,fxhi,fylo,fyhi,tlo,thi,i,j,n,ib,jb,bxflx,byflx)
   
-  !$omp do schedule(dynamic) collapse(2)
+  !$omp do collapse(2)
   do jb=0,nb(2)-1
      do ib=0,nb(1)-1
 
-        tlo(1) = lo(1) + ib*blocksize(1)
-        tlo(2) = lo(2) + jb*blocksize(2)
+        tlo(1) = lo(1) + ib*blocksize(1) + min(nleft(1),ib)
+        tlo(2) = lo(2) + jb*blocksize(2) + min(nleft(2),jb)
 
-        thi(1) = min(tlo(1)+blocksize(1)-1, hi(1))
-        thi(2) = min(tlo(2)+blocksize(2)-1, hi(2))
+        thi(1) = tlo(1)+blocksize(1)-1
+        thi(2) = tlo(2)+blocksize(2)-1
+
+        if (ib < nleft(1)) thi(1) = thi(1) + 1
+        if (jb < nleft(2)) thi(2) = thi(2) + 1
+
+        thi(1) = min(hi(1), thi(1))
+        thi(2) = min(hi(2), thi(2))
 
         fxlo(1) = tlo(1)
         fxlo(2) = tlo(2)

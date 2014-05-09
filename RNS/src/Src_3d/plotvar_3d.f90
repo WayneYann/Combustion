@@ -4,7 +4,7 @@ subroutine rns_ctoprim(lo, hi, &
   use meth_params_module, only : NVAR, xblksize, yblksize, zblksize, nthreads
   use convert_module, only : cellavg2cc_3d
   use variables_module, only : ctoprim
-  use threadbox_module, only : build_threadbox
+  use threadbox_module, only : build_threadbox_3d
   implicit none
 
   integer, intent(in) :: lo(3), hi(3)
@@ -34,7 +34,7 @@ subroutine rns_ctoprim(lo, hi, &
   boxsize = hi-lo+1
 
   if (nthreads > 1) then
-     call build_threadbox(nthreads, boxsize, blocksize_min, nb)
+     call build_threadbox_3d(nthreads, boxsize, blocksize_min, nb)
      if (nb(1).eq.0) then
         nb = boxsize/blocksize_min
      end if
