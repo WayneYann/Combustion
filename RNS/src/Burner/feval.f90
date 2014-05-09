@@ -1,7 +1,7 @@
 module feval
   use bdf
   implicit none
-  double precision :: rho(8)
+  double precision, save :: rho(8)
   !$omp threadprivate(rho)
 contains
 

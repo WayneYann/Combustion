@@ -226,9 +226,6 @@ void mlsdc_amr_interpolate(void *Fp, void *Gp, sdc_state *state, void *ctxF, voi
 
   // now that UF is completely contained within UC, cycle through each
   // FAB in UF and interpolate from the corresponding FAB in UC
-// #ifdef _OPENMP
-// #pragma omp parallel for
-// #endif
   for (MFIter mfi(UF); mfi.isValid(); ++mfi) {
     BoxLib::setBC(UF[mfi].box(), levelF.Domain(), 0, 0, ncomp, bcs, bcr);
     Geometry fine_geom(UF[mfi].box());

@@ -18,7 +18,6 @@ contains
 
   subroutine burn(np, rho, YT, dt, force_new_J)
     use meth_params_module, only : use_vode
-    use feval, only : f_rhs, rho_feval => rho
     integer, intent(in) :: np
     double precision, intent(in   ) :: rho(np), dt
     double precision, intent(inout) :: YT(nspecies+1,np)
