@@ -261,7 +261,7 @@ contains
     double precision, intent(in) :: dt
     double precision, intent(in), optional :: Up(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),NVAR)
 
-    integer :: i, j, k, n, g
+    integer :: i, j, k, n, g, ierr
     logical :: force_new_J
     double precision :: rhot(8), rhoinv, ei, rho0(1)
     double precision :: Yt(nspec+1,8), Y0(nspec+1)
@@ -269,7 +269,7 @@ contains
 
     allocate(UG(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),8,NVAR))
 
-    !$omp parallel private(i,j,k,n,g,rhot,rhoinv,ei,Yt,force_new_J,rho0,Y0)
+    !$omp parallel private(i,j,k,n,g,ierr,rhot,rhoinv,ei,Yt,force_new_J,rho0,Y0)
 
     !$omp do
     do n=1,NVAR
@@ -302,7 +302,13 @@ contains
                 ei = rhoinv*( UG(i,j,k,g,UEDEN) - 0.5d0*rhoinv*(UG(i,j,k,g,UMX)**2 &
                      + UG(i,j,k,g,UMY)**2 + UG(i,j,k,g,UMZ)**2) )
 
-                call eos_get_T(Yt(nspec+1,g), ei, Yt(1:nspec,g))
+                call eos_get_T(Yt(nspec+1,g), ei, Yt(1:nspec,g), ierr=ierr)
+
+                if (ierr .ne. 0) then
+                   print *, 'chemterm_be failed at ', i,j,k,g,UG(i,j,k,g,:)
+                   call flush(6)
+                   call bl_error("chemterm_be failed")
+                end if
 
                 Y0 = Y0 + 0.125d0*Yt(:,g)
                 rho0(1) = rho0(1) + 0.125d0*rhot(g)
@@ -346,7 +352,7 @@ contains
     double precision, intent(in ) ::  U( Ulo(1): Uhi(1), Ulo(2): Uhi(2), Ulo(3): Uhi(3),NVAR)
     double precision, intent(out) :: Ut(Utlo(1):Uthi(1),Utlo(2):Uthi(2),Utlo(3):Uthi(3),NVAR)
 
-    integer :: i, j, k, n, g, np
+    integer :: i, j, k, n, g, np, ierr
     double precision :: rhoinv, ei
     double precision :: rho(lo(1):hi(1)), T(lo(1):hi(1))
     double precision :: Ytmp(nspec)
@@ -357,7 +363,7 @@ contains
 
     allocate(UG(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),8,NVAR))
 
-    !$omp parallel private(i,j,k,n,g,rhoinv,ei,rho,T,Ytmp,Y,rdYdt)
+    !$omp parallel private(i,j,k,n,g,ierr,rhoinv,ei,rho,T,Ytmp,Y,rdYdt)
 
     !$omp do
     do n=1,NVAR
@@ -400,7 +406,13 @@ contains
                      + UG(i,j,k,g,UMY)**2 + UG(i,j,k,g,UMZ)**2) )
                 
                 T(i) = UG(i,j,k,g,UTEMP)
-                call eos_get_T(T(i), ei, Ytmp)
+                call eos_get_T(T(i), ei, Ytmp, ierr=ierr)
+
+                if (ierr .ne. 0) then
+                   print *, 'dUdt_chem failed at ', i,j,k,g,UG(i,j,k,g,:)
+                   call flush(6)
+                   call bl_error("dUdt_chem failed")
+                end if
              end do
              
              call compute_rhodYdt(np,rho,T,Y,rdYdt)

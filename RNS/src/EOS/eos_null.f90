@@ -91,11 +91,13 @@ contains
   end subroutine eos_get_c
 
 
-  subroutine eos_get_T(T, e, Y, pt_index)
+  subroutine eos_get_T(T, e, Y, pt_index, ierr)
     double precision, intent(out) :: T
     double precision, intent(in ) :: e, Y(2)
     integer, optional, intent(in) :: pt_index(:)
+    integer, optional, intent(out) :: ierr
     T = e/cv
+    ierr = 0
   end subroutine eos_get_T
 
 

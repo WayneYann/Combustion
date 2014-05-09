@@ -273,10 +273,10 @@ subroutine rns_compute_temp(lo,hi,U,U_l1,U_l2,U_l3,U_h1,U_h2,U_h3)
   integer, intent(in) :: U_l1, U_l2, U_l3, U_h1, U_h2, U_h3
   double precision, intent(inout) :: U(U_l1:U_h1,U_l2:U_h2,U_l3:U_h3,NVAR)
 
-  integer :: i, j, k, pt_index(3)
+  integer :: i, j, k, pt_index(3), ierr
   double precision :: rhoInv, e, vx, vy, vz, Y(NSPEC)
 
-  !$omp parallel do private(i,j,k,rhoInv,e,vx,vy,vz,Y,pt_index) collapse(2)
+  !$omp parallel do private(i,j,k,rhoInv,e,vx,vy,vz,Y,pt_index,ierr) collapse(2)
   do k=lo(3),hi(3)
   do j=lo(2),hi(2)
   do i=lo(1),hi(1)
@@ -293,7 +293,13 @@ subroutine rns_compute_temp(lo,hi,U,U_l1,U_l2,U_l3,U_h1,U_h2,U_h3)
 
      Y = U(i,j,k,UFS:UFS+NSPEC-1)*rhoInv
 
-     call eos_get_T(U(i,j,k,UTEMP), e, Y, pt_index)
+     call eos_get_T(U(i,j,k,UTEMP), e, Y, pt_index,ierr)
+
+     if (ierr .ne. 0) then
+        print *, 'rns_compute_temp failed at ', i,j,k,U(i,j,k,:)
+        call flush(6)
+        call bl_error("rns_compute_temp failed")
+     end if
   end do
   end do
   end do

@@ -96,21 +96,27 @@ contains
   end subroutine eos_get_c
 
 
-  subroutine eos_get_T(T, e, Y, pt_index)
+  subroutine eos_get_T(T, e, Y, pt_index, ierr)
     double precision, intent(inout) :: T
     double precision, intent(in) :: e, Y(nspecies)
     integer, optional, intent(in) :: pt_index(:)
-
-    integer :: iwrk, ierr
+    integer, optional, intent(out) :: ierr
+    integer :: iwrk, lierr
     double precision :: rwrk
-    call get_T_given_eY(e, Y, iwrk, rwrk, T, ierr)
-    if (ierr .ne. 0) then
+    call get_T_given_eY(e, Y, iwrk, rwrk, T, lierr)
+    if (lierr .ne. 0) then
        print *, 'EOS: get_T failed, T, e, Y = ', T, e, Y
        if (present(pt_index)) print *, ' i, j, k =', pt_index
        call flush(6)
-       call bl_error("Error: eos_get_T")
+       if (present(ierr)) then
+          ierr = lierr
+          return
+       else
+          call bl_error("Error: eos_get_T")
+       end if
     end if
     T = max(T, smallt)
+    if (present(ierr)) ierr = 0
   end subroutine eos_get_T
 
 
