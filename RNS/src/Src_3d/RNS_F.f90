@@ -281,8 +281,8 @@ subroutine rns_compute_temp(lo,hi,U,U_l1,U_l2,U_l3,U_h1,U_h2,U_h3)
   do j=lo(2),hi(2)
   do i=lo(1),hi(1)
      pt_index(1) = i
-     pt_index(2) = i
-     pt_index(3) = i
+     pt_index(2) = j
+     pt_index(3) = k
 
      rhoInv = 1.0d0/U(i,j,k,URHO)
 
