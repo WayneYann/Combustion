@@ -158,7 +158,7 @@ RNS::ChemSolverType RNS::chem_solver  = RNS::BE_BURNING;
 RNS::ChemSolverType RNS::chem_solver  = RNS::GAUSS_BURNING;
 #endif
 int          RNS::f2comp_simple_dUdt  = 0; // set dUdt = \Delta U / \Delta t in f2comp?
-int          RNS::f2comp_nbdf         = 1; // only use bdf/vode for the first ? times on each node
+int          RNS::f2comp_nbdf         = 1000; // only use bdf/vode for the first ? times on each node for each time step
 
 // this will be reset upon restart
 Real         RNS::previousCPUTimeUsed = 0.0;
