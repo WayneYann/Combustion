@@ -12,8 +12,8 @@ module chemterm_module
 
 contains
 
-  subroutine chemterm(lo, hi, U, Ulo, Uhi, dt, Up)
-    integer, intent(in) :: lo(3), hi(3), Ulo(3), Uhi(3)
+  subroutine chemterm(lo, hi, U, Ulo, Uhi, dt, lo_bc_ord, hi_bc_ord, Up)
+    integer, intent(in) :: lo(3), hi(3), Ulo(3), Uhi(3), lo_bc_ord(3), hi_bc_ord(3)
     double precision, intent(inout) :: U(Ulo(1):Uhi(1),Ulo(2):Uhi(2),Ulo(3):Uhi(3),NVAR)
     double precision, intent(in) :: dt
     double precision, intent(in), optional :: Up(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),NVAR)
@@ -26,7 +26,7 @@ contains
        case (split_burning)
           call chemterm_split(lo, hi, U, Ulo, Uhi, dt)
        case (BE_burning)
-          call chemterm_be(lo, hi, U, Ulo, Uhi, dt, Up)
+          call chemterm_be(lo, hi, U, Ulo, Uhi, dt, lo_bc_ord, hi_bc_ord, Up)
        case default
           call bl_error("unknown chem_solver")
        end select
@@ -254,9 +254,9 @@ contains
   end subroutine chemterm_split
 
 
-  subroutine chemterm_be(lo, hi, U, Ulo, Uhi, dt, Up)
+  subroutine chemterm_be(lo, hi, U, Ulo, Uhi, dt, lo_bc_ord, hi_bc_ord, Up)
     use weno_module, only : cellavg2gausspt_3d
-    integer, intent(in) :: lo(3), hi(3), Ulo(3), Uhi(3)
+    integer, intent(in) :: lo(3), hi(3), Ulo(3), Uhi(3), lo_bc_ord(3), hi_bc_ord(3)
     double precision, intent(inout) :: U(Ulo(1):Uhi(1),Ulo(2):Uhi(2),Ulo(3):Uhi(3),NVAR)
     double precision, intent(in) :: dt
     double precision, intent(in), optional :: Up(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),NVAR)
@@ -276,6 +276,21 @@ contains
        call cellavg2gausspt_3d(lo,hi, U(:,:,:,n), Ulo,Uhi, UG(:,:,:,:,n), lo,hi)
     end do
     !$omp end do
+
+    if (lo_bc_ord(3) .eq. 0) then
+       k = lo(3)
+       !$omp do
+       do n=1,NVAR
+          do g=1,8
+             do j=lo(2),hi(2)
+                do i=lo(1),hi(1)
+                   UG(i,j,k,g,n) = U(i,j,k,n)
+                end do
+             end do
+          end do
+       end do
+       !$omp end do       
+    end if
 
     force_new_J = .true.  ! always recompute Jacobina when a new FAB starts
 
@@ -346,9 +361,9 @@ contains
   end subroutine chemterm_be
 
 
-  subroutine dUdt_chem(lo, hi, U, Ulo, Uhi, Ut, Utlo, Uthi)
+  subroutine dUdt_chem(lo, hi, U, Ulo, Uhi, Ut, Utlo, Uthi, lo_bc_ord, hi_bc_ord)
     use weno_module, only : cellavg2gausspt_3d
-    integer, intent(in) :: lo(3), hi(3), Ulo(3), Uhi(3), Utlo(3), Uthi(3)
+    integer, intent(in) :: lo(3), hi(3), Ulo(3), Uhi(3), Utlo(3), Uthi(3), lo_bc_ord(3), hi_bc_ord(3)
     double precision, intent(in ) ::  U( Ulo(1): Uhi(1), Ulo(2): Uhi(2), Ulo(3): Uhi(3),NVAR)
     double precision, intent(out) :: Ut(Utlo(1):Uthi(1),Utlo(2):Uthi(2),Utlo(3):Uthi(3),NVAR)
 
@@ -382,6 +397,21 @@ contains
        call cellavg2gausspt_3d(lo,hi, U(:,:,:,n), Ulo,Uhi, UG(:,:,:,:,n), lo,hi)
     end do
     !$omp end do
+
+    if (lo_bc_ord(3) .eq. 0) then
+       k = lo(3)
+       !$omp do
+       do n=1,NVAR
+          do g=1,8
+             do j=lo(2),hi(2)
+                do i=lo(1),hi(1)
+                   UG(i,j,k,g,n) = U(i,j,k,n)
+                end do
+             end do
+          end do
+       end do
+       !$omp end do       
+    end if
 
     !$omp do collapse(2)
     do k=lo(3),hi(3)

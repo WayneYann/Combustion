@@ -250,6 +250,9 @@ RNS::dUdt_chemistry(const MultiFab& U, MultiFab& Uprime, bool partialUpdate)
 
     BL_ASSERT( ! ChemDriver::isNull() );
 
+    const int* dlo = Domain().loVect();
+    const int* dhi = Domain().hiVect();
+
     if (partialUpdate && touchFine.empty()) buildTouchFine();
 
     for (MFIter mfi(U); mfi.isValid(); ++mfi)
@@ -261,9 +264,24 @@ RNS::dUdt_chemistry(const MultiFab& U, MultiFab& Uprime, bool partialUpdate)
 	const Box& bx = mfi.validbox();
 	const int* lo = bx.loVect();
 	const int* hi = bx.hiVect();
+
+	int lo_bc_ord[] = { D_DECL(1,1,1) }; // high-order by default
+	int hi_bc_ord[] = { D_DECL(1,1,1) };
+
+	if (loord_chem_boundary) {
+	    for (int idim=0; idim<BL_SPACEDIM; idim++) {
+		if (lo_bc[idim] == Inflow && lo[idim] == dlo[idim]) {
+		    lo_bc_ord[idim] = 0;
+		}
+		if (hi_bc[idim] == Inflow && hi[idim] == dhi[idim]) {
+		    hi_bc_ord[idim] = 0;
+		}
+	    }
+	}
 	
 	BL_FORT_PROC_CALL(RNS_DUDT_CHEM, rns_dudt_chem)
-	    (lo, hi, BL_TO_FORTRAN(U[i]), BL_TO_FORTRAN(Uprime[i]));
+	    (lo, hi, BL_TO_FORTRAN(U[i]), BL_TO_FORTRAN(Uprime[i]),
+	     lo_bc_ord, hi_bc_ord);
     }
 }
 
@@ -325,6 +343,9 @@ RNS::advance_chemistry(MultiFab& U, Real dt)
 
     BL_ASSERT( ! ChemDriver::isNull() );
 
+    const int* dlo = Domain().loVect();
+    const int* dhi = Domain().hiVect();
+
     for (MFIter mfi(U); mfi.isValid(); ++mfi)
     {
 	const int   i = mfi.index();
@@ -332,8 +353,22 @@ RNS::advance_chemistry(MultiFab& U, Real dt)
 	const int* lo = bx.loVect();
 	const int* hi = bx.hiVect();
 
+	int lo_bc_ord[] = { D_DECL(1,1,1) }; // high-order by default
+	int hi_bc_ord[] = { D_DECL(1,1,1) };
+
+	if (loord_chem_boundary) {
+	    for (int idim=0; idim<BL_SPACEDIM; idim++) {
+		if (lo_bc[idim] == Inflow && lo[idim] == dlo[idim]) {
+		    lo_bc_ord[idim] = 0;
+		}
+		if (hi_bc[idim] == Inflow && hi[idim] == dhi[idim]) {
+		    hi_bc_ord[idim] = 0;
+		}
+	    }
+	}
+
 	BL_FORT_PROC_CALL(RNS_ADVCHEM, rns_advchem)
-	    (lo, hi, BL_TO_FORTRAN(U[i]), dt);
+	    (lo, hi, BL_TO_FORTRAN(U[i]), dt, lo_bc_ord, hi_bc_ord);
     }
 
     post_update(U);
@@ -348,6 +383,9 @@ RNS::advance_chemistry(MultiFab& U, const MultiFab& Uguess, Real dt)
     BL_ASSERT( ! ChemDriver::isNull() );
     BL_ASSERT( Uguess.nGrow() == 0 );
 
+    const int* dlo = Domain().loVect();
+    const int* dhi = Domain().hiVect();
+
     for (MFIter mfi(U); mfi.isValid(); ++mfi)
     {
 	const int   i = mfi.index();
@@ -355,8 +393,22 @@ RNS::advance_chemistry(MultiFab& U, const MultiFab& Uguess, Real dt)
 	const int* lo = bx.loVect();
 	const int* hi = bx.hiVect();
 
+	int lo_bc_ord[] = { D_DECL(1,1,1) }; // high-order by default
+	int hi_bc_ord[] = { D_DECL(1,1,1) };
+
+	if (loord_chem_boundary) {
+	    for (int idim=0; idim<BL_SPACEDIM; idim++) {
+		if (lo_bc[idim] == Inflow && lo[idim] == dlo[idim]) {
+		    lo_bc_ord[idim] = 0;
+		}
+		if (hi_bc[idim] == Inflow && hi[idim] == dhi[idim]) {
+		    hi_bc_ord[idim] = 0;
+		}
+	    }
+	}
+
 	BL_FORT_PROC_CALL(RNS_ADVCHEM2, rns_advchem2)
-	    (lo, hi, BL_TO_FORTRAN(U[i]), BL_TO_FORTRAN(Uguess[i]), dt);
+	    (lo, hi, BL_TO_FORTRAN(U[i]), BL_TO_FORTRAN(Uguess[i]), dt, lo_bc_ord, hi_bc_ord);
     }
 
     post_update(U);

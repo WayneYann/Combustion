@@ -184,11 +184,11 @@ end subroutine rns_dudt_ad
 ! ::: ------------------------------------------------------------------
 ! :::
 
-subroutine rns_advchem(lo,hi,U,U_l1,U_l2,U_l3,U_h1,U_h2,U_h3,dt)
+subroutine rns_advchem(lo,hi,U,U_l1,U_l2,U_l3,U_h1,U_h2,U_h3,dt,lo_bc_ord,hi_bc_ord)
   use meth_params_module, only : NVAR
   use chemterm_module, only : chemterm
   implicit none
-  integer, intent(in) :: lo(3), hi(3)
+  integer, intent(in) :: lo(3), hi(3), lo_bc_ord(3), hi_bc_ord(3)
   integer, intent(in) ::  U_l1, U_l2, U_l3, U_h1, U_h2, U_h3
   double precision, intent(inout) :: U(U_l1:U_h1,U_l2:U_h2,U_l3:U_h3,NVAR)
   double precision, intent(in) :: dt
@@ -201,15 +201,15 @@ subroutine rns_advchem(lo,hi,U,U_l1,U_l2,U_l3,U_h1,U_h2,U_h3,dt)
   Uhi(1) = U_h1
   Uhi(2) = U_h2
   Uhi(3) = U_h3
-  call chemterm(lo, hi, U, Ulo, Uhi, dt)
+  call chemterm(lo, hi, U, Ulo, Uhi, dt, lo_bc_ord, hi_bc_ord)
 end subroutine rns_advchem
 
 subroutine rns_advchem2(lo,hi,U,U_l1,U_l2,U_l3,U_h1,U_h2,U_h3, &
-     Up,Up_l1,Up_l2,Up_l3,Up_h1,Up_h2,Up_h3,dt)
+     Up,Up_l1,Up_l2,Up_l3,Up_h1,Up_h2,Up_h3,dt,lo_bc_ord,hi_bc_ord)
   use meth_params_module, only : NVAR
   use chemterm_module, only : chemterm
   implicit none
-  integer, intent(in) :: lo(3), hi(3)
+  integer, intent(in) :: lo(3), hi(3), lo_bc_ord(3), hi_bc_ord(3)
   integer, intent(in) ::  U_l1, U_l2, U_l3, U_h1, U_h2, U_h3
   integer, intent(in) ::  Up_l1, Up_l2, Up_l3, Up_h1, Up_h2, Up_h3
   double precision, intent(inout) :: U(U_l1:U_h1,U_l2:U_h2,U_l3:U_h3,NVAR)
@@ -224,7 +224,7 @@ subroutine rns_advchem2(lo,hi,U,U_l1,U_l2,U_l3,U_h1,U_h2,U_h3, &
   Uhi(1) = U_h1
   Uhi(2) = U_h2
   Uhi(3) = U_h3
-  call chemterm(lo, hi, U, Ulo, Uhi, dt, Up)
+  call chemterm(lo, hi, U, Ulo, Uhi, dt, lo_bc_ord, hi_bc_ord, Up)
 end subroutine rns_advchem2
 
 ! :::
@@ -233,11 +233,12 @@ end subroutine rns_advchem2
 
 subroutine rns_dUdt_chem(lo,hi, &
      U , U_l1, U_l2, U_l3, U_h1, U_h2, U_h3, &
-     Ut,Ut_l1,Ut_l2,Ut_l3,Ut_h1,Ut_h2,Ut_h3)
+     Ut,Ut_l1,Ut_l2,Ut_l3,Ut_h1,Ut_h2,Ut_h3, &
+     lo_bc_ord, hi_bc_ord)
   use meth_params_module, only : NVAR
   use chemterm_module, only : dUdt_chem
   implicit none
-  integer, intent(in) :: lo(3), hi(3)
+  integer, intent(in) :: lo(3), hi(3), lo_bc_ord(3), hi_bc_ord(3)
   integer, intent(in) ::  U_l1, U_h1, Ut_l1, Ut_h1, U_l2, U_h2, Ut_l2, Ut_h2, &
        U_l3, U_h3, Ut_l3, Ut_h3
   double precision, intent(in ) ::  U( U_l1: U_h1, U_l2: U_h2, U_l3: U_h3,NVAR)
@@ -257,7 +258,7 @@ subroutine rns_dUdt_chem(lo,hi, &
   Uthi(1) = Ut_h1
   Uthi(2) = Ut_h2
   Uthi(3) = Ut_h3
-  call dUdt_chem(lo, hi, U, Ulo, Uhi, Ut, Utlo, Uthi)
+  call dUdt_chem(lo, hi, U, Ulo, Uhi, Ut, Utlo, Uthi, lo_bc_ord, hi_bc_ord)
 end subroutine rns_dUdt_chem
 
 ! :::
@@ -391,13 +392,13 @@ subroutine rns_enforce_consistent_Y(lo,hi,U,U_l1,U_l2,U_l3,U_h1,U_h2,U_h3)
               ! Take enough from the dominant species to fill the negative one.
               U(i,j,k,int_dom_spec) = U(i,j,k,int_dom_spec) + U(i,j,k,n)
    
-              ! ! Test that we didn't make the dominant species negative
-              ! if (U(i,j,k,int_dom_spec) .lt. 0.d0) then 
-              !    print *,' Just made dominant species negative ',int_dom_spec-UFS+1,' at ',i
-              !    print *,'We were fixing species ',n-UFS+1,' which had value ',x
-              !    print *,'Dominant species became ',U(i,j,k,int_dom_spec) / U(i,j,k,URHO)
-              !    call bl_error("Error:: CNSReact_2d.f90 :: ca_enforce_nonnegative_species")
-              ! end if
+              ! Test that we didn't make the dominant species negative
+              if (U(i,j,k,int_dom_spec) .lt. 0.d0) then 
+                 print *,' Just made dominant species negative ',int_dom_spec-UFS+1,' at ',i,j,k
+                 print *,'We were fixing species ',n-UFS+1,' which had value ',x
+                 print *,'Dominant species became ',U(i,j,k,int_dom_spec)*rhoInv
+                 call bl_error("rns_enforce_consistent_Y")
+              end if
 
               ! Now set the negative species to zero
               U(i,j,k,n) = 0.d0

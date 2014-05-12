@@ -61,6 +61,8 @@ Real         RNS::diff_cfl      = 0.27;
 #endif
 Real         RNS::init_shrink   = 1.0;
 Real         RNS::change_max    = 1.1;
+Array<int>   RNS::lo_bc(BL_SPACEDIM);
+Array<int>   RNS::hi_bc(BL_SPACEDIM);       
 BCRec        RNS::phys_bc;
 int          RNS::NUM_STATE     = -1;
 int          RNS::do_reflux     = 1;
@@ -150,6 +152,7 @@ int          RNS::do_quadrature_weno  = 0;
 int          RNS::do_component_weno   = 0;
 
 int          RNS::do_chemistry        = 1;
+int          RNS::loord_chem_boundary = 0; // low-order (i.e., 2nd in space) chemistry near inflow boundary?
 int          RNS::use_vode            = 0;
 int          RNS::new_J_cell          = 1; // new Jacobian for each cell?
 #ifdef USE_SDCLIB
@@ -230,7 +233,6 @@ RNS::read_params ()
     pp.query("difmag", difmag);
 
     // Get boundary conditions
-    Array<int> lo_bc(BL_SPACEDIM), hi_bc(BL_SPACEDIM);
     pp.getarr("lo_bc",lo_bc,0,BL_SPACEDIM);
     pp.getarr("hi_bc",hi_bc,0,BL_SPACEDIM);
     for (int i = 0; i < BL_SPACEDIM; i++) 
@@ -334,6 +336,7 @@ RNS::read_params ()
     }
 
     pp.query("do_chemistry", do_chemistry);
+    pp.query("loord_chem_boundary", loord_chem_boundary);
     pp.query("use_vode", use_vode);
     pp.query("new_J_cell", new_J_cell);
     {

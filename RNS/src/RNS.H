@@ -307,6 +307,8 @@ protected:
     static Real      init_shrink;
     static Real      change_max;
     static int       do_reflux;
+    static Array<int> lo_bc;
+    static Array<int> hi_bc;       
     static BCRec     phys_bc;
     static int       NUM_GROW;
 
@@ -365,6 +367,7 @@ protected:
     static int         do_quadrature_weno;
     static int         do_component_weno;
 
+    static int         loord_chem_boundary;
     static int         use_vode;
     static int         new_J_cell;
 
