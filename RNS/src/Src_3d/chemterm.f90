@@ -12,8 +12,8 @@ module chemterm_module
 
 contains
 
-  subroutine chemterm(lo, hi, U, Ulo, Uhi, dt, lo_bc_ord, hi_bc_ord, Up)
-    integer, intent(in) :: lo(3), hi(3), Ulo(3), Uhi(3), lo_bc_ord(3), hi_bc_ord(3)
+  subroutine chemterm(lo, hi, U, Ulo, Uhi, dt, Up)
+    integer, intent(in) :: lo(3), hi(3), Ulo(3), Uhi(3)
     double precision, intent(inout) :: U(Ulo(1):Uhi(1),Ulo(2):Uhi(2),Ulo(3):Uhi(3),NVAR)
     double precision, intent(in) :: dt
     double precision, intent(in), optional :: Up(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),NVAR)
@@ -26,7 +26,7 @@ contains
        case (split_burning)
           call chemterm_split(lo, hi, U, Ulo, Uhi, dt)
        case (BE_burning)
-          call chemterm_be(lo, hi, U, Ulo, Uhi, dt, lo_bc_ord, hi_bc_ord, Up)
+          call chemterm_be(lo, hi, U, Ulo, Uhi, dt, Up)
        case default
           call bl_error("unknown chem_solver")
        end select
@@ -254,9 +254,9 @@ contains
   end subroutine chemterm_split
 
 
-  subroutine chemterm_be(lo, hi, U, Ulo, Uhi, dt, lo_bc_ord, hi_bc_ord, Up)
+  subroutine chemterm_be(lo, hi, U, Ulo, Uhi, dt, Up)
     use weno_module, only : cellavg2gausspt_3d
-    integer, intent(in) :: lo(3), hi(3), Ulo(3), Uhi(3), lo_bc_ord(3), hi_bc_ord(3)
+    integer, intent(in) :: lo(3), hi(3), Ulo(3), Uhi(3)
     double precision, intent(inout) :: U(Ulo(1):Uhi(1),Ulo(2):Uhi(2),Ulo(3):Uhi(3),NVAR)
     double precision, intent(in) :: dt
     double precision, intent(in), optional :: Up(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),NVAR)
@@ -264,34 +264,18 @@ contains
     integer :: i, j, k, n, g, ierr
     logical :: force_new_J
     double precision :: rhot(8), rhoinv, ei, rho0(1)
-    double precision :: Yt(nspec+1,8), Y0(nspec+1), Y0old(nspec+1)
+    double precision :: Yt(nspec+1,8), Y0(nspec+1)
     double precision, allocatable :: UG(:,:,:,:,:)
 
     allocate(UG(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),8,NVAR))
 
-    !$omp parallel private(i,j,k,n,g,ierr,rhot,rhoinv,ei,Yt,force_new_J,rho0,Y0,Y0old)
+    !$omp parallel private(i,j,k,n,g,ierr,rhot,rhoinv,ei,Yt,force_new_J,rho0,Y0)
 
     !$omp do
     do n=1,NVAR
        call cellavg2gausspt_3d(lo,hi, U(:,:,:,n), Ulo,Uhi, UG(:,:,:,:,n), lo,hi)
     end do
     !$omp end do
-
-    if (lo_bc_ord(3) .eq. 0) then
-       !$omp do
-       do n=1,NVAR
-          do g=1,8
-             do k=lo(3),lo(3)+1
-                do j=lo(2),hi(2)
-                   do i=lo(1),hi(1)
-                      UG(i,j,k,g,n) = U(i,j,k,n)
-                   end do
-                end do
-             end do
-          end do
-       end do
-       !$omp end do       
-    end if
 
     force_new_J = .true.  ! always recompute Jacobina when a new FAB starts
 
@@ -341,9 +325,9 @@ contains
                 force_new_J = new_J_cell
                 if (ierr .ne. 0) then
                    print *, 'chemterm_be: burn failed at ', i,j,k,U(i,j,k,:)
-                   print *, '   Y0old =', Y0old
+                   print *, '   rho0, Y0 =', rho0(1), Y0
                    do g=1,8
-                      print *, ' xxxxxxx g = ', g, lo_bc_ord(3), UG(i,j,k,g,:)
+                      print *, '   g, UG = ', g, UG(i,j,k,g,:)
                    end do
                    call flush(6)
                    call bl_error("chemterm_be failed at burn")
@@ -378,9 +362,9 @@ contains
   end subroutine chemterm_be
 
 
-  subroutine dUdt_chem(lo, hi, U, Ulo, Uhi, Ut, Utlo, Uthi, lo_bc_ord, hi_bc_ord)
+  subroutine dUdt_chem(lo, hi, U, Ulo, Uhi, Ut, Utlo, Uthi)
     use weno_module, only : cellavg2gausspt_3d
-    integer, intent(in) :: lo(3), hi(3), Ulo(3), Uhi(3), Utlo(3), Uthi(3), lo_bc_ord(3), hi_bc_ord(3)
+    integer, intent(in) :: lo(3), hi(3), Ulo(3), Uhi(3), Utlo(3), Uthi(3)
     double precision, intent(in ) ::  U( Ulo(1): Uhi(1), Ulo(2): Uhi(2), Ulo(3): Uhi(3),NVAR)
     double precision, intent(out) :: Ut(Utlo(1):Uthi(1),Utlo(2):Uthi(2),Utlo(3):Uthi(3),NVAR)
 
@@ -414,22 +398,6 @@ contains
        call cellavg2gausspt_3d(lo,hi, U(:,:,:,n), Ulo,Uhi, UG(:,:,:,:,n), lo,hi)
     end do
     !$omp end do
-
-    if (lo_bc_ord(3) .eq. 0) then
-       !$omp do
-       do n=1,NVAR
-          do g=1,8
-             do k=lo(3),lo(3)+1
-                do j=lo(2),hi(2)
-                   do i=lo(1),hi(1)
-                      UG(i,j,k,g,n) = U(i,j,k,n)
-                   end do
-                end do
-             end do
-          end do
-       end do
-       !$omp end do       
-    end if
 
     !$omp do collapse(2)
     do k=lo(3),hi(3)

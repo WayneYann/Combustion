@@ -16,31 +16,31 @@ module burner_module
 
 contains
 
-  subroutine burn(np, rho, YT, dt, force_new_J, oerr)
+  subroutine burn(np, rho, YT, dt, force_new_J, ierr)
     use meth_params_module, only : use_vode
     integer, intent(in) :: np
     double precision, intent(in   ) :: rho(np), dt
     double precision, intent(inout) :: YT(nspecies+1,np)
     logical, intent(in) :: force_new_J
-    integer, intent(out), optional :: oerr
+    integer, intent(out), optional :: ierr
 
     if (use_vode) then
-       call burn_vode(np, rho, YT, dt, force_new_J, oerr)
+       call burn_vode(np, rho, YT, dt, force_new_J, ierr)
     else
-       call burn_bdf(np, rho, YT, dt, force_new_J, oerr)
+       call burn_bdf(np, rho, YT, dt, force_new_J, ierr)
     end if
 
   end subroutine burn
 
 
-  subroutine burn_vode(np, rho, YT, dt, force_new_J, oerr)
+  subroutine burn_vode(np, rho, YT, dt, force_new_J, ierr)
     use vode_module, only : verbose, itol, rtol, atol, vode_MF=>MF, always_new_j, &
          voderwork, vodeiwork, lvoderwork, lvodeiwork, voderpar, vodeipar
     integer, intent(in) :: np
     double precision, intent(in   ) :: rho(np), dt
     double precision, intent(inout) :: YT(nspecies+1,np)
     logical, intent(in) :: force_new_J
-    integer, intent(out), optional :: oerr
+    integer, intent(out), optional :: ierr
 
     external f_jac, f_rhs, dvode
 
@@ -98,8 +98,8 @@ contains
        if (istate < 0) then
           print *, 'chemsolv: VODE failed'
           print *, 'istate = ', istate, ' time =', time
-          if (present(oerr)) then
-             oerr = 1
+          if (present(ierr)) then
+             ierr = 1
              return
           else
              call bl_error("ERROR in burn: VODE failed")
@@ -108,12 +108,12 @@ contains
 
     end do
 
-    if (present(oerr)) oerr = 0
+    if (present(ierr)) ierr = 0
 
   end subroutine burn_vode
 
 
-  subroutine burn_bdf(np, rho_in, YT, dt, force_new_J, oerr)
+  subroutine burn_bdf(np, rho_in, YT, dt, force_new_J, ierr)
     use bdf
     use bdf_data, only : ts, reuse_jac
     use feval, only : f_rhs, f_jac, rho
@@ -121,10 +121,10 @@ contains
     double precision, intent(in   ) :: rho_in(np), dt
     double precision, intent(inout) :: YT(nspecies+1,np)
     logical, intent(in) :: force_new_J
-    integer, intent(out), optional :: oerr
+    integer, intent(out), optional :: ierr
 
     double precision :: t0, t1, y1(nspecies+1,np)
-    integer :: neq, np_bdf, i, p, ierr
+    integer :: neq, np_bdf, i, p, ierr_bdf
     logical :: reset, reuse_J
 
     neq = nspecies+1
@@ -152,14 +152,14 @@ contains
           rho(1:np_bdf) = rho_in(i:i+np_bdf-1)
 
           call bdf_advance(ts, f_rhs, f_jac, neq, np_bdf, YT(:,i:i+np_bdf-1), t0,  &
-               y1(:,i:i+np_bdf-1), t1, dt, reset, reuse_J, ierr)
+               y1(:,i:i+np_bdf-1), t1, dt, reset, reuse_J, ierr_bdf)
 
           nstep = ts%n - 1
 
           reuse_J = reuse_jac
 
-          if (ierr .ne. 0) then
-             print *, 'chemsolv: BDF failed:', errors(ierr)
+          if (ierr_bdf .ne. 0) then
+             print *, 'chemsolv: BDF failed:', errors(ierr_bdf)
              print *, 'BDF rtol:', minval(ts%rtol), maxval(ts%rtol)
              print *, 'BDF atol:', minval(ts%atol), maxval(ts%atol)
              print *, 'BDF y:'
@@ -168,8 +168,8 @@ contains
              end do
              print *, 'BDF y0:'
              print *, YT(:,i:i+np_bdf-1)
-             if (present(oerr)) then
-                oerr = 1
+             if (present(ierr)) then
+                ierr = 1
                 return
              else
                 call bl_error("ERROR in burn: BDF failed")
@@ -182,7 +182,7 @@ contains
 
     YT = y1
     
-    if (present(oerr)) oerr = 0
+    if (present(ierr)) ierr = 0
 
   end subroutine burn_bdf
 
@@ -274,7 +274,7 @@ contains
     double precision, intent(in   ) :: rho0, rho, dt
     double precision, intent(in   ) :: Y0(nspecies+1)
     double precision, intent(inout) :: YT(nspecies+1)
-    integer, intent(out) :: ierr
+    integer, intent(out), optional :: ierr
 
     integer :: iwrk, iter, n, info, age
     double precision :: rwrk, rhoinv, cv, rmax, rmin
@@ -337,10 +337,12 @@ contains
 
     end do
 
-    if (iter .gt. 100) then
-       ierr = iter
-    else
-       ierr = 0
+    if (present(ierr)) then
+       if (iter .gt. 100) then
+          ierr = iter
+       else
+          ierr = 0
+       end if
     end if
 
   contains

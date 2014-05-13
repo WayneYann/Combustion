@@ -8,11 +8,13 @@ module burner_module
 
 contains
 
-  subroutine burn(np, rho, YT, dt, force_new_J)
+  subroutine burn(np, rho, YT, dt, force_new_J, ierr)
     integer, intent(in) :: np
     double precision :: rho(*), dt
     double precision :: YT(*)
     logical, intent(in) :: force_new_J
+    integer, intent(out), optional :: ierr
+    if (present(ierr)) ierr=0
     return
   end subroutine burn
 
@@ -34,11 +36,13 @@ contains
   end subroutine splitburn
 
 
-  subroutine beburn(rho0, Y0, rho, YT, dt, g)
+  subroutine beburn(rho0, Y0, rho, YT, dt, g, ierr)
     integer, intent(in) :: g
     double precision, intent(in   ) :: rho0, rho, dt
     double precision, intent(in   ) :: Y0(*)
     double precision, intent(inout) :: YT(*)
+    integer, intent(out), optional :: ierr
+    if (present(ierr)) ierr=0
     return
   end subroutine beburn
 

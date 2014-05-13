@@ -152,7 +152,6 @@ int          RNS::do_quadrature_weno  = 0;
 int          RNS::do_component_weno   = 0;
 
 int          RNS::do_chemistry        = 1;
-int          RNS::loord_chem_boundary = 0; // low-order (i.e., 2nd in space) chemistry near inflow boundary?
 int          RNS::use_vode            = 0;
 int          RNS::new_J_cell          = 1; // new Jacobian for each cell?
 #ifdef USE_SDCLIB
@@ -161,7 +160,7 @@ RNS::ChemSolverType RNS::chem_solver  = RNS::BE_BURNING;
 RNS::ChemSolverType RNS::chem_solver  = RNS::GAUSS_BURNING;
 #endif
 int          RNS::f2comp_simple_dUdt  = 0; // set dUdt = \Delta U / \Delta t in f2comp?
-int          RNS::f2comp_nbdf         = 1000; // only use bdf/vode for the first ? times on each node for each time step
+int          RNS::f2comp_nbdf         = 1; // only use bdf/vode for the first ? times on each node for each time step
 
 // this will be reset upon restart
 Real         RNS::previousCPUTimeUsed = 0.0;
@@ -336,7 +335,6 @@ RNS::read_params ()
     }
 
     pp.query("do_chemistry", do_chemistry);
-    pp.query("loord_chem_boundary", loord_chem_boundary);
     pp.query("use_vode", use_vode);
     pp.query("new_J_cell", new_J_cell);
     {

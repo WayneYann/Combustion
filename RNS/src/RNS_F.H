@@ -14,21 +14,18 @@ BL_FORT_PROC_DECL(RNS_DUDT_AD,rns_dudt_ad)
 BL_FORT_PROC_DECL(RNS_ADVCHEM, rns_advchem)
     (const int lo[], const int hi[],
      BL_FORT_FAB_ARG(U),
-     const Real& dt, 
-     const int lo_bc_ord[], const int hi_bc_ord[]);
+     const Real& dt);
 
 BL_FORT_PROC_DECL(RNS_ADVCHEM2, rns_advchem2)
     (const int lo[], const int hi[],
      BL_FORT_FAB_ARG(U),
      const BL_FORT_FAB_ARG(Uguess),
-     const Real& dt, 
-     const int lo_bc_ord[], const int hi_bc_ord[]);
+     const Real& dt);
 
 BL_FORT_PROC_DECL(RNS_DUDT_CHEM, rns_dudt_chem)
     (const int lo[], const int hi[],
      const BL_FORT_FAB_ARG(U),
-     BL_FORT_FAB_ARG(dUdt), 
-     const int lo_bc_ord[], const int hi_bc_ord[]);
+     BL_FORT_FAB_ARG(dUdt));
 
 BL_FORT_PROC_DECL(RNS_COMPUTE_TEMP,rns_compute_temp)
     (const int lo[], const int hi[],

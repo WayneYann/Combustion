@@ -367,7 +367,6 @@ protected:
     static int         do_quadrature_weno;
     static int         do_component_weno;
 
-    static int         loord_chem_boundary;
     static int         use_vode;
     static int         new_J_cell;
 
