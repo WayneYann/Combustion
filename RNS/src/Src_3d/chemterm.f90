@@ -264,12 +264,12 @@ contains
     integer :: i, j, k, n, g, ierr
     logical :: force_new_J
     double precision :: rhot(8), rhoinv, ei, rho0(1)
-    double precision :: Yt(nspec+1,8), Y0(nspec+1)
+    double precision :: Yt(nspec+1,8), Y0(nspec+1), Y0old(nspec+1)
     double precision, allocatable :: UG(:,:,:,:,:)
 
     allocate(UG(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),8,NVAR))
 
-    !$omp parallel private(i,j,k,n,g,ierr,rhot,rhoinv,ei,Yt,force_new_J,rho0,Y0)
+    !$omp parallel private(i,j,k,n,g,ierr,rhot,rhoinv,ei,Yt,force_new_J,rho0,Y0,Y0old)
 
     !$omp do
     do n=1,NVAR
@@ -278,13 +278,14 @@ contains
     !$omp end do
 
     if (lo_bc_ord(3) .eq. 0) then
-       k = lo(3)
        !$omp do
        do n=1,NVAR
           do g=1,8
-             do j=lo(2),hi(2)
-                do i=lo(1),hi(1)
-                   UG(i,j,k,g,n) = U(i,j,k,n)
+             do k=lo(3),lo(3)+1
+                do j=lo(2),hi(2)
+                   do i=lo(1),hi(1)
+                      UG(i,j,k,g,n) = U(i,j,k,n)
+                   end do
                 end do
              end do
           end do
@@ -320,9 +321,9 @@ contains
                 call eos_get_T(Yt(nspec+1,g), ei, Yt(1:nspec,g), ierr=ierr)
 
                 if (ierr .ne. 0) then
-                   print *, 'chemterm_be failed at ', i,j,k,g,UG(i,j,k,g,:)
+                   print *, 'chemterm_be: eos_get_T failed at ', i,j,k,g,UG(i,j,k,g,:)
                    call flush(6)
-                   call bl_error("chemterm_be failed")
+                   call bl_error("chemterm_be failed at eos_get_T")
                 end if
 
                 Y0 = Y0 + 0.125d0*Yt(:,g)
@@ -336,13 +337,29 @@ contains
                 Y0(1:nspec) = Up(i,j,k,UFS:UFS+nspec-1)*rhoinv
                 Y0(nspec+1) = Up(i,j,k,UTEMP)
              else
-                call burn(1, rho0(1), Y0, dt, force_new_J)
+                call burn(1, rho0(1), Y0, dt, force_new_J, ierr)
                 force_new_J = new_J_cell
+                if (ierr .ne. 0) then
+                   print *, 'chemterm_be: burn failed at ', i,j,k,U(i,j,k,:)
+                   print *, '   Y0old =', Y0old
+                   do g=1,8
+                      print *, ' xxxxxxx g = ', g, lo_bc_ord(3), UG(i,j,k,g,:)
+                   end do
+                   call flush(6)
+                   call bl_error("chemterm_be failed at burn")
+                end if
              end if
 
              U(i,j,k,UFS:UFS+nspec-1) = 0.d0 
              do g=1,8
-                call beburn(rho0(1), Y0, rhot(g), Yt(:,g), dt, g)
+                call beburn(rho0(1), Y0, rhot(g), Yt(:,g), dt, g, ierr)
+                if (ierr .ne. 0) then
+                   print *, 'beburn failed at ', i,j,k,g,ierr,UG(i,j,k,g,:)
+                   print *, '   rho0, Y0 = ', rho0(1), Y0
+                   print *, '   rho , Y  = ', rhot(g), Yt(:,g)
+                   call flush(6)
+                   call bl_error("beburn failed")
+                end if
                 rho0(1) = rhot(g)
                 Y0 = Yt(:,g)
                 do n=1,nspec
@@ -399,13 +416,14 @@ contains
     !$omp end do
 
     if (lo_bc_ord(3) .eq. 0) then
-       k = lo(3)
        !$omp do
        do n=1,NVAR
           do g=1,8
-             do j=lo(2),hi(2)
-                do i=lo(1),hi(1)
-                   UG(i,j,k,g,n) = U(i,j,k,n)
+             do k=lo(3),lo(3)+1
+                do j=lo(2),hi(2)
+                   do i=lo(1),hi(1)
+                      UG(i,j,k,g,n) = U(i,j,k,n)
+                   end do
                 end do
              end do
           end do

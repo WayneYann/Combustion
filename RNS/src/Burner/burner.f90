@@ -16,29 +16,31 @@ module burner_module
 
 contains
 
-  subroutine burn(np, rho, YT, dt, force_new_J)
+  subroutine burn(np, rho, YT, dt, force_new_J, oerr)
     use meth_params_module, only : use_vode
     integer, intent(in) :: np
     double precision, intent(in   ) :: rho(np), dt
     double precision, intent(inout) :: YT(nspecies+1,np)
     logical, intent(in) :: force_new_J
+    integer, intent(out), optional :: oerr
 
     if (use_vode) then
-       call burn_vode(np, rho, YT, dt, force_new_J)
+       call burn_vode(np, rho, YT, dt, force_new_J, oerr)
     else
-       call burn_bdf(np, rho, YT, dt, force_new_J)
+       call burn_bdf(np, rho, YT, dt, force_new_J, oerr)
     end if
 
   end subroutine burn
 
 
-  subroutine burn_vode(np, rho, YT, dt, force_new_J)
+  subroutine burn_vode(np, rho, YT, dt, force_new_J, oerr)
     use vode_module, only : verbose, itol, rtol, atol, vode_MF=>MF, always_new_j, &
          voderwork, vodeiwork, lvoderwork, lvodeiwork, voderpar, vodeipar
     integer, intent(in) :: np
     double precision, intent(in   ) :: rho(np), dt
     double precision, intent(inout) :: YT(nspecies+1,np)
     logical, intent(in) :: force_new_J
+    integer, intent(out), optional :: oerr
 
     external f_jac, f_rhs, dvode
 
@@ -96,15 +98,22 @@ contains
        if (istate < 0) then
           print *, 'chemsolv: VODE failed'
           print *, 'istate = ', istate, ' time =', time
-          call bl_error("ERROR in burn: VODE failed")
+          if (present(oerr)) then
+             oerr = 1
+             return
+          else
+             call bl_error("ERROR in burn: VODE failed")
+          end if
        end if
 
     end do
 
+    if (present(oerr)) oerr = 0
+
   end subroutine burn_vode
 
 
-  subroutine burn_bdf(np, rho_in, YT, dt, force_new_J)
+  subroutine burn_bdf(np, rho_in, YT, dt, force_new_J, oerr)
     use bdf
     use bdf_data, only : ts, reuse_jac
     use feval, only : f_rhs, f_jac, rho
@@ -112,6 +121,7 @@ contains
     double precision, intent(in   ) :: rho_in(np), dt
     double precision, intent(inout) :: YT(nspecies+1,np)
     logical, intent(in) :: force_new_J
+    integer, intent(out), optional :: oerr
 
     double precision :: t0, t1, y1(nspecies+1,np)
     integer :: neq, np_bdf, i, p, ierr
@@ -158,7 +168,12 @@ contains
              end do
              print *, 'BDF y0:'
              print *, YT(:,i:i+np_bdf-1)
-             call bl_error("ERROR in burn: BDF failed")
+             if (present(oerr)) then
+                oerr = 1
+                return
+             else
+                call bl_error("ERROR in burn: BDF failed")
+             end if
           end if
 
        end do
@@ -166,6 +181,8 @@ contains
     end if
 
     YT = y1
+    
+    if (present(oerr)) oerr = 0
 
   end subroutine burn_bdf
 
@@ -252,21 +269,18 @@ contains
   end subroutine splitburn
 
 
-  subroutine beburn(rho0, Y0, rho, YT, dt, g)
+  subroutine beburn(rho0, Y0, rho, YT, dt, g, ierr)
     integer, intent(in) :: g
     double precision, intent(in   ) :: rho0, rho, dt
     double precision, intent(in   ) :: Y0(nspecies+1)
     double precision, intent(inout) :: YT(nspecies+1)
+    integer, intent(out) :: ierr
 
-    integer :: iwrk, iter, n, info
-    double precision :: rwrk, rhoinv, cv, rmax
+    integer :: iwrk, iter, n, info, age
+    double precision :: rwrk, rhoinv, cv, rmax, rmin
     double precision, dimension(nspecies) :: uk
     double precision, dimension(nspecies+1) :: YT_init, r, dYTdt
     integer, parameter :: J_int = 5
-    logical, save :: A_is_invalid
-    !$omp threadprivate(A_is_invalid)
-
-    if (g .eq. 1) A_is_invalid = .true.
 
     if (.not. allocated(A)) then
        allocate(Jac(nspecies+1,nspecies+1))
@@ -278,6 +292,9 @@ contains
 
     YT_init = YT
     YT = Y0
+
+    age = 0
+    rmin = 1.d50
 
     do iter = 0, 100
 
@@ -297,12 +314,17 @@ contains
        if (rmax .le. 1.d-14) then 
           exit 
        endif
-
-       if ( A_is_invalid .or.  &
-            (iter.gt.0 .and. mod(iter, J_int).eq.0) ) then
+       
+       if ( (iter.eq.0 .and. g.eq.1)    &
+            .or. age.eq.J_int           &
+            .or. rmax.ge.rmin ) then
           call LUA(rho, YT, dt)
-          A_is_invalid = .false.
+          age = 0
+       else
+          age = age + 1
        end if
+
+       rmin = min(rmin,rmax)
 
        call dgesl(A, nspecies+1, nspecies+1, ipvt, r, 0)
 
@@ -310,7 +332,11 @@ contains
 
     end do
 
-    if (iter .gt. 100) call bl_error("beburn failed")
+    if (iter .gt. 100) then
+       ierr = iter
+    else
+       ierr = 0
+    end if
 
   contains
 
