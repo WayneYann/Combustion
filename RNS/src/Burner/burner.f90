@@ -281,6 +281,10 @@ contains
     double precision, dimension(nspecies) :: uk
     double precision, dimension(nspecies+1) :: YT_init, r, dYTdt
     integer, parameter :: J_int = 5
+    logical, save :: A_is_invalid    
+    !$omp threadprivate(A_is_invalid)     
+
+    if (g .eq. 1) A_is_invalid = .true.
 
     if (.not. allocated(A)) then
        allocate(Jac(nspecies+1,nspecies+1))
@@ -315,11 +319,12 @@ contains
           exit 
        endif
        
-       if ( (iter.eq.0 .and. g.eq.1)    &
-            .or. age.eq.J_int           &
+       if ( A_is_invalid        &
+            .or. age.eq.J_int   &
             .or. rmax.ge.rmin ) then
           call LUA(rho, YT, dt)
           age = 0
+          A_is_invalid = .false.
        else
           age = age + 1
        end if
