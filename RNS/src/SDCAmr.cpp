@@ -316,8 +316,8 @@ void SDCAmr::timeStep(int level, Real time,
 
   for (int lev=0; lev<=finest_level; lev++) {
       level_count[lev] = 0;
-  }      
-  
+  }
+
   // const int post_regrid_flag = 1;
   // amr_level[0].computeNewDt(finest_level, sub_cycle, n_cycle, ref_ratio,
   // 			    dt_min, dt_level, stop_time, post_regrid_flag);
@@ -366,7 +366,6 @@ void SDCAmr::timeStep(int level, Real time,
   for (int k=0; k<max_iters; k++) {
     int flags = SDC_MG_MIXEDINTERP; // | SDC_SWEEP_MONITOR;
     if (k==max_iters-1) flags |= SDC_MG_HALFSWEEP;
-    if (k==0)           flags |= SDC_SWEEP_FIRST;
 
     sdc_mg_sweep(&mg, time, dt, k, flags);
 
