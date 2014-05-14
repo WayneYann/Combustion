@@ -492,7 +492,7 @@ sdc_sweeper* SDCAmr::build_level(int lev)
 
   double nodes[3] = { 0.0, 0.5, 1.0 };
   int nrepeat     = (nnodes-1)/2;
-  sdc_imex* imex = sdc_imex_create(nodes, 3, nrepeat, 0,
+  sdc_imex* imex = sdc_imex_create(nodes, 3, nrepeat, SDC_IMEX_HO,
 				   sdc_f1eval, sdc_f2eval, sdc_f2comp);
 
   sdc_imex_setup(imex, NULL, NULL);
