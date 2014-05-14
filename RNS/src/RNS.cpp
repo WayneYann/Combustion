@@ -154,6 +154,7 @@ int          RNS::do_component_weno   = 0;
 int          RNS::do_chemistry        = 1;
 int          RNS::use_vode            = 0;
 int          RNS::new_J_cell          = 1; // new Jacobian for each cell?
+int          RNS::chem_do_weno        = 0;
 #ifdef USE_SDCLIB
 RNS::ChemSolverType RNS::chem_solver  = RNS::BE_BURNING;
 #else
@@ -337,6 +338,7 @@ RNS::read_params ()
     pp.query("do_chemistry", do_chemistry);
     pp.query("use_vode", use_vode);
     pp.query("new_J_cell", new_J_cell);
+    pp.query("chem_do_weno", chem_do_weno);
     {
 	int chem_solver_i;
 	if (pp.query("chem_solver", chem_solver_i)) {

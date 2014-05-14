@@ -262,7 +262,7 @@ contains
     double precision, intent(in) :: dt
     double precision, intent(in), optional :: Up(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),NVAR)
 
-    integer :: i, j, k, n, g, ierr, ierr2
+    integer :: i, j, k, n, g, ierr
     logical :: force_new_J
     double precision :: rhot(8), rhoinv, rho0(1)
     double precision :: Yt(nspec+1,8), Y0(nspec+1), rhoY(nspec)
@@ -270,13 +270,17 @@ contains
 
     allocate(UG(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),8,NVAR))
 
-    !$omp parallel private(i,j,k,n,g,ierr,ierr2,rhot,rhoinv,Yt,force_new_J,rho0,Y0,rhoY)
+    if (chem_do_weno) then
+       call chem_weno(lo, hi, U, Ulo, Uhi, UG)
+    else
+       !$omp parallel do private(n)
+       do n=1,NVAR
+          call cellavg2gausspt_3d(lo,hi, U(:,:,:,n), Ulo,Uhi, UG(:,:,:,:,n), lo,hi)
+       end do
+       !$omp end parallel do
+    end if
 
-    !$omp do
-    do n=1,NVAR
-       call cellavg2gausspt_3d(lo,hi, U(:,:,:,n), Ulo,Uhi, UG(:,:,:,:,n), lo,hi)
-    end do
-    !$omp end do
+    !$omp parallel private(i,j,k,n,g,ierr,rhot,rhoinv,Yt,force_new_J,rho0,Y0,rhoY)
 
     force_new_J = .true.  ! always recompute Jacobina when a new FAB starts
 
@@ -329,48 +333,17 @@ contains
              rhoY = 0.d0
              do g=1,8
                 call beburn(rho0(1), Y0, rhot(g), Yt(:,g), dt, g, ierr)
-                if (ierr .ne. 0) exit
+                if (ierr .ne. 0) then ! beburn failed
+                   print *, 'chemterm_be: beburn failed at ',i,j,k,g,UG(i,j,k,g,:)
+                   call flush(6)
+                   call bl_error("chemterm_be: beburn failed at g")
+                end if
                 do n=1,nspec
                    rhoY(n) = rhoY(n) + 0.125d0*rhot(g)*Yt(n,g)
                 end do
              end do
 
-             if (ierr .eq. 0) then
-
-                U(i,j,k,UFS:UFS+nspec-1) = rhoY
-
-             else ! burn cell average U, second order in space
-
-                if (present(Up)) then
-
-                   call get_rhoYT(U(i,j,k,:), rhot(1), YT(:,1), ierr2)
-                   if (ierr2 .ne. 0) then
-                      print *, 'chemterm_be: eos_get_T failed for U at ', i,j,k,U(i,j,k,:)
-                      call flush(6)
-                      call bl_error("chemterm_be failed at eos_get_T for U")
-                   end if
-
-                   call beburn(rho0(1), Y0, rhot(1), YT(:,1), dt, 1, ierr2)
-                   if (ierr2 .ne. 0) then
-                      print *, 'chemterm_be: beburn failed for U at ', &
-                           i,j,k,U(i,j,k,:)
-                      call flush(6)
-                      call bl_error("chemterm_be: beburn failed for U")
-                   end if
-
-                   do n=1,nspec
-                      U(i,j,k,UFS+n-1) = rhot(1)*Yt(n,1)
-                   end do
-
-                else
-
-                   do n=1,nspec
-                      U(i,j,k,UFS+n-1) = rho0(1)*Y0(n)
-                   end do
-
-                end if
-
-             end if
+             U(i,j,k,UFS:UFS+nspec-1) = rhoY
 
           end do
        end do
@@ -400,6 +373,16 @@ contains
 
     allocate(UG(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),8,NVAR))
 
+    if (chem_do_weno) then
+       call chem_weno(lo, hi, U, Ulo, Uhi, UG)
+    else
+       !$omp parallel do private(n)
+       do n=1,NVAR
+          call cellavg2gausspt_3d(lo,hi, U(:,:,:,n), Ulo,Uhi, UG(:,:,:,:,n), lo,hi)
+       end do
+       !$omp end parallel do
+    end if
+
     !$omp parallel private(i,j,k,n,g,ierr,rhoinv,ei,rho,T,Ytmp,Y,rdYdt)
 
     !$omp do
@@ -411,12 +394,6 @@ contains
        end do
        end do
        end do
-    end do
-    !$omp end do
-
-    !$omp do
-    do n=1,NVAR
-       call cellavg2gausspt_3d(lo,hi, U(:,:,:,n), Ulo,Uhi, UG(:,:,:,:,n), lo,hi)
     end do
     !$omp end do
 
@@ -495,5 +472,106 @@ contains
     
     call eos_get_T(Yt(nspec+1), ei, Yt(1:nspec), ierr=ierr)
   end subroutine get_rhoYT
+
+
+  subroutine chem_weno(lo, hi, U, Ulo, Uhi, UG)
+    use reconstruct_module, only : reconstruct_comp
+    integer, intent(in) :: lo(3), hi(3), Ulo(3), Uhi(3)
+    double precision, intent(in) :: U(Ulo(1):Uhi(1),Ulo(2):Uhi(2),Ulo(3):Uhi(3),NVAR)
+    double precision, intent(out):: UG(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),8,NVAR)
+
+    integer :: i,j,k
+    double precision, allocatable :: UG1z(:,:,:,:), UG2z(:,:,:,:)
+    double precision, allocatable :: UG1y(:,:,:,:), UG2y(:,:,:,:)
+
+    allocate(UG1z(lo(1)-2:hi(1)+2,lo(2)-2:hi(2)+2,lo(3):hi(3),NVAR))
+    allocate(UG2z(lo(1)-2:hi(1)+2,lo(2)-2:hi(2)+2,lo(3):hi(3),NVAR))
+    allocate(UG1y(lo(1)-2:hi(1)+2,lo(2)  :hi(2)  ,lo(3):hi(3),NVAR))
+    allocate(UG2y(lo(1)-2:hi(1)+2,lo(2)  :hi(2)  ,lo(3):hi(3),NVAR))
+
+    !$omp parallel private(i,j,k)
+
+    !$omp do collapse(2)
+    do j   =lo(2)-2,hi(2)+2
+       do i=lo(1)-2,hi(1)+2
+          call reconstruct_comp(lo(3),hi(3), &
+               Ulo(3),Uhi(3),   &  ! for U
+               0, 0,            &  ! for UL & UR, not present
+               lo (3), hi(3),   &  ! for UG1 & UG2
+               U(i,j,:,:), &
+               UG1=UG1z(i,j,:,:), UG2=UG2z(i,j,:,:) )
+       end do
+    end do
+    !$omp end do
+
+    !$omp do collapse(2)
+    do k   =lo(3)  ,hi(3)
+       do i=lo(1)-2,hi(1)+2
+          call reconstruct_comp(lo(2),hi(2), &
+               lo(2)-2,hi(2)+2,   &  ! for U
+               0, 0,              &  ! for UL & UR, not present
+               lo(2)  ,hi(2),     &  ! for UG1 & UG2
+               UG1Z(i,:,k,:), &
+               UG1=UG1y(i,:,k,:), UG2=UG2y(i,:,k,:) )
+       end do
+    end do
+    !$omp end do
+    
+    !$omp do collapse(2)
+    do k   =lo(3), hi(3)
+       do j=lo(2), hi(2)
+          call reconstruct_comp(lo(1),hi(1), &
+               lo(1)-2,hi(1)+2,   &  ! for U
+               0, 0,              &  ! for UL & UR, not present
+               lo(1)  ,hi(1),     &  ! for UG1 & UG2
+               UG1y(:,j,k,:), &
+               UG1=UG(:,j,k,1,:), UG2=UG(:,j,k,2,:) )
+          call reconstruct_comp(lo(1),hi(1), &
+               lo(1)-2,hi(1)+2,   &  ! for U
+               0, 0,              &  ! for UL & UR, not present
+               lo(1)  ,hi(1),     &  ! for UG1 & UG2
+               UG2y(:,j,k,:), &
+               UG1=UG(:,j,k,3,:), UG2=UG(:,j,k,4,:) )
+       end do
+    end do
+    !$omp end do 
+    
+    !$omp do collapse(2)
+    do k   =lo(3)  ,hi(3)
+       do i=lo(1)-2,hi(1)+2
+          call reconstruct_comp(lo(2),hi(2), &
+               lo(2)-2,hi(2)+2,   &  ! for U
+               0, 0,              &  ! for UL & UR, not present
+               lo(2)  ,hi(2),     &  ! for UG1 & UG2
+               UG2Z(i,:,k,:), &
+               UG1=UG1y(i,:,k,:), UG2=UG2y(i,:,k,:) )
+       end do
+    end do
+    !$omp end do
+    
+    !$omp do collapse(2)
+    do k   =lo(3), hi(3)
+       do j=lo(2), hi(2)
+          call reconstruct_comp(lo(1),hi(1), &
+               lo(1)-2,hi(1)+2,   &  ! for U
+               0, 0,              &  ! for UL & UR, not present
+               lo(1)  ,hi(1),     &  ! for UG1 & UG2
+               UG1y(:,j,k,:), &
+               UG1=UG(:,j,k,5,:), UG2=UG(:,j,k,6,:) )
+          call reconstruct_comp(lo(1),hi(1), &
+               lo(1)-2,hi(1)+2,   &  ! for U
+               0, 0,              &  ! for UL & UR, not present
+               lo(1)  ,hi(1),     &  ! for UG1 & UG2
+               UG2y(:,j,k,:), &
+               UG1=UG(:,j,k,7,:), UG2=UG(:,j,k,8,:) )
+       end do
+    end do
+    !$omp end do 
+
+    !$omp end parallel
+
+    deallocate(UG1z,UG2z,UG1y,UG2y)
+
+  end subroutine chem_weno
 
 end module chemterm_module

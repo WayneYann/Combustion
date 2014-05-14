@@ -492,7 +492,9 @@ sdc_sweeper* SDCAmr::build_level(int lev)
 
   double nodes[3] = { 0.0, 0.5, 1.0 };
   int nrepeat     = (nnodes-1)/2;
-  sdc_imex* imex = sdc_imex_create(nodes, 3, nrepeat, SDC_IMEX_HO,
+  int flags       = 0;
+  if (ho_imex) flags |= SDC_IMEX_HO;
+  sdc_imex* imex = sdc_imex_create(nodes, 3, nrepeat, flags, 
 				   sdc_f1eval, sdc_f2eval, sdc_f2comp);
 
   sdc_imex_setup(imex, NULL, NULL);
@@ -548,6 +550,7 @@ SDCAmr::SDCAmr ()
   if (!ppsdc.query("max_iters", max_iters)) max_iters = 4;
   if (!ppsdc.query("max_trefs", max_trefs)) max_trefs = 2;
   if (!ppsdc.query("nnodes0",   nnodes0))   nnodes0 = 3;
+  if (!ppsdc.query("ho_imex",   ho_imex))   ho_imex = 0;
   if (!ppsdc.query("trat",      trat))      trat = 2;
 
   if (verbose > 2)
