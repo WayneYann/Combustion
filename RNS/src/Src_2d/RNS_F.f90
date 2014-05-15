@@ -223,12 +223,15 @@ subroutine rns_compute_temp(lo,hi,U,U_l1,U_l2,U_h1,U_h2)
   integer, intent(in) :: U_l1, U_l2, U_h1, U_h2
   double precision, intent(inout) :: U(U_l1:U_h1,U_l2:U_h2,NVAR)
 
-  integer :: i, j
+  integer :: i, j, pt_index(2), ierr
   double precision :: rhoInv, e, vx, vy, Y(NSPEC)
 
-  !$omp parallel do private(i,j,rhoInv,e,vx,vy,Y)
+  !$omp parallel do private(i,j,rhoInv,e,vx,vy,Y,pt_index,ierr)
   do j=lo(2),hi(2)
   do i=lo(1),hi(1)
+     pt_index(1) = i
+     pt_index(2) = j
+
      rhoInv = 1.0d0/U(i,j,URHO)
 
      vx = U(i,j,UMX)*rhoInv     
@@ -237,7 +240,12 @@ subroutine rns_compute_temp(lo,hi,U,U_l1,U_l2,U_h1,U_h2)
 
      Y = U(i,j,UFS:UFS+NSPEC-1)*rhoInv
 
-     call eos_get_T(U(i,j,UTEMP), e, Y)
+     call eos_get_T(U(i,j,UTEMP), e, Y, pt_index, ierr)
+
+     if (ierr .ne. 0) then
+        print *, 'rns_compute_temp failed at ', i,j,U(i,j,:)
+        call bl_error("rns_compute_temp failed")
+     end if
   end do
   end do
   !$omp end parallel do
@@ -327,13 +335,13 @@ subroutine rns_enforce_consistent_Y(lo,hi,U,U_l1,U_l2,U_h1,U_h2)
               ! Take enough from the dominant species to fill the negative one.
               U(i,j,int_dom_spec) = U(i,j,int_dom_spec) + U(i,j,n)
    
-              ! ! Test that we didn't make the dominant species negative
-              ! if (U(i,j,int_dom_spec) .lt. 0.d0) then 
-              !    print *,' Just made dominant species negative ',int_dom_spec-UFS+1,' at ',i
-              !    print *,'We were fixing species ',n-UFS+1,' which had value ',x
-              !    print *,'Dominant species became ',U(i,j,int_dom_spec) / U(i,j,URHO)
-              !    call bl_error("Error:: CNSReact_2d.f90 :: ca_enforce_nonnegative_species")
-              ! end if
+              ! Test that we didn't make the dominant species negative
+              if (U(i,j,int_dom_spec) .lt. 0.d0) then 
+                 print *,' Just made dominant species negative ',int_dom_spec-UFS+1,' at ',i,j
+                 print *,'We were fixing species ',n-UFS+1,' which had value ',x
+                 print *,'Dominant species became ',U(i,j,int_dom_spec)*rhoinv
+                 call bl_error("rns_enforce_consistent_Y")
+              end if
 
               ! Now set the negative species to zero
               U(i,j,n) = 0.d0

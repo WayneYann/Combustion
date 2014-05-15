@@ -290,10 +290,9 @@ contains
           do i=lo(1),hi(1)
 
              do g=1,8
-                call get_rhoYT(UG(i,j,k,g,:), rhot(g), YT(:,g), ierr)
+                call get_rhoYT(UG(i,j,k,g,:), rhot(g), YT(1:nspec,g), YT(nspec+1,g), ierr)
                 if (ierr .ne. 0) then
-                   print *, 'chemterm_be: eos_get_T failed at ', i,j,k,g,UG(i,j,k,g,:)
-                   call flush(6)
+                   print *, 'chemterm_be: eos_get_T failed for UG at ', i,j,k,g,UG(i,j,k,g,:)
                    call bl_error("chemterm_be failed at eos_get_T")
                 end if
              end do
@@ -307,10 +306,9 @@ contains
 
              else
 
-                call get_rhoYT(U(i,j,k,:), rho0(1), Y0, ierr)
+                call get_rhoYT(U(i,j,k,:), rho0(1), Y0(1:nspec), Y0(nspec+1), ierr)
                 if (ierr .ne. 0) then
                    print *, 'chemterm_be: eos_get_T failed for U at ', i,j,k,U(i,j,k,:)
-                   call flush(6)
                    call bl_error("chemterm_be failed at eos_get_T for U")
                 end if
                 
@@ -319,7 +317,6 @@ contains
                 if (ierr .ne. 0) then
                    print *, 'chemterm_be: burn failed at ', i,j,k,U(i,j,k,:)
                    print *, '   rho0, Y0 =', rho0(1), Y0
-                   call flush(6)
                    call bl_error("chemterm_be failed at burn")
                 end if
 
@@ -335,7 +332,6 @@ contains
                 call beburn(rho0(1), Y0, rhot(g), Yt(:,g), dt, g, ierr)
                 if (ierr .ne. 0) then ! beburn failed
                    print *, 'chemterm_be: beburn failed at ',i,j,k,g,UG(i,j,k,g,:)
-                   call flush(6)
                    call bl_error("chemterm_be: beburn failed at g")
                 end if
                 do n=1,nspec
@@ -363,9 +359,7 @@ contains
     double precision, intent(out) :: Ut(Utlo(1):Uthi(1),Utlo(2):Uthi(2),Utlo(3):Uthi(3),NVAR)
 
     integer :: i, j, k, n, g, np, ierr
-    double precision :: rhoinv, ei
     double precision :: rho(lo(1):hi(1)), T(lo(1):hi(1))
-    double precision :: Ytmp(nspec)
     double precision :: Y(lo(1):hi(1),nspec), rdYdt(lo(1):hi(1),nspec)
     double precision, allocatable :: UG(:,:,:,:,:)
 
@@ -383,7 +377,7 @@ contains
        !$omp end parallel do
     end if
 
-    !$omp parallel private(i,j,k,n,g,ierr,rhoinv,ei,rho,T,Ytmp,Y,rdYdt)
+    !$omp parallel private(i,j,k,n,g,ierr,rho,T,Y,rdYdt)
 
     !$omp do
     do n=1,NVAR
@@ -404,28 +398,10 @@ contains
           do g=1,8
 
              do i=lo(1),hi(1)
-                rho(i) = 0.d0
-                do n=1,nspec
-                   Y(i,n) = UG(i,j,k,g,UFS+n-1)
-                   rho(i) = rho(i) + Y(i,n)
-                end do
-                rhoinv = 1.d0/rho(i)
-                
-                do n=1,nspec
-                   Y(i,n) = Y(i,n) * rhoinv
-                   Ytmp(n) = Y(i,n)
-                end do
-                
-                ei = rhoinv*( UG(i,j,k,g,UEDEN) - 0.5d0*rhoinv*(UG(i,j,k,g,UMX)**2 &
-                     + UG(i,j,k,g,UMY)**2 + UG(i,j,k,g,UMZ)**2) )
-                
-                T(i) = UG(i,j,k,g,UTEMP)
-                call eos_get_T(T(i), ei, Ytmp, ierr=ierr)
-
+                call get_rhoYT(UG(i,j,k,g,:), rho(i), Y(i,:), T(i), ierr)
                 if (ierr .ne. 0) then
-                   print *, 'dUdt_chem failed at ', i,j,k,g,UG(i,j,k,g,:)
-                   call flush(6)
-                   call bl_error("dUdt_chem failed")
+                   print *, 'dUdt_chem: eos_get_T failed for UG at ', i,j,k,g,UG(i,j,k,g,:)
+                   call bl_error("dUdt_chem failed at eos_get_T for UG")
                 end if
              end do
              
@@ -449,9 +425,9 @@ contains
 
   end subroutine dUdt_chem
 
-  subroutine get_rhoYT(U,rho,YT,ierr)
+  subroutine get_rhoYT(U, rho, Y, T, ierr)
     double precision, intent(in) :: U(NVAR)
-    double precision, intent(out) :: rho, YT(nspec+1)
+    double precision, intent(out) :: rho, Y(nspec), T
     integer, intent(out) :: ierr
 
     integer :: n
@@ -459,18 +435,18 @@ contains
     
     rho = 0.d0
     do n=1,NSPEC
-       Yt(n) = U(UFS+n-1)
-       rho = rho + Yt(n)
+       Y(n) = U(UFS+n-1)
+       rho = rho + Y(n)
     end do
     rhoinv = 1.d0/rho
     
-    Yt(1:nspec) = Yt(1:nspec) * rhoinv
-    Yt(nspec+1) = U(UTEMP)
+    Y = Y * rhoinv
+    T = U(UTEMP)
     
     ei = rhoinv*( U(UEDEN) - 0.5d0*rhoinv*(U(UMX)**2 &
          + U(UMY)**2 + U(UMZ)**2) )
     
-    call eos_get_T(Yt(nspec+1), ei, Yt(1:nspec), ierr=ierr)
+    call eos_get_T(T, ei, Y, ierr=ierr)
   end subroutine get_rhoYT
 
 

@@ -91,7 +91,6 @@ contains
              else
                 write(6,*) '   spec with largest error = ', trim(spec_names(ifail))
              end if
-             call flush(6)
           end if
        end if
 

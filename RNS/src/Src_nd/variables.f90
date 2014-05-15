@@ -47,7 +47,6 @@ contains
 
              if (ierr .ne. 0) then
                 print *, 'ctoprim failed at ', i,j,k,Q(i,j,k,1:QFY+nspec-1)
-                call flush(6)
                 call bl_error("ctoprim failed")
              end if
 

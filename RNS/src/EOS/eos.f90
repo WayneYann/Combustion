@@ -107,7 +107,6 @@ contains
     if (lierr .ne. 0) then
        print *, 'EOS: get_T failed, T, e, Y = ', T, e, Y
        if (present(pt_index)) print *, ' i, j, k =', pt_index
-       call flush(6)
        if (present(ierr)) then
           ierr = lierr
           return
@@ -183,7 +182,6 @@ contains
 
     if (ierr .ne. 0) then
        print *, 'EOS: get_T failed, T, e, Y = ', T, e, Y
-       call flush(6)
        call bl_error("Error: eos_given_ReY")
     end if
     T = max(T, smallt)

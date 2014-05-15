@@ -297,7 +297,6 @@ subroutine rns_compute_temp(lo,hi,U,U_l1,U_l2,U_l3,U_h1,U_h2,U_h3)
 
      if (ierr .ne. 0) then
         print *, 'rns_compute_temp failed at ', i,j,k,U(i,j,k,:)
-        call flush(6)
         call bl_error("rns_compute_temp failed")
      end if
   end do
