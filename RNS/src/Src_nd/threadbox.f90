@@ -9,7 +9,7 @@ module threadbox_module
 
   private
 
-  public :: build_threadbox_2d, build_threadbox_3d
+  public :: build_threadbox_2d, build_threadbox_3d, get_lo_hi
 
 contains
 
@@ -107,5 +107,23 @@ contains
     nthreads_facs(1:nfacs) = facs(nfacs:1:-1)
     ntfinv = 1.d0/nthreads_facs
   end subroutine fa
+
+
+  subroutine get_lo_hi(ncells, nblks, lo, hi)
+    integer, intent(in) :: ncells, nblks
+    integer, intent(out) :: lo(0:nblks-1), hi(0:nblks-1)
+    integer ::  blksize, nleft, i
+    blksize = ncells/nblks
+    nleft = ncells - nblks * blksize  ! Note nleft < nblks
+    do i=0,nblks-1
+       lo(i) = i*blksize + min(nleft, i)
+    end do
+    if (nblks .ge. 2) then
+       do i=0,nblks-2
+          hi(i) = lo(i+1)-1
+       end do
+    end if
+    hi(nblks-1) = ncells-1
+  end subroutine get_lo_hi
 
 end module threadbox_module
