@@ -97,7 +97,7 @@ contains
     integer, optional, intent(in) :: pt_index(:)
     integer, optional, intent(out) :: ierr
     T = e/cv
-    ierr = 0
+    if (present(ierr)) ierr = 0
   end subroutine eos_get_T
 
 
