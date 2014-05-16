@@ -35,6 +35,18 @@ contains
   end subroutine chemterm
 
 
+  subroutine dUdt_chem(lo, hi, U, Ulo, Uhi, Ut, Utlo, Uthi)
+    integer, intent(in) :: lo(3), hi(3), Ulo(3), Uhi(3), Utlo(3), Uthi(3)
+    double precision, intent(in ) ::  U( Ulo(1): Uhi(1), Ulo(2): Uhi(2), Ulo(3): Uhi(3),NVAR)
+    double precision, intent(out) :: Ut(Utlo(1):Uthi(1),Utlo(2):Uthi(2),Utlo(3):Uthi(3),NVAR)
+    if (chem_solver .eq. cc_burning) then
+       call dUdt_chem_cellcenter(lo, hi, U, Ulo, Uhi, Ut, Utlo, Uthi)
+    else
+       call dUdt_chem_gauss(lo, hi, U, Ulo, Uhi, Ut, Utlo, Uthi)
+    end if
+  end subroutine dUdt_chem
+
+
   subroutine chemterm_cellcenter(lo, hi, U, Ulo, Uhi, dt)
     use convert_module, only : cellavg2cc_3d, cc2cellavg_3d
     integer, intent(in) :: lo(3), hi(3), Ulo(3), Uhi(3)
@@ -352,7 +364,7 @@ contains
   end subroutine chemterm_be
 
 
-  subroutine dUdt_chem(lo, hi, U, Ulo, Uhi, Ut, Utlo, Uthi)
+  subroutine dUdt_chem_gauss(lo, hi, U, Ulo, Uhi, Ut, Utlo, Uthi)
     use weno_module, only : cellavg2gausspt_3d
     integer, intent(in) :: lo(3), hi(3), Ulo(3), Uhi(3), Utlo(3), Uthi(3)
     double precision, intent(in ) ::  U( Ulo(1): Uhi(1), Ulo(2): Uhi(2), Ulo(3): Uhi(3),NVAR)
@@ -423,7 +435,75 @@ contains
 
     deallocate(UG)
 
-  end subroutine dUdt_chem
+  end subroutine dUdt_chem_gauss
+
+
+  subroutine dUdt_chem_cellcenter(lo, hi, U, Ulo, Uhi, Ut, Utlo, Uthi)
+    use convert_module, only : cellavg2cc_3d, cc2cellavg_3d
+    integer, intent(in) :: lo(3), hi(3), Ulo(3), Uhi(3), Utlo(3), Uthi(3)
+    double precision, intent(in ) ::  U( Ulo(1): Uhi(1), Ulo(2): Uhi(2), Ulo(3): Uhi(3),NVAR)
+    double precision, intent(out) :: Ut(Utlo(1):Uthi(1),Utlo(2):Uthi(2),Utlo(3):Uthi(3),NVAR)
+
+    integer :: i, j, k, n, np, ierr
+    double precision :: rho(lo(1)-1:hi(1)+1), Y(lo(1)-1:hi(1)+1,nspec), &
+         T(lo(1)-1:hi(1)+1)
+    double precision, allocatable :: Ucc(:,:,:,:), Utcc(:,:,:,:)
+
+    np = hi(1)-lo(1)+3
+
+    allocate( Ucc(lo(1)-1:hi(1)+1,lo(2)-1:hi(2)+1,lo(3)-1:hi(3)+1,NVAR))
+    allocate(Utcc(lo(1)-1:hi(1)+1,lo(2)-1:hi(2)+1,lo(3)-1:hi(3)+1,nspec))
+
+    !$omp parallel private(i,j,k,n,ierr,rho,Y,T)
+
+    !$omp do
+    do n=1,NVAR
+       call cellavg2cc_3d(lo-1,hi+1, U(:,:,:,n), Ulo,Uhi, Ucc(:,:,:,n), lo-1,hi+1)
+    end do
+    !$omp end do
+
+    !$omp do collapse(2)
+    do k    = lo(3)-1, hi(3)+1
+       do j = lo(2)-1, hi(2)+1
+       
+          do i = lo(1)-1, hi(1)+1
+             call get_rhoYT(Ucc(i,j,k,:), rho(i), Y(i,:), T(i), ierr)
+             if (ierr .ne. 0) then
+                print *, 'dUdt_chem: eos_get_T failed for Ucc at ', i,j,k,Ucc(i,j,k,:)
+                call bl_error("dUdt_chem failed at eos_get_T for Ucc")
+             end if
+          end do
+
+          call compute_rhodYdt(np,rho,T,Y,Utcc(:,j,k,:))
+
+       end do
+    end do
+    !$omp end do
+
+    !$omp do collapse(2)
+    do n=1,UFS-1
+       do k=lo(3),hi(3)
+       do j=lo(2),hi(2)
+       do i=lo(1),hi(1)
+          Ut(i,j,k,n) = 0.d0
+       end do
+       end do
+       end do
+    end do
+    !$omp end do
+
+    !$omp do
+    do n=1,nspec
+       call cc2cellavg_3d(lo,hi, Utcc(:,:,:,n), lo-1,hi+1, Ut(:,:,:,UFS+n-1), Utlo,Uthi)
+    end do
+    !$omp end do
+
+    !$omp end parallel
+
+    deallocate(Ucc,Utcc)
+
+  end subroutine dUdt_chem_cellcenter
+
 
   subroutine get_rhoYT(U, rho, Y, T, ierr)
     double precision, intent(in) :: U(NVAR)
