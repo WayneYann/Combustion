@@ -6,6 +6,7 @@
 
 #include <BC_TYPES.H>
 #include <AmrLevel.H>
+#include <iMultiFab.H>
 #include <ErrorList.H>
 #include <FluxRegister.H>
 #include <ChemDriver.H>
@@ -274,6 +275,8 @@ public:
     std::vector<int> touchFine;
     void buildTouchFine();
     void clearTouchFine() { touchFine.clear(); }
+
+    iMultiFab* chemstatus;
 
 protected:
 

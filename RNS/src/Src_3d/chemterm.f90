@@ -3,7 +3,8 @@ module chemterm_module
   use meth_params_module
   use burner_module, only : burn, compute_rhodYdt, splitburn, beburn
   use eos_module, only : eos_get_T
-  use renorm_module, only : renorm
+  use renorm_module, only : JBBhack, floor_species
+  use passinfo_module, only : level
 
   implicit none
 
@@ -13,15 +14,16 @@ module chemterm_module
 
 contains
 
-  subroutine chemterm(lo, hi, U, Ulo, Uhi, dt, Up)
-    integer, intent(in) :: lo(3), hi(3), Ulo(3), Uhi(3)
+  subroutine chemterm(lo, hi, U, Ulo, Uhi, st, stlo, sthi, dt, Up)
+    integer, intent(in) :: lo(3), hi(3), Ulo(3), Uhi(3), stlo(3), sthi(3)
     double precision, intent(inout) :: U(Ulo(1):Uhi(1),Ulo(2):Uhi(2),Ulo(3):Uhi(3),NVAR)
+    integer, intent(inout) :: st(stlo(1):sthi(1),stlo(2):sthi(2),stlo(3):sthi(3))
     double precision, intent(in) :: dt
     double precision, intent(in), optional :: Up(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),NVAR)
 
     select case (chem_solver)
        case (cc_burning)
-          call chemterm_cellcenter(lo, hi, U, Ulo, Uhi, dt)
+          call chemterm_cellcenter(lo, hi, U, Ulo, Uhi, st, stlo, sthi, dt)
        case (Gauss_burning)
           call chemterm_gauss(lo, hi, U, Ulo, Uhi, dt)
        case (split_burning)
@@ -37,22 +39,24 @@ contains
   end subroutine chemterm
 
 
-  subroutine dUdt_chem(lo, hi, U, Ulo, Uhi, Ut, Utlo, Uthi)
-    integer, intent(in) :: lo(3), hi(3), Ulo(3), Uhi(3), Utlo(3), Uthi(3)
+  subroutine dUdt_chem(lo, hi, U, Ulo, Uhi, Ut, Utlo, Uthi, st, stlo, sthi)
+    integer, intent(in) :: lo(3), hi(3), Ulo(3), Uhi(3), Utlo(3), Uthi(3), stlo(3), sthi(3)
     double precision, intent(in ) ::  U( Ulo(1): Uhi(1), Ulo(2): Uhi(2), Ulo(3): Uhi(3),NVAR)
     double precision, intent(out) :: Ut(Utlo(1):Uthi(1),Utlo(2):Uthi(2),Utlo(3):Uthi(3),NVAR)
+    integer, intent(inout) :: st(stlo(1):sthi(1),stlo(2):sthi(2),stlo(3):sthi(3))
     if (chem_solver .eq. cc_burning .or. chem_solver .eq. BEcc_burning) then
-       call dUdt_chem_cellcenter(lo, hi, U, Ulo, Uhi, Ut, Utlo, Uthi)
+       call dUdt_chem_cellcenter(lo, hi, U, Ulo, Uhi, Ut, Utlo, Uthi, st, stlo, sthi)
     else
-       call dUdt_chem_gauss(lo, hi, U, Ulo, Uhi, Ut, Utlo, Uthi)
+       call dUdt_chem_gauss(lo, hi, U, Ulo, Uhi, Ut, Utlo, Uthi, st, stlo, sthi)
     end if
   end subroutine dUdt_chem
 
 
-  subroutine chemterm_cellcenter(lo, hi, U, Ulo, Uhi, dt)
+  subroutine chemterm_cellcenter(lo, hi, U, Ulo, Uhi, st, stlo, sthi, dt)
     use convert_module, only : cellavg2cc_3d, cc2cellavg_3d
-    integer, intent(in) :: lo(3), hi(3), Ulo(3), Uhi(3)
+    integer, intent(in) :: lo(3), hi(3), Ulo(3), Uhi(3), stlo(3), sthi(3)
     double precision, intent(inout) :: U(Ulo(1):Uhi(1),Ulo(2):Uhi(2),Ulo(3):Uhi(3),NVAR)
+    integer, intent(inout) :: st(stlo(1):sthi(1),stlo(2):sthi(2),stlo(3):sthi(3))
     double precision, intent(in) :: dt
 
     integer :: i, j, k, n, ierr
@@ -77,18 +81,52 @@ contains
        do j=lo(2)-1,hi(2)+1
           do i=lo(1)-1,hi(1)+1
 
-             call get_rhoYT(Ucc(i,j,k,:), rhot(1), YT(1:nspec), YT(nspec+1), ierr)
-             if (ierr .ne. 0) then
-                print *, 'chemterm_cellcenter: eos_get_T failed for Ucc at ', &
-                     i,j,k,Ucc(i,j,k,:)
-                call bl_error("chemterm_cellcenter failed at eos_get_T")
+             if (st(i,j,k) .eq. 0) then
+
+                call get_rhoYT(Ucc(i,j,k,:), rhot(1), YT(1:nspec), YT(nspec+1), ierr)
+
+                if (ierr .ne. 0) then
+                   st(i,j,k) = ierr
+                !    print *, 'chemterm_cellcenter: eos_get_T failed for Ucc at ', &
+                !         level,i,j,k,Ucc(i,j,k,:)
+                !    call bl_error("chemterm_cellcenter failed at eos_get_T")
+                !    end if
+                else
+
+                   call floor_species(nspec, Yt(1:nspec))
+                
+                   call burn(1, rhot, Yt, dt, force_new_J, ierr)
+                   force_new_J = new_J_cell
+                   if (ierr .ne. 0) then
+                      st(i,j,k) = ierr
+                      ! print *, 'chemterm_cellcenter: burn failed at ', &
+                      !      level,i,j,k,Ucc(i,j,k,:)
+                      ! call bl_error("chemterm_cellcenter failed at burn")
+                   end if
+
+                end if
+
              end if
 
-             call burn(1, rhot, Yt, dt, force_new_J, ierr)
-             force_new_J = new_J_cell
-             if (ierr .ne. 0) then
-                print *, 'chemterm_cellcenter: burn failed at ', i,j,k,Ucc(i,j,k,:)
-                call bl_error("chemterm_cellcenter failed at burn")
+             if (st(i,j,k) .ne. 0) then
+
+                call get_rhoYT(U(i,j,k,:), rhot(1), YT(1:nspec), YT(nspec+1), ierr)
+                if (ierr .ne. 0) then
+                   print *, 'chemterm_cellcenter: eos_get_T failed for U at ', &
+                        level,i,j,k,U(i,j,k,:)
+                   call bl_error("chemterm_cellcenter failed at eos_get_T")
+                end if
+
+                call floor_species(nspec, Yt(1:nspec))
+                
+                call burn(1, rhot, Yt, dt, force_new_J, ierr)
+                force_new_J = new_J_cell
+                if (ierr .ne. 0) then
+                   print *, 'chemterm_cellcenter: burn failed for U at ', &
+                        level,i,j,k,U(i,j,k,:)
+                   call bl_error("chemterm_cellcenter failed at burn for U")
+                end if
+                
              end if
 
              do n=1,nspec
@@ -294,22 +332,27 @@ contains
              call get_rhoYT(Ucc(i,j,k,:), rhot(1), YTcc(1:nspec), YTcc(nspec+1), ierr)
              if (ierr .ne. 0) then
                 print *, 'chemterm_becc: eos_get_T failed for Ucc at ', &
-                     i,j,k,Ucc(i,j,k,:)
+                     level,i,j,k,Ucc(i,j,k,:)
                 call bl_error("chemterm_becc failed at eos_get_T")
              end if
+
+             call floor_species(nspec, YTcc(1:nspec))
 
              Yt0 = YTcc
 
              call burn(1, rhot, Yt0, dt, force_new_J, ierr)
              force_new_J = new_J_cell
+!             if (ierr .ne. 0) then
+!                print *, 'chemterm_becc: burn failed at ', level,i,j,k,Ucc(i,j,k,:)
+!                call bl_error("chemterm_becc failed at burn")
+!             end if
              if (ierr .ne. 0) then
-                print *, 'chemterm_becc: burn failed at ', i,j,k,Ucc(i,j,k,:)
-                call bl_error("chemterm_becc failed at burn")
+                Yt0 = YTcc
              end if
 
              call beburn(rhot(1), Yt0, rhot(1), YTcc, dt, 1, ierr)
              if (ierr .ne. 0) then ! beburn failed
-                print *, 'chemterm_becc: beburn failed at ',i,j,k,Ucc(i,j,k,:)
+                print *, 'chemterm_becc: beburn failed at ',level,i,j,k,Ucc(i,j,k,:)
                 call bl_error("chemterm_becc: beburn failed at g")
              end if
              
@@ -372,7 +415,8 @@ contains
              do g=1,8
                 call get_rhoYT(UG(i,j,k,g,:), rhot(g), YT(1:nspec,g), YT(nspec+1,g), ierr)
                 if (ierr .ne. 0) then
-                   print *, 'chemterm_begp: eos_get_T failed for UG at ', i,j,k,g,UG(i,j,k,g,:)
+                   print *, 'chemterm_begp: eos_get_T failed for UG at ', &
+                        level,i,j,k,g,UG(i,j,k,g,:)
                    call bl_error("chemterm_begp failed at eos_get_T")
                 end if
              end do
@@ -388,30 +432,32 @@ contains
 
                 call get_rhoYT(U(i,j,k,:), rho0(1), Y0(1:nspec), Y0(nspec+1), ierr)
                 if (ierr .ne. 0) then
-                   print *, 'chemterm_begp: eos_get_T failed for U at ', i,j,k,U(i,j,k,:)
+                   print *, 'chemterm_begp: eos_get_T failed for U at ', &
+                        level,i,j,k,U(i,j,k,:)
                    call bl_error("chemterm_begp failed at eos_get_T for U")
                 end if
                 
                 call burn(1, rho0, Y0, dt, force_new_J, ierr)
                 force_new_J = new_J_cell
                 if (ierr .ne. 0) then
-                   print *, 'chemterm_begp: burn failed at ', i,j,k,U(i,j,k,:)
+                   print *, 'chemterm_begp: burn failed at ', level,i,j,k,U(i,j,k,:)
                    print *, '   rho0, Y0 =', rho0(1), Y0
                    call bl_error("chemterm_begp failed at burn")
                 end if
 
              end if
 
-             call renorm(nspec, Y0(1:nspec), ierr)
+             call JBBhack(nspec, Y0(1:nspec), ierr)
              if (ierr .ne. 0) then
-                call bl_error("chemterm_begp failed at renormalizing Y0")
+                print *, 'chemterm_begp: JBBhack failed at ', level,i,j,k
+                call bl_error("chemterm_begp failed at JBB hack Y0")
              end if
 
              rhoY = 0.d0
              do g=1,8
                 call beburn(rho0(1), Y0, rhot(g), Yt(:,g), dt, g, ierr)
                 if (ierr .ne. 0) then ! beburn failed
-                   print *, 'chemterm_begp: beburn failed at ',i,j,k,g,UG(i,j,k,g,:)
+                   print *, 'chemterm_begp: beburn failed at ',level,i,j,k,g,UG(i,j,k,g,:)
                    call bl_error("chemterm_begp: beburn failed at g")
                 end if
                 do n=1,nspec
@@ -432,11 +478,12 @@ contains
   end subroutine chemterm_begp
 
 
-  subroutine dUdt_chem_gauss(lo, hi, U, Ulo, Uhi, Ut, Utlo, Uthi)
+  subroutine dUdt_chem_gauss(lo, hi, U, Ulo, Uhi, Ut, Utlo, Uthi, st, stlo, sthi)
     use weno_module, only : cellavg2gausspt_3d
-    integer, intent(in) :: lo(3), hi(3), Ulo(3), Uhi(3), Utlo(3), Uthi(3)
+    integer, intent(in) :: lo(3), hi(3), Ulo(3), Uhi(3), Utlo(3), Uthi(3), stlo(3), sthi(3)
     double precision, intent(in ) ::  U( Ulo(1): Uhi(1), Ulo(2): Uhi(2), Ulo(3): Uhi(3),NVAR)
     double precision, intent(out) :: Ut(Utlo(1):Uthi(1),Utlo(2):Uthi(2),Utlo(3):Uthi(3),NVAR)
+    integer, intent(inout) :: st(stlo(1):sthi(1),stlo(2):sthi(2),stlo(3):sthi(3))
 
     integer :: i, j, k, n, g, np, ierr
     double precision :: rho(lo(1):hi(1)), T(lo(1):hi(1))
@@ -480,7 +527,8 @@ contains
              do i=lo(1),hi(1)
                 call get_rhoYT(UG(i,j,k,g,:), rho(i), Y(i,:), T(i), ierr)
                 if (ierr .ne. 0) then
-                   print *, 'dUdt_chem: eos_get_T failed for UG at ', i,j,k,g,UG(i,j,k,g,:)
+                   print *, 'dUdt_chem: eos_get_T failed for UG at ', &
+                        level,i,j,k,g,UG(i,j,k,g,:)
                    call bl_error("dUdt_chem failed at eos_get_T for UG")
                 end if
              end do
@@ -506,11 +554,12 @@ contains
   end subroutine dUdt_chem_gauss
 
 
-  subroutine dUdt_chem_cellcenter(lo, hi, U, Ulo, Uhi, Ut, Utlo, Uthi)
+  subroutine dUdt_chem_cellcenter(lo, hi, U, Ulo, Uhi, Ut, Utlo, Uthi, st, stlo, sthi)
     use convert_module, only : cellavg2cc_3d, cc2cellavg_3d
-    integer, intent(in) :: lo(3), hi(3), Ulo(3), Uhi(3), Utlo(3), Uthi(3)
+    integer, intent(in) :: lo(3), hi(3), Ulo(3), Uhi(3), Utlo(3), Uthi(3), stlo(3), sthi(3)
     double precision, intent(in ) ::  U( Ulo(1): Uhi(1), Ulo(2): Uhi(2), Ulo(3): Uhi(3),NVAR)
     double precision, intent(out) :: Ut(Utlo(1):Uthi(1),Utlo(2):Uthi(2),Utlo(3):Uthi(3),NVAR)
+    integer, intent(inout) :: st(stlo(1):sthi(1),stlo(2):sthi(2),stlo(3):sthi(3))
 
     integer :: i, j, k, n, np, ierr
     double precision :: rho(lo(1)-1:hi(1)+1), Y(lo(1)-1:hi(1)+1,nspec), &
@@ -535,10 +584,22 @@ contains
        do j = lo(2)-1, hi(2)+1
        
           do i = lo(1)-1, hi(1)+1
-             call get_rhoYT(Ucc(i,j,k,:), rho(i), Y(i,:), T(i), ierr)
-             if (ierr .ne. 0) then
-                print *, 'dUdt_chem: eos_get_T failed for Ucc at ', i,j,k,Ucc(i,j,k,:)
-                call bl_error("dUdt_chem failed at eos_get_T for Ucc")
+             if (st(i,j,k) .eq. 0) then
+                call get_rhoYT(Ucc(i,j,k,:), rho(i), Y(i,:), T(i), ierr)
+                if (ierr .ne. 0) then
+                   st(i,j,k) = ierr
+                   ! print *, 'dUdt_chem: eos_get_T failed for Ucc at ', &
+                   !     level,i,j,k,Ucc(i,j,k,:)
+                   ! call bl_error("dUdt_chem failed at eos_get_T for Ucc")
+                end if
+             end if
+             if (st(i,j,k) .ne. 0) then
+                call get_rhoYT(U(i,j,k,:), rho(i), Y(i,:), T(i), ierr)
+                if (ierr .ne. 0) then
+                   print *, 'dUdt_chem_cellcenter: eos_get_T failed for U at ', &
+                        level,i,j,k,Ucc(i,j,k,:)
+                   call bl_error("dUdt_chem_cellcenter failed at eos_get_T for U")
+                end if
              end if
           end do
 

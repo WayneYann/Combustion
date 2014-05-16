@@ -375,11 +375,15 @@ RNS::RNS (Amr&            papa,
     {
 	flux_reg = new FluxRegister(grids,crse_ratio,level,NUM_STATE);
     }
+
+    chemstatus = new iMultiFab(grids,1,1);
+    chemstatus->setVal(0);
 }
 
 RNS::~RNS () 
 {
     delete flux_reg;
+    delete chemstatus;
 }
 
 void

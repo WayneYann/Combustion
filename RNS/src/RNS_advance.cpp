@@ -184,6 +184,8 @@ RNS::dUdt_AD(MultiFab& U, MultiFab& Uprime, Real time, int fill_boundary_type,
 
     const Real *dx = geom.CellSize();
 
+    BL_FORT_PROC_CALL(RNS_PASSINFO_LEVEL,rns_passinfo_level)(level);
+
     for (MFIter mfi(Uprime); mfi.isValid(); ++mfi)
     {
 	int i = mfi.index();
@@ -252,6 +254,8 @@ RNS::dUdt_chemistry(const MultiFab& U, MultiFab& Uprime, bool partialUpdate)
 
     if (partialUpdate && touchFine.empty()) buildTouchFine();
 
+    BL_FORT_PROC_CALL(RNS_PASSINFO_LEVEL,rns_passinfo_level)(level);
+
     for (MFIter mfi(U); mfi.isValid(); ++mfi)
     {
 	const int i = mfi.index();
@@ -263,7 +267,8 @@ RNS::dUdt_chemistry(const MultiFab& U, MultiFab& Uprime, bool partialUpdate)
 	const int* hi = bx.hiVect();
 
 	BL_FORT_PROC_CALL(RNS_DUDT_CHEM, rns_dudt_chem)
-	    (lo, hi, BL_TO_FORTRAN(U[i]), BL_TO_FORTRAN(Uprime[i]));
+	    (lo, hi, BL_TO_FORTRAN(U[i]), BL_TO_FORTRAN(Uprime[i]),
+	     BL_TO_FORTRAN((*chemstatus)[i]));
     }
 }
 
@@ -325,6 +330,8 @@ RNS::advance_chemistry(MultiFab& U, Real dt)
 
     BL_ASSERT( ! ChemDriver::isNull() );
 
+    BL_FORT_PROC_CALL(RNS_PASSINFO_LEVEL,rns_passinfo_level)(level);
+
     for (MFIter mfi(U); mfi.isValid(); ++mfi)
     {
 	const int   i = mfi.index();
@@ -333,7 +340,7 @@ RNS::advance_chemistry(MultiFab& U, Real dt)
 	const int* hi = bx.hiVect();
 
 	BL_FORT_PROC_CALL(RNS_ADVCHEM, rns_advchem)
-	    (lo, hi, BL_TO_FORTRAN(U[i]), dt);
+	    (lo, hi, BL_TO_FORTRAN(U[i]), BL_TO_FORTRAN((*chemstatus)[i]), dt);
     }
 
     post_update(U);
@@ -348,6 +355,8 @@ RNS::advance_chemistry(MultiFab& U, const MultiFab& Uguess, Real dt)
     BL_ASSERT( ! ChemDriver::isNull() );
     BL_ASSERT( Uguess.nGrow() == 0 );
 
+    BL_FORT_PROC_CALL(RNS_PASSINFO_LEVEL,rns_passinfo_level)(level);
+
     for (MFIter mfi(U); mfi.isValid(); ++mfi)
     {
 	const int   i = mfi.index();
@@ -356,7 +365,8 @@ RNS::advance_chemistry(MultiFab& U, const MultiFab& Uguess, Real dt)
 	const int* hi = bx.hiVect();
 
 	BL_FORT_PROC_CALL(RNS_ADVCHEM2, rns_advchem2)
-	    (lo, hi, BL_TO_FORTRAN(U[i]), BL_TO_FORTRAN(Uguess[i]), dt);
+	    (lo, hi, BL_TO_FORTRAN(U[i]), BL_TO_FORTRAN((*chemstatus)[i]),
+	     BL_TO_FORTRAN(Uguess[i]), dt);
     }
 
     post_update(U);

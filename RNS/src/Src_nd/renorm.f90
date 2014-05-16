@@ -4,7 +4,17 @@ module renorm_module
 
 contains
 
-  subroutine renorm(nspec, Y, ierr)
+  subroutine floor_species(nspec, Y)
+    integer, intent(in) :: nspec
+    double precision, intent(inout) :: Y(nspec)
+    integer :: n
+    do n=1,nspec
+       Y(n) = max(Y(n), 0.d0)
+    end do
+    Y = Y / sum(Y)
+  end subroutine floor_species
+
+  subroutine JBBhack(nspec, Y, ierr)
     integer, intent(in) :: nspec
     double precision, intent(inout) :: Y(nspec)
     integer, intent(out), optional :: ierr
@@ -69,6 +79,6 @@ contains
     Y = Y / sum(Y)
     ierr = 0
 
-  end subroutine renorm
+  end subroutine JBBhack
 
 end module renorm_module

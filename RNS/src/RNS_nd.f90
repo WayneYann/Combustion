@@ -172,3 +172,8 @@ subroutine unset_sdc_boundary_flag()
   isFEval = .false.
 end subroutine unset_sdc_boundary_flag
 
+subroutine rns_passinfo_level(lev)
+  use passinfo_module, only : level
+  integer, intent(in) :: lev
+  level = lev
+end subroutine rns_passinfo_level
