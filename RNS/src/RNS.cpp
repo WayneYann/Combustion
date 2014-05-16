@@ -156,7 +156,7 @@ int          RNS::use_vode            = 0;
 int          RNS::new_J_cell          = 1; // new Jacobian for each cell?
 int          RNS::chem_do_weno        = 1;
 #ifdef USE_SDCLIB
-RNS::ChemSolverType RNS::chem_solver  = RNS::BE_BURNING;
+RNS::ChemSolverType RNS::chem_solver  = RNS::BEGP_BURNING;
 #else
 RNS::ChemSolverType RNS::chem_solver  = RNS::GAUSS_BURNING;
 #endif
@@ -345,7 +345,7 @@ RNS::read_params ()
 	    chem_solver = static_cast<ChemSolverType>(chem_solver_i);
 	}
     }
-    if (chem_solver == RNS::BE_BURNING) {
+    if (chem_solver == RNS::BEGP_BURNING) {
 	f2comp_nbdf = 1;
     }
     else {

@@ -28,8 +28,8 @@ contains
           call chemterm_gauss(lo, hi, U, Ulo, Uhi, dt)
        case (split_burning)
           call chemterm_split(lo, hi, U, Ulo, Uhi, dt)
-       case (BE_burning)
-          call chemterm_be(lo, hi, U, Ulo, Uhi, dt, Up)
+       case (BEGp_burning)
+          call chemterm_begp(lo, hi, U, Ulo, Uhi, dt, Up)
        case default
           call bl_error("unknown chem_solver")
        end select
@@ -214,7 +214,7 @@ contains
   end subroutine chemterm_split
 
 
-  subroutine chemterm_be(lo, hi, U, Ulo, Uhi, dt, Up)
+  subroutine chemterm_begp(lo, hi, U, Ulo, Uhi, dt, Up)
     integer, intent(in) :: lo(1), hi(1), Ulo(1), Uhi(1)
     double precision, intent(inout) :: U(Ulo(1):Uhi(1),NVAR)
     double precision, intent(in) :: dt
@@ -296,7 +296,7 @@ contains
 
     deallocate(UG)
 
-  end subroutine chemterm_be
+  end subroutine chemterm_begp
 
 
   subroutine dUdt_chem(lo, hi, U, Ulo, Uhi, Ut, Utlo, Uthi)

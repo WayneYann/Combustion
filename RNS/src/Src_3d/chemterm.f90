@@ -26,8 +26,10 @@ contains
           call chemterm_gauss(lo, hi, U, Ulo, Uhi, dt)
        case (split_burning)
           call chemterm_split(lo, hi, U, Ulo, Uhi, dt)
-       case (BE_burning)
-          call chemterm_be(lo, hi, U, Ulo, Uhi, dt, Up)
+       case (BEcc_burning)
+          call chemterm_becc(lo, hi, U, Ulo, Uhi, dt)
+       case (BEGp_burning)
+          call chemterm_begp(lo, hi, U, Ulo, Uhi, dt, Up)
        case default
           call bl_error("unknown chem_solver")
        end select
@@ -39,7 +41,7 @@ contains
     integer, intent(in) :: lo(3), hi(3), Ulo(3), Uhi(3), Utlo(3), Uthi(3)
     double precision, intent(in ) ::  U( Ulo(1): Uhi(1), Ulo(2): Uhi(2), Ulo(3): Uhi(3),NVAR)
     double precision, intent(out) :: Ut(Utlo(1):Uthi(1),Utlo(2):Uthi(2),Utlo(3):Uthi(3),NVAR)
-    if (chem_solver .eq. cc_burning) then
+    if (chem_solver .eq. cc_burning .or. chem_solver .eq. BEcc_burning) then
        call dUdt_chem_cellcenter(lo, hi, U, Ulo, Uhi, Ut, Utlo, Uthi)
     else
        call dUdt_chem_gauss(lo, hi, U, Ulo, Uhi, Ut, Utlo, Uthi)
@@ -53,15 +55,14 @@ contains
     double precision, intent(inout) :: U(Ulo(1):Uhi(1),Ulo(2):Uhi(2),Ulo(3):Uhi(3),NVAR)
     double precision, intent(in) :: dt
 
-    integer :: i, j, k, n
+    integer :: i, j, k, n, ierr
     logical :: force_new_J
-    double precision :: rhot(1), rhoinv, ei
-    double precision :: Yt(nspec+1)
+    double precision :: rhot(1), Yt(nspec+1)
     double precision, allocatable :: Ucc(:,:,:,:)
 
     allocate(Ucc(lo(1)-1:hi(1)+1,lo(2)-1:hi(2)+1,lo(3)-1:hi(3)+1,NVAR))
 
-    !$omp parallel private(i,j,k,n,rhot,rhoinv,ei,Yt,force_new_J)
+    !$omp parallel private(i,j,k,n,ierr,rhot,Yt,force_new_J)
 
     !$omp do
     do n=1,NVAR
@@ -76,24 +77,19 @@ contains
        do j=lo(2)-1,hi(2)+1
           do i=lo(1)-1,hi(1)+1
 
-             rhot = 0.d0
-             do n=1,NSPEC
-                Yt(n) = Ucc(i,j,k,UFS+n-1)
-                rhot(1) = rhot(1) + Yt(n)
-             end do
-             rhoinv = 1.d0/rhot(1)
+             call get_rhoYT(Ucc(i,j,k,:), rhot(1), YT(1:nspec), YT(nspec+1), ierr)
+             if (ierr .ne. 0) then
+                print *, 'chemterm_cellcenter: eos_get_T failed for Ucc at ', &
+                     i,j,k,Ucc(i,j,k,:)
+                call bl_error("chemterm_cellcenter failed at eos_get_T")
+             end if
 
-             Yt(1:nspec) = Yt(1:nspec) * rhoinv
-             Yt(nspec+1) = Ucc(i,j,k,UTEMP)
-
-             ei = rhoinv*( Ucc(i,j,k,UEDEN) - 0.5d0*rhoinv*(Ucc(i,j,k,UMX)**2 &
-                  + Ucc(i,j,k,UMY)**2 + Ucc(i,j,k,UMZ)**2) )
-
-             call eos_get_T(Yt(nspec+1), ei, Yt(1:nspec))
-
-             call burn(1, rhot, Yt, dt, force_new_J)
-
+             call burn(1, rhot, Yt, dt, force_new_J, ierr)
              force_new_J = new_J_cell
+             if (ierr .ne. 0) then
+                print *, 'chemterm_cellcenter: burn failed at ', i,j,k,Ucc(i,j,k,:)
+                call bl_error("chemterm_cellcenter failed at burn")
+             end if
 
              do n=1,nspec
                 Ucc(i,j,k,UFS+n-1) = rhot(1)*Yt(n)
@@ -267,7 +263,79 @@ contains
   end subroutine chemterm_split
 
 
-  subroutine chemterm_be(lo, hi, U, Ulo, Uhi, dt, Up)
+  subroutine chemterm_becc(lo, hi, U, Ulo, Uhi, dt)
+    use convert_module, only : cellavg2cc_3d, cc2cellavg_3d
+    integer, intent(in) :: lo(3), hi(3), Ulo(3), Uhi(3)
+    double precision, intent(inout) :: U(Ulo(1):Uhi(1),Ulo(2):Uhi(2),Ulo(3):Uhi(3),NVAR)
+    double precision, intent(in) :: dt
+
+    integer :: i, j, k, n, ierr
+    logical :: force_new_J
+    double precision :: rhot(1), Yt0(nspec+1), Ytcc(nspec+1)
+    double precision, allocatable :: Ucc(:,:,:,:)
+
+    allocate(Ucc(lo(1)-1:hi(1)+1,lo(2)-1:hi(2)+1,lo(3)-1:hi(3)+1,NVAR))
+
+    !$omp parallel private(i,j,k,n,ierr,rhot,Yt0,Ytcc,force_new_J)
+
+    !$omp do
+    do n=1,NVAR
+       call cellavg2cc_3d(lo-1,hi+1, U(:,:,:,n), Ulo,Uhi, Ucc(:,:,:,n), lo-1,hi+1)
+    end do
+    !$omp end do
+
+    force_new_J = .true.  ! always recompute Jacobian when a new FAB starts
+
+    !$omp do collapse(2)
+    do k=lo(3)-1,hi(3)+1
+       do j=lo(2)-1,hi(2)+1
+          do i=lo(1)-1,hi(1)+1
+
+             call get_rhoYT(Ucc(i,j,k,:), rhot(1), YTcc(1:nspec), YTcc(nspec+1), ierr)
+             if (ierr .ne. 0) then
+                print *, 'chemterm_becc: eos_get_T failed for Ucc at ', &
+                     i,j,k,Ucc(i,j,k,:)
+                call bl_error("chemterm_becc failed at eos_get_T")
+             end if
+
+             Yt0 = YTcc
+
+             call burn(1, rhot, Yt0, dt, force_new_J, ierr)
+             force_new_J = new_J_cell
+             if (ierr .ne. 0) then
+                print *, 'chemterm_becc: burn failed at ', i,j,k,Ucc(i,j,k,:)
+                call bl_error("chemterm_becc failed at burn")
+             end if
+
+             call beburn(rhot(1), Yt0, rhot(1), YTcc, dt, 1, ierr)
+             if (ierr .ne. 0) then ! beburn failed
+                print *, 'chemterm_becc: beburn failed at ',i,j,k,Ucc(i,j,k,:)
+                call bl_error("chemterm_becc: beburn failed at g")
+             end if
+             
+             do n=1,nspec
+                Ucc(i,j,k,UFS+n-1) = rhot(1)*Ytcc(n)
+             end do
+
+          end do
+       end do
+    end do
+    !$omp end do
+
+    !$omp do
+    do n=UFS,UFS+nspec-1
+       call cc2cellavg_3d(lo,hi, Ucc(:,:,:,n), lo-1,hi+1, U(:,:,:,n), Ulo,Uhi)
+    end do
+    !$omp end do
+
+    !$omp end parallel
+
+    deallocate(Ucc)
+
+  end subroutine chemterm_becc
+
+
+  subroutine chemterm_begp(lo, hi, U, Ulo, Uhi, dt, Up)
     use weno_module, only : cellavg2gausspt_3d
     integer, intent(in) :: lo(3), hi(3), Ulo(3), Uhi(3)
     double precision, intent(inout) :: U(Ulo(1):Uhi(1),Ulo(2):Uhi(2),Ulo(3):Uhi(3),NVAR)
@@ -304,8 +372,8 @@ contains
              do g=1,8
                 call get_rhoYT(UG(i,j,k,g,:), rhot(g), YT(1:nspec,g), YT(nspec+1,g), ierr)
                 if (ierr .ne. 0) then
-                   print *, 'chemterm_be: eos_get_T failed for UG at ', i,j,k,g,UG(i,j,k,g,:)
-                   call bl_error("chemterm_be failed at eos_get_T")
+                   print *, 'chemterm_begp: eos_get_T failed for UG at ', i,j,k,g,UG(i,j,k,g,:)
+                   call bl_error("chemterm_begp failed at eos_get_T")
                 end if
              end do
 
@@ -320,31 +388,31 @@ contains
 
                 call get_rhoYT(U(i,j,k,:), rho0(1), Y0(1:nspec), Y0(nspec+1), ierr)
                 if (ierr .ne. 0) then
-                   print *, 'chemterm_be: eos_get_T failed for U at ', i,j,k,U(i,j,k,:)
-                   call bl_error("chemterm_be failed at eos_get_T for U")
+                   print *, 'chemterm_begp: eos_get_T failed for U at ', i,j,k,U(i,j,k,:)
+                   call bl_error("chemterm_begp failed at eos_get_T for U")
                 end if
                 
                 call burn(1, rho0, Y0, dt, force_new_J, ierr)
                 force_new_J = new_J_cell
                 if (ierr .ne. 0) then
-                   print *, 'chemterm_be: burn failed at ', i,j,k,U(i,j,k,:)
+                   print *, 'chemterm_begp: burn failed at ', i,j,k,U(i,j,k,:)
                    print *, '   rho0, Y0 =', rho0(1), Y0
-                   call bl_error("chemterm_be failed at burn")
+                   call bl_error("chemterm_begp failed at burn")
                 end if
 
              end if
 
              call renorm(nspec, Y0(1:nspec), ierr)
              if (ierr .ne. 0) then
-                call bl_error("chemterm_be failed at renormalizing Y0")
+                call bl_error("chemterm_begp failed at renormalizing Y0")
              end if
 
              rhoY = 0.d0
              do g=1,8
                 call beburn(rho0(1), Y0, rhot(g), Yt(:,g), dt, g, ierr)
                 if (ierr .ne. 0) then ! beburn failed
-                   print *, 'chemterm_be: beburn failed at ',i,j,k,g,UG(i,j,k,g,:)
-                   call bl_error("chemterm_be: beburn failed at g")
+                   print *, 'chemterm_begp: beburn failed at ',i,j,k,g,UG(i,j,k,g,:)
+                   call bl_error("chemterm_begp: beburn failed at g")
                 end if
                 do n=1,nspec
                    rhoY(n) = rhoY(n) + 0.125d0*rhot(g)*Yt(n,g)
@@ -361,7 +429,7 @@ contains
 
     deallocate(UG)
 
-  end subroutine chemterm_be
+  end subroutine chemterm_begp
 
 
   subroutine dUdt_chem_gauss(lo, hi, U, Ulo, Uhi, Ut, Utlo, Uthi)
