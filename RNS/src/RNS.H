@@ -369,6 +369,7 @@ protected:
 
     static int         use_vode;
     static int         new_J_cell;
+    static int         chem_do_weno;
 
     enum ChemSolverType { CC_BURNING = 0, // 0: burn at cell centers
 			  GAUSS_BURNING,  // 1: burn at Gauss points using BDF/VODE 

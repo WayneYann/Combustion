@@ -9,7 +9,7 @@ subroutine rns_dudt_ad (lo, hi, &
        xblksize, yblksize, nthreads
   use hypterm_module, only : hypterm
   use difterm_module, only : difterm
-  use threadbox_module, only : build_threadbox_2d
+  use threadbox_module, only : build_threadbox_2d, get_lo_hi
   implicit none
 
   integer, intent(in) :: lo(2), hi(2)
@@ -24,9 +24,10 @@ subroutine rns_dudt_ad (lo, hi, &
   double precision, intent(in)  :: dx(2)
 
   integer :: Ulo(2), Uhi(2), fxlo(2), fxhi(2), fylo(2), fyhi(2), tlo(2), thi(2)
-  integer :: i, j, n, blocksize(2), ib, jb, nb(2), boxsize(2), nleft(2)
+  integer :: i, j, n, ib, jb, nb(2), boxsize(2)
   double precision :: dxinv(2)
   double precision, allocatable :: bxflx(:,:,:), byflx(:,:,:)
+  integer, allocatable :: bxlo(:), bxhi(:), bylo(:), byhi(:)
 
   integer, parameter :: blocksize_min = 4
 
@@ -45,14 +46,18 @@ subroutine rns_dudt_ad (lo, hi, &
      if (nb(1).eq.0) then
         nb = boxsize/blocksize_min
      end if
-     blocksize = boxsize/nb
   else
-     blocksize(1) = xblksize 
-     blocksize(2) = yblksize
-     nb = boxsize/blocksize
+     nb(1) = max(boxsize(1)/xblksize, 1)
+     nb(2) = max(boxsize(2)/yblksize, 1)
   end if
 
-  nleft = boxsize - blocksize*nb
+  allocate(bxlo(0:nb(1)-1))
+  allocate(bxhi(0:nb(1)-1))
+  allocate(bylo(0:nb(2)-1))
+  allocate(byhi(0:nb(2)-1))
+
+  call get_lo_hi(boxsize(1), nb(1), bxlo, bxhi)
+  call get_lo_hi(boxsize(2), nb(2), bylo, byhi)
 
   !$omp parallel private(fxlo,fxhi,fylo,fyhi,tlo,thi,i,j,n,ib,jb,bxflx,byflx)
   
@@ -60,17 +65,11 @@ subroutine rns_dudt_ad (lo, hi, &
   do jb=0,nb(2)-1
      do ib=0,nb(1)-1
 
-        tlo(1) = lo(1) + ib*blocksize(1) + min(nleft(1),ib)
-        tlo(2) = lo(2) + jb*blocksize(2) + min(nleft(2),jb)
+        tlo(1) = lo(1) + bxlo(ib)
+        thi(1) = lo(1) + bxhi(ib)
 
-        thi(1) = tlo(1)+blocksize(1)-1
-        thi(2) = tlo(2)+blocksize(2)-1
-
-        if (ib < nleft(1)) thi(1) = thi(1) + 1
-        if (jb < nleft(2)) thi(2) = thi(2) + 1
-
-        thi(1) = min(hi(1), thi(1))
-        thi(2) = min(hi(2), thi(2))
+        tlo(2) = lo(2) + bylo(jb)
+        thi(2) = lo(2) + byhi(jb)
 
         fxlo(1) = tlo(1)
         fxlo(2) = tlo(2)
@@ -139,6 +138,8 @@ subroutine rns_dudt_ad (lo, hi, &
   end if
   
   !$omp end parallel
+
+  deallocate(bxlo,bxhi,bylo,byhi)
 
 end subroutine rns_dudt_ad
 
@@ -223,12 +224,15 @@ subroutine rns_compute_temp(lo,hi,U,U_l1,U_l2,U_h1,U_h2)
   integer, intent(in) :: U_l1, U_l2, U_h1, U_h2
   double precision, intent(inout) :: U(U_l1:U_h1,U_l2:U_h2,NVAR)
 
-  integer :: i, j
+  integer :: i, j, pt_index(2), ierr
   double precision :: rhoInv, e, vx, vy, Y(NSPEC)
 
-  !$omp parallel do private(i,j,rhoInv,e,vx,vy,Y)
+  !$omp parallel do private(i,j,rhoInv,e,vx,vy,Y,pt_index,ierr)
   do j=lo(2),hi(2)
   do i=lo(1),hi(1)
+     pt_index(1) = i
+     pt_index(2) = j
+
      rhoInv = 1.0d0/U(i,j,URHO)
 
      vx = U(i,j,UMX)*rhoInv     
@@ -237,7 +241,12 @@ subroutine rns_compute_temp(lo,hi,U,U_l1,U_l2,U_h1,U_h2)
 
      Y = U(i,j,UFS:UFS+NSPEC-1)*rhoInv
 
-     call eos_get_T(U(i,j,UTEMP), e, Y)
+     call eos_get_T(U(i,j,UTEMP), e, Y, pt_index, ierr)
+
+     if (ierr .ne. 0) then
+        print *, 'rns_compute_temp failed at ', i,j,U(i,j,:)
+        call bl_error("rns_compute_temp failed")
+     end if
   end do
   end do
   !$omp end parallel do
@@ -327,13 +336,13 @@ subroutine rns_enforce_consistent_Y(lo,hi,U,U_l1,U_l2,U_h1,U_h2)
               ! Take enough from the dominant species to fill the negative one.
               U(i,j,int_dom_spec) = U(i,j,int_dom_spec) + U(i,j,n)
    
-              ! ! Test that we didn't make the dominant species negative
-              ! if (U(i,j,int_dom_spec) .lt. 0.d0) then 
-              !    print *,' Just made dominant species negative ',int_dom_spec-UFS+1,' at ',i
-              !    print *,'We were fixing species ',n-UFS+1,' which had value ',x
-              !    print *,'Dominant species became ',U(i,j,int_dom_spec) / U(i,j,URHO)
-              !    call bl_error("Error:: CNSReact_2d.f90 :: ca_enforce_nonnegative_species")
-              ! end if
+              ! Test that we didn't make the dominant species negative
+              if (U(i,j,int_dom_spec) .lt. 0.d0) then 
+                 print *,' Just made dominant species negative ',int_dom_spec-UFS+1,' at ',i,j
+                 print *,'We were fixing species ',n-UFS+1,' which had value ',x
+                 print *,'Dominant species became ',U(i,j,int_dom_spec)*rhoinv
+                 call bl_error("rns_enforce_consistent_Y")
+              end if
 
               ! Now set the negative species to zero
               U(i,j,n) = 0.d0

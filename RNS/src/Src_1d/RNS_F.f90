@@ -128,10 +128,12 @@ subroutine rns_compute_temp(lo,hi,U,U_l1,U_h1)
   integer, intent(in) ::  U_l1,  U_h1
   double precision, intent(inout) :: U( U_l1: U_h1,NVAR)
 
-  integer :: i
+  integer :: i, pt_index(1), ierr
   double precision :: rhoInv, e, v, Y(NSPEC)
 
   do i=lo(1),hi(1)
+     pt_index(1) = i
+
      rhoInv = 1.0d0/U(i,URHO)
 
      v  = U(i,UMX)*rhoInv     
@@ -139,7 +141,12 @@ subroutine rns_compute_temp(lo,hi,U,U_l1,U_h1)
 
      Y = U(i,UFS:UFS+NSPEC-1)*rhoInv
 
-     call eos_get_T(U(i,UTEMP), e, Y)
+     call eos_get_T(U(i,UTEMP), e, Y, pt_index, ierr)
+
+     if (ierr .ne. 0) then
+        print *, 'rns_compute_temp failed at ', i,U(i,:)
+        call bl_error("rns_compute_temp failed")
+     end if
   end do
 end subroutine rns_compute_temp
 
@@ -208,18 +215,18 @@ subroutine rns_enforce_consistent_Y(lo,hi,U,U_l1,U_h1)
            
            if (U(i,n) .lt. 0.d0) then
               
-              x = U(i,n)/U(i,URHO)
+              x = U(i,n)*rhoInv
               
-              ! Here we only print the bigger negative values
-              if (x .lt. -1.d-2) then
-                 print *,'Correcting negative species   ',n-UFS+1
-                 print *,'   at cell (i)                ',i
-                 print *,'Negative (rho*Y) is           ',U(i,n)
-                 print *,'Negative      Y  is           ',x
-                 print *,'Filling from dominant species ',int_dom_spec-UFS+1
-                 print *,'  which had Y =               ',&
-                      U(i,int_dom_spec) / U(i,URHO)
-              end if
+              ! ! Here we only print the bigger negative values
+              ! if (x .lt. -1.d-2) then
+              !    print *,'Correcting negative species   ',n-UFS+1
+              !    print *,'   at cell (i)                ',i
+              !    print *,'Negative (rho*Y) is           ',U(i,n)
+              !    print *,'Negative      Y  is           ',x
+              !    print *,'Filling from dominant species ',int_dom_spec-UFS+1
+              !    print *,'  which had Y =               ',&
+              !         U(i,int_dom_spec) / U(i,URHO)
+              ! end if
 
               ! Take enough from the dominant species to fill the negative one.
               U(i,int_dom_spec) = U(i,int_dom_spec) + U(i,n)
@@ -228,7 +235,7 @@ subroutine rns_enforce_consistent_Y(lo,hi,U,U_l1,U_h1)
               if (U(i,int_dom_spec) .lt. 0.d0) then 
                  print *,' Just made dominant species negative ',int_dom_spec+UFS-1,' at ',i
                  print *,'We were fixing species ',n-UFS+1,' which had value ',x
-                 print *,'Dominant species became ',U(i,int_dom_spec) / U(i,URHO)
+                 print *,'Dominant species became ',U(i,int_dom_spec)*rhoInv
                  call bl_error("Error:: CNSReact_2d.f90 :: ca_enforce_nonnegative_species")
               end if
 

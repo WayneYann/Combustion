@@ -9,7 +9,7 @@ module reconstruct_module
 
   private
 
-  public :: reconstruct
+  public :: reconstruct, reconstruct_comp
 
 contains
 

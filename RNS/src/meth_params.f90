@@ -45,5 +45,6 @@ module meth_params_module
   integer, parameter :: split_burning = 2
   integer, parameter :: BE_burning = 3
   integer, parameter :: nchemsolver = 4
+  logical, save :: chem_do_weno
 
 end module meth_params_module

@@ -5,6 +5,7 @@ module chemterm_module
   use eos_module, only : eos_get_T
   use weno_module, only : cellavg2gausspt_1d
   use convert_module, only : cellavg2cc_1d, cc2cellavg_1d
+  use renorm_module, only : renorm
 
   implicit none
 
@@ -219,66 +220,78 @@ contains
     double precision, intent(in) :: dt
     double precision, intent(in), optional :: Up(lo(1):hi(1),NVAR)
 
-    integer :: i, n, g
+    integer :: i, n, g, ierr
     logical :: force_new_J
-    double precision :: rhot(2), rhoinv, ei, rho0(1)
-    double precision :: Yt(nspec+1,2), Y0(nspec+1)
+    double precision :: rhot(2), rhoinv, rho0(1)
+    double precision :: Yt(nspec+1,2), Y0(nspec+1), rhoY(nspec)
     double precision, allocatable :: UG(:,:,:)
 
     allocate(UG(lo(1):hi(1),NVAR,2))
 
-    do n=1,NVAR
-       call cellavg2gausspt_1d(lo(1),hi(1), U(:,n), Ulo(1),Uhi(1), UG(:,n,1), UG(:,n,2), lo(1),hi(1))
-    end do
+    if (chem_do_weno) then
+       call chem_weno(lo(1), hi(1), U, Ulo(1), Uhi(1), UG)
+    else
+       do n=1,NVAR
+          call cellavg2gausspt_1d(lo(1),hi(1), U(:,n), Ulo(1),Uhi(1), UG(:,n,1), UG(:,n,2), lo(1),hi(1))
+       end do
+    end if
 
     force_new_J = .true.  ! always recompute Jacobina when a new FAB starts
 
     do i=lo(1),hi(1)
        
-       Y0 = 0.d0
-       rho0(1) = 0.d0
-       
        do g=1,2
-          
-          rhot(g) = 0.d0
-          do n=1,NSPEC
-             Yt(n,g) = UG(i,UFS+n-1,g)
-             rhot(g) = rhot(g) + Yt(n,g)
-          end do
-          rhoinv = 1.d0/rhot(g)
-
-          Yt(1:nspec,g) = Yt(1:nspec,g) * rhoinv
-          Yt(nspec+1,g) = UG(i,UTEMP,g)
-
-          ei = rhoinv*( UG(i,UEDEN,g) - 0.5d0*rhoinv*UG(i,UMX,g)**2 )
-          
-          call eos_get_T(Yt(nspec+1,g), ei, Yt(1:nspec,g))
-          
-          Y0 = Y0 + 0.5d0*Yt(:,g)
-          rho0(1) = rho0(1) + 0.5d0*rhot(g)
-          
+          call get_rhoYT(UG(i,:,g), rhot(g), YT(1:nspec,g), YT(nspec+1,g), ierr)
+          if (ierr .ne. 0) then
+             print *, 'chemterm_be: eos_get_T failed for UG at ', i,g,UG(i,:,g)
+             call bl_error("chemterm_be failed at eos_get_T")
+          end if          
        end do
        
        if (present(Up)) then
+
           rho0(1) = Up(i,URHO)
           rhoinv = 1.d0/rho0(1)
           Y0(1:nspec) = Up(i,UFS:UFS+nspec-1)*rhoinv
           Y0(nspec+1) = Up(i,UTEMP)
+
        else
-          call burn(1, rho0(1), Y0, dt, force_new_J)
+
+          call get_rhoYT(U(i,:), rho0(1), Y0(1:nspec), Y0(nspec+1), ierr)
+          if (ierr .ne. 0) then
+             print *, 'chemterm_be: eos_get_T failed for U at ', i,U(i,:)
+             call bl_error("chemterm_be failed at eos_get_T for U")
+          end if
+
+          call burn(1, rho0(1), Y0, dt, force_new_J, ierr)
           force_new_J = new_J_cell
+          if (ierr .ne. 0) then
+             print *, 'chemterm_be: burn failed at ', i,U(i,:)
+             print *, '   rho0, Y0 =', rho0(1), Y0
+             call bl_error("chemterm_be failed at burn")
+          end if
+
        end if
 
-       U(i,UFS:UFS+n-1) = 0.d0
+       call renorm(nspec, Y0(1:nspec), ierr)
+       if (ierr .ne. 0) then
+          call bl_error("chemterm_be failed at renormalizing Y0")
+       end if
+       
+       rhoY = 0.d0
        do g=1,2
-          call beburn(rho0(1), Y0, rhot(g), Yt(:,g), dt, g)
-          rho0(1) = rhot(g)
-          Y0 = Yt(:,g)
+          call beburn(rho0(1), Y0, rhot(g), Yt(:,g), dt, g, ierr)
+          if (ierr .ne. 0) then ! beburn failed
+             print *, 'chemterm_be: beburn failed at ',i,g,UG(i,:,g)
+             call bl_error("chemterm_be: beburn failed at g")
+          end if
           do n=1,nspec
-             U(i,UFS+n-1) = U(i,UFS+n-1) + 0.5d0*rhot(g)*Yt(n,g)
+             rhoY(n) = rhoY(n) + 0.5d0*rhot(g)*Yt(n,g)
           end do
        end do
        
+       U(i,UFS:UFS+nspec-1) = rhoY
+
     end do
 
     deallocate(UG)
@@ -291,10 +304,8 @@ contains
     double precision, intent(in ) ::  U( Ulo(1): Uhi(1),NVAR)
     double precision, intent(out) :: Ut(Utlo(1):Uthi(1),NVAR)
 
-    integer :: i, n, g, np
-    double precision :: rhoinv, ei
+    integer :: i, n, g, np, ierr
     double precision :: rho(lo(1):hi(1)), T(lo(1):hi(1))
-    double precision :: Ytmp(nspec)
     double precision :: Y(lo(1):hi(1),nspec), rdYdt(lo(1):hi(1),nspec)
     double precision, allocatable :: UG(:,:,:)
 
@@ -302,35 +313,28 @@ contains
 
     allocate(UG(lo(1):hi(1),NVAR,2))
 
+    if (chem_do_weno) then
+       call chem_weno(lo(1), hi(1), U, Ulo(1), Uhi(1), UG)
+    else
+       do n=1,NVAR
+          call cellavg2gausspt_1d(lo(1),hi(1), U(:,n), Ulo(1),Uhi(1), UG(:,n,1), UG(:,n,2), lo(1),hi(1))
+       end do
+    end if
+
     do n=1,NVAR
        do i=lo(1),hi(1)
           Ut(i,n) = 0.d0
        end do
     end do
 
-    do n=1,NVAR
-       call cellavg2gausspt_1d(lo(1),hi(1), U(:,n), Ulo(1),Uhi(1), UG(:,n,1), UG(:,n,2), lo(1),hi(1))
-    end do
-
     do g=1,2
 
        do i=lo(1),hi(1)
-          rho(i) = 0.d0
-          do n=1,nspec
-             Y(i,n) = UG(i,UFS+n-1,g)
-             rho(i) = rho(i) + Y(i,n)
-          end do
-          rhoinv = 1.d0/rho(i)
-
-          do n=1,nspec
-             Y(i,n) = Y(i,n) * rhoinv
-             Ytmp(n) = Y(i,n)
-          end do
-
-          ei = rhoinv*( UG(i,UEDEN,g) - 0.5d0*rhoinv*UG(i,UMX,g)**2 )
-
-          T(i) = UG(i,UTEMP,g)
-          call eos_get_T(T(i), ei, Ytmp)
+          call get_rhoYT(UG(i,:,g), rho(i), Y(i,:), T(i), ierr)
+          if (ierr .ne. 0) then
+             print *, 'dUdt_chem: eos_get_T failed for UG at ', i,g,UG(i,:,g)
+             call bl_error("dUdt_chem failed at eos_get_T for UG")
+          end if
        end do
 
        call compute_rhodYdt(np, rho,T,Y,rdYdt)
@@ -346,5 +350,43 @@ contains
     deallocate(UG)
 
   end subroutine dUdt_chem
+
+
+  subroutine get_rhoYT(U, rho, Y, T, ierr)
+    double precision, intent(in) :: U(NVAR)
+    double precision, intent(out) :: rho, Y(nspec), T
+    integer, intent(out) :: ierr
+
+    integer :: n
+    double precision :: rhoinv, ei
+    
+    rho = 0.d0
+    do n=1,NSPEC
+       Y(n) = U(UFS+n-1)
+       rho = rho + Y(n)
+    end do
+    rhoinv = 1.d0/rho
+    
+    Y = Y * rhoinv
+    T = U(UTEMP)
+    
+    ei = rhoinv*( U(UEDEN) - 0.5d0*rhoinv*U(UMX)**2 )
+    
+    call eos_get_T(T, ei, Y, ierr=ierr)
+  end subroutine get_rhoYT
+
+
+  subroutine chem_weno(lo, hi, U, Ulo, Uhi, UG)
+    use reconstruct_module, only : reconstruct_comp
+    integer, intent(in) :: lo, hi, Ulo, Uhi
+    double precision, intent(in) :: U(Ulo:Uhi,NVAR)
+    double precision, intent(out):: UG(lo:hi,NVAR,2)
+    call reconstruct_comp(lo,hi, &
+         Ulo,Uhi,           &  ! for U
+         0, 0,              &  ! for UL & UR, not present
+         lo,hi,             &  ! for UG1 & UG2
+         U,     &
+         UG1=UG(:,:,1), UG2=UG(:,:,2) )
+  end subroutine chem_weno
 
 end module chemterm_module

@@ -10,7 +10,7 @@ subroutine rns_dudt_ad (lo, hi, &
        xblksize, yblksize, zblksize, nthreads
   use hypterm_module, only : hypterm
   use difterm_module, only : difterm
-  use threadbox_module, only : build_threadbox_3d
+  use threadbox_module, only : build_threadbox_3d, get_lo_hi
   implicit none
 
   integer, intent(in) :: lo(3), hi(3)
@@ -27,8 +27,9 @@ subroutine rns_dudt_ad (lo, hi, &
   double precision,intent(in) :: dx(3)
 
   integer :: Ulo(3),Uhi(3),fxlo(3),fxhi(3),fylo(3),fyhi(3),fzlo(3),fzhi(3),tlo(3),thi(3)
-  integer :: i, j, k, n, blocksize(3), ib, jb, kb, nb(3), boxsize(3), nleft(3)
+  integer :: i, j, k, n, ib, jb, kb, nb(3), boxsize(3)
   double precision :: dxinv(3)
+  integer, allocatable :: bxlo(:), bxhi(:), bylo(:), byhi(:), bzlo(:), bzhi(:)
   double precision, allocatable :: bxflx(:,:,:,:), byflx(:,:,:,:), bzflx(:,:,:,:)
 
   integer, parameter :: blocksize_min = 4
@@ -49,15 +50,22 @@ subroutine rns_dudt_ad (lo, hi, &
      if (nb(1).eq.0) then
         nb = boxsize/blocksize_min
      end if
-     blocksize = boxsize/nb
   else
-     blocksize(1) = xblksize 
-     blocksize(2) = yblksize
-     blocksize(3) = zblksize
-     nb = boxsize/blocksize
+     nb(1) = max(boxsize(1)/xblksize, 1)
+     nb(2) = max(boxsize(2)/yblksize, 1)
+     nb(3) = max(boxsize(3)/zblksize, 1)
   end if
 
-  nleft = boxsize - blocksize*nb
+  allocate(bxlo(0:nb(1)-1))
+  allocate(bxhi(0:nb(1)-1))
+  allocate(bylo(0:nb(2)-1))
+  allocate(byhi(0:nb(2)-1))
+  allocate(bzlo(0:nb(3)-1))
+  allocate(bzhi(0:nb(3)-1))
+
+  call get_lo_hi(boxsize(1), nb(1), bxlo, bxhi)
+  call get_lo_hi(boxsize(2), nb(2), bylo, byhi)
+  call get_lo_hi(boxsize(3), nb(3), bzlo, bzhi)
 
   !$omp parallel private(fxlo,fxhi,fylo,fyhi,fzlo,fzhi,tlo,thi) &
   !$omp private(i,j,k,n,ib,jb,kb,bxflx,byflx,bzflx)
@@ -67,21 +75,14 @@ subroutine rns_dudt_ad (lo, hi, &
      do jb=0,nb(2)-1
      do ib=0,nb(1)-1
 
-        tlo(1) = lo(1) + ib*blocksize(1) + min(nleft(1),ib)
-        tlo(2) = lo(2) + jb*blocksize(2) + min(nleft(2),jb)
-        tlo(3) = lo(3) + kb*blocksize(3) + min(nleft(3),kb)
-
-        thi(1) = tlo(1)+blocksize(1)-1
-        thi(2) = tlo(2)+blocksize(2)-1
-        thi(3) = tlo(3)+blocksize(3)-1
-
-        if (ib < nleft(1)) thi(1) = thi(1) + 1
-        if (jb < nleft(2)) thi(2) = thi(2) + 1
-        if (kb < nleft(3)) thi(3) = thi(3) + 1
-
-        thi(1) = min(hi(1), thi(1))
-        thi(2) = min(hi(2), thi(2))
-        thi(3) = min(hi(3), thi(3))
+        tlo(1) = lo(1) + bxlo(ib)
+        thi(1) = lo(1) + bxhi(ib)
+        
+        tlo(2) = lo(2) + bylo(jb)
+        thi(2) = lo(2) + byhi(jb)
+        
+        tlo(3) = lo(3) + bzlo(kb)
+        thi(3) = lo(3) + bzhi(kb)
 
         fxlo = tlo
         fxhi(1) = thi(1)+1
@@ -297,7 +298,6 @@ subroutine rns_compute_temp(lo,hi,U,U_l1,U_l2,U_l3,U_h1,U_h2,U_h3)
 
      if (ierr .ne. 0) then
         print *, 'rns_compute_temp failed at ', i,j,k,U(i,j,k,:)
-        call flush(6)
         call bl_error("rns_compute_temp failed")
      end if
   end do
