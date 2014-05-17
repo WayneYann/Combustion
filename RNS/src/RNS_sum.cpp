@@ -80,7 +80,18 @@ RNS::sum_chemstatus()
 {
     int finest_level = parent->finestLevel();
 
+    Array<int> n1(finest_level+1);
     for (int lev=0; lev<=finest_level; lev++) {
-	
+	const MultiFab& U = getLevel(lev).get_new_data(State_Type);
+	n1[lev] = int(U.norm1());
+    }
+    if (ParallelDescriptor::IOProcessor()) 
+    {
+	for (int lev=0; lev<=finest_level; lev++) {
+	    if (n1[lev] != 0) {
+		std::cout << "*** WARNING: " << n1[lev] << " cells on level " 
+			  << lev << " failed at 4th-order-in-space chemistry" << std::endl;
+	    }
+	}			
     }
 }
