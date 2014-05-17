@@ -376,8 +376,11 @@ RNS::RNS (Amr&            papa,
 	flux_reg = new FluxRegister(grids,crse_ratio,level,NUM_STATE);
     }
 
-    chemstatus = new iMultiFab(grids,1,1);
-    chemstatus->setVal(0);
+    chemstatus = 0;
+    if (! ChemDriver::isNull()) {
+	chemstatus = new MultiFab(grids,1,1);
+	chemstatus->setVal(0.0);
+    }
 }
 
 RNS::~RNS () 
@@ -741,11 +744,13 @@ RNS::post_restart ()
 void
 RNS::postCoarseTimeStep (Real cumtime)
 {
-    if (sum_int <= 0) return;
+    if (! ChemDriver::isNull()) sum_chemstatus();
 
-    int nstep = parent->levelSteps(0);
-    if (nstep % sum_int == 0) {
-	sum_conserved_variables();
+    if (sum_int > 0) {
+	int nstep = parent->levelSteps(0);
+	if (nstep % sum_int == 0) {
+	    sum_conserved_variables();
+	}
     }
 }
 

@@ -6,7 +6,6 @@
 
 #include <BC_TYPES.H>
 #include <AmrLevel.H>
-#include <iMultiFab.H>
 #include <ErrorList.H>
 #include <FluxRegister.H>
 #include <ChemDriver.H>
@@ -276,7 +275,7 @@ public:
     void buildTouchFine();
     void clearTouchFine() { touchFine.clear(); }
 
-    iMultiFab* chemstatus;
+    MultiFab* chemstatus;
 
 protected:
 
@@ -294,6 +293,8 @@ protected:
 
     void sum_conserved_variables ();
     void volWgtSumCons(Array<Real>& s);
+    
+    void sum_chemstatus();
 
     //
     // The data.

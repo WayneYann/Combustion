@@ -73,3 +73,14 @@ RNS::volWgtSumCons(Array<Real>& s)
 	     &s[0]);
     }
 }
+
+
+void 
+RNS::sum_chemstatus()
+{
+    int finest_level = parent->finestLevel();
+
+    for (int lev=0; lev<=finest_level; lev++) {
+	
+    }
+}

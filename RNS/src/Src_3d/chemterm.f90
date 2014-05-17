@@ -17,7 +17,7 @@ contains
   subroutine chemterm(lo, hi, U, Ulo, Uhi, st, stlo, sthi, dt, Up)
     integer, intent(in) :: lo(3), hi(3), Ulo(3), Uhi(3), stlo(3), sthi(3)
     double precision, intent(inout) :: U(Ulo(1):Uhi(1),Ulo(2):Uhi(2),Ulo(3):Uhi(3),NVAR)
-    integer, intent(inout) :: st(stlo(1):sthi(1),stlo(2):sthi(2),stlo(3):sthi(3))
+    double precision, intent(inout) :: st(stlo(1):sthi(1),stlo(2):sthi(2),stlo(3):sthi(3))
     double precision, intent(in) :: dt
     double precision, intent(in), optional :: Up(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),NVAR)
 
@@ -43,7 +43,7 @@ contains
     integer, intent(in) :: lo(3), hi(3), Ulo(3), Uhi(3), Utlo(3), Uthi(3), stlo(3), sthi(3)
     double precision, intent(in ) ::  U( Ulo(1): Uhi(1), Ulo(2): Uhi(2), Ulo(3): Uhi(3),NVAR)
     double precision, intent(out) :: Ut(Utlo(1):Uthi(1),Utlo(2):Uthi(2),Utlo(3):Uthi(3),NVAR)
-    integer, intent(inout) :: st(stlo(1):sthi(1),stlo(2):sthi(2),stlo(3):sthi(3))
+    double precision, intent(inout) :: st(stlo(1):sthi(1),stlo(2):sthi(2),stlo(3):sthi(3))
     if (chem_solver .eq. cc_burning .or. chem_solver .eq. BEcc_burning) then
        call dUdt_chem_cellcenter(lo, hi, U, Ulo, Uhi, Ut, Utlo, Uthi, st, stlo, sthi)
     else
@@ -56,7 +56,7 @@ contains
     use convert_module, only : cellavg2cc_3d, cc2cellavg_3d
     integer, intent(in) :: lo(3), hi(3), Ulo(3), Uhi(3), stlo(3), sthi(3)
     double precision, intent(inout) :: U(Ulo(1):Uhi(1),Ulo(2):Uhi(2),Ulo(3):Uhi(3),NVAR)
-    integer, intent(inout) :: st(stlo(1):sthi(1),stlo(2):sthi(2),stlo(3):sthi(3))
+    double precision, intent(inout) :: st(stlo(1):sthi(1),stlo(2):sthi(2),stlo(3):sthi(3))
     double precision, intent(in) :: dt
 
     integer :: i, j, k, n, ierr
@@ -81,12 +81,12 @@ contains
        do j=lo(2)-1,hi(2)+1
           do i=lo(1)-1,hi(1)+1
 
-             if (st(i,j,k) .eq. 0) then
+             if (st(i,j,k) .eq. 0.d0) then
 
                 call get_rhoYT(Ucc(i,j,k,:), rhot(1), YT(1:nspec), YT(nspec+1), ierr)
 
                 if (ierr .ne. 0) then
-                   st(i,j,k) = ierr
+                   st(i,j,k) = -1.d0
                 !    print *, 'chemterm_cellcenter: eos_get_T failed for Ucc at ', &
                 !         level,i,j,k,Ucc(i,j,k,:)
                 !    call bl_error("chemterm_cellcenter failed at eos_get_T")
@@ -98,7 +98,7 @@ contains
                    call burn(1, rhot, Yt, dt, force_new_J, ierr)
                    force_new_J = new_J_cell
                    if (ierr .ne. 0) then
-                      st(i,j,k) = ierr
+                      st(i,j,k) = -1.d0
                       ! print *, 'chemterm_cellcenter: burn failed at ', &
                       !      level,i,j,k,Ucc(i,j,k,:)
                       ! call bl_error("chemterm_cellcenter failed at burn")
@@ -108,7 +108,7 @@ contains
 
              end if
 
-             if (st(i,j,k) .ne. 0) then
+             if (st(i,j,k) .ne. 0.d0) then
 
                 call get_rhoYT(U(i,j,k,:), rhot(1), YT(1:nspec), YT(nspec+1), ierr)
                 if (ierr .ne. 0) then
@@ -483,7 +483,7 @@ contains
     integer, intent(in) :: lo(3), hi(3), Ulo(3), Uhi(3), Utlo(3), Uthi(3), stlo(3), sthi(3)
     double precision, intent(in ) ::  U( Ulo(1): Uhi(1), Ulo(2): Uhi(2), Ulo(3): Uhi(3),NVAR)
     double precision, intent(out) :: Ut(Utlo(1):Uthi(1),Utlo(2):Uthi(2),Utlo(3):Uthi(3),NVAR)
-    integer, intent(inout) :: st(stlo(1):sthi(1),stlo(2):sthi(2),stlo(3):sthi(3))
+    double precision, intent(inout) :: st(stlo(1):sthi(1),stlo(2):sthi(2),stlo(3):sthi(3))
 
     integer :: i, j, k, n, g, np, ierr
     double precision :: rho(lo(1):hi(1)), T(lo(1):hi(1))
@@ -559,7 +559,7 @@ contains
     integer, intent(in) :: lo(3), hi(3), Ulo(3), Uhi(3), Utlo(3), Uthi(3), stlo(3), sthi(3)
     double precision, intent(in ) ::  U( Ulo(1): Uhi(1), Ulo(2): Uhi(2), Ulo(3): Uhi(3),NVAR)
     double precision, intent(out) :: Ut(Utlo(1):Uthi(1),Utlo(2):Uthi(2),Utlo(3):Uthi(3),NVAR)
-    integer, intent(inout) :: st(stlo(1):sthi(1),stlo(2):sthi(2),stlo(3):sthi(3))
+    double precision, intent(inout) :: st(stlo(1):sthi(1),stlo(2):sthi(2),stlo(3):sthi(3))
 
     integer :: i, j, k, n, np, ierr
     double precision :: rho(lo(1)-1:hi(1)+1), Y(lo(1)-1:hi(1)+1,nspec), &
@@ -584,16 +584,16 @@ contains
        do j = lo(2)-1, hi(2)+1
        
           do i = lo(1)-1, hi(1)+1
-             if (st(i,j,k) .eq. 0) then
+             if (st(i,j,k) .eq. 0.d0) then
                 call get_rhoYT(Ucc(i,j,k,:), rho(i), Y(i,:), T(i), ierr)
                 if (ierr .ne. 0) then
-                   st(i,j,k) = ierr
+                   st(i,j,k) = -1.d0
                    ! print *, 'dUdt_chem: eos_get_T failed for Ucc at ', &
                    !     level,i,j,k,Ucc(i,j,k,:)
                    ! call bl_error("dUdt_chem failed at eos_get_T for Ucc")
                 end if
              end if
-             if (st(i,j,k) .ne. 0) then
+             if (st(i,j,k) .ne. 0.d0) then
                 call get_rhoYT(U(i,j,k,:), rho(i), Y(i,:), T(i), ierr)
                 if (ierr .ne. 0) then
                    print *, 'dUdt_chem_cellcenter: eos_get_T failed for U at ', &

@@ -337,7 +337,7 @@ void SDCAmr::timeStep(int level, Real time,
     RNS& rns  = *dynamic_cast<RNS*>(&getLevel(lev));
     rns.clearTouchFine();
     rns.reset_f2comp_timer(mg.sweepers[lev]->nset->nnodes);
-    rns.chemstatus->setVal(0);
+    rns.chemstatus->setVal(0.0);
   }
 
   // set intial conditions
