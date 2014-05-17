@@ -276,6 +276,7 @@ public:
     void clearTouchFine() { touchFine.clear(); }
 
     MultiFab* chemstatus;
+    void zeroChemStatus();
 
 protected:
 

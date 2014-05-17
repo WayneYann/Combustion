@@ -358,6 +358,7 @@ RNS::read_params ()
 RNS::RNS ()
 {
     flux_reg = 0;
+    chemstatus = 0;
 }
 
 RNS::RNS (Amr&            papa,
@@ -376,11 +377,10 @@ RNS::RNS (Amr&            papa,
 	flux_reg = new FluxRegister(grids,crse_ratio,level,NUM_STATE);
     }
 
-    chemstatus = 0;
-    if (! ChemDriver::isNull()) {
-	chemstatus = new MultiFab(grids,1,1);
-	chemstatus->setVal(0.0);
-    }
+    std::cout << " lev = " << lev << " xxxxx new chemstatus " << std::endl;
+
+    chemstatus = new MultiFab(grids,1,1);
+    chemstatus->setVal(0.0);
 }
 
 RNS::~RNS () 
@@ -983,4 +983,13 @@ RNS::buildTouchFine ()
 	    touchFine[i] = 0;
 	}
     }
+}
+
+void
+RNS::zeroChemStatus()
+{
+    if (chemstatus == 0) {
+	chemstatus = new MultiFab(grids,1,1);
+    }
+    chemstatus->setVal(0.0);
 }

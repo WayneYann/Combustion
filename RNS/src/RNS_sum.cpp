@@ -82,8 +82,9 @@ RNS::sum_chemstatus()
 
     Array<int> n1(finest_level+1);
     for (int lev=0; lev<=finest_level; lev++) {
-	const MultiFab& U = getLevel(lev).get_new_data(State_Type);
-	n1[lev] = int(U.norm1());
+	RNS& rns = getLevel(lev);
+	const MultiFab& cst = *(rns.chemstatus);
+	n1[lev] = int(cst.norm1());
     }
     if (ParallelDescriptor::IOProcessor()) 
     {
