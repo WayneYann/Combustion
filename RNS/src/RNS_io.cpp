@@ -43,7 +43,7 @@ RNS::restart (Amr&     papa,
     BL_ASSERT(chemstatus == 0);
     if (! ChemDriver::isNull()) {
       chemstatus = new MultiFab(grids,1,1);
-      chemstatus->setVal(0.0);
+      chemstatus->setVal(0.0,1);
     }
 
     // get the elapsed CPU time to now;

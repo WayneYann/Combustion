@@ -205,6 +205,12 @@ subroutine rns_advchem(lo,hi,U,U_l1,U_l2,U_l3,U_h1,U_h2,U_h3,  &
   Uhi(1) = U_h1
   Uhi(2) = U_h2
   Uhi(3) = U_h3
+  stlo(1) = st_l1
+  stlo(2) = st_l2
+  stlo(3) = st_l3
+  sthi(1) = st_h1
+  sthi(2) = st_h2
+  sthi(3) = st_h3
   call chemterm(lo, hi, U, Ulo, Uhi, st, stlo, sthi, dt)
 end subroutine rns_advchem
 
@@ -231,6 +237,12 @@ subroutine rns_advchem2(lo,hi,U,U_l1,U_l2,U_l3,U_h1,U_h2,U_h3, &
   Uhi(1) = U_h1
   Uhi(2) = U_h2
   Uhi(3) = U_h3
+  stlo(1) = st_l1
+  stlo(2) = st_l2
+  stlo(3) = st_l3
+  sthi(1) = st_h1
+  sthi(2) = st_h2
+  sthi(3) = st_h3
   call chemterm(lo, hi, U, Ulo, Uhi, st, stlo, sthi, dt, Up)
 end subroutine rns_advchem2
 
@@ -266,6 +278,12 @@ subroutine rns_dUdt_chem(lo,hi, &
   Uthi(1) = Ut_h1
   Uthi(2) = Ut_h2
   Uthi(3) = Ut_h3
+  stlo(1) = st_l1
+  stlo(2) = st_l2
+  stlo(3) = st_l3
+  sthi(1) = st_h1
+  sthi(2) = st_h2
+  sthi(3) = st_h3
   call dUdt_chem(lo, hi, U, Ulo, Uhi, Ut, Utlo, Uthi, st, stlo, sthi)
 end subroutine rns_dUdt_chem
 

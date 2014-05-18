@@ -380,7 +380,7 @@ RNS::RNS (Amr&            papa,
     chemstatus = 0;
     if (! ChemDriver::isNull()) {
       chemstatus = new MultiFab(grids,1,1);
-      chemstatus->setVal(0.0);
+      chemstatus->setVal(0.0,1);
     }
 }
 
@@ -989,5 +989,5 @@ RNS::buildTouchFine ()
 void
 RNS::zeroChemStatus()
 {
-  chemstatus->setVal(0.0);
+    chemstatus->setVal(0.0,1);
 }
