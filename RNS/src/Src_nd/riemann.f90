@@ -2,6 +2,7 @@ module riemann_module
 
   use meth_params_module, only : ndim, NVAR, URHO, UMX, UMY, UMZ, UEDEN, UTEMP, UFS, NSPEC, &
        riemann_solver, HLL_solver, JBB_solver, HLLC_solver
+  use renorm_module, only : floor_species
 
   implicit none
 
@@ -124,6 +125,8 @@ contains
        e  = rhoE*rhoInv - ek
 
        Y = U(i,UFS:UFS+NSPEC-1)*rhoInv
+
+       call floor_species(nspec, Y)
 
        call eos_given_ReY(p,c,gamc,T,dpdr,dpde,rho,e,Y)
 
