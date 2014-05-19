@@ -29,7 +29,7 @@ contains
        case (split_burning)
           call chemterm_split(lo, hi, U, Ulo, Uhi, dt)
        case (BEcc_burning)
-          call chemterm_becc(lo, hi, U, Ulo, Uhi, dt)
+          call chemterm_becc(lo, hi, U, Ulo, Uhi, st, stlo, sthi, dt, Up)
        case (BEGp_burning)
           call chemterm_begp(lo, hi, U, Ulo, Uhi, dt, Up)
        case default
@@ -87,21 +87,15 @@ contains
 
                 if (ierr .ne. 0) then
                    st(i,j,k) = -1.d0
-                !    print *, 'chemterm_cellcenter: eos_get_T failed for Ucc at ', &
-                !         level,i,j,k,Ucc(i,j,k,:)
-                !    call bl_error("chemterm_cellcenter failed at eos_get_T")
-                !    end if
                 else
 
-                   call floor_species(nspec, Yt(1:nspec))
-                
                    call burn(1, rhot, Yt, dt, force_new_J, ierr)
                    force_new_J = new_J_cell
                    if (ierr .ne. 0) then
                       st(i,j,k) = -1.d0
-                      ! print *, 'chemterm_cellcenter: burn failed at ', &
+                      ! print *, 'chemterm_cellcenter: bdf burn failed at ', &
                       !      level,i,j,k,Ucc(i,j,k,:)
-                      ! call bl_error("chemterm_cellcenter failed at burn")
+                      ! call bl_error("chemterm_cellcenter failed at bdf burn")
                    end if
 
                 end if
@@ -117,14 +111,12 @@ contains
                    call bl_error("chemterm_cellcenter failed at eos_get_T")
                 end if
 
-                call floor_species(nspec, Yt(1:nspec))
-                
                 call burn(1, rhot, Yt, dt, force_new_J, ierr)
                 force_new_J = new_J_cell
                 if (ierr .ne. 0) then
-                   print *, 'chemterm_cellcenter: burn failed for U at ', &
+                   print *, 'chemterm_cellcenter: bdf burn failed for U at ', &
                         level,i,j,k,U(i,j,k,:)
-                   call bl_error("chemterm_cellcenter failed at burn for U")
+                   call bl_error("chemterm_cellcenter failed at bdf burn for U")
                 end if
                 
              end if
@@ -301,20 +293,22 @@ contains
   end subroutine chemterm_split
 
 
-  subroutine chemterm_becc(lo, hi, U, Ulo, Uhi, dt)
+  subroutine chemterm_becc(lo, hi, U, Ulo, Uhi, st, stlo, sthi, dt, Up)
     use convert_module, only : cellavg2cc_3d, cc2cellavg_3d
-    integer, intent(in) :: lo(3), hi(3), Ulo(3), Uhi(3)
+    integer, intent(in) :: lo(3), hi(3), Ulo(3), Uhi(3), stlo(3), sthi(3)
     double precision, intent(inout) :: U(Ulo(1):Uhi(1),Ulo(2):Uhi(2),Ulo(3):Uhi(3),NVAR)
+    double precision, intent(inout) :: st(stlo(1):sthi(1),stlo(2):sthi(2),stlo(3):sthi(3))
     double precision, intent(in) :: dt
+    double precision, intent(in), optional :: Up(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),NVAR)
 
     integer :: i, j, k, n, ierr
     logical :: force_new_J
-    double precision :: rhot(1), Yt0(nspec+1), Ytcc(nspec+1)
+    double precision :: rho0(1), rhot(1), YT0(nspec+1), YT(nspec+1)
     double precision, allocatable :: Ucc(:,:,:,:)
 
     allocate(Ucc(lo(1)-1:hi(1)+1,lo(2)-1:hi(2)+1,lo(3)-1:hi(3)+1,NVAR))
 
-    !$omp parallel private(i,j,k,n,ierr,rhot,Yt0,Ytcc,force_new_J)
+    !$omp parallel private(i,j,k,n,ierr,rho0,rhot,YT0,YT,force_new_J)
 
     !$omp do
     do n=1,NVAR
@@ -329,35 +323,77 @@ contains
        do j=lo(2)-1,hi(2)+1
           do i=lo(1)-1,hi(1)+1
 
-             call get_rhoYT(Ucc(i,j,k,:), rhot(1), YTcc(1:nspec), YTcc(nspec+1), ierr)
-             if (ierr .ne. 0) then
-                print *, 'chemterm_becc: eos_get_T failed for Ucc at ', &
-                     level,i,j,k,Ucc(i,j,k,:)
-                call bl_error("chemterm_becc failed at eos_get_T")
+             if (st(i,j,k) .eq. 0.d0) then
+
+                call get_rhoYT(Ucc(i,j,k,:), rhot(1), YT(1:nspec), YT(nspec+1), ierr)
+
+                if (ierr .ne. 0) then
+                   st(i,j,k) = -1.d0
+                else
+
+                   if (present(Up)) then
+
+                      rho0(1) = Up(i,j,k,URHO)
+                      YT0(1:nspec) = Up(i,j,k,UFS:UFS+nspec-1)/rho0(1)
+                      YT0(nspec+1) = Up(i,j,k,UTEMP)
+
+                   else
+
+                      rho0(1) = rhot(1)
+                      YT0 = YT
+
+                      call burn(1, rho0, YT0, dt, force_new_J, ierr)
+                      force_new_J = new_J_cell
+                      if (ierr .ne. 0) then
+                         st(i,j,k) = -1.d0
+                      end if
+
+                   end if
+
+                end if
+
              end if
 
-             call floor_species(nspec, YTcc(1:nspec))
+             if (ierr .ne. 0) then  ! burn cell average
 
-             Yt0 = YTcc
+                call get_rhoYT(U(i,j,k,:), rhot(1), YT(1:nspec), YT(nspec+1), ierr)
+                if (ierr .ne. 0) then
+                   print *, 'chemterm_becc: eos_get_T failed for U at ', &
+                        level,i,j,k,U(i,j,k,:)
+                   call bl_error("chemterm_becc failed at eos_get_T")
+                end if
 
-             call burn(1, rhot, Yt0, dt, force_new_J, ierr)
-             force_new_J = new_J_cell
-!             if (ierr .ne. 0) then
-!                print *, 'chemterm_becc: burn failed at ', level,i,j,k,Ucc(i,j,k,:)
-!                call bl_error("chemterm_becc failed at burn")
-!             end if
-             if (ierr .ne. 0) then
-                Yt0 = YTcc
+                if (present(Up)) then
+
+                   rho0(1) = Up(i,j,k,URHO)
+                   YT0(1:nspec) = Up(i,j,k,UFS:UFS+nspec-1)/rho0(1)
+                   YT0(nspec+1) = Up(i,j,k,UTEMP)
+                   
+                else
+                   
+                   rho0(1) = rhot(1)
+                   YT0 = YT
+
+                   call burn(1, rho0, YT0, dt, force_new_J, ierr)
+                   force_new_J = new_J_cell
+                   if (ierr .ne. 0) then
+                      print *, 'chemterm_becc: bdf burn failed for U at ', &
+                           level,i,j,k,U(i,j,k,:)
+                      call bl_error("chemterm_becc failed at bdf burn for U")
+                   end if
+
+                end if
+                
              end if
 
-             call beburn(rhot(1), Yt0, rhot(1), YTcc, dt, 1, ierr)
+             call beburn(rho0(1), YT0, rhot(1), YT, dt, 1, ierr)
              if (ierr .ne. 0) then ! beburn failed
-                print *, 'chemterm_becc: beburn failed at ',level,i,j,k,Ucc(i,j,k,:)
-                call bl_error("chemterm_becc: beburn failed at g")
+                print *, 'chemterm_becc: beburn failed at ',level,i,j,k,U(i,j,k,:)
+                call bl_error("chemterm_becc: beburn failed")
              end if
              
              do n=1,nspec
-                Ucc(i,j,k,UFS+n-1) = rhot(1)*Ytcc(n)
+                Ucc(i,j,k,UFS+n-1) = rhot(1)*YT(n)
              end do
 
           end do
@@ -440,9 +476,9 @@ contains
                 call burn(1, rho0, Y0, dt, force_new_J, ierr)
                 force_new_J = new_J_cell
                 if (ierr .ne. 0) then
-                   print *, 'chemterm_begp: burn failed at ', level,i,j,k,U(i,j,k,:)
+                   print *, 'chemterm_begp: bdf burn failed at ', level,i,j,k,U(i,j,k,:)
                    print *, '   rho0, Y0 =', rho0(1), Y0
-                   call bl_error("chemterm_begp failed at burn")
+                   call bl_error("chemterm_begp failed at bdf burn")
                 end if
 
              end if
@@ -655,6 +691,8 @@ contains
     ei = rhoinv*( U(UEDEN) - 0.5d0*rhoinv*(U(UMX)**2 &
          + U(UMY)**2 + U(UMZ)**2) )
     
+    call floor_species(nspec, Y)
+
     call eos_get_T(T, ei, Y, ierr=ierr)
   end subroutine get_rhoYT
 
