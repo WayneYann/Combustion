@@ -331,7 +331,9 @@ contains
                    st(i,j,k) = -1.d0
                 else
 
-                   if (present(Up)) then
+                   if (present(Up) .and. i.ge.lo(1) .and. i.le.hi(1) &
+                        .and.            j.ge.lo(2) .and. j.le.hi(2) &
+                        .and.            k.ge.lo(3) .and. k.le.hi(3)) then
 
                       rho0(1) = Up(i,j,k,URHO)
                       YT0(1:nspec) = Up(i,j,k,UFS:UFS+nspec-1)/rho0(1)
@@ -363,7 +365,9 @@ contains
                    call bl_error("chemterm_becc failed at eos_get_T")
                 end if
 
-                if (present(Up)) then
+                if (present(Up) .and. i.ge.lo(1) .and. i.le.hi(1) &
+                     .and.            j.ge.lo(2) .and. j.le.hi(2) &
+                     .and.            k.ge.lo(3) .and. k.le.hi(3)) then
 
                    rho0(1) = Up(i,j,k,URHO)
                    YT0(1:nspec) = Up(i,j,k,UFS:UFS+nspec-1)/rho0(1)
