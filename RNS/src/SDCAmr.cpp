@@ -365,9 +365,9 @@ void SDCAmr::timeStep(int level, Real time,
   sdc_mg_spread(&mg, time, dt);
 
   for (int k=0; k<max_iters; k++) {
-    int flags = SDC_MG_MIXEDINTERP; // | SDC_SWEEP_MONITOR;
+    int flags = SDC_MG_MIXEDINTERP;
     if (k==max_iters-1) flags |= SDC_MG_HALFSWEEP;
-    if (k==0)           flags |= SDC_SWEEP_FIRST;
+    if (k==0)           flags |= SDC_SWEEP_FIRST | SDC_SWEEP_NOEVAL0;
 
     sdc_mg_sweep(&mg, time, dt, k, flags);
 
@@ -495,7 +495,7 @@ sdc_sweeper* SDCAmr::build_level(int lev)
   int nrepeat     = (nnodes-1)/2;
   int flags       = 0;
   if (ho_imex) flags |= SDC_IMEX_HO;
-  sdc_imex* imex = sdc_imex_create(nodes, 3, nrepeat, flags, 
+  sdc_imex* imex = sdc_imex_create(nodes, 3, nrepeat, flags,
 				   sdc_f1eval, sdc_f2eval, sdc_f2comp);
 
   sdc_imex_setup(imex, NULL, NULL);
