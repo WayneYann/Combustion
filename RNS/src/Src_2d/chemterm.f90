@@ -3,7 +3,8 @@ module chemterm_module
   use meth_params_module
   use burner_module, only : burn, compute_rhodYdt, splitburn, beburn
   use eos_module, only : eos_get_T
-  use renorm_module, only : renorm
+  use renorm_module, only : floor_species
+  use passinfo_module, only : level
 
   implicit none
 
@@ -13,19 +14,22 @@ module chemterm_module
 
 contains
 
-  subroutine chemterm(lo, hi, U, Ulo, Uhi, dt, Up)
-    integer, intent(in) :: lo(2), hi(2), Ulo(2), Uhi(2)
+  subroutine chemterm(lo, hi, U, Ulo, Uhi, st, stlo, sthi, dt, Up)
+    integer, intent(in) :: lo(2), hi(2), Ulo(2), Uhi(2), stlo(2), sthi(2) 
     double precision, intent(inout) :: U(Ulo(1):Uhi(1),Ulo(2):Uhi(2),NVAR)
+    double precision, intent(inout) :: st(stlo(1):sthi(1),stlo(2):sthi(2))
     double precision, intent(in) :: dt
     double precision, intent(in), optional :: Up(lo(1):hi(1),lo(2):hi(2),NVAR)
 
     select case (chem_solver)
        case (cc_burning)
-          call chemterm_cellcenter(lo, hi, U, Ulo, Uhi, dt)
+          call chemterm_cellcenter(lo, hi, U, Ulo, Uhi, st, stlo, sthi, dt)
        case (Gauss_burning)
           call chemterm_gauss(lo, hi, U, Ulo, Uhi, dt)
        case (split_burning)
           call chemterm_split(lo, hi, U, Ulo, Uhi, dt)
+       case (BEcc_burning)
+          call chemterm_becc(lo, hi, U, Ulo, Uhi, st, stlo, sthi, dt, Up)
        case (BEGp_burning)
           call chemterm_begp(lo, hi, U, Ulo, Uhi, dt, Up)
        case default
