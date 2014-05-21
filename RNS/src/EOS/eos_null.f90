@@ -133,10 +133,11 @@ contains
   end subroutine eos_given_RTY
 
 
-  subroutine eos_given_ReY(p, c, G, T, dpdr, dpde, rho, e, Y, pt_index)
+  subroutine eos_given_ReY(p, c, G, T, dpdr, dpde, rho, e, Y, pt_index, ierr)
     double precision, intent(out) :: p, c, G, T, dpdr(2), dpde
     double precision, intent(in ) :: rho, e, Y(2)
     integer, optional, intent(in) :: pt_index(:)
+    integer, optional, intent(out) :: ierr
     T = e/cv
     p = rho*R_mu*T
     p = max(p, smallp)
