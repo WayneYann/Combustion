@@ -745,7 +745,7 @@ RNS::post_restart ()
 void
 RNS::postCoarseTimeStep (Real cumtime)
 {
-    if (! ChemDriver::isNull()) sum_chemstatus();
+    if (chemstatus) sum_chemstatus();
 
     if (sum_int > 0) {
 	int nstep = parent->levelSteps(0);
@@ -989,5 +989,5 @@ RNS::buildTouchFine ()
 void
 RNS::zeroChemStatus()
 {
-    chemstatus->setVal(0.0,1);
+    if (chemstatus) chemstatus->setVal(0.0,1);
 }
