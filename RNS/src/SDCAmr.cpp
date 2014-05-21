@@ -312,7 +312,7 @@ void SDCAmr::timeStep(int level, Real time,
 
   BL_ASSERT(level == 0);
 
-  regrid(0,time);
+  if (max_level>0) regrid(0,time);
 
   for (int lev=0; lev<=finest_level; lev++) {
       level_count[lev] = 0;
