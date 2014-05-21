@@ -60,59 +60,68 @@ end subroutine rns_dudt_ad
 ! ::: ------------------------------------------------------------------
 ! :::
 
-subroutine rns_advchem(lo,hi,U,U_l1,U_h1,dt)
+subroutine rns_advchem(lo,hi,U,U_l1,U_h1,st,st_l1,st_h1,dt)
   use meth_params_module, only : NVAR
   use chemterm_module, only : chemterm
   implicit none
   integer, intent(in) :: lo(1), hi(1)
-  integer, intent(in) ::  U_l1,  U_h1
+  integer, intent(in) ::  U_l1,  U_h1, st_l1, st_h1
   double precision, intent(inout) :: U(U_l1: U_h1,NVAR)
+  double precision, intent(inout) :: st(st_l1:st_h1)
   double precision, intent(in) :: dt
 
-  integer :: Ulo(1), Uhi(1)
+  integer :: Ulo(1), Uhi(1), stlo(1), sthi(1)
 
   Ulo(1) = U_l1
   Uhi(1) = U_h1
-  call chemterm(lo, hi, U, Ulo, Uhi, dt)
+  stlo(1) = st_l1
+  sthi(1) = st_h1
+  call chemterm(lo, hi, U, Ulo, Uhi, st, stlo, sthi, dt)
 end subroutine rns_advchem
 
-subroutine rns_advchem2(lo,hi,U,U_l1,U_h1,Up,Up_l1,Up_h1,dt)
+subroutine rns_advchem2(lo,hi,U,U_l1,U_h1,st,st_l1,st_h1,Up,Up_l1,Up_h1,dt)
   use meth_params_module, only : NVAR
   use chemterm_module, only : chemterm
   implicit none
   integer, intent(in) :: lo(1), hi(1)
-  integer, intent(in) ::  U_l1, U_h1, Up_l1, Up_h1
+  integer, intent(in) ::  U_l1, U_h1, Up_l1, Up_h1, st_l1, st_h1
   double precision, intent(inout) :: U(U_l1: U_h1,NVAR)
+  double precision, intent(inout) :: st(st_l1:st_h1)
   double precision, intent(in) :: Up(Up_l1: Up_h1,NVAR)
   double precision, intent(in) :: dt
 
-  integer :: Ulo(1), Uhi(1)
+  integer :: Ulo(1), Uhi(1), stlo(1), sthi(1)
 
   Ulo(1) = U_l1
   Uhi(1) = U_h1
-  call chemterm(lo, hi, U, Ulo, Uhi, dt, Up)
+  stlo(1) = st_l1
+  sthi(1) = st_h1
+  call chemterm(lo, hi, U, Ulo, Uhi, st, stlo, sthi, dt, Up)
 end subroutine rns_advchem2
 
 ! :::
 ! ::: ------------------------------------------------------------------
 ! :::
 
-subroutine rns_dUdt_chem(lo,hi,U,U_l1,U_h1,Ut,Ut_l1,Ut_h1)
+subroutine rns_dUdt_chem(lo,hi,U,U_l1,U_h1,Ut,Ut_l1,Ut_h1,st,st_l1,st_h1)
   use meth_params_module, only : NVAR
   use chemterm_module, only : dUdt_chem
   implicit none
   integer, intent(in) :: lo(1), hi(1)
-  integer, intent(in) ::  U_l1,  U_h1, Ut_l1,  Ut_h1
+  integer, intent(in) ::  U_l1,  U_h1, Ut_l1,  Ut_h1, st_l1, st_h1
   double precision, intent(in ) ::  U( U_l1: U_h1,NVAR)
   double precision, intent(out) :: Ut(Ut_l1:Ut_h1,NVAR)
+  double precision, intent(inout) :: st(st_l1:st_h1)
 
-  integer :: Ulo(1), Uhi(1), Utlo(1), Uthi(1)
+  integer :: Ulo(1), Uhi(1), Utlo(1), Uthi(1), stlo(1), sthi(1)
 
   Ulo(1) = U_l1
   Uhi(1) = U_h1
   Utlo(1) = Ut_l1
   Uthi(1) = Ut_h1
-  call dUdt_chem(lo, hi, U, Ulo, Uhi, Ut, Utlo, Uthi)
+  stlo(1) = st_l1
+  sthi(1) = st_h1
+  call dUdt_chem(lo, hi, U, Ulo, Uhi, Ut, Utlo, Uthi, st, stlo, sthi)
 end subroutine rns_dUdt_chem
 
 ! :::
