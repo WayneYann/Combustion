@@ -76,7 +76,7 @@ contains
 
     force_new_J = .true.  ! always recompute Jacobian when a new FAB starts
 
-    !$omp do collapse(2)
+    !$omp do schedule(dynamic) collapse(2)
     do k=lo(3)-1,hi(3)+1
        do j=lo(2)-1,hi(2)+1
           do i=lo(1)-1,hi(1)+1
@@ -166,7 +166,7 @@ contains
 
     force_new_J = .true.  ! always recompute Jacobian when a new FAB starts
 
-    !$omp do collapse(2)
+    !$omp do schedule(dynamic) collapse(2)
     do k=lo(3),hi(3)
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
@@ -216,7 +216,7 @@ contains
                 if (ierr .ne. 0) then
                    print *, 'chemterm_gauss: bdf burn failed for U at ', &
                         level, i,j,k,U(i,j,k,:)
-                   call bl_error("chemtern_gauss failed at bdf burn for U")
+                   call bl_error("chemterm_gauss failed at bdf burn for U")
                 end if
 
                 do n=1,nspec
@@ -265,7 +265,7 @@ contains
 
     force_new_J = .true.  ! always recompute Jacobina when a new FAB starts
 
-    !$omp do collapse(2)
+    !$omp do schedule(dynamic) collapse(2)
     do k=lo(3),hi(3)
        do j=lo(2),hi(2)
           do i=lo(1),hi(1)
@@ -287,7 +287,7 @@ contains
 
              if (st(i,j,k) .eq. 0.d0) then
                 call burn(1, rho0, YT0, dt, force_new_J, ierr)
-                if (ierr .ne. 0.d0) then
+                if (ierr .ne. 0) then
                    st(i,j,k) = -1.d0
                    force_new_J = .true.
                 else
@@ -322,7 +322,7 @@ contains
                 if (ierr .ne. 0) then
                    print *, 'chemterm_split: bdf burn failed for U at ', &
                         level, i,j,k,U(i,j,k,:)
-                   call bl_error("chemtern_split failed at bdf burn for U")
+                   call bl_error("chemterm_split failed at bdf burn for U")
                 end if
 
                 do n=1,nspec
@@ -367,7 +367,7 @@ contains
 
     force_new_J = .true.  ! always recompute Jacobian when a new FAB starts
 
-    !$omp do collapse(2)
+    !$omp do schedule(dynamic) collapse(2)
     do k=lo(3)-1,hi(3)+1
        do j=lo(2)-1,hi(2)+1
           do i=lo(1)-1,hi(1)+1
@@ -408,7 +408,7 @@ contains
 
              end if
 
-             if (st(i,j,k) .ne. 0) then  ! burn cell average
+             if (st(i,j,k) .ne. 0.d0) then  ! burn cell average
 
                 call get_rhoYT(U(i,j,k,:), rhot(1), YT(1:nspec), YT(nspec+1), ierr)
                 if (ierr .ne. 0) then
