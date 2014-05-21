@@ -598,7 +598,7 @@ contains
 
                 call beburn(rho0(1), YT0, rhot(1), YT(:,1), dt, 1, ierr)
                 if (ierr .ne. 0) then ! beburn failed
-                   print *, 'chemterm_begp: beburn failed at for U ',level,i,j,k,U(i,j,k,:)
+                   print *, 'chemterm_begp: beburn failed for U at ',level,i,j,k,U(i,j,k,:)
                    call bl_error("chemterm_begp: beburn failed")
                 end if
              
@@ -683,7 +683,7 @@ contains
           end do
 
           do i=lo(1),hi(1)
-             if (st(i,j,k) .ne. 0) then
+             if (st(i,j,k) .ne. 0.d0) then
                 call get_rhoYT(U(i,j,k,:), rho(i), Y(i,:), T(i), ierr)
                 if (ierr .ne. 0) then
                    print *, 'dUdt_chem_gauss: eos_get_T failed for U at ', &
