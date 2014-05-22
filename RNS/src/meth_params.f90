@@ -34,9 +34,18 @@ module meth_params_module
   integer, save :: xblksize=2048, yblksize=2048, zblksize=2048
   integer, save :: nthreads=1
 
-  logical, save :: do_weno, do_component_weno;
+  logical, save :: do_weno, do_quadrature_weno, do_component_weno;
 
+  ! chemistry
   logical, save :: use_vode
-  logical, save :: do_cc_burning, split_burning
+  logical, save :: new_J_cell
+  integer, save :: chem_solver
+  integer, parameter :: cc_burning = 0
+  integer, parameter :: Gauss_burning = 1
+  integer, parameter :: split_burning = 2
+  integer, parameter :: BEcc_burning = 3
+  integer, parameter :: BEGp_burning = 4
+  integer, parameter :: nchemsolver = 5
+  logical, save :: chem_do_weno
 
 end module meth_params_module

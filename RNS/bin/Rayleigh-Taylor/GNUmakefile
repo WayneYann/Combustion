@@ -17,25 +17,14 @@ FCOMP	   = gfortran
 USE_MPI    = FALSE
 USE_OMP    = FALSE
 
+USE_SDCLIB = TRUE
+
 CHEMISTRY_MODEL = NULL
 
 Bpack   := ./Make.package
 Blocs   := .
 
-#ZMQ = $(HOME)/anaconda
-ifdef ZMQ
-  cEXE_sources += zmq.c
-endif
-
 VERBOSE=FALSE
 
 include ../Make.RNS
-
-ifdef ZMQ
-  CXXFLAGS += -DZMQ
-  FFLAGS   += -DZMQ
-  CFLAGS   += -DZMQ -I$(ZMQ)/include
-  LDFLAGS  += -L$(ZMQ)/lib -lzmq
-endif
-
 

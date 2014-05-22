@@ -89,6 +89,7 @@ max_step                            integer            1
 
 # CFL factor to use in the computation of the advection timestep constraint
 cflfac                              real               0.5d0
+diff_cfl                            real               0.5d0
 
 # How often do we update Courant number
 cfl_int                             integer            10
@@ -198,7 +199,7 @@ zlo_boundary_type                   character          "periodic"
 # value set through {\tt bcz\_hi}
 zhi_boundary_type                   character          "periodic"
 
-# dimensionality (valid value is 2 or 3)
+# dimensionality (valid value is 1, 2 or 3)
 dm_in                               integer            3
 
 # The largest grid size that will be created using make\_new\_grids.
@@ -281,7 +282,7 @@ plot_magvort                        logical            .true.
 
 # plot omegadot in plotfile
 plot_omegadot                       logical            .false.
-plot_dYdt                           logical            .true.
+plot_dYdt                           logical            .false.
 plot_heatRelease                    logical            .true.
 plot_fuelConsumption                logical            .false.
 fuel_name                           character          "none"

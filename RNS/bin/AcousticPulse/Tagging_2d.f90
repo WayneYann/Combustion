@@ -33,20 +33,36 @@
       double precision den(denl1:denh1,denl2:denh2,nd)
       double precision delta(2), xlo(2), problo(2), time
 
-      double precision xcen, ycen, r
+      double precision xcen, ycen, r, ax, ay
       integer i, j
 
-      do j = lo(2), hi(2)
-         ycen = xlo(2) + delta(2)*(dble(j-lo(2)) + 0.5d0) - center(2)
-         do i = lo(1), hi(1)
-            xcen = xlo(1) + delta(1)*(dble(i-lo(1)) + 0.5d0) - center(1)
-            r = sqrt(xcen*xcen+ycen*ycen)
-            if (r < 2.d0*delta(1)) then
-               tag(i,j) = set
-            end if
+      if (level .lt. max_denerr_lev) then
+         do j = lo(2), hi(2)
+            ycen = xlo(2) + delta(2)*(dble(j-lo(2)) + 0.5d0) - center(2)
+            do i = lo(1), hi(1)
+               xcen = xlo(1) + delta(1)*(dble(i-lo(1)) + 0.5d0) - center(1)
+               r = sqrt(xcen*xcen+ycen*ycen)
+               if (r < 2.d0*delta(1)) then
+                  tag(i,j) = set
+               end if
+            enddo
          enddo
-      enddo
-      
+      end if
+
+      if (level .lt. max_dengrad_lev) then
+         do j = lo(2), hi(2)
+            do i = lo(1), hi(1)
+               ax = ABS(den(i+1,j,1) - den(i,j,1))
+               ay = ABS(den(i,j+1,1) - den(i,j,1))
+               ax = MAX(ax,ABS(den(i,j,1) - den(i-1,j,1)))
+               ay = MAX(ay,ABS(den(i,j,1) - den(i,j-1,1)))
+               if ( sqrt(ax*ax+ay*ay) .ge. dengrad * den(i,j,1) * delta(1) ) then
+                  tag(i,j) = set
+               endif
+            enddo
+         enddo
+      end if
+
       end
 
 ! ::: -----------------------------------------------------------
@@ -92,7 +108,7 @@
 
 !     Tag on regions of high temperature
       if (level .lt. max_temperr_lev) then
-         !$omp do collapse(2)
+         !$omp do 
          do j = lo(2), hi(2)
             do i = lo(1), hi(1)
                if (temp(i,j,1) .ge. temperr) then
@@ -105,7 +121,7 @@
 
 !     Tag on regions of high temperature gradient
       if (level .lt. max_tempgrad_lev) then
-         !$omp do collapse(2)
+         !$omp do 
          do j = lo(2), hi(2)
             do i = lo(1), hi(1)
                ax = ABS(temp(i+1,j,1) - temp(i,j,1))
@@ -168,7 +184,7 @@
 
 !     Tag on regions of high pressure
       if (level .lt. max_presserr_lev) then
-         !$omp do collapse(2)
+         !$omp do 
          do j = lo(2), hi(2)
             do i = lo(1), hi(1)
                if (press(i,j,1) .ge. presserr) then
@@ -181,7 +197,7 @@
 
 !     Tag on regions of high pressure gradient
       if (level .lt. max_pressgrad_lev) then
-         !$omp do collapse(2)
+         !$omp do 
          do j = lo(2), hi(2)
             do i = lo(1), hi(1)
                ax = ABS(press(i+1,j,1) - press(i,j,1))
@@ -242,7 +258,7 @@
 
 !     Tag on regions of high velocity gradient
       if (level .lt. max_velgrad_lev) then
-         !$omp do collapse(2)
+         !$omp do 
          do j = lo(2), hi(2)
             do i = lo(1), hi(1)
                ax = ABS(vel(i+1,j,1) - vel(i,j,1))
@@ -304,7 +320,7 @@
 
 !     Tag on regions of high vorticity
       if (level .lt. max_vorterr_lev) then
-         !$omp do collapse(2)
+         !$omp do 
          do j = lo(2), hi(2)
             do i = lo(1), hi(1)
                if (abs(vort(i,j,1)) .ge. vorterr) then
@@ -317,7 +333,7 @@
 
 !     Tag on regions of high vorticity gradient
       if (level .lt. max_vortgrad_lev) then
-         !$omp do collapse(2)
+         !$omp do 
          do j = lo(2), hi(2)
             do i = lo(1), hi(1)
                ax = ABS(vort(i+1,j,1) - vort(i,j,1))
@@ -376,7 +392,7 @@
 
 !     Tag on regions of high flame tracer
       if (level .lt. max_tracerr_lev) then
-         !$omp parallel do private(i,j) collapse(2)
+         !$omp parallel do private(i,j) 
          do j = lo(2), hi(2)
             do i = lo(1), hi(1)
                if (trac(i,j,1) .ge. tracerr) then

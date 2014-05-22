@@ -96,7 +96,7 @@ c
       implicit none
 #include "cdwrk.H"
 #include "conp.H"
-      integer n, RTOT, lout, i, egrlen, egilen, idummy(1)
+      integer n, RTOT, lout, egrlen, egilen, idummy(1)
       integer FORT_GETCKSPECNAME
       double precision rdummy(1)
       character*(maxspnml) name
@@ -880,7 +880,7 @@ C
   300 FORMAT (10X,'IMCWRK MUST BE DIMENSIONED AT LEAST ', I5)
   350 FORMAT (10X,'RMCWRK MUST BE DIMENSIONED AT LEAST ', I5)
       RETURN
-  999 CONTINUE
+C  999 CONTINUE
 c      WRITE (LOUT, *) ' Error reading Transport linkfile...'
 c      REWIND (LINKMC)
       IFLAG = NREC
@@ -914,10 +914,11 @@ C     end of SUBROUTINE MCINITCD
 
       subroutine FORT_FINDLHS(reactions, Nreacs, id)
       implicit none
-#include "cdwrk.H"
       integer reactions(*), Nreacs, id
-      integer j, n, Ndim, Nids, KI(maxsp), NU(maxsp)
+
 #ifdef MIKE
+#include "cdwrk.H"
+      integer j, n, Ndim, Nids, KI(maxsp), NU(maxsp)
       Ndim = maxsp
       if ((id.le.0).or.(id.gt.Nspec)) then
          write(6,*) 'FORT_FINDLHS:  species id out of range: ',id
@@ -940,10 +941,11 @@ C     end of SUBROUTINE MCINITCD
 
       subroutine FORT_FINDRHS(reactions, Nreacs, id)
       implicit none
-#include "cdwrk.H"
       integer reactions(*), Nreacs, id
-      integer j, n, Ndim, Nids, KI(maxsp), NU(maxsp)
+
 #ifdef MIKE
+#include "cdwrk.H"
+      integer j, n, Ndim, Nids, KI(maxsp), NU(maxsp)
       Ndim = maxsp
       if ((id.le.0).or.(id.gt.Nspec)) then
          write(6,*) 'FORT_FINDRHS:  species id out of range: ',id
@@ -969,7 +971,6 @@ C     end of SUBROUTINE MCINITCD
 #include "cdwrk.H"
       integer lenNU
       integer nu(maxreac,maxspec)
-      integer i
 
       if (lenNU .lt. maxreac*maxspec) then
          write(6,*) 'FORT_CKNU:  nu work array too small: '
@@ -981,7 +982,7 @@ C     end of SUBROUTINE MCINITCD
       subroutine FORT_CKINU(Nids,KI,lenKI,NU,lenNU,rxnID,nuAll)
       implicit none
 #include "cdwrk.H"
-      integer lenKI,lenNU,NDIM1
+      integer lenKI,lenNU
       integer rxnID, Nids, KI(lenKI), NU(lenNU), nuAll(maxreac,maxspec)
       integer Ndim, k
       Ndim = MIN(lenKI,lenNU)
@@ -1005,7 +1006,7 @@ C     end of SUBROUTINE MCINITCD
       integer function FORT_CKELTXINSPY(eltID, spID)
       implicit none
 #include "cdwrk.H"
-      integer eltID, spID, i, j
+      integer eltID, spID
       integer NCF(maxelts,maxspec)
       CALL CKNCF(maxelts, IWRK(ckbi), RWRK(ckbr), NCF)
       FORT_CKELTXINSPY = NCF(eltID+1,spID+1)
@@ -1053,7 +1054,7 @@ c     1 N/(m.m) = 0.1 dyne/(cm.cm)
       integer i
       integer coded(*)
       integer names(0:maxelts*2)
-      integer ctr, nlen
+      integer nlen
       nlen = 2
       call CKSYME(names,nlen)
       coded(1) = names(2*(i-1)  )
@@ -1088,14 +1089,16 @@ c     1 N/(m.m) = 0.1 dyne/(cm.cm)
 
       integer function FORT_CKSYMR(fortReacIdx, coded)
       implicit none
-#include "cdwrk.H"
       integer fortReacIdx
       integer coded(*)
+
+#ifdef MIKE
+#include "cdwrk.H"
       character*(72) line 
       integer j, str_len, istr, iend, lout
       logical error
       data error /.false./
-#ifdef MIKE
+
       lout = 6
       call CKSYMR(fortReacIdx,lout,IWRK(ckbi),RWRK(ckbr),
      &     CWRK(ckbc),str_len,line,error)
@@ -1153,7 +1156,6 @@ c
       implicit none
 #include "cdwrk.H"
       REAL_T mwt(*)
-      integer n
 c     Result in kg/kmole
       call CKWT(IWRK(ckbi),RWRK(ckbr),mwt)
       end
@@ -1162,7 +1164,6 @@ c     Result in kg/kmole
       implicit none
 #include "cdwrk.H"
       REAL_T awt(*)
-      integer n
 c     Result in kg/kmole
       call CKAWT(IWRK(ckbi),RWRK(ckbr),awt)
       end
@@ -1264,13 +1265,13 @@ C                          Z(K+1) = RhoH    [MKS]
       REAL_T TIME, Z(NEQ), ZP(NEQ), RPAR(*)
       integer N, IPAR(*)
       
-      REAL_T RHO_MKS, H, WDOT_CGS(maxspec), THFAC, HMIX_MKS, RINV_MKS
-      REAL_T Y(maxspec), CONC_CGS(maxspec), HMIX_CGS, T
-      integer K,m,Niter
+      REAL_T RHO_MKS, WDOT_CGS(maxspec), THFAC, HMIX_MKS, RINV_MKS
+      REAL_T Y(maxspec), CONC_CGS(maxspec)
+      integer K,Niter
 
       REAL_T,  parameter :: HtoTerrMAX = BL_REAL_E(7.8,-12)
       integer, parameter :: HtoTiterMAX = 20
-      REAL_T res(0:HtoTiterMAX-1), RHO_CGS, RINV_CGS
+      REAL_T res(0:HtoTiterMAX-1)
 C
 C     Variables in Z are:  Z(1:K) = rhoY(K)
 C                          Z(K+1) = RhoH
@@ -1308,9 +1309,9 @@ C                          Z(K+1) = RhoH
       REAL_T TMIN,TMAX,e
 
       parameter (TMIN=200, TMAX=5000)
-      REAL_T  T0,h,cp,cv,de,temp,RoverWbar,Wbar,RU,RUC,P1ATM
+      REAL_T T0,cv,de,temp
       REAL_T dT, etarg
-      logical out_of_bounds, converged, soln_bad, stalled
+      logical out_of_bounds, converged, soln_bad
       REAL_T e300,cv300,e6500,cv6500
       integer ihitlo,ihithi
 
@@ -1412,10 +1413,10 @@ c     Error condition....dump state and bail out
 #include "cdwrk.H"
       REAL_T T,Y(*),Hin,errMax
 
-      integer NiterMAX,Niter,n,NiterDAMP,ihitlo,ihithi,j
-      REAL_T  T0,cp,cv,dH,temp,RoverWbar,Wbar,RU,RUC,P1ATM
+      integer NiterMAX,Niter,NiterDAMP,ihitlo,ihithi
+      REAL_T  T0,cp,dH
       REAL_T  res(0:NiterMAX-1),dT, Htarg,HMIN,cpMIN,HMAX,cpMAX
-      logical converged, soln_bad, stalled, discont
+      logical converged, soln_bad, stalled
       REAL_T  H, old_T, old_H, Tsec, Hsec
 
       integer, parameter :: Discont_NiterMAX = 100

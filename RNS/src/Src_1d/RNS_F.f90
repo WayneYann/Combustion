@@ -60,42 +60,68 @@ end subroutine rns_dudt_ad
 ! ::: ------------------------------------------------------------------
 ! :::
 
-subroutine rns_advchem(lo,hi,U,U_l1,U_h1,dt)
+subroutine rns_advchem(lo,hi,U,U_l1,U_h1,st,st_l1,st_h1,dt)
   use meth_params_module, only : NVAR
   use chemterm_module, only : chemterm
   implicit none
   integer, intent(in) :: lo(1), hi(1)
-  integer, intent(in) ::  U_l1,  U_h1
+  integer, intent(in) ::  U_l1,  U_h1, st_l1, st_h1
   double precision, intent(inout) :: U(U_l1: U_h1,NVAR)
+  double precision, intent(inout) :: st(st_l1:st_h1)
   double precision, intent(in) :: dt
 
-  integer :: Ulo(1), Uhi(1)
+  integer :: Ulo(1), Uhi(1), stlo(1), sthi(1)
 
   Ulo(1) = U_l1
   Uhi(1) = U_h1
-  call chemterm(lo, hi, U, Ulo, Uhi, dt)
+  stlo(1) = st_l1
+  sthi(1) = st_h1
+  call chemterm(lo, hi, U, Ulo, Uhi, st, stlo, sthi, dt)
 end subroutine rns_advchem
+
+subroutine rns_advchem2(lo,hi,U,U_l1,U_h1,st,st_l1,st_h1,Up,Up_l1,Up_h1,dt)
+  use meth_params_module, only : NVAR
+  use chemterm_module, only : chemterm
+  implicit none
+  integer, intent(in) :: lo(1), hi(1)
+  integer, intent(in) ::  U_l1, U_h1, Up_l1, Up_h1, st_l1, st_h1
+  double precision, intent(inout) :: U(U_l1: U_h1,NVAR)
+  double precision, intent(inout) :: st(st_l1:st_h1)
+  double precision, intent(in) :: Up(Up_l1: Up_h1,NVAR)
+  double precision, intent(in) :: dt
+
+  integer :: Ulo(1), Uhi(1), stlo(1), sthi(1)
+
+  Ulo(1) = U_l1
+  Uhi(1) = U_h1
+  stlo(1) = st_l1
+  sthi(1) = st_h1
+  call chemterm(lo, hi, U, Ulo, Uhi, st, stlo, sthi, dt, Up)
+end subroutine rns_advchem2
 
 ! :::
 ! ::: ------------------------------------------------------------------
 ! :::
 
-subroutine rns_dUdt_chem(lo,hi,U,U_l1,U_h1,Ut,Ut_l1,Ut_h1)
+subroutine rns_dUdt_chem(lo,hi,U,U_l1,U_h1,Ut,Ut_l1,Ut_h1,st,st_l1,st_h1)
   use meth_params_module, only : NVAR
   use chemterm_module, only : dUdt_chem
   implicit none
   integer, intent(in) :: lo(1), hi(1)
-  integer, intent(in) ::  U_l1,  U_h1, Ut_l1,  Ut_h1
+  integer, intent(in) ::  U_l1,  U_h1, Ut_l1,  Ut_h1, st_l1, st_h1
   double precision, intent(in ) ::  U( U_l1: U_h1,NVAR)
   double precision, intent(out) :: Ut(Ut_l1:Ut_h1,NVAR)
+  double precision, intent(inout) :: st(st_l1:st_h1)
 
-  integer :: Ulo(1), Uhi(1), Utlo(1), Uthi(1)
+  integer :: Ulo(1), Uhi(1), Utlo(1), Uthi(1), stlo(1), sthi(1)
 
   Ulo(1) = U_l1
   Uhi(1) = U_h1
   Utlo(1) = Ut_l1
   Uthi(1) = Ut_h1
-  call dUdt_chem(lo, hi, U, Ulo, Uhi, Ut, Utlo, Uthi)
+  stlo(1) = st_l1
+  sthi(1) = st_h1
+  call dUdt_chem(lo, hi, U, Ulo, Uhi, Ut, Utlo, Uthi, st, stlo, sthi)
 end subroutine rns_dUdt_chem
 
 ! :::
@@ -111,10 +137,12 @@ subroutine rns_compute_temp(lo,hi,U,U_l1,U_h1)
   integer, intent(in) ::  U_l1,  U_h1
   double precision, intent(inout) :: U( U_l1: U_h1,NVAR)
 
-  integer :: i
+  integer :: i, pt_index(1), ierr
   double precision :: rhoInv, e, v, Y(NSPEC)
 
   do i=lo(1),hi(1)
+     pt_index(1) = i
+
      rhoInv = 1.0d0/U(i,URHO)
 
      v  = U(i,UMX)*rhoInv     
@@ -122,7 +150,12 @@ subroutine rns_compute_temp(lo,hi,U,U_l1,U_h1)
 
      Y = U(i,UFS:UFS+NSPEC-1)*rhoInv
 
-     call eos_get_T(U(i,UTEMP), e, Y)
+     call eos_get_T(U(i,UTEMP), e, Y, pt_index, ierr)
+
+     if (ierr .ne. 0) then
+        print *, 'rns_compute_temp failed at ', i,U(i,:)
+        call bl_error("rns_compute_temp failed")
+     end if
   end do
 end subroutine rns_compute_temp
 
@@ -191,18 +224,18 @@ subroutine rns_enforce_consistent_Y(lo,hi,U,U_l1,U_h1)
            
            if (U(i,n) .lt. 0.d0) then
               
-              x = U(i,n)/U(i,URHO)
+              x = U(i,n)*rhoInv
               
-              ! Here we only print the bigger negative values
-              if (x .lt. -1.d-2) then
-                 print *,'Correcting negative species   ',n-UFS+1
-                 print *,'   at cell (i)                ',i
-                 print *,'Negative (rho*Y) is           ',U(i,n)
-                 print *,'Negative      Y  is           ',x
-                 print *,'Filling from dominant species ',int_dom_spec-UFS+1
-                 print *,'  which had Y =               ',&
-                      U(i,int_dom_spec) / U(i,URHO)
-              end if
+              ! ! Here we only print the bigger negative values
+              ! if (x .lt. -1.d-2) then
+              !    print *,'Correcting negative species   ',n-UFS+1
+              !    print *,'   at cell (i)                ',i
+              !    print *,'Negative (rho*Y) is           ',U(i,n)
+              !    print *,'Negative      Y  is           ',x
+              !    print *,'Filling from dominant species ',int_dom_spec-UFS+1
+              !    print *,'  which had Y =               ',&
+              !         U(i,int_dom_spec) / U(i,URHO)
+              ! end if
 
               ! Take enough from the dominant species to fill the negative one.
               U(i,int_dom_spec) = U(i,int_dom_spec) + U(i,n)
@@ -211,7 +244,7 @@ subroutine rns_enforce_consistent_Y(lo,hi,U,U_l1,U_h1)
               if (U(i,int_dom_spec) .lt. 0.d0) then 
                  print *,' Just made dominant species negative ',int_dom_spec+UFS-1,' at ',i
                  print *,'We were fixing species ',n-UFS+1,' which had value ',x
-                 print *,'Dominant species became ',U(i,int_dom_spec) / U(i,URHO)
+                 print *,'Dominant species became ',U(i,int_dom_spec)*rhoInv
                  call bl_error("Error:: CNSReact_2d.f90 :: ca_enforce_nonnegative_species")
               end if
 

@@ -1,15 +1,17 @@
  &fortin
   probtype = 'dme_diffusion'
 
-  V_in = 21.
+  V_jet = 17.5
 
   T_in = 400.
+  V_in = 3.5
 
   T_co = 900.
   T_co = 1100.
 
   V_co = 2.5
   V_co = 3.5
+  V_co = 0.d0
   phi_in = 0.7
 
   max_vort_lev = 4
@@ -36,7 +38,7 @@
 
   blobT = 1500.
   blobx = 0.
-  bloby = .00027
+  bloby = .00145
 
  /
  &heattransin
@@ -50,4 +52,12 @@
   forceInflow = .FALSE.
  /
   &control
+  tau_control = 2.e-6
+  sest = 3.5
+  h_control = .0015
+  changeMax_control = .2
+  istemp = 1
+  corr = .1
+ /
+
  /

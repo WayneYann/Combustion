@@ -153,12 +153,11 @@
 
       REAL_T, allocatable :: H(:,:,:,:), AD(:,:,:,:)
 
-      integer i, j, k, d, n, elo, ehi
+      integer i, j, k, d, n
       integer lob(SDIM), hib(SDIM)
       REAL_T AxDxInv_lo, AxDxInv_hi, dxInv
       REAL_T AyDyInv_lo, AyDyInv_hi, dyInv
       REAL_T AzDzInv_lo, AzDzInv_hi, dzInv
-      REAL_T FiHi
       logical fix_xlo, fix_xhi, fix_ylo, fix_yhi, fix_zlo, fix_zhi
 
       REAL_T, allocatable :: rhoInv(:,:,:)

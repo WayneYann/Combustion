@@ -1,5 +1,3 @@
-// This file needs cleanup
-
 #ifndef _RNS_F_H_
 #define _RNS_F_H_
 #include <BLFort.H>
@@ -16,12 +14,21 @@ BL_FORT_PROC_DECL(RNS_DUDT_AD,rns_dudt_ad)
 BL_FORT_PROC_DECL(RNS_ADVCHEM, rns_advchem)
     (const int lo[], const int hi[],
      BL_FORT_FAB_ARG(U),
+     BL_FORT_FAB_ARG(chemst),
+     const Real& dt);
+
+BL_FORT_PROC_DECL(RNS_ADVCHEM2, rns_advchem2)
+    (const int lo[], const int hi[],
+     BL_FORT_FAB_ARG(U),
+     BL_FORT_FAB_ARG(chemst),
+     const BL_FORT_FAB_ARG(Uguess),
      const Real& dt);
 
 BL_FORT_PROC_DECL(RNS_DUDT_CHEM, rns_dudt_chem)
     (const int lo[], const int hi[],
      const BL_FORT_FAB_ARG(U),
-     BL_FORT_FAB_ARG(dUdt));
+     BL_FORT_FAB_ARG(dUdt),
+     BL_FORT_FAB_ARG(chemst));
 
 BL_FORT_PROC_DECL(RNS_COMPUTE_TEMP,rns_compute_temp)
     (const int lo[], const int hi[],
@@ -32,7 +39,7 @@ BL_FORT_PROC_DECL(RNS_ENFORCE_CONSISTENT_Y,rns_enforce_consistent_y)
      BL_FORT_FAB_ARG(U));
 
 BL_FORT_PROC_DECL(GET_METHOD_PARAMS,get_method_params)
-    (const int* ngrow, const int* nriemann);
+(const int* ngrow, int* nriemann, int* nchemsolver);
 
 BL_FORT_PROC_DECL(SET_METHOD_PARAMS,set_method_params)
     (const int& dm, const int& Density, const int& Xmom, 
@@ -41,8 +48,9 @@ BL_FORT_PROC_DECL(SET_METHOD_PARAMS,set_method_params)
      const Real& small_dens, const Real& small_temp, const Real& small_pres,
      const Real& gamma, const Real& gravity, const Real& Treference,
      const int& riemann, const Real& difmag, const int* blocksize,
-     const int& do_weno, const int& do_component_weno,
-     const int& use_vode, const int& do_cc_burning, const int& split_burning);
+     const int& do_weno, const int& do_quadrature_weno, const int& do_component_weno,
+     const int& do_BE_burning, const int& new_J_cell, const int& chem_solver,
+     const int& chem_do_weno);
 
 BL_FORT_PROC_DECL(SET_PROBLEM_PARAMS,set_problem_params)
     (const int& dm,
@@ -154,6 +162,12 @@ BL_FORT_PROC_DECL(RNS_MZFILL,rns_mzfill)
      const Real dx[], const Real glo[], 
      const Real* time, const int bc[]);
 
+BL_FORT_PROC_DECL(RNS_TEMPFILL,rns_tempfill)
+    (BL_FORT_FAB_ARG(state),
+     const int dlo[], const int dhi[],
+     const Real dx[], const Real glo[], 
+     const Real* time, const int bc[]);
+
 BL_FORT_PROC_DECL(RNS_ESTDT,rns_estdt)
     (const BL_FORT_FAB_ARG(state),
      const int lo[], const int hi[],
@@ -199,5 +213,11 @@ BL_FORT_PROC_DECL(RNS_MAKEPLOTVAR, rns_makeplotvar)
      const int& icomp_X, const int& icomp_omegadot, const int& icomp_dYdt, 
      const int& icomp_heatRelease, const int& icomp_fuelConsumption,
      const int& fuelID);
+
+
+BL_FORT_PROC_DECL(  SET_SDC_BOUNDARY_FLAG,   set_sdc_boundary_flag)();
+BL_FORT_PROC_DECL(UNSET_SDC_BOUNDARY_FLAG, unset_sdc_boundary_flag)();
+
+BL_FORT_PROC_DECL(RNS_PASSINFO_LEVEL, rns_passinfo_level)(const int& level);
 
 #endif

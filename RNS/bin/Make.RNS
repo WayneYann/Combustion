@@ -7,7 +7,7 @@ USE_WORK_SPACE_MODULE := TRUE
 
 include $(BOXLIB_HOME)/Tools/C_mk/Make.defs
 
-Bdirs 	:= src src/Src_$(DIM)d src/Src_nd src/EOS src/Burner
+Bdirs 	:= src src/Src_$(DIM)d src/Src_nd src/EOS src/Burner src/TurbInflow
 
 # Chemistry
 ifneq (${CHEMISTRY_MODEL}, NULL)
@@ -22,6 +22,11 @@ Pdirs 	:= C_BaseLib C_AMRLib C_BoundaryLib
 
 Bpack	+= $(foreach dir, $(Pdirs), $(BOXLIB_HOME)/Src/$(dir)/Make.package)
 Blocs	+= $(foreach dir, $(Pdirs), $(BOXLIB_HOME)/Src/$(dir))
+
+
+ifeq ($(USE_COLOROUTPUT), TRUE)
+  DEFINES += -DUSE_COLOROUTPUT
+endif
 
 ifeq ($(USE_FUTURE), TRUE)
   DEFINES += -DUSE_FUTURE
@@ -63,6 +68,8 @@ else ifeq (${CHEMISTRY_MODEL}, LUDME)
   vpath %.c $(VPATH_LOCATIONS) ${MECHDIR}/Lu
 else ifeq (${CHEMISTRY_MODEL}, NULL)
   DEFINES += -DNULLCHEMISTRY
+else ifeq (${CHEMISTRY_MODEL}, LOCAL)
+  # chemistry files are in local problem directory 
 else
   $(error "Unknown CHEMISTRY_MODEL: $(CHEMISTRY_MODEL)")
 endif

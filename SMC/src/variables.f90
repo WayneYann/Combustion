@@ -37,13 +37,20 @@ contains
 
     irho = 1
     imx = 2
-    imy = 3
-    if (dm_in .eq. 3) then
+    if (dm_in .eq. 1) then
+       imy = -1
+       imz = -1
+       iene = 3
+    else if (dm_in .eq. 2) then
+       imy = 3
+       imz = -1
+       iene = 4
+    else if (dm_in .eq. 3) then
+       imy = 3
        imz = 4
        iene = 5
     else
-       imz = -1
-       iene = 4
+       call bl_error("init_variables: how did this happen?")
     end if
     iry1 = iene+1
 
@@ -51,20 +58,22 @@ contains
 
     qrho = 1
     qu = 2
-    qv = 3
-    if (dm_in .eq. 3) then
-       qw = 4
-       qpres = 5
-       qtemp = 6
-       qe    = 7
-       qy1   = 8
-    else
+    if (dm_in .eq. 1) then
+       qv = -1
+       qw = -1
+       qpres = 3
+    else if (dm_in .eq. 2) then
+       qv = 3
        qw = -1
        qpres = 4
-       qtemp = 5
-       qe    = 6
-       qy1   = 7
+    else if (dm_in .eq. 3) then
+       qv = 3
+       qw = 4
+       qpres = 5
     end if
+    qtemp = qpres + 1
+    qe    = qtemp + 1
+    qy1   = qe + 1
     qx1 = qy1 + nspecies
     qh1 = qx1 + nspecies
 
@@ -72,13 +81,18 @@ contains
 
     ! for S3D
     idu=1 
-    idv=2
-    if (dm_in .eq. 3) then
+    if (dm_in .eq. 1) then
+       idv=-1
+       idw=-1
+       idp=2
+    else if (dm_in .eq. 2) then
+       idv=2
+       idw=-1 
+       idp=3
+    else if (dm_in .eq. 3) then
+       idv=2
        idw=3 
        idp=4 
-    else
-       idw=-1
-       idp=3
     end if
     idT  = idp + 1 
     idX1 = idT + 1
@@ -147,7 +161,9 @@ contains
 
        call get_data_lo_hi(n,dlo,dhi)
 
-       if (dm .eq. 2) then
+       if (dm .eq. 1) then
+          call ctoprim_1d(lo,hi,up,qp,ngu,ngq,ngto,dlo,dhi,lgco, lryto)
+       else if (dm .eq. 2) then
           call ctoprim_2d(lo,hi,up,qp,ngu,ngq,ngto,dlo,dhi,lgco, lryto)
        else
           call ctoprim_3d(lo,hi,up,qp,ngu,ngq,ngto,dlo,dhi,lgco, lryto)
@@ -155,6 +171,67 @@ contains
     end do
 
   end subroutine ctoprim
+
+  subroutine ctoprim_1d(lo, hi, u, q, ngu, ngq, ngto, dlo, dhi, gco, ryto)
+    logical, intent(in) :: gco  ! ghost cells only?
+    logical, intent(in) :: ryto ! compute rho, Y and T only?
+    integer, intent(in) :: lo(1), hi(1), ngu, ngq, ngto, dlo(1), dhi(1)
+    double precision, intent(in ) :: u(lo(1)-ngu:hi(1)+ngu,ncons)
+    double precision, intent(out) :: q(lo(1)-ngq:hi(1)+ngq,nprim)
+    
+    integer :: i, n, iwrk, ierr
+    double precision :: rho, rhoinv, rwrk, X(nspecies), Y(nspecies), h(nspecies), ei, Tt, Pt
+    integer :: llo(1), lhi(1)
+
+    ! be safe
+    llo(1) = max(lo(1)-ngto, dlo(1))
+    lhi(1) = min(hi(1)+ngto, dhi(1))
+
+    !$omp parallel private(i, n, iwrk, rho, rhoinv, rwrk) &
+    !$omp private(X, Y, h, ei, Tt, Pt, ierr)
+    !$omp do
+    do i = llo(1),lhi(1)
+
+       if (gco .and. i.ge.lo(1) .and. i.le.hi(1) ) cycle
+          
+       rho = u(i,irho)
+       rhoinv = 1.d0/rho
+       q(i,qrho) = rho
+       q(i,qu) = u(i,imx) * rhoinv
+
+       do n=1,nspecies
+          Y(n) = u(i,iry1+n-1) * rhoinv
+          q(i,qy1+n-1) = Y(n)
+       end do
+          
+       ei = rhoinv*u(i,iene) - 0.5d0*q(i,qu)**2
+       q(i,qe) = ei
+
+       Tt = q(i,qtemp)
+       call get_t_given_ey(ei, Y, iwrk, rwrk, Tt, ierr)
+       q(i,qtemp) = Tt
+
+       if (ryto) cycle
+          
+       call ckytx(Y, iwrk, rwrk, X)
+       
+       do n=1,nspecies
+          q(i,qx1+n-1) = X(n)
+       end do
+       
+       call CKPY(rho, Tt, Y, iwrk, rwrk, Pt)
+       q(i,qpres) = Pt
+       
+       call ckhms(Tt, iwrk, rwrk, h)
+       
+       do n=1,nspecies
+          q(i,qh1+n-1) = h(n)
+       end do
+    enddo
+    !$omp end do
+    !$omp end parallel
+
+  end subroutine ctoprim_1d
 
   subroutine ctoprim_2d(lo, hi, u, q, ngu, ngq, ngto, dlo, dhi, gco, ryto)
     logical, intent(in) :: gco  ! ghost cells only?
@@ -321,14 +398,79 @@ contains
        lo = lwb(get_box(U,n))
        hi = upb(get_box(U,n))
 
-       if (dm .eq. 2) then
+       if (dm .eq. 1) then
+          call reset_rho_1d(lo,hi,ng,up)
+       else if (dm .eq. 2) then
           call reset_rho_2d(lo,hi,ng,up)
-        else
+       else
           call reset_rho_3d(lo,hi,ng,up)
        end if
     end do
 
   end subroutine reset_density
+
+  subroutine reset_rho_1d(lo, hi, ng, u)
+    integer, intent(in) :: lo(1), hi(1), ng
+    double precision, intent(inout) :: u(lo(1)-ng:hi(1)+ng,ncons)
+
+    integer :: i, n, iryn
+    double precision :: rho
+    double precision, parameter :: eps = -1.0d-16
+    integer          :: idom
+    double precision :: rhoy_dom, rhoy_under
+
+    !$omp parallel private(i,n,iryn,rho, idom, rhoy_dom, rhoy_under)
+    !$omp do
+    do i = lo(1),hi(1)
+          
+       rho = 0.d0
+       do n=1, nspecies
+          rho = rho + U(i,iry1+n-1)
+       end do
+       U(i,irho) = rho
+          
+       !
+       ! Enforce nonnegative species
+       !
+       rhoy_under = 0.d0
+       do n = 1, nspecies
+          iryn = iry1+n-1
+          if (U(i,iryn) .lt. 0.d0) then
+             rhoy_under = rhoy_under + U(i,iryn)
+             U(i,iryn) = 0.d0
+          end if
+       end do
+       
+       if (rhoy_under .lt. rho*eps) then
+          !
+          ! Find the dominant species.
+          !
+          idom = 1
+          rhoy_dom = U(i,iry1)
+          do n = 2, nspecies
+             iryn = iry1+n-1
+             if (U(i,iryn) .gt. rhoy_dom) then
+                idom = n
+                rhoy_dom = U(i,iryn)
+             end if
+          end do
+          !
+          ! Take enough from the dominant species to fill the negative one.
+          !
+          iryn = iry1+idom-1
+          U(i,iryn) = U(i,iryn) + rhoy_under
+          if (U(i,iryn) .lt. 0.d0) then
+             print *,'Just made dominant species',idom, &
+                  'negative', U(i,iryn)/rho, 'at ',i 
+             print *, 'rho = ', rho, ' Y_under = ', rhoy_under/rho
+             call bl_error("Error:: variables :: reset_rho_1d")
+          end if
+       end if
+    end do
+    !$omp end do
+    !$omp end parallel
+
+  end subroutine reset_rho_1d
 
   subroutine reset_rho_2d(lo, hi, ng, u)
     integer, intent(in) :: lo(2), hi(2), ng

@@ -1,4 +1,5 @@
 BOXLIB_HOME ?= /path/to/BoxLib
+SDCLIB_HOME ?= /path/to/SDCLib
 
 TOP = ../..
 
@@ -8,13 +9,15 @@ PROFILE    = FALSE
 DEBUG      = FALSE
 DEBUG      = TRUE
 
-DIM        = 2
+DIM        = 3
 
 COMP	   = gcc
 FCOMP	   = gfortran
 
 USE_MPI    = FALSE
 USE_OMP    = FALSE
+
+USE_SDCLIB = TRUE
 
 CHEMISTRY_MODEL = LIDRYER
 

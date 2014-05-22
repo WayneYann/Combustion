@@ -114,7 +114,7 @@ subroutine smc()
 
      if (parallel_IOProcessor() .and. verbose.ge.1) then
         print*,""
-        print*,"Restarting from", check_file_name
+        print*,"Restarting from ", check_file_name
      end if
 
      call initialize_from_restart(check_file_name, la,dt,courno,dx,U)
@@ -131,10 +131,6 @@ subroutine smc()
   end if
 
   dm = dm_in
-  if (dm .eq. 1) then
-     call bl_error('SMC cannot do 1D')
-  end if
-
   if (dm .ne. get_dim(la)) then
      call bl_error('dm_in not properly set in inputs file')
   end if
@@ -263,7 +259,7 @@ subroutine smc()
 
      do istep = init_step, max_step
 
-        if ( verbose .ge. 1 ) then
+        if ( verbose .gt. 2 ) then
            if ( parallel_IOProcessor() ) then
               print*, ' '
               print *, 'MEMORY STATS AT START OF TIMESTEP ', istep

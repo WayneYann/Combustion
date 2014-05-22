@@ -1,10 +1,10 @@
-module convert_1d_module
+module convert_module
 
   implicit none
 
   private
 
-  public :: cellavg2cc_1d
+  public :: cellavg2cc_1d, cc2cellavg_1d
 
 contains
 
@@ -22,4 +22,18 @@ contains
 
   end subroutine cellavg2cc_1d
 
-end module convert_1d_module
+  subroutine cc2cellavg_1d(lo, hi, uc, clo, chi, ua, alo, ahi)
+    integer, intent(in) :: lo, hi, alo, ahi, clo, chi
+    double precision, intent(in) :: uc(clo:chi)
+    double precision             :: ua(alo:ahi)
+    
+    integer :: i
+    double precision, parameter :: b = 1.d0/24.d0, d = 11.d0/12.d0
+
+    do i=lo,hi
+       ua(i) = b*(uc(i-1)+uc(i+1)) + d*uc(i) 
+    end do
+
+  end subroutine cc2cellavg_1d
+
+end module convert_module

@@ -1,0 +1,6 @@
+&fortin
+
+  init_flm_position = 0.d0
+  init_flm_width = 0.01d0
+
+/

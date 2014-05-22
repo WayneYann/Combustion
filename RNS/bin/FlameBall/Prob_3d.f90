@@ -10,7 +10,9 @@ subroutine PROBINIT (init,name,namlen,problo,probhi)
 
   integer untin,i
 
-  namelist /fortin/ prob_type, pertmag, rfire, uinit, vinit, winit
+  namelist /fortin/ prob_type, prob_dim, pertmag, rfire, uinit, vinit, winit, T0, T1, &
+       max_denerr_lev, max_tracerr_lev, max_temperr_lev, temperr, tracerr, &
+       fuel_name
 
 !
 !     Build "probin" filename -- the name of file containing fortin namelist.
@@ -30,13 +32,24 @@ subroutine PROBINIT (init,name,namlen,problo,probhi)
          
 ! set namelist defaults
   prob_type = 1
+  prob_dim  = 3
 
-! problem type 1
   pertmag = 0.d0
   rfire   = 0.15d0
   uinit   = 0.d0
   vinit   = 0.d0
   winit   = 0.d0
+
+  T0 = 1100.d0
+  T1 = 1500.d0
+
+  max_denerr_lev = -1
+  max_temperr_lev = -1
+  max_tracerr_lev = -1
+  temperr = 1250.d0
+  tracerr = 3.d-11
+
+  fuel_name = "H2"
 
 !     Read namelists
   untin = 9
@@ -93,7 +106,7 @@ subroutine rns_initdata(level,time,lo,hi,nscal, &
   double precision state(state_l1:state_h1,state_l2:state_h2,state_l3:state_h3,NVAR)
   
   ! local variables
-  integer :: i, j, k, n, ii, jj, kk, nimages, iii, jjj, kkk, iH2, iO2, iN2
+  integer :: i, j, k, n, ii, jj, kk, nimages, iii, jjj, kkk, ifuel, iO2, iN2
   double precision :: xcen, ycen, zcen, xg, yg, zg, r, rfront, xgi, ygi, zgi
   double precision :: pmf_vals(NSPEC+3), Xt(nspec), Yt(nspec)
   double precision :: rhot, et, Pt, Tt, u1t, u2t, u3t, kx, ky, kz, Pi
@@ -121,14 +134,17 @@ subroutine rns_initdata(level,time,lo,hi,nscal, &
      stop
   end if
 
-  iH2 = get_species_index("H2")
+  ifuel = get_species_index(fuel_name)
+  if (ifuel .le. 0) then
+     stop "wrong fuel name"
+  end if
   iO2 = get_species_index("O2")
   iN2 = get_species_index("N2")
 
   Pi = 4.d0*atan(1.d0)
 
   nimages = 0
-  if (prob_type .eq. 4) nimages = 1
+  if (prob_type .eq. 4) nimages = 3
 
   do k = state_l3, state_h3
      zcen = xlo(3) + delta(3)*(dble(k-lo(3)) + 0.5d0)
@@ -143,7 +159,13 @@ subroutine rns_initdata(level,time,lo,hi,nscal, &
            state(i,j,k,:) = 0.d0
 
            do kk = 1, ngp
-              zg = zcen + 0.5d0*delta(3)*gp(kk)
+
+              if (prob_dim .eq. 2) then
+                 zg = 0.d0
+              else
+                 zg = zcen + 0.5d0*delta(3)*gp(kk)
+              end if
+
               do jj = 1, ngp
                  yg = ycen + 0.5d0*delta(2)*gp(jj)
                  do ii = 1, ngp
@@ -181,10 +203,10 @@ subroutine rns_initdata(level,time,lo,hi,nscal, &
                     else if (prob_type .eq. 4) then
                        
                        Pt = Patm
-                       Tt = 300.0d0
+                       Tt = T0
                        
                        Xt = 0.0d0
-                       Xt(iH2) = 0.10d0
+                       Xt(ifuel) = 0.10d0
                        Xt(iO2) = 0.25d0
                        
                        do kkk = -nimages, nimages
@@ -193,17 +215,25 @@ subroutine rns_initdata(level,time,lo,hi,nscal, &
 
                                 xgi = xg + iii*Length(1)
                                 ygi = yg + jjj*Length(2)
-                                zgi = zg + kkk*Length(3)
+
+                                if (prob_dim .eq. 2) then
+                                   zgi = 0.d0
+                                else
+                                   zgi = zg + kkk*Length(3)
+                                end if
                        
                                 r = sqrt(xgi**2+ygi**2+zgi**2)
                        
                                 Pt = Pt    + 0.1d0*patm * exp(-(r / rfire)**2)
-                                Tt = Tt      + 1100.0d0 * exp(-(r / rfire)**2)
-                                Xt(iH2) = Xt(iH2) + 0.025d0 * exp(-(r / rfire)**2)
+                                Tt = Tt       + (T1-T0) * exp(-(r / rfire)**2)
+                                Xt(ifuel) = Xt(ifuel) + 0.025d0 * exp(-(r / rfire)**2)
                                 Xt(iO2) = Xt(iO2) - 0.050d0 * exp(-(r / rfire)**2)
 
                              end do
                           end do
+
+                          if (prob_dim .eq. 2) exit  ! only one image in z-direction
+
                        end do
 
                        kx = 2.d0*Pi/Length(1)
@@ -214,7 +244,7 @@ subroutine rns_initdata(level,time,lo,hi,nscal, &
                        u2t = -cos(kx*xg)*sin(ky*yg)*cos(kz*zg) * 300.d0
                        u3t = 0.d0
 
-                       Xt(iN2) = 1.0d0 - Xt(iH2) - Xt(iO2)
+                       Xt(iN2) = 1.0d0 - Xt(ifuel) - Xt(iO2)
 
                     end if
               

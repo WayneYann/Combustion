@@ -40,6 +40,12 @@ RNS::restart (Amr&     papa,
 	flux_reg = new FluxRegister(grids,crse_ratio,level,NUM_STATE);
     }
 
+    BL_ASSERT(chemstatus == 0);
+    if (! ChemDriver::isNull()) {
+      chemstatus = new MultiFab(grids,1,1);
+      chemstatus->setVal(0.0,1);
+    }
+
     // get the elapsed CPU time to now;
     if (level == 0 && ParallelDescriptor::IOProcessor())
     {

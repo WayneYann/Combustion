@@ -6,48 +6,41 @@ module burner_module
   implicit none
 
   double precision, allocatable, save :: Jac(:,:), A(:,:)
+  integer, allocatable, save :: ipvt(:)
   integer, save :: nstep
-  !$omp threadprivate(Jac,A,nstep) 
+  !$omp threadprivate(Jac,A,ipvt,nstep) 
 
   private
 
-  public :: burn, compute_rhodYdt, splitburn
+  public :: burn, compute_rhodYdt, splitburn, beburn
 
 contains
 
-  subroutine burn(np, rho, YT, dt, force_new_J)
+  subroutine burn(np, rho, YT, dt, force_new_J, ierr)
     use meth_params_module, only : use_vode
-    use feval, only : f_rhs, rho_feval => rho
     integer, intent(in) :: np
     double precision, intent(in   ) :: rho(np), dt
     double precision, intent(inout) :: YT(nspecies+1,np)
     logical, intent(in) :: force_new_J
-
-    double precision :: YTdot(nspecies+1,np)
-
-    if (dt == 0.d0) then
-       rho_feval(1:np) = rho
-       call f_rhs(nspecies+1, np, YT, 0.d0, YTdot)
-       YT = YTdot
-       return
-    end if
+    integer, intent(out), optional :: ierr
 
     if (use_vode) then
-       call burn_vode(np, rho, YT, dt, force_new_J)
+       call burn_vode(np, rho, YT, dt, force_new_J, ierr)
     else
-       call burn_bdf(np, rho, YT, dt, force_new_J)
+       call burn_bdf(np, rho, YT, dt, force_new_J, ierr)
     end if
 
   end subroutine burn
 
 
-  subroutine burn_vode(np, rho, YT, dt, force_new_J)
+  subroutine burn_vode(np, rho, YT, dt, force_new_J, ierr)
     use vode_module, only : verbose, itol, rtol, atol, vode_MF=>MF, always_new_j, &
          voderwork, vodeiwork, lvoderwork, lvodeiwork, voderpar, vodeipar
     integer, intent(in) :: np
     double precision, intent(in   ) :: rho(np), dt
     double precision, intent(inout) :: YT(nspecies+1,np)
     logical, intent(in) :: force_new_J
+    integer, intent(out), optional :: ierr
 
     external f_jac, f_rhs, dvode
 
@@ -98,22 +91,28 @@ contains
              else
                 write(6,*) '   spec with largest error = ', trim(spec_names(ifail))
              end if
-             call flush(6)
           end if
        end if
 
        if (istate < 0) then
           print *, 'chemsolv: VODE failed'
           print *, 'istate = ', istate, ' time =', time
-          call bl_error("ERROR in burn: VODE failed")
+          if (present(ierr)) then
+             ierr = 1
+             return
+          else
+             call bl_error("ERROR in burn: VODE failed")
+          end if
        end if
 
     end do
 
+    if (present(ierr)) ierr = 0
+
   end subroutine burn_vode
 
 
-  subroutine burn_bdf(np, rho_in, YT, dt, force_new_J)
+  subroutine burn_bdf(np, rho_in, YT, dt, force_new_J, ierr)
     use bdf
     use bdf_data, only : ts, reuse_jac
     use feval, only : f_rhs, f_jac, rho
@@ -121,9 +120,10 @@ contains
     double precision, intent(in   ) :: rho_in(np), dt
     double precision, intent(inout) :: YT(nspecies+1,np)
     logical, intent(in) :: force_new_J
+    integer, intent(out), optional :: ierr
 
     double precision :: t0, t1, y1(nspecies+1,np)
-    integer :: neq, np_bdf, i, p, ierr
+    integer :: neq, np_bdf, i, p, ierr_bdf
     logical :: reset, reuse_J
 
     neq = nspecies+1
@@ -151,14 +151,14 @@ contains
           rho(1:np_bdf) = rho_in(i:i+np_bdf-1)
 
           call bdf_advance(ts, f_rhs, f_jac, neq, np_bdf, YT(:,i:i+np_bdf-1), t0,  &
-               y1(:,i:i+np_bdf-1), t1, dt, reset, reuse_J, ierr)
+               y1(:,i:i+np_bdf-1), t1, dt, reset, reuse_J, ierr_bdf)
 
           nstep = ts%n - 1
 
           reuse_J = reuse_jac
 
-          if (ierr .ne. 0) then
-             print *, 'chemsolv: BDF failed:', errors(ierr)
+          if (ierr_bdf .ne. 0) then
+             print *, 'chemsolv: BDF failed:', errors(ierr_bdf)
              print *, 'BDF rtol:', minval(ts%rtol), maxval(ts%rtol)
              print *, 'BDF atol:', minval(ts%atol), maxval(ts%atol)
              print *, 'BDF y:'
@@ -167,7 +167,12 @@ contains
              end do
              print *, 'BDF y0:'
              print *, YT(:,i:i+np_bdf-1)
-             call bl_error("ERROR in burn: BDF failed")
+             if (present(ierr)) then
+                ierr = 1
+                return
+             else
+                call bl_error("ERROR in burn: BDF failed")
+             end if
           end if
 
        end do
@@ -175,6 +180,8 @@ contains
     end if
 
     YT = y1
+    
+    if (present(ierr)) ierr = 0
 
   end subroutine burn_bdf
 
@@ -205,7 +212,7 @@ contains
     double precision, intent(inout) :: YT(nspecies+1,np)
 
     integer :: i, j, n, iwrk, info
-    double precision :: ipvt(nspecies), C(nspecies)
+    double precision :: C(nspecies)
     double precision :: Y(np,nspecies), T(np), rdYdt(np,nspecies)
     double precision :: rwrk, dt_step, fac
     integer, parameter :: consP = 0
@@ -213,6 +220,7 @@ contains
     if (.not. allocated(Jac)) then
        allocate(Jac(nspecies+1,nspecies+1))
        allocate(A(nspecies,nspecies))
+       allocate(ipvt(nspecies))
     end if
 
     ! form A
@@ -258,5 +266,131 @@ contains
     end do
 
   end subroutine splitburn
+
+
+  subroutine beburn(rho0, Y0, rho, YT, dt, g, ierr, always_new_J)
+    integer, intent(in) :: g
+    double precision, intent(in   ) :: rho0, rho, dt
+    double precision, intent(in   ) :: Y0(nspecies+1)
+    double precision, intent(inout) :: YT(nspecies+1)
+    integer, intent(out), optional :: ierr
+    logical, intent(in), optional :: always_new_J
+
+    logical :: new_J
+    integer :: iwrk, iter, n, info, age
+    double precision :: rwrk, rhoinv, cv, rmax, rmin
+    double precision, dimension(nspecies) :: uk
+    double precision, dimension(nspecies+1) :: YT_init, r, dYTdt
+    integer, parameter :: J_int = 5
+    logical, save :: compute_new_A    
+    !$omp threadprivate(compute_new_A)     
+
+    new_J = .false.
+    if (present(always_new_J)) then
+       new_J = always_new_J
+    end if
+
+    if (g .eq. 1) compute_new_A = .true.
+
+    if (.not. allocated(A)) then
+       allocate(Jac(nspecies+1,nspecies+1))
+       allocate(A(nspecies+1,nspecies+1))
+       allocate(ipvt(nspecies+1))
+    end if
+
+    rhoinv = 1.d0/rho
+
+    YT_init = YT
+    YT = Y0
+
+    age = 0
+    rmin = 1.d50
+
+    do iter = 0, 100
+
+       call vckwyr(1, rho, YT(nspecies+1), YT(1), iwrk, rwrk, dYTdt)
+       call ckums(YT(nspecies+1), iwrk, rwrk, uk)
+       call ckcvbs(YT(nspecies+1),YT(1),iwrk,rwrk,cv)       
+       dYTdt(nspecies+1) = 0.d0
+       do n=1,nspecies
+          dYTdt(n) = dYTdt(n) * molecular_weight(n) * rhoinv
+          dYTdt(nspecies+1) = dYTdt(nspecies+1) - dYTdt(n)*uk(n)
+       end do
+       dYTdt(nspecies+1) = dYTdt(nspecies+1) / cv
+
+       r = YT - YT_init - dt * dYTdt
+
+       rmax = maxval(abs(r(1:nspecies)))
+       if (rmax .le. 1.d-14) then 
+          exit 
+       endif
+       
+       if (      new_J          &
+            .or. compute_new_A  &
+            .or. age.eq.J_int   &
+            .or. rmax.ge.rmin ) then
+          call LUA(rho, YT, dt)
+          age = 0
+          compute_new_A = .false.
+       else
+          age = age + 1
+       end if
+
+       rmin = min(rmin,rmax)
+
+       call dgesl(A, nspecies+1, nspecies+1, ipvt, r, 0)
+
+       YT = YT - r
+       if ( maxval(YT(1:nspecies)) .gt. 1.d0  .or.  &
+            minval(YT(1:nspecies)) .lt. -1.d-8 ) then
+          compute_new_A = .true.
+       end if
+
+    end do
+
+    if (present(ierr)) then
+       if (iter .gt. 100) then
+          ierr = iter
+          YT = YT_init
+       else
+          ierr = 0
+       end if
+    end if
+
+  contains
+
+    subroutine LUA(rho, YT, dt)
+      double precision, intent(in) :: rho, YT(nspecies+1), dt
+      integer :: i, j, iwrk, info
+      double precision :: rwrk
+      double precision, dimension(nspecies) :: C
+      integer, parameter :: consP = 0
+
+      call ckytcr(rho, YT(nspecies+1), YT(1), iwrk, rwrk, C)
+      call DWDOT(Jac, C, YT(nspecies+1), consP)
+
+      do j=1,nspecies
+         do i=1,nspecies
+            Jac(i,j) = Jac(i,j) * molecular_weight(i) * inv_mwt(j)
+         end do
+         i=nspecies+1
+         Jac(i,j) = Jac(i,j) * inv_mwt(j) * rho
+      end do
+      !
+      j = nspecies+1
+      do i=1,nspecies
+         Jac(i,j) = Jac(i,j) * molecular_weight(i) * rhoinv
+      end do
+      
+      A = -dt*Jac
+      do i=1,nspecies+1
+         A(i,i) = 1.d0 + A(i,i)
+      end do
+      
+      call dgefa(A, nspecies+1, nspecies+1, ipvt, info)
+      
+    end subroutine LUA
+
+  end subroutine beburn
 
 end module burner_module

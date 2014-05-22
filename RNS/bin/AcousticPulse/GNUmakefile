@@ -1,5 +1,5 @@
 BOXLIB_HOME ?= /path/to/BoxLib
-SDCLIB_HOME ?= /path/to/BoxLib
+SDCLIB_HOME ?= /path/to/SDCLib
 
 TOP = ../..
 

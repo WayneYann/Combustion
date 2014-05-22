@@ -1,107 +1,6 @@
 
 #include <MyPROB_F.H>
 
-      subroutine FORT_ACTIVECONTROL(coft,time,dt,myproc,step,restart)
-
-      implicit none
-
-#include <probdata.H>
-#include <cdwrk.H>
-#include <bc.H>
-
-      REAL_T coft,time,dt,vslope,slocal,V_new,dVmax
-      integer myproc,step,ierr,restart
-      REAL_T r1,r2,r3,r4,r5,r6,r7
-      integer i1
-      logical found_it
-
-      if (restart.ne.0) then
-         open(13,file=ac_hist_file,form='formatted',
-     &        status='old',iostat=ierr)
-         found_it = .false.
-         if (ierr .eq. 0) then
-            if (myproc.eq.0) then
-               print*, 'Setting active control from history file ...'
-            endif
-            rewind(13)
-            do
-c
-c                 This read(13) must correspond to the below write(13)
-c
-               read(13,1000,iostat=ierr) i1,r1,r2,r3,r4,r5,r6,r7
-               if (ierr.ne.0) goto 100
-               if (i1.eq.step) then
-
-                  found_it = .true.
-                  V_in = r2
-                  tbase_control = r3
-                  zbase_control = r4
-                  dV_control = r5
-                  sest = r6
-                  coft_old = r7
-
-               endif
-            enddo
-
-         else
-
-            if (myproc.eq.0) then
-               open(13,file=ac_hist_file,form='formatted', status='new')
-            endif
-
-         endif
-
- 100     if (found_it .eqv. .false.) then
-
-            if (myproc.eq.0) then
-               print*, 'Setting active control to defaults ...'
-            endif
-
-         end if
-         close(13)
-         return
-      end if
-
-      if (coft_old.lt.zero) coft_old = coft
-
-      if (dt.gt.zero) then
-         zbase_control = zbase_control + V_in*dt + dV_control*dt**2
-         V_in_old = V_in
-         V_in = V_in + dt*dV_control
-
-         slocal = half*(V_in_old + V_in) - (coft - coft_old)/(dt*scale_control)
-         sest = (one - corr)*sest + corr*slocal
-         vslope = two*((cfix-coft)/(scale_control*tau_control) + sest - V_in)/tau_control
-         
-         V_new = V_in + dt*vslope
-         dVmax = changeMax_control *  MAX(V_in_old,one)
-         V_new = MIN(MAX(V_new,V_in-dVmax),V_in+dVmax)
-         V_new = MAX(zero,V_new)
-         
-         tbase_control = time
-         dV_control = (V_new - V_in)/dt
-         
-         if (myproc.eq.0) then
-            print *
-            print *,'****************** control:'
-            print *,'time,dt,coft,V_new:',time,dt,coft,V_new
-            print *,'changeMax_control: ', changeMax_control
-            print *,'vslope,sest,cfix,slocal:',vslope,sest,cfix,slocal
-            print *,'coft_old,V_in_old:',coft_old,V_in_old
-         endif
-         
-         coft_old = coft
-         
-         if (myproc.eq.0) then
-            open(13,file=ac_hist_file,form='formatted',position='append')
-            write(13,1000) step,time,V_in,tbase_control,zbase_control,
-     &           dV_control,sest,coft_old
-            close(13)
-         endif
-      endif
- 1000 format(i7,7g26.18)
-      end
-
       subroutine FORT_SET_PROB_SPEC(fuel, oxid, prod, numspec)
       implicit none
 #include <cdwrk.H>
@@ -154,7 +53,7 @@ c ::: -----------------------------------------------------------
 #include <forcedata.H>
 #endif
 
-      integer i
+      integer i, istemp
       REAL_T FORT_P1ATMMKS, area
 
       namelist /fortin/ vorterr, temperr, adverr, tempgrad, 
@@ -164,14 +63,14 @@ c ::: -----------------------------------------------------------
      $                  turb_scale, V_in, V_co, H2_frac,T_switch,
      $                  standoff, pertmag, nchemdiag, splitx, xfrontw,
      &                  splity, yfrontw, blobx, bloby, blobz, blobr,
-     &                  blobT, Tfrontw, stTh, fuel_N2_vol_percent
+     &                  blobT, Tfrontw, stTh, fuel_N2_vol_percent,V_jet
       namelist /heattransin/ pamb, dpdt_factor
 #if defined(BL_DO_FLCT)
       namelist /flctin/ tstart_turb, forceInflow, numInflPlanesStore, forceLo, forceHi,
      &     strmwse_dir, nCompInflow, flct_file, convVelInit
 #endif
       namelist /control/ tau_control, sest, cfix, changeMax_control, h_control, 
-     &     zbase_control, pseudo_gravity
+     &     zbase_control, pseudo_gravity, istemp,corr,controlVelMax,navg_pnts
 #ifdef DO_LMC_FORCE
       REAL_T  twicePi, kxd, kyd, kzd
       REAL_T  thetaTmp, phiTmp
@@ -196,14 +95,13 @@ c ::: -----------------------------------------------------------
 c
 c      Build `probin' filename -- the name of file containing fortin namelist.
 c
-      integer maxlen, nCompFile, isioproc
+      integer maxlen, isioproc
       parameter (maxlen=256)
       character probin*(maxlen)
 
 #if defined(BL_DO_FLCT)
-      integer ierr
+      integer ierr, nCompFile
 #endif
-
 
       call bl_pd_is_ioproc(isioproc)
 
@@ -350,7 +248,11 @@ c     Set up boundary functions
       do i=1,SDIM-1
          area = area*(domnhi(i)-domnlo(i))
       enddo
+      if(istemp.eq.0)then
       scale_control = Y_bc(fuelID-1,BL_FUELPIPE) * rho_bc(BL_FUELPIPE) * area
+      else
+      scale_control = 1.d0
+      endif
       if (isioproc.eq.1) then
          write(6,*)" control setup", area, Y_bc(fuelID-1,BL_FUELPIPE), rho_bc(BL_FUELPIPE)
          write(6,*)" fuelpipe",BL_FUELPIPE

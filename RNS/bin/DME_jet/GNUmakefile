@@ -8,7 +8,7 @@ PRECISION  = DOUBLE
 PROFILE    = FALSE
 
 DEBUG      = FALSE
-DEBUG      = TRUE
+#DEBUG      = TRUE
 
 DIM        = 2
 
@@ -16,9 +16,11 @@ COMP	   = g++
 FCOMP	   = gfortran
 
 USE_MPI       = TRUE
-USE_OMP       = TRUE
+USE_OMP       = FALSE
 USE_SDCLIB    = FALSE
 USE_ARRAYVIEW = FALSE
+
+USE_SDCLIB = TRUE
 
 CHEMISTRY_MODEL = LUDME
 

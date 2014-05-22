@@ -3,7 +3,7 @@
     use bl_constants_module, only : Pi=>M_PI
     use DME_jet_module
     use probin_module, only : prob_lo, prob_hi, inflow_period, inflow_vnmag, &
-         xfrontw, splitx, vn_in, vn_co
+         xfrontw, splitx, vn_in, vn_co, prob_type
 
     integer, intent(in) :: lo(2), hi(2)
     double precision, intent(in) :: t, dx(2)
@@ -12,6 +12,8 @@
     integer :: i
     double precision :: x, vn0, facx, fact, sigma, eta
     
+    if (prob_type .ne. 0) return
+
     facx = 2.d0*Pi/(prob_hi(1)-prob_lo(1))
     fact = sin(2.d0*Pi*t/inflow_period)
 

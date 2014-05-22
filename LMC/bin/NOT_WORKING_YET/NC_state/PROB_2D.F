@@ -27,13 +27,6 @@
 #define OPEN_APPEND access='append'
 #endif
 
-      subroutine FORT_ACTIVECONTROL(coft,time,dt,myproc,step,restart)
-      implicit none
-      REAL_T coft,time,dt
-      integer myproc,step,restart
-      call bl_abort('Should not in FORT_ACTIVECONTROL...')
-      end
-
       subroutine FORT_HACK(lo, hi, dat, DIMS(dat),
      &                     datc, DIMS(datc), nc, mapO2N, lenmap, ratio)
       implicit none

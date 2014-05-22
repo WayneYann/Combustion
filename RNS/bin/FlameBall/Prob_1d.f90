@@ -10,7 +10,9 @@ subroutine PROBINIT (init,name,namlen,problo,probhi)
 
   integer untin,i
 
-  namelist /fortin/ prob_type, pertmag, rfire, uinit, vinit, winit
+  namelist /fortin/ prob_type, pertmag, rfire, uinit, vinit, winit, T0, T1, &
+       max_denerr_lev, max_tracerr_lev, max_temperr_lev, temperr, tracerr, &
+       fuel_name
 
 !
 !     Build "probin" filename -- the name of file containing fortin namelist.
@@ -37,6 +39,17 @@ subroutine PROBINIT (init,name,namlen,problo,probhi)
   uinit   = 0.d0
   vinit   = 0.d0
   winit   = 0.d0
+
+  T0 = 1100.d0
+  T1 = 1500.d0
+
+  max_denerr_lev = -1
+  max_temperr_lev = -1
+  max_tracerr_lev = -1
+  temperr = 1300.d0
+  tracerr = 3.d-11
+
+  fuel_name = "H2"
 
 !     Read namelists
   untin = 9
@@ -87,7 +100,7 @@ subroutine rns_initdata(level,time,lo,hi,nscal, &
   double precision time, delta(1)
   double precision xlo(1), xhi(1)
   
-  integer :: i, n, ii, nimages, iii, iH2, iO2, iN2
+  integer :: i, n, ii, nimages, iii, ifuel, iO2, iN2
   double precision :: xcen, xg, r, rfront, xgi
   double precision :: pmf_vals(NSPEC+3), Xt(nspec), Yt(nspec)
   double precision :: rhot, et, Pt, Tt, u1t
@@ -115,7 +128,10 @@ subroutine rns_initdata(level,time,lo,hi,nscal, &
      stop
   end if
 
-  iH2 = get_species_index("H2")
+  ifuel = get_species_index(fuel_name)
+  if (ifuel .le. 0) then
+     stop "wrong fuel name"
+  end if
   iO2 = get_species_index("O2")
   iN2 = get_species_index("N2")
 
@@ -163,10 +179,10 @@ subroutine rns_initdata(level,time,lo,hi,nscal, &
         else if (prob_type .eq. 4) then
                  
            Pt = Patm
-           Tt = 300.0d0
+           Tt = T0
 
            Xt = 0.0d0
-           Xt(iH2) = 0.10d0
+           Xt(ifuel) = 0.10d0
            Xt(iO2) = 0.25d0
            
            do iii = -nimages, nimages
@@ -176,15 +192,15 @@ subroutine rns_initdata(level,time,lo,hi,nscal, &
               r = abs(xgi)
                        
               Pt = Pt    + 0.1d0*patm * exp(-(r / rfire)**2)
-              Tt = Tt      + 1100.0d0 * exp(-(r / rfire)**2)
-              Xt(iH2) = Xt(iH2) + 0.025d0 * exp(-(r / rfire)**2)
+              Tt = Tt       + (T1-T0) * exp(-(r / rfire)**2)
+              Xt(ifuel) = Xt(ifuel) + 0.025d0 * exp(-(r / rfire)**2)
               Xt(iO2) = Xt(iO2) - 0.050d0 * exp(-(r / rfire)**2)
                        
            end do
 
            u1t = 0.0
               
-           Xt(iN2) = 1.0d0 - Xt(iH2) - Xt(iO2)
+           Xt(iN2) = 1.0d0 - Xt(ifuel) - Xt(iO2)
 
         end if
      

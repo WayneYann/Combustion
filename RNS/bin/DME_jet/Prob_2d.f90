@@ -10,8 +10,10 @@ subroutine PROBINIT (init,name,namlen,problo,probhi)
 
   integer untin,i
 
-  namelist /fortin/ pamb, phi_in, T_in, vn_in, T_co, vn_co, splitx, xfrontw, &
-       inflow_period, inflow_vnmag, max_tracerr_lev, tracerr, max_vorterr_lev, vorterr
+  namelist /fortin/ prob_type, turbfile, pamb, phi_in, T_in, vn_in, T_co, vn_co, &
+       splitx, xfrontw, Tfrontw, blobr, blobx, bloby, blobT, inflow_period, inflow_vnmag, &
+       splity, yfrontw, turb_boost_factor, &
+       max_tracerr_lev, tracerr, max_vorterr_lev, vorterr, max_tempgrad_lev, tempgrad
 
 !
 !     Build "probin" filename -- the name of file containing fortin namelist.
@@ -29,6 +31,8 @@ subroutine PROBINIT (init,name,namlen,problo,probhi)
      probin(i:i) = char(name(i))
   end do
 
+  prob_type = 0
+
   pamb = 4.053d7  ! 40 Patm
   
   phi_in = 0.2d0   ! mole fraction of CH3OCH3 in fuel
@@ -37,18 +41,32 @@ subroutine PROBINIT (init,name,namlen,problo,probhi)
   
   T_co  = 1525.d0   ! temperature of air
   vn_co = 5.12d2    ! air injection velocity
-  
+
   splitx  = 0.00569d0  ! where fuel and air split
   xfrontw = .2d0       ! controls the width of split
-  
+  Tfrontw = 0.0075d0
+
   inflow_period = 1.d-5 ! period of sinusoidal variation of inflow velocity
   inflow_vnmag  = 1.d3  ! magnitude of the variation
   
+  blobr = -1.d0
+  blobx = 0.d0
+  bloby = 0.027d0
+  blobT = 1500.d0
+
+  splity  = 0.001d0
+  yfrontw = 0.0004d0
+
+  turb_boost_factor = 1.d0
+
   max_tracerr_lev = -1
   tracerr = 1.d-8
 
   max_vorterr_lev = -1
   vorterr = 5.d4
+
+  max_tempgrad_lev = -1
+  tempgrad = 10.d0
 
   !     Read namelists
   untin = 9
@@ -98,9 +116,9 @@ subroutine rns_initdata(level,time,lo,hi,nscal, &
   
   ! local variables
   integer :: i, j, n, ii, jj
-  double precision :: xcen, ycen, xg, yg
+  double precision :: xcen, ycen, xg, yg, r
   double precision Yt(NSPEC)
-  double precision rhot,u1t,u2t,Tt,et, sigma, eta
+  double precision rhot,u1t,u2t,Tt,et, sigma, eta, eta1
   integer :: iwrk
   double precision :: rwrk
   double precision, parameter :: gp(2) = (/ -1.d0/sqrt(3.d0), 1.d0/sqrt(3.d0) /)
@@ -110,7 +128,7 @@ subroutine rns_initdata(level,time,lo,hi,nscal, &
      stop
   end if
 
-  if (.not. probdata_initialized) then
+  if (.not. dmejet_initialized) then
      call init_DME_jet()
   end if
 
@@ -129,16 +147,67 @@ subroutine rns_initdata(level,time,lo,hi,nscal, &
            do ii = 1, 2
               xg = xcen + 0.5d0*delta(1)*gp(ii)
 
-              eta = 0.5d0 * (tanh((xg + splitx)/sigma)   &
-                   &       - tanh((xg - splitx)/sigma))
-       
-              do n=1,nspecies
-                 Yt(n) = eta*fuel_Y(n) + (1.d0-eta)*air_Y(n)
-              end do
-              Tt  = eta * T_in + (1.d0-eta) * T_co
-              u1t = 0.d0
-              u2t = eta *vn_in + (1.d0-eta) *vn_co
-       
+              if (prob_type .eq. 0) then
+
+                 eta = 0.5d0 * (tanh((xg + splitx)/sigma)   &
+                      &       - tanh((xg - splitx)/sigma))
+
+                 do n=1,nspecies
+                    Yt(n) = eta*fuel_Y(n) + (1.d0-eta)*air_Y(n)
+                 end do
+                 Tt  = eta * T_in + (1.d0-eta) * T_co
+                 u1t = 0.d0
+                 u2t = eta  * vn_in + (1.d0-eta ) * vn_co
+
+              else if (prob_type .eq. 1) then
+
+                 eta = 0.5d0 * (tanh((xg + splitx)/Tfrontw)  &
+                      &       - tanh((xg - splitx)/Tfrontw))
+                 eta1 = 0.5d0 * (tanh((xg + blobr)/xfrontw)  &
+                      &        - tanh((xg - blobr)/xfrontw))
+
+                 do n=1,nspecies
+                    Yt(n) = eta*fuel_Y(n) + (1.d0-eta)*air_Y(n)
+                 end do
+                 Tt  = eta * T_in + (1.d0-eta) * T_co
+                 u1t = 0.d0
+                 u2t = eta1 * vn_in + (1.d0-eta1) * vn_co
+
+                 if (blobr .gt. 0.d0) then
+                    eta = 0.5d0*(1.d0 - TANH(-2.d0*(yg-bloby)/Tfrontw))
+                    Tt  = eta * T_co + (1.d0-eta) * Tt
+                    do n=1,nspecies
+                       Yt(n) = eta*air_Y(n) + (1.d0-eta)*Yt(n)
+                    end do
+                    
+                    ! Superimpose blob of hot air
+                    r = SQRT((xg-blobx)**2 + (yg-bloby)**2)
+                    eta = 0.5d0*(1.d0 - TANH(2.d0*(r-blobr)/Tfrontw))
+                    do n=1,nspecies
+                       Yt(n) = eta*air_Y(n) + (1.d0-eta)*Yt(n)
+                    enddo
+                    Tt  = eta * blobT + (1.d0-eta) * Tt
+                 end if
+
+              else if (prob_type .eq. 2) then
+
+                 eta = 0.5d0 * (tanh((xg + splitx)/xfrontw)  &
+                      &       - tanh((xg - splitx)/xfrontw))
+                 if ((yg-splity) < 5.d0*yfrontw) then
+                    eta = eta * 0.5d0*(1.d0-tanh((yg -splity)/yfrontw))
+                 else
+                    eta = 0.d0
+                 end if
+
+                 do n=1,nspecies
+                    Yt(n) = eta*fuel_Y(n) + (1.d0-eta)*air_Y(n)
+                 end do
+                 Tt  = eta * T_in + (1.d0-eta) * T_co
+                 u1t = 0.d0
+                 u2t = eta * vn_in + (1.d0-eta) * vn_co
+
+              end if
+
               CALL CKRHOY(pamb,Tt,Yt,IWRK,RWRK,rhot)
               call CKUBMS(Tt,Yt,IWRK,RWRK,et)
 

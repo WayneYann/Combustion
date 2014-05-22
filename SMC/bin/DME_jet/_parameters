@@ -1,3 +1,7 @@
+# 0: DME jet problem in SMC paper 
+# 1: diffusion laminar DME jet
+prob_type               integer        0
+
 # Ambient pressure
 pamb                    real            4.053d7
 
@@ -9,20 +13,28 @@ T_in                    real            400.d0
 
 # fuel injection velocity
 vn_in                   real            5.12d3  
+vt_in                   real            0.d0
 
 # temperature of air
 T_co                    real            1525.d0   
 
 # air injection velocity
 vn_co                   real            5.12d2    
+vt_co                   real            0.d0
 
 # where fuel and air split
 splitx                  real            0.00569d0  
 
 # controls the width of split
 xfrontw                 real            .2d0       
+Tfrontw                 real            .0075d0       
 
 # sinusoidal variation of inflow velocity
 inflow_period           real            1.d-5
 inflow_vnmag            real            1.d3
 
+# blob
+blobr                   real            -1.d0
+blobx                   real             0.d0
+bloby                   real             0.027d0
+blobT                   real             1500.d0
