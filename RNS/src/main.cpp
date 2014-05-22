@@ -42,25 +42,33 @@ int main (int argc, char* argv[])
     Real stop_time;
     Real walltime_limit;
     int walltime_int;
-    ParmParse pp; 
 
-    max_step  = -1;
-    strt_time =  0.0;
-    stop_time = -1.0;
-    walltime_limit = -1.0;
-    walltime_int = 10;
-    
-    pp.query("max_step",max_step);
-    pp.query("strt_time",strt_time);
-    pp.query("stop_time",stop_time);
-    pp.query("walltime_limit",walltime_limit);
-    pp.query("walltime_int",walltime_int);
-    
+    {
+	ParmParse pp; 
+	
+	max_step  = -1;
+	strt_time =  0.0;
+	stop_time = -1.0;
+	walltime_limit = -1.0;
+	walltime_int = 10;
+	
+	pp.query("max_step",max_step);
+	pp.query("strt_time",strt_time);
+	pp.query("stop_time",stop_time);
+	pp.query("walltime_limit",walltime_limit);
+	pp.query("walltime_int",walltime_int);
+    }
+
     if (strt_time < 0.0)
 	BoxLib::Abort("MUST SPECIFY a non-negative strt_time"); 
 
     if (max_step < 0 && stop_time < 0.0)
 	BoxLib::Abort("Exiting because neither max_step nor stop_time is non-negative.");
+
+    // {
+    // 	ParmParse pp("amr"); 
+    // 	pp.add("use_efficient_regrid", 1);
+    // }
 
 #ifndef USE_SDCLIB
     Amr* amrptr = new Amr;

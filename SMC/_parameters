@@ -282,7 +282,7 @@ plot_magvort                        logical            .true.
 
 # plot omegadot in plotfile
 plot_omegadot                       logical            .false.
-plot_dYdt                           logical            .true.
+plot_dYdt                           logical            .false.
 plot_heatRelease                    logical            .true.
 plot_fuelConsumption                logical            .false.
 fuel_name                           character          "none"

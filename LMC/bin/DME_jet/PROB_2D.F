@@ -395,8 +395,8 @@ c                 enddo
 c     Superimpose blob of hot air
                   r = SQRT((x-blobx)**2 + (y-bloby)**2)
                   eta = 0.5d0*(1.d0 - TANH(2.d0*(r-blobr)/Tfrontw))
-                  eta = ( dexp(-((x + splitx)**2 + (y-bloby)**2)/Tfrontw**2) 
-     &               +  dexp(-((x - splitx)**2 + (y-bloby)**2)/Tfrontw**2) )
+                  eta = ( dexp(-((x + 1.1d0*splitx)**2 + (y-bloby)**2)/Tfrontw**2) 
+     &               +  dexp(-((x - 1.1d0*splitx)**2 + (y-bloby)**2)/Tfrontw**2) )
  
 c                 do n=1,Nspec
 c                    scal(i,j,FirstSpec-1+n) = Y_bc(n-1,airZone)*eta
@@ -1425,7 +1425,7 @@ c     that the bc values may often be set up ahead of time.
             do i = lo(1), hi(1)
                x = (DBLE(i)+.5d0)*delta(1)+domnlo(1)
                call bcfunction(BL_YLO, x, y, time, u, v, rho, Yl, T, h, delta,.true.)
-               yvel(i,j) = v+ V_in
+               yvel(i,j) = v+ V_in+(time-tbase_control)*dV_control
 #if defined(BL_DO_FLCT)
                if (forceLo .and. strmwse_dir .eq. 2) then
                   yvel(i,j) = yvel(i,j) + vflct(i,1)*turb_scale

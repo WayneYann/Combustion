@@ -10,7 +10,7 @@ module weno_module
   double precision, dimension(-1:1), parameter :: C3_cg1 = &
        (/   sqrt(3.d0)/12.d0,  1.d0,  -sqrt(3.d0)/12.d0  /)
   double precision, dimension( 0:2), parameter :: R3_cg1 = &
-       (/  1+sqrt(3.d0)/4.d0,  -1.d0/sqrt(3.d0),  sqrt(3.d0)/12.d0  /)
+       (/  1.d0+sqrt(3.d0)/4.d0,  -1.d0/sqrt(3.d0),  sqrt(3.d0)/12.d0  /)
 
   ! Three types of third-order coefficients for converting cell averages to second Gauss point values
   double precision, dimension(-2:0), parameter :: L3_cg2 = &
@@ -18,7 +18,7 @@ module weno_module
   double precision, dimension(-1:1), parameter :: C3_cg2 = &
        (/   -sqrt(3.d0)/12.d0,  1.d0,  sqrt(3.d0)/12.d0  /)
   double precision, dimension( 0:2), parameter :: R3_cg2 = &
-       (/  1-sqrt(3.d0)/4.d0,  1.d0/sqrt(3.d0),  -sqrt(3.d0)/12.d0  /)
+       (/  1.d0-sqrt(3.d0)/4.d0,  1.d0/sqrt(3.d0),  -sqrt(3.d0)/12.d0  /)
 
   ! Optimial weights for first Gauss point
   double precision, dimension(-2:0), parameter :: d_g1 = &

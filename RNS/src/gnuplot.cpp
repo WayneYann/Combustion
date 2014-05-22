@@ -52,21 +52,30 @@ void dgp_send_mf(MultiFab& U, int level, int comp, int wait)
 
   const Box& mbx = U.boxArray().minimalBox();
   fprintf(to[level], "set term wxt %d\n", level);
-  fprintf(to[level], "set dgrid3d %d, %d\n", mbx.length(0)+2*U.nGrow(), mbx.length(1)+2*U.nGrow());
-  fprintf(to[level], "set pm3d\n");
-  fprintf(to[level], "set hidden3d\n");
-  fprintf(to[level], "splot '-'\n");
+  fprintf(to[level], "set pm3d corners2color c1 map\n");
   for (MFIter mfi(U); mfi.isValid(); ++mfi) {
     const Box& bx = U[mfi].box();
     IntVect    sm = bx.smallEnd();
     IntVect    bg = bx.bigEnd();
-    for (IntVect p=sm; p<=bg; bx.next(p))
-      fprintf(to[level], "%d %d %e\n", p[0], p[1], U[mfi](p,comp));
+
+    const int ny = bg[1]-sm[1]+1;
+    const int nx = bg[0]-sm[0]+1;
+
+    fprintf(to[level], "splot '-' binary array=%dx%d with pm3d\n", ny, nx);
+
+    IntVect p;
+    float r[ny];
+    for (int i=0; i<nx; i++) {
+      for (int j=0; j<ny; j++) {
+	p[0] = sm[0] + i; p[1] = sm[1] + j;
+      	r[j] = U[mfi](p,comp);
+      }
+      fwrite(r, sizeof(float), ny, to[level]);
+    }
   }
-  fprintf(to[level], "e\n");
   if (wait) {
     fprintf(to[level], "set print\n");
-    fprintf(to[level], "pause mouse button3 \"===> paused - button 3 in window %d to release\"\n", level);
+    fprintf(to[level], "pause mouse button2 \"===> paused - button 2 in window %d to release\"\n", level);
     fprintf(to[level], "print ''\n");
     fprintf(to[level], "set print '-'\n");
     fprintf(to[level], "print 'hoser!'\n");

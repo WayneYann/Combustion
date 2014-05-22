@@ -10,8 +10,9 @@ subroutine PROBINIT (init,name,namlen,problo,probhi)
 
   integer untin,i
 
-  namelist /fortin/ prob_type, pamb, phi_in, T_in, vn_in, T_co, vn_co, &
+  namelist /fortin/ prob_type, turbfile, pamb, phi_in, T_in, vn_in, T_co, vn_co, &
        splitx, xfrontw, Tfrontw, blobr, blobx, bloby, blobT, inflow_period, inflow_vnmag, &
+       splity, yfrontw, turb_boost_factor, &
        max_tracerr_lev, tracerr, max_vorterr_lev, vorterr, max_tempgrad_lev, tempgrad
 
 !
@@ -52,6 +53,11 @@ subroutine PROBINIT (init,name,namlen,problo,probhi)
   blobx = 0.d0
   bloby = 0.027d0
   blobT = 1500.d0
+
+  splity  = 0.001d0
+  yfrontw = 0.0004d0
+
+  turb_boost_factor = 1.d0
 
   max_tracerr_lev = -1
   tracerr = 1.d-8
@@ -122,7 +128,7 @@ subroutine rns_initdata(level,time,lo,hi,nscal, &
      stop
   end if
 
-  if (.not. probdata_initialized) then
+  if (.not. dmejet_initialized) then
      call init_DME_jet()
   end if
 
@@ -142,42 +148,66 @@ subroutine rns_initdata(level,time,lo,hi,nscal, &
               xg = xcen + 0.5d0*delta(1)*gp(ii)
 
               if (prob_type .eq. 0) then
+
                  eta = 0.5d0 * (tanh((xg + splitx)/sigma)   &
                       &       - tanh((xg - splitx)/sigma))
+
+                 do n=1,nspecies
+                    Yt(n) = eta*fuel_Y(n) + (1.d0-eta)*air_Y(n)
+                 end do
+                 Tt  = eta * T_in + (1.d0-eta) * T_co
+                 u1t = 0.d0
+                 u2t = eta  * vn_in + (1.d0-eta ) * vn_co
+
               else if (prob_type .eq. 1) then
+
                  eta = 0.5d0 * (tanh((xg + splitx)/Tfrontw)  &
                       &       - tanh((xg - splitx)/Tfrontw))
                  eta1 = 0.5d0 * (tanh((xg + blobr)/xfrontw)  &
                       &        - tanh((xg - blobr)/xfrontw))
-              end if
-       
-              do n=1,nspecies
-                 Yt(n) = eta*fuel_Y(n) + (1.d0-eta)*air_Y(n)
-              end do
-              Tt  = eta * T_in + (1.d0-eta) * T_co
-              u1t = 0.d0
-              if (prob_type .eq. 0) then 
-                 u2t = eta  * vn_in + (1.d0-eta ) * vn_co
-              else if (prob_type .eq. 1) then
-                 u2t = eta1 * vn_in + (1.d0-eta1) * vn_co
-              end if
 
-              if (blobr .gt. 0.d0) then
-                 eta = 0.5d0*(1.d0 - TANH(-2.d0*(yg-bloby)/Tfrontw))
-                 Tt  = eta * T_co + (1.d0-eta) * Tt
                  do n=1,nspecies
-                    Yt(n) = eta*air_Y(n) + (1.d0-eta)*Yt(n)
+                    Yt(n) = eta*fuel_Y(n) + (1.d0-eta)*air_Y(n)
                  end do
+                 Tt  = eta * T_in + (1.d0-eta) * T_co
+                 u1t = 0.d0
+                 u2t = eta1 * vn_in + (1.d0-eta1) * vn_co
 
-                 ! Superimpose blob of hot air
-                 r = SQRT((xg-blobx)**2 + (yg-bloby)**2)
-                 eta = 0.5d0*(1.d0 - TANH(2.d0*(r-blobr)/Tfrontw))
+                 if (blobr .gt. 0.d0) then
+                    eta = 0.5d0*(1.d0 - TANH(-2.d0*(yg-bloby)/Tfrontw))
+                    Tt  = eta * T_co + (1.d0-eta) * Tt
+                    do n=1,nspecies
+                       Yt(n) = eta*air_Y(n) + (1.d0-eta)*Yt(n)
+                    end do
+                    
+                    ! Superimpose blob of hot air
+                    r = SQRT((xg-blobx)**2 + (yg-bloby)**2)
+                    eta = 0.5d0*(1.d0 - TANH(2.d0*(r-blobr)/Tfrontw))
+                    do n=1,nspecies
+                       Yt(n) = eta*air_Y(n) + (1.d0-eta)*Yt(n)
+                    enddo
+                    Tt  = eta * blobT + (1.d0-eta) * Tt
+                 end if
+
+              else if (prob_type .eq. 2) then
+
+                 eta = 0.5d0 * (tanh((xg + splitx)/xfrontw)  &
+                      &       - tanh((xg - splitx)/xfrontw))
+                 if ((yg-splity) < 5.d0*yfrontw) then
+                    eta = eta * 0.5d0*(1.d0-tanh((yg -splity)/yfrontw))
+                 else
+                    eta = 0.d0
+                 end if
+
                  do n=1,nspecies
-                    Yt(n) = eta*air_Y(n) + (1.d0-eta)*Yt(n)
-                 enddo
-                 Tt  = eta * blobT + (1.d0-eta) * Tt
+                    Yt(n) = eta*fuel_Y(n) + (1.d0-eta)*air_Y(n)
+                 end do
+                 Tt  = eta * T_in + (1.d0-eta) * T_co
+                 u1t = 0.d0
+                 u2t = eta * vn_in + (1.d0-eta) * vn_co
+
               end if
-       
+
               CALL CKRHOY(pamb,Tt,Yt,IWRK,RWRK,rhot)
               call CKUBMS(Tt,Yt,IWRK,RWRK,et)
 

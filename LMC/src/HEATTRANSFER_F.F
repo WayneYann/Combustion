@@ -190,15 +190,33 @@ c     -- rbp
 #include <probdata.H>
 #include <cdwrk.H>
 #include <bc.H>
+      !
+      ! Just stuff in the calling sequence.
+      !
+      REAL_T coft,time,dt
+      integer myproc,step,restart,usetemp
+!
+! ACTIVE_CONTROL_IS_USABLE should be defined in your probdata.H
+! if you want to call FORT_ACTIVECONTROL.  This is how we enforce
+! that all the necessary variables get defined and included in
+! the proper problem-specific common blocks.
+!
+#if !defined(ACTIVE_CONTROL_IS_USABLE)
 
-      REAL_T coft,time,dt,vslope,slocal,V_new,dVmax,dVmin
-      integer myproc,step,ierr,restart,usetemp
+      call bl_abort('FORT_ACTIVECONTROL is NOT enabled')
+
+#else
+      REAL_T vslope,slocal,V_new,dVmax,dVmin
+      integer ierr
       REAL_T r1,r2,r3,r4,r5,r6,r7
       REAL_T alpha,xsmb,vpmax,exp1 
+      REAL_T rhs1,rhs2,vt_tay,vtt_tay,velintegral,sest_test
       integer i1
+      integer nfilled,ifill
       logical found_it
 
       if (restart.ne.0) then
+         nfilled = navg_pnts+1
          open(13,file=ac_hist_file,form='formatted',
      &        status='old',iostat=ierr)
          found_it = .false.
@@ -213,11 +231,19 @@ c                 This read(13) must correspond to the below write(13)
 c
                read(13,1000,iostat=ierr) i1,r1,r2,r3,r4,r5,r6,r7
                if (ierr.ne.0) goto 100
+               if(step-i1.ge.0 .and. step-i1 .le. navg_pnts)then
+                  nfilled = nfilled -1
+                  ifill = step-i1
+                  time_points(ifill) = r1
+                  vel_points(ifill) = r2
+                  cntl_points(ifill) = r7
+               endif
                if (i1.eq.step) then
 
                   found_it = .true.
                   V_in = r2
-                  tbase_control = r3
+c                 tbase_control = r3
+                  tbase_control = r1
                   zbase_control = r4
                   dV_control = r5
                   sest = r6
@@ -241,6 +267,12 @@ c
             endif
 
          end if
+            if (myproc.eq.0) then
+                 do ifill=0,navg_pnts
+                    print*,'data',ifill,time_points(ifill),vel_points(ifill),cntl_points(ifill)
+                 enddo
+                 call flush(6)
+            endif
          close(13)
          return
       end if
@@ -252,15 +284,61 @@ c
       V_in = V_in + dt*dV_control
 
       slocal = half*(V_in_old + V_in) - (coft - coft_old)/(dt*scale_control)
-      sest = (one - corr)*sest + corr*slocal
+ 
+      do ifill = navg_pnts,1,-1
+       time_points(ifill) = time_points(ifill-1)
+       vel_points(ifill) = vel_points(ifill-1)
+       cntl_points(ifill) = cntl_points(ifill-1)
+      enddo
+
+      time_points(0) = time
+      vel_points(0) = V_in
+      cntl_points(0) = coft
+c     sest = (one - corr)*sest + corr*slocal
+ 
+      if(nfilled .le. 0)then
+c           if (myproc.eq.0) then
+c                do ifill=0,navg_pnts
+c                   print*,'data',ifill,time_points(ifill),vel_points(ifill),cntl_points(ifill)
+c                enddo
+c                call flush(6)
+c           endif
+           velintegral = 0.d0
+           do ifill = 1,navg_pnts
+             velintegral = velintegral+0.5d0*(vel_points(ifill-1)+vel_points(ifill))
+     1             *(time_points(ifill-1)-time_points(ifill))
+           enddo
+            sest = (velintegral - (cntl_points(0) - cntl_points(navg_pnts))
+     &                /scale_control)
+     &                /(time_points(0)-time_points(navg_pnts))
+c        if (myproc.eq.0) then
+c           print *,' step, sest_test ', step,sest_test
+c           print *,'velintegral ',velintegral,velintegral/(time_points(0)-time_points(navg_pnts))
+c           print *,'movement ',(cntl_points(0) - cntl_points(navg_pnts))
+c           call flush(6)
+c        endif
+      else
+        nfilled = nfilled - 1
+        sest = (one - corr)*sest + corr*slocal
+      endif
 #if 1
+c    linear
 c     vslope = two*((cfix-coft)/(scale_control*tau_control) + sest - V_in)/tau_control
 
 c     V_new = V_in + dt*vslope
 
-      vslope = 3.d0*((cfix-coft)/(scale_control*tau_control) + sest - V_in)/tau_control
+c    quadratic 1
+c     vslope = 3.d0*((cfix-coft)/(scale_control*tau_control) + sest - V_in)/tau_control
+c     V_new = V_in + (dt-0.5d0*dt**2/tau_control)*vslope
 
-      V_new = V_in + (dt-0.5d0*dt**2/tau_control)*vslope
+c    quadratic 2
+      rhs2 = 2.d0*((cfix-coft)/(scale_control*tau_control) + sest - V_in)/tau_control
+      rhs1 = (sest - V_in)/tau_control
+
+      vt_tay = 3.d0*rhs2 - 2.d0*rhs1
+      vtt_tay = 6.d0*(rhs1-rhs2)/tau_control
+      V_new = V_in + dt*vt_tay + 0.5d0*dt**2*vtt_tay
+
 
       dVmax = changeMax_control * one
       dVmin = changeMax_control * max(one,V_in)
@@ -283,6 +361,7 @@ c     V_new = V_in + dt*vslope
 #endif
       V_new = MIN(MAX(V_new,V_in-dVmin),V_in+dVmax)
       V_new = MAX(zero,V_new)
+      V_new = Min(V_new,controlVelMax)
 
       tbase_control = time
       dV_control = (V_new - V_in)/dt
@@ -305,9 +384,13 @@ c     V_new = V_in + dt*vslope
 
       if (myproc.eq.0) then
          open(13,file=ac_hist_file,form='formatted',position='append')
-         write(13,1000) step,time,V_in,tbase_control,zbase_control,
+c        write(13,1000) step,time,V_in,tbase_control,zbase_control,
+         write(13,1000) step,time,V_in,slocal,zbase_control,
      &        dV_control,sest,coft_old
          close(13)
       endif
  1000 format(i7,7g26.18)
+
+#endif /*ACTIVE_CONTROL_IS_USABLE*/
+
       end

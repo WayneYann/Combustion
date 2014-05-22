@@ -49,10 +49,20 @@ static Real dt_cutoff    = 0.0;
 bool         RNS::dump_old      = false;
 
 int          RNS::verbose       = 0;
+#if (BL_SPACEDIM == 1) 
 Real         RNS::cfl           = 0.8;
 Real         RNS::diff_cfl      = 0.8;
+#elif (BL_SPACEDIM == 2)
+Real         RNS::cfl           = 0.4;
+Real         RNS::diff_cfl      = 0.4;
+#else
+Real         RNS::cfl           = 0.27;
+Real         RNS::diff_cfl      = 0.27;
+#endif
 Real         RNS::init_shrink   = 1.0;
 Real         RNS::change_max    = 1.1;
+Array<int>   RNS::lo_bc(BL_SPACEDIM);
+Array<int>   RNS::hi_bc(BL_SPACEDIM);       
 BCRec        RNS::phys_bc;
 int          RNS::NUM_STATE     = -1;
 int          RNS::do_reflux     = 1;
@@ -85,11 +95,11 @@ Real             RNS::difmag    = -1.0;  // for JBB & HLLC Riemann solvers
 
 std::string  RNS::fuelName           = "";
 int          RNS::fuelID             = -1;
-std::string  RNS::oxidizerName       = "";
+std::string  RNS::oxidizerName       = "O2";
 int          RNS::oxidizerID         = -1;
 std::string  RNS::productName        = "";
 int          RNS::productID          = -1;
-std::string  RNS::flameTracName      = "";
+std::string  RNS::flameTracName      = "H";
 int          RNS::flameTracID        = -1;
 
 ErrorList    RNS::err_list;
@@ -143,8 +153,15 @@ int          RNS::do_component_weno   = 0;
 
 int          RNS::do_chemistry        = 1;
 int          RNS::use_vode            = 0;
-int          RNS::do_cc_burning       = 0; // do_cc_burning has no effect when split_burning is true
-int          RNS::split_burning       = 1;
+int          RNS::new_J_cell          = 1; // new Jacobian for each cell?
+int          RNS::chem_do_weno        = 1;
+#ifdef USE_SDCLIB
+RNS::ChemSolverType RNS::chem_solver  = RNS::BEGP_BURNING;
+#else
+RNS::ChemSolverType RNS::chem_solver  = RNS::GAUSS_BURNING;
+#endif
+int          RNS::f2comp_simple_dUdt  = 0; // set dUdt = \Delta U / \Delta t in f2comp?
+int          RNS::f2comp_nbdf         = 1; // only use bdf/vode for the first ? times on each node for each time step
 
 // this will be reset upon restart
 Real         RNS::previousCPUTimeUsed = 0.0;
@@ -194,9 +211,10 @@ RNS::read_params ()
     pp.query("RK_order",RK_order);
 
     {
-	int riemann = RNS::Riemann;
-	pp.query("Riemann", riemann);
-	Riemann = static_cast<RiemannType>(riemann);
+	int riemann;
+	if (pp.query("Riemann", riemann)) {
+	    Riemann = static_cast<RiemannType>(riemann);
+	}
     }
 
     // some Riemann solvers need artificial viscosity to suppress odd-even decouping
@@ -215,7 +233,6 @@ RNS::read_params ()
     pp.query("difmag", difmag);
 
     // Get boundary conditions
-    Array<int> lo_bc(BL_SPACEDIM), hi_bc(BL_SPACEDIM);
     pp.getarr("lo_bc",lo_bc,0,BL_SPACEDIM);
     pp.getarr("hi_bc",hi_bc,0,BL_SPACEDIM);
     for (int i = 0; i < BL_SPACEDIM; i++) 
@@ -281,7 +298,6 @@ RNS::read_params ()
     pp.query("fuelName"     , fuelName);
     pp.query("oxidizerName" , oxidizerName);
     pp.query("productName"  , productName);
-    flameTracName = fuelName;
     pp.query("flameTracName", flameTracName);
     
     pp.query("allow_untagging"   , allow_untagging);
@@ -314,7 +330,6 @@ RNS::read_params ()
     pp.query("do_weno", do_weno);
     pp.query("do_quadrature_weno", do_quadrature_weno);
     pp.query("do_component_weno", do_component_weno);
-
     if (ChemDriver::isNull())
     {
 	do_weno = 1;  // must do weno
@@ -322,13 +337,28 @@ RNS::read_params ()
 
     pp.query("do_chemistry", do_chemistry);
     pp.query("use_vode", use_vode);
-    pp.query("do_cc_burning", do_cc_burning);
-    pp.query("split_burning", split_burning);
+    pp.query("new_J_cell", new_J_cell);
+    pp.query("chem_do_weno", chem_do_weno);
+    {
+	int chem_solver_i;
+	if (pp.query("chem_solver", chem_solver_i)) {
+	    chem_solver = static_cast<ChemSolverType>(chem_solver_i);
+	}
+    }
+    if (chem_solver == RNS::BEGP_BURNING) {
+	f2comp_nbdf = 1;
+    }
+    else {
+	f2comp_nbdf = 100000;
+    }
+    pp.query("f2comp_simple_dUdt", f2comp_simple_dUdt);
+    pp.query("f2comp_nbdf", f2comp_nbdf);
 }
 
 RNS::RNS ()
 {
     flux_reg = 0;
+    chemstatus = 0;
 }
 
 RNS::RNS (Amr&            papa,
@@ -346,11 +376,18 @@ RNS::RNS (Amr&            papa,
     {
 	flux_reg = new FluxRegister(grids,crse_ratio,level,NUM_STATE);
     }
+
+    chemstatus = 0;
+    if (! ChemDriver::isNull()) {
+      chemstatus = new MultiFab(grids,1,1);
+      chemstatus->setVal(0.0,1);
+    }
 }
 
 RNS::~RNS () 
 {
     delete flux_reg;
+    delete chemstatus;
 }
 
 void
@@ -502,7 +539,7 @@ RNS::estTimeStep (Real dt_old)
     ParallelDescriptor::ReduceRealMin(estdt);
 
     if (verbose && ParallelDescriptor::IOProcessor())
-	cout << "RNS::estTimeStep at level " << level << ":  estdt = " << estdt << std::endl;
+	cout << "At level " << level << ":  estdt = " << estdt << std::endl;
 
     return estdt;
     
@@ -530,9 +567,8 @@ RNS::estTimeStep (Real dt_old)
     Real estdt_min = std::min(estdts[0], estdts[1]);
 
     if (verbose && ParallelDescriptor::IOProcessor()){
-	cout << "RNS::estTimeStep at level " << level << ":  estdt = " << estdt_min << "\n";
-	cout << "                   hyperbolic estdt = " << estdts[0] << "\n";
-	cout << "                    diffusive estdt = " << estdts[1] << std::endl;
+	cout << "At level " << level << ":  estdt = " 
+	     << estdts[0] << " (advection),  " << estdts[1] << " (diffusion)" << std::endl;
     }
 
     return estdt_min;
@@ -709,11 +745,13 @@ RNS::post_restart ()
 void
 RNS::postCoarseTimeStep (Real cumtime)
 {
-    if (sum_int <= 0) return;
+    if (chemstatus) sum_chemstatus();
 
-    int nstep = parent->levelSteps(0);
-    if (nstep % sum_int == 0) {
-	sum_conserved_variables();
+    if (sum_int > 0) {
+	int nstep = parent->levelSteps(0);
+	if (nstep % sum_int == 0) {
+	    sum_conserved_variables();
+	}
     }
 }
 
@@ -919,4 +957,37 @@ RNS::getCPUTime()
 	previousCPUTimeUsed;
     
     return T;
+}
+
+void
+RNS::buildTouchFine ()
+{
+    if (level == parent->finestLevel()) return;
+
+    MultiFab& S_new = get_new_data(State_Type);
+
+    const BoxArray& fba = getLevel(level+1).boxArray();
+    const Box fb = fba.minimalBox();
+
+    touchFine.resize(S_new.size());
+
+    for (MFIter mfi(S_new); mfi.isValid(); ++mfi)
+    {
+	int i = mfi.index();
+
+	const Box tbox = BoxLib::refine(S_new[i].box(), parent->refRatio(level));
+
+	if (fb.intersects(tbox) || fba.intersects(tbox)) {
+	    touchFine[i] = 1;
+	}
+	else {
+	    touchFine[i] = 0;
+	}
+    }
+}
+
+void
+RNS::zeroChemStatus()
+{
+    if (chemstatus) chemstatus->setVal(0.0,1);
 }

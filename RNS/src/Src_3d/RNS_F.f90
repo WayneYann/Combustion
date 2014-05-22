@@ -10,6 +10,7 @@ subroutine rns_dudt_ad (lo, hi, &
        xblksize, yblksize, zblksize, nthreads
   use hypterm_module, only : hypterm
   use difterm_module, only : difterm
+  use threadbox_module, only : build_threadbox_3d, get_lo_hi
   implicit none
 
   integer, intent(in) :: lo(3), hi(3)
@@ -26,9 +27,12 @@ subroutine rns_dudt_ad (lo, hi, &
   double precision,intent(in) :: dx(3)
 
   integer :: Ulo(3),Uhi(3),fxlo(3),fxhi(3),fylo(3),fyhi(3),fzlo(3),fzhi(3),tlo(3),thi(3)
-  integer :: i, j, k, n, blocksize(3), ib, jb, kb, nb(3)
+  integer :: i, j, k, n, ib, jb, kb, nb(3), boxsize(3)
   double precision :: dxinv(3)
+  integer, allocatable :: bxlo(:), bxhi(:), bylo(:), byhi(:), bzlo(:), bzhi(:)
   double precision, allocatable :: bxflx(:,:,:,:), byflx(:,:,:,:), bzflx(:,:,:,:)
+
+  integer, parameter :: blocksize_min = 4
 
   dxinv = 1.d0/dx
 
@@ -39,15 +43,29 @@ subroutine rns_dudt_ad (lo, hi, &
   Uhi(2) = U_h2
   Uhi(3) = U_h3
 
-  if (nthreads*yblksize*zblksize .le. (hi(2)-lo(2)+1)*(hi(3)-lo(3)+1)) then
-     blocksize(1) = hi(1) - lo(1) + 1  ! blocking in y and z-direction only
-  else
-     blocksize(1) = xblksize 
-  end if
-  blocksize(2) = yblksize
-  blocksize(3) = zblksize
+  boxsize = hi-lo+1
 
-  nb = (hi-lo+blocksize)/blocksize
+  if (nthreads > 1) then
+     call build_threadbox_3d(nthreads, boxsize, blocksize_min, nb)
+     if (nb(1).eq.0) then
+        nb = boxsize/blocksize_min
+     end if
+  else
+     nb(1) = max(boxsize(1)/xblksize, 1)
+     nb(2) = max(boxsize(2)/yblksize, 1)
+     nb(3) = max(boxsize(3)/zblksize, 1)
+  end if
+
+  allocate(bxlo(0:nb(1)-1))
+  allocate(bxhi(0:nb(1)-1))
+  allocate(bylo(0:nb(2)-1))
+  allocate(byhi(0:nb(2)-1))
+  allocate(bzlo(0:nb(3)-1))
+  allocate(bzhi(0:nb(3)-1))
+
+  call get_lo_hi(boxsize(1), nb(1), bxlo, bxhi)
+  call get_lo_hi(boxsize(2), nb(2), bylo, byhi)
+  call get_lo_hi(boxsize(3), nb(3), bzlo, bzhi)
 
   !$omp parallel private(fxlo,fxhi,fylo,fyhi,fzlo,fzhi,tlo,thi) &
   !$omp private(i,j,k,n,ib,jb,kb,bxflx,byflx,bzflx)
@@ -57,13 +75,14 @@ subroutine rns_dudt_ad (lo, hi, &
      do jb=0,nb(2)-1
      do ib=0,nb(1)-1
 
-        tlo(1) = lo(1) + ib*blocksize(1)
-        tlo(2) = lo(2) + jb*blocksize(2)
-        tlo(3) = lo(3) + kb*blocksize(3)
-
-        thi(1) = min(tlo(1)+blocksize(1)-1, hi(1))
-        thi(2) = min(tlo(2)+blocksize(2)-1, hi(2))
-        thi(3) = min(tlo(3)+blocksize(3)-1, hi(3))
+        tlo(1) = lo(1) + bxlo(ib)
+        thi(1) = lo(1) + bxhi(ib)
+        
+        tlo(2) = lo(2) + bylo(jb)
+        thi(2) = lo(2) + byhi(jb)
+        
+        tlo(3) = lo(3) + bzlo(kb)
+        thi(3) = lo(3) + bzhi(kb)
 
         fxlo = tlo
         fxhi(1) = thi(1)+1
@@ -166,16 +185,19 @@ end subroutine rns_dudt_ad
 ! ::: ------------------------------------------------------------------
 ! :::
 
-subroutine rns_advchem(lo,hi,U,U_l1,U_l2,U_l3,U_h1,U_h2,U_h3,dt)
+subroutine rns_advchem(lo,hi,U,U_l1,U_l2,U_l3,U_h1,U_h2,U_h3,  &
+     st,st_l1,st_l2,st_l3,st_h1,st_h2,st_h3, dt)
   use meth_params_module, only : NVAR
   use chemterm_module, only : chemterm
   implicit none
   integer, intent(in) :: lo(3), hi(3)
-  integer, intent(in) ::  U_l1, U_l2, U_l3, U_h1, U_h2, U_h3
+  integer, intent(in) ::  U_l1, U_l2, U_l3, U_h1, U_h2, U_h3, &
+       st_l1,st_l2,st_l3,st_h1,st_h2,st_h3
   double precision, intent(inout) :: U(U_l1:U_h1,U_l2:U_h2,U_l3:U_h3,NVAR)
+  double precision, intent(inout) :: st(st_l1:st_h1,st_l2:st_h2,st_l3:st_h3)
   double precision, intent(in) :: dt
 
-  integer :: Ulo(3), Uhi(3)
+  integer :: Ulo(3), Uhi(3), stlo(3), sthi(3)
 
   Ulo(1) = U_l1
   Ulo(2) = U_l2
@@ -183,8 +205,46 @@ subroutine rns_advchem(lo,hi,U,U_l1,U_l2,U_l3,U_h1,U_h2,U_h3,dt)
   Uhi(1) = U_h1
   Uhi(2) = U_h2
   Uhi(3) = U_h3
-  call chemterm(lo, hi, U, Ulo, Uhi, dt)
+  stlo(1) = st_l1
+  stlo(2) = st_l2
+  stlo(3) = st_l3
+  sthi(1) = st_h1
+  sthi(2) = st_h2
+  sthi(3) = st_h3
+  call chemterm(lo, hi, U, Ulo, Uhi, st, stlo, sthi, dt)
 end subroutine rns_advchem
+
+subroutine rns_advchem2(lo,hi,U,U_l1,U_l2,U_l3,U_h1,U_h2,U_h3, &
+     st,st_l1,st_l2,st_l3,st_h1,st_h2,st_h3, &
+     Up,Up_l1,Up_l2,Up_l3,Up_h1,Up_h2,Up_h3,dt)
+  use meth_params_module, only : NVAR
+  use chemterm_module, only : chemterm
+  implicit none
+  integer, intent(in) :: lo(3), hi(3)
+  integer, intent(in) ::  U_l1, U_l2, U_l3, U_h1, U_h2, U_h3, &
+       st_l1,st_l2,st_l3,st_h1,st_h2,st_h3
+  integer, intent(in) ::  Up_l1, Up_l2, Up_l3, Up_h1, Up_h2, Up_h3
+  double precision, intent(inout) :: U(U_l1:U_h1,U_l2:U_h2,U_l3:U_h3,NVAR)
+  double precision, intent(inout) :: st(st_l1:st_h1,st_l2:st_h2,st_l3:st_h3)
+  double precision, intent(in   ) :: Up(Up_l1:Up_h1,Up_l2:Up_h2,Up_l3:Up_h3,NVAR)
+  double precision, intent(in) :: dt
+
+  integer :: Ulo(3), Uhi(3), stlo(3), sthi(3)
+
+  Ulo(1) = U_l1
+  Ulo(2) = U_l2
+  Ulo(3) = U_l3
+  Uhi(1) = U_h1
+  Uhi(2) = U_h2
+  Uhi(3) = U_h3
+  stlo(1) = st_l1
+  stlo(2) = st_l2
+  stlo(3) = st_l3
+  sthi(1) = st_h1
+  sthi(2) = st_h2
+  sthi(3) = st_h3
+  call chemterm(lo, hi, U, Ulo, Uhi, st, stlo, sthi, dt, Up)
+end subroutine rns_advchem2
 
 ! :::
 ! ::: ------------------------------------------------------------------
@@ -192,17 +252,19 @@ end subroutine rns_advchem
 
 subroutine rns_dUdt_chem(lo,hi, &
      U , U_l1, U_l2, U_l3, U_h1, U_h2, U_h3, &
-     Ut,Ut_l1,Ut_l2,Ut_l3,Ut_h1,Ut_h2,Ut_h3)
+     Ut,Ut_l1,Ut_l2,Ut_l3,Ut_h1,Ut_h2,Ut_h3, &
+     st,st_l1,st_l2,st_l3,st_h1,st_h2,st_h3 )
   use meth_params_module, only : NVAR
   use chemterm_module, only : dUdt_chem
   implicit none
   integer, intent(in) :: lo(3), hi(3)
   integer, intent(in) ::  U_l1, U_h1, Ut_l1, Ut_h1, U_l2, U_h2, Ut_l2, Ut_h2, &
-       U_l3, U_h3, Ut_l3, Ut_h3
+       U_l3, U_h3, Ut_l3, Ut_h3, st_l1,st_l2,st_l3,st_h1,st_h2,st_h3
   double precision, intent(in ) ::  U( U_l1: U_h1, U_l2: U_h2, U_l3: U_h3,NVAR)
   double precision, intent(out) :: Ut(Ut_l1:Ut_h1,Ut_l2:Ut_h2,Ut_l3:Ut_h3,NVAR)
+  double precision, intent(inout) :: st(st_l1:st_h1,st_l2:st_h2,st_l3:st_h3)
 
-  integer :: Ulo(3), Uhi(3), Utlo(3), Uthi(3)
+  integer :: Ulo(3), Uhi(3), Utlo(3), Uthi(3), stlo(3), sthi(3)
 
   Ulo(1) = U_l1
   Ulo(2) = U_l2
@@ -216,7 +278,13 @@ subroutine rns_dUdt_chem(lo,hi, &
   Uthi(1) = Ut_h1
   Uthi(2) = Ut_h2
   Uthi(3) = Ut_h3
-  call dUdt_chem(lo, hi, U, Ulo, Uhi, Ut, Utlo, Uthi)
+  stlo(1) = st_l1
+  stlo(2) = st_l2
+  stlo(3) = st_l3
+  sthi(1) = st_h1
+  sthi(2) = st_h2
+  sthi(3) = st_h3
+  call dUdt_chem(lo, hi, U, Ulo, Uhi, Ut, Utlo, Uthi, st, stlo, sthi)
 end subroutine rns_dUdt_chem
 
 ! :::
@@ -232,16 +300,16 @@ subroutine rns_compute_temp(lo,hi,U,U_l1,U_l2,U_l3,U_h1,U_h2,U_h3)
   integer, intent(in) :: U_l1, U_l2, U_l3, U_h1, U_h2, U_h3
   double precision, intent(inout) :: U(U_l1:U_h1,U_l2:U_h2,U_l3:U_h3,NVAR)
 
-  integer :: i, j, k, pt_index(3)
+  integer :: i, j, k, pt_index(3), ierr
   double precision :: rhoInv, e, vx, vy, vz, Y(NSPEC)
 
-  !$omp parallel do private(i,j,k,rhoInv,e,vx,vy,vz,Y,pt_index) collapse(2)
+  !$omp parallel do private(i,j,k,rhoInv,e,vx,vy,vz,Y,pt_index,ierr) collapse(2)
   do k=lo(3),hi(3)
   do j=lo(2),hi(2)
   do i=lo(1),hi(1)
      pt_index(1) = i
-     pt_index(2) = i
-     pt_index(3) = i
+     pt_index(2) = j
+     pt_index(3) = k
 
      rhoInv = 1.0d0/U(i,j,k,URHO)
 
@@ -252,7 +320,12 @@ subroutine rns_compute_temp(lo,hi,U,U_l1,U_l2,U_l3,U_h1,U_h2,U_h3)
 
      Y = U(i,j,k,UFS:UFS+NSPEC-1)*rhoInv
 
-     call eos_get_T(U(i,j,k,UTEMP), e, Y, pt_index)
+     call eos_get_T(U(i,j,k,UTEMP), e, Y, pt_index,ierr)
+
+     if (ierr .ne. 0) then
+        print *, 'rns_compute_temp failed at ', i,j,k,U(i,j,k,:)
+        call bl_error("rns_compute_temp failed")
+     end if
   end do
   end do
   end do
@@ -344,13 +417,13 @@ subroutine rns_enforce_consistent_Y(lo,hi,U,U_l1,U_l2,U_l3,U_h1,U_h2,U_h3)
               ! Take enough from the dominant species to fill the negative one.
               U(i,j,k,int_dom_spec) = U(i,j,k,int_dom_spec) + U(i,j,k,n)
    
-              ! ! Test that we didn't make the dominant species negative
-              ! if (U(i,j,k,int_dom_spec) .lt. 0.d0) then 
-              !    print *,' Just made dominant species negative ',int_dom_spec-UFS+1,' at ',i
-              !    print *,'We were fixing species ',n-UFS+1,' which had value ',x
-              !    print *,'Dominant species became ',U(i,j,k,int_dom_spec) / U(i,j,k,URHO)
-              !    call bl_error("Error:: CNSReact_2d.f90 :: ca_enforce_nonnegative_species")
-              ! end if
+              ! Test that we didn't make the dominant species negative
+              if (U(i,j,k,int_dom_spec) .lt. 0.d0) then 
+                 print *,' Just made dominant species negative ',int_dom_spec-UFS+1,' at ',i,j,k
+                 print *,'We were fixing species ',n-UFS+1,' which had value ',x
+                 print *,'Dominant species became ',U(i,j,k,int_dom_spec)*rhoInv
+                 call bl_error("rns_enforce_consistent_Y")
+              end if
 
               ! Now set the negative species to zero
               U(i,j,k,n) = 0.d0
@@ -387,6 +460,7 @@ subroutine rns_sum_cons ( &
 
   integer :: i, j, k, n
 
+  !$omp parallel do private(i,j,k,n)
   do n=1,5
      do k=m_l3,m_h3
         do j=m_l2,m_h2
@@ -396,6 +470,7 @@ subroutine rns_sum_cons ( &
         end do
      end do
   end do
+  !$omp end parallel do
 
 end subroutine rns_sum_cons
 

@@ -1,14 +1,15 @@
 ! Fill the entire state
 subroutine rns_grpfill(adv,adv_l1,adv_l2,adv_h1,adv_h2, &
-     domlo,domhi,delta,xlo,time,bc)
+     domlo,domhi,delta,xlo,time,bc_in)
  
   use meth_params_module
   use probdata_module
+  use sdc_boundary_module, only : isFEval
   
   implicit none
   include 'bc_types.fi'
   integer adv_l1,adv_l2,adv_h1,adv_h2
-  integer bc(2,2,*)
+  integer bc_in(2,2,*)
   integer domlo(2), domhi(2)
   double precision delta(2), xlo(2), time
   double precision adv(adv_l1:adv_h1,adv_l2:adv_h2,NVAR)
@@ -17,6 +18,16 @@ subroutine rns_grpfill(adv,adv_l1,adv_l2,adv_h1,adv_h2, &
   double precision :: x, xg, facx, fact, sigma, eta, Pi, eta1
   double precision rhot,u1t,u2t,Tt,et,Yt(NSPEC),rwrk
   double precision, parameter :: gp(2) = (/ -1.d0/sqrt(3.d0), 1.d0/sqrt(3.d0) /)
+  double precision, parameter :: wgt = 0.5d0
+
+  integer bc(2,2,NVAR)
+
+  if (.not. dmejet_initialized) then
+     call init_DME_jet()
+  end if
+
+  bc = bc_in(:,:,1:NVAR)
+  if (isFEval) bc(2,1,:) = FOEXTRAP
 
   !$omp parallel do private(n)
   do n = 1,NVAR
@@ -25,6 +36,8 @@ subroutine rns_grpfill(adv,adv_l1,adv_l2,adv_h1,adv_h2, &
           domlo,domhi,delta,xlo,bc(1,1,n))
   enddo
   !$omp end parallel do
+
+  if (isFEval) return
 
 !        YLO
   if (adv_l2.lt.domlo(2)) then
@@ -37,8 +50,7 @@ subroutine rns_grpfill(adv,adv_l1,adv_l2,adv_h1,adv_h2, &
         sigma = 2.5d0*xfrontw*splitx
 
         ! fill the corners too
-        !$omp parallel do private(i,j,n,iwrk,ii,x,xg,eta,eta1,rhot,u1t,u2t,Tt,et,Yt,rwrk) &
-        !$omp collapse(2)
+        !$omp parallel do private(i,j,n,iwrk,ii,x,xg,eta,eta1,rhot,u1t,u2t,Tt,et,Yt,rwrk)
         do j = adv_l2, domlo(2)-1 
            do i = adv_l1,adv_h1
         
@@ -50,37 +62,56 @@ subroutine rns_grpfill(adv,adv_l1,adv_l2,adv_h1,adv_h2, &
                  xg = x + 0.5d0*delta(1)*gp(ii)
 
                  if (prob_type .eq. 0) then
+
                     eta = 0.5d0 * (tanh((xg + splitx)/sigma)   &
                          &       - tanh((xg - splitx)/sigma))
+
+                    do n=1,nspec
+                       Yt(n) = eta*fuel_Y(n) + (1.d0-eta)*air_Y(n)
+                    end do
+                    Tt  = eta * T_in + (1.d0-eta) * T_co
+                    u1t = 0.d0
+                    u2t = eta *vn_in + (1.d0-eta) *vn_co &
+                         + inflow_vnmag*eta*sin(xg*facx)*fact
+
                  else if (prob_type .eq. 1) then
+
                     eta = 0.5d0 * (tanh((xg + splitx)/Tfrontw)  &
                          &       - tanh((xg - splitx)/Tfrontw))
                     eta1 = 0.5d0 * (tanh((xg + blobr)/xfrontw)  &
                          &        - tanh((xg - blobr)/xfrontw))
-                 end if
 
-                 do n=1,nspec
-                    Yt(n) = eta*fuel_Y(n) + (1.d0-eta)*air_Y(n)
-                 end do
-                 Tt  = eta * T_in + (1.d0-eta) * T_co
-                 u1t = 0.d0
-                 if (prob_type .eq. 0) then 
-                    u2t = eta *vn_in + (1.d0-eta) *vn_co &
-                         + inflow_vnmag*eta*sin(xg*facx)*fact
-                 else if (prob_type .eq. 1) then
+                    do n=1,nspec
+                       Yt(n) = eta*fuel_Y(n) + (1.d0-eta)*air_Y(n)
+                    end do
+                    Tt  = eta * T_in + (1.d0-eta) * T_co
+                    u1t = 0.d0
                     u2t = eta1 * vn_in + (1.d0-eta1) * vn_co
+
+                 else 
+
+                    eta = 0.5d0 * (tanh((xg + splitx)/xfrontw)  &
+                         &       - tanh((xg - splitx)/xfrontw))
+
+                    do n=1,nspec
+                       Yt(n) = eta*fuel_Y(n) + (1.d0-eta)*air_Y(n)
+                    end do
+                    Tt  = eta * T_in + (1.d0-eta) * T_co
+                    u1t = 0.d0
+                    u2t = eta * vn_in + (1.d0-eta) * vn_co                    
+                    
                  end if
        
                  CALL CKRHOY(pamb,Tt,Yt,IWRK,RWRK,rhot)
                  call CKUBMS(Tt,Yt,IWRK,RWRK,et)
 
-                 adv(i,j,URHO ) = adv(i,j,URHO ) + 0.5d0*rhot
-                 adv(i,j,UMX  ) = adv(i,j,UMX  ) + 0.5d0*rhot*u1t
-                 adv(i,j,UMY  ) = adv(i,j,UMY  ) + 0.5d0*rhot*u2t
-                 adv(i,j,UEDEN) = adv(i,j,UEDEN) + 0.5d0*rhot*(et + 0.5d0*(u1t**2+u2t**2))
-                 adv(i,j,UTEMP) = adv(i,j,UTEMP) + 0.5d0*Tt
+                 adv(i,j,URHO ) = adv(i,j,URHO ) + wgt*rhot
+                 adv(i,j,UMX  ) = adv(i,j,UMX  ) + wgt*rhot*u1t
+                 adv(i,j,UMY  ) = adv(i,j,UMY  ) + wgt*rhot*u2t
+                 adv(i,j,UEDEN) = adv(i,j,UEDEN) + wgt*rhot*(et + 0.5d0*(u1t**2+u2t**2))
+                 adv(i,j,UTEMP) = adv(i,j,UTEMP) + wgt*Tt
                  do n=1, NSPEC
-                    adv(i,j,UFS+n-1) = adv(i,j,UFS+n-1) + 0.5d0*rhot*Yt(n)
+                    adv(i,j,UFS+n-1) = adv(i,j,UFS+n-1) + wgt*rhot*Yt(n)
                  end do
               
               end do
@@ -89,7 +120,7 @@ subroutine rns_grpfill(adv,adv_l1,adv_l2,adv_h1,adv_h2, &
         end do
         !$omp end parallel do
      else
-        print *,'SHOULD NEVER GET HERE bc(1,1,1) .ne. EXT_DIR) '
+        print *,'grpfill: SHOULD NEVER GET HERE bc(2,1,1) .ne. EXT_DIR) '
         stop
      end if
   end if
@@ -98,25 +129,25 @@ subroutine rns_grpfill(adv,adv_l1,adv_l2,adv_h1,adv_h2, &
 
      !     XLO
      if ( bc(1,1,n).eq.EXT_DIR .and. adv_l1.gt.domlo(1)) then
-        print *,'myfill: SHOULD NEVER GET HERE bc(1,1,n) .eq. EXT_DIR) '
+        print *,'grpfill: SHOULD NEVER GET HERE bc(1,1,n) .eq. EXT_DIR) '
         stop
      end if
 
      !     XHI
      if ( bc(1,2,n).eq.EXT_DIR .and. adv_h1.gt.domhi(1)) then
-        print *,'myfill: SHOULD NEVER GET HERE bc(1,2,n) .eq. EXT_DIR) '
+        print *,'grpfill: SHOULD NEVER GET HERE bc(1,2,n) .eq. EXT_DIR) '
         stop
      end if
      
      !     YLO
 !     if ( bc(2,1,n).eq.EXT_DIR .and. adv_l2.lt.domlo(2)) then
-!        print *,'myfill: SHOULD NEVER GET HERE bc(2,1,n) .eq. EXT_DIR) '
+!        print *,'grpfill: SHOULD NEVER GET HERE bc(2,1,n) .eq. EXT_DIR) '
 !        stop
 !     end if
      
      !     YHI
      if ( bc(2,2,n).eq.EXT_DIR .and. adv_h2.gt.domhi(2)) then
-        print *,'myfill: SHOULD NEVER GET HERE bc(2,2,n) .eq. EXT_DIR) '
+        print *,'grpfill: SHOULD NEVER GET HERE bc(2,2,n) .eq. EXT_DIR) '
         stop
      end if
      
@@ -184,7 +215,12 @@ subroutine rns_denfill(adv,adv_l1,adv_l2,adv_h1,adv_h2, &
   double precision :: x, xg, sigma, eta
   double precision rhot,Tt,Yt(NSPEC),rwrk
   double precision, parameter :: gp(2) = (/ -1.d0/sqrt(3.d0), 1.d0/sqrt(3.d0) /)
-  
+  double precision, parameter :: wgt = 0.5d0
+
+  if (.not. dmejet_initialized) then
+     call init_DME_jet()
+  end if
+
   call filcc(adv,adv_l1,adv_l2,adv_h1,adv_h2,domlo,domhi,delta,xlo,bc)
 
   !        YLO
@@ -194,8 +230,7 @@ subroutine rns_denfill(adv,adv_l1,adv_l2,adv_h1,adv_h2, &
         sigma = 2.5d0*xfrontw*splitx
 
         ! fill the corners too
-        !$omp parallel do private(i,j,n,iwrk,ii,x,xg,eta,rhot,Tt,Yt,rwrk) &
-        !$omp collapse(2)
+        !$omp parallel do private(i,j,n,iwrk,ii,x,xg,eta,rhot,Tt,Yt,rwrk)
         do j = adv_l2, domlo(2)-1 
            do i = adv_l1,adv_h1
 
@@ -213,6 +248,9 @@ subroutine rns_denfill(adv,adv_l1,adv_l2,adv_h1,adv_h2, &
                  else if (prob_type .eq. 1) then
                     eta = 0.5d0 * (tanh((xg + splitx)/Tfrontw)  &
                          &       - tanh((xg - splitx)/Tfrontw))
+                 else if (prob_type .eq. 2) then
+                    eta = 0.5d0 * (tanh((xg + splitx)/xfrontw)  &
+                         &       - tanh((xg - splitx)/xfrontw))
                  end if
 
                  do n=1,nspec
@@ -221,7 +259,7 @@ subroutine rns_denfill(adv,adv_l1,adv_l2,adv_h1,adv_h2, &
                  Tt  = eta * T_in + (1.d0-eta) * T_co
        
                  CALL CKRHOY(pamb,Tt,Yt,IWRK,RWRK,rhot)
-                 adv(i,j) = adv(i,j) + 0.5d0*rhot
+                 adv(i,j) = adv(i,j) + wgt*rhot
               
               end do
 
@@ -277,6 +315,10 @@ subroutine rns_mxfill(adv,adv_l1,adv_l2,adv_h1,adv_h2, &
   double precision adv(adv_l1:adv_h1,adv_l2:adv_h2)
 
   integer :: i, j
+
+  if (.not. dmejet_initialized) then
+     call init_DME_jet()
+  end if
   
   call filcc(adv,adv_l1,adv_l2,adv_h1,adv_h2,domlo,domhi,delta,xlo,bc)
 
@@ -344,6 +386,11 @@ subroutine rns_myfill(adv,adv_l1,adv_l2,adv_h1,adv_h2, &
   double precision :: x, xg, facx, fact, sigma, eta, Pi, eta1
   double precision rhot,u2t,Tt,Yt(NSPEC),rwrk
   double precision, parameter :: gp(2) = (/ -1.d0/sqrt(3.d0), 1.d0/sqrt(3.d0) /)
+  double precision, parameter :: wgt = 0.5d0
+
+  if (.not. dmejet_initialized) then
+     call init_DME_jet()
+  end if
 
   call filcc(adv,adv_l1,adv_l2,adv_h1,adv_h2,domlo,domhi,delta,xlo,bc)
 
@@ -358,8 +405,7 @@ subroutine rns_myfill(adv,adv_l1,adv_l2,adv_h1,adv_h2, &
         sigma = 2.5d0*xfrontw*splitx
 
         ! fill the corners too
-        !$omp parallel do private(i,j,n,iwrk,ii,x,xg,eta,eta1,rhot,u2t,Tt,Yt,rwrk) &
-        !$omp collapse(2)
+        !$omp parallel do private(i,j,n,iwrk,ii,x,xg,eta,eta1,rhot,u2t,Tt,Yt,rwrk)
         do j = adv_l2, domlo(2)-1 
            do i = adv_l1,adv_h1
 
@@ -378,6 +424,9 @@ subroutine rns_myfill(adv,adv_l1,adv_l2,adv_h1,adv_h2, &
                          &       - tanh((xg - splitx)/Tfrontw))
                     eta1 = 0.5d0 * (tanh((xg + blobr)/xfrontw)  &
                          &        - tanh((xg - blobr)/xfrontw))
+                 else if (prob_type .eq. 2) then
+                    eta = 0.5d0 * (tanh((xg + splitx)/xfrontw)  &
+                         &       - tanh((xg - splitx)/xfrontw))
                  end if
 
                  do n=1,nspec
@@ -389,11 +438,13 @@ subroutine rns_myfill(adv,adv_l1,adv_l2,adv_h1,adv_h2, &
                          + inflow_vnmag*eta*sin(xg*facx)*fact
                  else if (prob_type .eq. 1) then
                     u2t = eta1 * vn_in + (1.d0-eta1) * vn_co
+                 else if (prob_type .eq. 2) then
+                    u2t = eta * vn_in + (1.d0-eta) * vn_co
                  end if
        
                  CALL CKRHOY(pamb,Tt,Yt,IWRK,RWRK,rhot)
 
-                 adv(i,j) = adv(i,j) + 0.5d0*rhot*u2t
+                 adv(i,j) = adv(i,j) + wgt*rhot*u2t
               
               end do
 
@@ -451,6 +502,11 @@ subroutine rns_tempfill(adv,adv_l1,adv_l2,adv_h1,adv_h2, &
   double precision :: x, xg, sigma, eta
   double precision :: Tt
   double precision, parameter :: gp(2) = (/ -1.d0/sqrt(3.d0), 1.d0/sqrt(3.d0) /)
+  double precision, parameter :: wgt = 0.5d0
+
+  if (.not. dmejet_initialized) then
+     call init_DME_jet()
+  end if
 
   call filcc(adv,adv_l1,adv_l2,adv_h1,adv_h2,domlo,domhi,delta,xlo,bc)
   
@@ -473,7 +529,7 @@ subroutine rns_tempfill(adv,adv_l1,adv_l2,adv_h1,adv_h2, &
         sigma = 2.5d0*xfrontw*splitx
 
         ! fill the corners too
-        !$omp parallel do private(i,j,ii,x,xg,eta,Tt) collapse(2)
+        !$omp parallel do private(i,j,ii,x,xg,eta,Tt)
         do j = adv_l2, domlo(2)-1 
            do i = adv_l1,adv_h1
 
@@ -491,11 +547,14 @@ subroutine rns_tempfill(adv,adv_l1,adv_l2,adv_h1,adv_h2, &
                  else if (prob_type .eq. 1) then
                     eta = 0.5d0 * (tanh((xg + splitx)/Tfrontw)  &
                          &       - tanh((xg - splitx)/Tfrontw))
+                 else if (prob_type .eq. 2) then
+                    eta = 0.5d0 * (tanh((xg + splitx)/xfrontw)  &
+                         &       - tanh((xg - splitx)/xfrontw))
                  end if
 
                  Tt  = eta * T_in + (1.d0-eta) * T_co
 
-                 adv(i,j) = adv(i,j) + 0.5d0*Tt
+                 adv(i,j) = adv(i,j) + wgt*Tt
               
               end do
 

@@ -30577,7 +30577,7 @@ void GET_T_GIVEN_EY(double * restrict e, double * restrict y, int * iwrk, double
 #endif
     double ein  = *e;
     double tmin = 250;/*max lower bound for thermo def */
-    double tmax = 3500;/*min upper bound for thermo def */
+    double tmax = 4000;/*min upper bound for thermo def */
     double e1,emin,emax,cv,t1,dt;
     int i;/* loop counter */
     CKUBMS(&tmin, y, iwrk, rwrk, &emin);
