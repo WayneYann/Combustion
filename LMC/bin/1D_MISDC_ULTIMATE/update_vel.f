@@ -31,8 +31,10 @@ c     rho.DU/Dt + G(pi) = D(tau), here D(tau) = d/dx ( a . du/dx ), a=4.mu/3
      $        0.5d0*(macvel(i+1)-macvel(i))*(veledge(i)+veledge(i+1)) )/dx
 
          vel_new(i) = vel_old(i) - dt * ( aofs + gp(i)/rhohalf(i) )
+c         vel_new(i) = vel_old(i) - dt * ( aofs + gp(i)/rhohalf(i) - dV_control*rhohalf(i))
          alpha(i) = rhohalf(i)
          Rhs(i) = vel_new(i)*alpha(i) + visc_term
+c         Rhs(i) = vel_new(i)*alpha(i) + visc_term + dV_control*rhohalf(i)
       enddo
 
       call set_bc_v(vel_new,lo,hi,bc)
