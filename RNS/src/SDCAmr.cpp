@@ -312,15 +312,28 @@ void SDCAmr::timeStep(int level, Real time,
 
   BL_ASSERT(level == 0);
 
-  if (max_level>0) regrid(0,time);
-
-  for (int lev=0; lev<=finest_level; lev++) {
-      level_count[lev] = 0;
+  //
+  // Allow regridding of level 0 calculation on restart.
+  //
+  if (max_level == 0 && RegridOnRestart()) 
+  {
+      regrid_level_0_on_restart();
   }
-
-  // const int post_regrid_flag = 1;
-  // amr_level[0].computeNewDt(finest_level, sub_cycle, n_cycle, ref_ratio,
-  // 			    dt_min, dt_level, stop_time, post_regrid_flag);
+  else if (max_level > 0) 
+  {
+      if (okToRegrid(0))
+      {
+	  regrid(0,time);
+	  
+	  // const int post_regrid_flag = 1;
+	  // amr_level[0].computeNewDt(finest_level, sub_cycle, n_cycle, ref_ratio,
+	  // 			    dt_min, dt_level, stop_time, post_regrid_flag);
+	  
+	  for (int lev=0; lev<=finest_level; lev++) {
+	      level_count[lev] = 0;
+	  }
+      }
+  }
 
   rebuild_mlsdc();
 
