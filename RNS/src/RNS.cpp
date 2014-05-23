@@ -155,11 +155,7 @@ int          RNS::do_chemistry        = 1;
 int          RNS::use_vode            = 0;
 int          RNS::new_J_cell          = 1; // new Jacobian for each cell?
 int          RNS::chem_do_weno        = 1;
-#ifdef USE_SDCLIB
-RNS::ChemSolverType RNS::chem_solver  = RNS::BEGP_BURNING;
-#else
-RNS::ChemSolverType RNS::chem_solver  = RNS::GAUSS_BURNING;
-#endif
+RNS::ChemSolverType RNS::chem_solver  = RNS::CC_BURNING;
 int          RNS::f2comp_simple_dUdt  = 0; // set dUdt = \Delta U / \Delta t in f2comp?
 int          RNS::f2comp_nbdf         = 1; // only use bdf/vode for the first ? times on each node for each time step
 
@@ -345,7 +341,21 @@ RNS::read_params ()
 	    chem_solver = static_cast<ChemSolverType>(chem_solver_i);
 	}
     }
-    if (chem_solver == RNS::BEGP_BURNING) {
+#ifdef USE_SDCLIB
+    {
+	int ho_imex;
+	ParmParse ppsdc("mlsdc");
+	ppsdc.get("ho_imex", ho_imex);
+	if (!ho_imex && 
+	    (chem_solver ==    CC_BURNING || 
+	     chem_solver == GAUSS_BURNING ||
+	     chem_solver == SPLIT_BURNING))
+	{
+	    BoxLib::Warning("\n*** ho_imex is incompatible with chem_solver");
+	}
+    }
+#endif
+    if (chem_solver == RNS::BEGP_BURNING || chem_solver == RNS::BECC_BURNING) {
 	f2comp_nbdf = 1;
     }
     else {

@@ -551,7 +551,10 @@ SDCAmr::SDCAmr ()
   if (!ppsdc.query("max_iters", max_iters)) max_iters = 4;
   if (!ppsdc.query("max_trefs", max_trefs)) max_trefs = 2;
   if (!ppsdc.query("nnodes0",   nnodes0))   nnodes0 = 3;
-  if (!ppsdc.query("ho_imex",   ho_imex))   ho_imex = 0;
+  if (!ppsdc.query("ho_imex",   ho_imex)) { 
+      ho_imex = 1;
+      ppsdc.add("ho_imex", 1);
+  }
   if (!ppsdc.query("trat",      trat))      trat = 2;
 
   if (verbose > 2)
