@@ -580,7 +580,7 @@ SDCAmr::SDCAmr ()
   nsweeps.resize(max_trefs+1);
 
   if (!ppsdc.queryarr("nsweeps", nsweeps)) {
-    nsweeps[0] = 2;
+    nsweeps[0] = (max_level > 0) ? 2 : 1;
     for (int l=1; l<max_trefs+1; l++)
       nsweeps[l] = 1;
   }
