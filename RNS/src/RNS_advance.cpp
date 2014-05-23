@@ -521,6 +521,7 @@ void sdc_f2eval(void *Fp, void *Qp, double t, sdc_state *state, void *ctx)
 //
 void sdc_f2comp(void *Fp, void *Qp, double t, double dt, void *RHSp, sdc_state *state, void *ctx)
 {
+  static int first = 1;
   RNS&      rns    = *((RNS*) ctx);
   RNSEncap& Q      = *((RNSEncap*) Qp);
   RNSEncap& F      = *((RNSEncap*) Fp);
@@ -535,6 +536,14 @@ void sdc_f2comp(void *Fp, void *Qp, double t, double dt, void *RHSp, sdc_state *
       MultiFab::Copy(U, Urhs, 0, 0, U.nComp(), 0);
       Uprime.setVal(0.0);
       return;
+  }
+
+  if (first) {
+      const SDCAmr* sdcamr = rns.getSDCAmr();
+      if (rns.check_imex_order(sdcamr->ho_imex)) {
+	  BoxLib::Warning("\n*** ho_imex is incompatible with chem_solver");
+      }
+      first = 0;
   }
 
   if (rns.verbose > 1 && ParallelDescriptor::IOProcessor()) {

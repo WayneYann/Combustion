@@ -278,6 +278,8 @@ public:
     MultiFab* chemstatus;
     void zeroChemStatus();
 
+    static int check_imex_order(int ho_imex);
+
 protected:
 
     static void read_params ();

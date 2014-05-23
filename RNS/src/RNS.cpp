@@ -341,20 +341,6 @@ RNS::read_params ()
 	    chem_solver = static_cast<ChemSolverType>(chem_solver_i);
 	}
     }
-#ifdef USE_SDCLIB
-    {
-	int ho_imex;
-	ParmParse ppsdc("mlsdc");
-	ppsdc.get("ho_imex", ho_imex);
-	if (!ho_imex && 
-	    (chem_solver ==    CC_BURNING || 
-	     chem_solver == GAUSS_BURNING ||
-	     chem_solver == SPLIT_BURNING))
-	{
-	    BoxLib::Warning("\n*** ho_imex is incompatible with chem_solver");
-	}
-    }
-#endif
     if (chem_solver == RNS::BEGP_BURNING || chem_solver == RNS::BECC_BURNING) {
 	f2comp_nbdf = 1;
     }
@@ -1000,4 +986,18 @@ void
 RNS::zeroChemStatus()
 {
     if (chemstatus) chemstatus->setVal(0.0,1);
+}
+
+int 
+RNS::check_imex_order(int ho_imex) 
+{
+    if (!ho_imex && 
+	(RNS::chem_solver == RNS::CC_BURNING    || 
+	 RNS::chem_solver == RNS::GAUSS_BURNING ||
+	 RNS::chem_solver == RNS::SPLIT_BURNING)) {
+	return 1;
+    }
+    else {
+	return 0;
+    }
 }
