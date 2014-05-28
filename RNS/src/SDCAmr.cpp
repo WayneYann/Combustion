@@ -422,6 +422,19 @@ void SDCAmr::timeStep(int level, Real time,
 
 	sdc_sweeper_residual(mg.sweepers[lev], dt, Rencap);
 
+	if (lev < finest_level) { // mask off fine domain
+	    int ncomp = R.nComp();
+	    BoxArray baf = boxArray(lev+1);
+	    for (MFIter mfi(R); mfi.isValid(); ++mfi) {
+		int i = mfi.index();
+		const Box& bx = mfi.validbox();
+		std::vector< std::pair<int,Box> > isects = baf.intersections(bx);
+		for (int ii=0; ii<isects.size(); ii++) {
+		    R[i].setVal(0.0, isects[ii].second, 0, ncomp);
+		}
+	    }
+	}
+
 	Array<Real> r0(R.norm0(comps));
 	Array<Real> r2(R.norm2(comps));
 
