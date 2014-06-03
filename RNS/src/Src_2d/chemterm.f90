@@ -54,6 +54,8 @@ contains
 
   subroutine chemterm_cellcenter(lo, hi, U, Ulo, Uhi, st, stlo, sthi, dt)
     use convert_module, only : cellavg2cc_2d, cc2cellavg_2d
+    use bdf_data
+    use state
     integer, intent(in) :: lo(2), hi(2), Ulo(2), Uhi(2), stlo(2), sthi(2)
     double precision, intent(inout) :: U(Ulo(1):Uhi(1),Ulo(2):Uhi(2),NVAR)
     double precision, intent(inout) :: st(stlo(1):sthi(1),stlo(2):sthi(2))
@@ -63,6 +65,8 @@ contains
     logical :: force_new_J
     double precision :: rhot(1), Yt(nspec+1)
     double precision, allocatable :: Ucc(:,:,:)
+
+    character(128) :: fname
 
     allocate(Ucc(lo(1)-1:hi(1)+1,lo(2)-1:hi(2)+1,NVAR))
 
@@ -79,6 +83,15 @@ contains
     !$omp do
     do j=lo(2)-1,hi(2)+1
        do i=lo(1)-1,hi(1)+1
+
+          if (i == 15 .and. j == 15) then
+             write(fname,"(a4,i0.2,i0.2,i0.3,i0.3)") "burn", level, iteration, i, j
+             open(unit=666,file=fname,access="append")
+             ts%debug = .true.
+             ts%dump_unit = 666
+          else
+             ts%debug = .false.
+          end if
 
           if (st(i,j) .eq. 0.d0) then
              call get_rhoYT(Ucc(i,j,:), rhot(1), YT(1:nspec), YT(nspec+1), ierr)
@@ -118,6 +131,8 @@ contains
           do n=1,nspec
              Ucc(i,j,UFS+n-1) = rhot(1)*YT(n)
           end do
+
+          if (ts%debug) close(unit=666)
 
        end do
     end do

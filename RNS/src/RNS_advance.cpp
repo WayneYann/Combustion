@@ -497,6 +497,9 @@ void sdc_f2eval(void *Fp, void *Qp, double t, sdc_state *state, void *ctx)
 	 << ", dt = " << dt << endl;
   }
 
+  BL_FORT_PROC_CALL(RNS_SET_STATE, rns_set_state)
+    (t,rns.Level(),state->iter);
+
   rns.fill_boundary(U, state->t, RNS::use_FillBoundary);
   BL_ASSERT(U.contains_nan() == false);
 
@@ -537,6 +540,9 @@ void sdc_f2comp(void *Fp, void *Qp, double t, double dt, void *RHSp, sdc_state *
       Uprime.setVal(0.0);
       return;
   }
+
+  BL_FORT_PROC_CALL(RNS_SET_STATE, rns_set_state)
+    (t,rns.Level(),state->iter);
 
   if (first) {
       const SDCAmr* sdcamr = rns.getSDCAmr();
