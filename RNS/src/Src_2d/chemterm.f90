@@ -54,7 +54,7 @@ contains
 
   subroutine chemterm_cellcenter(lo, hi, U, Ulo, Uhi, st, stlo, sthi, dt)
     use convert_module, only : cellavg2cc_2d, cc2cellavg_2d
-    use bdf_data
+!    use bdf_data
     integer, intent(in) :: lo(2), hi(2), Ulo(2), Uhi(2), stlo(2), sthi(2)
     double precision, intent(inout) :: U(Ulo(1):Uhi(1),Ulo(2):Uhi(2),NVAR)
     double precision, intent(inout) :: st(stlo(1):sthi(1),stlo(2):sthi(2))
