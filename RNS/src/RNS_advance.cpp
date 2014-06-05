@@ -184,7 +184,8 @@ RNS::dUdt_AD(MultiFab& U, MultiFab& Uprime, Real time, int fill_boundary_type,
 
     const Real *dx = geom.CellSize();
 
-    BL_FORT_PROC_CALL(RNS_PASSINFO_LEVEL,rns_passinfo_level)(level);
+    int iteration=-1;
+    BL_FORT_PROC_CALL(RNS_PASSINFO,rns_passinfo)(level,iteration,time);
 
     for (MFIter mfi(Uprime); mfi.isValid(); ++mfi)
     {
@@ -254,7 +255,9 @@ RNS::dUdt_chemistry(const MultiFab& U, MultiFab& Uprime, bool partialUpdate)
 
     if (partialUpdate && touchFine.empty()) buildTouchFine();
 
-    BL_FORT_PROC_CALL(RNS_PASSINFO_LEVEL,rns_passinfo_level)(level);
+    int iteration=-1;
+    Real time=-1.0;
+    BL_FORT_PROC_CALL(RNS_PASSINFO,rns_passinfo)(level,iteration,time);
 
     for (MFIter mfi(U); mfi.isValid(); ++mfi)
     {
@@ -330,7 +333,9 @@ RNS::advance_chemistry(MultiFab& U, Real dt)
 
     BL_ASSERT( ! ChemDriver::isNull() );
 
-    BL_FORT_PROC_CALL(RNS_PASSINFO_LEVEL,rns_passinfo_level)(level);
+    int iteration=-1;
+    Real time=-1.;
+    BL_FORT_PROC_CALL(RNS_PASSINFO,rns_passinfo)(level,iteration,time);
 
     for (MFIter mfi(U); mfi.isValid(); ++mfi)
     {
@@ -355,7 +360,9 @@ RNS::advance_chemistry(MultiFab& U, const MultiFab& Uguess, Real dt)
     BL_ASSERT( ! ChemDriver::isNull() );
     BL_ASSERT( Uguess.nGrow() == 0 );
 
-    BL_FORT_PROC_CALL(RNS_PASSINFO_LEVEL,rns_passinfo_level)(level);
+    int iteration=-1;
+    Real time=-1.0;
+    BL_FORT_PROC_CALL(RNS_PASSINFO,rns_passinfo)(level,iteration,time);
 
     for (MFIter mfi(U); mfi.isValid(); ++mfi)
     {
@@ -497,8 +504,7 @@ void sdc_f2eval(void *Fp, void *Qp, double t, sdc_state *state, void *ctx)
 	 << ", dt = " << dt << endl;
   }
 
-  BL_FORT_PROC_CALL(RNS_SET_STATE, rns_set_state)
-    (t,rns.Level(),state->iter);
+  BL_FORT_PROC_CALL(RNS_PASSINFO, rns_passinfo)(rns.Level(),state->iter,t);
 
   rns.fill_boundary(U, state->t, RNS::use_FillBoundary);
   BL_ASSERT(U.contains_nan() == false);
@@ -541,8 +547,7 @@ void sdc_f2comp(void *Fp, void *Qp, double t, double dt, void *RHSp, sdc_state *
       return;
   }
 
-  BL_FORT_PROC_CALL(RNS_SET_STATE, rns_set_state)
-    (t,rns.Level(),state->iter);
+  BL_FORT_PROC_CALL(RNS_PASSINFO, rns_passinfo)(rns.Level(),state->iter,t);
 
   if (first) {
       const SDCAmr* sdcamr = rns.getSDCAmr();
