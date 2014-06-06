@@ -30,6 +30,17 @@
  *    will always use 'new data', regardless of any 'time' information
  *    set on the state data.
  *
+ * 2. Regarding dt_level and n_cycle: each dt_level now corresponds to
+ *    the effective 3-node timestep that will be taken on each level.
+ *    As such, n_cycle is set according to the MLSDC node hierarchy.
+ *    For example, with max_trefs = 3, we have the following:
+ *
+ *      | nnodes      | nrepeat     | n_cycle     |
+ *      |-------------+-------------+-------------+
+ *      | 3, 5        | 1, 2        | 1, 2        |
+ *      | 3, 5, 9     | 1, 2, 4     | 1, 2, 4     |
+ *      | 3, 3, 5, 9  | 1, 1, 2, 4  | 2, 4, 8, 16 |
+ *
  * Known issues:
  *
  * 1. The SDC hierarchy is currently not depth limited.
@@ -636,206 +647,6 @@ SDCAmr::coarseTimeStep (Real stop_time)
     }
   }
 }
-
-#if 0
-/*
- * Take one SDC+AMR time step.
- *
- * This is only called on the coarsest SDC+AMR level.
- */
-void SDCAmr::timeStep(int level, Real time,
-		      int /* iteration */, int /* niter */,
-		      Real stop_time)
-{
-  //
-  // Allow regridding of level 0 calculation on restart.
-  //
-  if (max_level == 0 && RegridOnRestart())
-  {
-      regrid_level_0_on_restart();
-  }
-  else if (max_level > 0)
-  {
-      if (okToRegrid(0))
-      {
-	  regrid(0,time);
-
-	  // const int post_regrid_flag = 1;
-	  // amr_level[0].computeNewDt(finest_level, sub_cycle, n_cycle, ref_ratio,
-	  // 			    dt_min, dt_level, stop_time, post_regrid_flag);
-
-	  for (int lev=0; lev<=finest_level; lev++) {
-	      level_count[lev] = 0;
-	  }
-      }
-  }
-
-  rebuild_mlsdc();
-
-  double dt = dt_level[0];
-  for (int lev=1; lev<first_refinement_level; lev++)
-    dt /= trat;
-
-  if (verbose > 0 && ParallelDescriptor::IOProcessor()) {
-    cout << "MLSDC advancing with dt: " << dt << " (" << dt_level[0] << ")" << endl;
-  }
-
-  // reset SDC stuff in RNS
-  for (int lev=0; lev<=finest_level; lev++) {
-    RNS& rns  = *dynamic_cast<RNS*>(&getLevel(lev));
-    rns.clearTouchFine();
-    rns.reset_f2comp_timer(mg.sweepers[lev]->nset->nnodes);
-    rns.zeroChemStatus();
-  }
-
-  // set intial conditions
-  for (int lev=0; lev<=finest_level; lev++) {
-    MultiFab& Unew = getLevel(lev).get_new_data(0);
-    RNSEncap& Q0   = *((RNSEncap*) mg.sweepers[lev]->nset->Q[0]);
-    MultiFab& U0   = *Q0.U;
-    MultiFab::Copy(U0, Unew, 0, 0, U0.nComp(), U0.nGrow());
-    getLevel(lev).get_state_data(0).setTimeLevel(time+dt, dt, dt);
-  }
-
-  // fill fine boundaries using coarse data
-  for (int lev=0; lev<=finest_level; lev++) {
-    RNS&      rns  = *dynamic_cast<RNS*>(&getLevel(lev));
-    RNSEncap& Q0   = *((RNSEncap*) mg.sweepers[lev]->nset->Q[0]);
-    MultiFab& U0   = *Q0.U;
-    rns.fill_boundary(U0, time, RNS::use_FillCoarsePatch);
-  }
-
-  BL_PROFILE_VAR("SDCAmr::timeStep-iters", sdc_iters);
-
-  Array< Array<Real> > r0p(finest_level+1, Array<Real>(3));
-  Array< Array<Real> > r2p(finest_level+1, Array<Real>(3));
-
-  sdc_mg_spread(&mg, time, dt);
-
-  for (int k=0; k<max_iters; k++) {
-    int flags = SDC_MG_MIXEDINTERP;
-    if (k==max_iters-1) flags |= SDC_MG_HALFSWEEP;
-    if (k==0)           flags |= SDC_SWEEP_FIRST | SDC_SWEEP_NOEVAL0;
-
-    sdc_mg_sweep(&mg, time, dt, k, flags);
-
-    if (verbose > 0) {
-
-      int len=string(" iter: 0, level: 0,   rho").size();
-
-      int ncomps = 1;
-      if (RNS::fuelID >= 0) ncomps++;
-      if (RNS::flameTracID >= 0) ncomps++;
-      Array<int> comps(ncomps);
-      Array<string> names(ncomps);
-      Array<string> colors(ncomps);
-
-      int ic=0;
-      comps[ic] = 0;
-      names[ic] = "rho";
-      colors[ic] = REDCOLOR;
-      if (RNS::fuelID >= 0) {
-	ic++;
-        comps[ic] = RNS::FirstSpec + RNS::fuelID;
-	string vname = "rho*Y(" + RNS::fuelName + ")";
-	string space(len-vname.size(), ' ');
-	names[ic] = space + vname;
-	colors[ic] = GREENCOLOR;
-      }
-      if (RNS::flameTracID >= 0) {
-	ic++;
-        comps[ic] = RNS::FirstSpec + RNS::flameTracID;
-	string vname = "rho*Y(" + RNS::flameTracName + ")";
-	string space(len-vname.size(), ' ');
-	names[ic] = space + vname;
-	colors[ic] = BLUECOLOR;
-      }
-
-      for (int lev=0; lev<=finest_level; lev++) {
-	RNSEncap* Rencap = (RNSEncap*) encaps[lev]->create(SDC_INTEGRAL, encaps[lev]->ctx);
-        MultiFab& R      = *Rencap->U;
-
-	sdc_sweeper_residual(mg.sweepers[lev], dt, Rencap);
-
-	if (lev < finest_level) { // mask off fine domain
-	    int ncomp = R.nComp();
-	    BoxArray baf = boxArray(lev+1);
-	    for (MFIter mfi(R); mfi.isValid(); ++mfi) {
-		int i = mfi.index();
-		const Box& bx = mfi.validbox();
-		std::vector< std::pair<int,Box> > isects = baf.intersections(bx);
-		for (int ii=0; ii<isects.size(); ii++) {
-		    R[i].setVal(0.0, isects[ii].second, 0, ncomp);
-		}
-	    }
-	}
-
-	Array<Real> r0(R.norm0(comps));
-	Array<Real> r2(R.norm2(comps));
-
-	encaps[lev]->destroy(Rencap);
-
-	if (ParallelDescriptor::IOProcessor()) {
-	  std::ios_base::fmtflags ff = cout.flags();
-	  int oldprec = cout.precision(2);
-	  cout << scientific;
-	  if (lev == finest_level) cout << BOLDFONT;
-	  if (k == 0) {
-	      cout << " iter: " << k << ", level: " << lev << ",   ";
-	      for (int ic=0; ic<ncomps; ic++) {
-		  cout << colors[ic] << names[ic]
-		       << " res norm0: " << r0[ic] << "         "
-		       <<    "  norm2: " << r2[ic] << endl;
-	      }
-	  }
-	  else {
-	      cout << " iter: " << k << ", level: " << lev << ",   ";
-	      for (int ic=0; ic<ncomps; ic++) {
-		  cout << colors[ic] << names[ic]
-		       << " res norm0: " << r0[ic] << " " << r0p[lev][ic]/(r0[ic]+1.e-80)
-		       <<    ", norm2: " << r2[ic] << " " << r2p[lev][ic]/(r2[ic]+1.e-80) << endl;
-	      }
-	  }
-	  cout << RESETCOLOR;
-	  cout.precision(oldprec);
-	  cout.flags(ff);
-	}
-
-	for (int ic=0; ic<ncomps; ic++) {
-	    r0p[lev][ic] = r0[ic];
-	    r2p[lev][ic] = r2[ic];
-	}
-      }
-    }
-  }
-
-  final_integrate(time, dt, max_iters);
-
-  BL_PROFILE_VAR_STOP(sdc_iters);
-
-  // copy final solution from sdclib to new_data
-  for (int lev=0; lev<=finest_level; lev++) {
-    int       nnodes = mg.sweepers[lev]->nset->nnodes;
-    MultiFab& Unew   = getLevel(lev).get_new_data(0);
-    RNSEncap& Qend   = *((RNSEncap*) mg.sweepers[lev]->nset->Q[nnodes-1]);
-    MultiFab& Uend   = *Qend.U;
-
-    MultiFab::Copy(Unew, Uend, 0, 0, Uend.nComp(), 0);
-
-    RNS& rns = *dynamic_cast<RNS*>(&getLevel(lev));
-    rns.post_update(Unew);
-  }
-
-  for (int lev = finest_level-1; lev>= 0; lev--) {
-    RNS& rns = *dynamic_cast<RNS*>(&getLevel(lev));
-    rns.avgDown();
-  }
-
-  level_steps[level]++;
-  level_count[level]++;
-}
-#endif
-
 
 /*
  * Build single SDC level.
