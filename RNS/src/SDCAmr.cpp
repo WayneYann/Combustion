@@ -299,6 +299,27 @@ void SDCAmr::final_integrate(double t, double dt, int niter)
   }
 }
 
+void
+SDCAmr::init (Real strt_time,
+	      Real stop_time)
+{
+  if (!restart_chkfile.empty() && restart_chkfile != "init") {
+      restart(restart_chkfile);
+  } else {
+    initialInit(strt_time,stop_time);
+    rebuild_mlsdc();
+    checkPoint();
+    if (plot_int > 0 || plot_per > 0)
+      writePlotFile();
+  }
+#ifdef HAS_XGRAPH
+  if (first_plotfile) {
+      first_plotfile = false;
+      amr_level[0].setPlotVariables();
+  }
+#endif
+}
+
 /*
  * Take one SDC+AMR time step.
  *
@@ -315,20 +336,20 @@ void SDCAmr::timeStep(int level, Real time,
   //
   // Allow regridding of level 0 calculation on restart.
   //
-  if (max_level == 0 && RegridOnRestart()) 
+  if (max_level == 0 && RegridOnRestart())
   {
       regrid_level_0_on_restart();
   }
-  else if (max_level > 0) 
+  else if (max_level > 0)
   {
       if (okToRegrid(0))
       {
 	  regrid(0,time);
-	  
+
 	  // const int post_regrid_flag = 1;
 	  // amr_level[0].computeNewDt(finest_level, sub_cycle, n_cycle, ref_ratio,
 	  // 			    dt_min, dt_level, stop_time, post_regrid_flag);
-	  
+
 	  for (int lev=0; lev<=finest_level; lev++) {
 	      level_count[lev] = 0;
 	  }
@@ -577,7 +598,7 @@ SDCAmr::SDCAmr ()
   if (!ppsdc.query("max_iters", max_iters)) max_iters = 4;
   if (!ppsdc.query("max_trefs", max_trefs)) max_trefs = 2;
   if (!ppsdc.query("nnodes0",   nnodes0))   nnodes0 = 3;
-  if (!ppsdc.query("ho_imex",   ho_imex))   ho_imex = 1; 
+  if (!ppsdc.query("ho_imex",   ho_imex))   ho_imex = 1;
   if (!ppsdc.query("trat",      trat))      trat = 2;
 
   if (verbose > 2)

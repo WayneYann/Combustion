@@ -74,6 +74,8 @@ public:
   void         destroy_mlsdc();
   void         final_integrate(double t, double dt, int niter);
 
+  virtual void init (Real strt_time, Real stop_time);
+
   virtual void timeStep(int level,
 			Real time,
 			int iteration,
