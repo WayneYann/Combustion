@@ -172,8 +172,11 @@ subroutine unset_sdc_boundary_flag()
   isFEval = .false.
 end subroutine unset_sdc_boundary_flag
 
-subroutine rns_passinfo_level(lev)
-  use passinfo_module, only : level
-  integer, intent(in) :: lev
-  level = lev
-end subroutine rns_passinfo_level
+subroutine rns_passinfo(lev,iter,t)
+  use passinfo_module
+  integer, intent(in) :: lev, iter
+  double precision, intent(in) :: t
+  if (lev >= 0) level = lev
+  if (iter >= 0) iteration = iter
+  if (t >= 0.d0) time = t
+end subroutine rns_passinfo
