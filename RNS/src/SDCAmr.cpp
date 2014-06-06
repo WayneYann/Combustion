@@ -30,16 +30,9 @@
  *    will always use 'new data', regardless of any 'time' information
  *    set on the state data.
  *
- * 2. Regarding dt_level and n_cycle: each dt_level now corresponds to
- *    the effective 3-node timestep that will be taken on each level.
- *    As such, n_cycle is set according to the MLSDC node hierarchy.
- *    For example, with max_trefs = 3, we have the following:
- *
- *      | nnodes      | nrepeat     | n_cycle     |
- *      |-------------+-------------+-------------+
- *      | 3, 5        | 1, 2        | 1, 2        |
- *      | 3, 5, 9     | 1, 2, 4     | 1, 2, 4     |
- *      | 3, 3, 5, 9  | 1, 1, 2, 4  | 2, 4, 8, 16 |
+ * 2. The 'n_factor' and 'n_cycle' logic in computeNewDt dictates
+ *    that: if n_cycles is set to 1, 2, 2, ..., then dt_level stores
+ *    the cfl timestep that each level wants to take.
  *
  * Known issues:
  *
@@ -367,6 +360,13 @@ SDCAmr::coarseTimeStep (Real stop_time)
   }
 
   Real dt = dt_level[0];
+  for (int lev=1; lev<first_refinement_level; lev++)
+    dt /= trat;
+
+  const Real eps = 0.001*dt;
+  if (stop_time >= 0.0)
+    if ((cumtime + dt) > (stop_time - eps))
+      dt = stop_time - cumtime;
 
   if (verbose > 0 && ParallelDescriptor::IOProcessor()) {
     cout << "MLSDC advancing with dt: " << dt << endl;
@@ -533,7 +533,7 @@ SDCAmr::coarseTimeStep (Real stop_time)
   level_steps[0]++;
   level_count[0]++;
 
-  cumtime += dt_level[0];
+  cumtime += dt;
 
   amr_level[0].postCoarseTimeStep(cumtime);
 
@@ -706,15 +706,13 @@ void SDCAmr::rebuild_mlsdc()
   sdc_mg_allocate(&mg);
 
   n_cycle[0] = 1;
-  for (int lev=0; lev<first_refinement_level-1; lev++)
-    n_cycle[0] *= 2;
   for (int lev=1; lev<=finest_level; lev++)
-    n_cycle[lev] = 2*n_cycle[lev-1];
+    n_cycle[lev] = 2; // see notes
 
   if (verbose > 0 && ParallelDescriptor::IOProcessor()) {
     cout << "Rebuilt MLSDC: " << mg.nlevels << ", nnodes: ";
     for (int lev=0; lev<=finest_level; lev++)
-      cout << sweepers[lev]->nset->nnodes << " (" << n_cycle[lev] << ") ";
+      cout << sweepers[lev]->nset->nnodes << " ";
     cout << endl;
     if (verbose > 2)
       sdc_mg_print(&mg, 2);

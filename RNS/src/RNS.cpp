@@ -614,7 +614,6 @@ RNS::computeNewDt (int                   finest_level,
 	    //
 	    for (int i = 0; i <= finest_level; i++)
 	    {
-#ifndef USE_SDCLIB
 		if (verbose && ParallelDescriptor::IOProcessor())
 		{
 		    if (dt_min[i] > change_max*dt_level[i])
@@ -626,19 +625,6 @@ RNS::computeNewDt (int                   finest_level,
 		    }
 		}
 		dt_min[i] = std::min(dt_min[i],change_max*dt_level[i]);
-#else
-		if (verbose && ParallelDescriptor::IOProcessor())
-		{
-		    if (dt_min[i] > change_max*dt_level[i]*n_cycle[i])
-		    {
-			cout << "RNS::computeNewDt : limiting dt at level " << i << std::endl;
-			cout << " ... new dt computed: " << dt_min[i]/n_cycle[i] << std::endl;
-			cout << " ... but limiting to: " << change_max*dt_level[i] <<
-			    " = " << change_max << " * " << dt_level[i] << std::endl;
-		    }
-		}
-		dt_min[i] = std::min(dt_min[i],change_max*dt_level[i]*n_cycle[i]);
-#endif
 	    }
 	}
     }
@@ -658,6 +644,7 @@ RNS::computeNewDt (int                   finest_level,
     //
     // Limit dt's by the value of stop_time.
     //
+#ifndef USE_SDCLIB
     const Real eps = 0.001*dt;
     Real cur_time  = state[State_Type].curTime();
     if (stop_time >= 0.0)
@@ -667,6 +654,7 @@ RNS::computeNewDt (int                   finest_level,
 	    dt = stop_time - cur_time;
 	}
     }
+#endif
 
     n_factor = 1;
     for (int i = 0; i <= finest_level; i++)
@@ -704,6 +692,7 @@ RNS::computeInitialDt (int                   finest_level,
     //
     // Limit dt's by the value of stop_time.
     //
+#ifndef USE_SDCLIB
     const Real eps = 0.001*dt_0;
     Real cur_time  = state[State_Type].curTime();
     if (stop_time >= 0.0)
@@ -713,6 +702,7 @@ RNS::computeInitialDt (int                   finest_level,
 	    dt_0 = stop_time - cur_time;
 	}
     }
+#endif
 
     n_factor = 1;
     for (i = 0; i <= finest_level; i++)
