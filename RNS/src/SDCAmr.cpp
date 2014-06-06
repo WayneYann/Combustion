@@ -307,7 +307,7 @@ SDCAmr::init (Real strt_time,
       restart(restart_chkfile);
   } else {
     initialInit(strt_time,stop_time);
-    rebuild_mlsdc();
+    rebuild_mlsdc();		// XXX: this is the only addition, not sure if it is still necessary
     checkPoint();
     if (plot_int > 0 || plot_per > 0)
       writePlotFile();
@@ -322,6 +322,324 @@ SDCAmr::init (Real strt_time,
 
 /*
  * Take one SDC+AMR time step.
+ */
+void
+SDCAmr::coarseTimeStep (Real stop_time)
+{
+  BL_PROFILE("SDCAmr::coarseTimeStep()");
+  const Real run_strt = ParallelDescriptor::second();
+
+  //
+  // regrid and rebuild mlsdc
+  //
+  if (max_level == 0 && RegridOnRestart()) {
+    regrid_level_0_on_restart();
+  } else if (max_level > 0) {
+    if (okToRegrid(0)) {
+      regrid(0, cumtime);
+      for (int lev=0; lev<=finest_level; lev++)
+	level_count[lev] = 0;
+    }
+  }
+
+  rebuild_mlsdc();
+
+  //
+  // compute new dt
+  //
+  if (levelSteps(0) > 0) {
+    amr_level[0].computeNewDt(finest_level, sub_cycle, n_cycle, ref_ratio,
+			      dt_min, dt_level, stop_time, 0);
+  } else {
+    amr_level[0].computeInitialDt(finest_level, sub_cycle, n_cycle, ref_ratio,
+				  dt_level, stop_time);
+  }
+
+  Real dt = dt_level[0];
+
+  if (verbose > 0 && ParallelDescriptor::IOProcessor()) {
+    cout << "MLSDC advancing with dt: " << dt << endl;
+  }
+
+  //
+  // reset SDC stuff in RNS
+  //
+  for (int lev=0; lev<=finest_level; lev++) {
+    RNS& rns  = *dynamic_cast<RNS*>(&getLevel(lev));
+    rns.clearTouchFine();
+    rns.reset_f2comp_timer(mg.sweepers[lev]->nset->nnodes);
+    rns.zeroChemStatus();
+  }
+
+  //
+  // set intial conditions
+  //
+  for (int lev=0; lev<=finest_level; lev++) {
+    MultiFab& Unew = getLevel(lev).get_new_data(0);
+    RNSEncap& Q0   = *((RNSEncap*) mg.sweepers[lev]->nset->Q[0]);
+    MultiFab& U0   = *Q0.U;
+    MultiFab::Copy(U0, Unew, 0, 0, U0.nComp(), U0.nGrow());
+    getLevel(lev).get_state_data(0).setTimeLevel(cumtime+dt, dt, dt);
+  }
+
+  // fill fine boundaries using coarse data
+  for (int lev=0; lev<=finest_level; lev++) {
+    RNS&      rns  = *dynamic_cast<RNS*>(&getLevel(lev));
+    RNSEncap& Q0   = *((RNSEncap*) mg.sweepers[lev]->nset->Q[0]);
+    MultiFab& U0   = *Q0.U;
+    rns.fill_boundary(U0, cumtime, RNS::use_FillCoarsePatch);
+  }
+
+  BL_PROFILE_VAR("SDCAmr::timeStep-iters", sdc_iters);
+
+  Array< Array<Real> > r0p(finest_level+1, Array<Real>(3));
+  Array< Array<Real> > r2p(finest_level+1, Array<Real>(3));
+
+  sdc_mg_spread(&mg, cumtime, dt);
+
+  for (int k=0; k<max_iters; k++) {
+    int flags = SDC_MG_MIXEDINTERP;
+    if (k==max_iters-1) flags |= SDC_MG_HALFSWEEP;
+    if (k==0)           flags |= SDC_SWEEP_FIRST | SDC_SWEEP_NOEVAL0;
+
+    sdc_mg_sweep(&mg, cumtime, dt, k, flags);
+
+    if (verbose > 0) {
+
+      int len=string(" iter: 0, level: 0,   rho").size();
+
+      int ncomps = 1;
+      if (RNS::fuelID >= 0) ncomps++;
+      if (RNS::flameTracID >= 0) ncomps++;
+      Array<int> comps(ncomps);
+      Array<string> names(ncomps);
+      Array<string> colors(ncomps);
+
+      int ic=0;
+      comps[ic] = 0;
+      names[ic] = "rho";
+      colors[ic] = REDCOLOR;
+      if (RNS::fuelID >= 0) {
+	ic++;
+        comps[ic] = RNS::FirstSpec + RNS::fuelID;
+	string vname = "rho*Y(" + RNS::fuelName + ")";
+	string space(len-vname.size(), ' ');
+	names[ic] = space + vname;
+	colors[ic] = GREENCOLOR;
+      }
+      if (RNS::flameTracID >= 0) {
+	ic++;
+        comps[ic] = RNS::FirstSpec + RNS::flameTracID;
+	string vname = "rho*Y(" + RNS::flameTracName + ")";
+	string space(len-vname.size(), ' ');
+	names[ic] = space + vname;
+	colors[ic] = BLUECOLOR;
+      }
+
+      for (int lev=0; lev<=finest_level; lev++) {
+	RNSEncap* Rencap = (RNSEncap*) encaps[lev]->create(SDC_INTEGRAL, encaps[lev]->ctx);
+        MultiFab& R      = *Rencap->U;
+
+	sdc_sweeper_residual(mg.sweepers[lev], dt, Rencap);
+
+	if (lev < finest_level) { // mask off fine domain
+	  int ncomp = R.nComp();
+	  BoxArray baf = boxArray(lev+1);
+	  for (MFIter mfi(R); mfi.isValid(); ++mfi) {
+	    int i = mfi.index();
+	    const Box& bx = mfi.validbox();
+	    std::vector< std::pair<int,Box> > isects = baf.intersections(bx);
+	    for (int ii=0; ii<isects.size(); ii++) {
+	      R[i].setVal(0.0, isects[ii].second, 0, ncomp);
+	    }
+	  }
+	}
+
+	Array<Real> r0(R.norm0(comps));
+	Array<Real> r2(R.norm2(comps));
+
+	encaps[lev]->destroy(Rencap);
+
+	if (ParallelDescriptor::IOProcessor()) {
+	  std::ios_base::fmtflags ff = cout.flags();
+	  int oldprec = cout.precision(2);
+	  cout << scientific;
+	  if (lev == finest_level) cout << BOLDFONT;
+	  if (k == 0) {
+	    cout << " iter: " << k << ", level: " << lev << ",   ";
+	    for (int ic=0; ic<ncomps; ic++) {
+	      cout << colors[ic] << names[ic]
+		   << " res norm0: " << r0[ic] << "         "
+		   <<    "  norm2: " << r2[ic] << endl;
+	    }
+	  }
+	  else {
+	    cout << " iter: " << k << ", level: " << lev << ",   ";
+	    for (int ic=0; ic<ncomps; ic++) {
+	      cout << colors[ic] << names[ic]
+		   << " res norm0: " << r0[ic] << " " << r0p[lev][ic]/(r0[ic]+1.e-80)
+		   <<    ", norm2: " << r2[ic] << " " << r2p[lev][ic]/(r2[ic]+1.e-80) << endl;
+	    }
+	  }
+	  cout << RESETCOLOR;
+	  cout.precision(oldprec);
+	  cout.flags(ff);
+	}
+
+	for (int ic=0; ic<ncomps; ic++) {
+	  r0p[lev][ic] = r0[ic];
+	  r2p[lev][ic] = r2[ic];
+	}
+      }
+    }
+  }
+
+  final_integrate(cumtime, dt, max_iters);
+
+  BL_PROFILE_VAR_STOP(sdc_iters);
+
+  // copy final solution from sdclib to new_data
+  for (int lev=0; lev<=finest_level; lev++) {
+    int       nnodes = mg.sweepers[lev]->nset->nnodes;
+    MultiFab& Unew   = getLevel(lev).get_new_data(0);
+    RNSEncap& Qend   = *((RNSEncap*) mg.sweepers[lev]->nset->Q[nnodes-1]);
+    MultiFab& Uend   = *Qend.U;
+
+    MultiFab::Copy(Unew, Uend, 0, 0, Uend.nComp(), 0);
+
+    RNS& rns = *dynamic_cast<RNS*>(&getLevel(lev));
+    rns.post_update(Unew);
+  }
+
+  for (int lev = finest_level-1; lev>= 0; lev--) {
+    RNS& rns = *dynamic_cast<RNS*>(&getLevel(lev));
+    rns.avgDown();
+  }
+
+  //
+  // bump counters and current time
+  //
+  level_steps[0]++;
+  level_count[0]++;
+
+  cumtime += dt_level[0];
+
+  amr_level[0].postCoarseTimeStep(cumtime);
+
+  if (verbose > 0) {
+    const int IOProc   = ParallelDescriptor::IOProcessorNumber();
+    Real      run_stop = ParallelDescriptor::second() - run_strt;
+
+    ParallelDescriptor::ReduceRealMax(run_stop,IOProc);
+
+    if (ParallelDescriptor::IOProcessor())
+      std::cout << "\nCoarse TimeStep time: " << run_stop << '\n' ;
+
+    long min_fab_bytes  = BoxLib::total_bytes_allocated_in_fabs_hwm;
+    long max_fab_bytes  = BoxLib::total_bytes_allocated_in_fabs_hwm;
+
+    ParallelDescriptor::ReduceLongMin(min_fab_bytes, IOProc);
+    ParallelDescriptor::ReduceLongMax(max_fab_bytes, IOProc);
+
+    if (ParallelDescriptor::IOProcessor()) {
+      std::cout << "\nFAB byte spread across MPI nodes for timestep: ["
+		<< min_fab_bytes
+		<< " ... "
+		<< max_fab_bytes
+		<< "]\n";
+    }
+    //
+    // Reset to zero to calculate high-water-mark for next timestep.
+    //
+    BoxLib::total_bytes_allocated_in_fabs_hwm = 0;
+  }
+
+  BL_PROFILE_ADD_STEP(level_steps[0]);
+#ifdef BL_COMM_PROFILING
+  std::stringstream stepName;
+  stepName << "STEP " << level_steps[0];
+  BL_COMM_PROFILE_NAMETAG(stepName.str());
+  BL_COMM_PROFILE_FLUSH();
+#endif
+
+  if (verbose > 0 && ParallelDescriptor::IOProcessor()) {
+      std::cout << "\nSTEP = " << level_steps[0] << " TIME = " << cumtime
+		<< " DT = " << dt_level[0] << '\n' << std::endl;
+  }
+
+  if (record_run_info && ParallelDescriptor::IOProcessor()) {
+      runlog << "STEP = " << level_steps[0] << " TIME = " << cumtime
+	     << " DT = " << dt_level[0] << '\n';
+  }
+
+  if (record_run_info_terse && ParallelDescriptor::IOProcessor())
+    runlog_terse << level_steps[0] << " " << cumtime << " " << dt_level[0] << '\n';
+
+  int check_test = 0;
+  if (check_per > 0.0) {
+    const int num_per_old = cumtime / check_per;
+    const int num_per_new = (cumtime+dt_level[0]) / check_per;
+
+    if (num_per_old != num_per_new)
+      check_test = 1;
+  }
+
+  int to_stop       = 0;
+  int to_checkpoint = 0;
+  if (ParallelDescriptor::IOProcessor()) {
+    FILE *fp;
+    if ((fp=fopen("dump_and_continue","r")) != 0) {
+      remove("dump_and_continue");
+      to_checkpoint = 1;
+      fclose(fp);
+    } else if ((fp=fopen("stop_run","r")) != 0) {
+      remove("stop_run");
+      to_stop = 1;
+      fclose(fp);
+    } else if ((fp=fopen("dump_and_stop","r")) != 0) {
+      remove("dump_and_stop");
+      to_checkpoint = 1;
+      to_stop = 1;
+      fclose(fp);
+    }
+  }
+
+  int packed_data[2];
+  packed_data[0] = to_stop;
+  packed_data[1] = to_checkpoint;
+  ParallelDescriptor::Bcast(packed_data, 2, ParallelDescriptor::IOProcessorNumber());
+  to_stop = packed_data[0];
+  to_checkpoint = packed_data[1];
+
+  if(to_stop == 1 && to_checkpoint == 0) {  // prevent main from writing files
+    last_checkpoint = level_steps[0];
+    last_plotfile   = level_steps[0];
+  }
+  if ((check_int > 0 && level_steps[0] % check_int == 0)
+      || check_test == 1 || to_checkpoint) {
+    checkPoint();
+  }
+
+  if (writePlotNow() || to_checkpoint) {
+    writePlotFile();
+  }
+
+  bUserStopRequest = to_stop;
+  if (to_stop) {
+    ParallelDescriptor::Barrier("SDCAmr::coarseTimeStep::to_stop");
+    if(ParallelDescriptor::IOProcessor()) {
+      if (to_checkpoint) {
+	std::cerr << "Stopped by user w/ checkpoint" << std::endl;
+      } else {
+	std::cerr << "Stopped by user w/o checkpoint" << std::endl;
+      }
+    }
+  }
+}
+
+#if 0
+/*
+ * Take one SDC+AMR time step.
  *
  * This is only called on the coarsest SDC+AMR level.
  */
@@ -329,10 +647,6 @@ void SDCAmr::timeStep(int level, Real time,
 		      int /* iteration */, int /* niter */,
 		      Real stop_time)
 {
-  BL_PROFILE("SDCAmr::timeStep()");
-
-  BL_ASSERT(level == 0);
-
   //
   // Allow regridding of level 0 calculation on restart.
   //
@@ -520,6 +834,7 @@ void SDCAmr::timeStep(int level, Real time,
   level_steps[level]++;
   level_count[level]++;
 }
+#endif
 
 
 /*
@@ -579,10 +894,16 @@ void SDCAmr::rebuild_mlsdc()
   sdc_mg_setup(&mg, 0);
   sdc_mg_allocate(&mg);
 
+  n_cycle[0] = 1;
+  for (int lev=0; lev<first_refinement_level-1; lev++)
+    n_cycle[0] *= 2;
+  for (int lev=1; lev<=finest_level; lev++)
+    n_cycle[lev] = 2*n_cycle[lev-1];
+
   if (verbose > 0 && ParallelDescriptor::IOProcessor()) {
     cout << "Rebuilt MLSDC: " << mg.nlevels << ", nnodes: ";
     for (int lev=0; lev<=finest_level; lev++)
-      cout << sweepers[lev]->nset->nnodes << " ";
+      cout << sweepers[lev]->nset->nnodes << " (" << n_cycle[lev] << ") ";
     cout << endl;
     if (verbose > 2)
       sdc_mg_print(&mg, 2);

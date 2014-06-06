@@ -76,11 +76,13 @@ public:
 
   virtual void init (Real strt_time, Real stop_time);
 
+  virtual void coarseTimeStep (Real stop_time);
+
   virtual void timeStep(int level,
 			Real time,
 			int iteration,
 			int niter ,
-			Real stop_time);
+			Real stop_time) { BL_ASSERT(false); }
 
 };
 
