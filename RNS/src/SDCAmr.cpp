@@ -340,10 +340,9 @@ void SDCAmr::timeStep(int level, Real time,
   double dt = dt_level[0];
   for (int lev=1; lev<first_refinement_level; lev++)
     dt /= trat;
-  for (int lev=0; lev<first_refinement_level-1; lev++) dt_level[lev] = dt;
 
   if (verbose > 0 && ParallelDescriptor::IOProcessor()) {
-    cout << "MLSDC advancing with dt: " << dt << endl;
+    cout << "MLSDC advancing with dt: " << dt << " (" << dt_level[0] << ")" << endl;
   }
 
   // reset SDC stuff in RNS
