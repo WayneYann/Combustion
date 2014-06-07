@@ -575,21 +575,21 @@ SDCAmr::coarseTimeStep (Real stop_time)
 
   if (verbose > 0 && ParallelDescriptor::IOProcessor()) {
       std::cout << "\nSTEP = " << level_steps[0] << " TIME = " << cumtime
-		<< " DT = " << dt_level[0] << '\n' << std::endl;
+		<< " DT = " << dt << '\n' << std::endl;
   }
 
   if (record_run_info && ParallelDescriptor::IOProcessor()) {
       runlog << "STEP = " << level_steps[0] << " TIME = " << cumtime
-	     << " DT = " << dt_level[0] << '\n';
+	     << " DT = " << dt << '\n';
   }
 
   if (record_run_info_terse && ParallelDescriptor::IOProcessor())
-    runlog_terse << level_steps[0] << " " << cumtime << " " << dt_level[0] << '\n';
+    runlog_terse << level_steps[0] << " " << cumtime << " " << dt << '\n';
 
   int check_test = 0;
   if (check_per > 0.0) {
     const int num_per_old = cumtime / check_per;
-    const int num_per_new = (cumtime+dt_level[0]) / check_per;
+    const int num_per_new = (cumtime+dt) / check_per;
 
     if (num_per_old != num_per_new)
       check_test = 1;
