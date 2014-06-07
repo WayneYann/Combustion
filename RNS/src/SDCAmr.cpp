@@ -311,7 +311,6 @@ SDCAmr::init (Real strt_time,
       restart(restart_chkfile);
   } else {
     initialInit(strt_time,stop_time);
-    rebuild_mlsdc();		// XXX: this is the only addition, not sure if it is still necessary
     checkPoint();
     if (plot_int > 0 || plot_per > 0)
       writePlotFile();
