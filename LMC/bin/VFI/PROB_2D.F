@@ -371,7 +371,7 @@ c        in case that is important, the following check was added.
          end do
 
          yEval = y*100. - y_offset*100.
-         call pmf_GRI(yEval,yEval,pmf_GRI_vals,n)
+         call pmf(yEval,yEval,pmf_GRI_vals,n)
 
          if (n.ne.Nspec+3) call bl_abort('SETUPBC: n .ne. Nspec+3')
 
@@ -827,7 +827,7 @@ c      write (myproc+10, "(1x, 'domnhi(2)', e20.10)") domnhi(2)
                call bl_abort ('probtype is neither 1, 2, nor 3.')
             endif
             
-            call pmf_GRI(ylo*100,yhi*100,pmf_GRI_vals,n)
+            call pmf(ylo*100,yhi*100,pmf_GRI_vals,n)
             if (n.ne.Nspec+3) call bl_abort('INITDATA: n .ne. Nspec+3')
 
             call FORT_MOLETOMASS(lo_chem,hi_chem,

@@ -1,169 +1,63 @@
-
-PBOXLIB_HOME  = ../..
-TOP           = $(PBOXLIB_HOME)
-#
-# User-settable variables.
-#
-PRECISION         = DOUBLE
-DEBUG	          = FALSE
-DEBUG	          = TRUE
-PROFILE           = FALSE
-DIM    	          = 2
-PRVERSION         = v5
-COMP              = CC
-FCOMP             = ftn
-COMP              = Intel
-FCOMP             = Intel
-RUNDIR            = run
-BUILD_IN_PLACE    = TRUE
-USE_HGPROJ_SERIAL = FALSE
-HGDEBUG           = FALSE
-USE_FLCTS         = TRUE
-USE_FLCTS         = FALSE
-USE_MPI           = TRUE
-USE_MPI           = FALSE
-#
-# Uncomment the following if you want RhoRT stored in Tracer slot.
-#
-#DEFINES += -DBL_RHORT_IN_TRACER
-#
-# If you want to plot reaction rates uncomment the following
-#
-#DEFINES += -DBL_PLOT_REACS
-#
-# If you want to plot fuel consumption rates uncomment the following
-#
-DEFINES += -DBL_PLOT_CONSUMPTION
-#
-# Only one of plot reaction rates and plot fuel consumption rates
-# can be chosen!
-#
-# Choose your reaction mechanism & thermal properties.
-#
-REACTION_MECHANISM=CH4-2STEP
-REACTION_MECHANISM=INERT30
-REACTION_MECHANISM=GRI12
-REACTION_MECHANISM=GRI30NON
-REACTION_MECHANISM=PROPANE
-REACTION_MECHANISM=GRI211HNO
-REACTION_MECHANISM=GRI30HNO
-REACTION_MECHANISM=GRI30
-REACTION_MECHANISM=DRM19
-REACTION_MECHANISM=CHEMH
-#
-# Packages below are of the form dir/lib.  dir=location of the lib sources,
-# lib=library root name.  This info is separated into to corresponding lists.  
-#
-ProjPackage = $(TOP)/hgproj/proj
-ifeq ($(USE_HGPROJ_SERIAL),TRUE)
-  ProjPackage = $(TOP)/hgproj-serial/proj
-  INCLUDE_LOCATIONS += $(dir $(ProjPackage))include/$(DIM)d.$(PRVERSION)
-endif
-
-Packages := $(TOP)/LMC/ht \
-	    $(TOP)/iamrlib/iamr \
-	    $(TOP)/tensorMG/mcmg \
-	    $(ProjPackage) \
-	    $(TOP)/mglib/mg \
-	    $(TOP)/amrlib/amr \
-	    $(TOP)/bndrylib/bndry \
-	    $(TOP)/BoxLib/box
-#
-# Set standard definitions.
-#
-include $(TOP)/mk/Make.defs
-ifeq ($(USE_HGPROJ_SERIAL),TRUE)
-  DEFINES += -DBL_USE_HGPROJ_SERIAL
-endif
-
-ifeq ($(DIM),2)
-  ifeq ($(findstring 5, $(PRVERSION)), 5)
-    DEFINES += -DBL_PRVERSION=5
-  endif
-  ifeq ($(findstring 9, $(PRVERSION)), 9)
-    DEFINES += -DBL_PRVERSION=9
-  endif
-endif
-#
-# Setup build locations/libraries.
-#
-MyLibRoots := $(notdir $(Packages))
-MyPackageDirs := $(dir $(Packages))
-MySrcDirs = .
-INCLUDE_LOCATIONS += ..
-ifeq ($(BUILD_IN_PLACE),TRUE)
-  MySrcDirs += $(MyPackageDirs)
-  INCLUDE_LOCATIONS += $(MySrcDirs)
-else
-  LIBRARIES += $(addsuffix $(DIM)d, $(addprefix -l, $(MyLibRoots)))
-  INCLUDE_LOCATIONS += $(TOP)/include
-  ifeq ($(USE_HGPROJ_SERIAL),TRUE)
-    LIBRARY_LOCATIONS += $(dir $(ProjPackage))lib/$(machineSuffix)
-    LIBRARIES := $(patsubst -lproj$(DIM)d, -lproj$(DIM)d.$(PRVERSION), $(LIBRARIES))
-  endif
-  LIBRARY_LOCATIONS += $(TOP)/lib/$(machineSuffix)
-endif
-include $(addsuffix /Make.package, $(MySrcDirs))
-
-ifeq ($(HGDEBUG),TRUE)
-  DEFINES+=-DHG_DEBUG
-endif
-ifeq (${USE_FLCTS}, TRUE)
-  DEFINES += -DBL_DO_FLCT
-  INCLUDE_LOCATIONS += $(TOP)/iamrlib/InflowForce
-  MySrcDirs += $(TOP)/iamrlib/InflowForce
-endif
-
-vpath %.cpp $(MySrcDirs) ..
-vpath %.F   $(MySrcDirs) ..
-vpath %.f90 $(MySrcDirs) ..
-vpath %.H   $(MySrcDirs) ..
-vpath %.h   $(MySrcDirs) ..
-vpath %.f   $(MySrcDirs) ..
-vpath %.a   $(LIBRARY_LOCATIONS)
-
-MyMakeLine =  $(MAKE) PRECISION=$(PRECISION) PROFILE=$(PROFILE) COMP=$(COMP) \
-	      DEBUG=$(DEBUG) DIM=$(DIM) USE_MPI=$(USE_MPI) PRVERSION=$(PRVERSION) \
-	      USE_HGPROJ_SERIAL=$(USE_HGPROJ_SERIAL) \
-	      DEFINES="$(DEFINES)" EBASE= LBASE=$@
-
-MyLibDeps := $(shell perl -e '$$,=" ";print reverse @ARGV ;' $(MyLibRoots))
-
-find_files = $(wildcard $(dir)*cpp) $(wildcard $(dir)*H) $(wildcard $(dir)*.F)
-projFiles := $(foreach dir,$(dir $(ProjPackage)),$(find_files))
-iamrFiles := $(foreach dir,$(dir $(filter %/iamr,$(Packages))),$(find_files))
-StencilSpecificProjFiles = $(shell grep -l USE_HGPROJ_SERIAL $(iamrFiles)) \
-                           $(shell grep -l BL_PRVERSION $(iamrFiles)) \
-                           $(wildcard $(dir $(ProjPackage))*F) \
-                           $(wildcard $(dir $(ProjPackage))*cpp) \
-                           $(wildcard $(dir $(ProjPackage))*H)
-ifeq ($(USE_HGPROJ_SERIAL),TRUE)
-  StencilSpecificProjFiles += $(shell grep -l hg_version.H $(projFiles))
-endif
-#
-# Targets
-#
-all: $(executable)
-
-$(executable): 
-
-libs: $(MyLibDeps)
-
-$(MyLibDeps):
-	cd $(dir $(filter %/$@, $(Packages))); $(MyMakeLine) install
-
-cleanlibs:
-	$(foreach lib,$(MyPackageDirs),cd $(lib); $(MyMakeLine) clean)
-
-nodata:
-	\rm -rf chk* plt* grdlog inspect.fab *.mfab *.fab *.asc *.out
+TOP =../../../..
+BOXLIB_DIR = ${TOP}/BoxLib
+IAMR_DIR = ${TOP}/IAMR
+COMBUSTION_DIR = ${TOP}/Combustion
 
 #
-# Touch all stencil-specific files in serial projection
+# Build configuration
 #
-touch_hg:
-	touch $(StencilSpecificProjFiles)
 
-.PHONY: libs cleanlibs nodata touch_hg
+PRECISION       = DOUBLE
+DEBUG           = FALSE
+DEBUG           = TRUE
+DIM             = 2
+COMP            = g++
+FCOMP           = gfortran
+USE_MPI         = FALSE
+USE_OMP         = FALSE
+USE_MPI         = TRUE
+USE_F90_SOLVERS = TRUE
+VERBOSE         = FALSE
+VERBOSE         = TRUE
 
-include $(TOP)/mk/Make.rules
+# Enable SDC code - add .SDC to executable
+# and compile in the #ifdef LMC_SDC
+USE_LMC_SDC = FALSE
+USE_LMC_SDC = TRUE
+
+# Enable flctin namelist
+#USE_FLCTS       = TRUE
+
+USE_PARTICLES   = FALSE
+
+# Enable ht.velocity_plotfile option
+#USE_VELOCITY    = FALSE
+
+# Enable time-dependent forcing term
+#USE_TDEPFORCING = FALSE
+
+# Choose model (from list below), and pmf file
+CHEMISTRY_MODEL = CHEMH
+fEXE_sources += H-flame_0370.f
+
+Blocs   := .
+
+CEXE_sources +=
+FEXE_sources += PROB_$(DIM)D.F
+CEXE_headers += 
+FEXE_headers += probdata.H PROB_F.H
+
+include $(COMBUSTION_DIR)/LMC/tools/make/Make.LMC
+
+# Available chemistry models:
+# CanuH2 chem-CH4-2step chem-H dme glar gri Hai H-CW header inert Konnov
+# LiDryer Marinov prf_ethanol Roehl sandiego smooke usc
+
+#DEFINES += -DDO_JBB_HACK
+DEFINES += -DTRIGGER_NEW_J
+#DEFINES += -DALWAYS_NEW_J
+#DEFINES += -DSOLN_IS_1D
+
+#DEFINES += -DDO_JBB_HACK_TEMP
+#DEFINES += -DHACK_TEMP_MIN=273.d0
+#DEFINES += -DHACK_TEMP_MAX=1900.d0
