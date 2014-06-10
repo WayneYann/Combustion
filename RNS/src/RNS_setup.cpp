@@ -103,6 +103,9 @@ RNS::variableSetUp ()
 {
     BL_ASSERT(desc_lst.size() == 0);
 
+    // initialize the start time for our CPU-time tracker
+    startCPUTime = ParallelDescriptor::second();
+
     // Get options, set phys_bc
     read_params();
 

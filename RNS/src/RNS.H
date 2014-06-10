@@ -278,6 +278,8 @@ public:
     MultiFab* chemstatus;
     void zeroChemStatus();
 
+    static int check_imex_order(int ho_imex);
+
 protected:
 
     static void read_params ();
@@ -382,6 +384,8 @@ protected:
 			  BECC_BURNING,   // 3: burn at cell center using backward Euler
 			  BEGP_BURNING,   // 4: burn at Gauss points using backward Euler
 			  NUM_CHEMSOLVER_TYPE };
+    // For CC, GAUSS, and SPLIT, mlsdc.ho_imex should be 1,
+    // whereas for BECC and BEGP, mlsdc.ho_imex could be either 0 or 1.
     static ChemSolverType chem_solver;
 
     // for keeping track of the amount of CPU time used -- this will persist

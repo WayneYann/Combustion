@@ -77,7 +77,7 @@ def dme_flameball_convergence(force_run=False):
 
     for dt in dts:
         dname = os.path.join(base, 'dt_%.2g' % dt)
-        args  = 'stop_time=%g mlsdc.fixed_dt=%g mlsdc.max_iters=8' % (stop_time, dt)
+        args  = 'stop_time=%g rns.fixed_dt=%g mlsdc.max_iters=8' % (stop_time, dt)
         if not exists(dname) or force_run:
             RNS(dname, exe, inputs, args, probin)
 
