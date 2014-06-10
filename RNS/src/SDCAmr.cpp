@@ -385,19 +385,13 @@ SDCAmr::coarseTimeStep (Real stop_time)
   // set intial conditions
   //
   for (int lev=0; lev<=finest_level; lev++) {
-    MultiFab& Unew = getLevel(lev).get_new_data(0);
-    RNSEncap& Q0   = *((RNSEncap*) mg.sweepers[lev]->nset->Q[0]);
-    MultiFab& U0   = *Q0.U;
-    MultiFab::Copy(U0, Unew, 0, 0, U0.nComp(), U0.nGrow());
-    getLevel(lev).get_state_data(0).setTimeLevel(cumtime+dt, dt, dt);
-  }
-
-  // fill fine boundaries using coarse data
-  for (int lev=0; lev<=finest_level; lev++) {
     RNS&      rns  = *dynamic_cast<RNS*>(&getLevel(lev));
     RNSEncap& Q0   = *((RNSEncap*) mg.sweepers[lev]->nset->Q[0]);
     MultiFab& U0   = *Q0.U;
-    rns.fill_boundary(U0, cumtime, RNS::use_FillCoarsePatch);
+    rns.fill_boundary(U0, cumtime, RNS::use_FillPatchIterator);
+#ifndef NDEBUG
+    BL_ASSERT(U0.contains_nan() == false);
+#endif
   }
 
   BL_PROFILE_VAR("SDCAmr::timeStep-iters", sdc_iters);
@@ -524,6 +518,7 @@ SDCAmr::coarseTimeStep (Real stop_time)
   for (int lev = finest_level-1; lev>= 0; lev--) {
     RNS& rns = *dynamic_cast<RNS*>(&getLevel(lev));
     rns.avgDown();
+    rns.get_state_data(0).setTimeLevel(cumtime+dt, dt, dt);
   }
 
   //

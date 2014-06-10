@@ -101,11 +101,10 @@ RNS::fill_boundary(MultiFab& U, Real time, int type_in, bool isCorrection, bool 
 
     case use_FillCoarsePatch:  // so that valid region of U will not be touched
     {
-	const Box& domain_box = geom.Domain();
 	BoxArray grids_g(grids);
 	for (int ibox=0; ibox<grids_g.size(); ibox++)
 	{
-	    const Box b = BoxLib::grow(grids_g[ibox], NUM_GROW) & domain_box;
+	    const Box b = BoxLib::grow(grids_g[ibox], NUM_GROW);
 	    grids_g.set(ibox, b);
 	}
 
@@ -181,6 +180,10 @@ RNS::dUdt_AD(MultiFab& U, MultiFab& Uprime, Real time, int fill_boundary_type,
     }
 
     fill_boundary(U, time, fill_boundary_type);
+
+#ifndef NDEBUG
+    BL_ASSERT(U.contains_nan() == false);
+#endif
 
     const Real *dx = geom.CellSize();
 
@@ -475,6 +478,11 @@ void sdc_f1eval(void *Fp, void *Qp, double t, sdc_state *state, void *ctx)
 
   rns.dUdt_AD(U, Uprime, t, RNS::use_FillBoundary, F.crse_flux, F.fine_flux, 1.0,
 	      partialUpdate);
+
+#ifndef NDEBUG
+  BL_ASSERT(U.contains_nan() == false);
+  BL_ASSERT(Uprime.contains_nan() == false);
+#endif
 }
 
 //
