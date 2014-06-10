@@ -4,12 +4,14 @@ module reconstruct_module
        UFS, NSPEC, NCHARV, CFS, do_component_weno
   use weno_module, only : weno5, vweno5
   use eos_module, only : eos_given_ReY, eos_get_eref
+  use renorm_module, only : floor_species
+  use passinfo_module, only : level
 
   implicit none
 
   private
 
-  public :: reconstruct
+  public :: reconstruct, reconstruct_comp
 
 contains
 
@@ -181,7 +183,7 @@ contains
     double precision, intent(out), dimension(ULRlo:ULRhi,NVAR), optional :: UL, UR
     double precision, intent(out), dimension( UGlo: UGhi,NVAR), optional :: UG1, UG2
 
-    integer :: i, ii, ivar, m, n, ivel(3), idir, iextra
+    integer :: i, ii, ivar, m, n, ivel(3), idir, iextra, ierr
     double precision :: egv(NCHARV,NCHARV), egvt(NCHARV,NCHARV)
     double precision :: gt, b, d(NSPEC)
     double precision :: rho, rhoInv, p, c, gamc, T, dpdr(NSPEC), dpde, e, ek, H, Y(NSPEC)
@@ -255,7 +257,14 @@ contains
        e = Ubase(i,UEDEN)*rhoInV - ek
        T = Ubase(i,UTEMP)
 
-       call eos_given_ReY(p,c,gamc,T,dpdr,dpde,rho,e,Y)
+       call floor_species(nspec, Y)
+
+       call eos_given_ReY(p,c,gamc,T,dpdr,dpde,rho,e,Y, ierr=ierr)
+       if (ierr .ne. 0) then
+          print *, 'reconstruct_char: eos_given_ReY failed at ', &
+               level, rho, e, Y, T, Ubase(i,UTEMP)
+          call bl_error('reconstruct_char: eos_given_ReY failed')
+       end if
 
        eref = eos_get_eref(Y)
        e = e - eref

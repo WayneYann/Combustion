@@ -71,7 +71,9 @@
      $                  LeEQ1, tranfile, TMIN_TRANS, Pr, Sc,
      $                  max_vode_subcycles,
      $                  min_vode_timestep, divu_ceiling_flag,
-     $                  divu_dt_factor, rho_divu_ceiling, unlim
+     $                  divu_dt_factor, rho_divu_ceiling, unlim,
+     $                  cfix,changeMax_control,tau_control,corr,
+     $                  ord_control
 
 c     Set defaults, change with namelist
       nx = 256
@@ -112,9 +114,22 @@ c     Set defaults, change with namelist
       unlim = 0
       probtype = 1
 
+      changeMax_control = 1.5d0
+      cfix = 0.56d0
+      tau_control = .25d-5
+      corr = .5d0
+      ord_control = 2
+      tmax_control = 1.e20
+
       open(9,file='probin',form='formatted',status='old')
       read(9,fortin)
       close(unit=9)
+
+      coft_old = -1
+      V_in_old = V_in
+      tbase_control = 0.d0
+      zbase_control = 0.d0
+      sest = V_in
 
       if (probtype.ne.1 .and. probtype.ne.2) then
          print *,'Unknown probtype:',probtype,'  Must be 1 or 2' 
@@ -347,7 +362,7 @@ c     return zero pressure
      $                   divu_old,divu_new,beta_old,beta_new,
      $                   beta_for_Y_old,beta_for_Y_new,
      $                   beta_for_Wbar_old,beta_for_Wbar_new,
-     $                   dx,dt,lo,hi,bc,delta_chi,-init_iter)
+     $                   dx,time,dt,lo,hi,bc,delta_chi,-init_iter)
 
 c     update pressure and I_R
             press_old = press_new
@@ -394,7 +409,7 @@ C-- Now advance
      $                divu_old,divu_new,beta_old,beta_new,
      $                beta_for_Y_old,beta_for_Y_new,
      $                beta_for_Wbar_old,beta_for_Wbar_new,
-     $                dx,dt,lo,hi,bc,delta_chi,nsteps_taken)
+     $                dx,time,dt,lo,hi,bc,delta_chi,nsteps_taken)
 
 c     update state, time
          vel_old = vel_new

@@ -91,11 +91,13 @@ contains
   end subroutine eos_get_c
 
 
-  subroutine eos_get_T(T, e, Y, pt_index)
+  subroutine eos_get_T(T, e, Y, pt_index, ierr)
     double precision, intent(out) :: T
     double precision, intent(in ) :: e, Y(2)
     integer, optional, intent(in) :: pt_index(:)
+    integer, optional, intent(out) :: ierr
     T = e/cv
+    if (present(ierr)) ierr = 0
   end subroutine eos_get_T
 
 
@@ -116,10 +118,11 @@ contains
   end subroutine eos_get_e
 
 
-  subroutine eos_given_RTY(e, p, c, dpdr, dpde, rho, T, Y, pt_index)
+  subroutine eos_given_RTY(e, p, c, dpdr, dpde, rho, T, Y, pt_index, ierr)
     double precision, intent(out) :: e, p, c, dpdr(2), dpde
     double precision, intent(in ) :: rho, T, Y(2)
     integer, optional, intent(in) :: pt_index(:)
+    integer, optional, intent(out) :: ierr
     e = cv*T
     p = rho*R_mu*T
     p = max(p, smallp)
@@ -130,10 +133,11 @@ contains
   end subroutine eos_given_RTY
 
 
-  subroutine eos_given_ReY(p, c, G, T, dpdr, dpde, rho, e, Y, pt_index)
+  subroutine eos_given_ReY(p, c, G, T, dpdr, dpde, rho, e, Y, pt_index, ierr)
     double precision, intent(out) :: p, c, G, T, dpdr(2), dpde
     double precision, intent(in ) :: rho, e, Y(2)
     integer, optional, intent(in) :: pt_index(:)
+    integer, optional, intent(out) :: ierr
     T = e/cv
     p = rho*R_mu*T
     p = max(p, smallp)
@@ -142,6 +146,7 @@ contains
     dpdr(1) = (gamma_const-1.d0)*e
     dpdr(2) = (gamma_const-1.d0)*e
     dpde    = (gamma_const-1.d0)*rho
+    if (present(ierr)) ierr = 0
   end subroutine eos_given_ReY
 
 

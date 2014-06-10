@@ -11,7 +11,7 @@ contains
     integer, intent(in) :: lo(3), hi(3), Qlo(3), Qhi(3), QVAR
     double precision, intent(inout) :: Q(Qlo(1):Qhi(1),Qlo(2):Qhi(2),Qlo(3):Qhi(3),QVAR)
 
-    integer :: i,j,k,n,iwrk,pt_index(3)
+    integer :: i,j,k,n,iwrk,pt_index(3),ierr
     double precision :: rwrk, rhoInv, ek, ei, Yt(NSPEC), Xt(NSPEC), ht(NSPEC)
 
     do       k = lo(3),hi(3)
@@ -37,13 +37,18 @@ contains
 
              ei = Q(i,j,k,UEDEN)*rhoInv - ek
 
-             rhoInv = 1.d0/sum(Q(i,j,k,QFY:QFY+nspec-1))
              do n=1,nspec
-                Q(i,j,k,QFY+n-1) = Q(i,j,k,QFY+n-1)*rhoInv
-                Yt(n) = Q(i,j,k,QFY+n-1)
+                Yt(n) = max(Q(i,j,k,QFY+n-1), 0.d0)
              end do
+             Yt = Yt / sum(Yt)
+             Q(i,j,k,QFY:QFY+nspec-1) = Yt
 
-             call eos_get_T(Q(i,j,k,QTEMP), ei, Yt, pt_index)
+             call eos_get_T(Q(i,j,k,QTEMP), ei, Yt, pt_index, ierr)
+
+             if (ierr .ne. 0) then
+                print *, 'ctoprim failed at ', i,j,k,Q(i,j,k,1:QFY+nspec-1)
+                call bl_error("ctoprim failed")
+             end if
 
              call ckpy(Q(i,j,k,QRHO), Q(i,j,k,QTEMP), Yt, iwrk, rwrk, Q(i,j,k,qpres))
 

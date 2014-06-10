@@ -141,12 +141,13 @@ public:
     // Given U, compute Uprime (i.e., dUdt) for AD
     //
     void dUdt_AD(MultiFab& U, MultiFab& Uprime, Real time, int fill_boundary_type,
-	      FluxRegister* fine=0, FluxRegister* current=0, Real dt=0.0);
+		 FluxRegister* fine=0, FluxRegister* current=0, Real dt=0.0, 
+		 bool partialUpdate = false);
     //
     // Given U, compute Uprime (i.e., dUdt) for chemistry
     // When it's called, 2 ghost cells of U should have already been filled properly.
     //
-    void dUdt_chemistry(const MultiFab& U, MultiFab& Uprime);
+    void dUdt_chemistry(const MultiFab& U, MultiFab& Uprime, bool partialUpdate = false);
     //
     // Compute U1 = U2 + c Uprime.
     //
@@ -252,7 +253,12 @@ public:
 
     // how to compute dUdt in f2comp; "simple" means setting dUdt = \Delta U / \Delta t
     static int f2comp_simple_dUdt;
-    static int f2comp_niter_good;  // starting from iter ?, U is considered good.
+    static int f2comp_nbdf;  // only use bdf/vode for the first ? times on each node
+    std::vector<int> f2comp_timer; // how many times f2comp has been called on each sdc node
+    void reset_f2comp_timer(int nnodes) {
+	f2comp_timer.clear();
+	f2comp_timer.resize(nnodes-1,0); // last node doesn't call f2comp
+    }
 
     void avgDown ();
     void avgDown (int state_indx);
@@ -264,6 +270,15 @@ public:
     SDCAmr* getSDCAmr() { return (SDCAmr*) parent; }
 #endif
 
+    // which grids touch fine?
+    std::vector<int> touchFine;
+    void buildTouchFine();
+    void clearTouchFine() { touchFine.clear(); }
+
+    MultiFab* chemstatus;
+    void zeroChemStatus();
+
+    static int check_imex_order(int ho_imex);
 
 protected:
 
@@ -281,6 +296,8 @@ protected:
 
     void sum_conserved_variables ();
     void volWgtSumCons(Array<Real>& s);
+    
+    void sum_chemstatus();
 
     //
     // The data.
@@ -297,6 +314,8 @@ protected:
     static Real      init_shrink;
     static Real      change_max;
     static int       do_reflux;
+    static Array<int> lo_bc;
+    static Array<int> hi_bc;       
     static BCRec     phys_bc;
     static int       NUM_GROW;
 
@@ -357,12 +376,16 @@ protected:
 
     static int         use_vode;
     static int         new_J_cell;
+    static int         chem_do_weno;
 
     enum ChemSolverType { CC_BURNING = 0, // 0: burn at cell centers
 			  GAUSS_BURNING,  // 1: burn at Gauss points using BDF/VODE 
 			  SPLIT_BURNING,  // 2: burn at Gauss points by splitting
-			  BE_BURNING,     // 3: burn at Gauss points using backward Euler
+			  BECC_BURNING,   // 3: burn at cell center using backward Euler
+			  BEGP_BURNING,   // 4: burn at Gauss points using backward Euler
 			  NUM_CHEMSOLVER_TYPE };
+    // For CC, GAUSS, and SPLIT, mlsdc.ho_imex should be 1,
+    // whereas for BECC and BEGP, mlsdc.ho_imex could be either 0 or 1.
     static ChemSolverType chem_solver;
 
     // for keeping track of the amount of CPU time used -- this will persist

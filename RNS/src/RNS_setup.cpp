@@ -103,6 +103,9 @@ RNS::variableSetUp ()
 {
     BL_ASSERT(desc_lst.size() == 0);
 
+    // initialize the start time for our CPU-time tracker
+    startCPUTime = ParallelDescriptor::second();
+
     // Get options, set phys_bc
     read_params();
 
@@ -183,7 +186,7 @@ RNS::variableSetUp ()
 	(dm, Density, Xmom, Eden, Temp, FirstSpec, NUM_STATE, NumSpec, 
 	 small_dens, small_temp, small_pres, gamma, gravity, Treference,
 	 riemann, difmag, &blocksize[0], do_weno, do_quadrature_weno, do_component_weno,
-	 use_vode, new_J_cell, chem_solver_i);
+	 use_vode, new_J_cell, chem_solver_i, chem_do_weno);
     
     int coord_type = Geometry::Coord();
     const Real* prob_lo   = Geometry::ProbLo();

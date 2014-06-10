@@ -14,18 +14,21 @@ BL_FORT_PROC_DECL(RNS_DUDT_AD,rns_dudt_ad)
 BL_FORT_PROC_DECL(RNS_ADVCHEM, rns_advchem)
     (const int lo[], const int hi[],
      BL_FORT_FAB_ARG(U),
+     BL_FORT_FAB_ARG(chemst),
      const Real& dt);
 
 BL_FORT_PROC_DECL(RNS_ADVCHEM2, rns_advchem2)
     (const int lo[], const int hi[],
      BL_FORT_FAB_ARG(U),
+     BL_FORT_FAB_ARG(chemst),
      const BL_FORT_FAB_ARG(Uguess),
      const Real& dt);
 
 BL_FORT_PROC_DECL(RNS_DUDT_CHEM, rns_dudt_chem)
     (const int lo[], const int hi[],
      const BL_FORT_FAB_ARG(U),
-     BL_FORT_FAB_ARG(dUdt));
+     BL_FORT_FAB_ARG(dUdt),
+     BL_FORT_FAB_ARG(chemst));
 
 BL_FORT_PROC_DECL(RNS_COMPUTE_TEMP,rns_compute_temp)
     (const int lo[], const int hi[],
@@ -46,7 +49,8 @@ BL_FORT_PROC_DECL(SET_METHOD_PARAMS,set_method_params)
      const Real& gamma, const Real& gravity, const Real& Treference,
      const int& riemann, const Real& difmag, const int* blocksize,
      const int& do_weno, const int& do_quadrature_weno, const int& do_component_weno,
-     const int& do_BE_burning, const int& new_J_cell, const int& chem_solver);
+     const int& do_BE_burning, const int& new_J_cell, const int& chem_solver,
+     const int& chem_do_weno);
 
 BL_FORT_PROC_DECL(SET_PROBLEM_PARAMS,set_problem_params)
     (const int& dm,
@@ -213,5 +217,8 @@ BL_FORT_PROC_DECL(RNS_MAKEPLOTVAR, rns_makeplotvar)
 
 BL_FORT_PROC_DECL(  SET_SDC_BOUNDARY_FLAG,   set_sdc_boundary_flag)();
 BL_FORT_PROC_DECL(UNSET_SDC_BOUNDARY_FLAG, unset_sdc_boundary_flag)();
+
+BL_FORT_PROC_DECL(RNS_PASSINFO, rns_passinfo)(const int& level, const int& iteration,
+    const Real& time);
 
 #endif

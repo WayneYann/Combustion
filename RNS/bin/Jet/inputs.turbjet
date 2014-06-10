@@ -8,7 +8,6 @@ stop_time = 1.0
 # for SDC
 mlsdc.max_iters = 3
 mlsdc.nsweeps = 2 1 1 
-mlsdc.hoimex = 0
 
 # PROBLEM SIZE & GEOMETRY
 geometry.is_periodic = 0 0 0
@@ -22,13 +21,8 @@ eglib.use_bulk_visc = 1
 rns.Riemann    = 0     # 0: HLL,  1: JBB,  2: HLLC
 rns.Treference = 298.0
 
-rns.new_J_cell   = 1
-rns.f2comp_nbdf  = 1
-rns.chem_do_weno = 1
+rns.do_chemistry = 0
 
-rns.fuelName      = CH3OCH3
-rns.flameTracName = H
-rns.do_flametrac_ref = 1
 rns.do_vorticity_ref = 1
 rns.do_temperature_ref = 1
 

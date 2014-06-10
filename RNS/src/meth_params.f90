@@ -43,7 +43,9 @@ module meth_params_module
   integer, parameter :: cc_burning = 0
   integer, parameter :: Gauss_burning = 1
   integer, parameter :: split_burning = 2
-  integer, parameter :: BE_burning = 3
-  integer, parameter :: nchemsolver = 4
+  integer, parameter :: BEcc_burning = 3
+  integer, parameter :: BEGp_burning = 4
+  integer, parameter :: nchemsolver = 5
+  logical, save :: chem_do_weno
 
 end module meth_params_module

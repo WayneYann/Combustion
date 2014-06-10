@@ -73,3 +73,26 @@ RNS::volWgtSumCons(Array<Real>& s)
 	     &s[0]);
     }
 }
+
+
+void 
+RNS::sum_chemstatus()
+{
+    int finest_level = parent->finestLevel();
+
+    Array<int> n1(finest_level+1);
+    for (int lev=0; lev<=finest_level; lev++) {
+	RNS& rns = getLevel(lev);
+	const MultiFab& cst = *(rns.chemstatus);
+	n1[lev] = int(cst.norm1());
+    }
+    if (ParallelDescriptor::IOProcessor()) 
+    {
+	for (int lev=0; lev<=finest_level; lev++) {
+	    if (n1[lev] != 0) {
+		std::cout << "*** WARNING: " << n1[lev] << " cells on level " 
+			  << lev << " failed at 4th-order-in-space chemistry" << std::endl;
+	    }
+	}			
+    }
+}

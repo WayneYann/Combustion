@@ -23,7 +23,7 @@ subroutine rns_grpfill(adv,adv_l1,adv_l2,adv_l3,adv_h1,adv_h2,adv_h3, &
   double precision, allocatable :: vturb(:,:,:), xturb(:), yturb(:), etaturb(:,:)
   double precision :: zturb, Ek, Eknew, rhoeta
 
-  if (.not. dmejet_initialized) call init_DME_jet()
+  if (.not. jet_initialized) call init_jet()
 
   if (.not. turbinflow_initialized) call init_turbinflow(turbfile)
 
@@ -259,8 +259,8 @@ subroutine rns_denfill(adv,adv_l1,adv_l2,adv_l3,adv_h1,adv_h2,adv_h3, &
   double precision, parameter :: gp(2) = (/ -1.d0/sqrt(3.d0), 1.d0/sqrt(3.d0) /)
   double precision, parameter :: wgt = 0.25d0
 
-  if (.not. dmejet_initialized) then
-     call init_DME_jet()
+  if (.not. jet_initialized) then
+     call init_jet()
   end if
 
   call filcc(adv,adv_l1,adv_l2,adv_l3,adv_h1,adv_h2,adv_h3, &
@@ -516,8 +516,8 @@ subroutine rns_mzfill(adv,adv_l1,adv_l2,adv_l3,adv_h1,adv_h2,adv_h3, &
   double precision, parameter :: gp(2) = (/ -1.d0/sqrt(3.d0), 1.d0/sqrt(3.d0) /)
   double precision, parameter :: wgt = 0.25d0
 
-  if (.not. dmejet_initialized) then
-     call init_DME_jet()
+  if (.not. jet_initialized) then
+     call init_jet()
   end if
 
   call filcc(adv,adv_l1,adv_l2,adv_l3,adv_h1,adv_h2,adv_h3, &
@@ -631,8 +631,8 @@ subroutine rns_tempfill(adv,adv_l1,adv_l2,adv_l3,adv_h1,adv_h2,adv_h3, &
   double precision, parameter :: gp(2) = (/ -1.d0/sqrt(3.d0), 1.d0/sqrt(3.d0) /)
   double precision, parameter :: wgt = 0.25d0
 
-  if (.not. dmejet_initialized) then
-     call init_DME_jet()
+  if (.not. jet_initialized) then
+     call init_jet()
   end if
 
   call filcc(adv,adv_l1,adv_l2,adv_l3,adv_h1,adv_h2,adv_h3, &

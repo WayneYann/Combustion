@@ -22,6 +22,10 @@ subroutine rns_grpfill(adv,adv_l1,adv_l2,adv_h1,adv_h2, &
 
   integer bc(2,2,NVAR)
 
+  if (.not. dmejet_initialized) then
+     call init_DME_jet()
+  end if
+
   bc = bc_in(:,:,1:NVAR)
   if (isFEval) bc(2,1,:) = FOEXTRAP
 
@@ -46,8 +50,7 @@ subroutine rns_grpfill(adv,adv_l1,adv_l2,adv_h1,adv_h2, &
         sigma = 2.5d0*xfrontw*splitx
 
         ! fill the corners too
-        !$omp parallel do private(i,j,n,iwrk,ii,x,xg,eta,eta1,rhot,u1t,u2t,Tt,et,Yt,rwrk) &
-        !$omp collapse(2)
+        !$omp parallel do private(i,j,n,iwrk,ii,x,xg,eta,eta1,rhot,u1t,u2t,Tt,et,Yt,rwrk)
         do j = adv_l2, domlo(2)-1 
            do i = adv_l1,adv_h1
         
@@ -214,6 +217,10 @@ subroutine rns_denfill(adv,adv_l1,adv_l2,adv_h1,adv_h2, &
   double precision, parameter :: gp(2) = (/ -1.d0/sqrt(3.d0), 1.d0/sqrt(3.d0) /)
   double precision, parameter :: wgt = 0.5d0
 
+  if (.not. dmejet_initialized) then
+     call init_DME_jet()
+  end if
+
   call filcc(adv,adv_l1,adv_l2,adv_h1,adv_h2,domlo,domhi,delta,xlo,bc)
 
   !        YLO
@@ -223,8 +230,7 @@ subroutine rns_denfill(adv,adv_l1,adv_l2,adv_h1,adv_h2, &
         sigma = 2.5d0*xfrontw*splitx
 
         ! fill the corners too
-        !$omp parallel do private(i,j,n,iwrk,ii,x,xg,eta,rhot,Tt,Yt,rwrk) &
-        !$omp collapse(2)
+        !$omp parallel do private(i,j,n,iwrk,ii,x,xg,eta,rhot,Tt,Yt,rwrk)
         do j = adv_l2, domlo(2)-1 
            do i = adv_l1,adv_h1
 
@@ -309,6 +315,10 @@ subroutine rns_mxfill(adv,adv_l1,adv_l2,adv_h1,adv_h2, &
   double precision adv(adv_l1:adv_h1,adv_l2:adv_h2)
 
   integer :: i, j
+
+  if (.not. dmejet_initialized) then
+     call init_DME_jet()
+  end if
   
   call filcc(adv,adv_l1,adv_l2,adv_h1,adv_h2,domlo,domhi,delta,xlo,bc)
 
@@ -378,6 +388,10 @@ subroutine rns_myfill(adv,adv_l1,adv_l2,adv_h1,adv_h2, &
   double precision, parameter :: gp(2) = (/ -1.d0/sqrt(3.d0), 1.d0/sqrt(3.d0) /)
   double precision, parameter :: wgt = 0.5d0
 
+  if (.not. dmejet_initialized) then
+     call init_DME_jet()
+  end if
+
   call filcc(adv,adv_l1,adv_l2,adv_h1,adv_h2,domlo,domhi,delta,xlo,bc)
 
 !        YLO
@@ -391,8 +405,7 @@ subroutine rns_myfill(adv,adv_l1,adv_l2,adv_h1,adv_h2, &
         sigma = 2.5d0*xfrontw*splitx
 
         ! fill the corners too
-        !$omp parallel do private(i,j,n,iwrk,ii,x,xg,eta,eta1,rhot,u2t,Tt,Yt,rwrk) &
-        !$omp collapse(2)
+        !$omp parallel do private(i,j,n,iwrk,ii,x,xg,eta,eta1,rhot,u2t,Tt,Yt,rwrk)
         do j = adv_l2, domlo(2)-1 
            do i = adv_l1,adv_h1
 
@@ -491,6 +504,10 @@ subroutine rns_tempfill(adv,adv_l1,adv_l2,adv_h1,adv_h2, &
   double precision, parameter :: gp(2) = (/ -1.d0/sqrt(3.d0), 1.d0/sqrt(3.d0) /)
   double precision, parameter :: wgt = 0.5d0
 
+  if (.not. dmejet_initialized) then
+     call init_DME_jet()
+  end if
+
   call filcc(adv,adv_l1,adv_l2,adv_h1,adv_h2,domlo,domhi,delta,xlo,bc)
   
   !     XLO
@@ -512,7 +529,7 @@ subroutine rns_tempfill(adv,adv_l1,adv_l2,adv_h1,adv_h2, &
         sigma = 2.5d0*xfrontw*splitx
 
         ! fill the corners too
-        !$omp parallel do private(i,j,ii,x,xg,eta,Tt) collapse(2)
+        !$omp parallel do private(i,j,ii,x,xg,eta,Tt)
         do j = adv_l2, domlo(2)-1 
            do i = adv_l1,adv_h1
 

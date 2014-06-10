@@ -32,8 +32,8 @@ subroutine problem_restart(int_dir_name, len)
   integer :: int_dir_name(len)
   character (len=len) :: dir
 
-  if (.not. dmejet_initialized) then
-     call init_DME_jet()
+  if (.not. jet_initialized) then
+     call init_jet()
   end if
 
 end subroutine problem_restart

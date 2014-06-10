@@ -9918,7 +9918,7 @@ void productionRate(double * restrict wdot, double * restrict sc, double T)
 void comp_k_f(double * restrict tc, double invT, double * restrict k_f)
 {
 #ifdef __INTEL_COMPILER
-     #pragma simd
+    #pragma simd
 #endif
     for (int i=0; i<175; ++i) {
         k_f[i] = prefactor_units[i] * fwd_A[i]
@@ -30577,7 +30577,7 @@ void GET_T_GIVEN_EY(double * restrict e, double * restrict y, int * iwrk, double
 #endif
     double ein  = *e;
     double tmin = 250;/*max lower bound for thermo def */
-    double tmax = 3500;/*min upper bound for thermo def */
+    double tmax = 4000;/*min upper bound for thermo def */
     double e1,emin,emax,cv,t1,dt;
     int i;/* loop counter */
     CKUBMS(&tmin, y, iwrk, rwrk, &emin);

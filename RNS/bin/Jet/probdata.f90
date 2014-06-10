@@ -2,19 +2,15 @@ module probdata_module
 
   implicit none
 
-  ! parameters for DME_jet
-  integer, save :: prob_type
+  ! parameters for jet
   character (len=128), save :: turbfile = ""  
   double precision, save :: turb_boost_factor
   double precision, save :: pamb, phi_in, T_in, vn_in, T_co, vn_co
-  double precision, save :: splitx, xfrontw, Tfrontw
-  double precision, save :: blobr, blobx, bloby, blobT
-  double precision, save :: inflow_period, inflow_vnmag
-  double precision, save :: splity, yfrontw
+  double precision, save :: splitx, xfrontw
   double precision, allocatable, save :: fuel_Y(:), air_Y(:)
   double precision, allocatable, save :: fuel_state(:), air_state(:)
 
-  logical, save :: dmejet_initialized = .false.
+  logical, save :: jet_initialized = .false.
 
   double precision, save :: center(3)
 
@@ -39,13 +35,13 @@ module probdata_module
 
 contains
 
-  subroutine init_DME_jet
+  subroutine init_jet
 
     use meth_params_module, only : ndim, NVAR, URHO, UMX, UMY, UMZ, UEDEN, UTEMP, UFS
     use chemistry_module, only : nspecies, get_species_index
 
     double precision, dimension(nspecies) :: Xt, Yt
-    integer :: iwrk, iN2, iO2, iCH3OCH3, n
+    integer :: iwrk, iN2, iO2, iCH4, n
     double precision :: rwrk, Tt, rhot, Pt, et, vt, ek
 
     allocate(fuel_state(NVAR))
@@ -55,12 +51,12 @@ contains
 
     iN2 = get_species_index("N2")
     iO2 = get_species_index("O2")
-    iCH3OCH3 = get_species_index("CH3OCH3")
+    iCH4 = get_species_index("CH4")
 
     ! ----- Fuel -----
     Xt = 0.d0
-    Xt(iCH3OCH3) = phi_in
-    Xt(iN2) = 1.d0-Xt(iCH3OCH3)
+    Xt(iCH4) = phi_in
+    Xt(iN2) = 1.d0-Xt(iCH4)
 
     Pt = pamb
     Tt = T_in
@@ -115,7 +111,7 @@ contains
        air_Y(n) = Yt(n)
     end do
     
-    dmejet_initialized = .true.
-  end subroutine init_DME_jet
+    jet_initialized = .true.
+  end subroutine init_jet
 
 end module probdata_module

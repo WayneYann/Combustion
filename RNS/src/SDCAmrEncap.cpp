@@ -135,9 +135,6 @@ void mf_encap_saxpy(void *yp, sdc_dtype a, void *xp, int flags)
 
   BL_ASSERT(Uy.boxArray() == Ux.boxArray());
 
-// #ifdef _OPENMP
-// #pragma omp parallel for
-// #endif
   for (MFIter mfi(Uy); mfi.isValid(); ++mfi)
     Uy[mfi].saxpy(a, Ux[mfi]);
 

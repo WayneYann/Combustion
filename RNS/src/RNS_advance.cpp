@@ -162,9 +162,11 @@ RNS::fill_boundary(MultiFab& U, Real time, int type_in, bool isCorrection, bool 
 
 void
 RNS::dUdt_AD(MultiFab& U, MultiFab& Uprime, Real time, int fill_boundary_type,
-	     FluxRegister* fine, FluxRegister* current, Real dt)
+	     FluxRegister* fine, FluxRegister* current, Real dt, bool partialUpdate)
 {
     BL_PROFILE("RNS::dUdt_AD()");
+
+    if (partialUpdate && touchFine.empty()) buildTouchFine();
 
     FArrayBox  flux[BL_SPACEDIM];
     MultiFab fluxes[BL_SPACEDIM];
@@ -182,9 +184,22 @@ RNS::dUdt_AD(MultiFab& U, MultiFab& Uprime, Real time, int fill_boundary_type,
 
     const Real *dx = geom.CellSize();
 
+    int iteration=-1;
+    BL_FORT_PROC_CALL(RNS_PASSINFO,rns_passinfo)(level,iteration,time);
+
     for (MFIter mfi(Uprime); mfi.isValid(); ++mfi)
     {
 	int i = mfi.index();
+
+	if (partialUpdate && !touchFine[i]) {
+	    if (do_reflux && fine) {
+		for (int idim = 0; idim < BL_SPACEDIM ; idim++) {
+		    fluxes[idim][i].setVal(0.0);
+		}
+	    }
+	    continue;
+	}
+
 	const Box& bx = mfi.validbox();
 
 	for (int idim = 0; idim < BL_SPACEDIM ; idim++)
@@ -232,21 +247,31 @@ RNS::dUdt_AD(MultiFab& U, MultiFab& Uprime, Real time, int fill_boundary_type,
 
 
 void
-RNS::dUdt_chemistry(const MultiFab& U, MultiFab& Uprime)
+RNS::dUdt_chemistry(const MultiFab& U, MultiFab& Uprime, bool partialUpdate)
 {
     BL_PROFILE("RNS::dUdt_chemistry()");
 
     BL_ASSERT( ! ChemDriver::isNull() );
 
+    if (partialUpdate && touchFine.empty()) buildTouchFine();
+
+    int iteration=-1;
+    Real time=-1.0;
+    BL_FORT_PROC_CALL(RNS_PASSINFO,rns_passinfo)(level,iteration,time);
+
     for (MFIter mfi(U); mfi.isValid(); ++mfi)
     {
-	const int   i = mfi.index();
+	const int i = mfi.index();
+
+	if (partialUpdate && !touchFine[i]) continue;
+
 	const Box& bx = mfi.validbox();
 	const int* lo = bx.loVect();
 	const int* hi = bx.hiVect();
 
 	BL_FORT_PROC_CALL(RNS_DUDT_CHEM, rns_dudt_chem)
-	    (lo, hi, BL_TO_FORTRAN(U[i]), BL_TO_FORTRAN(Uprime[i]));
+	    (lo, hi, BL_TO_FORTRAN(U[i]), BL_TO_FORTRAN(Uprime[i]),
+	     BL_TO_FORTRAN((*chemstatus)[i]));
     }
 }
 
@@ -308,6 +333,10 @@ RNS::advance_chemistry(MultiFab& U, Real dt)
 
     BL_ASSERT( ! ChemDriver::isNull() );
 
+    int iteration=-1;
+    Real time=-1.;
+    BL_FORT_PROC_CALL(RNS_PASSINFO,rns_passinfo)(level,iteration,time);
+
     for (MFIter mfi(U); mfi.isValid(); ++mfi)
     {
 	const int   i = mfi.index();
@@ -316,7 +345,7 @@ RNS::advance_chemistry(MultiFab& U, Real dt)
 	const int* hi = bx.hiVect();
 
 	BL_FORT_PROC_CALL(RNS_ADVCHEM, rns_advchem)
-	    (lo, hi, BL_TO_FORTRAN(U[i]), dt);
+	    (lo, hi, BL_TO_FORTRAN(U[i]), BL_TO_FORTRAN((*chemstatus)[i]), dt);
     }
 
     post_update(U);
@@ -326,10 +355,14 @@ RNS::advance_chemistry(MultiFab& U, Real dt)
 void
 RNS::advance_chemistry(MultiFab& U, const MultiFab& Uguess, Real dt)
 {
-    BL_PROFILE("RNS::advance_chemistry()");
+    BL_PROFILE("RNS::advance_chemistry() w/ guess");
 
     BL_ASSERT( ! ChemDriver::isNull() );
     BL_ASSERT( Uguess.nGrow() == 0 );
+
+    int iteration=-1;
+    Real time=-1.0;
+    BL_FORT_PROC_CALL(RNS_PASSINFO,rns_passinfo)(level,iteration,time);
 
     for (MFIter mfi(U); mfi.isValid(); ++mfi)
     {
@@ -339,7 +372,8 @@ RNS::advance_chemistry(MultiFab& U, const MultiFab& Uguess, Real dt)
 	const int* hi = bx.hiVect();
 
 	BL_FORT_PROC_CALL(RNS_ADVCHEM2, rns_advchem2)
-	    (lo, hi, BL_TO_FORTRAN(U[i]), BL_TO_FORTRAN(Uguess[i]), dt);
+	    (lo, hi, BL_TO_FORTRAN(U[i]), BL_TO_FORTRAN((*chemstatus)[i]),
+	     BL_TO_FORTRAN(Uguess[i]), dt);
     }
 
     post_update(U);
@@ -425,10 +459,22 @@ void sdc_f1eval(void *Fp, void *Qp, double t, sdc_state *state, void *ctx)
 	 << "  level: " << rns.Level() << ", node: " << state->node << endl;
   }
 
-  if (F.fine_flux != NULL)
-    F.fine_flux->setVal(0.0);
+  bool partialUpdate;
+  if (state->flags & SDC_POSTRESTRICT) {
+      partialUpdate = true;
+  }
+  else {
+      partialUpdate = false;
+  }
 
-  rns.dUdt_AD(U, Uprime, t, RNS::use_FillBoundary, F.crse_flux, F.fine_flux, 1.0);
+  if (F.fine_flux != NULL) {
+    F.fine_flux->setVal(0.0);
+    partialUpdate = false;  // partial update doesn't work when there is fine flux register
+                            // (i.e., this is a fine level)
+  }
+
+  rns.dUdt_AD(U, Uprime, t, RNS::use_FillBoundary, F.crse_flux, F.fine_flux, 1.0,
+	      partialUpdate);
 }
 
 //
@@ -458,10 +504,20 @@ void sdc_f2eval(void *Fp, void *Qp, double t, sdc_state *state, void *ctx)
 	 << ", dt = " << dt << endl;
   }
 
+  BL_FORT_PROC_CALL(RNS_PASSINFO, rns_passinfo)(rns.Level(),state->iter,t);
+
   rns.fill_boundary(U, state->t, RNS::use_FillBoundary);
   BL_ASSERT(U.contains_nan() == false);
 
-  rns.dUdt_chemistry(U, Uprime);
+  bool partialUpdate;
+  if (state->flags & SDC_POSTRESTRICT) {
+      partialUpdate = true;
+  }
+  else {
+      partialUpdate = false;
+  }
+
+  rns.dUdt_chemistry(U, Uprime, partialUpdate);
   BL_ASSERT(Uprime.contains_nan() == false);
 }
 
@@ -474,6 +530,7 @@ void sdc_f2eval(void *Fp, void *Qp, double t, sdc_state *state, void *ctx)
 //
 void sdc_f2comp(void *Fp, void *Qp, double t, double dt, void *RHSp, sdc_state *state, void *ctx)
 {
+  static int first = 1;
   RNS&      rns    = *((RNS*) ctx);
   RNSEncap& Q      = *((RNSEncap*) Qp);
   RNSEncap& F      = *((RNSEncap*) Fp);
@@ -490,16 +547,27 @@ void sdc_f2comp(void *Fp, void *Qp, double t, double dt, void *RHSp, sdc_state *
       return;
   }
 
+  BL_FORT_PROC_CALL(RNS_PASSINFO, rns_passinfo)(rns.Level(),state->iter,t);
+
+  if (first) {
+      const SDCAmr* sdcamr = rns.getSDCAmr();
+      if (rns.check_imex_order(sdcamr->ho_imex)) {
+	  BoxLib::Warning("\n*** ho_imex is incompatible with chem_solver");
+      }
+      first = 0;
+  }
+
   if (rns.verbose > 1 && ParallelDescriptor::IOProcessor()) {
       cout << "MLSDC advancing  chemistry:"
 	   << " level: " << rns.Level() << ", node: " << state->node << endl;
   }
 
   MultiFab Uguess;
-  int goodUguess = (state->iter >= rns.f2comp_niter_good) ? 1 : 0;
-  if (goodUguess) {
+  bool Uguess_defined=false;
+  if ( rns.f2comp_timer[state->node] >= rns.f2comp_nbdf ) {
       Uguess.define(U.boxArray(), U.nComp(), 0, Fab_allocate);
-      MultiFab::Copy(Uguess, U, 0, 0, U.nComp(), 0);      
+      MultiFab::Copy(Uguess, U, 0, 0, U.nComp(), 0);
+      Uguess_defined = true;
   }
 
   MultiFab::Copy(U, Urhs, 0, 0, U.nComp(), 0);
@@ -507,8 +575,8 @@ void sdc_f2comp(void *Fp, void *Qp, double t, double dt, void *RHSp, sdc_state *
   rns.fill_boundary(U, state->t, RNS::use_FillBoundary);
 
   BL_ASSERT(U.contains_nan() == false);
-  
-  if (goodUguess) {
+
+  if (Uguess_defined) {
       rns.advance_chemistry(U, Uguess, dt);
   }
   else {
@@ -521,9 +589,11 @@ void sdc_f2comp(void *Fp, void *Qp, double t, double dt, void *RHSp, sdc_state *
       Uprime.mult(1./dt);
   }
   else {
-      rns.fill_boundary(U, state->t, RNS::use_FillBoundary);
+      rns.fill_boundary(U, state->t+dt, RNS::use_FillBoundary);
       rns.dUdt_chemistry(U, Uprime);
   }
+
+  rns.f2comp_timer[state->node]++;
 }
 
 void sdc_poststep_hook(void *Qp, sdc_state *state, void *ctx)

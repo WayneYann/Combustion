@@ -57,6 +57,7 @@ public:
   int max_trefs;                // maximum number of time refinements
   int nnodes0;			// number of nodes on the coarsest level
   int trat;			// time refinement ratio
+  int ho_imex;
   int first_refinement_level;   // first amr level that has time refinement
 
   sdc_mg mg;
@@ -73,11 +74,15 @@ public:
   void         destroy_mlsdc();
   void         final_integrate(double t, double dt, int niter);
 
+  virtual void init (Real strt_time, Real stop_time);
+
+  virtual void coarseTimeStep (Real stop_time);
+
   virtual void timeStep(int level,
 			Real time,
 			int iteration,
 			int niter ,
-			Real stop_time);
+			Real stop_time) { BL_ASSERT(false); }
 
 };
 
