@@ -42,9 +42,12 @@ module bdf
   !
   type :: bdf_ts
 
+     ! parameters, set at build time by bdf_ts_build
      integer  :: neq                      ! number of equations (degrees of freedom) per point
      integer  :: npt                      ! number of points
      integer  :: max_order                ! maximum order (1 to 6)
+
+     ! options, users are free to change these after bdf_ts_build
      integer  :: max_steps                ! maximum allowable number of steps
      integer  :: max_iters                ! maximum allowable number of newton iterations
      integer  :: verbose                  ! verbosity level
@@ -58,7 +61,7 @@ module bdf
      real(dp), pointer :: rtol(:)         ! realtive tolerances
      real(dp), pointer :: atol(:)         ! absolute tolerances
 
-     ! state
+     ! state (internal)
      real(dp) :: t                        ! current time
      real(dp) :: dt                       ! current time step
      real(dp) :: dt_nwt                   ! dt used when building newton iteration matrix
