@@ -449,6 +449,7 @@ SDCAmr::coarseTimeStep (Real stop_time)
 	if (lev < finest_level) { // mask off fine domain
 	  int ncomp = R.nComp();
 	  BoxArray baf = boxArray(lev+1);
+	  baf.coarsen(ref_ratio[lev]);
 	  for (MFIter mfi(R); mfi.isValid(); ++mfi) {
 	    int i = mfi.index();
 	    const Box& bx = mfi.validbox();
