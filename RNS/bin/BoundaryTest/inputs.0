@@ -1,0 +1,66 @@
+amr.n_cell   =   32      1       1
+
+# ------------------  INPUTS TO MAIN PROGRAM  -------------------
+max_step  = 1000000
+stop_time = 2.0
+
+# for SDC
+mlsdc.max_iters = 4
+mlsdc.nsweeps = 2 1 1
+
+# PROBLEM SIZE & GEOMETRY
+geometry.is_periodic = 0 1 1
+geometry.coord_sys   = 0  # 0 => cart, 1 => RZ  2=>spherical
+geometry.prob_lo     =   -0.5     0.0     0.0
+geometry.prob_hi     =    0.5     1.0     1.0
+
+amr.max_level       = 0        # maximum level number allowed
+amr.blocking_factor = 32       # must be >=8 for MLSDC
+amr.max_grid_size   = 1024
+
+rns.Riemann    = 0     # 0: HLL,  1: JBB,  2: HLLC
+rns.gamma      = 1.4
+rns.Treference = 0.0
+
+# >>>>>>>>>>>>>  BC FLAGS <<<<<<<<<<<<<<<<
+# 0 = Interior           3 = Symmetry
+# 1 = Inflow             4 = SlipWall
+# 2 = Outflow            5 = NoSlipWall
+# >>>>>>>>>>>>>  BC FLAGS <<<<<<<<<<<<<<<<
+rns.lo_bc       =  1   0   0
+rns.hi_bc       =  2   0   0
+
+# TIME STEP CONTROL
+rns.cfl            = 0.8     # cfl number for hyperbolic system
+rns.init_shrink    = 1.0     # scale back initial timestep
+rns.change_max     = 1.05    # scale back initial timestep
+rns.dt_cutoff      = 5.e-20  # level 0 timestep below which we halt
+
+# DIAGNOSTICS & VERBOSITY
+rns.sum_int        = 1       # print sum of conserved variables
+rns.v              = 1       # verbosity in RNS.cpp
+amr.v              = 1       # verbosity in Amr.cpp
+#amr.grid_log       = grdlog  # name of grid logging file
+
+# REFINEMENT / REGRIDDING
+rns.do_density_ref  = 1 
+amr.ref_ratio       = 2 2 2 2 # refinement ratio
+amr.regrid_int      = 2 2 2 2 # how often to regrid
+amr.n_error_buf     = 2 2 2 2 # number of buffer cells in error est
+amr.grid_eff        = 0.7     # what constitutes an efficient grid
+
+# CHECKPOINT FILES
+amr.checkpoint_files_output = 0
+amr.check_file              = chk    # root name of checkpoint file
+amr.check_int               = 100    # number of timesteps between checkpoints
+
+# PLOTFILES
+amr.plot_files_output = 1
+amr.plot_file         = plt     # root name of plotfile
+amr.plot_int          = 1000000    # number of timesteps between plotfiles
+rns.plot_cons         = 1
+rns.plot_prim         = 0
+rns.plot_primplus     = 0
+
+#PROBIN FILENAME
+amr.probin_file = probin.0
