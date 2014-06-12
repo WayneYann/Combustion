@@ -1,0 +1,35 @@
+ &fortin
+  blobx = -1.e6
+  bloby = 2.0
+  blobr = .02
+  xcen = .02
+  splitx = 2.0
+  xfrontw = .005
+  probtype = 1
+  v_strength = -4000.
+  v_strength = 0.
+  v_width = .00125
+  v_xcen = 0.00675
+  v_ycen = 0.008
+  flametracval = .0001
+  vorterr = .2
+  max_vort_lev = 1
+  vorterr = 1.e3
+  y_offset = -0.004
+  y_offset = -0.01288
+  flametracval = 5.e-8
+  V_in = .2
+  nchemdiag = 1
+ /
+ &heattransin
+  pamb = 101325.0
+  dpdt_factor = 0.3
+ /
+ &flctin
+ /
+ &control
+  tau_control = 2.e-3
+  sest = .3
+  cfix = 5.9e-6
+  changeMax_control = .05
+ /

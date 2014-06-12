@@ -1,0 +1,40 @@
+
+CEXE_sources += HT_setup.cpp
+
+FEXE_sources += PROB_2D.F
+
+CEXE_headers += ArrayViewEXT.H
+
+FEXE_headers += probdata.H PROB_F.H
+
+ifeq (${USE_FLCTS}, TRUE)
+   CEXE_sources += inflow.cpp
+   FEXE_sources += FLUCTFILE.F INFL_FORCE_$(DIM)D.F INFL_FORCE_F.F
+endif
+
+#fEXE_sources += pmf_30_0.8.f
+#fEXE_sources += pmf_30_1.0.f
+#fEXE_sources += pmf_30_1.2.f
+#fEXE_sources += pmf_chem-H_015.f
+#fEXE_sources += pmf_chem-H_020.f
+#fEXE_sources += pmf_chem-H_030.f
+fEXE_sources += pmf_chem-H_037.f
+#fEXE_sources += pmf_drm_100.f
+#fEXE_sources += pmf_gri12.f
+#fEXE_sources += drmSoln0.75.f
+#fEXE_sources += GRI-drm19_4cm_1.19.f
+#fEXE_sources += pmf_drm19_ch4_060.f
+#fEXE_sources += pmf_drm19_ch4_080.f
+#fEXE_sources += pmf_gri211_hno_030.f
+#fEXE_sources += pmf_gri211_hno_037.f
+#fEXE_sources += pmf_gri211_hno_040.f
+#fEXE_sources += pmf_gri30_ch4_030_atm_100.f
+#fEXE_sources += pmf_gri30_ch4_060_atm_100.f
+#fEXE_sources += pmf_gri30_ch4_045.f
+#fEXE_sources += pmf_gri30_ch4_060.f
+#fEXE_sources += pmf_gri30_ch4_080.f
+#fEXE_sources += pmf_gri30_ch4_100.f
+#fEXE_sources += pmf_gri30_hno_037.f
+#fEXE_sources += pmf_gri30_hno_040.f
+#fEXE_sources += pmf_gri30_hno_050.f
+#fEXE_sources += pmf_gri30_hno_070.f
