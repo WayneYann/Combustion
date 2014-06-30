@@ -27,6 +27,12 @@ subroutine rns_grpfill(adv,adv_l1,adv_l2,adv_h1,adv_h2, &
   end if
 
   bc = bc_in(:,:,1:NVAR)
+  if (isFEval) then
+     do n=1,NVAR
+        if (bc(2,1,n) .eq. EXT_DIR) bc(2,1,n) = FOEXTRAP
+     end do
+  end if
+
   if (isFEval) bc(2,1,:) = FOEXTRAP
 
   !$omp parallel do private(n)

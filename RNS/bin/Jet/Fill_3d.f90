@@ -28,7 +28,11 @@ subroutine rns_grpfill(adv,adv_l1,adv_l2,adv_l3,adv_h1,adv_h2,adv_h3, &
   if (.not. turbinflow_initialized) call init_turbinflow(turbfile)
 
   bc = bc_in(:,:,1:NVAR)
-  if (isFEval) bc(3,1,:) = FOEXTRAP
+  if (isFEval) then
+     do n=1,NVAR
+        if (bc(3,1,n) .eq. EXT_DIR) bc(3,1,n) = FOEXTRAP
+     end do
+  end if
 
   !$omp parallel do private(n)
   do n = 1,NVAR

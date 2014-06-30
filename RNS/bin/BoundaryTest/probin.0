@@ -1,0 +1,8 @@
+&fortin
+
+  prob_type = 0
+
+  rsplit = 0.23d0
+  splitw = 0.03d0
+
+/
