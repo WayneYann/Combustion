@@ -15,8 +15,8 @@
   vorterr = 1.e3
   y_offset = 0.008
   flametracval = 5.e-5
-  v_xcen = 0.00375
-  v_cl_x = 0.004
+  v_xcen = 0.00675
+  v_cl_x = 0.008
  /
  &heattransin
   pamb = 101325.0

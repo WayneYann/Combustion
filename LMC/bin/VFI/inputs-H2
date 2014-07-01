@@ -94,10 +94,7 @@ ns.unity_Le = 0
 
 ns.lo_bc          = 3 1
 ns.hi_bc          = 3 2
-
-ns.lo_bc          = 0 1
-ns.hi_bc          = 0 2
-geometry.is_periodic = 1 0
+geometry.is_periodic = 0 0
 
 # >>>>>>>>>>>>>  BC FLAGS <<<<<<<<<<<<<<<<
 # 0 = Interior           3 = Symmetry
