@@ -789,11 +789,12 @@ c ::: -----------------------------------------------------------
 c     Set initial flame angle for probtype=2
       theta = Pi / 6.d0
 
+c
 c     Set vorticity into pressure field
 c
-      do j = ARG_L2(press),ARG_H2(press)
+      do j = lo(2), hi(2)+1
          y = float(j)*delta(2)+domnlo(2)
-         do i = ARG_L1(press),ARG_H1(press)
+         do i = lo(1), hi(1)+1
             x = float(i)*delta(1)+domnlo(1)
             r1sq = (x-v_xcen)**2              + (y-v_ycen)**2
             r2sq = (x-(two*v_cl_x-v_xcen))**2 + (y-v_ycen)**2
