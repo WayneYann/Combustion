@@ -130,6 +130,7 @@ contains
           do n=1,nspec
              Ucc(i,j,UFS+n-1) = rhot(1)*YT(n)
           end do
+          U(i,j,UTEMP) = YT(nspec+1)
 
 !          if (ts%debug) close(unit=666)
 

@@ -141,8 +141,8 @@ contains
             tmp1, tmp2, g2lo, g2hi)
     end do
 
-    ! cell-center => Qc: center-in-x and Gauss-point-in-y 
-    !                Qf: xface and Gauss-point-in-y
+    ! cell-center => Qc: center-in-y and Gauss-point-in-x 
+    !                Qf: yface and Gauss-point-in-x
     do n=1,QCVAR
        call cc2yface_2d(lo,hi, Qcc(:,:,n), g2lo, g2hi, &
             Qf1(:,:,n), Qf2(:,:,n), Qflo, Qfhi, &
@@ -301,7 +301,7 @@ contains
     double precision, intent(in   ) ::   Qc(Qclo(1):Qchi(1),Qclo(2):Qchi(2),QCVAR)
 
     integer :: i, j, n, UYN, QYN, QXN, QHN
-    double precision :: tauyy, tauxy, dudx, dudy, dvdx, dvdy, divu, rhoinv
+    double precision :: tauyy, tauxy, dudx, dudy, dvdx, dvdy, divu
     double precision :: dTdy, dXdy, Vd
     double precision :: ek, rhovn
     double precision, allocatable :: dlnpdy(:,:), Vc(:,:)
@@ -317,7 +317,6 @@ contains
                + FD4(0)*Qc(i,j,QU) + FD4(1)*Qc(i,j+1,QU))
           dvdy = dxinv(2)*(FD4(-2)*Qc(i,j-2,QV) + FD4(-1)*Qc(i,j-1,QV) &
                + FD4(0)*Qc(i,j,QV) + FD4(1)*Qc(i,j+1,QV))
-          rhoinv = 1.d0/Qf(i,j,QRHO)
           dudx = dxinv(1)*dvel(i,j,1)
           dvdx = dxinv(1)*dvel(i,j,2)
           divu = dudx + dvdy
