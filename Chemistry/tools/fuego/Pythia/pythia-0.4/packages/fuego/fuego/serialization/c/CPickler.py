@@ -847,10 +847,17 @@ class CPickler(CMill):
 
         self._indent()
 
+        # build reverse reaction map
+        rmap = {}
         for i, reaction in zip(range(nReactions), mechanism.reaction()):
+            rmap[reaction.orig_id-1] = i
 
+        for j in range(nReactions):
+            reaction = mechanism.reaction()[rmap[j]]
             id = reaction.id - 1
+
             A, beta, E = reaction.arrhenius
+            self._write("// (%d):  %s" % (reaction.orig_id - 1, reaction.equation()))
             self._write("R[%d].fwd_A     = %.17g;" % (id,A))
             self._write("R[%d].fwd_beta  = %.17g;" % (id,beta))
             self._write("R[%d].fwd_Ea    = %.17g;" % (id,E))
