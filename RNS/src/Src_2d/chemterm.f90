@@ -160,7 +160,7 @@ contains
 
     integer :: i, j, n, g, ierr
     logical :: force_new_J
-    double precision :: rhot(4), Yt(nspec+1,4)
+    double precision :: rhot(4), Yt(nspec+1,4),fac
     double precision, allocatable :: UG(:,:,:,:)
 
     allocate(UG(lo(1):hi(1),lo(2):hi(2),4,NVAR))
@@ -168,9 +168,18 @@ contains
     if (chem_do_weno) then
        call chem_weno(lo, hi, U, Ulo, Uhi, UG)
     else
-       !$omp parallel do private(n)
+       !$omp parallel do private(i,j,n,fac)
        do n=1,NVAR
           call cellavg2gausspt_2d(lo,hi, U(:,:,n), Ulo,Uhi, UG(:,:,:,n), lo,hi)
+          do j=lo(2),hi(2)
+             do i=lo(1),hi(1)
+                fac = 4.d0*U(i,j,n)/(UG(i,j,1,n)+UG(i,j,2,n)+UG(i,j,3,n)+UG(i,j,4,n)+1.d-50)
+                UG(i,j,1,n) = UG(i,j,1,n) * fac
+                UG(i,j,2,n) = UG(i,j,2,n) * fac
+                UG(i,j,3,n) = UG(i,j,3,n) * fac
+                UG(i,j,4,n) = UG(i,j,4,n) * fac
+             end do
+          end do
        end do
        !$omp end parallel do
     end if
@@ -256,7 +265,7 @@ contains
 
     integer :: i, j, n, g, ierr
     logical :: force_new_J
-    double precision :: rhot(4), rho0(1)
+    double precision :: rhot(4), rho0(1), fac
     double precision :: Yt(nspec+1,4), YT0(nspec+1)
     double precision, allocatable :: UG(:,:,:,:)
 
@@ -265,9 +274,18 @@ contains
     if (chem_do_weno) then
        call chem_weno(lo,hi,U,Ulo,Uhi,UG)
     else
-       !$omp parallel do private(n)
+       !$omp parallel do private(i,j,n,fac)
        do n=1,NVAR
           call cellavg2gausspt_2d(lo,hi, U(:,:,n), Ulo,Uhi, UG(:,:,:,n), lo,hi)
+          do j=lo(2),hi(2)
+             do i=lo(1),hi(1)
+                fac = 4.d0*U(i,j,n)/(UG(i,j,1,n)+UG(i,j,2,n)+UG(i,j,3,n)+UG(i,j,4,n)+1.d-50)
+                UG(i,j,1,n) = UG(i,j,1,n) * fac
+                UG(i,j,2,n) = UG(i,j,2,n) * fac
+                UG(i,j,3,n) = UG(i,j,3,n) * fac
+                UG(i,j,4,n) = UG(i,j,4,n) * fac
+             end do
+          end do
        end do
        !$omp end parallel do
     end if
@@ -488,7 +506,7 @@ contains
 
     integer :: i, j, n, g, ierr
     logical :: force_new_J
-    double precision :: rhot(4), rho0(1)
+    double precision :: rhot(4), rho0(1), fac
     double precision :: Yt(nspec+1,4), YT0(nspec+1), rhoY(nspec)
     double precision, allocatable :: UG(:,:,:,:)
 
@@ -497,9 +515,18 @@ contains
     if (chem_do_weno) then
        call chem_weno(lo, hi, U, Ulo, Uhi, UG)
     else
-       !$omp parallel do private(n)
+       !$omp parallel do private(i,j,n,fac)
        do n=1,NVAR
           call cellavg2gausspt_2d(lo,hi, U(:,:,n), Ulo,Uhi, UG(:,:,:,n), lo,hi)
+          do j=lo(2),hi(2)
+             do i=lo(1),hi(1)
+                fac = 4.d0*U(i,j,n)/(UG(i,j,1,n)+UG(i,j,2,n)+UG(i,j,3,n)+UG(i,j,4,n)+1.d-50)
+                UG(i,j,1,n) = UG(i,j,1,n) * fac
+                UG(i,j,2,n) = UG(i,j,2,n) * fac
+                UG(i,j,3,n) = UG(i,j,3,n) * fac
+                UG(i,j,4,n) = UG(i,j,4,n) * fac
+             end do
+          end do
        end do
        !$omp end parallel do
     end if
@@ -630,7 +657,7 @@ contains
     double precision, intent(inout) :: st(stlo(1):sthi(1),stlo(2):sthi(2))
 
     integer :: i, j, n, g, np, ierr
-    double precision :: rho(lo(1):hi(1)), T(lo(1):hi(1))
+    double precision :: rho(lo(1):hi(1)), T(lo(1):hi(1)), fac
     double precision :: Y(lo(1):hi(1),nspec), rdYdt(lo(1):hi(1),nspec)
     double precision, allocatable :: UG(:,:,:,:)
 
@@ -641,9 +668,18 @@ contains
     if (chem_do_weno) then
        call chem_weno(lo, hi, U, Ulo, Uhi, UG)
     else
-       !$omp parallel do private(n)
+       !$omp parallel do private(i,j,n,fac)
        do n=1,NVAR
           call cellavg2gausspt_2d(lo,hi, U(:,:,n), Ulo,Uhi, UG(:,:,:,n), lo,hi)
+          do j=lo(2),hi(2)
+             do i=lo(1),hi(1)
+                fac = 4.d0*U(i,j,n)/(UG(i,j,1,n)+UG(i,j,2,n)+UG(i,j,3,n)+UG(i,j,4,n)+1.d-50)
+                UG(i,j,1,n) = UG(i,j,1,n) * fac
+                UG(i,j,2,n) = UG(i,j,2,n) * fac
+                UG(i,j,3,n) = UG(i,j,3,n) * fac
+                UG(i,j,4,n) = UG(i,j,4,n) * fac
+             end do
+          end do
        end do
        !$omp end parallel do
     end if
@@ -809,13 +845,14 @@ contains
     double precision, intent(in) :: U(Ulo(1):Uhi(1),Ulo(2):Uhi(2),NVAR)
     double precision, intent(out):: UG(lo(1):hi(1),lo(2):hi(2),4,NVAR)
 
-    integer :: i,j
+    integer :: i,j,n
+    double precision :: fac
     double precision, allocatable :: UG1y(:,:,:), UG2y(:,:,:)
 
     allocate(UG1y(lo(1)-2:hi(1)+2, lo(2):hi(2), NVAR))
     allocate(UG2y(lo(1)-2:hi(1)+2, lo(2):hi(2), NVAR))
 
-    !$omp parallel private(i,j)
+    !$omp parallel private(i,j,fac)
 
     !$omp do
     do i=lo(1)-2,hi(1)+2
@@ -844,6 +881,20 @@ contains
             UG1=UG(:,j,3,:), UG2=UG(:,j,4,:) )
     end do
     !$omp end do 
+
+    !$omp do
+    do n=1,NVAR
+       do j=lo(2),hi(2)
+          do i=lo(1),hi(1)
+             fac = 4.d0*U(i,j,n)/(UG(i,j,1,n)+UG(i,j,2,n)+UG(i,j,3,n)+UG(i,j,4,n)+1.d-50)
+             UG(i,j,1,n) = UG(i,j,1,n) * fac
+             UG(i,j,2,n) = UG(i,j,2,n) * fac
+             UG(i,j,3,n) = UG(i,j,3,n) * fac
+             UG(i,j,4,n) = UG(i,j,4,n) * fac
+          end do
+       end do
+    end do
+    !$omp end do
 
     !$omp end parallel
 
