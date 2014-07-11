@@ -452,6 +452,46 @@ contains
 
   end subroutine reconstruct_center
 
+
+  subroutine reconstruct_center_comp(lo,hi,U,Ulo,Uhi,Uc,clo,chi,idir)
+    integer, intent(in) :: lo,hi,Ulo,Uhi,clo,chi,idir
+    double precision, intent(in) :: U(Ulo:Uhi,NVAR)
+    double precision, intent(out) :: Uc(clo:chi,NVAR)
+    
+    integer :: i, n
+    double precision :: rhoE(Ulo:Uhi), rho, rhoInv, Y(nspec)
+
+    do i=lo,hi
+       rho = 0.d0
+       do n=1,nspec
+          Y(n) = U(i,UFS+n-1)
+          rho = rho + Y(n)
+       end do
+       
+       rhoInv = 1.d0/rho
+       
+       do n=1,nspec
+          Y(n) = Y(n) * rhoInv
+       end do
+
+       rhoE(i) = U(i,UEDEN) - rho*eos_get_eref(Y)
+    end do
+
+    do i=lo,hi
+       do n=1,NVAR
+          if (n.eq.UEDEN) then
+             call weno5_center(rhoE(i-2:i+2), Uc(i,n))
+          else
+             call weno5_center(U(i-2:i+2,n), Uc(i,n))
+          end if
+       end do
+    end do
+
+    call normalize(lo,hi,Uc,clo,chi)
+
+  end subroutine reconstruct_center_comp
+
+
   subroutine get_eigen_matrices(U,lv,rv,ivel,vflag)
     double precision, intent(in) :: U(NVAR), vflag(3)
     integer, intent(in) :: ivel(3)

@@ -62,7 +62,7 @@ contains
   end subroutine hypterm
 
 
-  subroutine hypterm_nq_old(lo,hi,U,Ulo,Uhi,fx,fxlo,fxhi,fy,fylo,fyhi,dx)
+  subroutine hypterm_nq(lo,hi,U,Ulo,Uhi,fx,fxlo,fxhi,fy,fylo,fyhi,dx)
 
     use meth_params_module, only : NVAR
     use reconstruct_module, only : reconstruct
@@ -172,7 +172,7 @@ contains
 
     deallocate(UL_a, UR_a, UL_c, UR_c, f_c, f_a)
     
-  end subroutine hypterm_nq_old
+  end subroutine hypterm_nq
 
 
   subroutine add_artifical_viscocity(lo,hi,U,Ulo,Uhi,fx,fxlo,fxhi,fy,fylo,fyhi,dx)
@@ -240,7 +240,7 @@ contains
   end subroutine add_artifical_viscocity
 
 
-  subroutine hypterm_nq(lo,hi,U,Ulo,Uhi,fx,fxlo,fxhi,fy,fylo,fyhi,dx)
+  subroutine hypterm_nq_new(lo,hi,U,Ulo,Uhi,fx,fxlo,fxhi,fy,fylo,fyhi,dx)
 
     use meth_params_module, only : NVAR
     use reconstruct_module, only : reconstruct, reconstruct_center
@@ -347,7 +347,7 @@ contains
 
     deallocate(UL_a, UR_a, UL_c, UR_c, f_c, f_a)
     
-  end subroutine hypterm_nq
+  end subroutine hypterm_nq_new
 
 end module hypterm_module
 
