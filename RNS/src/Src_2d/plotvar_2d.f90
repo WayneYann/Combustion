@@ -60,7 +60,7 @@ subroutine rns_ctoprim(lo, hi, &
   end do
   !$omp end do
 
-  !$omp do schedule(dynamic) collapse(2)
+  !$omp do collapse(2)
   do jb=0,nb(2)-1
      do ib=0,nb(1)-1
 
