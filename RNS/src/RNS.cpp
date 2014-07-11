@@ -214,19 +214,10 @@ RNS::read_params ()
     }
 
     // some Riemann solvers need artificial viscosity to suppress odd-even decouping
-    if (Riemann == JBB)
+    if (Riemann == JBB || Riemann == HLLC)
     {
-	difmag = 0.1;
+	pp.query("difmag", difmag);
     }
-    else if (Riemann == HLLC)
-    {
-	difmag = 0.1;
-    }
-    else
-    {
-	difmag = -1.0;
-    }
-    pp.query("difmag", difmag);
 
     // Get boundary conditions
     pp.getarr("lo_bc",lo_bc,0,BL_SPACEDIM);

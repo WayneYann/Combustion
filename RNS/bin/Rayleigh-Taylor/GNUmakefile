@@ -24,7 +24,7 @@ CHEMISTRY_MODEL = NULL
 Bpack   := ./Make.package
 Blocs   := .
 
-VERBOSE=FALSE
+VERBOSE=TRUE
 
 include ../Make.RNS
 

@@ -4,6 +4,22 @@ module weno_module
 
   double precision, parameter :: epsw = 1.d-6, b1=13.d0/12.d0, oneSixth=1.d0/6.d0
 
+  ! Three types of third-order coefficients for converting cell averages to cell center point values
+  double precision, dimension(-2:0), parameter :: L3_cc = &
+       (/ -1.d0/24.d0,  2.d0/24.d0, 23.d0/24.d0 /)
+  double precision, dimension(-1:1), parameter :: C3_cc = &  ! this is actually 4th-order
+       (/ -1.d0/24.d0, 26.d0/24.d0, -1.d0/24.d0 /)
+  double precision, dimension( 0:2), parameter :: R3_cc = &
+       (/ 23.d0/24.d0,  2.d0/24.d0, -1.d0/24.d0 /)
+  
+  ! Optimal weights for cc
+  double precision, parameter :: gamma_p_lr = 9.d0/214.d0
+  double precision, parameter :: gamma_p_cc = 98.d0/107.d0
+  double precision, parameter :: gamma_m_lr = 9.d0/67.d0
+  double precision, parameter :: gamma_m_cc = 49.d0/67.d0
+  double precision, parameter :: sigma_p = 107.d0/40.d0
+  double precision, parameter :: sigma_m = 67.d0/40.d0
+
   ! Three types of third-order coefficients for converting cell averages to first Gauss point values
   double precision, dimension(-2:0), parameter :: L3_cg1 = &
        (/  -sqrt(3.d0)/12.d0,  1.d0/sqrt(3.d0),  1.d0-sqrt(3.d0)/4.d0  /)
@@ -20,11 +36,11 @@ module weno_module
   double precision, dimension( 0:2), parameter :: R3_cg2 = &
        (/  1.d0-sqrt(3.d0)/4.d0,  1.d0/sqrt(3.d0),  -sqrt(3.d0)/12.d0  /)
 
-  ! Optimial weights for first Gauss point
+  ! Optimal weights for first Gauss point
   double precision, dimension(-2:0), parameter :: d_g1 = &
        (/ (210.d0+sqrt(3.d0))/1080.d0,  11.d0/18.d0,  (210.d0-sqrt(3.d0))/1080.d0  /)
 
-  ! Optimial weights for second Gauss point
+  ! Optimal weights for second Gauss point
   double precision, dimension(-2:0), parameter :: d_g2 = &
        (/ (210.d0-sqrt(3.d0))/1080.d0,  11.d0/18.d0,  (210.d0+sqrt(3.d0))/1080.d0  /)
 
@@ -57,7 +73,8 @@ module weno_module
 
   private
 
-  public :: weno5, vweno5, cellavg2gausspt_1d, cellavg2gausspt_2d, cellavg2gausspt_2d_v1, &
+  public :: weno5, vweno5, weno5_center,  &
+       cellavg2gausspt_1d, cellavg2gausspt_2d, cellavg2gausspt_2d_v1, &
        cellavg2gausspt_2d_v2, cellavg2gausspt_3d, &
        cellavg2dergausspt_1d, cellavg2dergausspt_2d, cellavg2face_1d
 
@@ -217,6 +234,41 @@ contains
     end if
 
   end subroutine vweno5
+
+
+  subroutine weno5_center(v, vc)
+    double precision, intent(in) :: v(-2:2)
+    double precision, intent(out) :: vc  ! at cell center
+
+    double precision :: alpha_2, alpha_1, alpha_0
+    double precision :: beta_2, beta_1, beta_0
+    double precision :: v_2, v_1, v_0
+
+    beta_2 = b1*(v(-2)-2.d0*v(-1)+v(0))**2 + 0.25d0*(v(-2)-4.d0*v(-1)+3.d0*v(0))**2
+    beta_2 = 1.d0/(epsw+beta_2)**2
+
+    beta_1 = b1*(v(-1)-2.d0*v( 0)+v(1))**2 + 0.25d0*(v(-1)-v(1))**2
+    beta_1 = 1.d0/(epsw+beta_1)**2
+
+    beta_0 = b1*(v( 0)-2.d0*v( 1)+v(2))**2 + 0.25d0*(3.d0*v(0)-4.d0*v(1)+v(2))**2
+    beta_0 = 1.d0/(epsw+beta_0)**2
+
+    v_2 = L3_cc(-2)*v(-2) + L3_cc(-1)*v(-1) + L3_cc(0)*v(0)
+    v_1 = C3_cc(-1)*v(-1) + C3_cc( 0)*v( 0) + C3_cc(1)*v(1)
+    v_0 = R3_cc( 0)*v( 0) + R3_cc( 1)*v( 1) + R3_cc(2)*v(2)
+
+    ! plus
+    alpha_2 = gamma_p_lr*beta_2
+    alpha_1 = gamma_p_cc*beta_1
+    alpha_0 = gamma_p_lr*beta_0
+    vc = sigma_p*(alpha_2*v_2 + alpha_1*v_1 + alpha_0*v_0)/(alpha_2 + alpha_1 + alpha_0)
+
+    ! minus
+    alpha_2 = gamma_m_lr*beta_2
+    alpha_1 = gamma_m_cc*beta_1
+    alpha_0 = gamma_m_lr*beta_0
+    vc = vc-sigma_m*(alpha_2*v_2 + alpha_1*v_1 + alpha_0*v_0)/(alpha_2 + alpha_1 + alpha_0)
+  end subroutine weno5_center
 
 
   subroutine cellavg2gausspt_1d(lo,hi, u, ulo,uhi, u1, u2, glo,ghi)
