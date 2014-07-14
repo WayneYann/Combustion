@@ -315,12 +315,6 @@ SDCAmr::init (Real strt_time,
     if (plot_int > 0 || plot_per > 0)
       writePlotFile();
   }
-#ifdef HAS_XGRAPH
-  if (first_plotfile) {
-      first_plotfile = false;
-      amr_level[0].setPlotVariables();
-  }
-#endif
 }
 
 /*
