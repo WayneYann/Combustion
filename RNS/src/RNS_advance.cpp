@@ -17,6 +17,13 @@ RNS::advance (Real time,
 	      int  iteration,
 	      int  ncycle)
 {
+    if (level == 0) {
+	for (int lev=0; lev<parent->finestLevel(); lev++) {
+	    RNS& rns = *dynamic_cast<RNS*>(&getLevel(lev));
+	    rns.zeroChemStatus();
+	}
+    }
+
     for (int k = 0; k < NUM_STATE_TYPE; k++)
     {
         state[k].allocOldData();
