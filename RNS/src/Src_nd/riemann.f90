@@ -1,7 +1,7 @@
 module riemann_module
 
   use meth_params_module, only : ndim, NVAR, URHO, UMX, UMY, UMZ, UEDEN, UTEMP, UFS, NSPEC, &
-       riemann_solver, HLL_solver, JBB_solver, HLLC_solver
+       riemann_solver, HLL_solver, JBB_solver, HLLC_solver, MUSTA_solver, MUSTA_k
   use renorm_module, only : floor_species
   use passinfo_module, only : level
 
@@ -13,12 +13,13 @@ module riemann_module
 
 contains
 
-  subroutine riemann(lo, hi, UL, UR, Ulo, Uhi, flx, flo, fhi, dir)
+  subroutine riemann(lo, hi, UL, UR, Ulo, Uhi, flx, flo, fhi, dir, dtdx)
     integer, intent(in) :: lo, hi, Ulo, Uhi, flo, fhi
     integer, intent(in), optional :: dir
     double precision, intent(in ) ::  UL(Ulo:Uhi,NVAR)
     double precision, intent(in ) ::  UR(Ulo:Uhi,NVAR)
     double precision              :: flx(flo:fhi,NVAR)
+    double precision, intent(in), optional :: dtdx
 
     select case (riemann_solver)
     case (HLL_solver)
@@ -27,6 +28,8 @@ contains
        call riemann_JBB(lo, hi, UL(lo:hi+1,:), UR(lo:hi+1,:), flx(lo:hi+1,:), dir)
     case (HLLC_solver)
        call riemann_HLLC(lo, hi, UL(lo:hi+1,:), UR(lo:hi+1,:), flx(lo:hi+1,:), dir)
+    case (MUSTA_solver)
+       call riemann_MUSTA(lo, hi, UL(lo:hi+1,:), UR(lo:hi+1,:), flx(lo:hi+1,:), dir, dtdx)
     case default
        print *, 'unknown riemann solver'
        stop
@@ -477,7 +480,6 @@ contains
 
   end subroutine riemann_HLLC
 
-
   subroutine set_vel(idir, ivel, vflag)
     integer, intent(in) :: idir
     integer, intent(out) :: ivel(3)
@@ -522,5 +524,115 @@ contains
     end if
   end subroutine set_vel
 
+  subroutine riemann_MUSTA(lo, hi, UL, UR, flx, dir, dtdx)
+    integer, intent(in) :: lo, hi
+    integer, intent(in), optional :: dir
+    double precision, intent(in), optional :: dtdx
+    double precision, intent(in ) ::  UL(lo:hi+1,NVAR)
+    double precision, intent(in ) ::  UR(lo:hi+1,NVAR)
+    double precision, intent(out) :: flx(lo:hi+1,NVAR)
 
+    integer :: ell
+    double precision :: dxdt
+    double precision, allocatable :: ULell(:,:), URell(:,:), Uhalf(:,:)
+    double precision, allocatable :: FLell(:,:), FRell(:,:)
+
+    if (.not.present(dtdx)) call bl_error("dtdx not present in MUSTA")
+
+    dxdt = 1.d0/dtdx
+
+    allocate(ULell(lo:hi+1,NVAR))
+    allocate(URell(lo:hi+1,NVAR))
+    allocate(Uhalf(lo:hi+1,NVAR))
+    allocate(FLell(lo:hi+1,NVAR))
+    allocate(FRell(lo:hi+1,NVAR))
+    
+    ULell = UL
+    URell = UR
+    
+    do ell=0,MUSTA_k
+       call compute_flux(lo,hi,ULell,FLell,dir)
+       call compute_flux(lo,hi,URell,FRell,dir)    
+       Uhalf = 0.5d0*(ULell+URell+dtdx*(FLell-FRell))
+       call compute_flux(lo,hi,Uhalf,flx,dir)
+       flx = 0.25d0*(FLell+FRell+2.d0*flx+dxdt*(ULell-URell))
+       
+       if (ell .lt. MUSTA_k) then
+          ULell = ULell - dtdx*(flx-FLell)
+          URell = URell + dtdx*(flx-FRell)
+       end if
+    end do
+
+    deallocate(ULell,URell,Uhalf,FLell,FRell)
+  end subroutine riemann_MUSTA
+
+  subroutine compute_flux(lo, hi, U, F, dir)
+    use eos_module, only : eos_given_ReY
+    integer, intent(in) :: lo, hi
+    integer, intent(in), optional :: dir
+    double precision, intent(in   ) ::  U(lo:hi+1,NVAR)
+    double precision, intent(out  ) ::  F(lo:hi+1,NVAR)
+
+    integer :: i, n, idir, ierr
+    double precision :: rho, m(3), rhoE, v(3), vn
+    double precision :: rhoInv, p, c, gamc, dpdr(NSPEC), dpde, T, e, ek, Y(NSPEC)
+
+    if (present(dir)) then
+       idir = dir
+    else
+       idir = 1
+    end if
+
+    do i=lo,hi+1
+
+       rho  = U(i,URHO)
+       m(1) = U(i,UMX)
+       if (ndim .ge. 2) then
+          m(2) = U(i,UMY)
+       else
+          m(2) = 0.d0
+       end if
+       if (ndim .eq. 3) then
+          m(3) = U(i,UMZ)
+       else
+          m(3) = 0.d0
+       end if
+       rhoE = U(i,UEDEN)
+       
+       rhoInv = 1.0d0/rho
+       v      = m*rhoInv
+       T      = U(i,UTEMP)
+       
+       ek = 0.5d0*(v(1)*v(1) + v(2)*v(2) + v(3)*v(3))
+       e  = rhoE*rhoInv - ek
+
+       Y = U(i,UFS:UFS+NSPEC-1)*rhoInv
+
+       call floor_species(nspec, Y)
+
+       call eos_given_ReY(p,c,gamc,T,dpdr,dpde,rho,e,Y,ierr=ierr)
+       if (ierr .ne. 0) then
+          print *, 'compute_flux: eos failed', level, U(i,UFS:UFS+nspec-1)*rhoinv 
+          call bl_error("compute_flux: eos failed")
+       end if
+
+       vn = v(idir)
+
+       F(i,URHO ) = rho*vn
+       F(i,UMX  ) = m(1)*vn
+       if (ndim .ge. 2) then
+          F(i,UMY  ) = m(2)*vn
+       end if
+       if (ndim .eq. 3) then
+          F(i,UMZ  ) = m(3)*vn
+       end if
+       F(i,UMX+idir-1) = F(i,UMX+idir-1) + p
+       F(i,UEDEN) = (rhoE + p) * vn
+       F(i,UTEMP) = 0.d0
+       do n=1,NSPEC
+          F(i,UFS+n-1) = U(i,UFS+n-1)*vn
+       end do
+    end do
+  end subroutine compute_flux
+  
 end module riemann_module

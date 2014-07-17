@@ -167,8 +167,8 @@ RNS::fill_boundary(MultiFab& U, Real time, int type_in, bool isCorrection, bool 
 
 
 void
-RNS::dUdt_AD(MultiFab& U, MultiFab& Uprime, Real time, int fill_boundary_type,
-	     FluxRegister* fine, FluxRegister* current, Real dt, bool partialUpdate)
+RNS::dUdt_AD(MultiFab& U, MultiFab& Uprime, Real time, Real dt, int fill_boundary_type,
+	     FluxRegister* fine, FluxRegister* current, bool partialUpdate)
 {
     BL_PROFILE("RNS::dUdt_AD()");
 
@@ -224,7 +224,7 @@ RNS::dUdt_AD(MultiFab& U, MultiFab& Uprime, Real time, int fill_boundary_type,
 	     D_DECL(BL_TO_FORTRAN(flux[0]),
 		    BL_TO_FORTRAN(flux[1]),
 		    BL_TO_FORTRAN(flux[2])),
-	     dx);
+	     dt,dx);
 
 	if (do_reflux)
 	{
@@ -416,13 +416,13 @@ RNS::advance_AD(MultiFab& Unew, Real time, Real dt)
 	}
 
 	// Step 1 of RK2
-	dUdt_AD(Unew, Uprime, time, no_fill);
+	dUdt_AD(Unew, Uprime, time, 0.5*dt, no_fill);
 	update_rk(Unew, U0, 0.5*dt, Uprime); // Unew = U0 + 0.5*dt*Uprime
 	post_update(Unew);
 
 	// Step 2 of RK2
 	int fill_boundary_type = use_FillCoarsePatch;
-	dUdt_AD(Unew, Uprime, time+0.5*dt, fill_boundary_type, fine, current, dt);
+	dUdt_AD(Unew, Uprime, time+0.5*dt, 0.5*dt, fill_boundary_type, fine, current);
 	update_rk(Unew, U0, dt, Uprime); // Unew = U0 + dt*Uprime
 	post_update(Unew);
     }
@@ -434,17 +434,17 @@ RNS::advance_AD(MultiFab& Unew, Real time, Real dt)
 	MultiFab Utmp(grids,NUM_STATE,NUM_GROW);
 
 	// Step 1 of RK3
-	dUdt_AD(Unew, Uprime, time, no_fill);
+	dUdt_AD(Unew, Uprime, time, (1./3.)*dt, no_fill);
 	update_rk(Unew, U0, dt, Uprime);
 	post_update(Unew);
 
 	// Step 2 of RK3
-	dUdt_AD(Unew, Uprime, time+(1./3.)*dt, fill_boundary_type);
+	dUdt_AD(Unew, Uprime, time+(1./3.)*dt, (1./3.)*dt, fill_boundary_type);
 	update_rk(Utmp, 0.75, U0, 0.25, Unew, 0.25*dt, Uprime);
 	post_update(Utmp);
 
 	// Step 3 of RK3
-	dUdt_AD(Utmp, Uprime, time+(2./3.)*dt, fill_boundary_type);
+	dUdt_AD(Utmp, Uprime, time+(2./3.)*dt, (1./3.)*dt, fill_boundary_type);
 	update_rk(Unew, 1./3., U0, 2./3., Utmp, (2./3.)*dt, Uprime);
 	post_update(Unew);
     }
@@ -463,6 +463,7 @@ void sdc_f1eval(void *Fp, void *Qp, double t, sdc_state *state, void *ctx)
   RNSEncap& F      = *((RNSEncap*) Fp);
   MultiFab& U      = *Q.U;
   MultiFab& Uprime = *F.U;
+  Real dt = state->dt;
 
   if (rns.verbose > 1 && ParallelDescriptor::IOProcessor()) {
     cout << "MLSDC evaluating adv/diff:"
@@ -483,7 +484,7 @@ void sdc_f1eval(void *Fp, void *Qp, double t, sdc_state *state, void *ctx)
                             // (i.e., this is a fine level)
   }
 
-  rns.dUdt_AD(U, Uprime, t, RNS::use_FillBoundary, F.crse_flux, F.fine_flux, 1.0,
+  rns.dUdt_AD(U, Uprime, t, dt, RNS::use_FillBoundary, F.crse_flux, F.fine_flux,
 	      partialUpdate);
 
 #ifndef NDEBUG

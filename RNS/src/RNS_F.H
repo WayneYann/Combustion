@@ -9,7 +9,7 @@ BL_FORT_PROC_DECL(RNS_DUDT_AD,rns_dudt_ad)
      D_DECL(BL_FORT_FAB_ARG(xflux),
 	    BL_FORT_FAB_ARG(yflux),
 	    BL_FORT_FAB_ARG(zflux)),
-     const Real dx[]);
+     const Real& dt, const Real dx[]);
 
 BL_FORT_PROC_DECL(RNS_ADVCHEM, rns_advchem)
     (const int lo[], const int hi[],
@@ -47,7 +47,8 @@ BL_FORT_PROC_DECL(SET_METHOD_PARAMS,set_method_params)
      const int& NUM_STATE, const int& NumSpec,
      const Real& small_dens, const Real& small_temp, const Real& small_pres,
      const Real& gamma, const Real& gravity, const Real& Treference,
-     const int& riemann, const Real& difmag, const int* blocksize,
+     const int& riemann, const Real& difmag, const int& MUSTA_k,
+     const int* blocksize,
      const int& do_weno, const int& do_quadrature_weno, const int& do_component_weno,
      const int& do_BE_burning, const int& new_J_cell, const int& chem_solver,
      const int& chem_do_weno);

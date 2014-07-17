@@ -92,6 +92,7 @@ int          RNS::RK_order      = 2;
 
 RNS::RiemannType RNS::Riemann   = RNS::HLL;
 Real             RNS::difmag    = -1.0;  // for JBB & HLLC Riemann solvers
+int              RNS::MUSTA_k   = 2;
 
 std::string  RNS::fuelName           = "";
 int          RNS::fuelID             = -1;
@@ -218,6 +219,8 @@ RNS::read_params ()
     {
 	pp.query("difmag", difmag);
     }
+
+    pp.query("MUSTA_k", MUSTA_k);
 
     // Get boundary conditions
     pp.getarr("lo_bc",lo_bc,0,BL_SPACEDIM);

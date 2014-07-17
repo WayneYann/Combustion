@@ -16,8 +16,8 @@ end subroutine get_method_params
 ! ::: 
 subroutine set_method_params(dm,Density,Xmom,Eden,Temp,FirstSpec, &
      NUM_STATE, NumSpec, small_dens_in, small_temp_in, small_pres_in, &
-     gamma_in, grav_in, Tref_in, riemann_in, difmag_in, blocksize, &
-     do_weno_in, do_quadrature_weno_in, do_comp_weno_in, &
+     gamma_in, grav_in, Tref_in, riemann_in, difmag_in, MUSTA_k_in, &
+     blocksize, do_weno_in, do_quadrature_weno_in, do_comp_weno_in, &
      use_vode_in, new_J_cell_in, chem_solver_in, chem_do_weno_in)
 
   use meth_params_module
@@ -27,7 +27,8 @@ subroutine set_method_params(dm,Density,Xmom,Eden,Temp,FirstSpec, &
 
   integer, intent(in) :: dm
   integer, intent(in) :: Density, Xmom, Eden, Temp, FirstSpec, NUM_STATE, NumSpec, &
-       riemann_in, blocksize(*), do_weno_in, do_quadrature_weno_in, do_comp_weno_in, &
+       riemann_in, MUSTA_k_in, &
+       blocksize(*), do_weno_in, do_quadrature_weno_in, do_comp_weno_in, &
        use_vode_in, new_J_cell_in, chem_solver_in, chem_do_weno_in
   double precision, intent(in) :: small_dens_in, small_temp_in, small_pres_in, &
        gamma_in, grav_in, Tref_in, difmag_in
@@ -90,6 +91,7 @@ subroutine set_method_params(dm,Density,Xmom,Eden,Temp,FirstSpec, &
 
   riemann_solver = riemann_in
   difmag = difmag_in
+  MUSTA_k = MUSTA_k_in
 
   xblksize = blocksize(1)
   if (dm .ge. 2) then
