@@ -1,7 +1,7 @@
 module riemann_module
 
   use meth_params_module, only : ndim, NVAR, URHO, UMX, UMY, UMZ, UEDEN, UTEMP, UFS, NSPEC, &
-       riemann_solver, HLL_solver, JBB_solver, HLLC_solver
+       riemann_solver, HLL_solver, JBB_solver, HLLC_solver, HLL_factor
   use renorm_module, only : floor_species
   use passinfo_module, only : level
 
@@ -20,6 +20,8 @@ contains
     double precision, intent(in ) ::  UR(Ulo:Uhi,NVAR)
     double precision              :: flx(flo:fhi,NVAR)
 
+    double precision, allocatable :: flxHLL(:,:)
+
     select case (riemann_solver)
     case (HLL_solver)
        call riemann_HLL(lo, hi, UL(lo:hi+1,:), UR(lo:hi+1,:), flx(lo:hi+1,:), dir)
@@ -31,6 +33,13 @@ contains
        print *, 'unknown riemann solver'
        stop
     end select
+
+    if (HLL_factor .gt. 0.d0) then
+       allocate(flxHLL(lo:hi+1,NVAR))
+       call riemann_HLL(lo, hi, UL(lo:hi+1,:), UR(lo:hi+1,:), flxHLL, dir)
+       flx(lo:hi+1,:) = (1.d0-HLL_factor)*flx(lo:hi+1,:) + HLL_factor*flxHLL
+       deallocate(flxHLL)
+    end if
 
   end subroutine riemann
 

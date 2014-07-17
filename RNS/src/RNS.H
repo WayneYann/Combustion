@@ -345,6 +345,7 @@ protected:
 
     static RiemannType Riemann;
     static Real        difmag; // for JBB & HLLC Riemann solvers
+    static Real        HLL_factor;  // mixing some HLL into JBB or HLLC
 
     // what to store in plotfiles
     static int         plot_cons;
@@ -371,6 +372,7 @@ protected:
     static int         do_quartic_interp;
 
     static int         do_weno;
+    static int         do_wenoz;
     static int         do_quadrature_weno;
     static int         do_component_weno;
 

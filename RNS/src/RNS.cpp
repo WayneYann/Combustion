@@ -92,6 +92,7 @@ int          RNS::RK_order      = 2;
 
 RNS::RiemannType RNS::Riemann   = RNS::HLL;
 Real             RNS::difmag    = -1.0;  // for JBB & HLLC Riemann solvers
+Real             RNS::HLL_factor = -1.0;
 
 std::string  RNS::fuelName           = "";
 int          RNS::fuelID             = -1;
@@ -148,6 +149,7 @@ std::vector<int> RNS::blocksize(BL_SPACEDIM, 2048);
 int          RNS::do_quartic_interp   = 1;
 
 int          RNS::do_weno             = 1;
+int          RNS::do_wenoz            = 0;
 int          RNS::do_quadrature_weno  = 0;
 int          RNS::do_component_weno   = 0;
 
@@ -217,6 +219,7 @@ RNS::read_params ()
     if (Riemann == JBB || Riemann == HLLC)
     {
 	pp.query("difmag", difmag);
+	pp.query("HLL_factor", HLL_factor);
     }
 
     // Get boundary conditions
