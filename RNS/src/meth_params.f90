@@ -10,11 +10,9 @@ module meth_params_module
   integer, parameter :: HLL_solver = 0
   integer, parameter :: JBB_solver = 1
   integer, parameter :: HLLC_solver = 2
-  integer, parameter :: MUSTA_solver = 3
-  integer, parameter :: nriemann   = 4
+  integer, parameter :: nriemann   = 3
 
   double precision, save :: difmag
-  integer, save :: MUSTA_k;
   
   integer, save :: ndim   ! spatial dimension
   integer, save :: NCHARV ! number of characteristic variables

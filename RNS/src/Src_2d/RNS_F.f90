@@ -4,7 +4,7 @@ subroutine rns_dudt_ad (lo, hi, &
      dUdt, Ut_l1, Ut_l2, Ut_h1, Ut_h2, &
      xflx, xf_l1, xf_l2, xf_h1, xf_h2, &
      yflx, yf_l1, yf_l2, yf_h1, yf_h2, &
-     dt, dx)
+     dx)
   use meth_params_module, only : NVAR, gravity, URHO, UMY, UEDEN, do_weno, &
        xblksize, yblksize, nthreads
   use hypterm_module, only : hypterm
@@ -21,7 +21,7 @@ subroutine rns_dudt_ad (lo, hi, &
   double precision, intent(out) :: dUdt(Ut_l1:Ut_h1,Ut_l2:Ut_h2,NVAR)
   double precision, intent(out) :: xflx(xf_l1:xf_h1,xf_l2:xf_h2,NVAR)
   double precision, intent(out) :: yflx(yf_l1:yf_h1,yf_l2:yf_h2,NVAR)
-  double precision, intent(in)  :: dt, dx(2)
+  double precision, intent(in)  :: dx(2)
 
   integer :: Ulo(2), Uhi(2), fxlo(2), fxhi(2), fylo(2), fyhi(2), tlo(2), thi(2)
   integer :: i, j, n, ib, jb, nb(2), boxsize(2)
@@ -88,7 +88,7 @@ subroutine rns_dudt_ad (lo, hi, &
         byflx = 0.d0
 
         if (do_weno) then
-           call hypterm(tlo,thi,U,Ulo,Uhi,bxflx,fxlo,fxhi,byflx,fylo,fyhi,dt,dx)
+           call hypterm(tlo,thi,U,Ulo,Uhi,bxflx,fxlo,fxhi,byflx,fylo,fyhi,dx)
         end if
         call difterm(tlo,thi,U,Ulo,Uhi,bxflx,fxlo,fxhi,byflx,fylo,fyhi,dxinv)
 

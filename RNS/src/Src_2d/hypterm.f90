@@ -8,13 +8,13 @@ module hypterm_module
 
 contains
 
-  subroutine hypterm(lo,hi,U,Ulo,Uhi,fx,fxlo,fxhi,fy,fylo,fyhi,dt,dx)
+  subroutine hypterm(lo,hi,U,Ulo,Uhi,fx,fxlo,fxhi,fy,fylo,fyhi,dx)
 
     use meth_params_module, only : NVAR, difmag, do_quadrature_weno
     use hypterm_xy_module, only : hypterm_xy
 
     integer, intent(in) :: lo(2), hi(2), Ulo(2), Uhi(2), fxlo(2), fxhi(2), fylo(2), fyhi(2)
-    double precision, intent(in   ) :: dt, dx(2)
+    double precision, intent(in   ) :: dx(2)
     double precision, intent(in   ) ::  U( Ulo(1): Uhi(1), Ulo(2): Uhi(2),NVAR)
     double precision, intent(inout) :: fx(fxlo(1):fxhi(1),fxlo(2):fxhi(2),NVAR)
     double precision, intent(inout) :: fy(fylo(1):fyhi(1),fylo(2):fyhi(2),NVAR)
@@ -51,7 +51,7 @@ contains
 
     else
        
-       call hypterm_nq(lo,hi,U,Ulo,Uhi,fx,fxlo,fxhi,fy,fylo,fyhi,dt,dx)       
+       call hypterm_nq(lo,hi,U,Ulo,Uhi,fx,fxlo,fxhi,fy,fylo,fyhi,dx)       
 
     end if
 
@@ -62,7 +62,7 @@ contains
   end subroutine hypterm
 
 
-  subroutine hypterm_nq(lo,hi,U,Ulo,Uhi,fx,fxlo,fxhi,fy,fylo,fyhi,dt,dx)
+  subroutine hypterm_nq(lo,hi,U,Ulo,Uhi,fx,fxlo,fxhi,fy,fylo,fyhi,dx)
 
     use meth_params_module, only : NVAR
     use reconstruct_module, only : reconstruct
@@ -70,17 +70,14 @@ contains
     use riemann_module, only : riemann
 
     integer, intent(in) :: lo(2), hi(2), Ulo(2), Uhi(2), fxlo(2), fxhi(2), fylo(2), fyhi(2)
-    double precision, intent(in   ) :: dt,dx(2)
+    double precision, intent(in   ) :: dx(2)
     double precision, intent(in   ) ::  U( Ulo(1): Uhi(1), Ulo(2): Uhi(2),NVAR)
     double precision, intent(inout) :: fx(fxlo(1):fxhi(1),fxlo(2):fxhi(2),NVAR)
     double precision, intent(inout) :: fy(fylo(1):fyhi(1),fylo(2):fyhi(2),NVAR)
 
     integer :: i, j, n, tlo(2), thi(2), dir
-    double precision :: dtdx(2)
     double precision, allocatable, dimension(:,:,:) :: UL_a, UR_a, UL_c, UR_c, f_c
     double precision, allocatable, dimension(:,:) :: f_a
-
-    dtdx = dt/dx
 
     allocate(UL_a(lo(1)-2:hi(1)+2,lo(2)-2:hi(2)+2,NVAR))
     allocate(UR_a(lo(1)-2:hi(1)+2,lo(2)-2:hi(2)+2,NVAR))
@@ -117,7 +114,7 @@ contains
 
     do j=lo(2)-1, hi(2)+1
        call riemann(lo(1),hi(1),UL_c(:,j,:),UR_c(:,j,:),lo(1)-1,hi(1)+1, &
-            f_c(:,j,:), lo(1)-1,hi(1)+1, dir=dir, dtdx=dtdx(dir))
+            f_c(:,j,:), lo(1)-1,hi(1)+1, dir=dir)
     end do
 
     ! x-flux: y-cell-center --> y-average
@@ -159,7 +156,7 @@ contains
     
     do i=lo(1)-1, hi(1)+1
        call riemann(lo(2),hi(2),UL_c(i,:,:),UR_c(i,:,:),lo(2)-1,hi(2)+1, &
-            f_c(i,:,:), lo(2)-1,hi(2)+1, dir=dir, dtdx=dtdx(dir))
+            f_c(i,:,:), lo(2)-1,hi(2)+1, dir=dir)
     end do
 
     ! y-flux: x-cell-center --> x-average
