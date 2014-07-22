@@ -149,7 +149,7 @@ std::vector<int> RNS::blocksize(BL_SPACEDIM, 2048);
 int          RNS::do_quartic_interp   = 1;
 
 int          RNS::do_weno             = 1;
-int          RNS::do_wenoz            = 0;
+int          RNS::weno_type           = 0; // 0: Jiang-Shu; 1: WENO-M; 2: WENO-Z 
 int          RNS::do_quadrature_weno  = 0;
 int          RNS::do_component_weno   = 0;
 
@@ -318,7 +318,7 @@ RNS::read_params ()
     pp.query("do_quartic_interp", do_quartic_interp);
 
     pp.query("do_weno", do_weno);
-    pp.query("do_wenoz", do_wenoz);
+    pp.query("weno_type", weno_type);
     pp.query("do_quadrature_weno", do_quadrature_weno);
     pp.query("do_component_weno", do_component_weno);
     if (ChemDriver::isNull())
