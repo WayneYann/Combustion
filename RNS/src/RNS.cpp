@@ -318,6 +318,7 @@ RNS::read_params ()
     pp.query("do_quartic_interp", do_quartic_interp);
 
     pp.query("do_weno", do_weno);
+    pp.query("do_wenoz", do_wenoz);
     pp.query("do_quadrature_weno", do_quadrature_weno);
     pp.query("do_component_weno", do_component_weno);
     if (ChemDriver::isNull())
