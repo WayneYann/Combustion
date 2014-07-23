@@ -34,7 +34,7 @@ module meth_params_module
   integer, save :: xblksize=2048, yblksize=2048, zblksize=2048
   integer, save :: nthreads=1
 
-  logical, save :: do_weno, do_quadrature_weno, do_component_weno;
+  logical, save :: do_weno, do_mp5, do_quadrature_weno, do_component_weno;
 
   ! chemistry
   logical, save :: use_vode

@@ -1,8 +1,8 @@
 module reconstruct_module
 
   use meth_params_module, only : ndim, NVAR, URHO, UMX, UMY, UMZ, UEDEN, UTEMP, &
-       UFS, NSPEC, NCHARV, CFS, do_component_weno
-  use weno_module, only : weno5, vweno5, weno5_center
+       UFS, NSPEC, NCHARV, CFS, do_component_weno, do_mp5
+  use weno_module, only : mp5, weno5, vweno5, weno5_center
   use eos_module, only : eos_given_ReY, eos_get_eref
   use renorm_module, only : floor_species
   use passinfo_module, only : level
@@ -263,9 +263,15 @@ contains
              call weno5(charv(:,ivar), vp(ivar), vm(ivar), vg1(ivar), vg2(ivar))
           end do
        else if (do_face) then
-          do ivar=1,NCHARV
-             call weno5(charv(:,ivar), vp=vp(ivar), vm=vm(ivar))
-          end do
+          if (do_mp5) then
+             do ivar=1,NCHARV
+                call mp5(charv(:,ivar), vp(ivar), vm(ivar))
+             end do
+          else
+             do ivar=1,NCHARV
+                call weno5(charv(:,ivar), vp=vp(ivar), vm=vm(ivar))
+             end do
+          end if
        else  ! do_gauss
           do ivar=1,NCHARV
              call weno5(charv(:,ivar), vg1=vg1(ivar), vg2=vg2(ivar))

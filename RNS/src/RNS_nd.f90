@@ -17,7 +17,7 @@ end subroutine get_method_params
 subroutine set_method_params(dm,Density,Xmom,Eden,Temp,FirstSpec, &
      NUM_STATE, NumSpec, small_dens_in, small_temp_in, small_pres_in, &
      gamma_in, grav_in, Tref_in, riemann_in, difmag_in, HLL_factor_in, blocksize, &
-     do_weno_in, weno_type_in, do_quadrature_weno_in, do_comp_weno_in, &
+     do_weno_in, do_mp5_in, weno_type_in, do_quadrature_weno_in, do_comp_weno_in, &
      use_vode_in, new_J_cell_in, chem_solver_in, chem_do_weno_in)
 
   use meth_params_module
@@ -28,7 +28,7 @@ subroutine set_method_params(dm,Density,Xmom,Eden,Temp,FirstSpec, &
 
   integer, intent(in) :: dm
   integer, intent(in) :: Density, Xmom, Eden, Temp, FirstSpec, NUM_STATE, NumSpec, &
-       riemann_in, blocksize(*), do_weno_in, weno_type_in, &
+       riemann_in, blocksize(*), do_weno_in, do_mp5_in, weno_type_in, &
        do_quadrature_weno_in, do_comp_weno_in, &
        use_vode_in, new_J_cell_in, chem_solver_in, chem_do_weno_in
   double precision, intent(in) :: small_dens_in, small_temp_in, small_pres_in, &
@@ -108,6 +108,7 @@ subroutine set_method_params(dm,Density,Xmom,Eden,Temp,FirstSpec, &
   !$omp end parallel
 
   do_weno = (do_weno_in .ne. 0)
+  do_mp5  = (do_mp5_in  .ne. 0)
   weno_type = weno_type_in
   do_quadrature_weno = (do_quadrature_weno_in .ne. 0)
   do_component_weno = (do_comp_weno_in .ne. 0)

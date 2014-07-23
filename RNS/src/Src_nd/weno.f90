@@ -80,7 +80,7 @@ module weno_module
 
   private
 
-  public :: weno_type, weno5, vweno5, weno5_center,  &
+  public :: weno_type, mp5, weno5, vweno5, weno5_center,  &
        cellavg2gausspt_1d, cellavg2gausspt_2d, cellavg2gausspt_2d_v1, &
        cellavg2gausspt_2d_v2, cellavg2gausspt_3d, &
        cellavg2dergausspt_1d, cellavg2dergausspt_2d, cellavg2face_1d
@@ -213,6 +213,67 @@ contains
     return
   end subroutine weno5
 
+
+  subroutine mp5(v, vp, vm)
+    double precision, intent(in)  :: v(-2:2)
+    double precision, intent(out) :: vp , vm   ! v_{i+1/2} & v_{i-1/2}
+
+    double precision, parameter :: B1 = 1.d0/60.d0, B2 = 4.d0/3.d0, alpha = 4.d0, &
+         epsmp5 = 1.d-10
+    double precision :: vor,vmp,djm1,dj,djp1,dm4jph,dm4jmh,vul,vav,vmd,vlc,vmin,vmax
+
+    vor = B1*(2.d0*v(-2)-13.d0*v(-1)+47.d0*v(0)+27.d0*v(1)-3.d0*v(2))
+    vmp = v(0) + dmm(v(1)-v(0),alpha*(v(0)-v(-1)))
+    if ((vor-v(0))*(vor-vmp) .le. epsmp5) then
+       vp = vor
+    else
+       djm1 = v(-2)-2.d0*v(-1)+v(0)
+       dj   = v(-1)-2.d0*v( 0)+v(1)
+       djp1 = v( 0)-2.d0*v( 1)+v(2)
+       dm4jph = dm4(4.d0*dj-djp1, 4.d0*djp1-dj, dj, djp1)
+       dm4jmh = dm4(4.d0*dj-djm1, 4.d0*djm1-dj, dj, djm1)
+       vul = v(0) + alpha*(v(0)-v(-1))
+       vav = 0.5d0*(v(0)+v(1))
+       vmd = vav - 0.5d0*dm4jph
+       vlc = v(0) + 0.5d0*(v(0)-v(-1)) + B2*dm4jmh
+       vmin = max(min(v(0),v(1),vmd), min(v(0),vul,vlc))
+       vmax = min(max(v(0),v(1),vmd), max(v(0),vul,vlc))
+       vp = vor + dmm(vmin-vor,vmax-vor)
+    end if
+
+    vor = B1*(2.d0*v(2)-13.d0*v(1)+47.d0*v(0)+27.d0*v(-1)-3.d0*v(-2))
+    vmp = v(0) + dmm(v(-1)-v(0),alpha*(v(0)-v(1)))
+    if ((vor-v(0))*(vor-vmp) .le. epsmp5) then
+       vm = vor
+    else
+       djm1 = v(2)-2.d0*v( 1)+v( 0)
+       dj   = v(1)-2.d0*v( 0)+v(-1)
+       djp1 = v(0)-2.d0*v(-1)+v(-2)
+       dm4jph = dm4(4.d0*dj-djp1, 4.d0*djp1-dj, dj, djp1)
+       dm4jmh = dm4(4.d0*dj-djm1, 4.d0*djm1-dj, dj, djm1)
+       vul = v(0) + alpha*(v(0)-v(1))
+       vav = 0.5d0*(v(0)+v(-1))
+       vmd = vav - 0.5d0*dm4jph
+       vlc = v(0) + 0.5d0*(v(0)-v(1)) + B2*dm4jmh
+       vmin = max(min(v(0),v(-1),vmd), min(v(0),vul,vlc))
+       vmax = min(max(v(0),v(-1),vmd), max(v(0),vul,vlc))
+       vm = vor + dmm(vmin-vor,vmax-vor)
+    end if
+    
+    return
+
+    contains 
+      double precision function dmm(x,y) 
+        double precision, intent(in) :: x,y
+        dmm = 0.5d0*(sign(1.d0,x)+sign(1.d0,y))*min(abs(x),abs(y))
+      end function dmm
+      !
+      double precision function dm4(w,x,y,z) 
+        double precision, intent(in) :: w,x,y,z
+        dm4 = 0.125d0*(sign(1.d0,w)+sign(1.d0,x))*min(abs(w),abs(x),abs(y),abs(z))* &
+             abs((sign(1.d0,w)+sign(1.d0,y))*(sign(1.d0,w)+sign(1.d0,z)))
+      end function dm4
+  end subroutine mp5
 
   subroutine vweno5(lo, hi, v, vlo, vhi, glo, ghi, vp, vm, vg1, vg2)
     integer, intent(in) :: lo, hi, vlo, vhi, glo, ghi
