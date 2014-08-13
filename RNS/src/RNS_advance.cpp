@@ -393,12 +393,13 @@ RNS::advance_chemistry(MultiFab& U, const MultiFab& Uguess, Real dt)
 void
 RNS::advance_AD(MultiFab& Unew, Real time, Real dt)
 {
-    MultiFab Uprime(grids,NUM_STATE,0);
     MultiFab U0(grids,NUM_STATE,0);
     MultiFab::Copy(U0, Unew, 0, 0, NUM_STATE, 0);
 
     if (RK_order == 2)
     {
+	MultiFab Uprime(grids,NUM_STATE,0);
+
 	int finest_level = parent->finestLevel();
 
 	//
@@ -430,6 +431,8 @@ RNS::advance_AD(MultiFab& Unew, Real time, Real dt)
     {
 	BL_ASSERT(level==0);
 
+	MultiFab Uprime(grids,NUM_STATE,0);
+
 	int fill_boundary_type = use_FillBoundary;
 	MultiFab Utmp(grids,NUM_STATE,NUM_GROW);
 
@@ -447,6 +450,43 @@ RNS::advance_AD(MultiFab& Unew, Real time, Real dt)
 	dUdt_AD(Utmp, Uprime, time+(2./3.)*dt, fill_boundary_type);
 	update_rk(Unew, 1./3., U0, 2./3., Utmp, (2./3.)*dt, Uprime);
 	post_update(Unew);
+    }
+    else if (RK_order == 4)
+    {
+	int fill_boundary_type = use_FillBoundary;
+
+	// Step 1 of RK4
+	dUdt_AD(Unew, RK_k[0], time, no_fill);
+	RK_k[0].mult(dt);
+	update_rk(Unew, U0, 0.5, RK_k[0]);
+	post_update(Unew);
+
+	// Step 2 of RK4
+	dUdt_AD(Unew, RK_k[1], time, fill_boundary_type);
+	RK_k[1].mult(dt);
+	update_rk(Unew, U0, 0.5, RK_k[1]);
+	post_update(Unew);
+
+	// Step 3 of RK4
+	dUdt_AD(Unew, RK_k[2], time, fill_boundary_type);
+	RK_k[2].mult(dt);
+	update_rk(Unew, U0, 1.0, RK_k[2]);
+	post_update(Unew);
+
+	// Step 4 of RK4
+	dUdt_AD(Unew, RK_k[3], time, fill_boundary_type);
+	RK_k[3].mult(dt);
+	for (MFIter mfi(Unew); mfi.isValid(); ++mfi)
+	{
+	    const int i = mfi.index();
+
+	    Unew[i].copy(U0[i]);
+	    Unew[i].saxpy(1./6., RK_k[0][i]);
+	    Unew[i].saxpy(1./3., RK_k[1][i]);
+	    Unew[i].saxpy(1./3., RK_k[2][i]);
+	    Unew[i].saxpy(1./6., RK_k[3][i]);
+	}
+	post_update(Unew);	
     }
 }
 

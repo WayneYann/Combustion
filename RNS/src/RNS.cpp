@@ -352,6 +352,7 @@ RNS::RNS ()
 {
     flux_reg = 0;
     chemstatus = 0;
+    RK_k = 0;
 }
 
 RNS::RNS (Amr&            papa,
@@ -375,12 +376,23 @@ RNS::RNS (Amr&            papa,
       chemstatus = new MultiFab(grids,1,1);
       chemstatus->setVal(0.0,1);
     }
+
+    RK_k = 0;
+#ifndef USE_SDCLIB
+    if (RK_order == 4) {
+	RK_k = new MultiFab[4];
+	for (int i=0; i<4; i++) {
+	    RK_k[i].define(grids,NUM_STATE,0,Fab_allocate);
+	}
+    }
+#endif
 }
 
 RNS::~RNS ()
 {
     delete flux_reg;
     delete chemstatus;
+    delete [] RK_k;
 }
 
 void

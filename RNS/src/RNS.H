@@ -289,6 +289,9 @@ protected:
     FluxRegister& getFluxReg ();
     FluxRegister& getFluxReg (int lev);
 
+    MultiFab& getRKk (int i);
+    MultiFab& getRKk (int lev, int i);
+
     void reflux ();
 
 
@@ -305,6 +308,10 @@ protected:
     MultiFab             volume;
     MultiFab             area[BL_SPACEDIM];
     FluxRegister*        flux_reg;
+
+    // For RK
+    MultiFab*        RK_k;
+
     //
     // Static data members.
     //
@@ -451,6 +458,20 @@ FluxRegister&
 RNS::getFluxReg (int lev)
 {
     return getLevel(lev).getFluxReg();
+}
+
+inline
+MultiFab&
+RNS::getRKk (int i)
+{
+    return RK_k[i];
+}
+
+inline
+MultiFab&
+RNS::getRKk (int lev, int i)
+{
+    return getLevel(lev).getRKk(i);
 }
 
 #endif /*_RNS_H_*/
