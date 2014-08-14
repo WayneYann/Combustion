@@ -56,7 +56,7 @@ RNS::advance (Real time,
     }
 
     // Advance Advection & Diffusion
-    advance_AD(Unew, time, dt);
+    advance_AD(Unew, time, dt, iteration, ncycle);
 
     if (! ChemDriver::isNull())
     {
@@ -164,6 +164,225 @@ RNS::fill_boundary(MultiFab& U, Real time, int type_in, bool isCorrection, bool 
 	break;
     }
 }
+
+
+#ifndef USE_SDCLIB
+void
+RNS::fill_rk4_boundary(MultiFab& U, Real time, Real dt, int stage, int iteration, int ncycle)
+{
+    // all boundaries must be periodic!
+
+    BL_ASSERT(level > 0);
+
+    static MultiFab* U0;
+    static MultiFab* k1;
+    static MultiFab* k2;
+    static MultiFab* k3;
+    static MultiFab* k4;
+
+    const int ncomp = U.nComp();
+    const int ngrow = U.nGrow();
+
+    if (iteration == 1 && stage == 0) {
+
+	U0 = new MultiFab(grids, ncomp, ngrow);
+	k1 = new MultiFab(grids, ncomp, ngrow);
+	k2 = new MultiFab(grids, ncomp, ngrow);
+	k3 = new MultiFab(grids, ncomp, ngrow);
+	k4 = new MultiFab(grids, ncomp, ngrow);
+
+	U0->setVal(0.0);
+	k1->setVal(0.0);
+	k2->setVal(0.0);
+	k3->setVal(0.0);
+	k4->setVal(0.0);
+
+	RNS& levelG = *dynamic_cast<RNS*>(&getLevel(level-1));
+
+	const IntVect         ratio = levelG.fineRatio();
+	const DescriptorList& dl    = get_desc_lst();
+	const Array<BCRec>&   bcs   = dl[0].getBCs();
+	Interpolater&         map   = *dl[0].interp();
+	Array<BCRec>          bcr(ncomp);
+	
+	const Geometry& geomG = levelG.Geom();
+	
+	// make a coarse version of the fine multifab
+	BoxArray ba_C(U.size());
+	for (int i=0; i<ba_C.size(); i++) {
+	    ba_C.set(i, map.CoarseBox(U.fabbox(i), ratio));
+	}
+	
+	MultiFab UC(ba_C, ncomp, 0);
+	
+	bool touch = false;
+	bool touch_periodic = false;
+	const Box& crse_domain_box = levelG.Domain();
+	if (geomG.isAnyPeriodic()) {
+	    for (int i=0; i < ba_C.size(); i++) {
+		if (! crse_domain_box.contains(ba_C[i])) {
+		    touch = true;
+		    for (int idim=0; idim<BL_SPACEDIM; idim++) {
+			if (geomG.isPeriodic(i)   ||
+			    ba_C[i].bigEnd(idim) > crse_domain_box.bigEnd(idim) ||
+			    ba_C[i].smallEnd(idim) < crse_domain_box.smallEnd(idim) )
+			{
+			    touch_periodic = true;
+			    break;
+			}
+		    }
+		}
+		if (touch_periodic) break;
+	    }
+	}
+	else {
+	    for (int i=0; i < ba_C.size(); i++) {
+		if (! crse_domain_box.contains(ba_C[i])) {
+	      touch = true;
+	      break;
+		}
+	    }
+	}
+
+	MultiFab& UG0 = levelG.get_old_data(0);
+	MultiFab& kG1 = levelG.getRKk(0);
+	MultiFab& kG2 = levelG.getRKk(1);
+	MultiFab& kG3 = levelG.getRKk(2);
+	MultiFab& kG4 = levelG.getRKk(3);
+
+	MultiFab* UG;
+	MultiFab* UF;
+	
+	for (int ii=0; ii<5; ii++) {
+	    switch (ii) {
+	    case 0:
+		UG = &UG0;
+		UF = U0;
+		break;
+	    case 1:
+		UG = &kG1;
+		UF = k1;
+		break;
+	    case 2:
+		UG = &kG2;
+		UF = k2;
+		break;
+	    case 3:
+		UG = &kG3;
+		UF = k3;
+		break;
+	    case 4:
+		UG = &kG4;
+		UF = k4;
+		break;
+	    }
+
+	    if (!touch) {
+		// If level F does not touch physical boundaries, then AMR levels are
+		// properly nested so that the valid rgions of UC are contained inside
+		// the valid regions of UG.  So FabArray::copy is all we need.
+		UC.copy(*UG);
+	    }
+	    else if (touch_periodic) {
+		// This case is more complicated because level F might touch only one
+		// of the periodic boundaries.
+		int ng_C = 0;
+		{
+		    Box box_C = ba_C.minimalBox();
+		    for (int idim=0; idim < BL_SPACEDIM; idim++) {
+			int gap_hi = box_C.bigEnd(idim) - crse_domain_box.bigEnd(idim);
+			int gap_lo = crse_domain_box.smallEnd(idim) - box_C.smallEnd(idim);
+			ng_C = std::max(ng_C, gap_hi);
+			ng_C = std::max(ng_C, gap_lo);
+		    }
+		}
+		int ng_G = UG->nGrow();
+		const BoxArray& ba_G = UG->boxArray();
+		
+		MultiFab* UG_safe;
+		MultiFab UGG;
+		
+		if (ng_C > ng_G) {
+		    UGG.define(ba_G, ncomp, ng_C, Fab_allocate);
+		    MultiFab::Copy(UGG, *UG, 0, 0, ncomp, 0);
+		    UG_safe = &UGG;
+		}
+		else {
+		    UG_safe = UG;
+		}
+	    
+		levelG.fill_boundary(*UG_safe, time, RNS::use_FillBoundary);
+
+		// We cannot do FabArray::copy() directly on UG because it copies only form
+		// valid regions.  So we need to make the ghost cells of UG valid.
+		BoxArray ba_G2(UG->size());
+		for (int i=0; i<ba_G2.size(); i++) {
+		    ba_G2.set(i, BoxLib::grow(ba_G[i],ng_C));
+		}
+		
+		MultiFab UG2(ba_G2, ncomp, 0);
+		for (MFIter mfi(UG2); mfi.isValid(); ++mfi)
+		{
+		    int i = mfi.index();
+		    UG2[i].copy((*UG_safe)[i]);  // Fab to Fab copy
+		}
+		
+		UC.copy(UG2);
+	    }
+	    else {
+		UC.copy(*UG);
+		levelG.fill_boundary(UC, time, RNS::set_PhysBoundary);
+	    }
+
+	    // now that UF is completely contained within UC, cycle through each
+	    // FAB in UF and interpolate from the corresponding FAB in UC
+	    for (MFIter mfi(*UF); mfi.isValid(); ++mfi) {
+		BoxLib::setBC((*UF)[mfi].box(), Domain(), 0, 0, ncomp, bcs, bcr);
+		Geometry fine_geom((*UF)[mfi].box());
+		Geometry crse_geom(UC[mfi].box());
+	    
+		map.interp(UC[mfi], 0, (*UF)[mfi], 0, ncomp, (*UF)[mfi].box(), ratio,
+			   crse_geom, fine_geom, bcr, 0, 0);
+	    }
+	}
+    }
+
+    Real dtdt = 1.0/ncycle;
+    Real xsi0 = (iteration-1.0)*dtdt;
+
+    for (MFIter mfi(U); mfi.isValid(); ++mfi) 
+    {
+	int i = mfi.index();
+
+	const Box& vbox = grids[i];
+	const Box& gbox = U[i].box();
+	const BoxArray& ba = BoxLib::boxComplement(gbox, vbox);
+
+	for (int ibox=0; ibox<ba.size(); ibox++)
+	{
+	    BL_FORT_PROC_CALL(RNS_FILL_RK4_BNDRY, rns_fill_rk4_bndry)
+		(ba[ibox].loVect(), ba[ibox].hiVect(),
+		 BL_TO_FORTRAN(U[i]),
+		 BL_TO_FORTRAN((*U0)[i]),
+		 BL_TO_FORTRAN((*k1)[i]),
+		 BL_TO_FORTRAN((*k2)[i]),
+		 BL_TO_FORTRAN((*k3)[i]),
+		 BL_TO_FORTRAN((*k4)[i]),
+		 dtdt, xsi0, stage);
+	}
+    }
+
+    fill_boundary(U, time, RNS::use_FillBoundary);
+
+    if (iteration == ncycle && stage == 3) {
+	delete U0;
+	delete k1;
+	delete k2;
+	delete k3;
+	delete k4;
+    }
+}
+#endif
 
 
 void
@@ -391,7 +610,7 @@ RNS::advance_chemistry(MultiFab& U, const MultiFab& Uguess, Real dt)
 
 
 void
-RNS::advance_AD(MultiFab& Unew, Real time, Real dt)
+RNS::advance_AD(MultiFab& Unew, Real time, Real dt, int iteration, int ncycle)
 {
     MultiFab U0(grids,NUM_STATE,0);
     MultiFab::Copy(U0, Unew, 0, 0, NUM_STATE, 0);
@@ -451,30 +670,55 @@ RNS::advance_AD(MultiFab& Unew, Real time, Real dt)
 	update_rk(Unew, 1./3., U0, 2./3., Utmp, (2./3.)*dt, Uprime);
 	post_update(Unew);
     }
+#ifndef USE_SDCLIB
     else if (RK_order == 4)
     {
-	int fill_boundary_type = use_FillBoundary;
+	int fill_boundary_type;
 
 	// Step 1 of RK4
+	if (level > 0) {
+	    fill_rk4_boundary(Unew, time, dt, 0, iteration, ncycle);
+	}
 	dUdt_AD(Unew, RK_k[0], time, no_fill);
 	RK_k[0].mult(dt);
 	update_rk(Unew, U0, 0.5, RK_k[0]);
 	post_update(Unew);
 
 	// Step 2 of RK4
-	dUdt_AD(Unew, RK_k[1], time, fill_boundary_type);
+	if (level > 0) {
+	    fill_rk4_boundary(Unew, time+0.5*dt, dt, 1, iteration, ncycle);
+	    fill_boundary_type = no_fill;
+	}
+	else {
+	    fill_boundary_type = use_FillBoundary;
+	}
+	dUdt_AD(Unew, RK_k[1], time+0.5*dt, fill_boundary_type);
 	RK_k[1].mult(dt);
 	update_rk(Unew, U0, 0.5, RK_k[1]);
 	post_update(Unew);
 
 	// Step 3 of RK4
-	dUdt_AD(Unew, RK_k[2], time, fill_boundary_type);
+	if (level > 0) {
+	    fill_rk4_boundary(Unew, time+0.5*dt, dt, 2, iteration, ncycle);
+	    fill_boundary_type = no_fill;
+	}
+	else {
+	    fill_boundary_type = use_FillBoundary;
+	}	
+	dUdt_AD(Unew, RK_k[2], time+0.5*dt, fill_boundary_type);
 	RK_k[2].mult(dt);
 	update_rk(Unew, U0, 1.0, RK_k[2]);
 	post_update(Unew);
 
 	// Step 4 of RK4
-	dUdt_AD(Unew, RK_k[3], time, fill_boundary_type);
+	if (level > 0) {
+	    fill_rk4_boundary(Unew, time+dt, dt, 3, iteration, ncycle);
+	    fill_boundary_type = no_fill;
+	}
+	else {
+	    fill_boundary_type = use_FillBoundary;
+	}	
+	dUdt_AD(Unew, RK_k[3], time+dt, fill_boundary_type);
 	RK_k[3].mult(dt);
 	for (MFIter mfi(Unew); mfi.isValid(); ++mfi)
 	{
@@ -488,6 +732,7 @@ RNS::advance_AD(MultiFab& Unew, Real time, Real dt)
 	}
 	post_update(Unew);	
     }
+#endif
 }
 
 #ifdef USE_SDCLIB

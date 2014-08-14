@@ -10,5 +10,5 @@ else
   f90EXE_sources += difterm.f90 plotvar_chem_$(DIM)d.f90 dt_diffusion.f90
 endif
 
-f90EXE_sources += chemterm.f90
+f90EXE_sources += chemterm.f90 Fill_RK4_$(DIM)d.f90
 

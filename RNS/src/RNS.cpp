@@ -209,6 +209,10 @@ RNS::read_params ()
 
     pp.query("RK_order",RK_order);
 
+#ifndef USE_SDCLIB
+    if (RK_order == 4) do_reflux = 0;
+#endif
+
     {
 	int riemann;
 	if (pp.query("Riemann", riemann)) {

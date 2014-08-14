@@ -125,7 +125,7 @@ public:
     // do advection and diffusion
     // When it's called, Unew including ghost cells should have the state at t=time.
     //
-    void advance_AD(MultiFab& Unew, Real time, Real dt);
+    void advance_AD(MultiFab& Unew, Real time, Real dt, int iteration, int ncycle);
     //
     // fill boundary
     //
@@ -137,6 +137,10 @@ public:
     static const int use_FillCoarsePatch   = 2;
     static const int use_FillBoundary      = 3;
     static const int set_PhysBoundary      = 4;
+    //
+    // special fill boundary for RK4
+    //
+    void fill_rk4_boundary(MultiFab& U, Real time, Real dt, int stage, int iteration, int ncycle);
     //
     // Given U, compute Uprime (i.e., dUdt) for AD
     //
