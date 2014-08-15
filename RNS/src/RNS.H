@@ -299,8 +299,6 @@ protected:
     FluxRegister& getFluxRegRK ();
     FluxRegister& getFluxRegRK (int lev);
 
-    void addFR(FluxRegister& y, const FluxRegister& x);
-
     void reflux ();
 
     void buildMetrics ();
