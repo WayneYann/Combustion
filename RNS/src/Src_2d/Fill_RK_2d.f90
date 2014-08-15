@@ -57,7 +57,7 @@ subroutine rns_fill_rk4_bndry (lo, hi,  &
   e3 = -4.d0
   e4 =  4.d0
 
-  !$omp parallel do collpase(2) private(i,j,n,Utt,Uttt)
+  !$omp parallel do collapse(2) private(i,j,n,Utt,Uttt)
   do n=1,NVAR
      do j=lo(2),hi(2)
 
@@ -102,6 +102,6 @@ subroutine rns_fill_rk4_bndry (lo, hi,  &
 
      end do
   end do
-  !$omp end paralle do
+  !$omp end parallel do
 
 end subroutine rns_fill_rk4_bndry
