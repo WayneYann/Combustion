@@ -690,12 +690,8 @@ RNS::advance_AD(MultiFab& Unew, Real time, Real dt, int iteration, int ncycle)
 	    fine_RK->setVal(0.0);
 	}
 	dUdt_AD(Unew, RK_k[0], time, no_fill, fine_RK, current, dt/6.);
-	if (fine_RK) {
-	    for (OrientationIter face; face; ++face) {
-		for (FabSetIter bfsi((*fine)[face()]); bfsi.isValid(); ++bfsi) {
-		    (*fine)[face()][bfsi] += (*fine_RK)[face()][bfsi];
-		}
-	    }
+	if (fine_RK) {	
+	    addFR(*fine, *fine_RK);
 	}
 	RK_k[0].mult(dt);
 	update_rk(Unew, U0, 0.5, RK_k[0]);
@@ -714,11 +710,7 @@ RNS::advance_AD(MultiFab& Unew, Real time, Real dt, int iteration, int ncycle)
 	}
 	dUdt_AD(Unew, RK_k[1], time+0.5*dt, fill_boundary_type, fine_RK, current, dt/3.);
 	if (fine_RK) {
-	    for (OrientationIter face; face; ++face) {
-		for (FabSetIter bfsi((*fine)[face()]); bfsi.isValid(); ++bfsi) {
-		    (*fine)[face()][bfsi] += (*fine_RK)[face()][bfsi];
-		}
-	    }
+	    addFR(*fine, *fine_RK);
 	}
 	RK_k[1].mult(dt);
 	update_rk(Unew, U0, 0.5, RK_k[1]);
@@ -737,11 +729,7 @@ RNS::advance_AD(MultiFab& Unew, Real time, Real dt, int iteration, int ncycle)
 	}
 	dUdt_AD(Unew, RK_k[2], time+0.5*dt, fill_boundary_type, fine_RK, current, dt/6.);
 	if (fine_RK) {
-	    for (OrientationIter face; face; ++face) {
-		for (FabSetIter bfsi((*fine)[face()]); bfsi.isValid(); ++bfsi) {
-		    (*fine)[face()][bfsi] += (*fine_RK)[face()][bfsi];
-		}
-	    }
+	    addFR(*fine, *fine_RK);
 	}
 	RK_k[2].mult(dt);
 	update_rk(Unew, U0, 1.0, RK_k[2]);
@@ -760,11 +748,7 @@ RNS::advance_AD(MultiFab& Unew, Real time, Real dt, int iteration, int ncycle)
 	}
 	dUdt_AD(Unew, RK_k[3], time+dt, fill_boundary_type, fine_RK, current, dt/3.);
 	if (fine_RK) {
-	    for (OrientationIter face; face; ++face) {
-		for (FabSetIter bfsi((*fine)[face()]); bfsi.isValid(); ++bfsi) {
-		    (*fine)[face()][bfsi] += (*fine_RK)[face()][bfsi];
-		}
-	    }
+	    addFR(*fine, *fine_RK);
 	}
 	RK_k[3].mult(dt);
 	for (MFIter mfi(Unew); mfi.isValid(); ++mfi)
@@ -780,6 +764,16 @@ RNS::advance_AD(MultiFab& Unew, Real time, Real dt, int iteration, int ncycle)
 	post_update(Unew);	
     }
 #endif
+}
+
+void 
+RNS::addFR(FluxRegister& y, const FluxRegister& x)
+{
+    for (OrientationIter face; face; ++face) {
+	for (FabSetIter bfsi(y[face()]); bfsi.isValid(); ++bfsi) {
+	    y[face()][bfsi] += x[face()][bfsi];
+	}
+    }
 }
 
 #ifdef USE_SDCLIB
