@@ -209,10 +209,6 @@ RNS::read_params ()
 
     pp.query("RK_order",RK_order);
 
-#ifndef USE_SDCLIB
-    if (RK_order == 4) do_reflux = 0;
-#endif
-
     {
 	int riemann;
 	if (pp.query("Riemann", riemann)) {
@@ -357,6 +353,7 @@ RNS::RNS ()
     flux_reg = 0;
     chemstatus = 0;
     RK_k = 0;
+    flux_reg_RK = 0;
 }
 
 RNS::RNS (Amr&            papa,
@@ -382,11 +379,17 @@ RNS::RNS (Amr&            papa,
     }
 
     RK_k = 0;
+    flux_reg_RK = 0;
 #ifndef USE_SDCLIB
     if (RK_order == 4) {
 	RK_k = new MultiFab[4];
 	for (int i=0; i<4; i++) {
 	    RK_k[i].define(grids,NUM_STATE,0,Fab_allocate);
+	}
+
+	if (flux_reg) 
+	{
+	    flux_reg_RK = new FluxRegister(grids,crse_ratio,level,NUM_STATE);	    
 	}
     }
 #endif
@@ -397,6 +400,7 @@ RNS::~RNS ()
     delete flux_reg;
     delete chemstatus;
     delete [] RK_k;
+    delete flux_reg_RK;
 }
 
 void

@@ -615,17 +615,15 @@ RNS::advance_AD(MultiFab& Unew, Real time, Real dt, int iteration, int ncycle)
     MultiFab U0(grids,NUM_STATE,0);
     MultiFab::Copy(U0, Unew, 0, 0, NUM_STATE, 0);
 
+    int finest_level = parent->finestLevel();
+
+    FluxRegister *fine    = 0;
+    FluxRegister *current = 0;
+    FluxRegister *fine_RK = 0;
+
     if (RK_order == 2)
     {
 	MultiFab Uprime(grids,NUM_STATE,0);
-
-	int finest_level = parent->finestLevel();
-
-	//
-	// Get pointers to Flux registers, or set pointer to zero if not there.
-	//
-	FluxRegister *fine    = 0;
-	FluxRegister *current = 0;
 
 	if (do_reflux && level < finest_level) {
 	    fine = &getFluxReg(level+1);
@@ -675,11 +673,30 @@ RNS::advance_AD(MultiFab& Unew, Real time, Real dt, int iteration, int ncycle)
     {
 	int fill_boundary_type;
 
+	if (do_reflux && level < finest_level) {
+	    fine = &getFluxReg(level+1);
+	    fine->setVal(0.0);
+	    fine_RK = &getFluxRegRK(level+1);
+	}
+	if (do_reflux && level > 0) {
+	    current = &getFluxReg(level);
+	}
+
 	// Step 1 of RK4
 	if (level > 0) {
 	    fill_rk4_boundary(Unew, time, dt, 0, iteration, ncycle);
 	}
-	dUdt_AD(Unew, RK_k[0], time, no_fill);
+	if (fine_RK) {
+	    fine_RK->setVal(0.0);
+	}
+	dUdt_AD(Unew, RK_k[0], time, no_fill, fine_RK, current, dt/6.);
+	if (fine_RK) {
+	    for (OrientationIter face; face; ++face) {
+		for (FabSetIter bfsi((*fine)[face()]); bfsi.isValid(); ++bfsi) {
+		    (*fine)[face()][bfsi] += (*fine_RK)[face()][bfsi];
+		}
+	    }
+	}
 	RK_k[0].mult(dt);
 	update_rk(Unew, U0, 0.5, RK_k[0]);
 	post_update(Unew);
@@ -692,7 +709,17 @@ RNS::advance_AD(MultiFab& Unew, Real time, Real dt, int iteration, int ncycle)
 	else {
 	    fill_boundary_type = use_FillBoundary;
 	}
-	dUdt_AD(Unew, RK_k[1], time+0.5*dt, fill_boundary_type);
+	if (fine_RK) {
+	    fine_RK->setVal(0.0);
+	}
+	dUdt_AD(Unew, RK_k[1], time+0.5*dt, fill_boundary_type, fine_RK, current, dt/3.);
+	if (fine_RK) {
+	    for (OrientationIter face; face; ++face) {
+		for (FabSetIter bfsi((*fine)[face()]); bfsi.isValid(); ++bfsi) {
+		    (*fine)[face()][bfsi] += (*fine_RK)[face()][bfsi];
+		}
+	    }
+	}
 	RK_k[1].mult(dt);
 	update_rk(Unew, U0, 0.5, RK_k[1]);
 	post_update(Unew);
@@ -705,7 +732,17 @@ RNS::advance_AD(MultiFab& Unew, Real time, Real dt, int iteration, int ncycle)
 	else {
 	    fill_boundary_type = use_FillBoundary;
 	}	
-	dUdt_AD(Unew, RK_k[2], time+0.5*dt, fill_boundary_type);
+	if (fine_RK) {
+	    fine_RK->setVal(0.0);
+	}
+	dUdt_AD(Unew, RK_k[2], time+0.5*dt, fill_boundary_type, fine_RK, current, dt/6.);
+	if (fine_RK) {
+	    for (OrientationIter face; face; ++face) {
+		for (FabSetIter bfsi((*fine)[face()]); bfsi.isValid(); ++bfsi) {
+		    (*fine)[face()][bfsi] += (*fine_RK)[face()][bfsi];
+		}
+	    }
+	}
 	RK_k[2].mult(dt);
 	update_rk(Unew, U0, 1.0, RK_k[2]);
 	post_update(Unew);
@@ -718,7 +755,17 @@ RNS::advance_AD(MultiFab& Unew, Real time, Real dt, int iteration, int ncycle)
 	else {
 	    fill_boundary_type = use_FillBoundary;
 	}	
-	dUdt_AD(Unew, RK_k[3], time+dt, fill_boundary_type);
+	if (fine_RK) {
+	    fine_RK->setVal(0.0);
+	}
+	dUdt_AD(Unew, RK_k[3], time+dt, fill_boundary_type, fine_RK, current, dt/3.);
+	if (fine_RK) {
+	    for (OrientationIter face; face; ++face) {
+		for (FabSetIter bfsi((*fine)[face()]); bfsi.isValid(); ++bfsi) {
+		    (*fine)[face()][bfsi] += (*fine_RK)[face()][bfsi];
+		}
+	    }
+	}
 	RK_k[3].mult(dt);
 	for (MFIter mfi(Unew); mfi.isValid(); ++mfi)
 	{

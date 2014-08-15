@@ -46,6 +46,16 @@ RNS::restart (Amr&     papa,
       chemstatus->setVal(0.0,1);
     }
 
+    BL_ASSERT(RK_k == 0);
+#ifndef USE_SDCLIB
+    if (RK_order == 4) {
+	RK_k = new MultiFab[4];
+	for (int i=0; i<4; i++) {
+	    RK_k[i].define(grids,NUM_STATE,0,Fab_allocate);
+	}
+    }
+#endif
+
     // get the elapsed CPU time to now;
     if (level == 0 && ParallelDescriptor::IOProcessor())
     {

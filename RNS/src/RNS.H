@@ -296,8 +296,10 @@ protected:
     MultiFab& getRKk (int i);
     MultiFab& getRKk (int lev, int i);
 
-    void reflux ();
+    FluxRegister& getFluxRegRK ();
+    FluxRegister& getFluxRegRK (int lev);
 
+    void reflux ();
 
     void buildMetrics ();
 
@@ -315,6 +317,7 @@ protected:
 
     // For RK
     MultiFab*        RK_k;
+    FluxRegister*    flux_reg_RK;
 
     //
     // Static data members.
@@ -477,5 +480,21 @@ RNS::getRKk (int lev, int i)
 {
     return getLevel(lev).getRKk(i);
 }
+
+inline
+FluxRegister&
+RNS::getFluxRegRK ()
+{
+    BL_ASSERT(flux_reg_RK);
+    return *flux_reg_RK;
+}
+
+inline
+FluxRegister&
+RNS::getFluxRegRK (int lev)
+{
+    return getLevel(lev).getFluxRegRK();
+}
+
 
 #endif /*_RNS_H_*/
