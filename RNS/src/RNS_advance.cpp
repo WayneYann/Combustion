@@ -727,7 +727,7 @@ RNS::advance_AD(MultiFab& Unew, Real time, Real dt, int iteration, int ncycle)
 	if (fine_RK) {
 	    fine_RK->setVal(0.0);
 	}
-	dUdt_AD(Unew, RK_k[2], time+0.5*dt, fill_boundary_type, fine_RK, current, dt/6.);
+	dUdt_AD(Unew, RK_k[2], time+0.5*dt, fill_boundary_type, fine_RK, current, dt/3.);
 	if (fine_RK) {
 	    (*fine) += (*fine_RK);
 	}
@@ -746,7 +746,7 @@ RNS::advance_AD(MultiFab& Unew, Real time, Real dt, int iteration, int ncycle)
 	if (fine_RK) {
 	    fine_RK->setVal(0.0);
 	}
-	dUdt_AD(Unew, RK_k[3], time+dt, fill_boundary_type, fine_RK, current, dt/3.);
+	dUdt_AD(Unew, RK_k[3], time+dt, fill_boundary_type, fine_RK, current, dt/6.);
 	if (fine_RK) {
 	    (*fine) += (*fine_RK);
 	}
