@@ -29,9 +29,10 @@ subroutine rns_fill_rk4_bndry (lo, hi,  &
   integer :: i, n
   double precision :: xsi2, xsi3, dtdt2, dtdt3
   double precision :: b1, b2, b3, b4
+  double precision :: c1, c2, c3, c4
   double precision :: d1, d2, d3, d4
   double precision :: e1, e2, e3, e4
-  double precision :: Utt(lo(1):hi(1)), Uttt(lo(1):hi(1))
+  double precision :: Ut(lo(1):hi(1)), Utt(lo(1):hi(1)), Uttt(lo(1):hi(1))
 
   xsi2 = xsi*xsi
   xsi3 = xsi2*xsi
@@ -44,6 +45,12 @@ subroutine rns_fill_rk4_bndry (lo, hi,  &
   b2 = xsi2 - (2.d0/3.d0)*xsi3
   b3 = b2
   b4 = -0.5d0*xsi2 + (2.d0/3.d0)*xsi3
+
+  ! coefficients for Ut
+  c1 = 1.d0 - 3.d0*xsi + 2.d0*xsi2
+  c2 = 2.d0*xsi - 2.d0*xsi2
+  c3 = c2
+  c4 = -xsi + 2.d0*xsi2
 
   ! coefficients for Utt
   d1 = -3.d0 + 4.d0*xsi
@@ -62,17 +69,19 @@ subroutine rns_fill_rk4_bndry (lo, hi,  &
         uu(i,n) = u0(i,n)+b1*k1(i,n)+b2*k2(i,n)+b3*k3(i,n)+b4*k4(i,n)
      end do
 
-     if (stage .eq. 0) then
-        
-        cycle
-        
-     else if (stage .eq. 1) then
+     if (stage .eq. 0) cycle
+     
+     do i=lo(1),hi(1)
+        Ut(i) = c1*k1(i,n)+c2*k2(i,n)+c3*k3(i,n)+c4*k4(i,n)
+     end do
+   
+     if (stage .eq. 1) then
         
         do i=lo(1),hi(1)
-           uu(i,n) = uu(i,n) + 0.5d0*dtdt*k1(i,n)
+           uu(i,n) = uu(i,n) + 0.5d0*dtdt*Ut(i)
         end do
         
-     else if (stage .ge. 2) then
+     else
         
         do i=lo(1),hi(1)
            Utt (i) = d1*k1(i,n)+d2*k2(i,n)+d3*k3(i,n)+d4*k4(i,n)
@@ -82,14 +91,14 @@ subroutine rns_fill_rk4_bndry (lo, hi,  &
         if (stage .eq. 2) then
            
            do i=lo(1),hi(1)
-              uu(i,n) = uu(i,n) + 0.5d0*dtdt*k1(i,n) + 0.25d0*dtdt2*Utt(i) &
+              uu(i,n) = uu(i,n) + 0.5d0*dtdt*Ut(i) + 0.25d0*dtdt2*Utt(i) &
                    + 0.0625d0*dtdt3*(Uttt(i)-4.d0*(k3(i,n)-k2(i,n)))
            end do
            
         else if (stage .eq. 3) then
            
            do i=lo(1),hi(1)
-              uu(i,n) = uu(i,n) + dtdt*k1(i,n) + 0.5d0*dtdt2*Utt(i) &
+              uu(i,n) = uu(i,n) + dtdt*Ut(i) + 0.5d0*dtdt2*Utt(i) &
                    + 0.125d0*dtdt3*(Uttt(i)+4.d0*(k3(i,n)-k2(i,n)))
            end do
            
