@@ -6618,6 +6618,7 @@ class CPickler(CMill):
 
             models = species.thermo
             if len(models) > 2:
+                print 'species: ', species
                 import pyre
                 pyre.debug.Firewall.hit("unsupported configuration in species.thermo")
                 return
