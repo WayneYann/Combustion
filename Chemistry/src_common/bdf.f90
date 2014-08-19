@@ -141,7 +141,10 @@ contains
     logical  :: retry
 
 
-    if (reset) call bdf_reset(ts, f, y0, dt0, reuse)
+    if (reset) then
+       ts%t = t0
+       call bdf_reset(ts, f, y0, dt0, reuse)
+    end if
 
     ierr = BDF_ERR_SUCCESS
 
