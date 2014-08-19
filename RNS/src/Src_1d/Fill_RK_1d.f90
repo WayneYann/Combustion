@@ -108,3 +108,84 @@ subroutine rns_fill_rk4_bndry (lo, hi,  &
   end do
 
 end subroutine rns_fill_rk4_bndry
+
+
+subroutine rns_fill_rk3_bndry (lo, hi,  &
+     uu, uu_l1, uu_h1, &
+     u0, u0_l1, u0_h1, &
+     k1, k1_l1, k1_h1, &
+     k2, k2_l1, k2_h1, &
+     k3, k3_l1, k3_h1, &
+     dtdt, xsi, stage)
+  use meth_params_module
+  implicit none
+  integer, intent(in) :: lo(1), hi(1)
+  integer, intent(in) :: uu_l1, uu_h1
+  integer, intent(in) :: u0_l1, u0_h1
+  integer, intent(in) :: k1_l1, k1_h1
+  integer, intent(in) :: k2_l1, k2_h1
+  integer, intent(in) :: k3_l1, k3_h1
+  integer, intent(in) :: stage
+  double precision, intent(in) :: dtdt, xsi
+  double precision, intent(inout) :: uu(uu_l1:uu_h1,NVAR)
+  double precision, intent(in   ) :: u0(u0_l1:u0_h1,NVAR)
+  double precision, intent(in   ) :: k1(k1_l1:k1_h1,NVAR)
+  double precision, intent(in   ) :: k2(k2_l1:k2_h1,NVAR)
+  double precision, intent(in   ) :: k3(k3_l1:k3_h1,NVAR)
+
+  integer :: i, n
+  double precision :: xsi2, dtdt2
+  double precision :: b1, b2, b3
+  double precision :: c1, c2, c3
+  double precision :: d1, d2, d3
+  double precision :: Ut(lo(1):hi(1))
+
+  xsi2 = xsi*xsi
+
+  dtdt2 = dtdt*dtdt
+
+  ! coefficients for U
+  b1 = xsi - (5.d0/6.d0)*xsi2
+  b2 = (1.d0/6.d0)*xsi2
+  b3 = (2.d0/3.d0)*xsi2
+
+  ! coefficients for Ut
+  c1 = 1.d0 - (5.d0/3.d0)*xsi
+  c2 = (1.d0/3.d0)*xsi
+  c3 = (4.d0/3.d0)*xsi
+
+  ! coefficients for Utt
+  d1 = -(5.d0/3.d0)
+  d2 =  (1.d0/3.d0)
+  d3 =  (4.d0/3.d0)
+
+  do n=1,NVAR
+
+     do i=lo(1),hi(1)
+        uu(i,n) = u0(i,n)+b1*k1(i,n)+b2*k2(i,n)+b3*k3(i,n)
+     end do
+     
+     if (stage .eq. 0) cycle
+
+     do i=lo(1),hi(1)
+        Ut(i) = c1*k1(i,n)+c2*k2(i,n)+c3*k3(i,n)
+     end do
+
+     if (stage .eq. 1) then
+        
+        do i=lo(1),hi(1)
+           uu(i,n) = uu(i,n) + dtdt*Ut(i)
+        end do
+        
+     else if (stage .eq. 2) then
+        
+        do i=lo(1),hi(1)
+           uu(i,n) = uu(i,n) + 0.5d0*dtdt*Ut(i) &
+                + 0.25d0*dtdt2*(d1*k1(i,n)+d2*k2(i,n)+d3*k3(i,n))
+        end do
+        
+     end if
+
+  end do
+
+end subroutine rns_fill_rk3_bndry

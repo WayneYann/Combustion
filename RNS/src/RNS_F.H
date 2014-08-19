@@ -232,4 +232,13 @@ BL_FORT_PROC_DECL(RNS_FILL_RK4_BNDRY, rns_fill_rk4_bndry)
      const BL_FORT_FAB_ARG(k4),
      const Real& dtdt, const Real& xsi0, const int& stage);
 
+BL_FORT_PROC_DECL(RNS_FILL_RK3_BNDRY, rns_fill_rk3_bndry)
+    (const int lo[], const int hi[],
+     BL_FORT_FAB_ARG(U),
+     const BL_FORT_FAB_ARG(U0),
+     const BL_FORT_FAB_ARG(k1),
+     const BL_FORT_FAB_ARG(k2),
+     const BL_FORT_FAB_ARG(k3),
+     const Real& dtdt, const Real& xsi0, const int& stage);
+
 #endif

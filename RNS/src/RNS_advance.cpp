@@ -168,11 +168,12 @@ RNS::fill_boundary(MultiFab& U, Real time, int type_in, bool isCorrection, bool 
 
 #ifndef USE_SDCLIB
 void
-RNS::fill_rk4_boundary(MultiFab& U, Real time, Real dt, int stage, int iteration, int ncycle)
+RNS::fill_rk_boundary(MultiFab& U, Real time, Real dt, int stage, int iteration, int ncycle)
 {
     // all boundaries must be periodic!
 
     BL_ASSERT(level > 0);
+    BL_ASSERT(RK_order > 2);
 
     static MultiFab* U0;
     static MultiFab* k1;
@@ -189,13 +190,13 @@ RNS::fill_rk4_boundary(MultiFab& U, Real time, Real dt, int stage, int iteration
 	k1 = new MultiFab(grids, ncomp, ngrow);
 	k2 = new MultiFab(grids, ncomp, ngrow);
 	k3 = new MultiFab(grids, ncomp, ngrow);
-	k4 = new MultiFab(grids, ncomp, ngrow);
+	k4 = (RK_order == 4) ? new MultiFab(grids, ncomp, ngrow) : 0;
 
 	U0->setVal(0.0);
 	k1->setVal(0.0);
 	k2->setVal(0.0);
 	k3->setVal(0.0);
-	k4->setVal(0.0);
+	if (k4) k4->setVal(0.0);
 
 	RNS& levelG = *dynamic_cast<RNS*>(&getLevel(level-1));
 
@@ -244,35 +245,29 @@ RNS::fill_rk4_boundary(MultiFab& U, Real time, Real dt, int stage, int iteration
 	    }
 	}
 
-	MultiFab& UG0 = levelG.get_old_data(0);
-	MultiFab& kG1 = levelG.getRKk(0);
-	MultiFab& kG2 = levelG.getRKk(1);
-	MultiFab& kG3 = levelG.getRKk(2);
-	MultiFab& kG4 = levelG.getRKk(3);
-
 	MultiFab* UG;
 	MultiFab* UF;
 	
-	for (int ii=0; ii<5; ii++) {
+	for (int ii=0; ii<RK_order+1; ii++) {
 	    switch (ii) {
 	    case 0:
-		UG = &UG0;
+		UG = &(levelG.get_old_data(0));
 		UF = U0;
 		break;
 	    case 1:
-		UG = &kG1;
+		UG = &(levelG.getRKk(0));
 		UF = k1;
 		break;
 	    case 2:
-		UG = &kG2;
+		UG = &(levelG.getRKk(1));
 		UF = k2;
 		break;
 	    case 3:
-		UG = &kG3;
+		UG = &(levelG.getRKk(2));
 		UF = k3;
 		break;
 	    case 4:
-		UG = &kG4;
+		UG = &(levelG.getRKk(3));
 		UF = k4;
 		break;
 	    }
@@ -360,26 +355,38 @@ RNS::fill_rk4_boundary(MultiFab& U, Real time, Real dt, int stage, int iteration
 
 	for (int ibox=0; ibox<ba.size(); ibox++)
 	{
-	    BL_FORT_PROC_CALL(RNS_FILL_RK4_BNDRY, rns_fill_rk4_bndry)
-		(ba[ibox].loVect(), ba[ibox].hiVect(),
-		 BL_TO_FORTRAN(U[i]),
-		 BL_TO_FORTRAN((*U0)[i]),
-		 BL_TO_FORTRAN((*k1)[i]),
-		 BL_TO_FORTRAN((*k2)[i]),
-		 BL_TO_FORTRAN((*k3)[i]),
-		 BL_TO_FORTRAN((*k4)[i]),
-		 dtdt, xsi0, stage);
+	    if (RK_order == 3) {
+		BL_FORT_PROC_CALL(RNS_FILL_RK3_BNDRY, rns_fill_rk3_bndry)
+		    (ba[ibox].loVect(), ba[ibox].hiVect(),
+		     BL_TO_FORTRAN(U[i]),
+		     BL_TO_FORTRAN((*U0)[i]),
+		     BL_TO_FORTRAN((*k1)[i]),
+		     BL_TO_FORTRAN((*k2)[i]),
+		     BL_TO_FORTRAN((*k3)[i]),
+		     dtdt, xsi0, stage);
+	    }
+	    else {
+		BL_FORT_PROC_CALL(RNS_FILL_RK4_BNDRY, rns_fill_rk4_bndry)
+		    (ba[ibox].loVect(), ba[ibox].hiVect(),
+		     BL_TO_FORTRAN(U[i]),
+		     BL_TO_FORTRAN((*U0)[i]),
+		     BL_TO_FORTRAN((*k1)[i]),
+		     BL_TO_FORTRAN((*k2)[i]),
+		     BL_TO_FORTRAN((*k3)[i]),
+		     BL_TO_FORTRAN((*k4)[i]),
+		     dtdt, xsi0, stage);
+	    }
 	}
     }
 
     fill_boundary(U, time, RNS::use_FillBoundary);
 
-    if (iteration == ncycle && stage == 3) {
+    if (iteration == ncycle && stage+1 == RK_order) {
 	delete U0;
 	delete k1;
 	delete k2;
 	delete k3;
-	delete k4;
+	if (k4) delete k4;
     }
 }
 #endif
@@ -621,17 +628,20 @@ RNS::advance_AD(MultiFab& Unew, Real time, Real dt, int iteration, int ncycle)
     FluxRegister *current = 0;
     FluxRegister *fine_RK = 0;
 
+    if (do_reflux && level < finest_level) {
+	fine = &getFluxReg(level+1);
+	fine->setVal(0.0);
+	if (RK_order > 2) {
+	    fine_RK = &getFluxRegRK(level+1);
+	}
+    }
+    if (do_reflux && level > 0) {
+	current = &getFluxReg(level);
+    }
+
     if (RK_order == 2)
     {
 	MultiFab Uprime(grids,NUM_STATE,0);
-
-	if (do_reflux && level < finest_level) {
-	    fine = &getFluxReg(level+1);
-	    fine->setVal(0.0);
-	}
-	if (do_reflux && level > 0) {
-	    current = &getFluxReg(level);
-	}
 
 	// Step 1 of RK2
 	dUdt_AD(Unew, Uprime, time, no_fill);
@@ -644,62 +654,31 @@ RNS::advance_AD(MultiFab& Unew, Real time, Real dt, int iteration, int ncycle)
 	update_rk(Unew, U0, dt, Uprime); // Unew = U0 + dt*Uprime
 	post_update(Unew);
     }
+#ifndef USE_SDCLIB
     else if (RK_order == 3)
     {
-	BL_ASSERT(level==0);
-
-	MultiFab Uprime(grids,NUM_STATE,0);
-
-	int fill_boundary_type = use_FillBoundary;
-	MultiFab Utmp(grids,NUM_STATE,NUM_GROW);
+	int fill_boundary_type, stage;
 
 	// Step 1 of RK3
-	dUdt_AD(Unew, Uprime, time, no_fill);
-	update_rk(Unew, U0, dt, Uprime);
-	post_update(Unew);
-
-	// Step 2 of RK3
-	dUdt_AD(Unew, Uprime, time+(1./3.)*dt, fill_boundary_type);
-	update_rk(Utmp, 0.75, U0, 0.25, Unew, 0.25*dt, Uprime);
-	post_update(Utmp);
-
-	// Step 3 of RK3
-	dUdt_AD(Utmp, Uprime, time+(2./3.)*dt, fill_boundary_type);
-	update_rk(Unew, 1./3., U0, 2./3., Utmp, (2./3.)*dt, Uprime);
-	post_update(Unew);
-    }
-#ifndef USE_SDCLIB
-    else if (RK_order == 4)
-    {
-	int fill_boundary_type;
-
-	if (do_reflux && level < finest_level) {
-	    fine = &getFluxReg(level+1);
-	    fine->setVal(0.0);
-	    fine_RK = &getFluxRegRK(level+1);
-	}
-	if (do_reflux && level > 0) {
-	    current = &getFluxReg(level);
-	}
-
-	// Step 1 of RK4
+	stage = 0;
 	if (level > 0) {
-	    fill_rk4_boundary(Unew, time, dt, 0, iteration, ncycle);
+	    fill_rk_boundary(Unew, time, dt, stage, iteration, ncycle);
 	}
 	if (fine_RK) {
 	    fine_RK->setVal(0.0);
 	}
-	dUdt_AD(Unew, RK_k[0], time, no_fill, fine_RK, current, dt/6.);
+	dUdt_AD(Unew, RK_k[stage], time, no_fill, fine_RK, current, dt/6.);
 	if (fine_RK) {	
 	    (*fine) += (*fine_RK);
 	}
-	RK_k[0].mult(dt);
-	update_rk(Unew, U0, 0.5, RK_k[0]);
+	RK_k[stage].mult(dt);
+	update_rk(Unew, U0, 1.0, RK_k[stage]);
 	post_update(Unew);
 
-	// Step 2 of RK4
+	// Step 2 of RK3
+	stage = 1;
 	if (level > 0) {
-	    fill_rk4_boundary(Unew, time+0.5*dt, dt, 1, iteration, ncycle);
+	    fill_rk_boundary(Unew, time+dt, dt, stage, iteration, ncycle);
 	    fill_boundary_type = no_fill;
 	}
 	else {
@@ -708,54 +687,134 @@ RNS::advance_AD(MultiFab& Unew, Real time, Real dt, int iteration, int ncycle)
 	if (fine_RK) {
 	    fine_RK->setVal(0.0);
 	}
-	dUdt_AD(Unew, RK_k[1], time+0.5*dt, fill_boundary_type, fine_RK, current, dt/3.);
+	dUdt_AD(Unew, RK_k[stage], time+dt, fill_boundary_type, fine_RK, current, dt/6.);
 	if (fine_RK) {
 	    (*fine) += (*fine_RK);
 	}
-	RK_k[1].mult(dt);
-	update_rk(Unew, U0, 0.5, RK_k[1]);
-	post_update(Unew);
-
-	// Step 3 of RK4
-	if (level > 0) {
-	    fill_rk4_boundary(Unew, time+0.5*dt, dt, 2, iteration, ncycle);
-	    fill_boundary_type = no_fill;
-	}
-	else {
-	    fill_boundary_type = use_FillBoundary;
-	}	
-	if (fine_RK) {
-	    fine_RK->setVal(0.0);
-	}
-	dUdt_AD(Unew, RK_k[2], time+0.5*dt, fill_boundary_type, fine_RK, current, dt/3.);
-	if (fine_RK) {
-	    (*fine) += (*fine_RK);
-	}
-	RK_k[2].mult(dt);
-	update_rk(Unew, U0, 1.0, RK_k[2]);
-	post_update(Unew);
-
-	// Step 4 of RK4
-	if (level > 0) {
-	    fill_rk4_boundary(Unew, time+dt, dt, 3, iteration, ncycle);
-	    fill_boundary_type = no_fill;
-	}
-	else {
-	    fill_boundary_type = use_FillBoundary;
-	}	
-	if (fine_RK) {
-	    fine_RK->setVal(0.0);
-	}
-	dUdt_AD(Unew, RK_k[3], time+dt, fill_boundary_type, fine_RK, current, dt/6.);
-	if (fine_RK) {
-	    (*fine) += (*fine_RK);
-	}
-	RK_k[3].mult(dt);
+	RK_k[stage].mult(dt);
 	for (MFIter mfi(Unew); mfi.isValid(); ++mfi)
 	{
 	    const int i = mfi.index();
+	    const Box& bx = mfi.validbox();
+	    
+	    Unew[i].copy(U0[i], bx);
+	    Unew[i].saxpy(0.25, RK_k[0][i]);
+	    Unew[i].saxpy(0.25, RK_k[1][i]);
+	}
+	post_update(Unew);
 
-	    Unew[i].copy(U0[i]);
+	// Step 3 of RK3
+	stage = 2;
+	if (level > 0) {
+	    fill_rk_boundary(Unew, time+0.5*dt, dt, stage, iteration, ncycle);
+	    fill_boundary_type = no_fill;
+	}
+	else {
+	    fill_boundary_type = use_FillBoundary;
+	}	
+	if (fine_RK) {
+	    fine_RK->setVal(0.0);
+	}
+	dUdt_AD(Unew, RK_k[stage], time+0.5*dt, fill_boundary_type, fine_RK, current, dt*(2./3.));
+	if (fine_RK) {
+	    (*fine) += (*fine_RK);
+	}
+	RK_k[stage].mult(dt);
+	for (MFIter mfi(Unew); mfi.isValid(); ++mfi)
+	{
+	    const int i = mfi.index();
+	    const Box& bx = mfi.validbox();
+	    
+	    Unew[i].copy(U0[i], bx);
+	    Unew[i].saxpy(1./6., RK_k[0][i]);
+	    Unew[i].saxpy(1./6., RK_k[1][i]);
+	    Unew[i].saxpy(2./3., RK_k[2][i]);
+	}
+	post_update(Unew);
+    }
+    else if (RK_order == 4)
+    {
+	int fill_boundary_type, stage;
+
+	// Step 1 of RK4
+	stage = 0;
+	if (level > 0) {
+	    fill_rk_boundary(Unew, time, dt, stage, iteration, ncycle);
+	}
+	if (fine_RK) {
+	    fine_RK->setVal(0.0);
+	}
+	dUdt_AD(Unew, RK_k[stage], time, no_fill, fine_RK, current, dt/6.);
+	if (fine_RK) {	
+	    (*fine) += (*fine_RK);
+	}
+	RK_k[stage].mult(dt);
+	update_rk(Unew, U0, 0.5, RK_k[stage]);
+	post_update(Unew);
+
+	// Step 2 of RK4
+	stage = 1;
+	if (level > 0) {
+	    fill_rk_boundary(Unew, time+0.5*dt, dt, stage, iteration, ncycle);
+	    fill_boundary_type = no_fill;
+	}
+	else {
+	    fill_boundary_type = use_FillBoundary;
+	}
+	if (fine_RK) {
+	    fine_RK->setVal(0.0);
+	}
+	dUdt_AD(Unew, RK_k[stage], time+0.5*dt, fill_boundary_type, fine_RK, current, dt/3.);
+	if (fine_RK) {
+	    (*fine) += (*fine_RK);
+	}
+	RK_k[stage].mult(dt);
+	update_rk(Unew, U0, 0.5, RK_k[stage]);
+	post_update(Unew);
+
+	// Step 3 of RK4
+	stage = 2;
+	if (level > 0) {
+	    fill_rk_boundary(Unew, time+0.5*dt, dt, stage, iteration, ncycle);
+	    fill_boundary_type = no_fill;
+	}
+	else {
+	    fill_boundary_type = use_FillBoundary;
+	}	
+	if (fine_RK) {
+	    fine_RK->setVal(0.0);
+	}
+	dUdt_AD(Unew, RK_k[stage], time+0.5*dt, fill_boundary_type, fine_RK, current, dt/3.);
+	if (fine_RK) {
+	    (*fine) += (*fine_RK);
+	}
+	RK_k[stage].mult(dt);
+	update_rk(Unew, U0, 1.0, RK_k[stage]);
+	post_update(Unew);
+
+	// Step 4 of RK4
+	stage = 3;
+	if (level > 0) {
+	    fill_rk_boundary(Unew, time+dt, dt, stage, iteration, ncycle);
+	    fill_boundary_type = no_fill;
+	}
+	else {
+	    fill_boundary_type = use_FillBoundary;
+	}	
+	if (fine_RK) {
+	    fine_RK->setVal(0.0);
+	}
+	dUdt_AD(Unew, RK_k[stage], time+dt, fill_boundary_type, fine_RK, current, dt/6.);
+	if (fine_RK) {
+	    (*fine) += (*fine_RK);
+	}
+	RK_k[stage].mult(dt);
+	for (MFIter mfi(Unew); mfi.isValid(); ++mfi)
+	{
+	    const int i = mfi.index();
+	    const Box& bx = mfi.validbox();
+
+	    Unew[i].copy(U0[i], bx);
 	    Unew[i].saxpy(1./6., RK_k[0][i]);
 	    Unew[i].saxpy(1./3., RK_k[1][i]);
 	    Unew[i].saxpy(1./3., RK_k[2][i]);

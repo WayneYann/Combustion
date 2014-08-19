@@ -140,7 +140,7 @@ public:
     //
     // special fill boundary for RK4
     //
-    void fill_rk4_boundary(MultiFab& U, Real time, Real dt, int stage, int iteration, int ncycle);
+    void fill_rk_boundary(MultiFab& U, Real time, Real dt, int stage, int iteration, int ncycle);
     //
     // Given U, compute Uprime (i.e., dUdt) for AD
     //

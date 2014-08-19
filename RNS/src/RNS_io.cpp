@@ -47,11 +47,16 @@ RNS::restart (Amr&     papa,
     }
 
     BL_ASSERT(RK_k == 0);
+    BL_ASSERT(flux_reg_RK == 0);
 #ifndef USE_SDCLIB
-    if (RK_order == 4) {
-	RK_k = new MultiFab[4];
-	for (int i=0; i<4; i++) {
+    if (RK_order > 2) {
+	RK_k = new MultiFab[RK_order];
+	for (int i=0; i<RK_order; i++) {
 	    RK_k[i].define(grids,NUM_STATE,0,Fab_allocate);
+	}
+	if (flux_reg) 
+	{
+	    flux_reg_RK = new FluxRegister(grids,crse_ratio,level,NUM_STATE);	    
 	}
     }
 #endif
