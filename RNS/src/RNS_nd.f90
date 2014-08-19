@@ -18,11 +18,12 @@ subroutine set_method_params(dm,Density,Xmom,Eden,Temp,FirstSpec, &
      NUM_STATE, NumSpec, small_dens_in, small_temp_in, small_pres_in, &
      gamma_in, grav_in, Tref_in, riemann_in, difmag_in, HLL_factor_in, blocksize, &
      do_weno_in, do_mp5_in, weno_type_in, do_quadrature_weno_in, do_comp_weno_in, &
+     eps_wenojs, eps_wenom, eps_wenoz, &
      use_vode_in, new_J_cell_in, chem_solver_in, chem_do_weno_in)
 
   use meth_params_module
   use eos_module
-  use weno_module, only : weno_type
+  use weno_module, only : weno_type, epsjs, epsm, epsz
 
   implicit none 
 
@@ -32,7 +33,8 @@ subroutine set_method_params(dm,Density,Xmom,Eden,Temp,FirstSpec, &
        do_quadrature_weno_in, do_comp_weno_in, &
        use_vode_in, new_J_cell_in, chem_solver_in, chem_do_weno_in
   double precision, intent(in) :: small_dens_in, small_temp_in, small_pres_in, &
-       gamma_in, grav_in, Tref_in, difmag_in, HLL_factor_in
+       gamma_in, grav_in, Tref_in, difmag_in, HLL_factor_in, &
+       eps_wenojs, eps_wenom, eps_wenoz
   
   ndim = dm
 
@@ -112,6 +114,10 @@ subroutine set_method_params(dm,Density,Xmom,Eden,Temp,FirstSpec, &
   weno_type = weno_type_in
   do_quadrature_weno = (do_quadrature_weno_in .ne. 0)
   do_component_weno = (do_comp_weno_in .ne. 0)
+
+  epsjs = eps_wenojs
+  epsm  = eps_wenom
+  epsz  = eps_wenoz
 
   use_vode = (use_vode_in .ne. 0)
   new_J_cell = (new_J_cell_in .ne. 0)

@@ -8,7 +8,7 @@ module weno_module
   integer, parameter :: wenom  = 1
   integer, parameter :: wenoz  = 2
 
-  double precision, parameter :: epsz = 1.d-15, epsjs = 1.d-6, epsm = 1.d-40
+  double precision, save :: epsjs = 1.d-6, epsm = 1.d-40, epsz = 1.d-15
   double precision, parameter :: b1=13.d0/12.d0, oneSixth=1.d0/6.d0
 
   ! Three types of third-order coefficients for converting cell averages to cell center point values
@@ -80,7 +80,7 @@ module weno_module
 
   private
 
-  public :: weno_type, mp5, weno5, vweno5, weno5_center,  &
+  public :: weno_type, epsjs, epsm, epsz, mp5, weno5, vweno5, weno5_center,  &
        cellavg2gausspt_1d, cellavg2gausspt_2d, cellavg2gausspt_2d_v1, &
        cellavg2gausspt_2d_v2, cellavg2gausspt_3d, &
        cellavg2dergausspt_1d, cellavg2dergausspt_2d, cellavg2face_1d

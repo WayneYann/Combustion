@@ -187,6 +187,7 @@ RNS::variableSetUp ()
 	 small_dens, small_temp, small_pres, gamma, gravity, Treference,
 	 riemann, difmag, HLL_factor, &blocksize[0], 
 	 do_weno, do_mp5, weno_type, do_quadrature_weno, do_component_weno,
+	 eps_wenojs, eps_wenom, eps_wenoz,
 	 use_vode, new_J_cell, chem_solver_i, chem_do_weno);
     
     int coord_type = Geometry::Coord();

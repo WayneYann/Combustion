@@ -390,6 +390,9 @@ protected:
     static int         weno_type;
     static int         do_quadrature_weno;
     static int         do_component_weno;
+    static Real        eps_wenojs;
+    static Real        eps_wenoz;
+    static Real        eps_wenom;
 
     static int         use_vode;
     static int         new_J_cell;
