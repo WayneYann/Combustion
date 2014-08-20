@@ -3,7 +3,7 @@ max_step  = 6
 stop_time = 2.5
 
 # for RK
-rns.RK_order = 2 
+rns.RK_order = 4
 
 # for SDC
 mlsdc.max_iters = 4
