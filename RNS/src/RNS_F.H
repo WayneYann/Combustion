@@ -47,9 +47,11 @@ BL_FORT_PROC_DECL(SET_METHOD_PARAMS,set_method_params)
      const int& NUM_STATE, const int& NumSpec,
      const Real& small_dens, const Real& small_temp, const Real& small_pres,
      const Real& gamma, const Real& gravity, const Real& Treference,
-     const int& riemann, const Real& difmag, const int* blocksize,
-     const int& do_weno, const int& do_quadrature_weno, const int& do_component_weno,
-     const int& do_BE_burning, const int& new_J_cell, const int& chem_solver,
+     const int& riemann, const Real& difmag, const Real& HLL_factor, const int* blocksize,
+     const int& do_weno, const int& do_mp5, const int& weno_type, 
+     const Real& eps_wenojs, const Real& eps_wenom, const Real& eps_wenoz,
+     const int& do_quadrature_weno, const int& do_component_weno,
+     const int& use_vode, const int& new_J_cell, const int& chem_solver,
      const int& chem_do_weno);
 
 BL_FORT_PROC_DECL(SET_PROBLEM_PARAMS,set_problem_params)
@@ -218,6 +220,26 @@ BL_FORT_PROC_DECL(RNS_MAKEPLOTVAR, rns_makeplotvar)
 BL_FORT_PROC_DECL(  SET_SDC_BOUNDARY_FLAG,   set_sdc_boundary_flag)();
 BL_FORT_PROC_DECL(UNSET_SDC_BOUNDARY_FLAG, unset_sdc_boundary_flag)();
 
-BL_FORT_PROC_DECL(RNS_PASSINFO_LEVEL, rns_passinfo_level)(const int& level);
+BL_FORT_PROC_DECL(RNS_PASSINFO, rns_passinfo)(const int& level, const int& iteration,
+    const Real& time);
+
+BL_FORT_PROC_DECL(RNS_FILL_RK4_BNDRY, rns_fill_rk4_bndry)
+    (const int lo[], const int hi[],
+     BL_FORT_FAB_ARG(U),
+     const BL_FORT_FAB_ARG(U0),
+     const BL_FORT_FAB_ARG(k1),
+     const BL_FORT_FAB_ARG(k2),
+     const BL_FORT_FAB_ARG(k3),
+     const BL_FORT_FAB_ARG(k4),
+     const Real& dtdt, const Real& xsi0, const int& stage);
+
+BL_FORT_PROC_DECL(RNS_FILL_RK3_BNDRY, rns_fill_rk3_bndry)
+    (const int lo[], const int hi[],
+     BL_FORT_FAB_ARG(U),
+     const BL_FORT_FAB_ARG(U0),
+     const BL_FORT_FAB_ARG(k1),
+     const BL_FORT_FAB_ARG(k2),
+     const BL_FORT_FAB_ARG(k3),
+     const Real& dtdt, const Real& xsi0, const int& stage);
 
 #endif

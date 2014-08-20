@@ -9,7 +9,7 @@
 #include <BC_TYPES.H>
 #include <HEATTRANSFER_F.H>
 #include <ArrayLim.H>
-
+#define SDIM 2
       subroutine FORT_SET_SCAL_NUMB(DensityIn, TempIn, TracIn, RhoHIn,
      &     FirstSpecIn, LastSpecIn)
       implicit none

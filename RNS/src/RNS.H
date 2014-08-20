@@ -125,7 +125,7 @@ public:
     // do advection and diffusion
     // When it's called, Unew including ghost cells should have the state at t=time.
     //
-    void advance_AD(MultiFab& Unew, Real time, Real dt);
+    void advance_AD(MultiFab& Unew, Real time, Real dt, int iteration, int ncycle);
     //
     // fill boundary
     //
@@ -137,6 +137,10 @@ public:
     static const int use_FillCoarsePatch   = 2;
     static const int use_FillBoundary      = 3;
     static const int set_PhysBoundary      = 4;
+    //
+    // special fill boundary for RK4
+    //
+    void fill_rk_boundary(MultiFab& U, Real time, Real dt, int stage, int iteration, int ncycle);
     //
     // Given U, compute Uprime (i.e., dUdt) for AD
     //
@@ -278,6 +282,8 @@ public:
     MultiFab* chemstatus;
     void zeroChemStatus();
 
+    static int check_imex_order(int ho_imex);
+
 protected:
 
     static void read_params ();
@@ -287,8 +293,13 @@ protected:
     FluxRegister& getFluxReg ();
     FluxRegister& getFluxReg (int lev);
 
-    void reflux ();
+    MultiFab& getRKk (int i);
+    MultiFab& getRKk (int lev, int i);
 
+    FluxRegister& getFluxRegRK ();
+    FluxRegister& getFluxRegRK (int lev);
+
+    void reflux ();
 
     void buildMetrics ();
 
@@ -303,6 +314,11 @@ protected:
     MultiFab             volume;
     MultiFab             area[BL_SPACEDIM];
     FluxRegister*        flux_reg;
+
+    // For RK
+    MultiFab*        RK_k;
+    FluxRegister*    flux_reg_RK;
+
     //
     // Static data members.
     //
@@ -343,6 +359,7 @@ protected:
 
     static RiemannType Riemann;
     static Real        difmag; // for JBB & HLLC Riemann solvers
+    static Real        HLL_factor;  // mixing some HLL into JBB or HLLC
 
     // what to store in plotfiles
     static int         plot_cons;
@@ -369,8 +386,13 @@ protected:
     static int         do_quartic_interp;
 
     static int         do_weno;
+    static int         do_mp5;
+    static int         weno_type;
     static int         do_quadrature_weno;
     static int         do_component_weno;
+    static Real        eps_wenojs;
+    static Real        eps_wenoz;
+    static Real        eps_wenom;
 
     static int         use_vode;
     static int         new_J_cell;
@@ -382,6 +404,8 @@ protected:
 			  BECC_BURNING,   // 3: burn at cell center using backward Euler
 			  BEGP_BURNING,   // 4: burn at Gauss points using backward Euler
 			  NUM_CHEMSOLVER_TYPE };
+    // For CC, GAUSS, and SPLIT, mlsdc.ho_imex should be 1,
+    // whereas for BECC and BEGP, mlsdc.ho_imex could be either 0 or 1.
     static ChemSolverType chem_solver;
 
     // for keeping track of the amount of CPU time used -- this will persist
@@ -445,5 +469,35 @@ RNS::getFluxReg (int lev)
 {
     return getLevel(lev).getFluxReg();
 }
+
+inline
+MultiFab&
+RNS::getRKk (int i)
+{
+    return RK_k[i];
+}
+
+inline
+MultiFab&
+RNS::getRKk (int lev, int i)
+{
+    return getLevel(lev).getRKk(i);
+}
+
+inline
+FluxRegister&
+RNS::getFluxRegRK ()
+{
+    BL_ASSERT(flux_reg_RK);
+    return *flux_reg_RK;
+}
+
+inline
+FluxRegister&
+RNS::getFluxRegRK (int lev)
+{
+    return getLevel(lev).getFluxRegRK();
+}
+
 
 #endif /*_RNS_H_*/

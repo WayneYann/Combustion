@@ -115,6 +115,7 @@ contains
   subroutine burn_bdf(np, rho_in, YT, dt, force_new_J, ierr)
     use bdf
     use bdf_data, only : ts, reuse_jac
+    use passinfo_module, only : time
     use feval, only : f_rhs, f_jac, rho
     integer, intent(in) :: np
     double precision, intent(in   ) :: rho_in(np), dt
@@ -128,8 +129,8 @@ contains
 
     neq = nspecies+1
     np_bdf = ts%npt
-    t0 = 0.d0
-    t1 = dt
+    t0 = max(0.d0, time)
+    t1 = t0+dt
 
     reset = .true.
 

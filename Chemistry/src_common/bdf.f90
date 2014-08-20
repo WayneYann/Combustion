@@ -42,9 +42,12 @@ module bdf
   !
   type :: bdf_ts
 
+     ! parameters, set at build time by bdf_ts_build
      integer  :: neq                      ! number of equations (degrees of freedom) per point
      integer  :: npt                      ! number of points
      integer  :: max_order                ! maximum order (1 to 6)
+
+     ! options, users are free to change these after bdf_ts_build
      integer  :: max_steps                ! maximum allowable number of steps
      integer  :: max_iters                ! maximum allowable number of newton iterations
      integer  :: verbose                  ! verbosity level
@@ -55,11 +58,15 @@ module bdf
      integer  :: max_j_age                ! maximum age of jacobian
      integer  :: max_p_age                ! maximum age of newton iteration matrix
 
+     logical  :: debug
+     integer  :: dump_unit
+
      real(dp), pointer :: rtol(:)         ! realtive tolerances
      real(dp), pointer :: atol(:)         ! absolute tolerances
 
-     ! state
+     ! state (internal)
      real(dp) :: t                        ! current time
+     real(dp) :: t1                       ! final time
      real(dp) :: dt                       ! current time step
      real(dp) :: dt_nwt                   ! dt used when building newton iteration matrix
      integer  :: k                        ! current order
@@ -134,15 +141,21 @@ contains
     logical  :: retry
 
 
-    if (reset) call bdf_reset(ts, f, y0, dt0, reuse)
+    if (reset) then
+       ts%t = t0
+       call bdf_reset(ts, f, y0, dt0, reuse)
+    end if
 
     ierr = BDF_ERR_SUCCESS
 
-    ts%t = t0; ts%ncse = 0; ts%ncdtmin = 0;
+    ts%t1 = t1; ts%t = t0; ts%ncse = 0; ts%ncdtmin = 0;
     do k = 1, bdf_max_iters + 1
        if (ts%n > ts%max_steps .or. k > bdf_max_iters) then
           ierr = BDF_ERR_MAXSTEPS; return
        end if
+
+       if (k == 1) &
+            call bdf_dump(ts)
 
        call bdf_update(ts)                ! update various coeffs (l, tq) based on time-step history
        call bdf_predict(ts)               ! predict nordsieck array using pascal matrix
@@ -153,15 +166,18 @@ contains
        if (retry) cycle
 
        call bdf_correct(ts)               ! new solution looks good, correct history and advance
+
+       call bdf_dump(ts)
        if (ts%t >= t1) exit
-       call bdf_adjust(ts, t1)            ! adjust step-size/order
+
+       call bdf_adjust(ts)                ! adjust step-size/order
     end do
 
     if (ts%verbose > 0) &
          print '("BDF: n:",i6,", fe:",i6,", je: ",i3,", lu: ",i3,", it: ",i3,", se: ",i3,", dt: ",e15.8,", k: ",i2)', &
          ts%n, ts%nfe, ts%nje, ts%nlu, ts%nit, ts%nse, ts%dt, ts%k
 
-    y1   = ts%z(:,:,0)
+    y1 = ts%z(:,:,0)
 
   end subroutine bdf_advance
 
@@ -430,12 +446,23 @@ contains
     ts%k_age = ts%k_age + 1
   end subroutine bdf_correct
 
+
+  !
+  ! Dump (for debugging)...
+  !
+  subroutine bdf_dump(ts)
+    type(bdf_ts), intent(inout) :: ts
+    integer :: i, m, p
+
+    if (.not. ts%debug) return
+    write(ts%dump_unit,*) ts%t, ts%z(:,:,0)
+  end subroutine bdf_dump
+
   !
   ! Adjust step-size/order to maximize step-size.
   !
-  subroutine bdf_adjust(ts, t1)
+  subroutine bdf_adjust(ts)
     type(bdf_ts), intent(inout) :: ts
-    real(dp),     intent(in)    :: t1
 
     real(dp) :: c, error, eta(-1:1), rescale, etamax(ts%npt), etaminmax, delta(ts%npt)
     integer  :: p
@@ -488,11 +515,12 @@ contains
        rescale = etaminmax
     end if
 
-    if (ts%t + ts%dt > t1) then
-       rescale = (t1 - ts%t) / ts%dt
+    if (ts%t + ts%dt > ts%t1) then
+       rescale = (ts%t1 - ts%t) / ts%dt
+       call rescale_timestep(ts, rescale, .true.)
+    else if (rescale /= 0) then
+       call rescale_timestep(ts, rescale)
     end if
-
-    if (rescale /= 0) call rescale_timestep(ts, rescale)
 
     ! save for next step (needed to compute eta(1))
     ts%e1 = ts%e
@@ -554,17 +582,29 @@ contains
   ! This consists of:
   !   1. bound eta to honor eta_min, eta_max, and dt_min
   !   2. scale dt and adjust time array t accordingly
-  !   3. rescalel Nordsieck history array
+  !   3. rescale Nordsieck history array
   !
-  subroutine rescale_timestep(ts, eta_in)
-    type(bdf_ts), intent(inout) :: ts
-    real(dp),     intent(in   ) :: eta_in
+  subroutine rescale_timestep(ts, eta_in, force_in)
+    type(bdf_ts), intent(inout)           :: ts
+    real(dp),     intent(in   )           :: eta_in
+    logical,      intent(in   ), optional :: force_in
 
     real(dp) :: eta
     integer  :: i
+    logical  :: force
 
-    eta = max(eta_in, ts%dt_min / ts%dt, ts%eta_min)
-    eta = min(eta, ts%eta_max)
+    force = .false.; if (present(force_in)) force = force_in
+
+    if (force) then
+       eta = eta_in
+    else
+       eta = max(eta_in, ts%dt_min / ts%dt, ts%eta_min)
+       eta = min(eta, ts%eta_max)
+
+       if (ts%t + eta*ts%dt > ts%t1) then
+          eta = (ts%t1 - ts%t) / ts%dt
+       end if
+    end if
 
     ts%dt   = eta * ts%dt
     ts%h(0) = ts%dt
@@ -764,6 +804,8 @@ contains
 
     ts%j_age = 666666666
     ts%p_age = 666666666
+
+    ts%debug = .false.
 
     ! build pascal matrix A using A = exp(U)
     U = 0

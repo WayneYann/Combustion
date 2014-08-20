@@ -9918,7 +9918,7 @@ void productionRate(double * restrict wdot, double * restrict sc, double T)
 void comp_k_f(double * restrict tc, double invT, double * restrict k_f)
 {
 #ifdef __INTEL_COMPILER
-     #pragma simd
+    #pragma simd
 #endif
     for (int i=0; i<175; ++i) {
         k_f[i] = prefactor_units[i] * fwd_A[i]

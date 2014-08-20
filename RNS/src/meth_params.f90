@@ -12,7 +12,7 @@ module meth_params_module
   integer, parameter :: HLLC_solver = 2
   integer, parameter :: nriemann   = 3
 
-  double precision, save :: difmag
+  double precision, save :: difmag, HLL_factor
   
   integer, save :: ndim   ! spatial dimension
   integer, save :: NCHARV ! number of characteristic variables
@@ -34,7 +34,7 @@ module meth_params_module
   integer, save :: xblksize=2048, yblksize=2048, zblksize=2048
   integer, save :: nthreads=1
 
-  logical, save :: do_weno, do_quadrature_weno, do_component_weno;
+  logical, save :: do_weno, do_mp5, do_quadrature_weno, do_component_weno;
 
   ! chemistry
   logical, save :: use_vode

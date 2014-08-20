@@ -815,9 +815,16 @@ contains
     double precision, intent(in) :: U(Ulo(1):Uhi(1),Ulo(2):Uhi(2),Ulo(3):Uhi(3),NVAR)
     double precision, intent(out):: UG(lo(1):hi(1),lo(2):hi(2),lo(3):hi(3),8,NVAR)
 
-    integer :: i,j,k
+    integer :: i,j,k,lo1,lo2,lo3,hi1,hi2,hi3
     double precision, allocatable :: UG1z(:,:,:,:), UG2z(:,:,:,:)
     double precision, allocatable :: UG1y(:,:,:,:), UG2y(:,:,:,:)
+
+    lo1 = lo(1)
+    lo2 = lo(2)
+    lo3 = lo(3)
+    hi1 = hi(1)
+    hi2 = hi(2)
+    hi3 = hi(3)
 
     allocate(UG1z(lo(1)-2:hi(1)+2,lo(2)-2:hi(2)+2,lo(3):hi(3),NVAR))
     allocate(UG2z(lo(1)-2:hi(1)+2,lo(2)-2:hi(2)+2,lo(3):hi(3),NVAR))
@@ -827,12 +834,12 @@ contains
     !$omp parallel private(i,j,k)
 
     !$omp do collapse(2)
-    do j   =lo(2)-2,hi(2)+2
-       do i=lo(1)-2,hi(1)+2
-          call reconstruct_comp(lo(3),hi(3), &
-               Ulo(3),Uhi(3),   &  ! for U
-               0, 0,            &  ! for UL & UR, not present
-               lo (3), hi(3),   &  ! for UG1 & UG2
+    do j   =lo2-2,hi2+2
+       do i=lo1-2,hi1+2
+          call reconstruct_comp(lo3,hi3, &
+               Ulo(3),Uhi(3), &  ! for U
+               0, 0,          &  ! for UL & UR, not present
+               lo3,    hi3,   &  ! for UG1 & UG2
                U(i,j,:,:), &
                UG1=UG1z(i,j,:,:), UG2=UG2z(i,j,:,:) )
        end do
@@ -840,12 +847,12 @@ contains
     !$omp end do
 
     !$omp do collapse(2)
-    do k   =lo(3)  ,hi(3)
-       do i=lo(1)-2,hi(1)+2
-          call reconstruct_comp(lo(2),hi(2), &
-               lo(2)-2,hi(2)+2,   &  ! for U
-               0, 0,              &  ! for UL & UR, not present
-               lo(2)  ,hi(2),     &  ! for UG1 & UG2
+    do k   =lo3  ,hi3
+       do i=lo1-2,hi1+2
+          call reconstruct_comp(lo2,hi2, &
+               lo2-2,hi2+2,   &  ! for U
+               0, 0,          &  ! for UL & UR, not present
+               lo2  ,hi2,     &  ! for UG1 & UG2
                UG1Z(i,:,k,:), &
                UG1=UG1y(i,:,k,:), UG2=UG2y(i,:,k,:) )
        end do
@@ -853,18 +860,18 @@ contains
     !$omp end do
     
     !$omp do collapse(2)
-    do k   =lo(3), hi(3)
-       do j=lo(2), hi(2)
-          call reconstruct_comp(lo(1),hi(1), &
-               lo(1)-2,hi(1)+2,   &  ! for U
-               0, 0,              &  ! for UL & UR, not present
-               lo(1)  ,hi(1),     &  ! for UG1 & UG2
+    do k   =lo3, hi3
+       do j=lo2, hi2
+          call reconstruct_comp(lo1,hi1, &
+               lo1-2,hi1+2,   &  ! for U
+               0, 0,          &  ! for UL & UR, not present
+               lo1  ,hi1,     &  ! for UG1 & UG2
                UG1y(:,j,k,:), &
                UG1=UG(:,j,k,1,:), UG2=UG(:,j,k,2,:) )
-          call reconstruct_comp(lo(1),hi(1), &
-               lo(1)-2,hi(1)+2,   &  ! for U
-               0, 0,              &  ! for UL & UR, not present
-               lo(1)  ,hi(1),     &  ! for UG1 & UG2
+          call reconstruct_comp(lo1,hi1, &
+               lo1-2,hi1+2,   &  ! for U
+               0, 0,          &  ! for UL & UR, not present
+               lo1  ,hi1,     &  ! for UG1 & UG2
                UG2y(:,j,k,:), &
                UG1=UG(:,j,k,3,:), UG2=UG(:,j,k,4,:) )
        end do
@@ -872,12 +879,12 @@ contains
     !$omp end do 
     
     !$omp do collapse(2)
-    do k   =lo(3)  ,hi(3)
-       do i=lo(1)-2,hi(1)+2
-          call reconstruct_comp(lo(2),hi(2), &
-               lo(2)-2,hi(2)+2,   &  ! for U
-               0, 0,              &  ! for UL & UR, not present
-               lo(2)  ,hi(2),     &  ! for UG1 & UG2
+    do k   =lo3  ,hi3
+       do i=lo1-2,hi1+2
+          call reconstruct_comp(lo2,hi2, &
+               lo2-2,hi2+2,   &  ! for U
+               0, 0,          &  ! for UL & UR, not present
+               lo2  ,hi2,     &  ! for UG1 & UG2
                UG2Z(i,:,k,:), &
                UG1=UG1y(i,:,k,:), UG2=UG2y(i,:,k,:) )
        end do
@@ -885,18 +892,18 @@ contains
     !$omp end do
     
     !$omp do collapse(2)
-    do k   =lo(3), hi(3)
-       do j=lo(2), hi(2)
-          call reconstruct_comp(lo(1),hi(1), &
-               lo(1)-2,hi(1)+2,   &  ! for U
-               0, 0,              &  ! for UL & UR, not present
-               lo(1)  ,hi(1),     &  ! for UG1 & UG2
+    do k   =lo3, hi3
+       do j=lo2, hi2
+          call reconstruct_comp(lo1,hi1, &
+               lo1-2,hi1+2,   &  ! for U
+               0, 0,          &  ! for UL & UR, not present
+               lo1  ,hi1,     &  ! for UG1 & UG2
                UG1y(:,j,k,:), &
                UG1=UG(:,j,k,5,:), UG2=UG(:,j,k,6,:) )
-          call reconstruct_comp(lo(1),hi(1), &
-               lo(1)-2,hi(1)+2,   &  ! for U
-               0, 0,              &  ! for UL & UR, not present
-               lo(1)  ,hi(1),     &  ! for UG1 & UG2
+          call reconstruct_comp(lo1,hi1, &
+               lo1-2,hi1+2,   &  ! for U
+               0, 0,          &  ! for UL & UR, not present
+               lo1  ,hi1,     &  ! for UG1 & UG2
                UG2y(:,j,k,:), &
                UG1=UG(:,j,k,7,:), UG2=UG(:,j,k,8,:) )
        end do

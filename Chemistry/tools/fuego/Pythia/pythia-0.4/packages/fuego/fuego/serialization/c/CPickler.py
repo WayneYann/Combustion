@@ -847,10 +847,17 @@ class CPickler(CMill):
 
         self._indent()
 
+        # build reverse reaction map
+        rmap = {}
         for i, reaction in zip(range(nReactions), mechanism.reaction()):
+            rmap[reaction.orig_id-1] = i
 
+        for j in range(nReactions):
+            reaction = mechanism.reaction()[rmap[j]]
             id = reaction.id - 1
+
             A, beta, E = reaction.arrhenius
+            self._write("// (%d):  %s" % (reaction.orig_id - 1, reaction.equation()))
             self._write("R[%d].fwd_A     = %.17g;" % (id,A))
             self._write("R[%d].fwd_beta  = %.17g;" % (id,beta))
             self._write("R[%d].fwd_Ea    = %.17g;" % (id,E))
@@ -4524,7 +4531,7 @@ class CPickler(CMill):
         self._outdent()
         self._write('#ifdef __INTEL_COMPILER')
         self._indent()
-        self._write(' #pragma simd')
+        self._write('#pragma simd')
         self._outdent()
         self._write('#endif')
         self._indent()
@@ -6611,6 +6618,7 @@ class CPickler(CMill):
 
             models = species.thermo
             if len(models) > 2:
+                print 'species: ', species
                 import pyre
                 pyre.debug.Firewall.hit("unsupported configuration in species.thermo")
                 return
@@ -6900,7 +6908,7 @@ class CPickler(CMill):
         self._indent()
         self._write('double ein  = *e;')
         self._write('double tmin = 250;'+self.line('max lower bound for thermo def'))
-        self._write('double tmax = 3500;'+self.line('min upper bound for thermo def'))
+        self._write('double tmax = 4000;'+self.line('min upper bound for thermo def'))
         self._write('double e1,emin,emax,cv,t1,dt;')
         self._write('int i;'+self.line(' loop counter'))
         self._write('CKUBMS(&tmin, y, iwrk, rwrk, &emin);')
