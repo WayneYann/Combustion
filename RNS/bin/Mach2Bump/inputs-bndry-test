@@ -1,19 +1,19 @@
 # ------------------  INPUTS TO MAIN PROGRAM  -------------------
 
-max_step  = 10000
-stop_time = 2.0
+max_step  = 90000
+stop_time = 1.0
 
 #mlsdc.max_iters = 2
 #mlsdc.nsweeps   = 4 4
 amr.max_level   = 1
 rns.rk_order = 4
-
+rns.eps_wenojs = 1.e50
 
 # PROBLEM SIZE & GEOMETRY
 geometry.is_periodic = 1 1 1
 geometry.coord_sys   = 0  # 0 => cart, 1 => RZ  2=>spherical
-geometry.prob_lo     =  -1.0    -1.0    -1.0
-geometry.prob_hi     =   1.0     1.0     1.0
+geometry.prob_lo     =  -1.0
+geometry.prob_hi     =   1.0
 amr.n_cell           =   256
 
 rns.Riemann    = 2     # 0: HLL,  1: JBB,  2: HLLC

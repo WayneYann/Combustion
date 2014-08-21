@@ -52,14 +52,14 @@ subroutine rns_initdata(level,time,lo,hi,nscal, &
   double precision state(state_l1:state_h1,NVAR)
 
   ! local variables
-  integer :: i, ii, n
+  integer :: i, ii, image, n
   double precision :: xcen, xg
-  double precision :: r, u, rhot, et, Yt(2), Tt
+  double precision :: r, u, rhot, et, Yt(2), Tt, rho(5,lo(1):hi(1))
 
   double precision, parameter :: pi = 3.1415926535897932d0
 
   ! double precision, parameter :: gp(2) = [ -1.d0/sqrt(3.d0), 1.d0/sqrt(3.d0) ]
-  ! double precision, parameter :: gw(2) = [ 0.5d0, 0.5d0 ]
+  ! double precision, parameter :: gw(2) = [ 1.d0, 1.d0 ]
 
   double precision, parameter :: gp(5) = [ &
        -sqrt(5.d0 + 2*sqrt(10.d0/7))/3, &
@@ -80,17 +80,24 @@ subroutine rns_initdata(level,time,lo,hi,nscal, &
      stop
   end if
 
+  state = 0
+  rho = rho0
+
+  do image = -2, 2
+     do i = lo(1), hi(1)
+        xcen = xlo(1) + delta(1)*(dble(i-lo(1)) + 0.5d0) + length(1)*image
+        do ii = 1, size(gp)
+           xg = xcen + 0.5d0*delta(1)*gp(ii)
+           r  = abs(xg-center(1)+length(1)/4)
+           rho(ii,i) = rho(ii,i) + drho0*exp(-(r/rpulse)**2)
+        end do
+     end do
+  end do
+
   do i = lo(1), hi(1)
-     xcen = xlo(1) + delta(1)*(dble(i-lo(1)) + 0.5d0)
-
-     state(i,:) = 0.d0
-
      do ii = 1, size(gp)
-        xg = xcen + 0.5d0*delta(1)*gp(ii)
-
-        r = abs(xg-center(1)+length(1)/4)
-        rhot = rho0 + drho0*exp(-(r/rpulse)**2)
-        u    = 1.5d0*sqrt(gamma_const * p0 / rho0)
+        rhot = rho(ii,i)
+        u    = 2.0d0
         et   = p0/((gamma_const-1.d0)*rhot)
 
         Yt(1) = 1.d0
