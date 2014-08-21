@@ -37,9 +37,9 @@
       integer i
 
       do i = lo(1), hi(1)
-         xcen = xlo(1) + delta(1)*(dble(i-lo(1)) + 0.5d0) - center(1) - length(1)/4
+         xcen = xlo(1) + delta(1)*(dble(i-lo(1)) + 0.5d0) - center(1)
          r = abs(xcen)
-         if (r < 2.d0*delta(1)) then
+         if (r > length(1)/2*0.875) then
             tag(i) = set
          end if
       enddo

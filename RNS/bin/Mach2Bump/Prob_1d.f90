@@ -88,7 +88,7 @@ subroutine rns_initdata(level,time,lo,hi,nscal, &
         xcen = xlo(1) + delta(1)*(dble(i-lo(1)) + 0.5d0) + length(1)*image
         do ii = 1, size(gp)
            xg = xcen + 0.5d0*delta(1)*gp(ii)
-           r  = abs(xg-center(1)+length(1)/4)
+           r  = abs(xg-center(1))
            rho(ii,i) = rho(ii,i) + drho0*exp(-(r/rpulse)**2)
         end do
      end do
