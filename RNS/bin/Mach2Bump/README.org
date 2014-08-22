@@ -1,0 +1,46 @@
+#+TITLE: Mach2Bump notes
+
+* RK4 convergence
+
+2014-08-22: MWE is having trouble getting RK4 to converge at 4th order.
+
+Build as:
+#+begin_src sh
+make DIM=1 USE_SDCLIB=FALSE DEBUG=FALSE USE_OMP=TRUE USE_MPI=FALSE
+#+end_src
+
+Run with 512 cells:
+#+begin_src sh
+mkdir rk1 && cd rk1
+../RNS1d.Linux.gcc.gfortran.OMP.ex ../inputs-bndry-test amr.max_level=0 amr.n_cell=512
+#+end_src
+
+Compute differences:
+#+begin_src sh :results raw
+BOXLIB_HOME=$HOME/Development/BoxLib
+DIFF=$BOXLIB_HOME/Tools/C_util/Convergence/DiffSameDomainRefined1d.Linux.g++.gfortran.ex
+$DIFF infile1=rk1/plt03072 reffile=rk1/plt00000 norm=2
+#+end_src
+
+#+RESULTS:
+Level  L2 norm of Error in Each Component
+-----------------------------------------------
+  0    2.710124793e-05 5.420249586e-05 5.420249586e-05 4.237020005e-12 2.710124793e-05 0 1.335730408e-14 1.874688288e-05 5.012852563e-13
+
+Run with 1024 cells:
+#+begin_src sh
+mkdir rk2 && cd rk2
+../RNS1d.Linux.gcc.gfortran.OMP.ex ../inputs-bndry-test amr.max_level=0 amr.n_cell=1024
+#+end_src
+
+Compute differences:
+#+begin_src sh :results raw
+BOXLIB_HOME=$HOME/Development/BoxLib
+DIFF=$BOXLIB_HOME/Tools/C_util/Convergence/DiffSameDomainRefined1d.Linux.g++.gfortran.ex
+$DIFF infile1=rk2/plt06144 reffile=rk2/plt00000 norm=2
+#+end_src
+
+#+RESULTS:
+Level  L2 norm of Error in Each Component
+-----------------------------------------------
+  0    6.779290432e-06 1.355858087e-05 1.355858087e-05 1.059835646e-12 6.779290432e-06 0 1.896091834e-14 4.687890796e-06 1.336401312e-12
