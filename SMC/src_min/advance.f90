@@ -3,6 +3,7 @@ module advance_module
   use bl_error_module
   use derivative_stencil_module
   use kernels_module
+  use fab_module
   use multifab_module
   use time_module
   use transport_properties
@@ -63,9 +64,9 @@ contains
     call destroy(Unew)
     call destroy(Uprime)
 
-    if (contains_nan(U)) then
-       call bl_error("U contains nan")
-    end if
+!!! if (contains_nan(U)) then
+!!!    call bl_error("U contains nan")
+!!! end if
 
   end subroutine advance
 

@@ -6466,6 +6466,9 @@ HeatTransfer::getFuncCountDM (const BoxArray& bxba, int ngrow)
 
     Array<long> vwrktmp = vwrk;
 
+    BL_COMM_PROFILE(Profiler::Gatherv, vwrktmp.size() * sizeof(long),
+                    ParallelDescriptor::MyProc(), Profiler::BeforeCall());
+
     MPI_Gatherv(vwrk.dataPtr(),
                 count,
                 ParallelDescriptor::Mpi_typemap<long>::type(),
@@ -6475,6 +6478,9 @@ HeatTransfer::getFuncCountDM (const BoxArray& bxba, int ngrow)
                 ParallelDescriptor::Mpi_typemap<long>::type(),
                 IOProc,
                 ParallelDescriptor::Communicator());
+
+    BL_COMM_PROFILE(Profiler::Gatherv, vwrktmp.size() * sizeof(long),
+                    ParallelDescriptor::MyProc(), Profiler::AfterCall());
 
     if (ParallelDescriptor::IOProcessor())
     {
