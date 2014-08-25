@@ -24,5 +24,5 @@ CHEMISTRY_MODEL = NULL
 Bpack   := ./Make.package
 Blocs   := .
 
-XTRALIBS += -lquadmath
+#XTRALIBS += -lquadmath
 include ../Make.RNS
