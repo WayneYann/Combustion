@@ -57,6 +57,11 @@ ifeq (${CHEMISTRY_MODEL}, LUDME)
   VPATH_LOCATIONS += ${CHEMISTRY_DIR}/data/Lu/PMFs
   VPATH_LOCATIONS += ${CHEMISTRY_DIR}/data/Lu
 endif
+ifeq (${CHEMISTRY_MODEL},WANGDODECANE)
+  CHEM_MECHFILE = dodecane_wang.c
+  VPATH_LOCATIONS += ${CHEMISTRY_DIR}/data/dodecane_wang/PMFs
+  VPATH_LOCATIONS += ${CHEMISTRY_DIR}/data/dodecane_wang
+endif
 
 cEXE_sources += $(CHEM_MECHFILE)
 
