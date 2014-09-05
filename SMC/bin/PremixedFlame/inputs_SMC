@@ -1,0 +1,54 @@
+&PROBIN
+
+ verbose = 2
+
+ check_nans = .true.
+
+ stencil_type = "narrow"   ! narrow or S3D
+
+ advance_method = "mrsdc"
+
+ sdc_multirate_explicit = .false.
+ sdc_multirate_repeat = 4
+ sdc_nnodes_fine  = 3
+ sdc_nnodes       = 3
+ sdc_iters        = 4
+ sdc_tol_residual = 1.0d-6
+
+ use_bulk_viscosity = .false.
+ trans_int = 2
+
+ stop_time = 4.d-3
+ max_step  = 1000000
+ restart = -1
+
+! plot_deltat = 1.d-6
+ plot_int = 100
+ chk_int  = 10000
+
+ cflfac = 4.0d0
+ init_shrink = 0.1d0
+
+ dm_in = 1
+ n_cellx = 1024
+ n_celly = 1
+ n_cellz = 1
+ max_grid_size = 256
+
+ prob_lo_x = -0.99d0
+ prob_hi_x =  0.01d0
+
+ xlo_boundary_type = "inlet"
+ xhi_boundary_type = "outlet"
+
+ outlet_Pinfty = 1.01325d6
+ outlet_sigma = 6.28d0
+
+ plot_rhoh = .false.
+ plot_magvel = .false.
+ plot_divu = .false.
+ plot_magvort = .false.
+ plot_dYdt = .false.
+ plot_heatRelease = .false.
+
+/

@@ -20,7 +20,7 @@ subroutine rns_derpres(p,p_l1,p_l2,p_h1,p_h2,ncomp_p, &
   double precision :: Y(NSPEC), rhoInv
   integer          :: i,j,n
 
-  !$omp parallel do private(i,j,n,Y,rhoinv) collapse(2)
+  !$omp parallel do private(i,j,n,Y,rhoinv)
   do j = lo(2),hi(2)
      do i = lo(1),hi(1)
         
@@ -59,7 +59,7 @@ subroutine rns_dersoundspeed(c,c_l1,c_l2,c_h1,c_h2,ncomp_c, &
   double precision :: Y(NSPEC), rhoInv
   integer          :: i,j,n
 
-  !$omp parallel do private(i,j,n,Y,rhoinv) collapse(2)
+  !$omp parallel do private(i,j,n,Y,rhoinv)
   do j = lo(2),hi(2)
      do i = lo(1),hi(1)
 
@@ -98,7 +98,7 @@ subroutine rns_dermachnumber(mach,mach_l1,mach_l2,mach_h1,mach_h2,ncomp_mach,&
   double precision :: c, Y(NSPEC), rhoInv, ux, uy
   integer          :: i,j,n
 
-  !$omp parallel do private(i,j,n,c,Y,rhoinv,ux,uy) collapse(2)
+  !$omp parallel do private(i,j,n,c,Y,rhoinv,ux,uy)
   do j = lo(2),hi(2)
      do i = lo(1),hi(1)
         
@@ -150,7 +150,7 @@ subroutine rns_dermagvort(vort,  v_l1,  v_l2,  v_h1,  v_h2,nv, &
 
   !$omp parallel private(i,j,uy,vx,rhoinv)
 
-  !$omp do collapse(2)
+  !$omp do
   do j = lo(2)-1, hi(2)+1
      do i = lo(1)-1, hi(1)+1
         rhoinv = 1.d0/dat(i,j,1)
@@ -160,7 +160,7 @@ subroutine rns_dermagvort(vort,  v_l1,  v_l2,  v_h1,  v_h2,nv, &
   end do
   !$omp end do
 
-  !$omp do collapse(2)
+  !$omp do
   do j = lo(2), hi(2)
      do i = lo(1), hi(1)
         uy = 0.5d0 * (u(i,j+1) - u(i,j-1)) * dxinv(2) 
@@ -200,7 +200,7 @@ subroutine rns_derdivu(divu,div_l1,div_l2,div_h1,div_h2,nd, &
   dxinv(1) = 1.d0/delta(1)
   dxinv(2) = 1.d0/delta(2)
 
-  !$omp parallel do private(i,j,ulo,uhi,vlo,vhi) collapse(2)
+  !$omp parallel do private(i,j,ulo,uhi,vlo,vhi)
   do j = lo(2), hi(2)
      do i = lo(1), hi(1)
         uhi = dat(i+1,j,2) / dat(i+1,j,1)
@@ -234,7 +234,7 @@ subroutine rns_derspec(spec,spec_l1,spec_l2,spec_h1,spec_h2,ns, &
  
   integer i,j
   
-  !$omp parallel do private(i,j) collapse(2)
+  !$omp parallel do private(i,j)
   do j = lo(2), hi(2)
      do i = lo(1), hi(1)
         spec(i,j,1) = dat(i,j,2) / dat(i,j,1)
@@ -268,7 +268,7 @@ subroutine rns_dermolefrac(spec,spec_l1,spec_l2,spec_h1,spec_h2,ns, &
   integer :: i,j
   double precision :: Yt(NSPEC),Xt(NSPEC), rhoInv
 
-  !$omp parallel do private(i,j,Yt,Xt,rhoInv) collapse(2)
+  !$omp parallel do private(i,j,Yt,Xt,rhoInv)
   do j = lo(2), hi(2)
      do i = lo(1), hi(1)
         rhoInv = 1.d0 / dat(i,j,1)
@@ -306,7 +306,7 @@ subroutine rns_dervel(vel,vel_l1,vel_l2,vel_h1,vel_h2,nv, &
  
   integer i,j
 
-  !$omp parallel do private(i,j) collapse(2)
+  !$omp parallel do private(i,j)
   do j = lo(2), hi(2)
      do i = lo(1), hi(1)
         vel(i,j,1) = dat(i,j,2) / dat(i,j,1)

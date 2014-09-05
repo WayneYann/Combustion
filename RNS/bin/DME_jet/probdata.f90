@@ -4,13 +4,19 @@ module probdata_module
 
   ! parameters for DME_jet
   integer, save :: prob_type
+  character (len=128), save :: turbfile = ""  
+  double precision, save :: turb_boost_factor
   double precision, save :: pamb, phi_in, T_in, vn_in, T_co, vn_co
   double precision, save :: splitx, xfrontw, Tfrontw
   double precision, save :: blobr, blobx, bloby, blobT
   double precision, save :: inflow_period, inflow_vnmag
+  double precision, save :: splity, yfrontw
   double precision, allocatable, save :: fuel_Y(:), air_Y(:)
   double precision, allocatable, save :: fuel_state(:), air_state(:)
-  logical, save :: probdata_initialized = .false.
+
+  logical, save :: dmejet_initialized = .false.
+
+  double precision, save :: center(3)
 
   ! These determine the refinement criteria
   double precision, save :: denerr,   dengrad
@@ -35,7 +41,7 @@ contains
 
   subroutine init_DME_jet
 
-    use meth_params_module, only : NVAR, URHO, UMX, UMY, UEDEN, UTEMP, UFS
+    use meth_params_module, only : ndim, NVAR, URHO, UMX, UMY, UMZ, UEDEN, UTEMP, UFS
     use chemistry_module, only : nspecies, get_species_index
 
     double precision, dimension(nspecies) :: Xt, Yt
@@ -68,7 +74,12 @@ contains
 
     fuel_state(URHO ) = rhot
     fuel_state(UMX  ) = 0.d0
-    fuel_state(UMY  ) = rhot*vt
+    if (ndim .eq. 3) then
+       fuel_state(UMY  ) = 0.d0
+       fuel_state(UMZ  ) = rhot*vt
+    else
+       fuel_state(UMY  ) = rhot*vt
+    end if
     fuel_state(UEDEN) = rhot*(et+ek)
     do n=1,nspecies
        fuel_state(UFS+n-1) = rhot*Yt(n)
@@ -92,14 +103,19 @@ contains
 
     air_state(URHO ) = rhot
     air_state(UMX  ) = 0.d0
-    air_state(UMY  ) = rhot*vt
+    if (ndim .eq. 3) then
+       air_state(UMY  ) = 0.d0
+       air_state(UMZ  ) = rhot*vt
+    else
+       air_state(UMY  ) = rhot*vt
+    end if
     air_state(UEDEN) = rhot*(et+ek)
     do n=1,nspecies
        air_state(UFS+n-1) = rhot*Yt(n)
        air_Y(n) = Yt(n)
     end do
     
-    probdata_initialized = .true.
+    dmejet_initialized = .true.
   end subroutine init_DME_jet
 
 end module probdata_module

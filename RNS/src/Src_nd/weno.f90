@@ -2,7 +2,30 @@ module weno_module
 
   implicit none
 
-  double precision, parameter :: epsw = 1.d-6, b1=13.d0/12.d0, oneSixth=1.d0/6.d0
+  integer, save :: weno_type = 0
+
+  integer, parameter :: wenojs = 0
+  integer, parameter :: wenom  = 1
+  integer, parameter :: wenoz  = 2
+
+  double precision, save :: epsjs = 1.d-6, epsm = 1.d-40, epsz = 1.d-15
+  double precision, parameter :: b1=13.d0/12.d0, oneSixth=1.d0/6.d0
+
+  ! Three types of third-order coefficients for converting cell averages to cell center point values
+  double precision, dimension(-2:0), parameter :: L3_cc = &
+       (/ -1.d0/24.d0,  2.d0/24.d0, 23.d0/24.d0 /)
+  double precision, dimension(-1:1), parameter :: C3_cc = &  ! this is actually 4th-order
+       (/ -1.d0/24.d0, 26.d0/24.d0, -1.d0/24.d0 /)
+  double precision, dimension( 0:2), parameter :: R3_cc = &
+       (/ 23.d0/24.d0,  2.d0/24.d0, -1.d0/24.d0 /)
+  
+  ! Optimal weights for cc
+  double precision, parameter :: gamma_p_lr = 9.d0/214.d0
+  double precision, parameter :: gamma_p_cc = 98.d0/107.d0
+  double precision, parameter :: gamma_m_lr = 9.d0/67.d0
+  double precision, parameter :: gamma_m_cc = 49.d0/67.d0
+  double precision, parameter :: sigma_p = 107.d0/40.d0
+  double precision, parameter :: sigma_m = 67.d0/40.d0
 
   ! Three types of third-order coefficients for converting cell averages to first Gauss point values
   double precision, dimension(-2:0), parameter :: L3_cg1 = &
@@ -10,7 +33,7 @@ module weno_module
   double precision, dimension(-1:1), parameter :: C3_cg1 = &
        (/   sqrt(3.d0)/12.d0,  1.d0,  -sqrt(3.d0)/12.d0  /)
   double precision, dimension( 0:2), parameter :: R3_cg1 = &
-       (/  1+sqrt(3.d0)/4.d0,  -1.d0/sqrt(3.d0),  sqrt(3.d0)/12.d0  /)
+       (/  1.d0+sqrt(3.d0)/4.d0,  -1.d0/sqrt(3.d0),  sqrt(3.d0)/12.d0  /)
 
   ! Three types of third-order coefficients for converting cell averages to second Gauss point values
   double precision, dimension(-2:0), parameter :: L3_cg2 = &
@@ -18,13 +41,13 @@ module weno_module
   double precision, dimension(-1:1), parameter :: C3_cg2 = &
        (/   -sqrt(3.d0)/12.d0,  1.d0,  sqrt(3.d0)/12.d0  /)
   double precision, dimension( 0:2), parameter :: R3_cg2 = &
-       (/  1-sqrt(3.d0)/4.d0,  1.d0/sqrt(3.d0),  -sqrt(3.d0)/12.d0  /)
+       (/  1.d0-sqrt(3.d0)/4.d0,  1.d0/sqrt(3.d0),  -sqrt(3.d0)/12.d0  /)
 
-  ! Optimial weights for first Gauss point
+  ! Optimal weights for first Gauss point
   double precision, dimension(-2:0), parameter :: d_g1 = &
        (/ (210.d0+sqrt(3.d0))/1080.d0,  11.d0/18.d0,  (210.d0-sqrt(3.d0))/1080.d0  /)
 
-  ! Optimial weights for second Gauss point
+  ! Optimal weights for second Gauss point
   double precision, dimension(-2:0), parameter :: d_g2 = &
        (/ (210.d0-sqrt(3.d0))/1080.d0,  11.d0/18.d0,  (210.d0+sqrt(3.d0))/1080.d0  /)
 
@@ -57,7 +80,8 @@ module weno_module
 
   private
 
-  public :: weno5, vweno5, cellavg2gausspt_1d, cellavg2gausspt_2d, cellavg2gausspt_2d_v1, &
+  public :: weno_type, epsjs, epsm, epsz, mp5, weno5, vweno5, weno5_center,  &
+       cellavg2gausspt_1d, cellavg2gausspt_2d, cellavg2gausspt_2d_v1, &
        cellavg2gausspt_2d_v2, cellavg2gausspt_3d, &
        cellavg2dergausspt_1d, cellavg2dergausspt_2d, cellavg2face_1d
 
@@ -71,22 +95,44 @@ contains
     double precision :: vr_2, vr_1, vr_0
     double precision :: beta_2, beta_1, beta_0
     double precision :: alpha_2, alpha_1, alpha_0
-    double precision :: alpha1
+    double precision :: alpha1, tau5, ris
 
     beta_2 = b1*(v(-2)-2.d0*v(-1)+v(0))**2 + 0.25d0*(v(-2)-4.d0*v(-1)+3.d0*v(0))**2
-    beta_2 = 1.d0/(epsw+beta_2)**2
-
     beta_1 = b1*(v(-1)-2.d0*v( 0)+v(1))**2 + 0.25d0*(v(-1)-v(1))**2
-    beta_1 = 1.d0/(epsw+beta_1)**2
-
     beta_0 = b1*(v( 0)-2.d0*v( 1)+v(2))**2 + 0.25d0*(3.d0*v(0)-4.d0*v(1)+v(2))**2
-    beta_0 = 1.d0/(epsw+beta_0)**2
+
+    if (weno_type .eq. wenojs) then
+       beta_2 = 1.d0/(epsjs+beta_2)**2
+       beta_1 = 1.d0/(epsjs+beta_1)**2
+       beta_0 = 1.d0/(epsjs+beta_0)**2
+    else if (weno_type .eq. wenom) then
+       beta_2 = 1.d0/(epsm+beta_2)**2
+       beta_1 = 1.d0/(epsm+beta_1)**2
+       beta_0 = 1.d0/(epsm+beta_0)**2
+    else if (weno_type .eq. wenoz) then
+       tau5 = beta_2-beta_0
+       beta_2 = 1.d0 + (tau5/(beta_2+epsz))**2
+       beta_1 = 1.d0 + (tau5/(beta_1+epsz))**2
+       beta_0 = 1.d0 + (tau5/(beta_0+epsz))**2
+    else
+       call bl_error("unknown weno type")
+    end if
 
     if (present(vp)) then
        alpha_2 =      beta_2
        alpha_1 = 6.d0*beta_1
        alpha_0 = 3.d0*beta_0
        alpha1 = 1.d0/(alpha_2 + alpha_1 + alpha_0)
+
+       if (weno_type .eq. wenom) then
+          alpha_2 = alpha_2*alpha1
+          alpha_1 = alpha_1*alpha1
+          alpha_0 = alpha_0*alpha1
+          alpha_2 = alpha_2*(0.11d0-0.3d0*alpha_2+alpha_2**2)/(0.01d0+0.8d0*alpha_2)
+          alpha_1 = alpha_1*(0.96d0-1.8d0*alpha_1+alpha_1**2)/(0.36d0-0.2d0*alpha_1)
+          alpha_0 = alpha_0*(0.39d0-0.9d0*alpha_0+alpha_0**2)/(0.09d0+0.4d0*alpha_0)
+          alpha1 = 1.d0/(alpha_2 + alpha_1 + alpha_0)
+       end if
 
        vr_2 = 2.d0*v(-2) - 7.d0*v(-1) + 11.d0*v(0)
        vr_1 =     -v(-1) + 5.d0*v( 0) +  2.d0*v(1)
@@ -100,6 +146,16 @@ contains
        alpha_1 = 6.d0*beta_1
        alpha_0 =      beta_0
        alpha1 = 1.d0/(alpha_2 + alpha_1 + alpha_0)
+
+       if (weno_type .eq. wenom) then
+          alpha_2 = alpha_2*alpha1
+          alpha_1 = alpha_1*alpha1
+          alpha_0 = alpha_0*alpha1
+          alpha_2 = alpha_2*(0.39d0-0.9d0*alpha_2+alpha_2**2)/(0.09d0+0.4d0*alpha_2)
+          alpha_1 = alpha_1*(0.96d0-1.8d0*alpha_1+alpha_1**2)/(0.36d0-0.2d0*alpha_1)
+          alpha_0 = alpha_0*(0.11d0-0.3d0*alpha_0+alpha_0**2)/(0.01d0+0.8d0*alpha_0)
+          alpha1 = 1.d0/(alpha_2 + alpha_1 + alpha_0)
+       end if
        
        vr_2 =      -v(-2) + 5.d0*v(-1) + 2.d0*v(0)
        vr_1 =  2.d0*v(-1) + 5.d0*v(0 ) -      v(1) 
@@ -113,6 +169,16 @@ contains
        alpha_1 = d_g1(-1)*beta_1
        alpha_0 = d_g1( 0)*beta_0
        alpha1 = 1.d0/(alpha_2 + alpha_1 + alpha_0)
+
+       if (weno_type .eq. wenom) then
+          alpha_2 = alpha_2*alpha1
+          alpha_1 = alpha_1*alpha1
+          alpha_0 = alpha_0*alpha1
+          alpha_2 = gmap(alpha_2,d_g1(-2))
+          alpha_1 = gmap(alpha_1,d_g1(-1))
+          alpha_0 = gmap(alpha_0,d_g1( 0))
+          alpha1 = 1.d0/(alpha_2 + alpha_1 + alpha_0)
+       end if
        
        vr_2 = L3_cg1(-2)*v(-2) + L3_cg1(-1)*v(-1) + L3_cg1(0)*v(0)
        vr_1 = C3_cg1(-1)*v(-1) + C3_cg1( 0)*v( 0) + C3_cg1(1)*v(1)
@@ -126,6 +192,16 @@ contains
        alpha_1 = d_g2(-1)*beta_1
        alpha_0 = d_g2( 0)*beta_0
        alpha1 = 1.d0/(alpha_2 + alpha_1 + alpha_0)
+
+       if (weno_type .eq. wenom) then
+          alpha_2 = alpha_2*alpha1
+          alpha_1 = alpha_1*alpha1
+          alpha_0 = alpha_0*alpha1
+          alpha_2 = gmap(alpha_2,d_g2(-2))
+          alpha_1 = gmap(alpha_1,d_g2(-1))
+          alpha_0 = gmap(alpha_0,d_g2( 0))
+          alpha1 = 1.d0/(alpha_2 + alpha_1 + alpha_0)
+       end if
        
        vr_2 = L3_cg2(-2)*v(-2) + L3_cg2(-1)*v(-1) + L3_cg2(0)*v(0)
        vr_1 = C3_cg2(-1)*v(-1) + C3_cg2( 0)*v( 0) + C3_cg2(1)*v(1)
@@ -138,6 +214,67 @@ contains
   end subroutine weno5
 
 
+  subroutine mp5(v, vp, vm)
+    double precision, intent(in)  :: v(-2:2)
+    double precision, intent(out) :: vp , vm   ! v_{i+1/2} & v_{i-1/2}
+
+    double precision, parameter :: B1 = 1.d0/60.d0, B2 = 4.d0/3.d0, alpha = 4.d0, &
+         epsmp5 = 1.d-10
+    double precision :: vor,vmp,djm1,dj,djp1,dm4jph,dm4jmh,vul,vav,vmd,vlc,vmin,vmax
+
+    vor = B1*(2.d0*v(-2)-13.d0*v(-1)+47.d0*v(0)+27.d0*v(1)-3.d0*v(2))
+    vmp = v(0) + dmm(v(1)-v(0),alpha*(v(0)-v(-1)))
+    if ((vor-v(0))*(vor-vmp) .le. epsmp5) then
+       vp = vor
+    else
+       djm1 = v(-2)-2.d0*v(-1)+v(0)
+       dj   = v(-1)-2.d0*v( 0)+v(1)
+       djp1 = v( 0)-2.d0*v( 1)+v(2)
+       dm4jph = dm4(4.d0*dj-djp1, 4.d0*djp1-dj, dj, djp1)
+       dm4jmh = dm4(4.d0*dj-djm1, 4.d0*djm1-dj, dj, djm1)
+       vul = v(0) + alpha*(v(0)-v(-1))
+       vav = 0.5d0*(v(0)+v(1))
+       vmd = vav - 0.5d0*dm4jph
+       vlc = v(0) + 0.5d0*(v(0)-v(-1)) + B2*dm4jmh
+       vmin = max(min(v(0),v(1),vmd), min(v(0),vul,vlc))
+       vmax = min(max(v(0),v(1),vmd), max(v(0),vul,vlc))
+       vp = vor + dmm(vmin-vor,vmax-vor)
+    end if
+
+    vor = B1*(2.d0*v(2)-13.d0*v(1)+47.d0*v(0)+27.d0*v(-1)-3.d0*v(-2))
+    vmp = v(0) + dmm(v(-1)-v(0),alpha*(v(0)-v(1)))
+    if ((vor-v(0))*(vor-vmp) .le. epsmp5) then
+       vm = vor
+    else
+       djm1 = v(2)-2.d0*v( 1)+v( 0)
+       dj   = v(1)-2.d0*v( 0)+v(-1)
+       djp1 = v(0)-2.d0*v(-1)+v(-2)
+       dm4jph = dm4(4.d0*dj-djp1, 4.d0*djp1-dj, dj, djp1)
+       dm4jmh = dm4(4.d0*dj-djm1, 4.d0*djm1-dj, dj, djm1)
+       vul = v(0) + alpha*(v(0)-v(1))
+       vav = 0.5d0*(v(0)+v(-1))
+       vmd = vav - 0.5d0*dm4jph
+       vlc = v(0) + 0.5d0*(v(0)-v(1)) + B2*dm4jmh
+       vmin = max(min(v(0),v(-1),vmd), min(v(0),vul,vlc))
+       vmax = min(max(v(0),v(-1),vmd), max(v(0),vul,vlc))
+       vm = vor + dmm(vmin-vor,vmax-vor)
+    end if
+    
+    return
+
+    contains 
+      double precision function dmm(x,y) 
+        double precision, intent(in) :: x,y
+        dmm = 0.5d0*(sign(1.d0,x)+sign(1.d0,y))*min(abs(x),abs(y))
+      end function dmm
+      !
+      double precision function dm4(w,x,y,z) 
+        double precision, intent(in) :: w,x,y,z
+        dm4 = 0.125d0*(sign(1.d0,w)+sign(1.d0,x))*min(abs(w),abs(x),abs(y),abs(z))* &
+             abs((sign(1.d0,w)+sign(1.d0,y))*(sign(1.d0,w)+sign(1.d0,z)))
+      end function dm4
+  end subroutine mp5
+
   subroutine vweno5(lo, hi, v, vlo, vhi, glo, ghi, vp, vm, vg1, vg2)
     integer, intent(in) :: lo, hi, vlo, vhi, glo, ghi
     double precision, intent(in)  :: v(vlo:vhi)
@@ -147,19 +284,33 @@ contains
     integer :: i
     double precision, dimension(lo:hi) :: vr_2, vr_1, vr_0
     double precision, dimension(lo:hi) :: alpha_2, alpha_1, alpha_0
-    double precision, dimension(lo:hi) :: beta_2, beta_1, beta_0
+    double precision, dimension(lo:hi) :: beta_2, beta_1, beta_0, tau5
 
     !DEC$ SIMD
     do i=lo,hi
        beta_2(i) = b1*(v(i-2)-2.d0*v(i-1)+v(i))**2 + 0.25d0*(v(i-2)-4.d0*v(i-1)+3.d0*v(i))**2
-       beta_2(i) = 1.d0/(epsw+beta_2(i))**2
-       
        beta_1(i) = b1*(v(i-1)-2.d0*v(i  )+v(i+1))**2 + 0.25d0*(v(i-1)-v(i+1))**2
-       beta_1(i) = 1.d0/(epsw+beta_1(i))**2
-       
        beta_0(i) = b1*(v(i  )-2.d0*v(i+1)+v(i+2))**2 + 0.25d0*(3.d0*v(i)-4.d0*v(i+1)+v(i+2))**2
-       beta_0(i) = 1.d0/(epsw+beta_0(i))**2
     end do
+
+    if (weno_type .eq. wenojs .or. weno_type .eq. wenom) then
+       !DEC$ SIMD
+       do i=lo,hi
+          beta_2(i) = 1.d0/(epsjs+beta_2(i))**2
+          beta_1(i) = 1.d0/(epsjs+beta_1(i))**2
+          beta_0(i) = 1.d0/(epsjs+beta_0(i))**2
+       end do
+    else if (weno_type .eq. wenoz) then
+       !DEC$ SIMD
+       do i=lo,hi
+          tau5(i) = beta_2(i)-beta_0(i)
+          beta_2(i) = 1.d0 + (tau5(i)/(beta_2(i)+epsz))**2
+          beta_1(i) = 1.d0 + (tau5(i)/(beta_1(i)+epsz))**2
+          beta_0(i) = 1.d0 + (tau5(i)/(beta_0(i)+epsz))**2
+       end do
+    else
+       call bl_error("unknown weno type")
+    end if
 
     if (present(vp)) then
        !DEC$ SIMD
@@ -217,6 +368,48 @@ contains
     end if
 
   end subroutine vweno5
+
+
+  subroutine weno5_center(v, vc)
+    double precision, intent(in) :: v(-2:2)
+    double precision, intent(out) :: vc  ! at cell center
+
+    double precision :: alpha_2, alpha_1, alpha_0
+    double precision :: beta_2, beta_1, beta_0
+    double precision :: v_2, v_1, v_0
+
+    beta_2 = b1*(v(-2)-2.d0*v(-1)+v(0))**2 + 0.25d0*(v(-2)-4.d0*v(-1)+3.d0*v(0))**2
+    beta_2 = 1.d0/(epsjs+beta_2)**2
+
+    beta_1 = b1*(v(-1)-2.d0*v( 0)+v(1))**2 + 0.25d0*(v(-1)-v(1))**2
+    beta_1 = 1.d0/(epsjs+beta_1)**2
+
+    beta_0 = b1*(v( 0)-2.d0*v( 1)+v(2))**2 + 0.25d0*(3.d0*v(0)-4.d0*v(1)+v(2))**2
+    beta_0 = 1.d0/(epsjs+beta_0)**2
+
+    v_2 = L3_cc(-2)*v(-2) + L3_cc(-1)*v(-1) + L3_cc(0)*v(0)
+    v_1 = C3_cc(-1)*v(-1) + C3_cc( 0)*v( 0) + C3_cc(1)*v(1)
+    v_0 = R3_cc( 0)*v( 0) + R3_cc( 1)*v( 1) + R3_cc(2)*v(2)
+
+    ! plus
+    alpha_2 = gamma_p_lr*beta_2
+    alpha_1 = gamma_p_cc*beta_1
+    alpha_0 = gamma_p_lr*beta_0
+    vc = sigma_p*(alpha_2*v_2 + alpha_1*v_1 + alpha_0*v_0)/(alpha_2 + alpha_1 + alpha_0)
+
+    ! minus
+    alpha_2 = gamma_m_lr*beta_2
+    alpha_1 = gamma_m_cc*beta_1
+    alpha_0 = gamma_m_lr*beta_0
+    vc = vc-sigma_m*(alpha_2*v_2 + alpha_1*v_1 + alpha_0*v_0)/(alpha_2 + alpha_1 + alpha_0)
+  end subroutine weno5_center
+
+
+  function gmap(omg, k)
+    double precision, intent(in) :: omg, k
+    double precision gmap
+    gmap = omg*(k+k*k-3.d0*k*omg+omg*omg)/(k*k+omg*(1.d0-2.d0*k))
+  end function gmap
 
 
   subroutine cellavg2gausspt_1d(lo,hi, u, ulo,uhi, u1, u2, glo,ghi)

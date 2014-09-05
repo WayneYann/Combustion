@@ -49,10 +49,20 @@ static Real dt_cutoff    = 0.0;
 bool         RNS::dump_old      = false;
 
 int          RNS::verbose       = 0;
+#if (BL_SPACEDIM == 1)
 Real         RNS::cfl           = 0.8;
 Real         RNS::diff_cfl      = 0.8;
+#elif (BL_SPACEDIM == 2)
+Real         RNS::cfl           = 0.4;
+Real         RNS::diff_cfl      = 0.4;
+#else
+Real         RNS::cfl           = 0.27;
+Real         RNS::diff_cfl      = 0.27;
+#endif
 Real         RNS::init_shrink   = 1.0;
 Real         RNS::change_max    = 1.1;
+Array<int>   RNS::lo_bc(BL_SPACEDIM);
+Array<int>   RNS::hi_bc(BL_SPACEDIM);
 BCRec        RNS::phys_bc;
 int          RNS::NUM_STATE     = -1;
 int          RNS::do_reflux     = 1;
@@ -76,20 +86,21 @@ Real         RNS::small_pres    = -1.e200;
 Real         RNS::gamma         = 1.4;
 
 Real         RNS::gravity       = 0.0;
-Real         RNS::Treference    = 298.0; 
+Real         RNS::Treference    = 298.0;
 
 int          RNS::RK_order      = 2;
 
-RNS::RiemannType RNS::Riemann   = RNS::HLL;
+RNS::RiemannType RNS::Riemann   = RNS::JBB;
 Real             RNS::difmag    = -1.0;  // for JBB & HLLC Riemann solvers
+Real             RNS::HLL_factor = 0.1;
 
 std::string  RNS::fuelName           = "";
 int          RNS::fuelID             = -1;
-std::string  RNS::oxidizerName       = "";
+std::string  RNS::oxidizerName       = "O2";
 int          RNS::oxidizerID         = -1;
 std::string  RNS::productName        = "";
 int          RNS::productID          = -1;
-std::string  RNS::flameTracName      = "";
+std::string  RNS::flameTracName      = "H";
 int          RNS::flameTracID        = -1;
 
 ErrorList    RNS::err_list;
@@ -109,13 +120,13 @@ int          RNS::plot_divu            = 1;
 int          RNS::plot_magvort         = 1;
 int          RNS::plot_X               = 0;
 int          RNS::plot_omegadot        = 0;
-int          RNS::plot_dYdt            = 1;
+int          RNS::plot_dYdt            = 0;
 int          RNS::plot_heatRelease     = 1;
 int          RNS::plot_fuelConsumption = 1;
 int          RNS::plot_primplus        = 1;
 
 int          RNS::icomp_cons            = -1;
-int          RNS::icomp_prim            = -1; 
+int          RNS::icomp_prim            = -1;
 int          RNS::icomp_magvel		= -1;
 int          RNS::icomp_Mach		= -1;
 int          RNS::icomp_divu		= -1;
@@ -138,20 +149,28 @@ std::vector<int> RNS::blocksize(BL_SPACEDIM, 2048);
 int          RNS::do_quartic_interp   = 1;
 
 int          RNS::do_weno             = 1;
+int          RNS::do_mp5              = 0;
+int          RNS::weno_type           = 0; // 0: Jiang-Shu; 1: WENO-M; 2: WENO-Z 
 int          RNS::do_quadrature_weno  = 0;
 int          RNS::do_component_weno   = 0;
+Real         RNS::eps_wenojs          = 1.e-6;
+Real         RNS::eps_wenom           = 1.e-40;
+Real         RNS::eps_wenoz           = 1.e-15;
 
 int          RNS::do_chemistry        = 1;
 int          RNS::use_vode            = 0;
-int          RNS::do_cc_burning       = 0; // do_cc_burning has no effect when split_burning is true
-int          RNS::split_burning       = 1;
+int          RNS::new_J_cell          = 1; // new Jacobian for each cell?
+int          RNS::chem_do_weno        = 1;
+RNS::ChemSolverType RNS::chem_solver  = RNS::CC_BURNING;
+int          RNS::f2comp_simple_dUdt  = 0; // set dUdt = \Delta U / \Delta t in f2comp?
+int          RNS::f2comp_nbdf         = 1; // only use bdf/vode for the first ? times on each node for each time step
 
 // this will be reset upon restart
 Real         RNS::previousCPUTimeUsed = 0.0;
 Real         RNS::startCPUTime = 0.0;
 
 void
-RNS::variableCleanUp () 
+RNS::variableCleanUp ()
 {
     desc_lst.clear();
     delete chemSolve;
@@ -164,11 +183,11 @@ RNS::read_params ()
     static bool done = false;
 
     if (done) return;
-    
+
     done = true;
-    
-    ParmParse pp("rns");   
-    
+
+    ParmParse pp("rns");
+
     pp.query("v",verbose);
     pp.get("init_shrink",init_shrink);
     pp.get("cfl",cfl);
@@ -180,9 +199,9 @@ RNS::read_params ()
     pp.query("do_reflux",do_reflux);
     do_reflux = (do_reflux ? 1 : 0);
     pp.get("dt_cutoff",dt_cutoff);
-    
+
     pp.query("dump_old",dump_old);
-    
+
     pp.query("small_dens",small_dens);
     pp.query("small_temp",small_temp);
     pp.query("small_pres",small_pres);
@@ -190,35 +209,27 @@ RNS::read_params ()
 
     pp.query("gravity", gravity);
     pp.query("Treference",Treference);
-    
+
     pp.query("RK_order",RK_order);
 
     {
-	int riemann = RNS::Riemann;
-	pp.query("Riemann", riemann);
-	Riemann = static_cast<RiemannType>(riemann);
+	int riemann;
+	if (pp.query("Riemann", riemann)) {
+	    Riemann = static_cast<RiemannType>(riemann);
+	}
     }
 
     // some Riemann solvers need artificial viscosity to suppress odd-even decouping
-    if (Riemann == JBB)
+    if (Riemann == JBB || Riemann == HLLC)
     {
-	difmag = 0.1;
+	pp.query("difmag", difmag);
+	pp.query("HLL_factor", HLL_factor);
     }
-    else if (Riemann == HLLC)
-    {
-	difmag = 0.1;
-    }
-    else
-    {
-	difmag = -1.0;
-    }
-    pp.query("difmag", difmag);
 
     // Get boundary conditions
-    Array<int> lo_bc(BL_SPACEDIM), hi_bc(BL_SPACEDIM);
     pp.getarr("lo_bc",lo_bc,0,BL_SPACEDIM);
     pp.getarr("hi_bc",hi_bc,0,BL_SPACEDIM);
-    for (int i = 0; i < BL_SPACEDIM; i++) 
+    for (int i = 0; i < BL_SPACEDIM; i++)
     {
 	phys_bc.setLo(i,lo_bc[i]);
 	phys_bc.setHi(i,hi_bc[i]);
@@ -281,9 +292,8 @@ RNS::read_params ()
     pp.query("fuelName"     , fuelName);
     pp.query("oxidizerName" , oxidizerName);
     pp.query("productName"  , productName);
-    flameTracName = fuelName;
     pp.query("flameTracName", flameTracName);
-    
+
     pp.query("allow_untagging"   , allow_untagging);
     pp.query("do_density_ref"    , do_density_ref);
     pp.query("do_temperature_ref", do_temperature_ref);
@@ -305,16 +315,20 @@ RNS::read_params ()
     pp.query("plot_fuelConsumption", plot_fuelConsumption);
     pp.query("plot_primplus"       , plot_primplus);
 
-    pp.query("job_name",job_name);  
+    pp.query("job_name",job_name);
 
     pp.queryarr("blocksize", blocksize);
 
     pp.query("do_quartic_interp", do_quartic_interp);
 
     pp.query("do_weno", do_weno);
+    pp.query("do_mp5", do_mp5);
+    pp.query("weno_type", weno_type);
     pp.query("do_quadrature_weno", do_quadrature_weno);
     pp.query("do_component_weno", do_component_weno);
-
+    pp.query("eps_wenojs", eps_wenojs);
+    pp.query("eps_wenom", eps_wenom);
+    pp.query("eps_wenoz", eps_wenoz);
     if (ChemDriver::isNull())
     {
 	do_weno = 1;  // must do weno
@@ -322,13 +336,30 @@ RNS::read_params ()
 
     pp.query("do_chemistry", do_chemistry);
     pp.query("use_vode", use_vode);
-    pp.query("do_cc_burning", do_cc_burning);
-    pp.query("split_burning", split_burning);
+    pp.query("new_J_cell", new_J_cell);
+    pp.query("chem_do_weno", chem_do_weno);
+    {
+	int chem_solver_i;
+	if (pp.query("chem_solver", chem_solver_i)) {
+	    chem_solver = static_cast<ChemSolverType>(chem_solver_i);
+	}
+    }
+    if (chem_solver == RNS::BEGP_BURNING || chem_solver == RNS::BECC_BURNING) {
+	f2comp_nbdf = 1;
+    }
+    else {
+	f2comp_nbdf = 100000;
+    }
+    pp.query("f2comp_simple_dUdt", f2comp_simple_dUdt);
+    pp.query("f2comp_nbdf", f2comp_nbdf);
 }
 
 RNS::RNS ()
 {
     flux_reg = 0;
+    chemstatus = 0;
+    RK_k = 0;
+    flux_reg_RK = 0;
 }
 
 RNS::RNS (Amr&            papa,
@@ -337,26 +368,51 @@ RNS::RNS (Amr&            papa,
 	  const BoxArray& bl,
 	  Real            time)
     :
-    AmrLevel(papa,lev,level_geom,bl,time) 
+    AmrLevel(papa,lev,level_geom,bl,time)
 {
     buildMetrics();
-    
+
     flux_reg = 0;
-    if (level > 0 && do_reflux) 
+    if (level > 0 && do_reflux)
     {
 	flux_reg = new FluxRegister(grids,crse_ratio,level,NUM_STATE);
     }
+
+    chemstatus = 0;
+    if (! ChemDriver::isNull()) {
+      chemstatus = new MultiFab(grids,1,1);
+      chemstatus->setVal(0.0,1);
+    }
+
+    RK_k = 0;
+    flux_reg_RK = 0;
+#ifndef USE_SDCLIB
+    if (RK_order > 2) {
+	RK_k = new MultiFab[RK_order];
+	for (int i=0; i<RK_order; i++) {
+	    RK_k[i].define(grids,NUM_STATE,0,Fab_allocate);
+	}
+
+	if (flux_reg) 
+	{
+	    flux_reg_RK = new FluxRegister(grids,crse_ratio,level,NUM_STATE);	    
+	}
+    }
+#endif
 }
 
-RNS::~RNS () 
+RNS::~RNS ()
 {
     delete flux_reg;
+    delete chemstatus;
+    delete [] RK_k;
+    delete flux_reg_RK;
 }
 
 void
 RNS::buildMetrics ()
 {
-    if ( Geometry::IsSPHERICAL() || Geometry::IsRZ() ) 
+    if ( Geometry::IsSPHERICAL() || Geometry::IsRZ() )
 	BoxLib::Abort("We don't support curvilinear coordinate systems.");
 
     //
@@ -371,9 +427,9 @@ RNS::buildMetrics ()
     {
 	area[dir].clear();
     }
-    
+
     geom.GetVolume(volume,grids,0);
-    
+
     for (int dir = 0; dir < BL_SPACEDIM; dir++)
     {
 	geom.GetFaceArea(area[dir],grids,dir,0);
@@ -390,7 +446,7 @@ RNS::initData ()
     const Real* dx  = geom.CellSize();
     MultiFab& S_new = get_new_data(State_Type);
     Real cur_time   = state[State_Type].curTime();
-    
+
     // make sure dx = dy = dz -- that's all we guarantee to support
     const Real SMALL = 1.e-13;
 #if (BL_SPACEDIM == 2)
@@ -404,7 +460,7 @@ RNS::initData ()
 	BoxLib::Abort("We don't support dx != dy != dz");
     }
 #endif
-    
+
     if (verbose && ParallelDescriptor::IOProcessor())
 	std::cout << "Initializing the data at level " << level << std::endl;
 
@@ -414,13 +470,13 @@ RNS::initData ()
 	const Box& box     = mfi.validbox();
 	const int* lo      = box.loVect();
 	const int* hi      = box.hiVect();
-	
+
 	BL_FORT_PROC_CALL(RNS_INITDATA,rns_initdata)
 	    (level, cur_time, lo, hi, ns,
 	     BL_TO_FORTRAN(S_new[mfi]), dx,
 	     gridloc.lo(), gridloc.hi());
     }
-    
+
     if (verbose && ParallelDescriptor::IOProcessor())
 	std::cout << "Done initializing the level " << level << " data " << std::endl;
 }
@@ -437,9 +493,9 @@ RNS::init (AmrLevel &old)
     Real prev_time = oldlev->state[State_Type].prevTime();
     Real dt_old    = cur_time - prev_time;
     setTimeLevel(cur_time,dt_old,dt_new);
-    
+
     MultiFab& S_new = get_new_data(State_Type);
-    
+
     for (FillPatchIterator fpi(old,S_new,0,cur_time,State_Type,0,NUM_STATE);
 	 fpi.isValid();
 	 ++fpi)
@@ -458,9 +514,9 @@ RNS::init ()
     Real dt        = parent->dtLevel(level);
     Real cur_time  = getLevel(level-1).state[State_Type].curTime();
     Real prev_time = getLevel(level-1).state[State_Type].prevTime();
-    
+
     Real dt_old = (cur_time - prev_time)/(Real)parent->MaxRefRatio(level-1);
-    
+
     setTimeLevel(cur_time,dt_old,dt);
     MultiFab& S_new = get_new_data(State_Type);
     FillCoarsePatch(S_new, 0, cur_time, State_Type, 0, NUM_STATE);
@@ -474,17 +530,17 @@ RNS::initialTimeStep ()
 }
 
 Real
-RNS::estTimeStep (Real dt_old)
+RNS::estTimeStep (Real /*dt_old*/)
 {
     if (fixed_dt > 0.0)
 	return fixed_dt;
-    
-    // This is just a dummy value to start with 
+
+    // This is just a dummy value to start with
     Real estdt  = 1.0e+20;
-    
+
     const Real* dx    = geom.CellSize();
     const MultiFab& stateMF = get_new_data(State_Type);
-    
+
     for (MFIter mfi(stateMF); mfi.isValid(); ++mfi)
     {
 	const Box& box = mfi.validbox();
@@ -492,7 +548,7 @@ RNS::estTimeStep (Real dt_old)
 	BL_FORT_PROC_CALL(RNS_ESTDT,rns_estdt)
 	    (BL_TO_FORTRAN(stateMF[mfi]),
 	     box.loVect(),box.hiVect(),dx,&dt);
-	
+
 	estdt = std::min(estdt,dt);
     }
     estdt *= cfl;
@@ -502,10 +558,10 @@ RNS::estTimeStep (Real dt_old)
     ParallelDescriptor::ReduceRealMin(estdt);
 
     if (verbose && ParallelDescriptor::IOProcessor())
-	cout << "RNS::estTimeStep at level " << level << ":  estdt = " << estdt << std::endl;
+	cout << "At level " << level << ":  estdt = " << estdt << std::endl;
 
     return estdt;
-    
+
 #else
 
     Real estdt_diff = 1.e+20;
@@ -516,7 +572,7 @@ RNS::estTimeStep (Real dt_old)
 	BL_FORT_PROC_CALL(RNS_ESTDT_DIFF,rns_estdt_diff)
 	    (BL_TO_FORTRAN(stateMF[mfi]),
 	     box.loVect(),box.hiVect(),dx,&dt);
-	
+
 	estdt_diff = std::min(estdt_diff,dt);
     }
     estdt_diff *= diff_cfl;
@@ -530,13 +586,12 @@ RNS::estTimeStep (Real dt_old)
     Real estdt_min = std::min(estdts[0], estdts[1]);
 
     if (verbose && ParallelDescriptor::IOProcessor()){
-	cout << "RNS::estTimeStep at level " << level << ":  estdt = " << estdt_min << "\n";
-	cout << "                   hyperbolic estdt = " << estdts[0] << "\n";
-	cout << "                    diffusive estdt = " << estdts[1] << std::endl;
+	cout << "At level " << level << ":  estdt = "
+	     << estdts[0] << " (advection),  " << estdts[1] << " (diffusion)" << std::endl;
     }
 
     return estdt_min;
-    
+
 #endif
 }
 
@@ -556,35 +611,31 @@ RNS::computeNewDt (int                   finest_level,
     //
     if (level > 0)
 	return;
-    
-    int i;
-    
-    Real dt_0 = 1.0e+100;
-    int n_factor = 1;
-    for (i = 0; i <= finest_level; i++)
+
+    for (int i = 0; i <= finest_level; i++)
     {
 	RNS& adv_level = getLevel(i);
 	dt_min[i] = adv_level.estTimeStep(dt_level[i]);
     }
-    
+
     if (fixed_dt <= 0.0)
     {
-	if (post_regrid_flag == 1) 
+	if (post_regrid_flag == 1)
 	{
 	    //
 	    // Limit dt's by pre-regrid dt
 	    //
-	    for (i = 0; i <= finest_level; i++)
+	    for (int i = 0; i <= finest_level; i++)
 	    {
 		dt_min[i] = std::min(dt_min[i],dt_level[i]);
 	    }
-	} 
-	else 
+	}
+	else
 	{
 	    //
 	    // Limit dt's by change_max * old dt
 	    //
-	    for (i = 0; i <= finest_level; i++)
+	    for (int i = 0; i <= finest_level; i++)
 	    {
 		if (verbose && ParallelDescriptor::IOProcessor())
 		{
@@ -598,36 +649,41 @@ RNS::computeNewDt (int                   finest_level,
 		}
 		dt_min[i] = std::min(dt_min[i],change_max*dt_level[i]);
 	    }
-	} 
+	}
     }
-    
+
     //
     // Find the minimum over all levels
     //
-    for (i = 0; i <= finest_level; i++)
+    Real dt = 1.0e+100;
+
+    int n_factor = 1;
+    for (int i = 0; i <= finest_level; i++)
     {
 	n_factor *= n_cycle[i];
-	dt_0 = std::min(dt_0,n_factor*dt_min[i]);
+	dt = std::min(dt,n_factor*dt_min[i]);
     }
-    
+
     //
     // Limit dt's by the value of stop_time.
     //
-    const Real eps = 0.001*dt_0;
+#ifndef USE_SDCLIB
+    const Real eps = 0.001*dt;
     Real cur_time  = state[State_Type].curTime();
-    if (stop_time >= 0.0) 
+    if (stop_time >= 0.0)
     {
-	if ((cur_time + dt_0) > (stop_time - eps))
+	if ((cur_time + dt) > (stop_time - eps))
 	{
-	    dt_0 = stop_time - cur_time;
+	    dt = stop_time - cur_time;
 	}
     }
-    
+#endif
+
     n_factor = 1;
-    for (i = 0; i <= finest_level; i++)
+    for (int i = 0; i <= finest_level; i++)
     {
 	n_factor *= n_cycle[i];
-	dt_level[i] = dt_0/n_factor;
+	dt_level[i] = dt/n_factor;
     }
 }
 
@@ -644,9 +700,9 @@ RNS::computeInitialDt (int                   finest_level,
     //
     if (level > 0)
 	return;
-    
+
     int i;
-    
+
     Real dt_0 = 1.0e+100;
     int n_factor = 1;
     for (i = 0; i <= finest_level; i++)
@@ -655,20 +711,22 @@ RNS::computeInitialDt (int                   finest_level,
 	n_factor   *= n_cycle[i];
 	dt_0 = std::min(dt_0,n_factor*dt_level[i]);
     }
-    
+
     //
     // Limit dt's by the value of stop_time.
     //
+#ifndef USE_SDCLIB
     const Real eps = 0.001*dt_0;
     Real cur_time  = state[State_Type].curTime();
-    if (stop_time >= 0.0) 
+    if (stop_time >= 0.0)
     {
 	if ((cur_time + dt_0) > (stop_time - eps))
 	{
 	    dt_0 = stop_time - cur_time;
 	}
     }
-    
+#endif
+
     n_factor = 1;
     for (i = 0; i <= finest_level; i++)
     {
@@ -685,8 +743,8 @@ RNS::post_timestep (int iteration)
     // do post_timestep stuff here.
     //
     int finest_level = parent->finestLevel();
-    
-    if (do_reflux && level < finest_level) 
+
+    if (do_reflux && level < finest_level)
     {
 	reflux();
 
@@ -695,7 +753,7 @@ RNS::post_timestep (int iteration)
 	MultiFab& S_new_crse = get_new_data(State_Type);
 	post_update(S_new_crse);
     }
-    else if (level < finest_level) 
+    else if (level < finest_level)
     {
 	avgDown();
     }
@@ -709,11 +767,13 @@ RNS::post_restart ()
 void
 RNS::postCoarseTimeStep (Real cumtime)
 {
-    if (sum_int <= 0) return;
+    if (chemstatus) sum_chemstatus();
 
-    int nstep = parent->levelSteps(0);
-    if (nstep % sum_int == 0) {
-	sum_conserved_variables();
+    if (sum_int > 0) {
+	int nstep = parent->levelSteps(0);
+	if (nstep % sum_int == 0) {
+	    sum_conserved_variables();
+	}
     }
 }
 
@@ -733,7 +793,7 @@ RNS::post_init (Real stop_time)
     // so that conserved data is consistent between levels.
     //
     int finest_level = parent->finestLevel();
-    for (int k = finest_level-1; k>= 0; k--) 
+    for (int k = finest_level-1; k>= 0; k--)
     {
 	getLevel(k).avgDown();
     }
@@ -744,7 +804,7 @@ RNS::okToContinue ()
 {
     if (level > 0)
 	return 1;
-    
+
     int test = (parent->dtLevel(0) < dt_cutoff) ? 0 : 1;
     return test;
 }
@@ -753,18 +813,18 @@ void
 RNS::reflux ()
 {
     BL_ASSERT(level<parent->finestLevel());
-  
+
     const Real strt = ParallelDescriptor::second();
-    
+
     getFluxReg(level+1).Reflux(get_new_data(State_Type),volume,1.0,0,0,NUM_STATE,geom);
-    
+
     if (verbose)
     {
 	const int IOProc = ParallelDescriptor::IOProcessorNumber();
 	Real      end    = ParallelDescriptor::second() - strt;
-	
+
 	ParallelDescriptor::ReduceRealMax(end,IOProc);
-      
+
 	if (ParallelDescriptor::IOProcessor())
 	    std::cout << "RNS::reflux() at level " << level << " : time = " << end << std::endl;
     }
@@ -781,28 +841,28 @@ void
 RNS::avgDown (MultiFab& S_crse, const MultiFab& S_fine)
 {
     if (level == parent->finestLevel()) return;
-    
+
     RNS&       fine_lev = getLevel(level+1);
     MultiFab&  fvolume  = fine_lev.volume;
     const int  ncomp    = S_fine.nComp();
-    
+
     BL_ASSERT(S_crse.boxArray() == volume.boxArray());
     BL_ASSERT(fvolume.boxArray() == S_fine.boxArray());
     //
     // Coarsen() the fine stuff on processors owning the fine data.
     //
     BoxArray crse_S_fine_BA(S_fine.boxArray().size());
-    
+
     for (int i = 0; i < S_fine.boxArray().size(); ++i)
     {
 	crse_S_fine_BA.set(i,BoxLib::coarsen(S_fine.boxArray()[i],fine_ratio));
     }
-    
+
     MultiFab crse_S_fine(crse_S_fine_BA,ncomp,0);
     MultiFab crse_fvolume(crse_S_fine_BA,1,0);
-    
+
     crse_fvolume.copy(volume);
-    
+
     for (MFIter mfi(S_fine); mfi.isValid(); ++mfi)
     {
 	const int        i        = mfi.index();
@@ -811,7 +871,7 @@ RNS::avgDown (MultiFab& S_crse, const MultiFab& S_fine)
 	const FArrayBox& crse_vol = crse_fvolume[i];
 	const FArrayBox& fine_fab = S_fine[i];
 	const FArrayBox& fine_vol = fvolume[i];
-	
+
 	BL_FORT_PROC_CALL(RNS_AVGDOWN,rns_avgdown)
 	    (BL_TO_FORTRAN(crse_fab), ncomp,
 	     BL_TO_FORTRAN(crse_vol),
@@ -819,7 +879,7 @@ RNS::avgDown (MultiFab& S_crse, const MultiFab& S_fine)
 	     BL_TO_FORTRAN(fine_vol),
 	     ovlp.loVect(),ovlp.hiVect(),fine_ratio.getVect());
     }
-    
+
     S_crse.copy(crse_S_fine);
 }
 
@@ -846,13 +906,13 @@ RNS::errorEst (TagBoxArray& tags,
     const Real* dx        = geom.CellSize();
     const Real* prob_lo   = geom.ProbLo();
     Array<int>  itags;
-    
+
     for (int j = 0; j < err_list.size(); j++)
     {
 	MultiFab* mf = derive(err_list[j].name(), time, err_list[j].nGrow());
-	
+
 	BL_ASSERT(!(mf == 0));
-	
+
 	for (MFIter mfi(*mf); mfi.isValid(); ++mfi)
         {
 	    int         idx     = mfi.index();
@@ -868,7 +928,7 @@ RNS::errorEst (TagBoxArray& tags,
 	    const int*  dlo     = (*mf)[mfi].box().loVect();
 	    const int*  dhi     = (*mf)[mfi].box().hiVect();
 	    const int   ncomp   = (*mf)[mfi].nComp();
-	    
+
 	    err_list[j].errFunc()(tptr, ARLIM(tlo), ARLIM(thi), &tagval,
 				  &clearval, dat, ARLIM(dlo), ARLIM(dhi),
 				  lo,hi, &ncomp, domain_lo, domain_hi,
@@ -876,16 +936,16 @@ RNS::errorEst (TagBoxArray& tags,
 	    //
 	    // Don't forget to set the tags in the TagBox.
 	    //
-	    if (allow_untagging == 1) 
+	    if (allow_untagging == 1)
             {
 		tags[idx].tags_and_untags(itags);
-            } 
-	    else 
+            }
+	    else
 	    {
 		tags[idx].tags(itags);
 	    }
         }
-	
+
 	delete mf;
     }
 }
@@ -913,10 +973,57 @@ RNS::getCPUTime()
     int numCores = ParallelDescriptor::NProcs();
 #ifdef _OPENMP
     numCores *= omp_get_max_threads();
-#endif    
+#endif
 
-    Real T = numCores*(ParallelDescriptor::second() - startCPUTime) + 
+    Real T = numCores*(ParallelDescriptor::second() - startCPUTime) +
 	previousCPUTimeUsed;
-    
+
     return T;
+}
+
+void
+RNS::buildTouchFine ()
+{
+    if (level == parent->finestLevel()) return;
+
+    MultiFab& S_new = get_new_data(State_Type);
+
+    const BoxArray& fba = getLevel(level+1).boxArray();
+    const Box fb = fba.minimalBox();
+
+    touchFine.resize(S_new.size());
+
+    for (MFIter mfi(S_new); mfi.isValid(); ++mfi)
+    {
+	int i = mfi.index();
+
+	const Box tbox = BoxLib::refine(S_new[i].box(), parent->refRatio(level));
+
+	if (fb.intersects(tbox) || fba.intersects(tbox)) {
+	    touchFine[i] = 1;
+	}
+	else {
+	    touchFine[i] = 0;
+	}
+    }
+}
+
+void
+RNS::zeroChemStatus()
+{
+    if (chemstatus) chemstatus->setVal(0.0,1);
+}
+
+int
+RNS::check_imex_order(int ho_imex)
+{
+    if (!ho_imex &&
+	(RNS::chem_solver == RNS::CC_BURNING    ||
+	 RNS::chem_solver == RNS::GAUSS_BURNING ||
+	 RNS::chem_solver == RNS::SPLIT_BURNING)) {
+	return 1;
+    }
+    else {
+	return 0;
+    }
 }

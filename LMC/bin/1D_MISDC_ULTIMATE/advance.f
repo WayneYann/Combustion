@@ -10,7 +10,7 @@ ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
      $                   divu_old,divu_new,beta_old,beta_new,
      $                   beta_for_Y_old,beta_for_Y_new,
      $                   beta_for_Wbar_old,beta_for_Wbar_new,
-     $                   dx,dt,lo,hi,bc,delta_chi,istep)
+     $                   dx,time,dt,lo,hi,bc,delta_chi,istep)
 
       implicit none
 
@@ -57,6 +57,7 @@ c     nodal, 1 ghost cell
       integer hi(0:nlevs-1)
       integer bc(0:nlevs-1,2)
       real*8  dx(0:nlevs-1)
+      real*8  time
       real*8  dt(0:nlevs-1)
       integer istep
 
@@ -116,7 +117,10 @@ c     in equation (3)
 ccccccccccccccccccccccccccccccccccccccccccc
 c     Step 1: Compute advection velocities
 ccccccccccccccccccccccccccccccccccccccccccc
- 
+
+      call control_vel(scal_old(0,:,:),dx(0),time,dt(0),istep,lo(0),hi(0))
+
+
 c     compute cell-centered grad pi from nodal pi
       do i=lo(0)-1,hi(0)+1
          gp(0,i) = (press_old(0,i+1) - press_old(0,i)) / dx(0)

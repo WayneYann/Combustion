@@ -1,0 +1,32 @@
+&fortin
+
+  prob_type = 2
+
+  turbfile = "TurbFile_0650_new"
+  turb_boost_factor = 20.d0
+
+  pamb = 1.01325d7  ! 10 Patm
+  
+  phi_in = 0.7d0   ! mole fraction of CH3OCH3 in fuel
+  T_in   = 400.d0  ! temperature of fuel
+  vn_in  = 1.0d4   ! fuel injection velocity
+  
+  T_co  = 1300.d0  ! temperature of air
+  vn_co = 1.d3     ! air injection velocity
+  
+  splitx  = 0.015d0   ! where fuel and air split
+  xfrontw = 0.0015d0  ! controls the width of split
+
+  splity  = -0.0040d10  ! where fuel and air split
+  yfrontw = 0.0013d0  ! controls the width of split
+
+  max_tracerr_lev = 4
+  tracerr = 5.d-9
+
+  max_vorterr_lev = 4
+  vorterr = 2.d4
+
+  max_tempgrad_lev = 4
+  tempgrad = 10.d0
+
+/

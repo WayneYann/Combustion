@@ -15,7 +15,6 @@ module sdcquad_module
 
      type(mf_encap),  pointer :: mfencap
      type(sdc_encap), pointer :: encap
-     type(sdc_nodes), pointer :: nodes1, nodes2
      type(sdc_mrex),  pointer :: mrex
      type(sdc_imex),  pointer :: imex
   end type sdc_ctx
@@ -31,16 +30,18 @@ contains
     integer,         intent(in)          :: qtype, nnodes
     type(c_funptr),  intent(in), value   :: feval, post
 
-    integer :: err
+    real(dp_t) :: nodes(nnodes)
+    integer    :: err
 
     sdc%single_rate = .true.
     sdc%multi_rate  = .false.
 
-    allocate(sdc%mfencap, sdc%encap, sdc%nodes1, sdc%imex)
+    allocate(sdc%mfencap, sdc%encap, sdc%imex)
+
+    call sdc_dnodes(nodes, nnodes, qtype)
 
     call sdc_multifab_build(sdc%encap, c_loc(sdc%mfencap), err)
-    call sdc_nodes_build(sdc%nodes1, nnodes, qtype, err)
-    call sdc_imex_build(sdc%imex, sdc%nodes1, feval, c_null_funptr, c_null_funptr, err)
+    call sdc_imex_build(sdc%imex, nodes, nnodes, 1, 0, feval, c_null_funptr, c_null_funptr, err)
     call sdc_hooks_add(sdc%imex%hooks, SDC_HOOK_POST_STEP, post, err)
 
   end subroutine sdc_build_single_rate
@@ -56,41 +57,42 @@ contains
     integer,         intent(in)          :: qtype, nnodes(2)
     type(c_funptr),  intent(in), value   :: f1eval, f2eval, post
 
-    integer :: err
+    real(dp_t) :: nodes1(nnodes(1)), nodes2(nnodes(2))
+    integer    :: err
 
     sdc%single_rate = .false.
     sdc%multi_rate  = .true.
 
-    allocate(sdc%mfencap, sdc%encap, sdc%nodes1, sdc%nodes2, sdc%mrex)
+    allocate(sdc%mfencap, sdc%encap, sdc%mrex)
+
+    call sdc_dnodes(nodes1, nnodes(1), qtype)
+    call sdc_dnodes(nodes2, nnodes(2), qtype)
 
     call sdc_multifab_build(sdc%encap, c_loc(sdc%mfencap), err)
-    call sdc_nodes_build(sdc%nodes1, nnodes(1), qtype, err)
-    call sdc_nodes_build(sdc%nodes2, nnodes(2), qtype, err)
     call sdc_mrex_build(sdc%mrex, 2, err)
-    call sdc_mrex_add_comp(sdc%mrex, sdc%nodes1, f1eval, sdc%encap, c_loc(sdc), 1, SDC_MR_ROOT, err)
+    call sdc_mrex_add_comp(sdc%mrex, nodes1, nnodes(1), &
+         f1eval, sdc%encap, c_loc(sdc), 1, SDC_MR_ROOT, err)
 
     call sdc_hooks_add(sdc%mrex%hooks, SDC_HOOK_POST_STEP, post, err)
 
     select case(sdc_multirate_type)
     case ("local")
        if (sdc_multirate_repeat > 1) then
-          call sdc_mrex_add_comp(sdc%mrex, sdc%nodes2, f2eval, sdc%encap, &
-               c_loc(sdc), sdc_multirate_repeat, SDC_MR_LREP, err)
+          call sdc_mrex_add_comp(sdc%mrex, nodes2, nnodes(2), &
+               f2eval, sdc%encap, c_loc(sdc), sdc_multirate_repeat, SDC_MR_LREP, err)
        else
-          call sdc_mrex_add_comp(sdc%mrex, sdc%nodes2, f2eval, sdc%encap, &
-               c_loc(sdc), 1, SDC_MR_LOCAL, err)
+          call sdc_mrex_add_comp(sdc%mrex, nodes2, nnodes(2), &
+               f2eval, sdc%encap, c_loc(sdc), 1, SDC_MR_LOCAL, err)
        end if
     case ("global")
-       call sdc_mrex_add_comp(sdc%mrex, sdc%nodes2, f2eval, sdc%encap, &
-            c_loc(sdc), 1, SDC_MR_GLOBAL, err)
+       call sdc_mrex_add_comp(sdc%mrex, nodes2, nnodes(2), &
+            f2eval, sdc%encap, c_loc(sdc), 1, SDC_MR_GLOBAL, err)
        if (err .ne. 0) then
-          call sdc_nodes_print(sdc%nodes1, 2)
-          call sdc_nodes_print(sdc%nodes2, 2)
           stop "NODES DO NOT NEST PROPERLY"
        end if
     case ("repeated")
-       call sdc_mrex_add_comp(sdc%mrex, sdc%nodes2, f2eval, sdc%encap, &
-            c_loc(sdc), 1, SDC_MR_GREP, err)
+       call sdc_mrex_add_comp(sdc%mrex, nodes2, nnodes(2), &
+            f2eval, sdc%encap, c_loc(sdc), 1, SDC_MR_GREP, err)
     case default
        stop "UNKNOWN MULTIRATE TYPE: should be one of 'local', 'global', or 'repeated'"
     end select
@@ -187,15 +189,12 @@ contains
 
     if (sdc%single_rate) then
        call sdc_imex_destroy(sdc%imex)
-       call sdc_nodes_destroy(sdc%nodes1)
-       deallocate(sdc%nodes1, sdc%imex)
+       deallocate(sdc%imex)
     end if
 
     if (sdc%multi_rate) then
        call sdc_mrex_destroy(sdc%mrex)
-       call sdc_nodes_destroy(sdc%nodes1)
-       call sdc_nodes_destroy(sdc%nodes2)
-       deallocate(sdc%nodes1, sdc%nodes2, sdc%mrex)
+       deallocate(sdc%mrex)
     end if
 
     call sdc_multifab_destroy(sdc%encap)

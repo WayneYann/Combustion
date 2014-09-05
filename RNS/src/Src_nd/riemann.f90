@@ -1,7 +1,9 @@
 module riemann_module
 
   use meth_params_module, only : ndim, NVAR, URHO, UMX, UMY, UMZ, UEDEN, UTEMP, UFS, NSPEC, &
-       riemann_solver, HLL_solver, JBB_solver, HLLC_solver
+       riemann_solver, HLL_solver, JBB_solver, HLLC_solver, HLL_factor
+  use renorm_module, only : floor_species
+  use passinfo_module, only : level
 
   implicit none
 
@@ -18,6 +20,8 @@ contains
     double precision, intent(in ) ::  UR(Ulo:Uhi,NVAR)
     double precision              :: flx(flo:fhi,NVAR)
 
+    double precision, allocatable :: flxHLL(:,:)
+
     select case (riemann_solver)
     case (HLL_solver)
        call riemann_HLL(lo, hi, UL(lo:hi+1,:), UR(lo:hi+1,:), flx(lo:hi+1,:), dir)
@@ -29,6 +33,13 @@ contains
        print *, 'unknown riemann solver'
        stop
     end select
+
+    if (HLL_factor .gt. 0.d0) then
+       allocate(flxHLL(lo:hi+1,NVAR))
+       call riemann_HLL(lo, hi, UL(lo:hi+1,:), UR(lo:hi+1,:), flxHLL, dir)
+       flx(lo:hi+1,:) = (1.d0-HLL_factor)*flx(lo:hi+1,:) + HLL_factor*flxHLL
+       deallocate(flxHLL)
+    end if
 
   end subroutine riemann
 
@@ -90,7 +101,7 @@ contains
     double precision, intent(inout) :: ap(lo:hi+1)
     double precision, intent(inout) :: am(lo:hi+1)
 
-    integer :: i, n, idir
+    integer :: i, n, idir, ierr
     double precision :: rho, m(3), rhoE, v(3), vn
     double precision :: rhoInv, p, c, gamc, dpdr(NSPEC), dpde, T, e, ek, Y(NSPEC)
 
@@ -125,7 +136,13 @@ contains
 
        Y = U(i,UFS:UFS+NSPEC-1)*rhoInv
 
-       call eos_given_ReY(p,c,gamc,T,dpdr,dpde,rho,e,Y)
+       call floor_species(nspec, Y)
+
+       call eos_given_ReY(p,c,gamc,T,dpdr,dpde,rho,e,Y,ierr=ierr)
+!       if (ierr .ne. 0) then
+!          print *, 'compute_flux_and_alpha: eos failed', level, U(i,UFS:UFS+nspec-1)*rhoinv 
+!          call bl_error("compute_flux_and_alpha: eos failed")
+!       end if
 
        vn = v(idir)
 

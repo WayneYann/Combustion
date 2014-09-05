@@ -120,15 +120,17 @@ public:
     // When it's called, 2 ghost cells of U should have already been filled properly.
     //
     void advance_chemistry(MultiFab& U, Real dt);
+    void advance_chemistry(MultiFab& U, const MultiFab& Uguess, Real dt);
     //
     // do advection and diffusion
     // When it's called, Unew including ghost cells should have the state at t=time.
     //
-    void advance_AD(MultiFab& Unew, Real time, Real dt);
+    void advance_AD(MultiFab& Unew, Real time, Real dt, int iteration, int ncycle);
     //
     // fill boundary
     //
-    void fill_boundary(MultiFab& U, Real time, int type, bool isCorrection=false);
+    void fill_boundary(MultiFab& U, Real time, int type, 
+		       bool isCorrection=false, bool isFEval=false);
     // choices for "type" in fill_boundary:
     static const int no_fill               = 0;
     static const int use_FillPatchIterator = 1;
@@ -136,15 +138,20 @@ public:
     static const int use_FillBoundary      = 3;
     static const int set_PhysBoundary      = 4;
     //
+    // special fill boundary for RK4
+    //
+    void fill_rk_boundary(MultiFab& U, Real time, Real dt, int stage, int iteration, int ncycle);
+    //
     // Given U, compute Uprime (i.e., dUdt) for AD
     //
     void dUdt_AD(MultiFab& U, MultiFab& Uprime, Real time, int fill_boundary_type,
-	      FluxRegister* fine=0, FluxRegister* current=0, Real dt=0.0);
+		 FluxRegister* fine=0, FluxRegister* current=0, Real dt=0.0, 
+		 bool partialUpdate = false);
     //
     // Given U, compute Uprime (i.e., dUdt) for chemistry
     // When it's called, 2 ghost cells of U should have already been filled properly.
     //
-    void dUdt_chemistry(const MultiFab& U, MultiFab& Uprime);
+    void dUdt_chemistry(const MultiFab& U, MultiFab& Uprime, bool partialUpdate = false);
     //
     // Compute U1 = U2 + c Uprime.
     //
@@ -238,6 +245,25 @@ public:
     static int verbose;
     static int do_chemistry;
 
+    // species information
+    static std::string  fuelName     ;
+    static int          fuelID       ;
+    static std::string  oxidizerName ;
+    static int          oxidizerID   ;
+    static std::string  productName  ;
+    static int          productID    ;
+    static std::string  flameTracName;
+    static int          flameTracID  ;
+
+    // how to compute dUdt in f2comp; "simple" means setting dUdt = \Delta U / \Delta t
+    static int f2comp_simple_dUdt;
+    static int f2comp_nbdf;  // only use bdf/vode for the first ? times on each node
+    std::vector<int> f2comp_timer; // how many times f2comp has been called on each sdc node
+    void reset_f2comp_timer(int nnodes) {
+	f2comp_timer.clear();
+	f2comp_timer.resize(nnodes-1,0); // last node doesn't call f2comp
+    }
+
     void avgDown ();
     void avgDown (int state_indx);
     void avgDown (MultiFab& S_crse, const MultiFab& S_fine);
@@ -248,6 +274,15 @@ public:
     SDCAmr* getSDCAmr() { return (SDCAmr*) parent; }
 #endif
 
+    // which grids touch fine?
+    std::vector<int> touchFine;
+    void buildTouchFine();
+    void clearTouchFine() { touchFine.clear(); }
+
+    MultiFab* chemstatus;
+    void zeroChemStatus();
+
+    static int check_imex_order(int ho_imex);
 
 protected:
 
@@ -258,13 +293,20 @@ protected:
     FluxRegister& getFluxReg ();
     FluxRegister& getFluxReg (int lev);
 
-    void reflux ();
+    MultiFab& getRKk (int i);
+    MultiFab& getRKk (int lev, int i);
 
+    FluxRegister& getFluxRegRK ();
+    FluxRegister& getFluxRegRK (int lev);
+
+    void reflux ();
 
     void buildMetrics ();
 
     void sum_conserved_variables ();
     void volWgtSumCons(Array<Real>& s);
+    
+    void sum_chemstatus();
 
     //
     // The data.
@@ -272,6 +314,11 @@ protected:
     MultiFab             volume;
     MultiFab             area[BL_SPACEDIM];
     FluxRegister*        flux_reg;
+
+    // For RK
+    MultiFab*        RK_k;
+    FluxRegister*    flux_reg_RK;
+
     //
     // Static data members.
     //
@@ -281,6 +328,8 @@ protected:
     static Real      init_shrink;
     static Real      change_max;
     static int       do_reflux;
+    static Array<int> lo_bc;
+    static Array<int> hi_bc;       
     static BCRec     phys_bc;
     static int       NUM_GROW;
 
@@ -310,16 +359,7 @@ protected:
 
     static RiemannType Riemann;
     static Real        difmag; // for JBB & HLLC Riemann solvers
-
-    // species information
-    static std::string  fuelName     ;
-    static int          fuelID       ;
-    static std::string  oxidizerName ;
-    static int          oxidizerID   ;
-    static std::string  productName  ;
-    static int          productID    ;
-    static std::string  flameTracName;
-    static int          flameTracID  ;
+    static Real        HLL_factor;  // mixing some HLL into JBB or HLLC
 
     // what to store in plotfiles
     static int         plot_cons;
@@ -346,12 +386,27 @@ protected:
     static int         do_quartic_interp;
 
     static int         do_weno;
+    static int         do_mp5;
+    static int         weno_type;
     static int         do_quadrature_weno;
     static int         do_component_weno;
+    static Real        eps_wenojs;
+    static Real        eps_wenoz;
+    static Real        eps_wenom;
 
     static int         use_vode;
-    static int         do_cc_burning;
-    static int         split_burning;
+    static int         new_J_cell;
+    static int         chem_do_weno;
+
+    enum ChemSolverType { CC_BURNING = 0, // 0: burn at cell centers
+			  GAUSS_BURNING,  // 1: burn at Gauss points using BDF/VODE 
+			  SPLIT_BURNING,  // 2: burn at Gauss points by splitting
+			  BECC_BURNING,   // 3: burn at cell center using backward Euler
+			  BEGP_BURNING,   // 4: burn at Gauss points using backward Euler
+			  NUM_CHEMSOLVER_TYPE };
+    // For CC, GAUSS, and SPLIT, mlsdc.ho_imex should be 1,
+    // whereas for BECC and BEGP, mlsdc.ho_imex could be either 0 or 1.
+    static ChemSolverType chem_solver;
 
     // for keeping track of the amount of CPU time used -- this will persist
     // after restarts
@@ -414,5 +469,35 @@ RNS::getFluxReg (int lev)
 {
     return getLevel(lev).getFluxReg();
 }
+
+inline
+MultiFab&
+RNS::getRKk (int i)
+{
+    return RK_k[i];
+}
+
+inline
+MultiFab&
+RNS::getRKk (int lev, int i)
+{
+    return getLevel(lev).getRKk(i);
+}
+
+inline
+FluxRegister&
+RNS::getFluxRegRK ()
+{
+    BL_ASSERT(flux_reg_RK);
+    return *flux_reg_RK;
+}
+
+inline
+FluxRegister&
+RNS::getFluxRegRK (int lev)
+{
+    return getLevel(lev).getFluxRegRK();
+}
+
 
 #endif /*_RNS_H_*/

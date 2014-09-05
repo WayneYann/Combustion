@@ -14,7 +14,7 @@ ALL: main.$(suf).exe
 
 #-----------------------------------------------------------------------------
 # core BoxLib directories
-BOXLIB_CORE := Src/F_BaseLib 
+BOXLIB_CORE := Src/F_BaseLib
 
 
 #-----------------------------------------------------------------------------
@@ -62,6 +62,9 @@ ifdef SDCLIB_HOME
   Fmpack += $(SDCLIB_HOME)/GPackage.mak
   Fmlocs += $(SDCLIB_HOME)/src $(SDCLIB_HOME)/src/encap
   INCLUDE_LOCATIONS += $(SDCLIB_HOME)/include
+  ifeq ($(strip $(SMC_SRC)),src)
+    csources += getdt.c
+  endif
 endif
 
 # Chemistry & Transport
@@ -151,7 +154,7 @@ endif
 PROBIN_TEMPLATE := $(SMC_TOP_DIR)/probin.template
 
 # list of the directories to search for _parameters files
-PROBIN_PARAMETER_DIRS = ./ 
+PROBIN_PARAMETER_DIRS = ./
 
 PROBIN_PARAMETER_DIRS += $(SMC_TOP_DIR)
 
@@ -177,7 +180,7 @@ endif
 # build_info stuff
 deppairs: build_info.f90
 
-build_info.f90: 
+build_info.f90:
 	@echo " "
 	@echo "${bold}WRITING build_info.f90${normal}"
 ifdef MKVERBOSE
@@ -221,9 +224,9 @@ print-%: ; @echo $* is $($*)
 
 
 #-----------------------------------------------------------------------------
-# cleaning.  Add more actions to 'clean' and 'realclean' to remove 
+# cleaning.  Add more actions to 'clean' and 'realclean' to remove
 # probin.f90 and build_info.f90 -- this is where the '::' in make comes
 # in handy
-clean:: 
-	$(RM) probin.f90 
+clean::
+	$(RM) probin.f90
 	$(RM) build_info.f90

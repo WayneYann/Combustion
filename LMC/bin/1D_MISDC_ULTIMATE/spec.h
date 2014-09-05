@@ -84,3 +84,11 @@ c     LMC alg stuff
       logical subcycling
       common /amrl / subcycling
       save /amrl/
+
+      real*8 cfix,changeMax_control,coft_old,corr,dV_control,
+     &     sest,tau_control,V_in_old,tbase_control,
+     &     zbase_control,ord_control,tmax_control
+      common /control/ cfix,changeMax_control,coft_old,corr,dV_control,
+     &     sest,tau_control,V_in_old,tbase_control,
+     &     zbase_control,ord_control,tmax_control
+      save /control/

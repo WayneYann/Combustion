@@ -1,6 +1,6 @@
 &fortin
-  nx = 256
-  nsteps = 80
+  nx = 512
+  nsteps = 5000
   plot_int = 80
   chk_int = 1000
   fixed_dt = 0.25e-4
@@ -19,7 +19,12 @@
   Wbar_iter = 2
   deltaT_iter = 3
   lim_rxns = 0
-  V_in = 0.
+  V_in = 15.
   LeEQ1 = 0
   tranfile = 'tran.asc.chem-H'
+  changeMax_control = 0.5
+  cfix = 0.55
+  tau_control = .1e-2
+  corr = 1
+  ord_control = 3
 /

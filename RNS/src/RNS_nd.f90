@@ -2,12 +2,13 @@
 ! ::: ----------------------------------------------------------------
 ! ::: 
 ! Passing data from f90 back to C++
-subroutine get_method_params(ngrow_c, nriemann_c)
+subroutine get_method_params(ngrow_c, nriemann_c, nchemsolver_c)
   use meth_params_module
   implicit none 
-  integer, intent(out) :: ngrow_c, nriemann_c
+  integer, intent(out) :: ngrow_c, nriemann_c, nchemsolver_c
   ngrow_c = NGROW
   nriemann_c = nriemann
+  nchemsolver_c = nchemsolver
 end subroutine get_method_params
 
 ! ::: 
@@ -15,21 +16,25 @@ end subroutine get_method_params
 ! ::: 
 subroutine set_method_params(dm,Density,Xmom,Eden,Temp,FirstSpec, &
      NUM_STATE, NumSpec, small_dens_in, small_temp_in, small_pres_in, &
-     gamma_in, grav_in, Tref_in, riemann_in, difmag_in, blocksize, &
-     do_weno_in, do_quadrature_weno_in, do_comp_weno_in, &
-     use_vode_in, do_cc_burning_in, split_burning_in)
+     gamma_in, grav_in, Tref_in, riemann_in, difmag_in, HLL_factor_in, blocksize, &
+     do_weno_in, do_mp5_in, weno_type_in, do_quadrature_weno_in, do_comp_weno_in, &
+     eps_wenojs, eps_wenom, eps_wenoz, &
+     use_vode_in, new_J_cell_in, chem_solver_in, chem_do_weno_in)
 
   use meth_params_module
   use eos_module
+  use weno_module, only : weno_type, epsjs, epsm, epsz
 
   implicit none 
 
   integer, intent(in) :: dm
   integer, intent(in) :: Density, Xmom, Eden, Temp, FirstSpec, NUM_STATE, NumSpec, &
-       riemann_in, blocksize(*), do_weno_in, do_quadrature_weno_in, do_comp_weno_in, &
-       use_vode_in, do_cc_burning_in, split_burning_in
+       riemann_in, blocksize(*), do_weno_in, do_mp5_in, weno_type_in, &
+       do_quadrature_weno_in, do_comp_weno_in, &
+       use_vode_in, new_J_cell_in, chem_solver_in, chem_do_weno_in
   double precision, intent(in) :: small_dens_in, small_temp_in, small_pres_in, &
-       gamma_in, grav_in, Tref_in, difmag_in
+       gamma_in, grav_in, Tref_in, difmag_in, HLL_factor_in, &
+       eps_wenojs, eps_wenom, eps_wenoz
   
   ndim = dm
 
@@ -89,6 +94,7 @@ subroutine set_method_params(dm,Density,Xmom,Eden,Temp,FirstSpec, &
 
   riemann_solver = riemann_in
   difmag = difmag_in
+  HLL_factor = HLL_factor_in
 
   xblksize = blocksize(1)
   if (dm .ge. 2) then
@@ -104,12 +110,19 @@ subroutine set_method_params(dm,Density,Xmom,Eden,Temp,FirstSpec, &
   !$omp end parallel
 
   do_weno = (do_weno_in .ne. 0)
+  do_mp5  = (do_mp5_in  .ne. 0)
+  weno_type = weno_type_in
   do_quadrature_weno = (do_quadrature_weno_in .ne. 0)
   do_component_weno = (do_comp_weno_in .ne. 0)
 
+  epsjs = eps_wenojs
+  epsm  = eps_wenom
+  epsz  = eps_wenoz
+
   use_vode = (use_vode_in .ne. 0)
-  do_cc_burning = (do_cc_burning_in .ne. 0)
-  split_burning = (split_burning_in .ne. 0)
+  new_J_cell = (new_J_cell_in .ne. 0)
+  chem_solver = chem_solver_in
+  chem_do_weno = (chem_do_weno_in .ne. 0)
 
 end subroutine set_method_params
 
@@ -158,3 +171,23 @@ subroutine rns_set_special_tagging_flag(dummy,flag)
   double precision :: dummy 
   integer          :: flag
 end subroutine rns_set_special_tagging_flag
+
+
+subroutine set_sdc_boundary_flag()
+  use sdc_boundary_module, only : isFEval
+  isFEval = .true.
+end subroutine set_sdc_boundary_flag
+
+subroutine unset_sdc_boundary_flag()
+  use sdc_boundary_module, only : isFEval
+  isFEval = .false.
+end subroutine unset_sdc_boundary_flag
+
+subroutine rns_passinfo(lev,iter,t)
+  use passinfo_module
+  integer, intent(in) :: lev, iter
+  double precision, intent(in) :: t
+  if (lev >= 0) level = lev
+  if (iter >= 0) iteration = iter
+  if (t >= 0.d0) time = t
+end subroutine rns_passinfo

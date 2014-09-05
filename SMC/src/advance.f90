@@ -3,6 +3,7 @@ module advance_module
   use bl_error_module
   use derivative_stencil_module
   use kernels_module
+  use kernels_1d_module
   use kernels_2d_module
   use kernels_s3d_module
   use multifab_module
@@ -31,6 +32,15 @@ module advance_module
   double precision, save, private :: dt
 
   integer, public :: count_ad = 0, count_r = 0
+
+  interface
+     function get_dt_m(mrex, comp, m) result(r) bind(c)
+       import sdc_mrex, c_int, c_double
+       type(sdc_mrex), intent(in) :: mrex
+       integer(c_int), intent(in), value :: comp, m
+       real(c_double) :: r
+     end function get_dt_m
+  end interface
 
 contains
 
@@ -168,7 +178,7 @@ contains
        call build(bpt_rkstep(j), bpt_names(j))
        if (j == 1) then
           ! -rk64_time(j) is a hack.
-          ! for the first step, dt is not set yet 
+          ! for the first step, dt is not set yet
           call dUdt(U, Uprime, time, -rk64_time(j), dx, courno=courno)
        else
           call dUdt(U, Uprime, t, rk64_time(j)*dt, dx)
@@ -264,7 +274,7 @@ contains
 
     call build(bpt_sdc_iter, "sdc_iter")
     do k = 1, sdc%iters
-       call sdc_imex_sweep(sdc%imex, time, dt, 0)
+       call sdc_imex_sweep(sdc%imex, time, dt, k, 0)
 
        ! check residual
        if (sdc%tol_residual > 0.d0) then
@@ -358,26 +368,13 @@ contains
 
     type(multifab), pointer :: U, Uprime, Uprime_chem
     type(sdc_ctx),  pointer :: ctx
-
-    type(sdc_nodes), pointer :: nds
-    real(c_double),  pointer :: nodes(:)
-    real(c_double)           :: dt_m
-    integer                  :: node
+    real(c_double)          :: dt_m
 
     call c_f_pointer(Uptr, U)
     call c_f_pointer(Fptr, Uprime)
     call c_f_pointer(ctxptr, ctx)
 
-    ! hack: compute sub-step dt and wrap around appropriately
-    nds => ctx%nodes1
-    call c_f_pointer(nds%nodes, nodes, [ nds%nnodes ])
-
-    node = state%node + 1
-    if (node >= nds%nnodes) then
-       dt_m = dt * (nodes(2) - nodes(1))
-    else
-       dt_m = dt * (nodes(node+1) - nodes(node))
-    end if
+    dt_m = dt * get_dt_m(ctx%mrex, 0, state%node)
 
     if (sdc_multirate_explicit) then
        Uprime_chem => sdc_get_chemterm(ctx, state%node)
@@ -395,26 +392,13 @@ contains
 
     type(multifab), pointer :: U, Uprime, Uprime_chem
     type(sdc_ctx),  pointer :: ctx
-
-    type(sdc_nset), pointer :: nset
-    real(c_double), pointer :: nodes(:)
     real(c_double)          :: dt_m
-    integer                 :: node
 
     call c_f_pointer(Uptr, U)
     call c_f_pointer(Fptr, Uprime)
     call c_f_pointer(ctxptr, ctx)
 
-    ! hack: compute sub-step dt and wrap around appropriately
-    call c_f_pointer(ctx%mrex%nset, nset)
-    call c_f_pointer(nset%nodes, nodes, [ nset%nnodes ])
-
-    node = state%node + 1
-    if (node >= nset%nnodes) then
-       dt_m = dt * (nodes(2) - nodes(1))
-    else
-       dt_m = dt * (nodes(node+1) - nodes(node))
-    end if
+    dt_m = dt * get_dt_m(ctx%mrex, 1, state%node)
 
     if (sdc_multirate_explicit) then
        call dUdt(U, Uprime, t, dt_m, ctx%dx, include_ad=.false.)
@@ -482,7 +466,7 @@ contains
     call build(bpt_sdc_prep, "sdc_prep")
     if (first_step) then
        call sdc_mrex_set_q0(sdc%mrex, mfptr(U))
-       call sdc_mrex_spread(sdc%mrex, time)
+       call sdc_mrex_spread(sdc%mrex, time, dt)
     else
        call sdc_mrex_spread_qend(sdc%mrex)
     end if
@@ -497,7 +481,7 @@ contains
 
     call build(bpt_sdc_iter, "sdc_iter")
     do k = 1, sdc%iters
-       call sdc_mrex_sweep(sdc%mrex, time, dt, 0);
+       call sdc_mrex_sweep(sdc%mrex, time, dt, k, 0);
 
        ! check residual
        if (sdc%tol_residual > 0.d0) then
@@ -631,8 +615,8 @@ contains
     nc = ncomp(U1)
 
     !$omp parallel private(i,j,k,m,n,lo,hi,u1p,u2p,upp)
-    lo(3) = 1
-    hi(3) = 1
+    lo = 1
+    hi = 1
     do n=1,nfabs(U1)
 
        if (.not.tb_worktodo(n)) cycle
@@ -823,7 +807,10 @@ contains
           lo = tb_get_valid_lo(n)
           hi = tb_get_valid_hi(n)
 
-          if (dm .eq. 2) then
+          if (dm .eq. 1) then
+             call chemterm_1d(lo,hi,qp,qlo(1:1),qhi(1:1),upp,uplo(1:1),uphi(1:1), &
+                  upcp,upclo(1:1),upchi(1:1), dt_m_safe)
+          else if (dm .eq. 2) then
              call chemterm_2d(lo,hi,qp,qlo(1:2),qhi(1:2),upp,uplo(1:2),uphi(1:2), &
                   upcp,upclo(1:2),upchi(1:2), dt_m_safe)
           else
@@ -931,7 +918,13 @@ contains
                 lo = tb_get_block_lo(iblock,n)
                 hi = tb_get_block_hi(iblock,n)
 
-                if (dm .eq. 2) then
+                if (dm .eq. 1) then
+                   call hypterm_1d(lo,hi,dx,up,ulo(1:1),uhi(1:1),qp,qlo(1:1),qhi(1:1),&
+                        upp,uplo(1:1),uphi(1:1),dlo,dhi,blo,bhi)
+
+                   call narrow_diffterm_1d(lo,hi,dx,qp,qlo(1:1),qhi(1:1),upp,uplo(1:1),uphi(1:1), &
+                        fp,flo(1:1),fhi(1:1),mup,xip,lamp,Ddp,dlo,dhi,blo,bhi)
+                else if (dm .eq. 2) then
                    call hypterm_2d(lo,hi,dx,up,ulo(1:2),uhi(1:2),qp,qlo(1:2),qhi(1:2),&
                         upp,uplo(1:2),uphi(1:2),dlo,dhi,blo,bhi)
 
@@ -959,7 +952,7 @@ contains
 
              qp => dataptr(Q,n)
              qxp => dataptr(qx, n)
-             qyp => dataptr(qy, n)
+             if (dm .ge. 2) qyp => dataptr(qy, n)
              if (dm .eq. 3) qzp => dataptr(qz, n)
 
              fp => dataptr(Fdif,n)
@@ -971,8 +964,10 @@ contains
              qhi = ubound(qp)
              qxlo = lbound(qxp)
              qxhi = ubound(qxp)
-             qylo = lbound(qyp)
-             qyhi = ubound(qyp)
+             if (dm .ge. 2) then
+                qylo = lbound(qyp)
+                qyhi = ubound(qyp)
+             end if
              if (dm .eq. 3) then
                 qzlo = lbound(qzp)
                 qzhi = ubound(qzp)
@@ -988,8 +983,10 @@ contains
                 lo = tb_get_block_lo(iblock,n)
                 hi = tb_get_block_hi(iblock,n)
 
-                if (dm .eq. 2) then
-                   call bl_error("2D not supported for S3D mode")
+                if (dm .eq. 1) then
+                   call bl_error("1D not supported for wide (i.e., S3D) stencil")
+                else if (dm .eq. 2) then
+                   call bl_error("2D not supported for wide (i.e., S3D) stencil")
                 else
                    call s3d_diffterm_1_3d(lo,hi,dx,qp,qlo(1:3),qhi(1:3),  &
                         fp,flo(1:3),fhi(1:3),    &
@@ -1003,19 +1000,25 @@ contains
           !$omp end parallel
 
           call multifab_fill_boundary_nowait(qx, qx_fb_data, idim=1)
-          call multifab_fill_boundary_nowait(qy, qy_fb_data, idim=2)
+          if (dm .ge. 2) then
+             call multifab_fill_boundary_nowait(qy, qy_fb_data, idim=2)
+          end if
           if (dm .eq. 3) then
              call multifab_fill_boundary_nowait(qz, qz_fb_data, idim=3)
           end if
           if (overlap_comm_comp) then
              call multifab_fill_boundary_test(qx, qx_fb_data, idim=1)
-             call multifab_fill_boundary_test(qy, qy_fb_data, idim=2)
+             if (dm .ge. 2) then
+                call multifab_fill_boundary_test(qy, qy_fb_data, idim=2)
+             end if
              if (dm .eq. 3) then
                 call multifab_fill_boundary_test(qz, qz_fb_data, idim=3)
              end if
           else
              call multifab_fill_boundary_finish(qx, qx_fb_data, idim=1)
-             call multifab_fill_boundary_finish(qy, qy_fb_data, idim=2)
+             if (dm .ge. 2) then
+                call multifab_fill_boundary_finish(qy, qy_fb_data, idim=2)
+             end if
              if (dm .eq. 3) then
                 call multifab_fill_boundary_finish(qz, qz_fb_data, idim=3)
              end if
@@ -1044,8 +1047,12 @@ contains
                 lo = tb_get_block_lo(iblock,n)
                 hi = tb_get_block_hi(iblock,n)
 
-                if (dm .eq. 2) then
-                   call bl_error("2D not supported for S3D mode")
+                if (dm .eq. 1) then
+                   call hypterm_1d(lo,hi,dx,up,ulo(1:1),uhi(1:1),qp,qlo(1:1),qhi(1:1),&
+                        upp,uplo(1:1),uphi(1:1),dlo,dhi,blo,bhi)
+                else if (dm .eq. 2) then
+                   call hypterm_2d(lo,hi,dx,up,ulo(1:2),uhi(1:2),qp,qlo(1:2),qhi(1:2),&
+                        upp,uplo(1:2),uphi(1:2),dlo,dhi,blo,bhi)
                 else
                    call hypterm_3d(lo,hi,dx,up,ulo(1:3),uhi(1:3),qp,qlo(1:3),qhi(1:3),&
                         upp,uplo(1:3),uphi(1:3),dlo,dhi,blo,bhi)
@@ -1056,7 +1063,9 @@ contains
 
           if (overlap_comm_comp) then
              call multifab_fill_boundary_finish(qx, qx_fb_data, idim=1)
-             call multifab_fill_boundary_finish(qy, qy_fb_data, idim=2)
+             if (dm .ge. 2) then
+                call multifab_fill_boundary_finish(qy, qy_fb_data, idim=2)
+             end if
              if (dm .eq. 3) then
                 call multifab_fill_boundary_finish(qz, qz_fb_data, idim=3)
              end if
@@ -1070,7 +1079,7 @@ contains
 
              qp  => dataptr(Q , n)
              qxp => dataptr(qx, n)
-             qyp => dataptr(qy, n)
+             if (dm .ge. 2) qyp => dataptr(qy, n)
              if (dm .eq. 3) qzp => dataptr(qz, n)
 
              upp=> dataptr(Uprime,n)
@@ -1085,8 +1094,10 @@ contains
              qhi = ubound(qp)
              qxlo = lbound(qxp)
              qxhi = ubound(qxp)
-             qylo = lbound(qyp)
-             qyhi = ubound(qyp)
+             if (dm .ge. 2) then
+                qylo = lbound(qyp)
+                qyhi = ubound(qyp)
+             end if
              if (dm .eq. 3) then
                 qzlo = lbound(qzp)
                 qzhi = ubound(qzp)
@@ -1104,8 +1115,10 @@ contains
                 lo = tb_get_block_lo(iblock,n)
                 hi = tb_get_block_hi(iblock,n)
 
-                if (dm .eq. 2) then
-                   call bl_error("2D not supported for S3D mode")
+                if (dm .eq. 1) then
+                   call bl_error("1D not supported for wide (i.e., S3D) stencil")
+                else if (dm .eq. 2) then
+                   call bl_error("2D not supported for wide (i.e., S3D) stencil")
                 else
                    call s3d_diffterm_2_3d(lo,hi,dx,qp,qlo(1:3),qhi(1:3),  &
                         upp,uplo(1:3),uphi(1:3), fp,flo(1:3),fhi(1:3),    &
@@ -1167,7 +1180,9 @@ contains
 
        courno_thread = 0.d0
 
-       if (dm .eq. 2) then
+       if (dm .eq. 1) then
+          call comp_courno_1d(lo,hi,dx,qp,qlo(1:1),qhi(1:1),courno_thread)
+       else if (dm .eq. 2) then
           call comp_courno_2d(lo,hi,dx,qp,qlo(1:2),qhi(1:2),courno_thread)
        else
           call comp_courno_3d(lo,hi,dx,qp,qlo(1:3),qhi(1:3),courno_thread)
@@ -1244,7 +1259,10 @@ contains
        hi = tb_get_valid_hi(n)
 
        dt = 1.d-10
-       if (dm .eq. 2) then
+       if (dm .eq. 1) then
+          call chemterm_1d(lo,hi,qp,qlo(1:1),qhi(1:1),upp,uplo(1:1),uphi(1:1), &
+               upcp,upclo(1:1),upchi(1:1), dt)
+       else if (dm .eq. 2) then
           call chemterm_2d(lo,hi,qp,qlo(1:2),qhi(1:2),upp,uplo(1:2),uphi(1:2), &
                upcp,upclo(1:2),upchi(1:2), dt)
        else

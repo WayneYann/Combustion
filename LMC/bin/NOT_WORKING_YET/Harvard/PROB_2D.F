@@ -1876,9 +1876,3 @@ c
       print *,'FORT_VELFIL not set up properly'
       STOP
       end
-
-
-      subroutine FORT_ACTIVECONTROL(coft,time,dt,myproc,step,restart)
-      print *,'FORT_ACTIVECONTROL not set up properly'
-      STOP
-      end

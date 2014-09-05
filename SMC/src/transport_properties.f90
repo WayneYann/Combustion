@@ -61,7 +61,13 @@ contains
           whi(idim) = min(whi(idim), hi(idim)+ngwork)
        end do
 
-       if (dm .eq. 2) then
+       if (dm .eq. 1) then
+          if (use_tranlib) then
+             call tranlib_1d(lo,hi,ngq,qp,mup,xip,lamp,dp,wlo,whi,lgco)
+          else
+             call get_trans_prop_1d(lo,hi,ngq,qp,mup,xip,lamp,dp,wlo,whi,lgco)
+          end if
+       else if (dm .eq. 2) then
           if (use_tranlib) then
              call tranlib_2d(lo,hi,ngq,qp,mup,xip,lamp,dp,wlo,whi,lgco)
           else
@@ -78,6 +84,88 @@ contains
     end do
 
   end subroutine get_transport_properties
+
+
+  subroutine get_trans_prop_1d(lo,hi,ng,q,mu,xi,lam,Ddiag,wlo,whi,gco)
+    use probin_module, only : use_bulk_viscosity
+    logical, intent(in) :: gco  ! ghost cells only
+    integer, intent(in) :: lo(1), hi(1), ng, wlo(1), whi(1)
+    double precision,intent(in )::    q(lo(1)-ng:hi(1)+ng,nprim)
+    double precision,intent(out)::   mu(lo(1)-ng:hi(1)+ng)
+    double precision,intent(out)::   xi(lo(1)-ng:hi(1)+ng)
+    double precision,intent(out)::  lam(lo(1)-ng:hi(1)+ng)
+    double precision,intent(out)::Ddiag(lo(1)-ng:hi(1)+ng,nspecies)
+
+    integer, parameter :: np = 4
+
+    integer :: i, n, nptot, qxn, iwrk, ib, nb, istart, iend
+    double precision :: rwrk, Cp(nspecies)
+    double precision :: L1Z(np), L2Z(np), DZ(np,nspecies), XZ(np,nspecies), &
+         CPZ(np,nspecies)
+
+    if (gco) call bl_error("get_trans_prop_1d: ghost-cells-only not supported")
+
+    nptot = whi(1) - wlo(1) + 1
+    nb = nptot / np
+    if (nb*np .ne. nptot) then
+       print * , 'grid size: ', nptot
+       call bl_error("get_trans_prop_1d: grid size not supported")
+    end if
+
+    !$omp parallel private(i,n,qxn,iwrk,ib,istart,iend,rwrk) &
+    !$omp private(Cp,L1Z,L2Z,DZ,XZ,CPZ)
+
+    call egzini(np)
+              
+    !$omp do
+    do ib=0,nb-1
+       
+       istart = wlo(1) + ib*np
+       iend = istart + np - 1
+
+       do n=1,nspecies
+          qxn = qx1+n-1
+          do i=istart,iend
+             XZ(i-istart+1,n) = q(i,qxn)
+          end do
+       end do
+          
+       if (use_bulk_viscosity) then
+          do i=istart,iend
+             call ckcpms(q(i,qtemp), iwrk, rwrk, Cp)
+             CPZ(i-istart+1,:) = Cp
+          end do
+       else
+          CPZ = 0.d0
+       end if
+       
+       call egzpar(q(istart:iend,qtemp), XZ, CPZ)
+       
+       call egze3(q(istart:iend,qtemp), mu(istart:iend))
+       
+       if (use_bulk_viscosity) then
+          call egzk3(q(istart:iend,qtemp), xi(istart:iend))
+       else
+          xi(istart:iend) = 0.d0
+       end if
+       
+       call egzl1( 1.d0, XZ, L1Z)
+       call egzl1(-1.d0, XZ, L2Z)
+       lam(istart:iend) = 0.5d0*(L1Z+L2Z)
+       
+       call EGZVR1(q(istart:iend,qtemp), DZ)
+       do n=1,nspecies
+          do i=istart,iend
+             Ddiag(i,n) = DZ(i-istart+1,n)
+          end do
+       end do
+       
+    end do
+    !$omp end do
+    !$omp end parallel
+
+  end subroutine get_trans_prop_1d
+
 
   subroutine get_trans_prop_2d(lo,hi,ng,q,mu,xi,lam,Ddiag,wlo,whi,gco)
     use probin_module, only : use_bulk_viscosity
@@ -330,6 +418,7 @@ contains
     end if
 
   end subroutine get_trans_prop_2d
+
 
   subroutine get_trans_prop_3d(lo,hi,ng,q,mu,xi,lam,Ddiag,wlo,whi,gco)
     use probin_module, only : use_bulk_viscosity
@@ -674,6 +763,53 @@ contains
     end if
 
   end subroutine get_trans_prop_3d
+
+
+  subroutine tranlib_1d(lo,hi,ng,q,mu,xi,lam,Ddiag,wlo,whi,gco)
+    logical, intent(in) :: gco  ! ghost cells only
+    integer, intent(in) :: lo(1), hi(1), ng, wlo(1), whi(1)
+    double precision,intent(in )::    q(lo(1)-ng:hi(1)+ng,nprim)
+    double precision,intent(out)::   mu(lo(1)-ng:hi(1)+ng)
+    double precision,intent(out)::   xi(lo(1)-ng:hi(1)+ng)
+    double precision,intent(out)::  lam(lo(1)-ng:hi(1)+ng)
+    double precision,intent(out)::Ddiag(lo(1)-ng:hi(1)+ng,nspecies)
+
+    integer :: i, n, iwrk
+    double precision :: Xt(nspecies), Dt(nspecies), Wbar, rwrk
+
+    !$omp parallel private(i,n,Xt,Dt,Wbar,iwrk,rwrk)
+    !$omp do
+    do i=wlo(1),whi(1)
+
+       if (gco) then
+          if ( i.ge.lo(1).and.i.le.hi(1) ) then ! not a ghost cell
+             cycle 
+          end if
+       end if
+       
+       do n=1,nspecies
+          Xt(n) = q(i,qx1+n-1)
+       end do
+       
+       call mcavis(q(i,qtemp),Xt,mcwork,mu(i))
+
+       xi(i) = 0.d0
+
+       call mcacon(q(i,qtemp),Xt,mcwork,lam(i))
+       
+       call mcadif(q(i,qpres),q(i,qtemp),Xt,mcwork,Dt)
+       
+       call ckmmwx(Xt, iwrk, rwrk, Wbar)
+       rwrk = q(i,qrho) / Wbar
+       do n=1,nspecies
+          Ddiag(i,n) = rwrk * Dt(n) * molecular_weight(n)
+       end do
+
+    end do
+    !$omp end do
+    !$omp end parallel
+
+  end subroutine tranlib_1d
 
 
   subroutine tranlib_2d(lo,hi,ng,q,mu,xi,lam,Ddiag,wlo,whi,gco)

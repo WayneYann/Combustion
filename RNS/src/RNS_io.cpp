@@ -40,6 +40,27 @@ RNS::restart (Amr&     papa,
 	flux_reg = new FluxRegister(grids,crse_ratio,level,NUM_STATE);
     }
 
+    BL_ASSERT(chemstatus == 0);
+    if (! ChemDriver::isNull()) {
+      chemstatus = new MultiFab(grids,1,1);
+      chemstatus->setVal(0.0,1);
+    }
+
+    BL_ASSERT(RK_k == 0);
+    BL_ASSERT(flux_reg_RK == 0);
+#ifndef USE_SDCLIB
+    if (RK_order > 2) {
+	RK_k = new MultiFab[RK_order];
+	for (int i=0; i<RK_order; i++) {
+	    RK_k[i].define(grids,NUM_STATE,0,Fab_allocate);
+	}
+	if (flux_reg) 
+	{
+	    flux_reg_RK = new FluxRegister(grids,crse_ratio,level,NUM_STATE);	    
+	}
+    }
+#endif
+
     // get the elapsed CPU time to now;
     if (level == 0 && ParallelDescriptor::IOProcessor())
     {

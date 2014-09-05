@@ -3,6 +3,7 @@
 #define _HEATTRANSFER_H_ 
 
 #ifdef BL_LANG_FORT
+#    define FORT_ACTIVECONTROL             activecontrol
 #    define FORT_SET_SCAL_NUMB             setscnum
 #    define FORT_GETPAMB                   getpamb
 #    define FORT_COMPUTE_RHODGRADHDOTGRADY computerhodgradhdotgrady
@@ -40,6 +41,7 @@
 #    define FORT_GRADWBAR                  gradwbar
 #else
 #  if  defined(BL_FORT_USE_UPPERCASE)
+#    define FORT_ACTIVECONTROL             ACTIVECONTROL
 #    define FORT_SET_SCAL_NUMB             SETSCNUM
 #    define FORT_GETPAMB                   GETPAMB
 #    define FORT_COMPUTE_RHODGRADHDOTGRADY COMPUTERHODGRADHDOTGRADY
@@ -76,6 +78,7 @@
 #    define FORT_SMOOTH                    SMOOTH
 #    define FORT_GRADWBAR                  GRADWBAR
 #  elif defined(BL_FORT_USE_LOWERCASE)
+#    define FORT_ACTIVECONTROL             activecontrol
 #    define FORT_SET_SCAL_NUMB             setscnum
 #    define FORT_GETPAMB                   getpamb
 #    define FORT_COMPUTE_RHODGRADHDOTGRADY computerhodgradhdotgrady
@@ -112,6 +115,7 @@
 #    define FORT_SMOOTH                    smooth
 #    define FORT_GRADWBAR                  gradwbar
 #  elif defined(BL_FORT_USE_UNDERSCORE)
+#    define FORT_ACTIVECONTROL             activecontrol_
 #    define FORT_SET_SCAL_NUMB             setscnum_
 #    define FORT_GETPAMB                   getpamb_
 #    define FORT_COMPUTE_RHODGRADHDOTGRADY computerhodgradhdotgrady_
@@ -152,6 +156,14 @@
 #include <ArrayLim.H>
 
 extern "C" {
+
+      void FORT_ACTIVECONTROL(const Real* fuelmass,
+			      const Real* time,
+			      const Real* crsedt,
+                              const int*  myproc,
+                              const int*  step,
+                              const int*  restart,
+                              const int*  usetemp);
 
     void FORT_SET_SCAL_NUMB(const int* Density,
 			    const int* Temp,

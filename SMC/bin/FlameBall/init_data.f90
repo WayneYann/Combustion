@@ -43,15 +43,15 @@ contains
   subroutine init_data_nd(lo,hi,ng,dx,cons,phlo,phhi,dm,dim3)
 
     use variables_module, only : irho, imx,imy,imz,iene,iry1,ncons, iH2, iO2, iN2
-    use chemistry_module, only : nspecies, patm
+    use chemistry_module, only : nspecies, patm, get_species_index
     use probin_module, only : prob_type, pertmag, rfire, Tinit, uinit, vinit, winit, &
-         prob_dim, cellshift, T0, T1
+         prob_dim, cellshift, T0, T1, fuel_name
 
     integer,          intent(in   ) :: lo(3),hi(3),ng,dm,dim3
     double precision, intent(in   ) :: dx(dm),phlo(dm),phhi(dm)
     double precision, intent(inout) :: cons(-ng+lo(1):hi(1)+ng,-ng+lo(2):hi(2)+ng,-ng*dim3+lo(3):hi(3)+ng*dim3,ncons)
 
-    integer          :: i,j,k,n, ii, jj, kk, nimages
+    integer          :: i,j,k,n, ii, jj, kk, nimages, ifuel
     double precision :: x, y, z, r
 
     double precision pmf_vals(nspecies+3)
@@ -86,6 +86,9 @@ contains
          nimages = 3
 
     cons = 0.0d0
+
+    ifuel = get_species_index(fuel_name)
+    if (ifuel .le. 0) ifuel = iH2
 
     !$omp parallel do &
     !$omp private(i,j,k,n,x,y,z,r,pmf_vals) &
@@ -212,9 +215,9 @@ contains
                 u3t = winit
 
                 Xt = 0.0d0
-                Xt(iH2) = 0.116d0
+                Xt(ifuel) = 0.116d0
                 Xt(iO2) = 0.23d0
-                Xt(iN2) = 1.0d0 - Xt(iH2) - Xt(iO2)
+                Xt(iN2) = 1.0d0 - Xt(ifuel) - Xt(iO2)
 
              else if (prob_type .eq. 4 ) then
 
@@ -222,7 +225,7 @@ contains
                 Tt = T0
 
                 Xt = 0.0d0
-                Xt(iH2) = 0.10d0
+                Xt(ifuel) = 0.10d0
                 Xt(iO2) = 0.25d0
 
                 do kk = -nimages, nimages
@@ -240,7 +243,7 @@ contains
                          
                          Pt = Pt        + 0.1d0*patm * exp(-(r / rfire)**2)
                          Tt = Tt           + (T1-T0) * exp(-(r / rfire)**2)
-                         Xt(iH2) = Xt(iH2) + 0.025d0 * exp(-(r / rfire)**2)
+                         Xt(ifuel) = Xt(ifuel) + 0.025d0 * exp(-(r / rfire)**2)
                          Xt(iO2) = Xt(iO2) - 0.050d0 * exp(-(r / rfire)**2)
 
                       end do
@@ -270,7 +273,7 @@ contains
                 u2t = -cos(kx*x)*sin(ky*y)*cos(kz*z) * 300.d0
                 u3t = 0.d0
               
-                Xt(iN2) = 1.0d0 - Xt(iH2) - Xt(iO2)
+                Xt(iN2) = 1.0d0 - Xt(ifuel) - Xt(iO2)
 
              else
                 call bl_error("Unknown prob_type")

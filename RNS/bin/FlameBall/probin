@@ -11,5 +11,6 @@
 
   ! for problem type 4
   rfire = 0.01d0
-
+  
+!  fuel_name = "CH3OCH3"
 /

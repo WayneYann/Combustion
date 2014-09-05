@@ -7,7 +7,7 @@ USE_WORK_SPACE_MODULE := TRUE
 
 include $(BOXLIB_HOME)/Tools/C_mk/Make.defs
 
-Bdirs 	:= src src/Src_$(DIM)d src/Src_nd src/EOS src/Burner
+Bdirs 	:= src src/Src_$(DIM)d src/Src_nd src/EOS src/Burner src/TurbInflow
 
 # Chemistry
 ifneq (${CHEMISTRY_MODEL}, NULL)
@@ -22,6 +22,11 @@ Pdirs 	:= C_BaseLib C_AMRLib C_BoundaryLib
 
 Bpack	+= $(foreach dir, $(Pdirs), $(BOXLIB_HOME)/Src/$(dir)/Make.package)
 Blocs	+= $(foreach dir, $(Pdirs), $(BOXLIB_HOME)/Src/$(dir))
+
+
+ifeq ($(USE_COLOROUTPUT), TRUE)
+  DEFINES += -DUSE_COLOROUTPUT
+endif
 
 ifeq ($(USE_FUTURE), TRUE)
   DEFINES += -DUSE_FUTURE
@@ -61,8 +66,19 @@ else ifeq (${CHEMISTRY_MODEL}, LUDME)
   cEXE_sources += LuDME.c
   vpath %.f $(VPATH_LOCATIONS) ${MECHDIR}/Lu/PMFs
   vpath %.c $(VPATH_LOCATIONS) ${MECHDIR}/Lu
+else ifeq (${CHEMISTRY_MODEL}, DODECANEWANG)
+  cEXE_sources += dodecane_wang.c
+  vpath %.c $(VPATH_LOCATIONS) ${MECHDIR}/dodecane_wang
+else ifeq (${CHEMISTRY_MODEL}, DODECANEZHAO1)
+  cEXE_sources += dodecane_zhao_1.c
+  vpath %.c $(VPATH_LOCATIONS) ${MECHDIR}/dodecane_zhao_1
+else ifeq (${CHEMISTRY_MODEL}, INERT)
+  cEXE_sources += inert30.c
+  vpath %.c $(VPATH_LOCATIONS) ${MECHDIR}/inert
 else ifeq (${CHEMISTRY_MODEL}, NULL)
   DEFINES += -DNULLCHEMISTRY
+else ifeq (${CHEMISTRY_MODEL}, LOCAL)
+  # chemistry files are in local problem directory 
 else
   $(error "Unknown CHEMISTRY_MODEL: $(CHEMISTRY_MODEL)")
 endif
@@ -83,12 +99,13 @@ CEXE_sources += buildInfo.cpp
 CEXE_headers += $(BOXLIB_HOME)/Tools/C_scripts/buildInfo.H
 INCLUDE_LOCATIONS +=  $(BOXLIB_HOME)/Tools/C_scripts
 
-buildInfo.cpp: $(BOXLIB_HOME)/Tools/C_scripts/make_build_info_cpp
-	$(BOXLIB_HOME)/Tools/C_scripts/make_build_info_cpp "$(BOXLIB_HOME)" \
-            "$(COMP)" "$(FCOMP)" \
-            "AUX=$(CHEMISTRY_MODEL)" \
-            "GIT=$(TOP)" "GIT=$(BOXLIB_HOME)" "GIT=$(SDCLIB_HOME)"
-
+buildInfo.cpp: 
+	$(BOXLIB_HOME)/Tools/C_scripts/makebuildinfo_C.py \
+          --boxlib_home "$(BOXLIB_HOME)" \
+          --COMP "$(COMP)" \
+          --FCOMP "$(FCOMP)" \
+          --AUX "$(CHEMISTRY_MODEL)" \
+          --GIT "$(TOP) $(BOXLIB_HOME) $(SDCLIB_HOME)" 
 
 vpath %.c   . $(VPATH_LOCATIONS)
 vpath %.cpp . $(VPATH_LOCATIONS)

@@ -199,7 +199,7 @@ zlo_boundary_type                   character          "periodic"
 # value set through {\tt bcz\_hi}
 zhi_boundary_type                   character          "periodic"
 
-# dimensionality (valid value is 2 or 3)
+# dimensionality (valid value is 1, 2 or 3)
 dm_in                               integer            3
 
 # The largest grid size that will be created using make\_new\_grids.
@@ -282,7 +282,7 @@ plot_magvort                        logical            .true.
 
 # plot omegadot in plotfile
 plot_omegadot                       logical            .false.
-plot_dYdt                           logical            .true.
+plot_dYdt                           logical            .false.
 plot_heatRelease                    logical            .true.
 plot_fuelConsumption                logical            .false.
 fuel_name                           character          "none"

@@ -2009,17 +2009,6 @@ c
          end do
       end do
       end
-      
-      subroutine FORT_ACTIVECONTROL(coft,time,dt,myproc,step,restart)
-
-      implicit none
-
-      REAL_T coft,time,dt,vslope,slocal,V_new,dVmax
-      integer myproc,step,ierr,restart
-
-      call bl_abort('Should not be in FORT_ACTIVECONTROL')
-
-      end
 
 c
 c Fill x & y velocity at once.

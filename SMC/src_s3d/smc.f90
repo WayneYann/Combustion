@@ -263,7 +263,7 @@ subroutine smc()
 
      do istep = init_step, max_step
 
-        if ( verbose .ge. 1 ) then
+        if ( verbose .gt. 2 ) then
            if ( parallel_IOProcessor() ) then
               print*, ' '
               print *, 'MEMORY STATS AT START OF TIMESTEP ', istep
