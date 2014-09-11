@@ -33,11 +33,11 @@ USE_VELOCITY    = FALSE
 USE_TDEPFORCING = FALSE
 
 # Choose model (from list below), and pmf file
-#CHEMISTRY_MODEL = DRM19
-#fEXE_sources += drm19Soln_seed_0.125.f
+CHEMISTRY_MODEL = DRM19
+fEXE_sources += drm19Soln_seed_1.00.f
 
-CHEMISTRY_MODEL = WANGDODECANE
-fEXE_sources += wang_dodecane_phi_1000.f
+#CHEMISTRY_MODEL = WANGDODECANE
+#fEXE_sources += wang_dodecane_phi_1000.f
 
 Blocs   := .
 

@@ -3,13 +3,14 @@
 
   V_in = 0.0
 
-  standoff = -0.024
   standoff = -0.014
+  standoff = -0.024
 
   pertmag = 0.
 
   max_trac_lev = 4
   flametracval = 1.e-4
+  flametracval = 1.e-5
 
   max_temp_lev = 0
   temperr = 500
@@ -19,8 +20,9 @@
   vorterr = 1000.
 
   phi_in = 1.
-  T_in = 298.
+  phi_in = .7
   T_in = 443.
+  T_in = 298.
 
  /
  &heattransin
@@ -34,6 +36,7 @@
  /
   &control
   h_control = .002
+  h_control = .006
   changeMax_control = .2
   tau_control = 2.e-4
   sest = 1.5

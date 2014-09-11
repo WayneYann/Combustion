@@ -22,7 +22,8 @@ proj.proj_2 = 1
 ns.num_divu_iters = 3
 
 #  ht.plot_consumption=0
-ns.consumptionName = NC12H26
+#ns.consumptionName = NC12H26
+ns.consumptionName = CH4
 ht.plot_heat_release=1
 ht.plot_rhoY=0
 ht.plot_molefrac=1
@@ -54,23 +55,23 @@ ns.do_group_bndry_fills = 1
 cg.cg_solver=1
 
 geometry.prob_lo    = 0.0 0.0
-geometry.prob_hi    = 0.000375 0.012
 geometry.prob_hi    = 0.0001875 0.012
-amr.n_cell          = 8 512
-amr.n_cell          = 16 1024
+geometry.prob_hi    = 0.000375 0.012
+amr.n_cell          = 8 256
 amr.blocking_factor = 8
-max_step            = 400
+max_step            = 5000
 amr.check_file      = chk_2d_
 amr.plot_file       = plt_2d_
 amr.check_int       = 10
 amr.plot_int        = 10
-ns.cfl              = 0.35
 ns.cfl              = 0.7
+ns.cfl              = 0.1
+ns.cfl              = 0.45
 
 amr.max_grid_size   = 256
 
 amr.v=1
-amr.max_level =  1            # maximum level number allowed
+amr.max_level =  0            # maximum level number allowed
 amr.ref_ratio       = 2 2 2 2 # refinement ratio
 amr.regrid_int      = 2       # how often to regrid
 amr.n_error_buf     = 4 2 1 2 # number of buffer cells in error est
@@ -115,7 +116,8 @@ ns.divu_ceiling = 1
 ns.divu_dt_factor = .4
 ns.min_rho_divu_ceiling = .01
 
-ns.fuelName        = NC12H26
+#ns.fuelName        = NC12H26
+ns.fuelName        = CH4
 ns.oxidizerName    = O2
 ns.flameTracName   = H
 ns.unity_Le = 0
@@ -157,6 +159,7 @@ diffuse.Rhs_in_abs_tol = 1
 proj.proj_tol       = 1.0e-1  # tolerence for projections
 proj.proj_tol       = 1.0e-11  # tolerence for projections
 proj.sync_tol       = 1.0e-8  # tolerence for projections
+proj.sync_tol       = 1.0e-9  # tolerence for projections
 #proj.proj_tol       = 1.0e-9  # tolerence for projections
 #proj.sync_tol       = 1.0e-6  # tolerence for projections
 proj.rho_wgt_vel_proj = 0      # 0 => const den proj, 1 => rho weighted
