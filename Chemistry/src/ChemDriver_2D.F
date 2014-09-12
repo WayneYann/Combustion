@@ -966,6 +966,14 @@ c
             T_cell             = Told(i,j)
             FuncCount(i,j)     = 0
 
+!           if(i.eq.0 .and. j.eq.0)then
+!               write(6,*) " in conpsolv"
+!               print *, "Z", Z(1:Nspec)
+!               print *, "c_0", c_0(1:Nspec)
+!               print *, "rhoH_INIT", rhoH_INIT
+!               print *, "T_cell", T_cell
+!           endif
+
             if (do_diag.eq.1) then
                FuncCount(i,j) = 0
                CALL CKYTCP(RWRK(NP),T_cell,Z(1),IWRK(ckbi),RWRK(ckbr),Ct)

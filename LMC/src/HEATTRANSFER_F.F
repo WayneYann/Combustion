@@ -214,12 +214,18 @@ c     -- rbp
       integer i1
       integer nfilled,ifill
       logical found_it
+      save nfilled
+
+      if(step .eq. 0 )nfilled = navg_pnts+1
+
+c     print *, " entering control ", restart,step,nfilled
 
       if (restart.ne.0) then
          nfilled = navg_pnts+1
          open(13,file=ac_hist_file,form='formatted',
      &        status='old',iostat=ierr)
          found_it = .false.
+c        print *, " opening file ", ierr
          if (ierr .eq. 0) then
             if (myproc.eq.0) then
                print*, 'Setting active control from history file ...'
@@ -230,6 +236,8 @@ c
 c                 This read(13) must correspond to the below write(13)
 c
                read(13,1000,iostat=ierr) i1,r1,r2,r3,r4,r5,r6,r7
+c              print *," found stuff",i1,r1,r2,r3,r4,r5,r6,r7
+c              print *, "ierr ", ierr
                if (ierr.ne.0) goto 100
                if(step-i1.ge.0 .and. step-i1 .le. navg_pnts)then
                   nfilled = nfilled -1
@@ -248,11 +256,14 @@ c                 tbase_control = r3
                   dV_control = r5
                   sest = r6
                   coft_old = r7
+c                 print *," found it " ,V_in
 
                endif
             enddo
 
          else
+
+            nfilled = navg_pnts+1
 
             if (myproc.eq.0) then
                open(13,file=ac_hist_file,form='formatted', status='new')
@@ -275,7 +286,12 @@ c                 tbase_control = r3
             endif
          close(13)
          return
+
+      else
+
       end if
+
+c     print *, " entering loop ", sest
 
       if (usetemp.eq.0 .and. coft_old .lt. zero) coft_old = coft
 
@@ -295,6 +311,7 @@ c                 tbase_control = r3
       vel_points(0) = V_in
       cntl_points(0) = coft
 c     sest = (one - corr)*sest + corr*slocal
+c     print *," starting main control ", nfilled,sest,slocal
  
       if(nfilled .le. 0)then
 c           if (myproc.eq.0) then
@@ -317,10 +334,15 @@ c           print *,'velintegral ',velintegral,velintegral/(time_points(0)-time_
 c           print *,'movement ',(cntl_points(0) - cntl_points(navg_pnts))
 c           call flush(6)
 c        endif
+c     print *," first ", nfilled,sest,slocal
       else
         nfilled = nfilled - 1
+        if(step.ne. 0)then
         sest = (one - corr)*sest + corr*slocal
+        endif
+c     print *," second ", nfilled,sest,slocal
       endif
+c     print *," third ", nfilled,sest,slocal
 #if 1
 c    linear
 c     vslope = two*((cfix-coft)/(scale_control*tau_control) + sest - V_in)/tau_control
