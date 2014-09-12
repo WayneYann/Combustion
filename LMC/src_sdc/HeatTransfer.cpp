@@ -5361,11 +5361,15 @@ HeatTransfer::mac_sync ()
         {
             int s_ind = comp - BL_SPACEDIM;
             //
-            // This routine does a sync advect step for a single 
-            // scalar component. The half-time edge states are passed in.
+	    // Ssync contains the adv/diff coarse-fine flux mismatch divergence
+            // This routine does a sync advect step for a single scalar component,
+	    // i.e., subtracts the D(Ucorr rho q) term from Ssync
+	    // The half-time edge states are passed in.
             // This routine is useful when the edge states are computed
             // in a physics-class-specific manner. (For example, as they are
             // in the calculation of div rho U h = div U sum_l (rho Y)_l h_l(T)).
+	    // the density component now contains (delta rho)^sync since there
+	    // is no diffusion for this term
             //
             mac_projector->mac_sync_compute(level,Ssync,comp,s_ind,
                                             EdgeState,comp,Rh,
@@ -5403,6 +5407,7 @@ HeatTransfer::mac_sync ()
                 delta_ssync.copy(S_new[i],grd,istate,grd,0,1); // delta_ssync = (rho*q)^{n+1,p}
                 delta_ssync.divide(S_new[i],grd,Density,0,1); // delta_ssync = q^{n+1,p}
                 FArrayBox& s_sync = (*Ssync)[i]; // Ssync = RHS of Eq (18), (19) without the q^{n+1,p} * (delta rho)^sync terms
+                                                 // note that the density component contains (delta rho)^sync
                 delta_ssync.mult(s_sync,grd,Density-BL_SPACEDIM,0,1); // delta_ssync = q^{n+1,p} * (delta rho)^sync
                 (*DeltaSsync)[i].copy(delta_ssync,grd,0,grd,iconserved,1); // DeltaSsync = q^{n+1,p} * (delta rho)^sync
                 s_sync.minus(delta_ssync,grd,0,istate-BL_SPACEDIM,1); // Ssync = Ssync - q^{n+1,p} * (delta rho)^sync
