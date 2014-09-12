@@ -4866,6 +4866,8 @@ HeatTransfer::advance_chemistry (MultiFab&       mf_old,
                                  int             nCompF,
                                  bool            use_stiff_solver)
 {
+    BL_PROFILE("HeatTransfer:::advance_chemistry()");
+
     const Real strt_time = ParallelDescriptor::second();
 
     const bool do_avg_down_chem = avg_down_chem
