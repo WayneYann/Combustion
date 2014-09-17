@@ -5288,14 +5288,15 @@ HeatTransfer::mac_sync ()
     const Real dt             = parent->dtLevel(level);
     MultiFab*  Rh             = get_rho_half_time();
     //
-    // Will hold q^{n+1,p} * (delta rho)^sync for conserved quantities
+    // DeltaSsync Will hold q^{n+1,p} * (delta rho)^sync for conserved quantities
     // as defined before Eq (18) in DayBell:2000.  Note that in the paper, 
     // Eq (18) is missing Y_m^{n+1,p} * (delta rho)^sync in the RHS
     // and Eq (19) is missing the h^{n+1,p} * (delta rho)^sync in the RHS.
     //
     MultiFab*  DeltaSsync = 0;
     //
-    // Compute the corrective pressure used to compute U^{ADV,corr} in mac_sync_compute
+    // Compute the corrective pressure, mac_sync_phi, used to 
+    // compute U^{ADV,corr} in mac_sync_compute
     //
     mac_projector->mac_sync_solve(level,dt,Rh,fine_ratio);
 
@@ -5322,10 +5323,13 @@ HeatTransfer::mac_sync ()
     // This consists of two steps
     //
     // 1. compute U^{ADV,corr} as the gradient of mac_sync_phi
-    // 2. add -D^MAC ( U^{ADV,corr} * rho * q)^{n+1/2} ) to flux registers
+    // 2. add -D^MAC ( U^{ADV,corr} * rho * q)^{n+1/2} ) to flux registers,
+    //    which already contain the delta F adv/diff flux mismatches
     //
 
+    //
     // velocities
+    //
     if (do_mom_diff == 0) 
     {
         mac_projector->mac_sync_compute(level,u_mac,Vsync,Ssync,Rh,
@@ -5370,7 +5374,7 @@ HeatTransfer::mac_sync ()
             // This routine is useful when the edge states are computed
             // in a physics-class-specific manner. (For example, as they are
             // in the calculation of div rho U h = div U sum_l (rho Y)_l h_l(T)).
-	    // the density component now contains (delta rho)^sync since there
+	    // Note: the density component now contains (delta rho)^sync since there
 	    // is no diffusion for this term
             //
             mac_projector->mac_sync_compute(level,Ssync,comp,s_ind,
@@ -5388,8 +5392,9 @@ HeatTransfer::mac_sync ()
     sync_setup(DeltaSsync);
     //
     // For all conservative variables Q (other than density)
-    // set DeltaSsync = q^{n+1,p} * (delta rho)^sync
-    // subtract q^{n+1,p} * (delta rho)^sync from Ssync
+    // set DeltaSsync = q^{n+1,p} * (delta rho)^sync,
+    // then subtract DeltaSsync from Ssync
+    // (these are the terms that were accidentally omitted in (18) and (19)
     //
     FArrayBox delta_ssync;
 
