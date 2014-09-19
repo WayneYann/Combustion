@@ -213,7 +213,8 @@ def mach2bump_results(trial):
                           if x.method == method
                           and x.cfl == cfl
                           and x.level == 1
-                          and x.max_level == 1 ])
+                          and x.max_level == 1
+                          and x.norm == norm ])
 
             rate0 = [''] + [ log10(l0[i-1][1] / l0[i][1]) / log10(2.0) for i in range(1, len(l0)) ]
             rate1 = [''] + [ log10(l1[i-1][1] / l1[i][1]) / log10(2.0) for i in range(1, len(l1)) ]
