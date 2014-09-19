@@ -1,7 +1,7 @@
 # ------------------  INPUTS TO MAIN PROGRAM  -------------------
 
 max_step  = 90000
-stop_time = 1.0
+stop_time = 0.6
 
 mlsdc.max_iters = 1
 mlsdc.nsweeps   = 4 1

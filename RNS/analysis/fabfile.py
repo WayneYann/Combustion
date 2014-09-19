@@ -103,7 +103,7 @@ def mach2bump(trial, force_run=False):
         base, trial + '.d', '%s_lev%d_nx%04d_cfl%0.2f' % (method, max_level, nx, cfl))
 
     nxs  = [ 64, 128, 256, 512 ]#, 1024 ]
-    cfls = [ 0.5, 0.75, 1.0 ]
+    cfls = [ 0.2, 0.35, 0.5 ]
 
     # high-res reference run
     cfl = 0.25
@@ -137,12 +137,6 @@ def mach2bump(trial, force_run=False):
     with open('errors_%s.pkl' % trial, 'w') as f:
         pickle.dump(errors, f)
 
-    # sdc_conv = diff_reference([ name('sdc', cfl) for cfl in cfls[::-1] ], reference, diff, norm=0)
-    # rk_conv = diff_reference([ name('rk', cfl) for cfl in cfls[::-1] ], reference, diff, norm=0)
-
-    # echo_conergence_rates(sdc_conv, header)
-    # echo_conergence_rates(rk_conv, header)
-
 
 class NoRepeat:
     def __init__(self):
@@ -157,10 +151,10 @@ class NoRepeat:
 @task
 def mach2bump_results(trial):
 
-    table = jinja2.Template(r"""
+    tex_table = jinja2.Template(r"""
 \begin{table}
     \tbl{ {{caption}} }{
-\begin{tabular}{lcc} \toprule
+\begin{tabular}{lcccc} \toprule
   Scheme & CFL & Cells & Error & Rate \\ \midrule
 {%- for r in rows %}
   {{r.method}} & {{r.cfl}} & {{r.nx}} & {{r.error}} & {{r.rate}} \\
@@ -171,7 +165,7 @@ def mach2bump_results(trial):
 \end{table}
 """)
 
-    table = jinja2.Template(r"""
+    org_table = jinja2.Template(r"""
 | scheme | cfl | cells | error | rate |
 |-
 {%- for r in rows %}
@@ -192,7 +186,7 @@ def mach2bump_results(trial):
     max_levels = set([ x.max_level for x in errors ])
     norms      = set([ x.norm for x in errors ])
 
-    norm = 0
+    norm = 2
 
     rows = []
 
@@ -222,11 +216,12 @@ def mach2bump_results(trial):
 
             for r in l01:
                 nx = "%d/%d" % (r[0], 2*r[0])
-                er = "%g/%g" % (r[1], r[2])
-                ra = "%g/%g" % (r[3], r[4]) if r[3] else ''
+                er = "%.02e/%.02e" % (r[1], r[2])
+                ra = "%.02f/%.02f" % (r[3], r[4]) if r[3] else ''
                 rows.append({'method': mfilt(method), 'cfl': cfilt(cfl), 'nx': nx, 'error': er, 'rate': ra })
 
-    print table.render(caption="ASDF", rows=rows)
+    print tex_table.render(caption="ASDF", rows=rows)
+    print org_table.render(caption="ASDF", rows=rows)
 
 
 
