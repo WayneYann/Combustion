@@ -55,6 +55,94 @@ ChemDriver::~ChemDriver ()
     FORT_FINALIZECHEM();
 }
 
+extern "C" {
+  double* GetParamPtr(int                reaction_id,
+                      REACTION_PARAMETER param_id,
+                      int                species_id,
+                      int                get_default);
+  void ResetAllParametersToDefault();
+};
+
+ChemDriver::Parameter::Parameter(int                _reaction_id,
+                                 REACTION_PARAMETER _param_id,
+                                 int                _species_id)
+  :reaction_id(_reaction_id),
+   param_id(_param_id),
+   species_id(_species_id)
+{
+  rp = GetParamPtr(reaction_id,param_id,species_id,0);
+  rdefp = GetParamPtr(reaction_id,param_id,species_id,1);
+}
+
+Real
+ChemDriver::Parameter::Parameter::Value() const
+{
+  return *rp;
+}
+
+Real
+ChemDriver::Parameter::Parameter::DefaultValue() const
+{
+  return *rdefp;
+}
+
+void
+ChemDriver::Parameter::Parameter::ResetToDefault()
+{
+  *rp = *rdefp;
+}
+
+std::ostream&
+ChemDriver::Parameter::operator<<(std::ostream& os) const
+{
+  // FIXME: Hard-coded list of parameters invites errors later...
+  os << "(r: " << reaction_id << " p: ";
+  if (param_id == FWD_A)          {os << "FWD_A";}
+  else if (param_id == FWD_BETA)  {os << "FWD_BETA";}
+  else if (param_id == FWD_EA)    {os << "FWD_EA";}
+  else if (param_id == LOW_A)     {os << "LOW_A";}
+  else if (param_id == LOW_BETA)  {os << "LOW_BETA";}
+  else if (param_id == LOW_EA)    {os << "LOW_EA";}
+  else if (param_id == REV_A)     {os << "REV_A";}
+  else if (param_id == REV_BETA)  {os << "REV_BETA";}
+  else if (param_id == REV_EA)    {os << "REV_EA";}
+  else if (param_id == TROE_A)    {os << "TROE_A";}
+  else if (param_id == TROE_TS)   {os << "TROE_TS";}
+  else if (param_id == TROE_TSS)  {os << "TROE_TSS";}
+  else if (param_id == TROE_TSSS) {os << "TROE_TSSS";}
+  else if (param_id == SRI_A)     {os << "SRI_A";}
+  else if (param_id == SRI_B)     {os << "SRI_B";}
+  else if (param_id == SRI_C)     {os << "SRI_C";}
+  else if (param_id == SRI_D)     {os << "SRI_D";}
+  else if (param_id == SRI_E)     {os << "SRI_E";}
+  else if (param_id == THIRD_BODY) {
+    os << "THIRD_BODY s: " << species_id;
+  }
+  else {
+    BoxLib::Abort("Unknown reaction parameter");
+  }
+  os << " v: " << Value() << " DEF: " << DefaultValue() << ")";
+  return os;
+}
+
+std::ostream& operator<< (std::ostream&  os, const ChemDriver::Parameter& param)
+{
+  return param.operator<<(os);
+}
+
+void
+ChemDriver::Parameter::operator=(Real new_value)
+{
+  *rp = new_value;
+}
+
+void
+ChemDriver::ResetAllParamsToDefault()
+{
+  ResetAllParametersToDefault();
+}
+
+
 void
 ChemDriver::SetTransport (const ChemDriver::TRANSPORT& tran_in)
 {
@@ -1465,7 +1553,7 @@ ChemDriver::getEdges (const std::string& trElt, int PrintVerbose, int HackSplitt
             int pc1 = p1->second;
 
             Group b0(pc0 * groups[ps0] - rc0 * groups[rs0]);
-            Group b1(pc1 * groups[ps1] - rc0 * groups[rs0]);            
+            Group b1(pc1 * groups[ps1] - rc0 * groups[rs0]);
             int pick = 0;
 
             // HACK

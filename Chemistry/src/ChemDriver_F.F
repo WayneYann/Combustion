@@ -235,6 +235,8 @@ c
       deallocate(IWRK)
 !$omp end parallel
 
+      call CKFINALIZE();
+
       end
 
       SUBROUTINE EGINICD (NP, LOUT, IFLAG, ITLS, 

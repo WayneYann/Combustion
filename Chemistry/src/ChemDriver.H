@@ -6,6 +6,9 @@
 
 #include <Array.H>
 #include <FArrayBox.H>
+extern "C" {
+#include <ReactionData.H>
+};
 
 class ChemDriver
 {
@@ -16,6 +19,27 @@ public:
     CD_EG, 
     CD_TRANLIB
   };
+
+  class Parameter
+  {
+  public:
+    Parameter(int                reaction_id,
+              REACTION_PARAMETER param_id,
+              int                species_id = -1);
+    std::ostream& operator<<(std::ostream& os) const;
+    void operator=(Real new_value);
+    Real Value() const;
+    Real DefaultValue() const;
+    void ResetToDefault();
+    int SpeciesID() const {return species_id;}
+  private:
+    int reaction_id;
+    REACTION_PARAMETER param_id;
+    int species_id;
+    double *rp, *rdefp;
+  };
+  void ResetAllParamsToDefault();
+
 
     ChemDriver ();	  
 
@@ -352,7 +376,7 @@ public:
     {
     public:
         friend std::ostream& operator<< (std::ostream& os, const Edge& e);
-        
+
         Edge () {}
 
         Edge (const std::string& n1, const std::string& n2, const Array<std::pair<int,Real> > rwl);
@@ -444,6 +468,8 @@ private:
     Array<int>         mNu;
     Array<int> reaction_map;
 };
+
+std::ostream& operator<< (std::ostream&  os, const ChemDriver::Parameter& param);
 
 ChemDriver::Group operator* (int n, const ChemDriver::Group& g);
 
@@ -537,6 +563,5 @@ ChemDriver::reactionMap() const
 {
   return reaction_map;
 }
-
 
 #endif /*_ChemDriver_H_*/
