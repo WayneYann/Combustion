@@ -360,7 +360,7 @@ c ::: -----------------------------------------------------------
       integer iO2,iCO2,iH2O,iCH3OCH3,len
       character*(maxspnml) name
 
-      write(6,*)" made it to initdata"
+c      write(6,*)" made it to initdata"
       if (iN2.lt.1 .or. iN2.gt.Nspec) then
          call bl_pd_abort()
       endif
@@ -414,7 +414,7 @@ c ::: -----------------------------------------------------------
 
       else if ((probtype(1:len).eq.BL_PROB_IGNITION)) then
 
-                write(6,*)" found probtype"
+c                write(6,*)" found probtype"
 
                do n=1,Nspec
 
@@ -426,7 +426,7 @@ c ::: -----------------------------------------------------------
 
                enddo
 
-               write(6,*)" species are",iN2,iO2,iCO2,iH2O,iCH3OCH3
+c               write(6,*)" species are",iN2,iO2,iCO2,iH2O,iCH3OCH3
 
                sigma = .000451d0
                
@@ -524,7 +524,7 @@ c     Superimpose blob of hot air
       endif
 
       Patm = pamb / FORT_P1ATMMKS()
-      write(6,*)"Patm",Patm
+c      write(6,*)"Patm",Patm
 
       call FORT_RHOfromPTY(lo,hi,
      &     scal(ARG_L1(state),ARG_L2(state),Density),  DIMS(state),
