@@ -479,6 +479,8 @@ RNS::dUdt_AD(MultiFab& U, MultiFab& Uprime, Real time, int fill_boundary_type,
 	    fine->CrseInit(fluxes[idim],area[idim],idim,0,0,NUM_STATE,-dt);
 	}
     }
+
+    num_ad_evals ++;
 }
 
 
@@ -509,6 +511,8 @@ RNS::dUdt_chemistry(const MultiFab& U, MultiFab& Uprime, bool partialUpdate)
 	    (lo, hi, BL_TO_FORTRAN(U[i]), BL_TO_FORTRAN(Uprime[i]),
 	     BL_TO_FORTRAN((*chemstatus)[i]));
     }
+
+    num_chem_evals ++;
 }
 
 

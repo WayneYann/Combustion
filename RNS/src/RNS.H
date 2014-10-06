@@ -414,6 +414,9 @@ protected:
     static Real        startCPUTime;
 
     Real getCPUTime();
+
+    int num_ad_evals;
+    int num_chem_evals;
 };
 
 //
