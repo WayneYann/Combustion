@@ -7,6 +7,7 @@
 #if defined(BL_FORT_USE_UPPERCASE)
 #define CKINDX CKINDX
 #define CKINIT CKINIT
+#define CKFINALIZE CKFINALIZE
 #define CKXNUM CKXNUM
 #define CKSYME CKSYME
 #define CKSYMS CKSYMS
@@ -18,6 +19,7 @@
 #define CKRHOY CKRHOY
 #define CKRHOC CKRHOC
 #define CKWT CKWT
+#define CKAWT CKAWT
 #define CKMMWY CKMMWY
 #define CKMMWX CKMMWX
 #define CKMMWC CKMMWC
@@ -89,6 +91,7 @@
 #elif defined(BL_FORT_USE_LOWERCASE)
 #define CKINDX ckindx
 #define CKINIT ckinit
+#define CKFINALIZE ckfinalize
 #define CKXNUM ckxnum
 #define CKSYME cksyme
 #define CKSYMS cksyms
@@ -100,6 +103,7 @@
 #define CKRHOY ckrhoy
 #define CKRHOC ckrhoc
 #define CKWT ckwt
+#define CKAWT ckawt
 #define CKMMWY ckmmwy
 #define CKMMWX ckmmwx
 #define CKMMWC ckmmwc
@@ -171,6 +175,7 @@
 #elif defined(BL_FORT_USE_UNDERSCORE)
 #define CKINDX ckindx_
 #define CKINIT ckinit_
+#define CKFINALIZE ckfinalize_
 #define CKXNUM ckxnum_
 #define CKSYME cksyme_
 #define CKSYMS cksyms_
@@ -182,6 +187,7 @@
 #define CKRHOY ckrhoy_
 #define CKRHOC ckrhoc_
 #define CKWT ckwt_
+#define CKAWT ckawt_
 #define CKMMWY ckmmwy_
 #define CKMMWX ckmmwx_
 #define CKMMWC ckmmwc_
@@ -253,6 +259,7 @@
 #endif
 
 /*function declarations */
+void atomicWeight(double * restrict awt);
 void molecularWeight(double * restrict wt);
 void gibbs(double * restrict species, double * restrict tc);
 void helmholtz(double * restrict species, double * restrict tc);
@@ -269,6 +276,7 @@ void comp_qfqr(double * restrict q_f, double * restrict q_r, double * restrict s
 void progressRate(double * restrict qdot, double * restrict speciesConc, double T);
 void progressRateFR(double * restrict q_f, double * restrict q_r, double * restrict speciesConc, double T);
 void CKINIT();
+void CKFINALIZE();
 void CKINDX(int * iwrk, double * restrict rwrk, int * mm, int * kk, int * ii, int * nfit );
 void CKXNUM(char * line, int * nexp, int * lout, int * nval, double * restrict rval, int * kerr, int lenline);
 void CKSNUM(char * line, int * nexp, int * lout, char * kray, int * nn, int * knum, int * nval, double * restrict rval, int * kerr, int lenline, int lenkray);
@@ -282,6 +290,7 @@ void CKRHOX(double * restrict P, double * restrict T, double * restrict x, int *
 void CKRHOY(double * restrict P, double * restrict T, double * restrict y, int * iwrk, double * restrict rwrk, double * restrict rho);
 void CKRHOC(double * restrict P, double * restrict T, double * restrict c, int * iwrk, double * restrict rwrk, double * restrict rho);
 void CKWT(int * iwrk, double * restrict rwrk, double * restrict wt);
+void CKAWT(int * iwrk, double * restrict rwrk, double * restrict awt);
 void CKMMWY(double * restrict y, int * iwrk, double * restrict rwrk, double * restrict wtm);
 void CKMMWX(double * restrict x, int * iwrk, double * restrict rwrk, double * restrict wtm);
 void CKMMWC(double * restrict c, int * iwrk, double * restrict rwrk, double * restrict wtm);
@@ -356,6 +365,12 @@ void VCKWYR(int * restrict np, double * restrict rho, double * restrict T,
             double * restrict y, int * restrict iwrk, double * restrict rwrk,
             double * restrict wdot);
 void VCKYTX(int * restrict np, double * restrict y, int * iwrk, double * restrict rwrk, double * restrict x);
+void vcomp_k_f(int npt, double * restrict k_f_s, double * restrict tc, double * restrict invT);
+void vcomp_gibbs(int npt, double * restrict g_RT, double * restrict tc);
+void vcomp_Kc(int npt, double * restrict Kc_s, double * restrict g_RT, double * restrict invT);
+void vcomp_wdot(int npt, double * restrict wdot, double * restrict mixture, double * restrict sc,
+                double * restrict k_f_s, double * restrict Kc_s,
+                double * restrict tc, double * restrict invT, double * restrict T);
 
 /* Inverse molecular weights */
 static const double imw[3] = {
@@ -363,17 +378,7 @@ static const double imw[3] = {
     1.0 / 44.009950,  /*CO2 */
     1.0 / 28.013400};  /*N2 */
 
-struct ReactionData {
-    double fwd_A,fwd_beta,fwd_Ea;
-    double low_A,low_beta,low_Ea;
-    double rev_A,rev_beta,rev_Ea;
-    double troe_a,troe_Ts, troe_Tss, troe_Tsss;
-    double sri_a, sri_b, sri_c, sri_d, sri_e;
-    double activation_units, prefactor_units, phase_units;
-    int is_PD, troe_len, sri_len;
-};
 
-static struct ReactionData R[0], R_DEF[0];
 
 static double fwd_A[0], fwd_beta[0], fwd_Ea[0];
 static double low_A[0], low_beta[0], low_Ea[0];
@@ -381,7 +386,17 @@ static double rev_A[0], rev_beta[0], rev_Ea[0];
 static double troe_a[0],troe_Ts[0], troe_Tss[0], troe_Tsss[0];
 static double sri_a[0], sri_b[0], sri_c[0], sri_d[0], sri_e[0];
 static double activation_units[0], prefactor_units[0], phase_units[0];
-static int is_PD[0], troe_len[0], sri_len[0];
+static int is_PD[0], troe_len[0], sri_len[0], nTB[0], *TBid[0];
+static double *TB[0];
+
+static double fwd_A_DEF[0], fwd_beta_DEF[0], fwd_Ea_DEF[0];
+static double low_A_DEF[0], low_beta_DEF[0], low_Ea_DEF[0];
+static double rev_A_DEF[0], rev_beta_DEF[0], rev_Ea_DEF[0];
+static double troe_a_DEF[0],troe_Ts_DEF[0], troe_Tss_DEF[0], troe_Tsss_DEF[0];
+static double sri_a_DEF[0], sri_b_DEF[0], sri_c_DEF[0], sri_d_DEF[0], sri_e_DEF[0];
+static double activation_units_DEF[0], prefactor_units_DEF[0], phase_units_DEF[0];
+static int is_PD_DEF[0], troe_len_DEF[0], sri_len_DEF[0], nTB_DEF[0], *TBid_DEF[0];
+static double *TB_DEF[0];
 static int rxn_map[0] = {};
 
 void GET_REACTION_MAP(int *rmap)
@@ -391,72 +406,195 @@ void GET_REACTION_MAP(int *rmap)
     }
 }
 
-struct ReactionData* GetReactionData(int id)
-{
-    if (id<0 || id>=0) {
-        printf("GetReactionData: Bad reaction id = %d",id);
-        abort();
-    };
-    return &(R[rxn_map[id]]);
-}
 
-struct ReactionData* GetDefaultReactionData(int id)
+#include <ReactionData.H>
+double* GetParamPtr(int                reaction_id,
+                    REACTION_PARAMETER param_id,
+                    int                species_id,
+                    int                get_default)
 {
-    if (id<0 || id>=0) {
-        printf("GetDefaultReactionData: Bad reaction id = %d",id);
-        abort();
-    };
-    return &(R_DEF[rxn_map[id]]);
-}
+  double* ret = 0;
+  if (reaction_id<0 || reaction_id>=0) {
+    printf("Bad reaction id = %d",reaction_id);
+    abort();
+  };
+  int mrid = rxn_map[reaction_id];
 
-void CopyReactionDataToTranspose(int i, const struct ReactionData * rhs)
-{
-    fwd_A[i]    = rhs->fwd_A;
-    fwd_beta[i] = rhs->fwd_beta;
-    fwd_Ea[i]   = rhs->fwd_Ea;
-    low_A[i]    = rhs->low_A;
-    low_beta[i] = rhs->low_beta;
-    low_Ea[i]   = rhs->low_Ea;
-    rev_A[i]    = rhs->rev_A;
-    rev_beta[i] = rhs->rev_beta;
-    rev_Ea[i]   = rhs->rev_Ea;
-    troe_a[i]    = rhs->troe_a;
-    troe_Ts[i]   = rhs->troe_Ts;
-    troe_Tss[i]  = rhs->troe_Tss;
-    troe_Tsss[i] = rhs->troe_Tsss;
-    sri_a[i] = rhs->sri_a;
-    sri_b[i] = rhs->sri_b;
-    sri_c[i] = rhs->sri_c;
-    sri_d[i] = rhs->sri_d;
-    sri_e[i] = rhs->sri_e;
-    activation_units[i] = rhs->activation_units;
-    prefactor_units[i]  = rhs->prefactor_units;
-    phase_units[i]      = rhs->phase_units;
-    is_PD[i]    = rhs->is_PD;
-    troe_len[i] = rhs->troe_len;
-    sri_len[i]  = rhs->sri_len;
-}
-
-void SetReactionData(int id, const struct ReactionData * rhs)
-{
-    if (id<0 || id>=0) {
-        printf("SetReactionData: Bad reaction id = %d",id);
-        abort();
+  if (param_id == THIRD_BODY) {
+    if (species_id<0 || species_id>=3) {
+      printf("GetParamPtr: Bad species id = %d",species_id);
+      abort();
     }
-    R[rxn_map[id]] = *rhs;
-    CopyReactionDataToTranspose(rxn_map[id],rhs);
+    if (get_default) {
+      for (int i=0; i<nTB_DEF[mrid]; ++i) {
+        if (species_id == TBid_DEF[mrid][i]) {
+          ret = &(TB_DEF[mrid][i]);
+        }
+      }
+    }
+    else {
+      for (int i=0; i<nTB[mrid]; ++i) {
+        if (species_id == TBid[mrid][i]) {
+          ret = &(TB[mrid][i]);
+        }
+      }
+    }
+    if (ret == 0) {
+      printf("GetParamPtr: No TB for reaction id = %d",reaction_id);
+      abort();
+    }
+  }
+  else {
+    if (     param_id == FWD_A)     {ret = (get_default ? &(fwd_A_DEF[mrid]) : &(fwd_A[mrid]));}
+      else if (param_id == FWD_BETA)  {ret = (get_default ? &(fwd_beta_DEF[mrid]) : &(fwd_beta[mrid]));}
+      else if (param_id == FWD_EA)    {ret = (get_default ? &(fwd_Ea_DEF[mrid]) : &(fwd_Ea[mrid]));}
+      else if (param_id == LOW_A)     {ret = (get_default ? &(low_A_DEF[mrid]) : &(low_A[mrid]));}
+      else if (param_id == LOW_BETA)  {ret = (get_default ? &(low_beta_DEF[mrid]) : &(low_beta[mrid]));}
+      else if (param_id == LOW_EA)    {ret = (get_default ? &(low_Ea_DEF[mrid]) : &(low_Ea[mrid]));}
+      else if (param_id == REV_A)     {ret = (get_default ? &(rev_A_DEF[mrid]) : &(rev_A[mrid]));}
+      else if (param_id == REV_BETA)  {ret = (get_default ? &(rev_beta_DEF[mrid]) : &(rev_beta[mrid]));}
+      else if (param_id == REV_EA)    {ret = (get_default ? &(rev_Ea_DEF[mrid]) : &(rev_Ea[mrid]));}
+      else if (param_id == TROE_A)    {ret = (get_default ? &(troe_a_DEF[mrid]) : &(troe_a[mrid]));}
+      else if (param_id == TROE_TS)   {ret = (get_default ? &(troe_Ts_DEF[mrid]) : &(troe_Ts[mrid]));}
+      else if (param_id == TROE_TSS)  {ret = (get_default ? &(troe_Tss_DEF[mrid]) : &(troe_Tss[mrid]));}
+      else if (param_id == TROE_TSSS) {ret = (get_default ? &(troe_Tsss_DEF[mrid]) : &(troe_Tsss[mrid]));}
+      else if (param_id == SRI_A)     {ret = (get_default ? &(sri_a_DEF[mrid]) : &(sri_a[mrid]));}
+      else if (param_id == SRI_B)     {ret = (get_default ? &(sri_b_DEF[mrid]) : &(sri_b[mrid]));}
+      else if (param_id == SRI_C)     {ret = (get_default ? &(sri_c_DEF[mrid]) : &(sri_c[mrid]));}
+      else if (param_id == SRI_D)     {ret = (get_default ? &(sri_d_DEF[mrid]) : &(sri_d[mrid]));}
+      else if (param_id == SRI_E)     {ret = (get_default ? &(sri_e_DEF[mrid]) : &(sri_e[mrid]));}
+    else {
+      printf("GetParamPtr: Unknown parameter id");
+      abort();
+    }
+  }
+  return ret;
 }
 
-/* Initializes static database */
+void ResetAllParametersToDefault()
+{
+    for (int i=0; i<0; i++) {
+        if (nTB[i] != 0) {
+            nTB[i] = 0;
+            free(TB[i]);
+            free(TBid[i]);
+        }
+
+        fwd_A[i]    = fwd_A_DEF[i];
+        fwd_beta[i] = fwd_beta_DEF[i];
+        fwd_Ea[i]   = fwd_Ea_DEF[i];
+
+        low_A[i]    = low_A_DEF[i];
+        low_beta[i] = low_beta_DEF[i];
+        low_Ea[i]   = low_Ea_DEF[i];
+
+        rev_A[i]    = rev_A_DEF[i];
+        rev_beta[i] = rev_beta_DEF[i];
+        rev_Ea[i]   = rev_Ea_DEF[i];
+
+        troe_a[i]    = troe_a_DEF[i];
+        troe_Ts[i]   = troe_Ts_DEF[i];
+        troe_Tss[i]  = troe_Tss_DEF[i];
+        troe_Tsss[i] = troe_Tsss_DEF[i];
+
+        sri_a[i] = sri_a_DEF[i];
+        sri_b[i] = sri_b_DEF[i];
+        sri_c[i] = sri_c_DEF[i];
+        sri_d[i] = sri_d_DEF[i];
+        sri_e[i] = sri_e_DEF[i];
+
+        is_PD[i]    = is_PD_DEF[i];
+        troe_len[i] = troe_len_DEF[i];
+        sri_len[i]  = sri_len_DEF[i];
+
+        activation_units[i] = activation_units_DEF[i];
+        prefactor_units[i]  = prefactor_units_DEF[i];
+        phase_units[i]      = phase_units_DEF[i];
+
+        nTB[i]  = nTB_DEF[i];
+        if (nTB[i] != 0) {
+           TB[i] = (double *) malloc(sizeof(double) * nTB[i]);
+           TBid[i] = (int *) malloc(sizeof(int) * nTB[i]);
+           for (int j=0; j<nTB[i]; j++) {
+             TB[i][j] = TB_DEF[i][j];
+             TBid[i][j] = TBid_DEF[i][j];
+           }
+        }
+    }
+}
+
+void SetAllDefaults()
+{
+    for (int i=0; i<0; i++) {
+        if (nTB_DEF[i] != 0) {
+            nTB_DEF[i] = 0;
+            free(TB_DEF[i]);
+            free(TBid_DEF[i]);
+        }
+
+        fwd_A_DEF[i]    = fwd_A[i];
+        fwd_beta_DEF[i] = fwd_beta[i];
+        fwd_Ea_DEF[i]   = fwd_Ea[i];
+
+        low_A_DEF[i]    = low_A[i];
+        low_beta_DEF[i] = low_beta[i];
+        low_Ea_DEF[i]   = low_Ea[i];
+
+        rev_A_DEF[i]    = rev_A[i];
+        rev_beta_DEF[i] = rev_beta[i];
+        rev_Ea_DEF[i]   = rev_Ea[i];
+
+        troe_a_DEF[i]    = troe_a[i];
+        troe_Ts_DEF[i]   = troe_Ts[i];
+        troe_Tss_DEF[i]  = troe_Tss[i];
+        troe_Tsss_DEF[i] = troe_Tsss[i];
+
+        sri_a_DEF[i] = sri_a[i];
+        sri_b_DEF[i] = sri_b[i];
+        sri_c_DEF[i] = sri_c[i];
+        sri_d_DEF[i] = sri_d[i];
+        sri_e_DEF[i] = sri_e[i];
+
+        is_PD_DEF[i]    = is_PD[i];
+        troe_len_DEF[i] = troe_len[i];
+        sri_len_DEF[i]  = sri_len[i];
+
+        activation_units_DEF[i] = activation_units[i];
+        prefactor_units_DEF[i]  = prefactor_units[i];
+        phase_units_DEF[i]      = phase_units[i];
+
+        nTB_DEF[i]  = nTB[i];
+        if (nTB_DEF[i] != 0) {
+           TB_DEF[i] = (double *) malloc(sizeof(double) * nTB_DEF[i]);
+           TBid_DEF[i] = (int *) malloc(sizeof(int) * nTB_DEF[i]);
+           for (int j=0; j<nTB_DEF[i]; j++) {
+             TB_DEF[i][j] = TB[i][j];
+             TBid_DEF[i][j] = TBid[i][j];
+           }
+        }
+    }
+}
+
+/* Finalizes parameter database */
+void CKFINALIZE()
+{
+  for (int i=0; i<0; ++i) {
+    free(TB[i]); TB[i] = 0; 
+    free(TBid[i]); TBid[i] = 0;
+    nTB[i] = 0;
+
+    free(TB_DEF[i]); TB_DEF[i] = 0; 
+    free(TBid_DEF[i]); TBid_DEF[i] = 0;
+    nTB_DEF[i] = 0;
+  }
+}
+
+/* Initializes parameter database */
 void CKINIT()
 {
-    for (int i=0; i<0; i++)
-    {
-        R_DEF[i] = R[i];
-        CopyReactionDataToTranspose(i,&(R[i]));
-    }
-
+    SetAllDefaults();
 }
+
 
 
 /*A few mechanism parameters */
@@ -703,6 +841,13 @@ void CKWT(int * iwrk, double * restrict rwrk, double * restrict wt)
 }
 
 
+/*get atomic weight for all elements */
+void CKAWT(int * iwrk, double * restrict rwrk, double * restrict awt)
+{
+    atomicWeight(awt);
+}
+
+
 /*given y[species]: mass fractions */
 /*returns mean molecular weight (gm/mole) */
 void CKMMWY(double * restrict y, int * iwrk, double * restrict rwrk, double * restrict wtm)
@@ -859,9 +1004,10 @@ void CKXTY(double * restrict x, int * iwrk, double * restrict rwrk, double * res
     XW += x[1]*44.009950; /*CO2 */
     XW += x[2]*28.013400; /*N2 */
     /*Now compute conversion */
-    y[0] = x[0]*2.015940/XW; 
-    y[1] = x[1]*44.009950/XW; 
-    y[2] = x[2]*28.013400/XW; 
+    double XWinv = 1.0/XW;
+    y[0] = x[0]*2.015940*XWinv; 
+    y[1] = x[1]*44.009950*XWinv; 
+    y[2] = x[2]*28.013400*XWinv; 
 
     return;
 }
@@ -915,8 +1061,9 @@ void CKCTX(double * restrict c, int * iwrk, double * restrict rwrk, double * res
     }
 
     /* See Eq 13  */
+    double sumCinv = 1.0/sumC;
     for (id = 0; id < 3; ++id) {
-        x[id] = c[id]/sumC;
+        x[id] = c[id]*sumCinv;
     }
 
     return;
@@ -932,9 +1079,10 @@ void CKCTY(double * restrict c, int * iwrk, double * restrict rwrk, double * res
     CW += c[1]*44.009950; /*CO2 */
     CW += c[2]*28.013400; /*N2 */
     /*Now compute conversion */
-    y[0] = c[0]*2.015940/CW; 
-    y[1] = c[1]*44.009950/CW; 
-    y[2] = c[2]*28.013400/CW; 
+    double CWinv = 1.0/CW;
+    y[0] = c[0]*2.015940*CWinv; 
+    y[1] = c[1]*44.009950*CWinv; 
+    y[2] = c[2]*28.013400*CWinv; 
 
     return;
 }
@@ -1865,6 +2013,11 @@ void CKNCF(int * mdim, int * iwrk, double * restrict rwrk, int * ncf)
 /*for all reactions */
 void CKABE(int * iwrk, double * restrict rwrk, double * restrict a, double * restrict b, double * restrict e)
 {
+    for (int i=0; i<0; ++i) {
+        a[i] = fwd_A[i];
+        b[i] = fwd_beta[i];
+        e[i] = fwd_Ea[i];
+    }
 
     return;
 }
@@ -1990,7 +2143,7 @@ void productionRate(double * restrict wdot, double * restrict sc, double T)
 void comp_k_f(double * restrict tc, double invT, double * restrict k_f)
 {
 #ifdef __INTEL_COMPILER
-     #pragma simd
+    #pragma simd
 #endif
     for (int i=0; i<0; ++i) {
         k_f[i] = prefactor_units[i] * fwd_A[i]
@@ -2050,7 +2203,7 @@ void comp_qfqr(double * restrict qf, double * restrict qr, double * restrict sc,
 /*compute the production rate for each species */
 void vproductionRate(int npt, double * restrict wdot, double * restrict sc, double * restrict T)
 {
-    double k_f_s[0][npt], Kc_s[0][npt], mixture[npt], g_RT[3*npt];
+    double k_f_s[0*npt], Kc_s[0*npt], mixture[npt], g_RT[3*npt];
     double tc[5*npt], invT[npt];
 
 #ifdef __INTEL_COMPILER
@@ -2065,12 +2218,37 @@ void vproductionRate(int npt, double * restrict wdot, double * restrict sc, doub
         invT[i] = 1.0 / T[i];
     }
 
+    for (int i=0; i<npt; i++) {
+        mixture[i] = 0.0;
+    }
+
+    for (int n=0; n<3; n++) {
+        for (int i=0; i<npt; i++) {
+            mixture[i] += sc[n*npt+i];
+            wdot[n*npt+i] = 0.0;
+        }
+    }
+
+    vcomp_k_f(npt, k_f_s, tc, invT);
+
+    vcomp_gibbs(npt, g_RT, tc);
+
+    vcomp_Kc(npt, Kc_s, g_RT, invT);
+
+    vcomp_wdot(npt, wdot, mixture, sc, k_f_s, Kc_s, tc, invT, T);
+}
+
+void vcomp_k_f(int npt, double * restrict k_f_s, double * restrict tc, double * restrict invT)
+{
 #ifdef __INTEL_COMPILER
     #pragma simd
 #endif
     for (int i=0; i<npt; i++) {
     }
+}
 
+void vcomp_gibbs(int npt, double * restrict g_RT, double * restrict tc)
+{
     /*compute the Gibbs free energy */
     for (int i=0; i<npt; i++) {
         double tg[5], g[3];
@@ -2086,7 +2264,10 @@ void vproductionRate(int npt, double * restrict wdot, double * restrict sc, doub
         g_RT[1*npt+i] = g[1];
         g_RT[2*npt+i] = g[2];
     }
+}
 
+void vcomp_Kc(int npt, double * restrict Kc_s, double * restrict g_RT, double * restrict invT)
+{
 #ifdef __INTEL_COMPILER
     #pragma simd
 #endif
@@ -2096,24 +2277,17 @@ void vproductionRate(int npt, double * restrict wdot, double * restrict sc, doub
         double refCinv = 1.0 / refC;
 
     }
+}
 
-    for (int i=0; i<npt; i++) {
-        mixture[i] = 0.0;
-    }
-
-    for (int n=0; n<3; n++) {
-        for (int i=0; i<npt; i++) {
-            mixture[i] += sc[n*npt+i];
-            wdot[n*npt+i] = 0.0;
-        }
-    }
-
+void vcomp_wdot(int npt, double * restrict wdot, double * restrict mixture, double * restrict sc,
+		double * restrict k_f_s, double * restrict Kc_s,
+		double * restrict tc, double * restrict invT, double * restrict T)
+{
 #ifdef __INTEL_COMPILER
     #pragma simd
 #endif
     for (int i=0; i<npt; i++) {
         double qdot, q_f, q_r, phi_f, phi_r, k_f, k_r, Kc;
-        double alpha, redP, F, logPred;
     }
 }
 
@@ -2791,6 +2965,18 @@ void molecularWeight(double * restrict wt)
 
     return;
 }
+
+
+/*save atomic weights into array */
+void atomicWeight(double * restrict awt)
+{
+    awt[0] = 15.999400; /*O */
+    awt[1] = 1.007970; /*H */
+    awt[2] = 12.011150; /*C */
+    awt[3] = 14.006700; /*N */
+
+    return;
+}
 /* get temperature given internal energy in mass units and mass fracs */
 void GET_T_GIVEN_EY(double * restrict e, double * restrict y, int * iwrk, double * restrict rwrk, double * restrict t, int * ierr)
 {
@@ -2803,7 +2989,7 @@ void GET_T_GIVEN_EY(double * restrict e, double * restrict y, int * iwrk, double
 #endif
     double ein  = *e;
     double tmin = 250;/*max lower bound for thermo def */
-    double tmax = 3500;/*min upper bound for thermo def */
+    double tmax = 4000;/*min upper bound for thermo def */
     double e1,emin,emax,cv,t1,dt;
     int i;/* loop counter */
     CKUBMS(&tmin, y, iwrk, rwrk, &emin);
