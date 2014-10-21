@@ -5427,6 +5427,8 @@ class CPickler(CMill):
             self._write('dcdc_fac = q/alpha*(1.0/(Pr+1.0) + dlogFdlogPr);')
 
         def dqdc_simple(dqdc_s, k):
+            if dqdc_s ==  "0":
+                dqdc_s = ''
             if k in sorted(rea_dict.keys()):
                 dps = self._DphaseSpace(mechanism,sorted_reactants,rea_dict[k][0])
                 if dps == "1.0":
@@ -5463,18 +5465,18 @@ class CPickler(CMill):
                         else:
                             dqdc_s +='*q_nocor'
 
-                    dqdc_s = dqdc_simple(dqdc_s,k)
-                    if dqdc_s:
-                        symb_k = self.species[k].symbol
-                        self._write('/* d()/d[%s] */' % symb_k)
-                        self._write('dqdci = %s;' % (dqdc_s))
-
-                        for m in sorted(all_dict.keys()):
-                            if all_dict[m][1] != 0:
-                                s1 = 'J[%d] += %.17g * dqdci;' % (k*(nSpecies+1)+m, all_dict[m][1])
-                                s1 = s1.replace('+= 1 *', '+=').replace('+= -1 *', '-=')
-                                s2 = '/* dwdot[%s]/d[%s] */' % (all_dict[m][0], symb_k)
-                                self._write(s1.ljust(30) + s2)
+                dqdc_s = dqdc_simple(dqdc_s,k)
+                if dqdc_s:
+                    symb_k = self.species[k].symbol
+                    self._write('/* d()/d[%s] */' % symb_k)
+                    self._write('dqdci = %s;' % (dqdc_s))
+                    #
+                    for m in sorted(all_dict.keys()):
+                        if all_dict[m][1] != 0:
+                            s1 = 'J[%d] += %.17g * dqdci;' % (k*(nSpecies+1)+m, all_dict[m][1])
+                            s1 = s1.replace('+= 1 *', '+=').replace('+= -1 *', '-=')
+                            s2 = '/* dwdot[%s]/d[%s] */' % (all_dict[m][0], symb_k)
+                            self._write(s1.ljust(30) + s2)
 
             self._outdent()
             self._write('}')
