@@ -150,7 +150,7 @@ int          RNS::do_quartic_interp   = 1;
 
 int          RNS::do_weno             = 1;
 int          RNS::do_mp5              = 0;
-int          RNS::weno_type           = 0; // 0: Jiang-Shu; 1: WENO-M; 2: WENO-Z 
+int          RNS::weno_type           = 0; // 0: Jiang-Shu; 1: WENO-M; 2: WENO-Z
 int          RNS::do_quadrature_weno  = 0;
 int          RNS::do_component_weno   = 0;
 Real         RNS::eps_wenojs          = 1.e-6;
@@ -368,7 +368,11 @@ RNS::RNS (Amr&            papa,
 	  const BoxArray& bl,
 	  Real            time)
     :
+#ifdef USE_SDCLIB
+    MLSDCAmrLevel(papa,lev,level_geom,bl,time)
+#else
     AmrLevel(papa,lev,level_geom,bl,time)
+#endif
 {
     buildMetrics();
 

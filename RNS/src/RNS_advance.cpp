@@ -838,8 +838,8 @@ BEGIN_EXTERN_C
 void sdc_f1eval(void *Fp, void *Qp, double t, sdc_state *state, void *ctx)
 {
   RNS&      rns    = *((RNS*) ctx);
-  RNSEncap& Q      = *((RNSEncap*) Qp);
-  RNSEncap& F      = *((RNSEncap*) Fp);
+  MLSDCAmrEncap& Q      = *((MLSDCAmrEncap*) Qp);
+  MLSDCAmrEncap& F      = *((MLSDCAmrEncap*) Fp);
   MultiFab& U      = *Q.U;
   MultiFab& Uprime = *F.U;
 
@@ -881,8 +881,8 @@ void sdc_f1eval(void *Fp, void *Qp, double t, sdc_state *state, void *ctx)
 void sdc_f2eval(void *Fp, void *Qp, double t, sdc_state *state, void *ctx)
 {
   RNS&      rns    = *((RNS*) ctx);
-  RNSEncap& Q      = *((RNSEncap*) Qp);
-  RNSEncap& F      = *((RNSEncap*) Fp);
+  MLSDCAmrEncap& Q      = *((MLSDCAmrEncap*) Qp);
+  MLSDCAmrEncap& F      = *((MLSDCAmrEncap*) Fp);
   MultiFab& U      = *Q.U;
   MultiFab& Uprime = *F.U;
   Real dt = state->dt;
@@ -926,9 +926,9 @@ void sdc_f2comp(void *Fp, void *Qp, double t, double dt, void *RHSp, sdc_state *
 {
   static int first = 1;
   RNS&      rns    = *((RNS*) ctx);
-  RNSEncap& Q      = *((RNSEncap*) Qp);
-  RNSEncap& F      = *((RNSEncap*) Fp);
-  RNSEncap& RHS    = *((RNSEncap*) RHSp);
+  MLSDCAmrEncap& Q      = *((MLSDCAmrEncap*) Qp);
+  MLSDCAmrEncap& F      = *((MLSDCAmrEncap*) Fp);
+  MLSDCAmrEncap& RHS    = *((MLSDCAmrEncap*) RHSp);
   MultiFab& U      = *Q.U;
   MultiFab& Uprime = *F.U;
   MultiFab& Urhs   = *RHS.U;
@@ -944,11 +944,11 @@ void sdc_f2comp(void *Fp, void *Qp, double t, double dt, void *RHSp, sdc_state *
   BL_FORT_PROC_CALL(RNS_PASSINFO, rns_passinfo)(rns.Level(),state->iter,t);
 
   if (first) {
-      const SDCAmr* sdcamr = rns.getSDCAmr();
-      if (rns.check_imex_order(sdcamr->ho_imex)) {
-	  BoxLib::Warning("\n*** ho_imex is incompatible with chem_solver");
-      }
-      first = 0;
+      // const MLSDCAmr* sdcamr = rns.getMLSDCAmr();
+      // if (rns.check_imex_order(sdcamr->ho_imex)) {
+      //     BoxLib::Warning("\n*** ho_imex is incompatible with chem_solver");
+      // }
+      // first = 0;
   }
 
   if (rns.verbose > 1 && ParallelDescriptor::IOProcessor()) {
@@ -993,7 +993,7 @@ void sdc_f2comp(void *Fp, void *Qp, double t, double dt, void *RHSp, sdc_state *
 void sdc_poststep_hook(void *Qp, sdc_state *state, void *ctx)
 {
   RNS&      rns = *((RNS*) ctx);
-  RNSEncap& Q   = *((RNSEncap*) Qp);
+  MLSDCAmrEncap& Q   = *((MLSDCAmrEncap*) Qp);
   MultiFab& U   = *Q.U;
 
   rns.post_update(U);

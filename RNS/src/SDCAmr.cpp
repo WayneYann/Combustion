@@ -83,24 +83,17 @@
 
 using namespace std;
 
-BEGIN_EXTERN_C
-
 /*
- * Spatial interpolation between MultiFabs.  Called by SDCLib.
+ * Spatial interpolation between MultiFabs.
  */
-void mlsdc_amr_interpolate(void *Fp, void *Gp, sdc_state *state, void *ctxF, void *ctxG)
+void RNS::interpolate(MLSDCAmrEncap& F, MLSDCAmrEncap& G, Real t, bool isCorrection, bool isFEval, MLSDCAmrLevel& _levelG)
 {
   BL_PROFILE("MLSDC_AMR_INTERPOLATE()");
 
-  bool isCorrection = state->flags & SDC_CORRECTION;
-  bool isFEval      = state->flags & SDC_FEVAL;
-
-  RNSEncap& F      = *((RNSEncap*) Fp);
-  RNSEncap& G      = *((RNSEncap*) Gp);
   MultiFab& UF     = *F.U;
   MultiFab& UG     = *G.U;
-  RNS&      levelF = *((RNS*) ctxF);
-  RNS&      levelG = *((RNS*) ctxG);
+  RNS&      levelF = *this;
+  RNS&      levelG = dynamic_cast<RNS&>(_levelG);
 
   const IntVect         ratio = levelG.fineRatio();
   const DescriptorList& dl    = levelF.get_desc_lst();
@@ -188,7 +181,7 @@ void mlsdc_amr_interpolate(void *Fp, void *Gp, sdc_state *state, void *ctxF, voi
 
       if (isCorrection) UG_safe->setBndry(0.0);
 
-      levelG.fill_boundary(*UG_safe, state->t, RNS::use_FillBoundary, isCorrection, isFEval);
+      levelG.fill_boundary(*UG_safe, t, RNS::use_FillBoundary, isCorrection, isFEval);
 
       // We cannot do FabArray::copy() directly on UG because it copies only form
       // valid regions.  So we need to make the ghost cells of UG valid.
@@ -222,7 +215,7 @@ void mlsdc_amr_interpolate(void *Fp, void *Gp, sdc_state *state, void *ctxF, voi
       }
       else {
 	  UC.copy(UG);
-	  levelG.fill_boundary(UC, state->t, RNS::set_PhysBoundary, isCorrection, isFEval);
+	  levelG.fill_boundary(UC, t, RNS::set_PhysBoundary, isCorrection, isFEval);
       }
   }
 
@@ -245,29 +238,27 @@ void mlsdc_amr_interpolate(void *Fp, void *Gp, sdc_state *state, void *ctxF, voi
 #endif
 
   if (isCorrection) UF.setBndry(0.0);
-  levelF.fill_boundary(UF, state->t, RNS::set_PhysBoundary, isCorrection);
+  levelF.fill_boundary(UF, t, RNS::set_PhysBoundary, isCorrection);
   RNS_ASSERTNONAN(UF);
 }
 
 /*
  * Spatial restriction between solutions and integrals of function
- * evals.  Called by SDCLib.
+ * evals.
  */
-void mlsdc_amr_restrict(void *Fp, void *Gp, sdc_state *state, void *ctxF, void *ctxG)
+void RNS::restrict(MLSDCAmrEncap& F, MLSDCAmrEncap& G, Real t, MLSDCAmrLevel& _levelG)
 {
   BL_PROFILE("MLSDC_AMR_RESTRICT()");
 
-  RNSEncap& F      = *((RNSEncap*) Fp);
-  RNSEncap& G      = *((RNSEncap*) Gp);
   MultiFab& UF     = *F.U;
   MultiFab& UG     = *G.U;
-  RNS&      levelF = *((RNS*) ctxF);
-  RNS&      levelG = *((RNS*) ctxG);
+  RNS&      levelF = *this;
+  RNS&      levelG = dynamic_cast<RNS&>(_levelG);
 
   BL_ASSERT(G.type==SDC_SOLUTION || G.type==SDC_TAU);
 
   if (G.type == SDC_TAU) {
-    SDCAmr&       amr        = *levelF.getSDCAmr();
+    MLSDCAmr&     amr        = *levelF.getMLSDCAmr();
     IntVect       crse_ratio = amr.refRatio(levelG.Level());
     FluxRegister& flxF       = *F.fine_flux;
     FluxRegister& flxG       = *G.crse_flux;
@@ -284,37 +275,11 @@ void mlsdc_amr_restrict(void *Fp, void *Gp, sdc_state *state, void *ctxF, void *
 
   levelG.avgDown(UG, UF);
   if (G.type == SDC_SOLUTION)
-    levelG.fill_boundary(UG, state->t, RNS::use_FillBoundary);
+    levelG.fill_boundary(UG, t, RNS::use_FillBoundary);
 
 #ifndef NDEBUG
   BL_ASSERT(UG.contains_nan() == false);
 #endif
-}
-
-END_EXTERN_C
-
-
-void SDCAmr::final_integrate(double t, double dt, int niter)
-{
-  int nlevs = mg.nlevels;
-  for (int l=0; l<nlevs; l++) {
-    sdc_sweeper* swp    = mg.sweepers[l];
-    swp->sweep(swp, t, dt, niter, SDC_SWEEP_NOEVAL);
-  }
-}
-
-void
-SDCAmr::init (Real strt_time,
-	      Real stop_time)
-{
-  if (!restart_chkfile.empty() && restart_chkfile != "init") {
-      restart(restart_chkfile);
-  } else {
-    initialInit(strt_time,stop_time);
-    checkPoint();
-    if (plot_int > 0 || plot_per > 0)
-      writePlotFile();
-  }
 }
 
 /*
@@ -339,7 +304,7 @@ SDCAmr::coarseTimeStep (Real stop_time)
     }
   }
 
-  rebuild_mlsdc();
+  RebuildMLSDC();
 
   //
   // compute new dt
@@ -380,7 +345,7 @@ SDCAmr::coarseTimeStep (Real stop_time)
   //
   for (int lev=0; lev<=finest_level; lev++) {
     RNS&      rns  = *dynamic_cast<RNS*>(&getLevel(lev));
-    RNSEncap& Q0   = *((RNSEncap*) mg.sweepers[lev]->nset->Q[0]);
+    MLSDCAmrEncap& Q0   = *((MLSDCAmrEncap*) mg.sweepers[lev]->nset->Q[0]);
     MultiFab& U0   = *Q0.U;
     rns.fill_boundary(U0, cumtime, RNS::use_FillPatchIterator);
 #ifndef NDEBUG
@@ -435,7 +400,7 @@ SDCAmr::coarseTimeStep (Real stop_time)
       }
 
       for (int lev=0; lev<=finest_level; lev++) {
-	RNSEncap* Rencap = (RNSEncap*) encaps[lev]->create(SDC_INTEGRAL, encaps[lev]->ctx);
+	MLSDCAmrEncap* Rencap = (MLSDCAmrEncap*) encaps[lev]->create(SDC_INTEGRAL, encaps[lev]->ctx);
         MultiFab& R      = *Rencap->U;
 
 	sdc_sweeper_residual(mg.sweepers[lev], dt, Rencap);
@@ -493,7 +458,7 @@ SDCAmr::coarseTimeStep (Real stop_time)
     }
   }
 
-  final_integrate(cumtime, dt, max_iters);
+  FinalIntegrate(cumtime, dt, max_iters);
 
   BL_PROFILE_VAR_STOP(sdc_iters);
 
@@ -501,7 +466,7 @@ SDCAmr::coarseTimeStep (Real stop_time)
   for (int lev=0; lev<=finest_level; lev++) {
     int       nnodes = mg.sweepers[lev]->nset->nnodes;
     MultiFab& Unew   = getLevel(lev).get_new_data(0);
-    RNSEncap& Qend   = *((RNSEncap*) mg.sweepers[lev]->nset->Q[nnodes-1]);
+    MLSDCAmrEncap& Qend   = *((MLSDCAmrEncap*) mg.sweepers[lev]->nset->Q[nnodes-1]);
     MultiFab& Uend   = *Qend.U;
 
     MultiFab::Copy(Unew, Uend, 0, 0, Uend.nComp(), 0);
@@ -640,9 +605,9 @@ SDCAmr::coarseTimeStep (Real stop_time)
 /*
  * Build single SDC level.
  */
-sdc_sweeper* SDCAmr::build_level(int lev)
+sdc_sweeper* SDCAmr::BuildLevel(int lev)
 {
-  BL_PROFILE("SDCAmr::build_level()");
+  BL_PROFILE("SDCAmr::BuildLevel()");
 
   if (finest_level - max_trefs > 0)
     first_refinement_level = finest_level - max_trefs + 1;
@@ -656,7 +621,7 @@ sdc_sweeper* SDCAmr::build_level(int lev)
   double nodes[3] = { 0.0, 0.5, 1.0 };
   int nrepeat     = (nnodes-1)/2;
   int flags       = 0;
-  if (ho_imex) flags |= SDC_IMEX_HO;
+  // if (ho_imex) flags |= SDC_IMEX_HO;
   sdc_imex* imex = sdc_imex_create(nodes, 3, nrepeat, flags,
 				   sdc_f1eval, sdc_f2eval, sdc_f2comp);
 
@@ -672,84 +637,14 @@ sdc_sweeper* SDCAmr::build_level(int lev)
 }
 
 /*
- * Rebuild MLSDC hierarchy.
- */
-void SDCAmr::rebuild_mlsdc()
-{
-  BL_PROFILE("SDCAmr::rebuild_mlsdc()");
-
-  // reset previous and clear sweepers etc
-  sdc_mg_reset(&mg);
-  destroy_mlsdc();
-
-  // rebuild
-  for (int lev=0; lev<=finest_level; lev++) {
-    encaps[lev] = build_encap(lev);
-    sweepers[lev] = build_level(lev);
-    sweepers[lev]->nset->ctx = &getLevel(lev);
-    sweepers[lev]->nset->encap = encaps[lev];
-    sdc_mg_add_level(&mg, sweepers[lev], mlsdc_amr_interpolate, mlsdc_amr_restrict);
-  }
-
-  sdc_mg_setup(&mg, 0);
-  sdc_mg_allocate(&mg);
-
-  n_cycle[0] = 1;
-  for (int lev=1; lev<=finest_level; lev++)
-    n_cycle[lev] = 2; // see notes
-
-  if (verbose > 0 && ParallelDescriptor::IOProcessor()) {
-    cout << "Rebuilt MLSDC: " << mg.nlevels << ", nnodes: ";
-    for (int lev=0; lev<=finest_level; lev++)
-      cout << sweepers[lev]->nset->nnodes << " ";
-    cout << endl;
-    if (verbose > 2)
-      sdc_mg_print(&mg, 2);
-  }
-}
-
-/*
  * Initialize SDC multigrid sweeper, set parameters.
  */
 SDCAmr::SDCAmr ()
 {
-  ParmParse ppsdc("mlsdc");
-  if (!ppsdc.query("max_iters", max_iters)) max_iters = 4;
-  if (!ppsdc.query("max_trefs", max_trefs)) max_trefs = 2;
-  if (!ppsdc.query("nnodes0",   nnodes0))   nnodes0 = 3;
-  if (!ppsdc.query("ho_imex",   ho_imex))   ho_imex = 1;
-  if (!ppsdc.query("trat",      trat))      trat = 2;
-
-  if (verbose > 2)
-    sdc_log_set_stdout(SDC_LOG_DEBUG);
-  else if (verbose > 1)
-    sdc_log_set_stdout(SDC_LOG_INFO);
-
-  sdc_mg_build(&mg, max_level+1);
-  sdc_hooks_add(mg.hooks, SDC_HOOK_POST_TRANS, sdc_poststep_hook);
-
-  sweepers.resize(max_level+1);
-  encaps.resize(max_level+1);
-  nsweeps.resize(max_trefs+1);
-
-  if (!ppsdc.queryarr("nsweeps", nsweeps)) {
-    nsweeps[0] = (max_level > 0) ? 2 : 1;
-    for (int l=1; l<max_trefs+1; l++)
-      nsweeps[l] = 1;
-  }
-
-
-  for (int i=0; i<=max_level; i++)
-    sweepers[i] = NULL;
+  InitializeMLSDC();
 
   if (max_level > 0)
     for (int i=0; i<=max_level; i++)
       if (blockingFactor(i) < 8)
 	BoxLib::Abort("For AMR runs, set blocking_factor to at least 8.");
-}
-
-SDCAmr::~SDCAmr()
-{
-  destroy_mlsdc();
-  sdc_mg_destroy(&mg);
 }

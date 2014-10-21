@@ -38,7 +38,7 @@ endif
 
 ifeq ($(USE_SDCLIB), TRUE)
   DEFINES += -DUSE_SDCLIB
-  CEXE_sources += SDCAmr.cpp SDCAmrEncap.cpp gnuplot.cpp
+  CEXE_sources += SDCAmr.cpp
   CEXE_headers += SDCAmr.H
   Bpack   += $(SDCLIB_HOME)/Make.package
   Blocs   += $(SDCLIB_HOME)/src $(SDCLIB_HOME)/include
