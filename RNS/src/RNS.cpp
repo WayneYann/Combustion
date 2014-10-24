@@ -150,7 +150,7 @@ int          RNS::do_quartic_interp   = 1;
 
 int          RNS::do_weno             = 1;
 int          RNS::do_mp5              = 0;
-int          RNS::weno_type           = 0; // 0: Jiang-Shu; 1: WENO-M; 2: WENO-Z 
+int          RNS::weno_type           = 0; // 0: Jiang-Shu; 1: WENO-M; 2: WENO-Z
 int          RNS::do_quadrature_weno  = 0;
 int          RNS::do_component_weno   = 0;
 Real         RNS::eps_wenojs          = 1.e-6;
@@ -368,7 +368,11 @@ RNS::RNS (Amr&            papa,
 	  const BoxArray& bl,
 	  Real            time)
     :
+#ifdef USE_SDCLIB
+    MLSDCAmrLevel(papa,lev,level_geom,bl,time)
+#else
     AmrLevel(papa,lev,level_geom,bl,time)
+#endif
 {
     buildMetrics();
 
@@ -393,12 +397,15 @@ RNS::RNS (Amr&            papa,
 	    RK_k[i].define(grids,NUM_STATE,0,Fab_allocate);
 	}
 
-	if (flux_reg) 
+	if (flux_reg)
 	{
-	    flux_reg_RK = new FluxRegister(grids,crse_ratio,level,NUM_STATE);	    
+	    flux_reg_RK = new FluxRegister(grids,crse_ratio,level,NUM_STATE);
 	}
     }
 #endif
+
+    num_ad_evals = 0;
+    num_chem_evals = 0;
 }
 
 RNS::~RNS ()
@@ -407,6 +414,9 @@ RNS::~RNS ()
     delete chemstatus;
     delete [] RK_k;
     delete flux_reg_RK;
+
+    cout << "Number of AD evals:   " << Level() << " " << num_ad_evals << endl;
+    cout << "Number of CHEM evals: " << Level() << " " << num_chem_evals << endl;
 }
 
 void

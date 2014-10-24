@@ -81,10 +81,11 @@ def dme_flameball_convergence(force_run=False):
 #### mach2bump test ################################################################################
 
 @task
-def mach2bump(trial, force_run=False):
+def mach2bump(trial, force_run=False, run_reference=True):
 
     diff = os.path.abspath('../../../BoxLib/Tools/C_util/Convergence/DiffSameDomain1d.Linux.g++.gfortran.DEBUG.ex')
     forse_run = as_boolean(force_run)
+    run_reference = as_boolean(run_reference)
 
     base   = os.path.abspath('../bin/Mach2Bump')
     inputs = os.path.join(base, 'inputs-bndry-test')
@@ -102,17 +103,16 @@ def mach2bump(trial, force_run=False):
     name = lambda method, max_level, nx, cfl: os.path.join(
         base, trial + '.d', '%s_lev%d_nx%04d_cfl%0.2f' % (method, max_level, nx, cfl))
 
-    nxs  = [ 64, 128, 256, 512 ]#, 1024 ]
+    nxs  = [ 64, 128, 256, 512 ]
     cfls = [ 0.2, 0.35, 0.5 ]
 
     # high-res reference run
     cfl = 0.25
     nx  = 4096
     reference = name('ref', 0, nx, cfl)
-    if not exists(reference) or force_run:
-        RNS(reference, exe['sdc'], inputs, "rns.cfl=%f amr.max_level=0 amr.n_cell=%d" % (cfl, nx))
-
-    header = parse_first_header(reference)
+    if run_reference:
+        if not exists(reference) or force_run:
+            RNS(reference, exe['sdc'], inputs, "rns.cfl=%f amr.max_level=0 amr.n_cell=%d" % (cfl, nx))
 
     # sdc/rk runs
     for method, nx, cfl, max_level in itertools.product([ 'sdc', 'rk' ], nxs, cfls, [ 0, 1 ] ):
@@ -123,8 +123,6 @@ def mach2bump(trial, force_run=False):
             args = [ "rns.cfl=%.2f" % cfl,
                      "amr.n_cell=%d" % nx,
                      "amr.max_level=%d" % max_level ]
-            if method == 'sdc' and cfl >= 0.75 and max_level == 1:
-                args.append("mlsdc.max_iters = 2")
             RNS(dname, exe[method], inputs, " ".join(args))
 
     errors = []
@@ -186,7 +184,7 @@ def mach2bump_results(trial):
     max_levels = set([ x.max_level for x in errors ])
     norms      = set([ x.norm for x in errors ])
 
-    norm = 2
+    norm = 0
 
     rows = []
 

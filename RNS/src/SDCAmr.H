@@ -3,9 +3,7 @@
 #ifndef _SDCAMR_H_
 #define _SDCAMR_H_
 
-#include <MultiFab.H>
-#include <FluxRegister.H>
-#include <Amr.H>
+#include <MLSDCAmr.H>
 #include <RNS.H>
 #include <sdc.h>
 
@@ -27,66 +25,16 @@ END_EXTERN_C
 using namespace std;
 
 /*
- * MultiFab encapsulation context for SDCLib.
+ * RNS MLSDC+AMR class.
  */
 
-typedef struct {
-  const BoxArray *ba;
-  IntVect crse_ratio;
-  int ncomp, ngrow, level, finest;
-  RNS *rns;
-} RNSEncapCtx;
-
-typedef struct {
-  MultiFab* U;			// solution or function eval
-  FluxRegister* fine_flux;	// current levels flux register
-  FluxRegister* crse_flux;	// coarse levels flux register
-  RNS* rns;
-  int type;
-} RNSEncap;
-
-/*
- * Multigrid SDC+AMR class.
- */
-
-class SDCAmr : public Amr
+class SDCAmr : public MLSDCAmr
 {
 public:
-
-  int max_iters;                // maximum number of sdc iterations
-  int max_trefs;                // maximum number of time refinements
-  int nnodes0;			// number of nodes on the coarsest level
-  int trat;			// time refinement ratio
-  int ho_imex;
-  int first_refinement_level;   // first amr level that has time refinement
-
-  sdc_mg mg;
-  vector<sdc_sweeper*> sweepers;
-  vector<sdc_encap*>   encaps;
-  vector<int>          nsweeps;
-
   SDCAmr();
-  ~SDCAmr();
-
-  sdc_encap*   build_encap(int lev);
-  sdc_sweeper* build_level(int lev);
-  void         rebuild_mlsdc();
-  void         destroy_mlsdc();
-  void         final_integrate(double t, double dt, int niter);
-
-  virtual void init (Real strt_time, Real stop_time);
-
+  virtual sdc_sweeper* BuildLevel(int lev);
   virtual void coarseTimeStep (Real stop_time);
-
-  virtual void timeStep(int level,
-			Real time,
-			int iteration,
-			int niter ,
-			Real stop_time) { BL_ASSERT(false); }
-
 };
-
-void dgp_send_mf(MultiFab& U, int level, int comp, int wait);
 
 #endif
 #endif

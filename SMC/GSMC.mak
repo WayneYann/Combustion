@@ -79,6 +79,7 @@ Fmlocs += $(CHEMISTRY_DIR)/src_common
 Fmpack += $(CHEMISTRY_DIR)/F_Src/GPackage.mak
 Fmlocs += $(CHEMISTRY_DIR)/F_Src
 
+INCLUDE_LOCATIONS += $(CHEMISTRY_DIR)/src_common
 ifeq ($(CHEMISTRY_MODEL),LIDRYER)
   csources += LiDryer.c
   vpath %.c   $(VPATH_LOCATIONS) $(CHEMISTRY_DIR)/data/LiDryer
