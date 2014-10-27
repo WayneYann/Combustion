@@ -620,8 +620,7 @@ sdc_sweeper* SDCAmr::BuildLevel(int lev)
 
   double nodes[3] = { 0.0, 0.5, 1.0 };
   int nrepeat     = (nnodes-1)/2;
-  int flags       = 0;
-  // if (ho_imex) flags |= SDC_IMEX_HO;
+  int flags       = (ho_imex) ? SDC_IMEX_HO : 0;
   sdc_imex* imex = sdc_imex_create(nodes, 3, nrepeat, flags,
 				   sdc_f1eval, sdc_f2eval, sdc_f2comp);
 
@@ -642,6 +641,9 @@ sdc_sweeper* SDCAmr::BuildLevel(int lev)
 SDCAmr::SDCAmr ()
 {
   InitializeMLSDC();
+
+  ParmParse ppsdc("mlsdc");
+  if (!ppsdc.query("ho_imex", ho_imex)) ho_imex = 1;
 
   if (max_level > 0)
     for (int i=0; i<=max_level; i++)

@@ -30,6 +30,7 @@ using namespace std;
 
 class SDCAmr : public MLSDCAmr
 {
+  int ho_imex;
 public:
   SDCAmr();
   virtual sdc_sweeper* BuildLevel(int lev);
