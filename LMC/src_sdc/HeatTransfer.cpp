@@ -2631,6 +2631,7 @@ HeatTransfer::post_init_press (Real&        dt_init,
     if (init_iter > 0)
         for (int k = 0; k <= finest_level; k++)
             saved_state.set(k,new MultiFab(getLevel(k).grids,nState,nGrow));
+
     //
     // Iterate over the advance function.
     //
@@ -4095,7 +4096,7 @@ HeatTransfer::advance_setup (Real time,
         MultiFab& nstate = get_new_data(k);
         MultiFab& ostate = get_old_data(k);
 
-        MultiFab::Copy(nstate,ostate,0,0,nstate.nComp(),nstate.nGrow());
+	MultiFab::Copy(nstate,ostate,0,0,nstate.nComp(),nstate.nGrow());
     }
     if (level == 0)
         set_htt_hmixTYP();
@@ -4389,6 +4390,7 @@ HeatTransfer::advance (Real time,
     MultiFab DDnp1(grids,1,nGrowAdvForcing);
     MultiFab dpdt(grids,1,nGrowAdvForcing);
     MultiFab delta_dpdt(grids,1,nGrowAdvForcing);
+    MultiFab mac_divu(grids,1,nGrowAdvForcing);
 
     MultiFab::Copy(Dnp1,Dn,0,0,nspecies+2,nGrowAdvForcing);
     MultiFab::Copy(DDnp1,DDn,0,0,1,nGrowAdvForcing);
@@ -4428,7 +4430,7 @@ HeatTransfer::advance (Real time,
       // create S^{n+1/2} by averaging old and new
       MultiFab Forcing(grids,nspecies+1,nGrowAdvForcing);
       Forcing.setBndry(1.e30);
-      create_mac_rhs(Forcing,nGrowAdvForcing,time+0.5*dt,dt);
+      create_mac_rhs(mac_divu,nGrowAdvForcing,time+0.5*dt,dt);
       showMF("sdc",Forcing,"sdc_mac_rhs1",level,sdc_iter,parent->levelSteps(level));
       
       // compute new-time thermodynamic pressure
@@ -4442,11 +4444,12 @@ HeatTransfer::advance (Real time,
       // add to time-centered DivU
       MultiFab::Add(dpdt,delta_dpdt,0,0,1,nGrowAdvForcing);
       showMF("sdc",dpdt,"sdc_mac_rhs2",level,sdc_iter,parent->levelSteps(level));
-      MultiFab::Add(Forcing,dpdt,0,0,1,nGrowAdvForcing);
+
+      MultiFab::Add(mac_divu,dpdt,0,0,1,nGrowAdvForcing);
 
       // MAC-project... and overwrite U^{ADV,*}
       showMF("sdc",Forcing,"sdc_Forcing_for_mac",level,sdc_iter,parent->levelSteps(level));
-      mac_project(time,dt,S_old,&Forcing,1,nGrowAdvForcing,updateFluxReg);
+      mac_project(time,dt,S_old,&mac_divu,1,nGrowAdvForcing,updateFluxReg);
 
       //
       // Compute A (advection terms) with F = Dn + R
@@ -4473,7 +4476,7 @@ HeatTransfer::advance (Real time,
 
       // compute A
       aofs->setVal(1.e30,aofs->nGrow());
-      compute_scalar_advection_fluxes_and_divergence(Forcing,dt);
+      compute_scalar_advection_fluxes_and_divergence(Forcing,mac_divu,dt);
       showMF("sdc",*aofs,"sdc_A_pred",level,sdc_iter,parent->levelSteps(level));
 
       // update rho, rho*Y, and rho*h
@@ -4580,13 +4583,14 @@ HeatTransfer::advance (Real time,
 
       if (verbose && ParallelDescriptor::IOProcessor())
 	std::cout << "DONE WITH R (SDC corrector " << sdc_iter << ")\n";
+
+      setThermoPress(cur_time);
     }
 
     Dn.clear();
     DDn.clear();
     Dnp1.clear();
     DDnp1.clear();
-    dpdt.clear();
     delta_dpdt.clear();
 
     if (verbose && ParallelDescriptor::IOProcessor())
@@ -4691,7 +4695,13 @@ HeatTransfer::advance (Real time,
       velocity_advection(dt);
     }
     velocity_update(dt);
+
     showMF("sdc",get_new_data(State_Type),"sdc_Snew_preProj",level,parent->levelSteps(level));
+
+    // compute delta_chi correction
+    calc_dpdt(cur_time,dt,dpdt,u_mac);
+    MultiFab::Add(get_new_data(Divu_Type),dpdt,0,0,1,0);
+
     //
     // Increment rho average.
     //
@@ -4704,13 +4714,18 @@ HeatTransfer::advance (Real time,
                 alpha = 0.5/Real(ncycle);
             incrRhoAvg(alpha);
         }
-        //
-        // Do a level project to update the pressure and velocity fields.
-        //
-        level_projector(dt,time,iteration);
-
-        if (level > 0 && iteration == 1) p_avg->setVal(0);
     }
+
+    if (dt > 0) {
+
+      //
+      // Do a level project to update the pressure and velocity fields.
+      //
+      level_projector(dt,time,iteration);
+
+      if (level > 0 && iteration == 1) p_avg->setVal(0);
+    }
+
     showMF("sdc",get_new_data(State_Type),"sdc_Snew_postProj",level,parent->levelSteps(level));
 
 #ifdef PARTICLES
@@ -5079,8 +5094,9 @@ HeatTransfer::advance_chemistry (MultiFab&       mf_old,
 }
 
 void
-HeatTransfer::compute_scalar_advection_fluxes_and_divergence (MultiFab& Force,
-                                                              Real      dt)
+HeatTransfer::compute_scalar_advection_fluxes_and_divergence (const MultiFab& Force,
+                                                              const MultiFab& DivU,
+                                                              Real            dt)
 {
   //
   // Compute -Div(advective fluxes)  [ which is -aofs in NS, BTW ... careful...
@@ -5095,10 +5111,6 @@ HeatTransfer::compute_scalar_advection_fluxes_and_divergence (MultiFab& Force,
   // Gather info necesary to build transverse velocities
   // (stored internal to Godunov)
   //
-  MultiFab DivU(grids,1,nGrowAdvForcing);
-  create_mac_rhs(DivU,nGrowAdvForcing,prev_time,dt);
-  showMF("dd",DivU,"dd_divu_in_aofs",level);
-
   MultiFab Gp, VelViscTerms;
   const int use_forces_in_trans = godunov->useForcesInTrans();
   if (use_forces_in_trans || (do_mom_diff == 1))
@@ -5116,7 +5128,8 @@ HeatTransfer::compute_scalar_advection_fluxes_and_divergence (MultiFab& Force,
 
   const int nState = desc_lst[State_Type].nComp();
 
-  for (FillPatchIterator S_fpi(*this,DivU,Godunov::hypgrow(),prev_time,State_Type,0,nState);
+  MultiFab dummy(grids,1,0,Fab_noallocate);
+  for (FillPatchIterator S_fpi(*this,dummy,Godunov::hypgrow(),prev_time,State_Type,0,nState);
        S_fpi.isValid();
        ++S_fpi)
   {
@@ -5210,7 +5223,6 @@ HeatTransfer::compute_scalar_advection_fluxes_and_divergence (MultiFab& Force,
     }
   }
 
-  DivU.clear();
   volume.clear();
   tvelforces.clear();
   D_TERM(area[0].clear();,area[1].clear();,area[2].clear(););

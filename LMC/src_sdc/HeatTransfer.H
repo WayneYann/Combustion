@@ -126,8 +126,9 @@ public:
                                           int  first_scalar,
                                           int  last_scalar);
 
-    void compute_scalar_advection_fluxes_and_divergence (MultiFab& Force,
-                                                         Real      dt);
+    void compute_scalar_advection_fluxes_and_divergence (const MultiFab& Force,
+                                                         const MultiFab& divu,
+                                                         Real            dt);
 
     void differential_diffusion_update (MultiFab& Force,
                                         int       FComp,
