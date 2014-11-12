@@ -56,3 +56,5 @@ junk:
 # Available chemistry models:
 # CanuH2 chem-CH4-2step chem-H dme glar gri Hai H-CW header inert Konnov
 # LiDryer Marinov prf_ethanol Roehl sandiego smooke usc
+
+DEFINES += -DALWAYS_NEW_J
