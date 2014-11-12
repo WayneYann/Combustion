@@ -966,6 +966,10 @@ c
             T_cell             = Told(i,j)
             FuncCount(i,j)     = 0
 
+#ifdef ALWAYS_NEW_J
+            FIRST = .TRUE.
+#endif
+
 !           if(i.eq.0 .and. j.eq.0)then
 !               write(6,*) " in conpsolv"
 !               print *, "Z", Z(1:Nspec)
