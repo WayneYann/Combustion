@@ -13,7 +13,6 @@ COMP            = g++
 FCOMP           = gfortran
 USE_MPI         = TRUE
 USE_OMP         = FALSE
-USE_F90_SOLVERS = TRUE
 USE_SWIRL_DATA  = TRUE
 VERBOSE         = TRUE
 
