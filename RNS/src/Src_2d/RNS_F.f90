@@ -24,7 +24,7 @@ subroutine rns_dudt_ad (lo, hi, &
   double precision, intent(in)  :: dx(2)
 
   integer :: Ulo(2), Uhi(2), fxlo(2), fxhi(2), fylo(2), fyhi(2), tlo(2), thi(2)
-  integer :: i, j, n, ib, jb, nb(2), boxsize(2)
+  integer :: iblock, nblocks, i, j, n, ib, jb, nb(2), boxsize(2)
   double precision :: dxinv(2)
   double precision, allocatable :: bxflx(:,:,:), byflx(:,:,:)
   integer, allocatable :: bxlo(:), bxhi(:), bylo(:), byhi(:)
@@ -59,61 +59,65 @@ subroutine rns_dudt_ad (lo, hi, &
   call get_lo_hi(boxsize(1), nb(1), bxlo, bxhi)
   call get_lo_hi(boxsize(2), nb(2), bylo, byhi)
 
-  !$omp parallel private(fxlo,fxhi,fylo,fyhi,tlo,thi,i,j,n,ib,jb,bxflx,byflx)
+  nblocks = nb(1)*nb(2)
+
+  !$omp parallel private(fxlo,fxhi,fylo,fyhi,tlo,thi,i,j,n,ib,jb,bxflx,byflx,iblock)
   
-  !$omp do collapse(2)
-  do jb=0,nb(2)-1
-     do ib=0,nb(1)-1
+  !$omp do
+  do iblock = 0, nblocks-1
+     
+     jb = iblock / nb(1)
+     ib = iblock - jb*nb(1)
 
-        tlo(1) = lo(1) + bxlo(ib)
-        thi(1) = lo(1) + bxhi(ib)
-
-        tlo(2) = lo(2) + bylo(jb)
-        thi(2) = lo(2) + byhi(jb)
-
-        fxlo(1) = tlo(1)
-        fxlo(2) = tlo(2)
-        fxhi(1) = thi(1)+1
-        fxhi(2) = thi(2)
-
-        fylo(1) = tlo(1)
-        fylo(2) = tlo(2)
-        fyhi(1) = thi(1)
-        fyhi(2) = thi(2)+1
-  
-        allocate(bxflx(fxlo(1):fxhi(1),fxlo(2):fxhi(2),NVAR))
-        allocate(byflx(fylo(1):fyhi(1),fylo(2):fyhi(2),NVAR))
-
-        bxflx = 0.d0
-        byflx = 0.d0
-
-        if (do_weno) then
-           call hypterm(tlo,thi,U,Ulo,Uhi,bxflx,fxlo,fxhi,byflx,fylo,fyhi,dx)
-        end if
-        call difterm(tlo,thi,U,Ulo,Uhi,bxflx,fxlo,fxhi,byflx,fylo,fyhi,dxinv)
-
-        ! Note that fluxes are on faces.  So don't double count!
-        if (thi(1) .ne. hi(1)) fxhi(1) = fxhi(1) - 1
-        if (thi(2) .ne. hi(2)) fyhi(2) = fyhi(2) - 1
-
-        do n=1,NVAR
-           do j=fxlo(2),fxhi(2)
-              do i=fxlo(1),fxhi(1)
-                 xflx(i,j,n) = bxflx(i,j,n)
-              end do
-           end do
-
-           do j=fylo(2),fyhi(2)
-              do i=fylo(1),fyhi(1)
-                 yflx(i,j,n) = byflx(i,j,n)
-              end do
+     tlo(1) = lo(1) + bxlo(ib)
+     thi(1) = lo(1) + bxhi(ib)
+     
+     tlo(2) = lo(2) + bylo(jb)
+     thi(2) = lo(2) + byhi(jb)
+     
+     fxlo(1) = tlo(1)
+     fxlo(2) = tlo(2)
+     fxhi(1) = thi(1)+1
+     fxhi(2) = thi(2)
+     
+     fylo(1) = tlo(1)
+     fylo(2) = tlo(2)
+     fyhi(1) = thi(1)
+     fyhi(2) = thi(2)+1
+     
+     allocate(bxflx(fxlo(1):fxhi(1),fxlo(2):fxhi(2),NVAR))
+     allocate(byflx(fylo(1):fyhi(1),fylo(2):fyhi(2),NVAR))
+     
+     bxflx = 0.d0
+     byflx = 0.d0
+     
+     if (do_weno) then
+        call hypterm(tlo,thi,U,Ulo,Uhi,bxflx,fxlo,fxhi,byflx,fylo,fyhi,dx)
+     end if
+     call difterm(tlo,thi,U,Ulo,Uhi,bxflx,fxlo,fxhi,byflx,fylo,fyhi,dxinv)
+     
+     ! Note that fluxes are on faces.  So don't double count!
+     if (thi(1) .ne. hi(1)) fxhi(1) = fxhi(1) - 1
+     if (thi(2) .ne. hi(2)) fyhi(2) = fyhi(2) - 1
+     
+     do n=1,NVAR
+        do j=fxlo(2),fxhi(2)
+           do i=fxlo(1),fxhi(1)
+              xflx(i,j,n) = bxflx(i,j,n)
            end do
         end do
-
-        deallocate(bxflx,byflx)
-
+        
+        do j=fylo(2),fyhi(2)
+           do i=fylo(1),fyhi(1)
+              yflx(i,j,n) = byflx(i,j,n)
+           end do
+        end do
      end do
+     
+     deallocate(bxflx,byflx)
+     
   end do
+  !$omp end do
 
   !$omp do
   do n=1, NVAR
