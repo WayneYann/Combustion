@@ -1076,10 +1076,10 @@ CNSReact::avgDown (int state_indx)
     {
         const int        i        = mfi.index();
         const Box&       ovlp     = crse_S_fine_BA[i];
-        FArrayBox&       crse_fab = crse_S_fine[i];
-        const FArrayBox& crse_vol = crse_fvolume[i];
-        const FArrayBox& fine_fab = S_fine[i];
-        const FArrayBox& fine_vol = fvolume[i];
+        FArrayBox&       crse_fab = crse_S_fine[mfi];
+        const FArrayBox& crse_vol = crse_fvolume[mfi];
+        const FArrayBox& fine_fab = S_fine[mfi];
+        const FArrayBox& fine_vol = fvolume[mfi];
 
 	BL_FORT_PROC_CALL(CNS_AVGDOWN,cns_avgdown)
             (BL_TO_FORTRAN(crse_fab), ncomp,
@@ -1129,10 +1129,10 @@ CNSReact::errorEst (TagBoxArray& tags,
         {
             int         idx     = mfi.index();
             RealBox     gridloc = RealBox(grids[idx],geom.CellSize(),geom.ProbLo());
-            itags               = tags[idx].tags();
+            itags               = tags[mfi].tags();
             int*        tptr    = itags.dataPtr();
-            const int*  tlo     = tags[idx].box().loVect();
-            const int*  thi     = tags[idx].box().hiVect();
+            const int*  tlo     = tags[mfi].box().loVect();
+            const int*  thi     = tags[mfi].box().hiVect();
             const int*  lo      = mfi.validbox().loVect();
             const int*  hi      = mfi.validbox().hiVect();
             const Real* xlo     = gridloc.lo();
@@ -1150,9 +1150,9 @@ CNSReact::errorEst (TagBoxArray& tags,
             //
             if (allow_untagging == 1) 
             {
-               tags[idx].tags_and_untags(itags);
+               tags[mfi].tags_and_untags(itags);
             } else {
-               tags[idx].tags(itags);
+               tags[mfi].tags(itags);
             }
         }
 
@@ -1397,7 +1397,7 @@ CNSReact::SyncInterp (MultiFab&      CrseSync,
             if (interpolater == &protected_interp)
             {
               cdata.mult(dt_clev);
-              FArrayBox& fine_state = (*fine_stateMF)[i];
+              FArrayBox& fine_state = (*fine_stateMF)[mfi];
               interpolater->protect(cdata,0,fdata,0,fine_state,state_comp,
                                     num_comp,fgrids[i],ratio,
                                     cgeom,fgeom,bc_interp);
@@ -1405,11 +1405,11 @@ CNSReact::SyncInterp (MultiFab&      CrseSync,
               cdata.mult(dt_clev_inv);
             }
             
-            FineSync[i].plus(fdata,0,dest_comp,num_comp);
+            FineSync[mfi].plus(fdata,0,dest_comp,num_comp);
         }
         else
         {
-            FineSync[i].copy(fdata,0,dest_comp,num_comp);
+            FineSync[mfi].copy(fdata,0,dest_comp,num_comp);
         }
     }
 

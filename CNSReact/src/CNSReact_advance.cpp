@@ -125,12 +125,12 @@ CNSReact::advance_hydro (Real time,
 
       for (int i = 0; i < BL_SPACEDIM ; i++) {
 	area[i].resize(BoxLib::surroundingNodes(bx_g,i));
-	area[i].copy(levelArea[i][mfiindex]);
+	area[i].copy(levelArea[i][fpi]);
       }
             
 #if (BL_SPACEDIM <=2)
       dloga.resize(bx_g);
-      dloga.copy(dLogArea[0][mfiindex]);
+      dloga.copy(dLogArea[0][fpi]);
 #endif
 
       // Allocate fabs for fluxes.
@@ -165,7 +165,7 @@ CNSReact::advance_hydro (Real time,
       if (do_reflux) {
 	if (fine) {
 	  for (int i = 0; i < BL_SPACEDIM ; i++) {
-                        fluxes[i][mfiindex].copy(flux[i]);
+                        fluxes[i][fpi].copy(flux[i]);
 	  }
 	}
 	if (current) {

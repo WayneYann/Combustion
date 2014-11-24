@@ -1321,7 +1321,7 @@ HeatTransfer::estTimeStep ()
     {
         const int        i   = U_fpi.index();
         FArrayBox&       U   = U_fpi();
-        const FArrayBox& Rho = (*rho_ctime)[i];
+        const FArrayBox& Rho = (*rho_ctime)[U_fpi];
         const int*       lo  = grids[i].loVect();
         const int*       hi  = grids[i].hiVect();
 
@@ -1330,7 +1330,7 @@ HeatTransfer::estTimeStep ()
 
         geom.GetVolume(volume, grids, i, GEOM_GROW);
 
-        DEF_CLIMITS((*divu)[i],sdat,slo,shi);
+        DEF_CLIMITS((*divu)[U_fpi],sdat,slo,shi);
         DEF_CLIMITS(Rho,rhodat,rholo,rhohi);
         DEF_CLIMITS(U,vel,ulo,uhi);
 
@@ -1343,7 +1343,7 @@ HeatTransfer::estTimeStep ()
 #endif
         FORT_EST_DIVU_DT(divu_ceiling,&divu_dt_factor,
                          dx,sdat,ARLIM(slo),ARLIM(shi),
-                         (*dsdt)[i].dataPtr(),
+                         (*dsdt)[U_fpi].dataPtr(),
                          rhodat,ARLIM(rholo),ARLIM(rhohi),
                          vel,ARLIM(ulo),ARLIM(uhi),
                          vol,ARLIM(v_lo),ARLIM(v_hi),
@@ -1397,7 +1397,7 @@ HeatTransfer::checkTimeStep (Real dt)
     {
         const int        i   = U_fpi.index();
         FArrayBox&       U   = U_fpi();
-        const FArrayBox& Rho = (*rho_ctime)[i];
+        const FArrayBox& Rho = (*rho_ctime)[U_fpi];
         const int*       lo  = grids[i].loVect();
         const int*       hi  = grids[i].hiVect();
 
@@ -1744,7 +1744,7 @@ HeatTransfer::init (AmrLevel& old)
          fpi.isValid();
          ++fpi)
     {
-        Ydot[fpi.index()].copy(fpi());
+        Ydot[fpi].copy(fpi());
     }
 
     RhoH_to_Temp(get_new_data(State_Type));
@@ -1755,7 +1755,7 @@ HeatTransfer::init (AmrLevel& old)
          fpi.isValid();
          ++fpi)
     {
-        FuncCount[fpi.index()].copy(fpi());
+        FuncCount[fpi].copy(fpi());
     }
 }
 
@@ -1900,7 +1900,7 @@ HeatTransfer::post_timestep (int crse_iteration)
                      fpi.isValid();
                      ++fpi)
                 {
-                    tmf[fpi.index()].copy(fpi(),0,0,mf.nComp());
+                    tmf[fpi].copy(fpi(),0,0,mf.nComp());
                 }
 
                 HTPC->Timestamp(basename, tmf, lev, curr_time, timestamp_indices);
@@ -2572,7 +2572,7 @@ HeatTransfer::avgDown ()
         {
             const int i = mfi.index();
 
-            injectDown(crse_P_fine_BA[i],crse_P_fine[i],P_fine[i],fine_ratio);
+            injectDown(crse_P_fine_BA[i],crse_P_fine[mfi],P_fine[mfi],fine_ratio);
         }
 
         P_crse.copy(crse_P_fine);  // Parallel copy
@@ -2908,7 +2908,7 @@ HeatTransfer::make_rho_prev_time ()
          fpi.isValid();
          ++fpi)
     {
-        (*rho_ptime)[fpi.index()].copy(fpi());
+        (*rho_ptime)[fpi].copy(fpi());
     }
 }
 
@@ -2921,7 +2921,7 @@ HeatTransfer::make_rho_curr_time ()
          fpi.isValid();
          ++fpi)
     {
-        (*rho_ctime)[fpi.index()].copy(fpi());
+        (*rho_ctime)[fpi].copy(fpi());
     }
 }
 
@@ -2979,7 +2979,7 @@ HeatTransfer::adjust_spec_diffusion_fluxes (Real time)
 
         for (int d =0; d < BL_SPACEDIM; ++d)
         {
-            FArrayBox& f = (*flux[d])[mfi.index()];
+            FArrayBox& f = (*flux[d])[mfi];
             FORT_REPAIR_FLUX(box.loVect(), box.hiVect(), domain.loVect(), domain.hiVect(),
                              f.dataPtr(),      ARLIM(f.loVect()),ARLIM(f.hiVect()),
                              Y.dataPtr(sCompY),ARLIM(Y.loVect()),ARLIM(Y.hiVect()),
@@ -3057,31 +3057,31 @@ HeatTransfer::adjust_spec_diffusion_update (MultiFab&              Phi_new,
 	FORT_RECOMP_UPDATE(box.loVect(), box.hiVect(),
 			   update.dataPtr(),
 			   ARLIM(update.loVect()),       ARLIM(update.hiVect()),
-			   (*flux[0])[iGrid].dataPtr(),
-                           ARLIM((*flux[0])[iGrid].loVect()),
-                           ARLIM((*flux[0])[iGrid].hiVect()),
-			   (*flux[1])[iGrid].dataPtr(),
-			   ARLIM((*flux[1])[iGrid].loVect()),
-                           ARLIM((*flux[1])[iGrid].hiVect()),
+			   (*flux[0])[mfi].dataPtr(),
+                           ARLIM((*flux[0])[mfi].loVect()),
+                           ARLIM((*flux[0])[mfi].hiVect()),
+			   (*flux[1])[mfi].dataPtr(),
+			   ARLIM((*flux[1])[mfi].loVect()),
+                           ARLIM((*flux[1])[mfi].hiVect()),
 #if BL_SPACEDIM == 3
-			   (*flux[2])[iGrid].dataPtr(),
-			   ARLIM((*flux[2])[iGrid].loVect()),
-                           ARLIM((*flux[2])[iGrid].hiVect()),
+			   (*flux[2])[mfi].dataPtr(),
+			   ARLIM((*flux[2])[mfi].loVect()),
+                           ARLIM((*flux[2])[mfi].hiVect()),
 #endif
 			   volume.dataPtr(),
 			   ARLIM(volume.loVect()),ARLIM(volume.hiVect()),
 			   &nspecies);
 	
 	if (delta_rhs)
-	    update.plus((*delta_rhs)[iGrid],box,dataComp,0,nspecies);
+	    update.plus((*delta_rhs)[mfi],box,dataComp,0,nspecies);
 
 	update.mult(dt,box,0,nspecies);
 
 	if (alpha)
-	    update.divide((*alpha)[iGrid],box,dataComp,0,nspecies);
+	    update.divide((*alpha)[mfi],box,dataComp,0,nspecies);
 
         tmp.resize(box,1);
-        tmp.copy((*rho_half)[iGrid],0,0,1);
+        tmp.copy((*rho_half)[mfi],0,0,1);
         tmp.invert(1);
 
 	for (int i = 0; i < nspecies; ++i)
@@ -3089,7 +3089,7 @@ HeatTransfer::adjust_spec_diffusion_update (MultiFab&              Phi_new,
 		update.mult(tmp,0,i,1);
 
 	if (Phi_old)
-	    update.plus((*Phi_old)[iGrid],box,sCompS,0,nspecies);
+	    update.plus((*Phi_old)[mfi],box,sCompS,0,nspecies);
 
         Phi_new[mfi].copy(update,box,0,box,sCompS,nspecies);
     }
@@ -5028,7 +5028,7 @@ HeatTransfer::compute_differential_diffusion_terms (MultiFab& visc_terms,
             MultiFab bcoeffs;
             geom.GetFaceArea(bcoeffs,grids,d,0);
 	    for (MFIter mfi(bcoeffs); mfi.isValid(); ++mfi)
-		bcoeffs[mfi].mult((*beta[d])[mfi.index()],comp,0,1);
+		bcoeffs[mfi].mult((*beta[d])[mfi],comp,0,1);
 	    visc_op.bCoefficients(bcoeffs,d);
 	}
 
@@ -5227,7 +5227,7 @@ HeatTransfer::set_rho_to_species_sum (MultiFab& S_in,
         {
             const int i   = mfi.index();
             Box       box = BoxLib::grow(sgrids[i], nghost);
-            FabMinMax(S_in[i], box, 0.0, Real_MAX, s_first_spec, s_num_spec);
+            FabMinMax(S_in[mfi], box, 0.0, Real_MAX, s_first_spec, s_num_spec);
         }
     }
 
@@ -5242,7 +5242,7 @@ HeatTransfer::set_rho_to_species_sum (MultiFab& S_in,
 
         for (int spec = s_first_spec; spec <= s_last_spec; spec++)
         {
-            S_out[i].plus(S_in[i],box,spec,s_density,1);
+            S_out[mfi].plus(S_in[mfi],box,spec,s_density,1);
         }
     }
 
@@ -5287,9 +5287,9 @@ HeatTransfer::scale_species (MultiFab& S,
 
             for (int spec = s_first_spec; spec <= s_last_spec; spec++)
             {
-                if (S[k].min(spec) < 0.0)
+                if (S[mfi].min(spec) < 0.0)
                 {
-                    Real* sdat = S[k].dataPtr(spec);
+                    Real* sdat = S[mfi].dataPtr(spec);
 
                     for (int i = 0; i < vol; i++) 
                         sdat[i] = std::max(0.0,sdat[i]);
@@ -5306,11 +5306,9 @@ HeatTransfer::scale_species (MultiFab& S,
 
     for (MFIter mfi(S); mfi.isValid(); ++mfi)
     {
-        const int k = mfi.index();
-
         for (int spec = s_first_spec; spec <= s_last_spec; spec++)
         {
-            factor[k].plus(S[k],spec,0,1);
+            factor[mfi].plus(S[mfi],spec,0,1);
         }
     }
     //
@@ -5322,20 +5320,20 @@ HeatTransfer::scale_species (MultiFab& S,
     for (MFIter mfi(S); mfi.isValid(); ++mfi)
     {
         const int k      = mfi.index();
-        Real  min_factor = factor[k].min();
-        Real  max_factor = factor[k].max();
-        Real  min_rho    = S[k].min(s_density);
-        Real  max_rho    = S[k].max(s_density);
+        Real  min_factor = factor[mfi].min();
+        Real  max_factor = factor[mfi].max();
+        Real  min_rho    = S[mfi].min(s_density);
+        Real  max_rho    = S[mfi].max(s_density);
 
         if ((min_factor>0.0||max_factor<0.0) && (min_rho>0.0||max_rho<0.0))
         {
             //
             // Anything potentially worrisome is non-zero --> easy case.
             //
-            factor[k].invert(1.0,0,1);
-            factor[k].mult(S[k],s_density,0,1);
+            factor[mfi].invert(1.0,0,1);
+            factor[mfi].mult(S[mfi],s_density,0,1);
             for (int spec = s_first_spec; spec <= s_last_spec; spec++)
-                S[k].mult(factor[k],0,spec,1);
+                S[mfi].mult(factor[mfi],0,spec,1);
         }
         else
         {
@@ -5347,8 +5345,8 @@ HeatTransfer::scale_species (MultiFab& S,
             //
             //  guiding principal: rho is correct and the species are wrong
             //
-            Real* sumdat = factor[k].dataPtr();
-            Real* rhodat = S[k].dataPtr(s_density);
+            Real* sumdat = factor[mfi].dataPtr();
+            Real* rhodat = S[mfi].dataPtr(s_density);
             Real rhoi, sumi, factori;
 
             Box grd = BoxLib::grow(sgrids[k],nghost);
@@ -5366,7 +5364,7 @@ HeatTransfer::scale_species (MultiFab& S,
                     //
                     factori = rhoi/sumi;
                     for (int spec = s_first_spec; spec <= s_last_spec; spec++) 
-                        S[k].dataPtr(spec)[i] *= factori;
+                        S[mfi].dataPtr(spec)[i] *= factori;
                 }
                 else if (sumi == 0.0 && rhoi == 0.0)
                 {
@@ -5382,12 +5380,12 @@ HeatTransfer::scale_species (MultiFab& S,
                     //
                     int nonzero=0;
                     for (int spec = s_first_spec; spec <= s_last_spec; spec++) 
-                        if (S[k].dataPtr(spec)[i] != 0.0)
+                        if (S[mfi].dataPtr(spec)[i] != 0.0)
                             nonzero++;
                     Real shift = (rhoi-sumi)/nonzero;
                     for (int spec = s_first_spec; spec <= s_last_spec; spec++) 
-                        if (S[k].dataPtr(spec)[i] != 0.0) 
-                            S[k].dataPtr(spec)[i] += shift; 
+                        if (S[mfi].dataPtr(spec)[i] != 0.0) 
+                            S[mfi].dataPtr(spec)[i] += shift; 
                 }
             }
         }
@@ -5496,7 +5494,7 @@ HeatTransfer::compute_rhoRT (const MultiFab& S,
 	if (temp)
 	{
 	    BL_ASSERT(temp->boxArray()[i].contains(box));
-	    state.copy((*temp)[i],box,0,box,sCompT,1);
+	    state.copy((*temp)[mfi],box,0,box,sCompT,1);
 	}
         else
         {
@@ -5511,7 +5509,7 @@ HeatTransfer::compute_rhoRT (const MultiFab& S,
         for (int k = 0; k < nCompY; k++)
             state.mult(tmp,0,sCompY+k,1);
 
-	getChemSolve().getPGivenRTY(p[i],state,state,state,box,sCompR,sCompT,sCompY,pComp);
+	getChemSolve().getPGivenRTY(p[mfi],state,state,state,box,sCompR,sCompT,sCompY,pComp);
     }
 }
 			   
@@ -5704,25 +5702,25 @@ HeatTransfer::predict_velocity (Real  dt,
         const int i = U_fpi.index();
 
 #ifdef GENGETFORCE
-        getForce(tforces,i,1,Xvel,BL_SPACEDIM,prev_time,(*rho_ptime)[i]);
+        getForce(tforces,i,1,Xvel,BL_SPACEDIM,prev_time,(*rho_ptime)[U_fpi]);
 #elif MOREGENGETFORCE
 	if (ParallelDescriptor::IOProcessor() && getForceVerbose)
 	    std::cout << "---" << std::endl << "A - Predict velocity:" << std::endl << " Calling getForce..." << std::endl;
         getForce(tforces,i,1,Xvel,BL_SPACEDIM,prev_time,U_fpi(),S_fpi(),0);
 #else
-	getForce(tforces,i,1,Xvel,BL_SPACEDIM,(*rho_ptime)[i]);
+	getForce(tforces,i,1,Xvel,BL_SPACEDIM,(*rho_ptime)[U_fpi]);
 #endif		 
 
         //
         // Test velocities, rho and cfl.
         //
-        cflgrid  = godunov->test_u_rho(U_fpi(),(*rho_ptime)[i],grids[i],dx,dt,u_max);
+        cflgrid  = godunov->test_u_rho(U_fpi(),(*rho_ptime)[U_fpi],grids[i],dx,dt,u_max);
         cflmax   = std::max(cflgrid,cflmax);
         comp_cfl = std::max(cflgrid,comp_cfl);
         //
         // Compute the total forcing.
         //
-        godunov->Sum_tf_gp_visc(tforces,visc_terms[i],Gp[i],(*rho_ptime)[i]);
+        godunov->Sum_tf_gp_visc(tforces,visc_terms[U_fpi],Gp[U_fpi],(*rho_ptime)[U_fpi]);
 
 #ifndef NDEBUG
         Force[U_fpi].copy(tforces,0,0,BL_SPACEDIM);
@@ -5738,13 +5736,13 @@ HeatTransfer::predict_velocity (Real  dt,
 #if (BL_SPACEDIM == 3)                         
                        *null_fab, bndry[2].dataPtr(),
 #endif
-                       U_fpi(), (*rho_ptime)[i], tforces);
+                       U_fpi(), (*rho_ptime)[U_fpi], tforces);
 
         godunov->ComputeUmac(grids[i], dx, dt, 
-                             u_mac[0][i], bndry[0].dataPtr(),
-                             u_mac[1][i], bndry[1].dataPtr(),
+                             u_mac[0][U_fpi], bndry[0].dataPtr(),
+                             u_mac[1][U_fpi], bndry[1].dataPtr(),
 #if (BL_SPACEDIM == 3)
-                             u_mac[2][i], bndry[2].dataPtr(),
+                             u_mac[2][U_fpi], bndry[2].dataPtr(),
 #endif
                              U_fpi(), tforces);
     }
@@ -5914,7 +5912,7 @@ HeatTransfer::advance (Real time,
                  fpi.isValid();
                  ++fpi)
             {
-                tmpS_old[fpi.index()].copy(fpi());
+                tmpS_old[fpi].copy(fpi());
             }
 
             tmpFABs.copy(tmpS_old);
@@ -5999,7 +5997,7 @@ HeatTransfer::advance (Real time,
     for (MFIter mfi(*rho_ctime); mfi.isValid(); ++mfi)
     {
         const Box box = BoxLib::grow(mfi.validbox(),LinOp_grow);
-        Rho_hold[mfi.index()].copy((*rho_ctime)[mfi],box,0,box,0,1);
+        Rho_hold[mfi].copy((*rho_ctime)[mfi],box,0,box,0,1);
     }
     //
     // Compute new and half-time densities.
@@ -6375,7 +6373,7 @@ HeatTransfer::set_overdetermined_boundary_cells (Real time)
     {
         FArrayBox& RhoY = RhoY_fpi();
 
-        BL_ASSERT(RhoY.box() == tmpS[RhoY_fpi.index()].box());
+        BL_ASSERT(RhoY.box() == tmpS[RhoY_fpi].box());
 
         tmp.resize(RhoY.box(),1);
         tmp.copy(RhoY,0,0,1);
@@ -6394,7 +6392,7 @@ HeatTransfer::set_overdetermined_boundary_cells (Real time)
             getChemSolve().getHmixGivenTY(rhoh,T_fpi(),RhoY,isect,sCompT,sCompY,sCompH);
             rhoh.mult(RhoY,0,0,1);
 
-            tmpS[T_fpi.index()].copy(rhoh);
+            tmpS[T_fpi].copy(rhoh);
         }
     }
 
@@ -6928,7 +6926,7 @@ HeatTransfer::compute_edge_states (Real              dt,
 				   prev_time,
 #endif		 
 				   Rho);
-            godunov->Sum_tf_gp_visc(tvelforces,visc_terms[Xvel][i],Gp[i],Rho);
+            godunov->Sum_tf_gp_visc(tvelforces,visc_terms[Xvel][S_fpi],Gp[S_fpi],Rho);
         }
         //
         // Set up the workspace for the godunov Box (also resize "edge" for later)
@@ -6969,17 +6967,17 @@ HeatTransfer::compute_edge_states (Real              dt,
                 FArrayBox divu_dummy;
 
                 godunov->edge_states(grids[i], dx, dt, velpred,
-                                     u_mac[0][i], edge[0],
-                                     u_mac[1][i], edge[1],
+                                     u_mac[0][S_fpi], edge[0],
+                                     u_mac[1][S_fpi], edge[1],
 #if (BL_SPACEDIM == 3)             
-                                     u_mac[2][i], edge[2],
+                                     u_mac[2][S_fpi], edge[2],
 #endif
                                      U,vel,tvelforces,divu_dummy,
                                      comp,comp,bc.dataPtr(),
                                      iconserv_dummy,PRE_MAC);
 
                 for (int d=0; d<BL_SPACEDIM; ++d)
-                    (*EdgeState[d])[i].copy(edge[d],0,comp,1);
+                    (*EdgeState[d])[S_fpi].copy(edge[d],0,comp,1);
 
                 this_edge_state_computed[comp] = true;
             }
@@ -7010,17 +7008,17 @@ HeatTransfer::compute_edge_states (Real              dt,
                 if (adv_scheme == PRE_MAC)
                 {
                     godunov->Sum_tf_divu_visc(spec, tforces, comp, 1,
-                                              visc_terms[first_spec][i], comp,
-                                              divu_fp[i], Rho, use_conserv_diff);
+                                              visc_terms[first_spec][S_fpi], comp,
+                                              divu_fp[S_fpi], Rho, use_conserv_diff);
                     
                     int iconserv_dummy = 0;
                     godunov->edge_states(grids[i], dx, dt, velpred,
-                                         u_mac[0][i], edge[0],
-                                         u_mac[1][i], edge[1],
+                                         u_mac[0][S_fpi], edge[0],
+                                         u_mac[1][S_fpi], edge[1],
 #if (BL_SPACEDIM==3)
-                                         u_mac[2][i], edge[2],
+                                         u_mac[2][S_fpi], edge[2],
 #endif
-                                         U,spec,tforces,divu_fp[i],
+                                         U,spec,tforces,divu_fp[S_fpi],
                                          comp,state_ind,bc.dataPtr(),
                                          iconserv_dummy,PRE_MAC);
                 }
@@ -7029,22 +7027,22 @@ HeatTransfer::compute_edge_states (Real              dt,
                     FArrayBox junkDivu(tforces.box(),1);
                     junkDivu.setVal(0.);
                     godunov->Sum_tf_divu_visc(spec, tforces, comp, 1,
-                                              visc_terms[first_spec][i], comp,
+                                              visc_terms[first_spec][S_fpi], comp,
                                               junkDivu, Rho, use_conserv_diff);
                     
                     godunov->edge_states(grids[i], dx, dt, velpred,
-                                         u_mac[0][i], edge[0],
-                                         u_mac[1][i], edge[1],
+                                         u_mac[0][S_fpi], edge[0],
+                                         u_mac[1][S_fpi], edge[1],
 #if (BL_SPACEDIM==3)
-                                         u_mac[2][i], edge[2],
+                                         u_mac[2][S_fpi], edge[2],
 #endif
-                                         U,spec,tforces,divu_fp[i],
+                                         U,spec,tforces,divu_fp[S_fpi],
                                          comp,state_ind,bc.dataPtr(), 
                                          use_conserv_diff,FPU);
                 }
 
                 for (int d=0; d<BL_SPACEDIM; ++d)
-                    (*EdgeState[d])[i].copy(edge[d],0,state_ind,1);
+                    (*EdgeState[d])[S_fpi].copy(edge[d],0,state_ind,1);
 
                 this_edge_state_computed[state_ind] = true;
             }
@@ -7058,9 +7056,9 @@ HeatTransfer::compute_edge_states (Real              dt,
             {
                 for (int d=0; d<BL_SPACEDIM; ++d)
                 {
-                    (*EdgeState[d])[i].setVal(0.0,edge[d].box(),Density,1);
+                    (*EdgeState[d])[S_fpi].setVal(0.0,edge[d].box(),Density,1);
                     for (int sigma=first_spec; sigma<=last_spec; ++sigma)
-                        (*EdgeState[d])[i].plus((*EdgeState[d])[i],
+                        (*EdgeState[d])[S_fpi].plus((*EdgeState[d])[S_fpi],
                                                 edge[d].box(), sigma,Density,1);
                 }
                 this_edge_state_computed[Density] = true;
@@ -7073,8 +7071,8 @@ HeatTransfer::compute_edge_states (Real              dt,
             if (do_mom_diff == 1 && predict_mom_together == 0)
                for (int icomp = 0; icomp < BL_SPACEDIM; icomp++)
                   for (int d=0; d<BL_SPACEDIM; ++d)
-                    (*EdgeState[d])[i].mult((*EdgeState[d])[i],(*EdgeState[d])[i].box(),
-                                            (*EdgeState[d])[i].box(),Density,icomp,1);
+                    (*EdgeState[d])[S_fpi].mult((*EdgeState[d])[S_fpi],(*EdgeState[d])[S_fpi].box(),
+                                            (*EdgeState[d])[S_fpi].box(),Density,icomp,1);
         }
 
         if (compute_comp[Temp])
@@ -7087,7 +7085,7 @@ HeatTransfer::compute_edge_states (Real              dt,
             int use_conserv_diff = (advectionType[state_ind] == Conservative) ? true : false;
             state.resize(S_fpi().box(),1);
             state.copy(S_fpi(),state_ind,0,1);
-            FArrayBox& vt = (do_mcdd ? visc_terms[first_spec][i] : visc_terms[state_ind][i] );
+            FArrayBox& vt = (do_mcdd ? visc_terms[first_spec][S_fpi] : visc_terms[state_ind][S_fpi] );
             int vtComp = (do_mcdd ? nspecies : 0 );
 
             NavierStokes::getForce(tforces,i,nGrowF,state_ind,1,
@@ -7104,16 +7102,16 @@ HeatTransfer::compute_edge_states (Real              dt,
             {
                 godunov->Sum_tf_divu_visc(state, tforces,  comp, 1,
                                           vt, vtComp,
-                                          divu_fp[i], Rho, use_conserv_diff);
+                                          divu_fp[S_fpi], Rho, use_conserv_diff);
 
                 int iconserv_dummy = 0;
                 godunov->edge_states(grids[i], dx, dt, velpred,
-                                     u_mac[0][i], edge[0],
-                                     u_mac[1][i], edge[1],
+                                     u_mac[0][S_fpi], edge[0],
+                                     u_mac[1][S_fpi], edge[1],
 #if (BL_SPACEDIM==3)
-                                     u_mac[2][i], edge[2],
+                                     u_mac[2][S_fpi], edge[2],
 #endif
-                                     U, state, tforces, divu_fp[i],
+                                     U, state, tforces, divu_fp[S_fpi],
                                      comp, state_ind, bc.dataPtr(),
                                      iconserv_dummy, PRE_MAC);
 
@@ -7127,18 +7125,18 @@ HeatTransfer::compute_edge_states (Real              dt,
                                           junkDivu, Rho, use_conserv_diff);
 
                 godunov->edge_states(grids[i], dx, dt, velpred,
-                                     u_mac[0][i], edge[0],
-                                     u_mac[1][i], edge[1],
+                                     u_mac[0][S_fpi], edge[0],
+                                     u_mac[1][S_fpi], edge[1],
 #if (BL_SPACEDIM==3)
-                                     u_mac[2][i], edge[2],
+                                     u_mac[2][S_fpi], edge[2],
 #endif
-                                     U, state, tforces, divu_fp[i],
+                                     U, state, tforces, divu_fp[S_fpi],
                                      comp, state_ind, bc.dataPtr(), 
                                      use_conserv_diff, FPU);
             }
 
             for (int d=0; d<BL_SPACEDIM; ++d)
-                (*EdgeState[d])[i].copy(edge[d],0,state_ind,1);
+                (*EdgeState[d])[S_fpi].copy(edge[d],0,state_ind,1);
 
             this_edge_state_computed[state_ind] = true;
         }
@@ -7150,16 +7148,16 @@ HeatTransfer::compute_edge_states (Real              dt,
             //
             for (int d=0; d<BL_SPACEDIM; ++d)
             {
-                (*EdgeState[d])[i].setVal(0.0,edge[d].box(),RhoH,1);
+                (*EdgeState[d])[S_fpi].setVal(0.0,edge[d].box(),RhoH,1);
                 h.resize(edge[d].box(),nspecies);
-                getChemSolve().getHGivenT(h,(*EdgeState[d])[i],
+                getChemSolve().getHGivenT(h,(*EdgeState[d])[S_fpi],
                                           edge[d].box(),Temp,0);
-                h.mult((*EdgeState[d])[i],edge[d].box(),first_spec,0,
+                h.mult((*EdgeState[d])[S_fpi],edge[d].box(),first_spec,0,
                        nspecies);
                 
-                (*EdgeState[d])[i].setVal(0.0,edge[d].box(),RhoH,1);
+                (*EdgeState[d])[S_fpi].setVal(0.0,edge[d].box(),RhoH,1);
                 for (int comp=0; comp<nspecies; ++comp)
-                    (*EdgeState[d])[i].plus(h,edge[d].box(),comp,RhoH,1);
+                    (*EdgeState[d])[S_fpi].plus(h,edge[d].box(),comp,RhoH,1);
             }
             this_edge_state_computed[RhoH] = true;
         }
@@ -7187,23 +7185,23 @@ HeatTransfer::compute_edge_states (Real              dt,
 #endif		 
 				       Rho);
                 godunov->Sum_tf_divu_visc(state, tforces, comp, 1,
-                                          visc_terms[state_ind][i], 0,
-                                          divu_fp[i], Rho,
+                                          visc_terms[state_ind][S_fpi], 0,
+                                          divu_fp[S_fpi], Rho,
                                           use_conserv_diff);
                 Array<int> bc = getBCArray(State_Type,i,state_ind,1);
                 int iconserv_dummy = 0;
                 godunov->edge_states(grids[i], dx, dt, velpred,
-                                     u_mac[0][i], edge[0],
-                                     u_mac[1][i], edge[1],
+                                     u_mac[0][S_fpi], edge[0],
+                                     u_mac[1][S_fpi], edge[1],
 #if (BL_SPACEDIM==3)
-                                     u_mac[2][i], edge[2],
+                                     u_mac[2][S_fpi], edge[2],
 #endif
-                                     U,state,tforces,divu_fp[i],
+                                     U,state,tforces,divu_fp[S_fpi],
                                      comp,state_ind,bc.dataPtr(),
                                      iconserv_dummy,PRE_MAC);
 
                 for (int d=0; d<BL_SPACEDIM; ++d)
-                    (*EdgeState[d])[i].copy(edge[d],0,state_ind,1);
+                    (*EdgeState[d])[S_fpi].copy(edge[d],0,state_ind,1);
 
                 this_edge_state_computed[state_ind] = true;
             }
@@ -7251,22 +7249,22 @@ HeatTransfer::momentum_advection (Real dt, bool do_adv_reflux)
             // If here, edge states at n+1/2 have already been computed, get a copy
             // 
             for (int d=0; d<BL_SPACEDIM; ++d)
-                edge[d].copy((*EdgeState[d])[i],edge[d].box(),comp,edge[d].box(),0,1);
+                edge[d].copy((*EdgeState[d])[AofS_mfi],edge[d].box(),comp,edge[d].box(),0,1);
  
             godunov->ComputeAofs(grids[i],
-                                 area[0],u_mac[0][i],edge[0],
-                                 area[1],u_mac[1][i],edge[1],
+                                 area[0],u_mac[0][AofS_mfi],edge[0],
+                                 area[1],u_mac[1][AofS_mfi],edge[1],
 #if BL_SPACEDIM==3
-                                 area[2],u_mac[2][i],edge[2],
+                                 area[2],u_mac[2][AofS_mfi],edge[2],
 #endif
-                                 volume,(*aofs)[i],comp,
+                                 volume,(*aofs)[AofS_mfi],comp,
                                  use_conserv_diff);
             if (do_adv_reflux)
             {
                 if (level < parent->finestLevel())
                 {
                     for (int d=0; d<BL_SPACEDIM; ++d)
-                        fluxes[d][i].copy(edge[d],0,comp,1);
+                        fluxes[d][AofS_mfi].copy(edge[d],0,comp,1);
                 }
 
                 if (level > 0)
@@ -7432,10 +7430,10 @@ HeatTransfer::scalar_advection (Real dt,
                 
                 h.resize(ebox,nspecies);
                 getChemSolve().getHGivenT(h,eTemp,ebox,0,0);
-                (*fluxi[d])[i].mult(h,ebox,0,0,nspecies);
+                (*fluxi[d])[Told_fpi].mult(h,ebox,0,0,nspecies);
                 
                 for (int comp=0; comp<nspecies; ++comp)
-                    (*fluxNULN[d])[i].plus((*fluxi[d])[i],ebox,comp,0,1);
+                    (*fluxNULN[d])[Told_fpi].plus((*fluxi[d])[Told_fpi],ebox,comp,0,1);
             }
         }
         //
@@ -7512,10 +7510,10 @@ HeatTransfer::scalar_advection (Real dt,
                 
                 h.resize(ebox,nspecies);
                 getChemSolve().getHGivenT(h,eTemp,ebox,0,0);
-                (*fluxi[d])[i].mult(h,ebox,0,0,nspecies);
+                (*fluxi[d])[Tnew_fpi].mult(h,ebox,0,0,nspecies);
                 
                 for (int comp = 0; comp < nspecies; ++comp)
-                    (*fluxNULN[d])[i].plus((*fluxi[d])[i],ebox,comp,0,1);
+                    (*fluxNULN[d])[Tnew_fpi].plus((*fluxi[d])[Tnew_fpi],ebox,comp,0,1);
             }
         }
 
@@ -7552,7 +7550,7 @@ HeatTransfer::scalar_advection (Real dt,
             // If here, edge states at n+1/2 have already been computed, get a copy
             // 
             for (int d=0; d<BL_SPACEDIM; ++d)
-                edge[d].copy((*EdgeState[d])[i],edge[d].box(),sigma,edge[d].box(),0,1);
+                edge[d].copy((*EdgeState[d])[AofS_mfi],edge[d].box(),sigma,edge[d].box(),0,1);
             
             int use_conserv_diff = (advectionType[sigma] == Conservative) ? true : false;
 
@@ -7560,12 +7558,12 @@ HeatTransfer::scalar_advection (Real dt,
 	    // returns aofs
 	    // note that "edge" gets converted to a "umac*area*edge"
             godunov->ComputeAofs(grids[i],
-                                 area[0],u_mac[0][i],edge[0],
-                                 area[1],u_mac[1][i],edge[1],
+                                 area[0],u_mac[0][AofS_mfi],edge[0],
+                                 area[1],u_mac[1][AofS_mfi],edge[1],
 #if BL_SPACEDIM==3
-                                 area[2],u_mac[2][i],edge[2],
+                                 area[2],u_mac[2][AofS_mfi],edge[2],
 #endif
-                                 volume,(*aofs)[i],sigma,
+                                 volume,(*aofs)[AofS_mfi],sigma,
                                  use_conserv_diff);
             //
             // Add divergence of fluxNULN to aofs[RhoH], and increment advective
@@ -7575,9 +7573,9 @@ HeatTransfer::scalar_advection (Real dt,
             {
                 if (do_adv_reflux)
                     for (int d=0; d<BL_SPACEDIM; ++d)
-                        edge[d].plus((*fluxNULN[d])[i],edge[d].box(),0,0,1);
+                        edge[d].plus((*fluxNULN[d])[AofS_mfi],edge[d].box(),0,0,1);
                 
-                FArrayBox& staten = (*aofs)[i];
+                FArrayBox& staten = (*aofs)[AofS_mfi];
                 const FArrayBox& stateo = staten;
                 const Box& box = AofS_mfi.validbox();
                 const FArrayBox& vol = volume;
@@ -7585,16 +7583,16 @@ HeatTransfer::scalar_advection (Real dt,
                 const int nComp = 1;
                 
                 FORT_INCRWEXTFLXDIV(box.loVect(), box.hiVect(),
-                                    (*fluxNULN[0])[i].dataPtr(),
-                                    ARLIM((*fluxNULN[0])[i].loVect()),
-                                    ARLIM((*fluxNULN[0])[i].hiVect()),
-                                    (*fluxNULN[1])[i].dataPtr(),
-                                    ARLIM((*fluxNULN[1])[i].loVect()),
-                                    ARLIM((*fluxNULN[1])[i].hiVect()),
+                                    (*fluxNULN[0])[AofS_mfi].dataPtr(),
+                                    ARLIM((*fluxNULN[0])[AofS_mfi].loVect()),
+                                    ARLIM((*fluxNULN[0])[AofS_mfi].hiVect()),
+                                    (*fluxNULN[1])[AofS_mfi].dataPtr(),
+                                    ARLIM((*fluxNULN[1])[AofS_mfi].loVect()),
+                                    ARLIM((*fluxNULN[1])[AofS_mfi].hiVect()),
 #if BL_SPACEDIM == 3
-                                    (*fluxNULN[2])[i].dataPtr(),
-                                    ARLIM((*fluxNULN[2])[i].loVect()),
-                                    ARLIM((*fluxNULN[2])[i].hiVect()),
+                                    (*fluxNULN[2])[AofS_mfi].dataPtr(),
+                                    ARLIM((*fluxNULN[2])[AofS_mfi].loVect()),
+                                    ARLIM((*fluxNULN[2])[AofS_mfi].hiVect()),
 #endif
                                     stateo.dataPtr(RhoH),
                                     ARLIM(stateo.loVect()), ARLIM(stateo.hiVect()),
@@ -7618,7 +7616,7 @@ HeatTransfer::scalar_advection (Real dt,
                     const int fcomp = sigma - fscalar;
 
                     for (int d=0; d<BL_SPACEDIM; ++d)
-                        fluxes[d][i].copy(edge[d],0,fcomp,1);
+                        fluxes[d][AofS_mfi].copy(edge[d],0,fcomp,1);
                 }
                 if (level > 0)
                 {
@@ -7788,10 +7786,10 @@ HeatTransfer::compute_rhoDgradYgradH (Real      time,
             const int comp = spec - first_spec;
 
             DEF_CLIMITSCOMP(h,hdat,hlo,hhi,comp);
-            DEF_CLIMITSCOMP((*beta[0])[i],betax,betaxlo,betaxhi,comp);
-            DEF_CLIMITSCOMP((*beta[1])[i],betay,betaylo,betayhi,comp);
+            DEF_CLIMITSCOMP((*beta[0])[rho_and_species_fpi],betax,betaxlo,betaxhi,comp);
+            DEF_CLIMITSCOMP((*beta[1])[rho_and_species_fpi],betay,betaylo,betayhi,comp);
 #if (BL_SPACEDIM==3)
-            DEF_CLIMITSCOMP((*beta[2])[i],betaz,betazlo,betazhi,comp);
+            DEF_CLIMITSCOMP((*beta[2])[rho_and_species_fpi],betaz,betazlo,betazhi,comp);
 #endif
 
             rho_and_species.mult(tmp,0,comp+1,1);
@@ -7808,7 +7806,7 @@ HeatTransfer::compute_rhoDgradYgradH (Real      time,
 #endif            
                                            ARLIM(prodlo),ARLIM(prodhi),prod);
 
-            rdgydgh[i].plus(rdgydgh_spec_i);
+            rdgydgh[rho_and_species_fpi].plus(rdgydgh_spec_i);
         }
     }
   
@@ -7949,11 +7947,11 @@ HeatTransfer::mac_sync ()
              
 		    FArrayBox delta_ssync;
                     delta_ssync.resize(grd,1);
-                    delta_ssync.copy(S_new[i],grd,istate,grd,0,1); // delta_ssync = (rho*q)^{n+1,p}
-                    delta_ssync.divide(S_new[i],grd,Density,0,1); // delta_ssync = q^{n+1,p}
-                    FArrayBox& s_sync = (*Ssync)[i]; // Ssync = RHS of Eq (18), (19) without the q^{n+1,p} * (delta rho)^sync terms
+                    delta_ssync.copy(S_new[mfi],grd,istate,grd,0,1); // delta_ssync = (rho*q)^{n+1,p}
+                    delta_ssync.divide(S_new[mfi],grd,Density,0,1); // delta_ssync = q^{n+1,p}
+                    FArrayBox& s_sync = (*Ssync)[mfi]; // Ssync = RHS of Eq (18), (19) without the q^{n+1,p} * (delta rho)^sync terms
                     delta_ssync.mult(s_sync,grd,Density-BL_SPACEDIM,0,1); // delta_ssync = q^{n+1,p} * (delta rho)^sync
-                    (*DeltaSsync)[i].copy(delta_ssync,grd,0,grd,iconserved,1); // DeltaSsync = q^{n+1,p} * (delta rho)^sync
+                    (*DeltaSsync)[mfi].copy(delta_ssync,grd,0,grd,iconserved,1); // DeltaSsync = q^{n+1,p} * (delta rho)^sync
                     s_sync.minus(delta_ssync,grd,0,istate-BL_SPACEDIM,1); // Ssync = Ssync - q^{n+1,p} * (delta rho)^sync
                 }
             }
@@ -7964,7 +7962,7 @@ HeatTransfer::mac_sync ()
         for (MFIter mfi(S_new); mfi.isValid(); ++mfi)
         {
             const int i = mfi.index();
-            S_new[i].plus((*Ssync)[i],grids[i],Density-BL_SPACEDIM,Density,1);
+            S_new[mfi].plus((*Ssync)[mfi],grids[i],Density-BL_SPACEDIM,Density,1);
         }
         make_rho_curr_time();
 
@@ -7979,9 +7977,9 @@ HeatTransfer::mac_sync ()
                 const int i    = Vsyncmfi.index();
                 const Box vbox = (*rho_ctime).box(i);
 
-                D_TERM((*Vsync)[i].divide((*rho_ctime)[i],vbox,0,Xvel,1);,
-                       (*Vsync)[i].divide((*rho_ctime)[i],vbox,0,Yvel,1);,
-                       (*Vsync)[i].divide((*rho_ctime)[i],vbox,0,Zvel,1););
+                D_TERM((*Vsync)[Vsyncmfi].divide((*rho_ctime)[Vsyncmfi],vbox,0,Xvel,1);,
+                       (*Vsync)[Vsyncmfi].divide((*rho_ctime)[Vsyncmfi],vbox,0,Yvel,1);,
+                       (*Vsync)[Vsyncmfi].divide((*rho_ctime)[Vsyncmfi],vbox,0,Zvel,1););
             }
         }
 
@@ -8110,7 +8108,7 @@ HeatTransfer::mac_sync ()
                         getChemSolve().getHGivenT(h,eTemp,ebox,0,0);
 
 			// multiply fluxNULN by h_m
-                        (*fluxNULN[d])[i].mult(h,ebox,0,0,nspecies);
+                        (*fluxNULN[d])[Tnew_fpi].mult(h,ebox,0,0,nspecies);
                     }
                 }
 
@@ -8119,8 +8117,8 @@ HeatTransfer::mac_sync ()
                 for (MFIter Ssync_mfi(*Ssync); Ssync_mfi.isValid(); ++Ssync_mfi)
                 {
                     const int i      = Ssync_mfi.index();
-                    FArrayBox& syncn = (*Ssync)[i];
-                    const FArrayBox& synco = (*Ssync)[i];
+                    FArrayBox& syncn = (*Ssync)[Ssync_mfi];
+                    const FArrayBox& synco = (*Ssync)[Ssync_mfi];
                     const Box& box = Ssync_mfi.validbox();
 
                     geom.GetVolume(volume,grids,i,GEOM_GROW);
@@ -8132,16 +8130,16 @@ HeatTransfer::mac_sync ()
                     const int sigmaRhoH = RhoH - BL_SPACEDIM; // RhoH comp in Ssync
 		    
                     FORT_INCRWEXTFLXDIV(box.loVect(), box.hiVect(),
-                                        (*fluxNULN[0])[i].dataPtr(),
-                                        ARLIM((*fluxNULN[0])[i].loVect()),
-                                        ARLIM((*fluxNULN[0])[i].hiVect()),
-                                        (*fluxNULN[1])[i].dataPtr(),
-                                        ARLIM((*fluxNULN[1])[i].loVect()),
-                                        ARLIM((*fluxNULN[1])[i].hiVect()),
+                                        (*fluxNULN[0])[Ssync_mfi].dataPtr(),
+                                        ARLIM((*fluxNULN[0])[Ssync_mfi].loVect()),
+                                        ARLIM((*fluxNULN[0])[Ssync_mfi].hiVect()),
+                                        (*fluxNULN[1])[Ssync_mfi].dataPtr(),
+                                        ARLIM((*fluxNULN[1])[Ssync_mfi].loVect()),
+                                        ARLIM((*fluxNULN[1])[Ssync_mfi].hiVect()),
 #if BL_SPACEDIM == 3
-                                        (*fluxNULN[2])[i].dataPtr(),
-                                        ARLIM((*fluxNULN[2])[i].loVect()),
-                                        ARLIM((*fluxNULN[2])[i].hiVect()),
+                                        (*fluxNULN[2])[Ssync_mfi].dataPtr(),
+                                        ARLIM((*fluxNULN[2])[Ssync_mfi].loVect()),
+                                        ARLIM((*fluxNULN[2])[Ssync_mfi].hiVect()),
 #endif
                                         synco.dataPtr(sigmaRhoH),
                                         ARLIM(synco.loVect()),
@@ -8207,7 +8205,7 @@ HeatTransfer::mac_sync ()
 			{
 			    const int i=mfi.index();
 			    for (int d=0; d<BL_SPACEDIM; ++d)
-                                getViscFluxReg().FineAdd((*flux[d])[i],d,i,0,state_ind,1,dt);
+                                getViscFluxReg().FineAdd((*flux[d])[mfi],d,i,0,state_ind,1,dt);
 			}
 		    }
                 }
@@ -8233,7 +8231,7 @@ HeatTransfer::mac_sync ()
                 {
                     iconserved++;
 
-                    (*Ssync)[i].plus((*DeltaSsync)[i],grids[i],iconserved,istate-BL_SPACEDIM,1);
+                    (*Ssync)[mfi].plus((*DeltaSsync)[mfi],grids[i],iconserved,istate-BL_SPACEDIM,1);
                 }
             }
         }
@@ -8249,7 +8247,7 @@ HeatTransfer::mac_sync ()
             {
                 if (!(BL_SPACEDIM+sigma == Density))
                 {
-                    S_new[i].plus((*Ssync)[i],grids[i],sigma,BL_SPACEDIM+sigma,1);
+                    S_new[mfi].plus((*Ssync)[mfi],grids[i],sigma,BL_SPACEDIM+sigma,1);
                 }
             }
         }
@@ -8333,7 +8331,7 @@ HeatTransfer::mac_sync ()
                     for (MFIter mfi(increment); mfi.isValid(); ++mfi)
                     {
                         int i = mfi.index();
-                        increment[i].plus(increment[i],fine_grids[i],
+                        increment[mfi].plus(increment[mfi],fine_grids[i],
 					  istate-BL_SPACEDIM,Density-BL_SPACEDIM,1);
                     }
                 }
@@ -8342,7 +8340,7 @@ HeatTransfer::mac_sync ()
             for (MFIter mfi(increment); mfi.isValid(); ++mfi)
             {
                 int i = mfi.index();
-                S_new_lev[i].plus(increment[i],fine_grids[i],0,Density,numscal);
+                S_new_lev[mfi].plus(increment[mfi],fine_grids[i],0,Density,numscal);
             }
             fine_level.make_rho_curr_time();
             fine_level.incrRhoAvg(increment,Density-BL_SPACEDIM,1.0);
@@ -8641,7 +8639,7 @@ HeatTransfer::differential_spec_diffuse_sync (Real dt)
 	for (MFIter fmfi(*SpecDiffusionFluxnp1[d]); fmfi.isValid(); ++fmfi)
 	{
 	  const int i=fmfi.index();
-	  getViscFluxReg().FineAdd((*SpecDiffusionFluxnp1[d])[i],d,i,0,first_spec,nspecies,dt);
+	  getViscFluxReg().FineAdd((*SpecDiffusionFluxnp1[d])[fmfi],d,i,0,first_spec,nspecies,dt);
 	}
       }
     }
@@ -8696,9 +8694,9 @@ HeatTransfer::reflux ()
         {
             const int i = mfi.index();
 
-            D_TERM((*Vsync)[i].divide((*RhoHalftime)[i],grids[i],0,Xvel,1);,
-                   (*Vsync)[i].divide((*RhoHalftime)[i],grids[i],0,Yvel,1);,
-                   (*Vsync)[i].divide((*RhoHalftime)[i],grids[i],0,Zvel,1););
+            D_TERM((*Vsync)[mfi].divide((*RhoHalftime)[mfi],grids[i],0,Xvel,1);,
+                   (*Vsync)[mfi].divide((*RhoHalftime)[mfi],grids[i],0,Yvel,1);,
+                   (*Vsync)[mfi].divide((*RhoHalftime)[mfi],grids[i],0,Zvel,1););
         }
     }
 
@@ -8712,7 +8710,7 @@ HeatTransfer::reflux ()
         const int i = mfi.index();
 
         tmp.resize(grids[i],1);
-        tmp.copy((*RhoHalftime)[i],0,0,1);
+        tmp.copy((*RhoHalftime)[mfi],0,0,1);
         tmp.invert(1);
 
         for (int istate = BL_SPACEDIM; istate < NUM_STATE; istate++)
@@ -8721,7 +8719,7 @@ HeatTransfer::reflux ()
             {
                 const int sigma = istate -  BL_SPACEDIM;
 
-                (*Ssync)[i].mult(tmp,0,sigma,1);
+                (*Ssync)[mfi].mult(tmp,0,sigma,1);
             }
         }
     }
@@ -8875,11 +8873,11 @@ HeatTransfer::calcDiffusivity (const Real time,
                           ARLIM(bcen.loVect()),ARLIM(bcen.hiVect()),bcen.dataPtr(),
                           &nc_bcen, &P1atm_MKS, &dotemp, &vflag);
 
-        visc[idx].copy(bcen,0,first_spec-offset,nspecies);
-        visc[idx].copy(bcen,nspecies,Temp-offset,1);
+        visc[Rho_and_spec_fpi].copy(bcen,0,first_spec-offset,nspecies);
+        visc[Rho_and_spec_fpi].copy(bcen,nspecies,Temp-offset,1);
 
         if (do_VelVisc)
-            beta[idx].copy(bcen,nspecies+1,0,1);
+            beta[Rho_and_spec_fpi].copy(bcen,nspecies+1,0,1);
         //
         // Now get the rest.
         //
@@ -8891,11 +8889,11 @@ HeatTransfer::calcDiffusivity (const Real time,
             {
                 if (icomp == RhoH)
                 {
-                    visc[idx].copy(visc[idx],Temp-offset,RhoH-offset,1);
+                    visc[Rho_and_spec_fpi].copy(visc[Rho_and_spec_fpi],Temp-offset,RhoH-offset,1);
                     cpmix.resize(gbx,1);
                     const int sCompT = 0, sCompY = 1, sCompCp = 0;
                     getChemSolve().getCpmixGivenTY(cpmix,temp,rhospec,gbx,sCompT,sCompY,sCompCp);
-                    visc[idx].divide(cpmix,0,RhoH-offset,1);
+                    visc[Rho_and_spec_fpi].divide(cpmix,0,RhoH-offset,1);
                 }
                 else if (icomp == Trac || icomp == RhoRT)
                 {
@@ -8925,7 +8923,7 @@ HeatTransfer::getViscosity (MultiFab*  beta[BL_SPACEDIM],
             FPLoc bc_lo = fpi_phys_loc(get_desc_lst()[State_Type].getBC(Density).lo(dir));
             FPLoc bc_hi = fpi_phys_loc(get_desc_lst()[State_Type].getBC(Density).hi(dir));
 
-            center_to_edge_fancy((*visc)[viscMfi],(*beta[dir])[i],
+            center_to_edge_fancy((*visc)[viscMfi],(*beta[dir])[viscMfi],
                                  BoxLib::grow(grids[i],BoxLib::BASISV(dir)), 0, 0, 1,
                                  geom.Domain(), bc_lo, bc_hi);
         }
@@ -8959,7 +8957,7 @@ HeatTransfer::getDiffusivity (MultiFab*  beta[BL_SPACEDIM],
             FPLoc bc_lo = fpi_phys_loc(get_desc_lst()[State_Type].getBC(Density).lo(dir));
             FPLoc bc_hi = fpi_phys_loc(get_desc_lst()[State_Type].getBC(Density).hi(dir));
 
-            center_to_edge_fancy((*diff)[diffMfi],(*beta[dir])[i],
+            center_to_edge_fancy((*diff)[diffMfi],(*beta[dir])[diffMfi],
                                  BoxLib::grow(grids[i],BoxLib::BASISV(dir)), diff_comp, 
                                  dst_comp, ncomp, geom.Domain(), bc_lo, bc_hi);
         }
@@ -9040,7 +9038,7 @@ HeatTransfer::compute_vel_visc (Real      time,
                      rho_and_spec.dataPtr(1),
                      ARLIM(tmp.loVect()),ARLIM(tmp.hiVect()),tmp.dataPtr());
 
-        (*beta)[i].copy(tmp,0,0,1);
+        (*beta)[Rho_and_spec_fpi].copy(tmp,0,0,1);
     }
 }
 
@@ -9077,10 +9075,8 @@ HeatTransfer::calc_divu (Real      time,
          Temp_fpi.isValid();
          ++Temp_fpi)
     {
-        const int i = Temp_fpi.index();
-
-        rho[i].copy(Rho_time[i],0,sCompR,1);
-        temp[i].copy(Temp_fpi(),0,sCompT,1);
+        rho[Temp_fpi].copy(Rho_time[Temp_fpi],0,sCompR,1);
+        temp[Temp_fpi].copy(Temp_fpi(),0,sCompT,1);
     }
     //
     // Note that state contains rho*species, so divide species by rho.
@@ -9098,14 +9094,14 @@ HeatTransfer::calc_divu (Real      time,
     {
         const int i = Spec_fpi.index();
 
-        species[i].copy(Spec_fpi(),0,sCompY,nspecies);
+        species[Spec_fpi].copy(Spec_fpi(),0,sCompY,nspecies);
 
         tmp.resize(grids[i],1);
-        tmp.copy(rho[i],sCompR,0,1);
+        tmp.copy(rho[Spec_fpi],sCompR,0,1);
         tmp.invert(1);
 
         for (int ispecies = 0; ispecies < nspecies; ispecies++)
-            species[i].mult(tmp,0,ispecies,1);
+            species[Spec_fpi].mult(tmp,0,ispecies,1);
     }
 
     showMF("divu",species,"divu_species",level);
@@ -9119,9 +9115,9 @@ HeatTransfer::calc_divu (Real      time,
 
         BL_ASSERT(box == grids[iGrid]);
 
-        getChemSolve().getMwmixGivenY(mwmix[iGrid],species[iGrid],
+        getChemSolve().getMwmixGivenY(mwmix[Rho_mfi],species[Rho_mfi],
                                       box,sCompY,sCompMw);
-        getChemSolve().getCpmixGivenTY(cp[iGrid],temp[iGrid],species[iGrid],
+        getChemSolve().getCpmixGivenTY(cp[Rho_mfi],temp[Rho_mfi],species[Rho_mfi],
                                        box,sCompT,sCompY,sCompCp);
     }
 
@@ -9149,8 +9145,8 @@ HeatTransfer::calc_divu (Real      time,
     for (MFIter Divu_mfi(divu); Divu_mfi.isValid(); ++Divu_mfi)
     {
         const int iGrid = Divu_mfi.index();
-        divu[iGrid].divide(rho[iGrid],grids[iGrid],sCompR,0,1);
-        divu[iGrid].divide(temp[iGrid],grids[iGrid],sCompT,0,1);
+        divu[Divu_mfi].divide(rho[Divu_mfi],grids[iGrid],sCompR,0,1);
+        divu[Divu_mfi].divide(temp[Divu_mfi],grids[iGrid],sCompT,0,1);
     }
     showMF("divu",divu,"divu_VT_T_over_rhoT",level);
 
@@ -9187,9 +9183,9 @@ HeatTransfer::calc_divu (Real      time,
     {
         const int  iGrid = Divu_mfi.index();
         const Box& box   = Divu_mfi.validbox();
-        delta_divu[iGrid].divide(rho[iGrid],box,sCompR,0,1);
-        delta_divu[iGrid].mult(mwmix[iGrid],box,0,0,1);
-        divu[iGrid].plus(delta_divu[iGrid],box,0,0,1);
+        delta_divu[Divu_mfi].divide(rho[Divu_mfi],box,sCompR,0,1);
+        delta_divu[Divu_mfi].mult(mwmix[Divu_mfi],box,0,0,1);
+        divu[Divu_mfi].plus(delta_divu[Divu_mfi],box,0,0,1);
     }
     showMF("divu",divu,"divu_1",level);
 
@@ -9214,22 +9210,22 @@ HeatTransfer::calc_divu (Real      time,
 
             h.resize(BoxLib::grow(grids[i],nGrow),nspecies);
 
-            getChemSolve().getHGivenT(h,temp[i],grids[i],sCompT,sCompH);
+            getChemSolve().getHGivenT(h,temp[Ydot_fpi],grids[i],sCompT,sCompH);
 
             for (int istate = first_spec; istate <= last_spec; istate++)
             {
                 const int ispec = istate-first_spec;
 
-                delta_divu[i].copy(h,ispec,0,1);
-                delta_divu[i].divide(cp[i]);
-                delta_divu[i].divide(temp[i]);
-                delta_divu[i].mult(Ydot_fpi(),ispec,0,1);
-                divu[i].plus(delta_divu[i]);
+                delta_divu[Ydot_fpi].copy(h,ispec,0,1);
+                delta_divu[Ydot_fpi].divide(cp[Ydot_fpi]);
+                delta_divu[Ydot_fpi].divide(temp[Ydot_fpi]);
+                delta_divu[Ydot_fpi].mult(Ydot_fpi(),ispec,0,1);
+                divu[Ydot_fpi].plus(delta_divu[Ydot_fpi]);
 
-                delta_divu[i].copy(mwmix[i],0,0,1);
-                delta_divu[i].divide(mwt[ispec]);
-                delta_divu[i].mult(Ydot_fpi(),ispec,0,1);
-                divu[i].minus(delta_divu[i]);
+                delta_divu[Ydot_fpi].copy(mwmix[Ydot_fpi],0,0,1);
+                delta_divu[Ydot_fpi].divide(mwt[ispec]);
+                delta_divu[Ydot_fpi].mult(Ydot_fpi(),ispec,0,1);
+                divu[Ydot_fpi].minus(delta_divu[Ydot_fpi]);
             }
         }
     }
@@ -9277,14 +9273,14 @@ HeatTransfer::calc_dpdt (Real      time,
          Temp_fpi.isValid();
          ++Temp_fpi)
     {
-        temp[Temp_fpi.index()].copy(Temp_fpi(),0,sCompT,1);
+        temp[Temp_fpi].copy(Temp_fpi(),0,sCompT,1);
     }
 
     for (FillPatchIterator rhoRT_fpi(*this,rhoRT,nGrow,time,State_Type,pComp,1);
          rhoRT_fpi.isValid();
          ++rhoRT_fpi)
     {
-        rhoRT[rhoRT_fpi.index()].copy(rhoRT_fpi(),0,0,1);
+        rhoRT[rhoRT_fpi].copy(rhoRT_fpi(),0,0,1);
     }
     //
     // Note that state contains rho*species, so divide species by rho.
@@ -9300,14 +9296,14 @@ HeatTransfer::calc_dpdt (Real      time,
         const int i  = Spec_fpi.index();
         const Box bx = BoxLib::grow(grids[i],nGrow);
 
-        species[i].copy(Spec_fpi(),0,sCompY,nspecies);
+        species[Spec_fpi].copy(Spec_fpi(),0,sCompY,nspecies);
 
         tmp.resize(bx,1);
-        tmp.copy(rho[i],sCompR,0,1);
+        tmp.copy(rho[Spec_fpi],sCompR,0,1);
         tmp.invert(1);
 
         for (int ispecies = 0; ispecies < nspecies; ispecies++)
-            species[i].mult(tmp,0,ispecies,1);
+            species[Spec_fpi].mult(tmp,0,ispecies,1);
     }
 
     tmp.clear();
@@ -9321,8 +9317,8 @@ HeatTransfer::calc_dpdt (Real      time,
         
         BL_ASSERT(Rho_mfi.validbox() == grids[idx]);
         
-        getChemSolve().getMwmixGivenY(mwmix[idx],species[idx],box,sCompY,sCompMw);
-        getChemSolve().getCpmixGivenTY(cp[idx],temp[idx],species[idx],box,sCompT,sCompY,sCompCp);
+        getChemSolve().getMwmixGivenY(mwmix[Rho_mfi],species[Rho_mfi],box,sCompY,sCompMw);
+        getChemSolve().getCpmixGivenTY(cp[Rho_mfi],temp[Rho_mfi],species[Rho_mfi],box,sCompT,sCompY,sCompCp);
     }
 
     temp.clear();
@@ -9341,13 +9337,13 @@ HeatTransfer::calc_dpdt (Real      time,
     for (MFIter mfi(gamma); mfi.isValid(); ++mfi)
     {
         const int idx = mfi.index();
-        gamma[idx].copy(cp[idx]);
+        gamma[mfi].copy(cp[mfi]);
         rmix.resize(BoxLib::grow(grids[idx],nGrow),1);
         rmix.setVal(rgas);
-        rmix.divide(mwmix[idx]);
-        gamma[idx].minus(rmix);
-        gamma[idx].divide(cp[idx]);
-        gamma[idx].invert(1.0);
+        rmix.divide(mwmix[mfi]);
+        gamma[mfi].minus(rmix);
+        gamma[mfi].divide(cp[mfi]);
+        gamma[mfi].invert(1.0);
     }
 
     rmix.clear();
@@ -9360,31 +9356,31 @@ HeatTransfer::calc_dpdt (Real      time,
     {
         const int i = mfi.index();
         
-        dpdt[i].copy(S_old[i],grids[i],pComp,grids[i],0,1);
-        dpdt[i].plus(-p_amb);
-        dpdt[i].mult(1.0/dt);
+        dpdt[mfi].copy(S_old[mfi],grids[i],pComp,grids[i],0,1);
+        dpdt[mfi].plus(-p_amb);
+        dpdt[mfi].mult(1.0/dt);
 
         ugradp.resize(grids[i],1);
         
         const int* lo = grids[i].loVect();
         const int* hi = grids[i].hiVect();
 
-        FORT_COMPUTE_UGRADP(rhoRT[i].dataPtr(0), 
-                            ARLIM(rhoRT[i].box().loVect()), 
-                            ARLIM(rhoRT[i].box().hiVect()),
+        FORT_COMPUTE_UGRADP(rhoRT[mfi].dataPtr(0), 
+                            ARLIM(rhoRT[mfi].box().loVect()), 
+                            ARLIM(rhoRT[mfi].box().hiVect()),
                             ugradp.dataPtr(), 
                             ARLIM(ugradp.box().loVect()), 
                             ARLIM(ugradp.box().hiVect()),
-                            u_mac[0][i].dataPtr(),
-                            ARLIM(u_mac[0][i].box().loVect()),
-                            ARLIM(u_mac[0][i].box().hiVect()),
-                            u_mac[1][i].dataPtr(),
-                            ARLIM(u_mac[1][i].box().loVect()),
-                            ARLIM(u_mac[1][i].box().hiVect()),
+                            u_mac[0][mfi].dataPtr(),
+                            ARLIM(u_mac[0][mfi].box().loVect()),
+                            ARLIM(u_mac[0][mfi].box().hiVect()),
+                            u_mac[1][mfi].dataPtr(),
+                            ARLIM(u_mac[1][mfi].box().loVect()),
+                            ARLIM(u_mac[1][mfi].box().hiVect()),
 #if (BL_SPACEDIM == 3)
-                            u_mac[2][i].dataPtr(),
-                            ARLIM(u_mac[2][i].box().loVect()),
-                            ARLIM(u_mac[2][i].box().hiVect()),
+                            u_mac[2][mfi].dataPtr(),
+                            ARLIM(u_mac[2][mfi].box().loVect()),
+                            ARLIM(u_mac[2][mfi].box().hiVect()),
 #endif
                             lo,hi,dx);
         //
@@ -9395,31 +9391,31 @@ HeatTransfer::calc_dpdt (Real      time,
         //  p is the current value, p0 is the value we're trying to get to,
         //  so dp/dt = (p0 - p)/dt.)
         //
-        dpdt[i].minus(ugradp,0,0,1);
+        dpdt[mfi].minus(ugradp,0,0,1);
         //
         // Make sure to divide by gamma *after* subtracting ugradp.
         //
-        dpdt[i].divide(gamma[i]);
+        dpdt[mfi].divide(gamma[mfi]);
 
         if (dpdt_option == 0)
         {
-            dpdt[i].divide(S_old[i],pComp,0,1);
+            dpdt[mfi].divide(S_old[mfi],pComp,0,1);
         }
         else if (dpdt_option == 1)
         {
-            dpdt[i].divide(p_amb);
+            dpdt[mfi].divide(p_amb);
         }
         else
         {
             const int ncomp = 1;
             p_denom.resize(grids[i],ncomp);
-            p_denom.copy(S_old[i],grids[i],pComp,grids[i],0,ncomp);
-            Real num_norm = dpdt[i].norm(0,0,1);
+            p_denom.copy(S_old[mfi],grids[i],pComp,grids[i],0,ncomp);
+            Real num_norm = dpdt[mfi].norm(0,0,1);
             FabMinMax(p_denom,grids[i],2*num_norm*Real_MIN,p_amb,0,ncomp);
-            dpdt[i].divide(p_denom);
+            dpdt[mfi].divide(p_denom);
         }
         
-        dpdt[i].mult(dpdt_factor);
+        dpdt[mfi].mult(dpdt_factor);
     }
 }
 
@@ -9440,9 +9436,9 @@ HeatTransfer::calc_dsdt (Real      time,
     for (MFIter mfi(dsdt); mfi.isValid(); ++mfi)
     {
         const int k = mfi.index();
-        dsdt[k].copy(Divu_new[k],grids[k]);
-        dsdt[k].minus(Divu_old[k],grids[k],0,0,1);
-        dsdt[k].divide(dt,grids[k],0,1);
+        dsdt[mfi].copy(Divu_new[mfi],grids[k]);
+        dsdt[mfi].minus(Divu_old[mfi],grids[k],0,0,1);
+        dsdt[mfi].divide(dt,grids[k],0,1);
     }
 }
 
@@ -9471,7 +9467,7 @@ HeatTransfer::RhoH_to_Temp (MultiFab& S,
     {
         const int k   = mfi.index();
         Box       box = BoxLib::grow(sgrids[k],nGrow);
-        S[k].copy(temp[k],box,0,box,Temp,1);
+        S[mfi].copy(temp[mfi],box,0,box,Temp,1);
     }
 }
 
@@ -9547,15 +9543,15 @@ HeatTransfer::RhoH_to_Temp (MultiFab& S,
         // Convert rho*h to h and rho*Y to Y for this operation.
         //
         tmp.resize(box,1);
-        tmp.copy(S[k],Density,0,1);
+        tmp.copy(S[mfi],Density,0,1);
         tmp.invert(1);
 
-        S[k].mult(tmp,0,RhoH,1);
+        S[mfi].mult(tmp,0,RhoH,1);
 
         for (int spec = first_spec; spec <= last_spec; spec++)
-            S[k].mult(tmp,0,spec,1);
+            S[mfi].mult(tmp,0,spec,1);
 
-        int iters = getChemSolve().getTGivenHY(temp[k],S[k],S[k],
+        int iters = getChemSolve().getTGivenHY(temp[mfi],S[mfi],S[mfi],
                                                box,RhoH,first_spec,sCompT,errMAX);
         if (iters < 0)
             BoxLib::Error("HeatTransfer::RhoH_to_Temp: error in H->T");
@@ -9563,13 +9559,13 @@ HeatTransfer::RhoH_to_Temp (MultiFab& S,
         max_iters = std::max(max_iters,iters);
 
         if (dominmax)
-            FabMinMax(S[k], box, htt_tempmin, htt_tempmax, Temp, 1);
+            FabMinMax(S[mfi], box, htt_tempmin, htt_tempmax, Temp, 1);
         //
         // Convert back to rho*h and rho*Y
         //
-        S[k].mult(S[k],box,Density,RhoH,1);
+        S[mfi].mult(S[mfi],box,Density,RhoH,1);
         for (int spec = first_spec; spec <= last_spec; spec++)
-            S[k].mult(S[k],box,Density,spec,1);
+            S[mfi].mult(S[mfi],box,Density,spec,1);
     }
 
     if (verbose)
@@ -9634,13 +9630,13 @@ HeatTransfer::compute_cp_and_hmix (const MultiFab& S,
 	    sCompY = 1;
 	    if (tmp_temp)
 	    {
-		tmp.copy((*temp)[iGrid],0,sCompT,1);
+		tmp.copy((*temp)[mfi],0,sCompT,1);
 	    }
             else
             {
-		tmp.copy(S[iGrid],Temp,sCompT,1);
+		tmp.copy(S[mfi],Temp,sCompT,1);
 	    }
-	    tmp.copy(S[iGrid],first_spec,sCompY,nCompY);
+	    tmp.copy(S[mfi],first_spec,sCompY,nCompY);
 	}
         else
         {
@@ -9648,15 +9644,15 @@ HeatTransfer::compute_cp_and_hmix (const MultiFab& S,
 	    sCompY = first_spec;
 	}
 	
-	const FArrayBox& state = need_tmp_data ? tmp : S[iGrid];
+	const FArrayBox& state = need_tmp_data ? tmp : S[mfi];
 
 	const int sCompCp = 0;
-	getChemSolve().getCpmixGivenTY(cp[iGrid],state,state,box,sCompT,sCompY,sCompCp);
+	getChemSolve().getCpmixGivenTY(cp[mfi],state,state,box,sCompT,sCompY,sCompCp);
 
 	if (calchmix)
 	{
 	    const int sCompH = 0;
-	    getChemSolve().getHmixGivenTY(hmix[iGrid],state,state,box,sCompT,sCompY,sCompH);
+	    getChemSolve().getHmixGivenTY(hmix[mfi],state,state,box,sCompT,sCompY,sCompH);
 	}
     }
 }
@@ -9694,7 +9690,7 @@ HeatTransfer::compute_cp (Real      time,
         for (int k = 0; k < nspecies; k++)
             state.mult(tmp,0,sCompY+k,1);
 	
-	getChemSolve().getCpmixGivenTY(cp[iGrid],state,state,validBox,sCompT,sCompY,sCompCp);
+	getChemSolve().getCpmixGivenTY(cp[fpi],state,state,validBox,sCompT,sCompY,sCompCp);
     }
 }
 
@@ -9756,12 +9752,12 @@ HeatTransfer::compute_rhohmix (Real      time,
         for (int k = 0; k < nspecies; k++)
             state.mult(tmp,0,sCompY+k,1);
 	
-	getChemSolve().getHmixGivenTY(rhohmix[iGrid],state,state,validBox,
+	getChemSolve().getHmixGivenTY(rhohmix[fpi],state,state,validBox,
 				      sCompT,sCompY,sCompH);
         //
         // Convert hmix to rho*hmix
         //
-        rhohmix[iGrid].mult(state,validBox,sCompR,sCompH,1);
+        rhohmix[fpi].mult(state,validBox,sCompR,sCompH,1);
     }
 }
  
@@ -9786,9 +9782,9 @@ HeatTransfer::compute_h (Real      time,
     {
 	const Box box = BoxLib::grow(grids[fpi.index()],nGrow);
 
-	BL_ASSERT(box == h[fpi.index()].box());
+	BL_ASSERT(box == h[fpi].box());
 
-	getChemSolve().getHGivenT(h[fpi.index()],fpi(),box,sCompT,sCompH);
+	getChemSolve().getHGivenT(h[fpi],fpi(),box,sCompT,sCompH);
     }
 }
 
@@ -10298,7 +10294,7 @@ HeatTransfer::derive (const std::string& name,
              fpi.isValid();
              ++fpi)
         {
-            tmf[fpi.index()].copy(fpi());
+            tmf[fpi].copy(fpi());
         }
 
         int num_smooth_pre = 3;
