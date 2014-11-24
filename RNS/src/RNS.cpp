@@ -877,10 +877,10 @@ RNS::avgDown (MultiFab& S_crse, const MultiFab& S_fine)
     {
 	const int        i        = mfi.index();
 	const Box&       ovlp     = crse_S_fine_BA[i];
-	FArrayBox&       crse_fab = crse_S_fine[i];
-	const FArrayBox& crse_vol = crse_fvolume[i];
-	const FArrayBox& fine_fab = S_fine[i];
-	const FArrayBox& fine_vol = fvolume[i];
+	FArrayBox&       crse_fab = crse_S_fine[mfi];
+	const FArrayBox& crse_vol = crse_fvolume[mfi];
+	const FArrayBox& fine_fab = S_fine[mfi];
+	const FArrayBox& fine_vol = fvolume[mfi];
 
 	BL_FORT_PROC_CALL(RNS_AVGDOWN,rns_avgdown)
 	    (BL_TO_FORTRAN(crse_fab), ncomp,
@@ -927,10 +927,10 @@ RNS::errorEst (TagBoxArray& tags,
         {
 	    int         idx     = mfi.index();
 	    RealBox     gridloc = RealBox(grids[idx],geom.CellSize(),geom.ProbLo());
-	    itags               = tags[idx].tags();
+	    itags               = tags[mfi].tags();
 	    int*        tptr    = itags.dataPtr();
-	    const int*  tlo     = tags[idx].box().loVect();
-	    const int*  thi     = tags[idx].box().hiVect();
+	    const int*  tlo     = tags[mfi].box().loVect();
+	    const int*  thi     = tags[mfi].box().hiVect();
 	    const int*  lo      = mfi.validbox().loVect();
 	    const int*  hi      = mfi.validbox().hiVect();
 	    const Real* xlo     = gridloc.lo();
@@ -948,11 +948,11 @@ RNS::errorEst (TagBoxArray& tags,
 	    //
 	    if (allow_untagging == 1)
             {
-		tags[idx].tags_and_untags(itags);
+		tags[mfi].tags_and_untags(itags);
             }
 	    else
 	    {
-		tags[idx].tags(itags);
+		tags[mfi].tags(itags);
 	    }
         }
 
@@ -1005,15 +1005,13 @@ RNS::buildTouchFine ()
 
     for (MFIter mfi(S_new); mfi.isValid(); ++mfi)
     {
-	int i = mfi.index();
-
-	const Box tbox = BoxLib::refine(S_new[i].box(), parent->refRatio(level));
+	const Box tbox = BoxLib::refine(S_new[mfi].box(), parent->refRatio(level));
 
 	if (fb.intersects(tbox) || fba.intersects(tbox)) {
-	    touchFine[i] = 1;
+	    touchFine[mfi.index()] = 1;
 	}
 	else {
-	    touchFine[i] = 0;
+	    touchFine[mfi.index()] = 0;
 	}
     }
 }

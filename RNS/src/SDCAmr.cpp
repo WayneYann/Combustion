@@ -194,7 +194,7 @@ void RNS::interpolate(MLSDCAmrEncap& F, MLSDCAmrEncap& G, Real t, bool isCorrect
       for (MFIter mfi(UG2); mfi.isValid(); ++mfi)
       {
 	  int i = mfi.index();
-	  UG2[i].copy((*UG_safe)[i]);  // Fab to Fab copy
+	  UG2[mfi].copy((*UG_safe)[mfi]);  // Fab to Fab copy
       }
 
       UC.copy(UG2);
@@ -414,7 +414,7 @@ SDCAmr::coarseTimeStep (Real stop_time)
 	    const Box& bx = mfi.validbox();
 	    std::vector< std::pair<int,Box> > isects = baf.intersections(bx);
 	    for (int ii=0; ii<isects.size(); ii++) {
-	      R[i].setVal(0.0, isects[ii].second, 0, ncomp);
+	      R[mfi].setVal(0.0, isects[ii].second, 0, ncomp);
 	    }
 	  }
 	}

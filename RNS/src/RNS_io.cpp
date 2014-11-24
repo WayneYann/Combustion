@@ -516,7 +516,7 @@ RNS::writePlotFile (const std::string& dir,
 
 	if (plot_cons)
 	{
-	    plotMF[i].copy(fpi(), 0, icomp_cons, NUM_STATE);
+	    plotMF[fpi].copy(fpi(), 0, icomp_cons, NUM_STATE);
 	}
 
 	if (plot_prim || plot_primplus)
@@ -534,7 +534,7 @@ RNS::writePlotFile (const std::string& dir,
 
 	    if (plot_prim)
 	    {
-		plotMF[i].copy(prim, 0, icomp_prim, NUM_STATE);
+		plotMF[fpi].copy(prim, 0, icomp_prim, NUM_STATE);
 	    }
 
 	    if (plot_primplus)
@@ -542,7 +542,7 @@ RNS::writePlotFile (const std::string& dir,
 		BL_FORT_PROC_CALL(RNS_MAKEPLOTVAR,rns_makeplotvar)
 		    (bx.loVect(), bx.hiVect(), dx,
 		     BL_TO_FORTRAN(prim),
-		     BL_TO_FORTRAN(plotMF[i]),
+		     BL_TO_FORTRAN(plotMF[fpi]),
 		     n_plot_vars, icomp_magvel, icomp_Mach, icomp_divu, icomp_magvort, 
 		     icomp_X, icomp_omegadot, icomp_dYdt, icomp_heatRelease, 
 		     icomp_fuelConsumption, fuelID);
