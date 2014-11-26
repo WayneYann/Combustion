@@ -723,7 +723,7 @@ RNS::advance_AD(MultiFab& Unew, Real time, Real dt, int iteration, int ncycle)
 	    Unew[mfi].copy(U0[mfi], bx);
 	    Unew[mfi].saxpy(1./6., RK_k[0][mfi]);
 	    Unew[mfi].saxpy(1./6., RK_k[1][mfi]);
-	    Unew[mfi].saxpy(2./3., RK_k[2][i]);
+	    Unew[mfi].saxpy(2./3., RK_k[2][mfi]);
 	}
 	post_update(Unew);
     }

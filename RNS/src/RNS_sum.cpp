@@ -53,7 +53,6 @@ RNS::volWgtSumCons(Array<Real>& s)
 
     for (MFIter mfi(Unew); mfi.isValid(); ++mfi)
     {
-	int i = mfi.index();
         const Box& bx = mfi.validbox();
 
 	FArrayBox msk(bx,1);
