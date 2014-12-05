@@ -999,13 +999,13 @@ RNS::buildTouchFine ()
     MultiFab& S_new = get_new_data(State_Type);
 
     const BoxArray& fba = getLevel(level+1).boxArray();
-    const Box fb = fba.minimalBox();
+    const Box& fb = fba.minimalBox();
 
     touchFine.resize(S_new.size());
 
     for (MFIter mfi(S_new); mfi.isValid(); ++mfi)
     {
-	const Box tbox = BoxLib::refine(S_new[mfi].box(), parent->refRatio(level));
+	const Box& tbox = BoxLib::refine(S_new[mfi].box(), parent->refRatio(level));
 
 	if (fb.intersects(tbox) || fba.intersects(tbox)) {
 	    touchFine[mfi.index()] = 1;

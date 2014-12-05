@@ -95,7 +95,7 @@ void RNS::interpolate(MLSDCAmrEncap& F, MLSDCAmrEncap& G, Real t, bool isCorrect
   RNS&      levelF = *this;
   RNS&      levelG = dynamic_cast<RNS&>(_levelG);
 
-  const IntVect         ratio = levelG.fineRatio();
+  const IntVect&        ratio = levelG.fineRatio();
   const DescriptorList& dl    = levelF.get_desc_lst();
   const Array<BCRec>&   bcs   = dl[0].getBCs();
   const int             ncomp = dl[0].nComp();

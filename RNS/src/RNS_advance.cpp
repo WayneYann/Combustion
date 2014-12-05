@@ -111,7 +111,7 @@ RNS::fill_boundary(MultiFab& U, Real time, int type_in, bool isCorrection, bool 
 	BoxArray grids_g(grids);
 	for (int ibox=0; ibox<grids_g.size(); ibox++)
 	{
-	    const Box b = BoxLib::grow(grids_g[ibox], NUM_GROW);
+	    const Box& b = BoxLib::grow(grids_g[ibox], NUM_GROW);
 	    grids_g.set(ibox, b);
 	}
 
@@ -200,7 +200,7 @@ RNS::fill_rk_boundary(MultiFab& U, Real time, Real dt, int stage, int iteration,
 
 	RNS& levelG = *dynamic_cast<RNS*>(&getLevel(level-1));
 
-	const IntVect         ratio = levelG.fineRatio();
+	const IntVect&        ratio = levelG.fineRatio();
 	const DescriptorList& dl    = get_desc_lst();
 	const Array<BCRec>&   bcs   = dl[0].getBCs();
 	Interpolater&         map   = *dl[0].interp();

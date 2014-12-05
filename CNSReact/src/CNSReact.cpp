@@ -1025,7 +1025,7 @@ CNSReact::enforce_nonnegative_species (MultiFab& S_new)
 {
     for (MFIter mfi(S_new); mfi.isValid(); ++mfi)
     {
-       const Box bx = mfi.validbox();
+       const Box& bx = mfi.validbox();
        BL_FORT_PROC_CALL(CNS_ENFORCE_NONNEGATIVE_SPECIES,cns_enforce_nonnegative_species)
 	 (BL_TO_FORTRAN(S_new[mfi]),bx.loVect(),bx.hiVect());
     }
@@ -1422,7 +1422,7 @@ CNSReact::reset_internal_energy(MultiFab& S_new)
   // Synchronize (rho e) and (rho E) so they are consistent with each other
   for (MFIter mfi(S_new); mfi.isValid(); ++mfi)
   {
-      const Box bx = mfi.validbox();
+      const Box& bx = mfi.validbox();
       
       BL_FORT_PROC_CALL(CNS_RESET_INTERNAL_ENERGY,cns_reset_internal_energy)
 	(BL_TO_FORTRAN(S_new[mfi]),
@@ -1436,7 +1436,7 @@ CNSReact::computeTemp(MultiFab& State)
     reset_internal_energy(State);
     for (MFIter mfi(State); mfi.isValid(); ++mfi)
     {
-        const Box bx = mfi.validbox();
+        const Box& bx = mfi.validbox();
 	BL_FORT_PROC_CALL(CNS_COMPUTE_TEMP,cns_compute_temp)
 	  (bx.loVect(),bx.hiVect(),BL_TO_FORTRAN(State[mfi]));
     }

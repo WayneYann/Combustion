@@ -409,7 +409,7 @@ ChemDriver::molarProduction(FArrayBox&       Q,
     const Box& mabx = C.box();
     const Box& mbbx = T.box();
     const Box& mobx = Q.box();
-    const Box ovlp = box & mabx & mbbx & mobx;
+    const Box& ovlp = box & mabx & mbbx & mobx;
 
     const int idx = index(specName) + 1; // to fortran indexing
 

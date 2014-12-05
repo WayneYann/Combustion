@@ -4200,7 +4200,7 @@ HeatTransfer::mcdd_fas_cycle(MCDD_MGParams&      p,
 
         // FIXME: BA calcs + allocs can be done ahead of time
         const IntVect MGIV(D_DECL(2,2,2));
-        const BoxArray c_grids = BoxArray(mg_grids).coarsen(MGIV);
+        const BoxArray& c_grids = BoxArray(mg_grids).coarsen(MGIV);
         MultiFab SC(c_grids,nspecies+3,nGrowOp);
         MultiFab T1C(c_grids,nspecies+1,nGrow); // Will be used for LphiC, ResC
         MultiFab T2C(c_grids,nspecies+3,nGrow); // Will be used for RhsC and SC_save, need extra comps for Rho and H        
@@ -5996,7 +5996,7 @@ HeatTransfer::advance (Real time,
 
     for (MFIter mfi(*rho_ctime); mfi.isValid(); ++mfi)
     {
-        const Box box = BoxLib::grow(mfi.validbox(),LinOp_grow);
+        const Box& box = BoxLib::grow(mfi.validbox(),LinOp_grow);
         Rho_hold[mfi].copy((*rho_ctime)[mfi],box,0,box,0,1);
     }
     //
@@ -7419,7 +7419,7 @@ HeatTransfer::scalar_advection (Real dt,
 
             for (int d = 0; d < BL_SPACEDIM; ++d)
             {
-                const Box ebox = BoxLib::surroundingNodes(box,d);
+                const Box& ebox = BoxLib::surroundingNodes(box,d);
                 eTemp.resize(ebox,1);
                 FPLoc bc_lo = fpi_phys_loc(get_desc_lst()[State_Type].getBC(Temp).lo(d));
                 FPLoc bc_hi = fpi_phys_loc(get_desc_lst()[State_Type].getBC(Temp).hi(d));
@@ -7500,7 +7500,7 @@ HeatTransfer::scalar_advection (Real dt,
 
             for (int d = 0; d < BL_SPACEDIM; ++d)
             {
-                const Box ebox = BoxLib::surroundingNodes(box,d);
+                const Box& ebox = BoxLib::surroundingNodes(box,d);
                 eTemp.resize(ebox,1);
                 FPLoc bc_lo = fpi_phys_loc(get_desc_lst()[State_Type].getBC(Temp).lo(d));
                 FPLoc bc_hi = fpi_phys_loc(get_desc_lst()[State_Type].getBC(Temp).hi(d));
@@ -7974,8 +7974,8 @@ HeatTransfer::mac_sync ()
         {
             for (MFIter Vsyncmfi(*Vsync); Vsyncmfi.isValid(); ++Vsyncmfi)
             {
-                const int i    = Vsyncmfi.index();
-                const Box vbox = (*rho_ctime).box(i);
+                const int  i    = Vsyncmfi.index();
+                const Box& vbox = (*rho_ctime).box(i);
 
                 D_TERM((*Vsync)[Vsyncmfi].divide((*rho_ctime)[Vsyncmfi],vbox,0,Xvel,1);,
                        (*Vsync)[Vsyncmfi].divide((*rho_ctime)[Vsyncmfi],vbox,0,Yvel,1);,
@@ -8096,7 +8096,7 @@ HeatTransfer::mac_sync ()
 
                     for (int d = 0; d < BL_SPACEDIM; ++d)
                     {
-                        const Box ebox = BoxLib::surroundingNodes(box,d);
+                        const Box& ebox = BoxLib::surroundingNodes(box,d);
                         eTemp.resize(ebox,1);
                         FPLoc bc_lo = fpi_phys_loc(get_desc_lst()[State_Type].getBC(Temp).lo(d));
                         FPLoc bc_hi = fpi_phys_loc(get_desc_lst()[State_Type].getBC(Temp).hi(d));
@@ -8846,8 +8846,8 @@ HeatTransfer::calcDiffusivity (const Real time,
          Rho_and_spec_fpi.isValid() && Temp_fpi.isValid();
          ++Rho_and_spec_fpi, ++Temp_fpi)
     {
-        const int idx = Rho_and_spec_fpi.index();
-        const Box gbx = BoxLib::grow(grids[idx],nGrow);
+        const int  idx = Rho_and_spec_fpi.index();
+        const Box& gbx = BoxLib::grow(grids[idx],nGrow);
         //
         // Convert from RhoY_l to Y_l
         //
@@ -8987,7 +8987,7 @@ HeatTransfer::zeroBoundaryVisc (MultiFab*  beta[BL_SPACEDIM],
         for (MFIter mfi(*(beta[dir])); mfi.isValid(); ++mfi)
         {
             FArrayBox& beta_fab = (*(beta[dir]))[mfi];
-            const Box ebox      = BoxLib::surroundingNodes(mfi.validbox(),dir);
+            const Box& ebox     = BoxLib::surroundingNodes(mfi.validbox(),dir);
             FORT_ZEROVISC(beta_fab.dataPtr(dst_comp),
                           ARLIM(beta_fab.loVect()), ARLIM(beta_fab.hiVect()),
                           ebox.loVect(),  ebox.hiVect(),
@@ -9154,7 +9154,7 @@ HeatTransfer::calc_divu (Real      time,
 
     delta_divu.setVal(0.0);
 
-    const Array<Real> mwt = getChemSolve().speciesMolecWt();
+    const Array<Real>& mwt = getChemSolve().speciesMolecWt();
 
     if (do_mcdd)
     {
@@ -9293,8 +9293,8 @@ HeatTransfer::calc_dpdt (Real      time,
          Spec_fpi.isValid();
          ++Spec_fpi)
     {
-        const int i  = Spec_fpi.index();
-        const Box bx = BoxLib::grow(grids[i],nGrow);
+        const int  i  = Spec_fpi.index();
+        const Box& bx = BoxLib::grow(grids[i],nGrow);
 
         species[Spec_fpi].copy(Spec_fpi(),0,sCompY,nspecies);
 
@@ -9312,8 +9312,8 @@ HeatTransfer::calc_dpdt (Real      time,
     
     for (MFIter Rho_mfi(rho); Rho_mfi.isValid(); ++Rho_mfi)
     {
-        const int idx = Rho_mfi.index();
-        const Box box = BoxLib::grow(Rho_mfi.validbox(),nGrow);
+        const int  idx = Rho_mfi.index();
+        const Box& box = BoxLib::grow(Rho_mfi.validbox(),nGrow);
         
         BL_ASSERT(Rho_mfi.validbox() == grids[idx]);
         
@@ -9780,7 +9780,7 @@ HeatTransfer::compute_h (Real      time,
          fpi.isValid();
          ++fpi)
     {
-	const Box box = BoxLib::grow(grids[fpi.index()],nGrow);
+	const Box& box = BoxLib::grow(grids[fpi.index()],nGrow);
 
 	BL_ASSERT(box == h[fpi].box());
 
@@ -10334,7 +10334,7 @@ HeatTransfer::derive (const std::string& name,
             const FArrayBox& Tg = tmf[mfi];
             FArrayBox& MC = mf[mfi];
             const Box& box = mfi.validbox();
-            const Box nodebox = BoxLib::surroundingNodes(box);
+            const Box& nodebox = BoxLib::surroundingNodes(box);
             nWork.resize(nodebox,BL_SPACEDIM);
             
             FORT_MCURVE(box.loVect(),box.hiVect(),

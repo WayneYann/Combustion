@@ -3940,7 +3940,7 @@ HeatTransfer::mcdd_fas_cycle(MCDD_MGParams&      p,
 
         // FIXME: BA calcs + allocs can be done ahead of time
         const IntVect MGIV(D_DECL(2,2,2));
-        const BoxArray c_grids = BoxArray(mg_grids).coarsen(MGIV);
+        const BoxArray& c_grids = BoxArray(mg_grids).coarsen(MGIV);
         MultiFab SC(c_grids,nspecies+3,nGrowOp);
         MultiFab T1C(c_grids,nspecies+1,nGrow); // Will be used for LphiC, ResC
         MultiFab T2C(c_grids,nspecies+3,nGrow); // Will be used for RhsC and SC_save, need extra comps for Rho and H        
@@ -5573,7 +5573,7 @@ HeatTransfer::advance (Real time,
         const FArrayBox& d = Dn[mfi];
         const FArrayBox& dd = DDn[mfi];
         const FArrayBox& r = get_old_data(RhoYdot_Type)[mfi];
-        const Box gbox = Box(mfi.validbox()).grow(nGrowAdvForcing);
+        const Box& gbox = Box(mfi.validbox()).grow(nGrowAdvForcing);
         
         f.copy(d,gbox,0,gbox,0,nspecies+1); // add Dn to RhoY and RhoH
         f.plus(r,gbox,gbox,0,0,nspecies); // add R to RhoY, no contribution for RhoH
@@ -5723,7 +5723,7 @@ HeatTransfer::advance (Real time,
             const FArrayBox& dn = Dn[mfi];
             const FArrayBox& ddn = DDn[mfi];
             const FArrayBox& r = get_new_data(RhoYdot_Type)[mfi];
-	    const Box gbox = Box(mfi.validbox()).grow(nGrowAdvForcing);
+	    const Box& gbox = Box(mfi.validbox()).grow(nGrowAdvForcing);
             
             f.copy(dn,gbox,0,gbox,0,nspecies+1); // add Dn to RhoY and RhoH
             f.plus(r,gbox,gbox,0,0,nspecies); // add R to RhoY, no contribution for RhoH
@@ -5751,7 +5751,7 @@ HeatTransfer::advance (Real time,
           const FArrayBox& ddn = DDn[mfi];
           const FArrayBox& ddnp1 = DDnp1[mfi];
           const FArrayBox& r = get_new_data(RhoYdot_Type)[mfi];
-          const Box gbox = Box(mfi.validbox()).grow(nGrowAdvForcing);
+          const Box& gbox = Box(mfi.validbox()).grow(nGrowAdvForcing);
 
           f.copy(dn,gbox,0,gbox,0,nspecies+1); // add Dn to RhoY and RhoH
           f.plus(dnp1,gbox,gbox,0,0,nspecies+1);
@@ -6361,7 +6361,7 @@ HeatTransfer::compute_scalar_advection_fluxes_and_divergence (MultiFab& Force,
     const FArrayBox& S = S_fpi();
     const FArrayBox& divu = DivU[S_fpi];
     const FArrayBox& force = Force[S_fpi];
-    const Box gbox = S_fpi().box();
+    const Box& gbox = S_fpi().box();
     tforces.resize(gbox,1);
 
     for (int dir = 0; dir < BL_SPACEDIM; dir++)
@@ -6629,8 +6629,8 @@ HeatTransfer::mac_sync ()
         {
             for (MFIter Vsyncmfi(*Vsync); Vsyncmfi.isValid(); ++Vsyncmfi)
             {
-                const int i    = Vsyncmfi.index();
-                const Box vbox = (*rho_ctime).box(i);
+                const int  i    = Vsyncmfi.index();
+                const Box& vbox = (*rho_ctime).box(i);
 
                 D_TERM((*Vsync)[Vsyncmfi].divide((*rho_ctime)[Vsyncmfi],vbox,0,Xvel,1);,
                        (*Vsync)[Vsyncmfi].divide((*rho_ctime)[Vsyncmfi],vbox,0,Yvel,1);,
@@ -6748,7 +6748,7 @@ HeatTransfer::mac_sync ()
 
                     for (int d = 0; d < BL_SPACEDIM; ++d)
                     {
-                        const Box ebox = BoxLib::surroundingNodes(box,d);
+                        const Box& ebox = BoxLib::surroundingNodes(box,d);
                         eTemp.resize(ebox,1);
                         FPLoc bc_lo = fpi_phys_loc(get_desc_lst()[State_Type].getBC(Temp).lo(d));
                         FPLoc bc_hi = fpi_phys_loc(get_desc_lst()[State_Type].getBC(Temp).hi(d));
@@ -7281,7 +7281,7 @@ HeatTransfer::differential_spec_diffuse_sync (Real dt)
 	// copy corrected (delta gamma) on edges into efab
         for (int d=0; d<BL_SPACEDIM; ++d)
         {
-            const Box ebox = BoxLib::surroundingNodes(box,d);
+            const Box& ebox = BoxLib::surroundingNodes(box,d);
             efab[d].resize(ebox,nspecies);
             
             efab[d].copy((*SpecDiffusionFluxnp1[d])[mfi],ebox,0,ebox,0,nspecies);
@@ -7631,7 +7631,7 @@ HeatTransfer::zeroBoundaryVisc (MultiFab*  beta[BL_SPACEDIM],
         for (MFIter mfi(*(beta[dir])); mfi.isValid(); ++mfi)
         {
             FArrayBox& beta_fab = (*(beta[dir]))[mfi];
-            const Box ebox      = BoxLib::surroundingNodes(mfi.validbox(),dir);
+            const Box& ebox     = BoxLib::surroundingNodes(mfi.validbox(),dir);
             FORT_ZEROVISC(beta_fab.dataPtr(dst_comp),
                           ARLIM(beta_fab.loVect()), ARLIM(beta_fab.hiVect()),
                           ebox.loVect(),  ebox.hiVect(),
@@ -7825,8 +7825,8 @@ HeatTransfer::calc_dpdt (Real      time,
          Spec_fpi.isValid();
          ++Spec_fpi)
     {
-        const int i  = Spec_fpi.index();
-        const Box bx = BoxLib::grow(grids[i],nGrow);
+        const int  i  = Spec_fpi.index();
+        const Box& bx = BoxLib::grow(grids[i],nGrow);
 
         species[Spec_fpi].copy(Spec_fpi(),0,sCompY,nspecies);
 
@@ -7844,8 +7844,8 @@ HeatTransfer::calc_dpdt (Real      time,
     
     for (MFIter Rho_mfi(rho); Rho_mfi.isValid(); ++Rho_mfi)
     {
-        const int idx = Rho_mfi.index();
-        const Box box = BoxLib::grow(Rho_mfi.validbox(),nGrow);
+        const int  idx = Rho_mfi.index();
+        const Box& box = BoxLib::grow(Rho_mfi.validbox(),nGrow);
         
         BL_ASSERT(Rho_mfi.validbox() == grids[idx]);
         

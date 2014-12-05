@@ -4461,7 +4461,7 @@ HeatTransfer::advance (Real time,
 	const FArrayBox& dn = Dn[mfi];
 	const FArrayBox& ddn = DDn[mfi];
 	const FArrayBox& r = get_new_data(RhoYdot_Type)[mfi];
-	const Box gbox = Box(mfi.validbox()).grow(nGrowAdvForcing);
+	const Box& gbox = Box(mfi.validbox()).grow(nGrowAdvForcing);
 	f.copy(dn,gbox,0,gbox,0,nspecies+1); // add Dn to RhoY and RhoH
 	f.plus(ddn,gbox,gbox,0,nspecies,1); // add DDn to RhoH forcing
 	f.plus(r,gbox,gbox,0,0,nspecies); // add R to RhoY, no contribution for RhoH
@@ -5454,8 +5454,8 @@ HeatTransfer::mac_sync ()
     {
         for (MFIter Vsyncmfi(*Vsync); Vsyncmfi.isValid(); ++Vsyncmfi)
         {
-            const int i    = Vsyncmfi.index();
-            const Box vbox = (*rho_ctime).box(i);
+            const int  i    = Vsyncmfi.index();
+            const Box& vbox = (*rho_ctime).box(i);
 
             D_TERM((*Vsync)[Vsyncmfi].divide((*rho_ctime)[Vsyncmfi],vbox,0,Xvel,1);,
                    (*Vsync)[Vsyncmfi].divide((*rho_ctime)[Vsyncmfi],vbox,0,Yvel,1);,
@@ -5713,7 +5713,7 @@ HeatTransfer::mac_sync ()
 
                 for (int d = 0; d < BL_SPACEDIM; ++d)
                 {
-                    const Box ebox = BoxLib::surroundingNodes(box,d);
+                    const Box& ebox = BoxLib::surroundingNodes(box,d);
                     eTemp.resize(ebox,1);
                     FPLoc bc_lo = fpi_phys_loc(get_desc_lst()[State_Type].getBC(Temp).lo(d));
                     FPLoc bc_hi = fpi_phys_loc(get_desc_lst()[State_Type].getBC(Temp).hi(d));
@@ -6046,7 +6046,7 @@ HeatTransfer::compute_Wbar_fluxes(Real time,
 
     for (MFIter mfi(rho_and_species); mfi.isValid(); ++mfi)
     {
-      const Box gbox = Box(mfi.validbox()).grow(nGrowOp);
+      const Box& gbox = Box(mfi.validbox()).grow(nGrowOp);
       getChemSolve().getMwmixGivenY(Wbar[mfi],rho_and_species[mfi],gbox,1,0);
     }
 
@@ -6258,7 +6258,7 @@ HeatTransfer::differential_spec_diffuse_sync (Real dt,
 	// copy corrected (delta gamma) on edges into efab
         for (int d=0; d<BL_SPACEDIM; ++d)
         {
-            const Box ebox = BoxLib::surroundingNodes(box,d);
+            const Box& ebox = BoxLib::surroundingNodes(box,d);
             efab[d].resize(ebox,nspecies);
             
             efab[d].copy((*SpecDiffusionFluxnp1[d])[mfi],ebox,0,ebox,0,nspecies);
@@ -6651,7 +6651,7 @@ HeatTransfer::zeroBoundaryVisc (MultiFab*  beta[BL_SPACEDIM],
         for (MFIter mfi(*(beta[dir])); mfi.isValid(); ++mfi)
         {
             FArrayBox& beta_fab = (*(beta[dir]))[mfi];
-            const Box ebox      = BoxLib::surroundingNodes(mfi.validbox(),dir);
+            const Box& ebox     = BoxLib::surroundingNodes(mfi.validbox(),dir);
             FORT_ZEROVISC(beta_fab.dataPtr(dst_comp),
                           ARLIM(beta_fab.loVect()), ARLIM(beta_fab.hiVect()),
                           ebox.loVect(),  ebox.hiVect(),
@@ -7471,7 +7471,7 @@ HeatTransfer::derive (const std::string& name,
             const FArrayBox& Tg = tmf[mfi];
             FArrayBox& MC = mf[mfi];
             const Box& box = mfi.validbox();
-            const Box nodebox = BoxLib::surroundingNodes(box);
+            const Box& nodebox = BoxLib::surroundingNodes(box);
             nWork.resize(nodebox,BL_SPACEDIM);
             
             FORT_MCURVE(box.loVect(),box.hiVect(),
