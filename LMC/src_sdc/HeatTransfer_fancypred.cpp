@@ -3940,7 +3940,7 @@ HeatTransfer::mcdd_fas_cycle(MCDD_MGParams&      p,
 
         // FIXME: BA calcs + allocs can be done ahead of time
         const IntVect MGIV(D_DECL(2,2,2));
-        const BoxArray& c_grids = BoxArray(mg_grids).coarsen(MGIV);
+        const BoxArray c_grids = BoxArray(mg_grids).coarsen(MGIV);
         MultiFab SC(c_grids,nspecies+3,nGrowOp);
         MultiFab T1C(c_grids,nspecies+1,nGrow); // Will be used for LphiC, ResC
         MultiFab T2C(c_grids,nspecies+3,nGrow); // Will be used for RhsC and SC_save, need extra comps for Rho and H        
