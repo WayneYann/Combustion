@@ -33,7 +33,7 @@ using std::cerr;
 #include <Interpolater.H>
 #include <ccse-mpi.H>
 #include <Utility.H>
-#include <Profiler.H>
+#include <BLProfiler.H>
 
 #if defined(BL_USE_NEWMECH) || defined(BL_USE_VELOCITY)
 #include <DataServices.H>
@@ -6467,8 +6467,8 @@ HeatTransfer::getFuncCountDM (const BoxArray& bxba, int ngrow)
 
     Array<long> vwrktmp = vwrk;
 
-    BL_COMM_PROFILE(Profiler::Gatherv, vwrktmp.size() * sizeof(long),
-                    ParallelDescriptor::MyProc(), Profiler::BeforeCall());
+    BL_COMM_PROFILE(BLProfiler::Gatherv, vwrktmp.size() * sizeof(long),
+                    ParallelDescriptor::MyProc(), BLProfiler::BeforeCall());
 
     MPI_Gatherv(vwrk.dataPtr(),
                 count,
@@ -6480,8 +6480,8 @@ HeatTransfer::getFuncCountDM (const BoxArray& bxba, int ngrow)
                 IOProc,
                 ParallelDescriptor::Communicator());
 
-    BL_COMM_PROFILE(Profiler::Gatherv, vwrktmp.size() * sizeof(long),
-                    ParallelDescriptor::MyProc(), Profiler::AfterCall());
+    BL_COMM_PROFILE(BLProfiler::Gatherv, vwrktmp.size() * sizeof(long),
+                    ParallelDescriptor::MyProc(), BLProfiler::AfterCall());
 
     if (ParallelDescriptor::IOProcessor())
     {
