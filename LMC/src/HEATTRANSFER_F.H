@@ -16,6 +16,7 @@
 #    define FORT_CHECK_DIVU_DT             checkdivudt
 #    define FORT_INIT_VISC_DATA            initviscdata
 #    define FORT_SET_HT_VISC_COMMON        setvisccm
+#    define FORT_INIT_TYPVALS_COMMON       inittvcm
 #    define FORT_VELVISC                   velvisc
 #    define FORT_SPECTEMPVISC              spectempvisc
 #    define FORT_FABMINMAX                 fabminmax
@@ -54,6 +55,7 @@
 #    define FORT_CHECK_DIVU_DT             CHECKDIVUDT
 #    define FORT_INIT_VISC_DATA            INITVISCDATA
 #    define FORT_SET_HT_VISC_COMMON        SETVISCCM
+#    define FORT_INIT_TYPVALS_COMMON       INITTVCM
 #    define FORT_VELVISC                   VELVISC
 #    define FORT_SPECTEMPVISC              SPECTEMPVISC
 #    define FORT_FABMINMAX                 FABMINMAX
@@ -91,6 +93,7 @@
 #    define FORT_CHECK_DIVU_DT             checkdivudt
 #    define FORT_INIT_VISC_DATA            initviscdata
 #    define FORT_SET_HT_VISC_COMMON        setvisccm
+#    define FORT_INIT_TYPVALS_COMMON       inittvcm
 #    define FORT_VELVISC                   velvisc
 #    define FORT_SPECTEMPVISC              spectempvisc
 #    define FORT_FABMINMAX                 fabminmax
@@ -128,6 +131,7 @@
 #    define FORT_CHECK_DIVU_DT             checkdivudt_
 #    define FORT_INIT_VISC_DATA            initviscdata_
 #    define FORT_SET_HT_VISC_COMMON        setvisccm_
+#    define FORT_INIT_TYPVALS_COMMON       inittvcm_
 #    define FORT_VELVISC                   velvisc_
 #    define FORT_SPECTEMPVISC              spectempvisc_
 #    define FORT_FABMINMAX                 fabminmax_
@@ -251,6 +255,8 @@ extern "C" {
 				 const int* lambdaIsVar, const Real* lambdaVal,
 				 const int* rhoDIsVar,   const Real* rhoDVal,
 				 const Real* Pr, const Real* Sc, const int* unityLe);
+
+    void FORT_INIT_TYPVALS_COMMON();
       
     void FORT_VELVISC(const int* lo, const int* hi,
 		      ARLIM_P(tlo), ARLIM_P(thi), const Real* tempdat,
