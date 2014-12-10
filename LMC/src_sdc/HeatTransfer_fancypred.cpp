@@ -1064,6 +1064,8 @@ HeatTransfer::init_once ()
                             &var_diff, &constant_rhoD_val,
                             &prandtl,  &schmidt, &unity_Le);
 
+    // initialize default typical values
+    FORT_INIT_TYPVALS_COMMON();
     //
     // make space for typical values
     //
