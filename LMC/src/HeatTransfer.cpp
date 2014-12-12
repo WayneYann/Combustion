@@ -15,6 +15,7 @@
 #include <fstream>
 #include <vector>
 #include <unistd.h>
+#include <ctime>
 
 using std::cout;
 using std::endl;
