@@ -627,8 +627,8 @@ c
          if ((idir.EQ.1) .AND. (lo(2) .LE. domlo(2))
      &           .AND. (do_T .OR. do_RH .OR. do_Y) ) then
                
-            y = float(j)*dx(2)+domnlo(2)
             j = lo(2)
+            y = float(j)*dx(2)+domnlo(2)
             do i = lo(1), hi(1)
                
                xl = float(i)*dx(1)+domnlo(1) 
