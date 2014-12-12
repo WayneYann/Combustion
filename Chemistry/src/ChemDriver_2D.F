@@ -163,6 +163,7 @@
             T_cell = T(i,j)
             call conpFY_sdc(ndummy,tdummy,Zt,Zdott,RWRK,IWRK)
 
+            call CKHMS(T(i,j),IWRK(ckbi),RWRK(ckbr),H_CGS)
             Q(i,j) = 0.d0
             do n= 1, Nspec
                Q(i,j) = Q(i,j) - Zdott(n) * H_CGS(n) * 1.d-4
