@@ -95,7 +95,7 @@ void RNS::interpolate(MLSDCAmrEncap& F, MLSDCAmrEncap& G, Real t, bool isCorrect
   RNS&      levelF = *this;
   RNS&      levelG = dynamic_cast<RNS&>(_levelG);
 
-  const IntVect         ratio = levelG.fineRatio();
+  const IntVect&        ratio = levelG.fineRatio();
   const DescriptorList& dl    = levelF.get_desc_lst();
   const Array<BCRec>&   bcs   = dl[0].getBCs();
   const int             ncomp = dl[0].nComp();
@@ -194,7 +194,7 @@ void RNS::interpolate(MLSDCAmrEncap& F, MLSDCAmrEncap& G, Real t, bool isCorrect
       for (MFIter mfi(UG2); mfi.isValid(); ++mfi)
       {
 	  int i = mfi.index();
-	  UG2[i].copy((*UG_safe)[i]);  // Fab to Fab copy
+	  UG2[mfi].copy((*UG_safe)[mfi]);  // Fab to Fab copy
       }
 
       UC.copy(UG2);
@@ -414,7 +414,7 @@ SDCAmr::coarseTimeStep (Real stop_time)
 	    const Box& bx = mfi.validbox();
 	    std::vector< std::pair<int,Box> > isects = baf.intersections(bx);
 	    for (int ii=0; ii<isects.size(); ii++) {
-	      R[i].setVal(0.0, isects[ii].second, 0, ncomp);
+	      R[mfi].setVal(0.0, isects[ii].second, 0, ncomp);
 	    }
 	  }
 	}
@@ -500,18 +500,19 @@ SDCAmr::coarseTimeStep (Real stop_time)
     if (ParallelDescriptor::IOProcessor())
       std::cout << "\nCoarse TimeStep time: " << run_stop << '\n' ;
 
-    long min_fab_bytes  = BoxLib::total_bytes_allocated_in_fabs_hwm;
-    long max_fab_bytes  = BoxLib::total_bytes_allocated_in_fabs_hwm;
-
-    ParallelDescriptor::ReduceLongMin(min_fab_bytes, IOProc);
-    ParallelDescriptor::ReduceLongMax(max_fab_bytes, IOProc);
-
-    if (ParallelDescriptor::IOProcessor()) {
-      std::cout << "\nFAB byte spread across MPI nodes for timestep: ["
-		<< min_fab_bytes
-		<< " ... "
-		<< max_fab_bytes
-		<< "]\n";
+    long min_fab_kilobytes  = BoxLib::total_bytes_allocated_in_fabs_hwm/1024;
+    long max_fab_kilobytes  = BoxLib::total_bytes_allocated_in_fabs_hwm/1024;
+    
+    ParallelDescriptor::ReduceLongMin(min_fab_kilobytes, IOProc);
+    ParallelDescriptor::ReduceLongMax(max_fab_kilobytes, IOProc);
+    
+    if (ParallelDescriptor::IOProcessor())
+    {
+	std::cout << "\nFAB kilobyte spread across MPI nodes for timestep: ["
+		  << min_fab_kilobytes
+		  << " ... "
+		  << max_fab_kilobytes
+		  << "]\n";
     }
     //
     // Reset to zero to calculate high-water-mark for next timestep.

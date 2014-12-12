@@ -16,8 +16,6 @@ ifneq (${DIM}, 1)
   f90EXE_sources += hypterm_xy.f90
 endif
 
-f90EXE_sources += threadbox.f90
-
 f90EXE_sources += renorm.f90
 
 f90EXE_sources += passinfo.f90

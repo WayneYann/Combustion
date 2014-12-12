@@ -17,7 +17,6 @@ FCOMP           = gfortran
 USE_MPI         = FALSE
 USE_OMP         = FALSE
 USE_MPI         = TRUE
-USE_F90_SOLVERS = TRUE
 VERBOSE         = FALSE
 VERBOSE         = TRUE
 PROFILE         = TRUE

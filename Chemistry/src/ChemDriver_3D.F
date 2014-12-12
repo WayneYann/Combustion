@@ -996,6 +996,10 @@ c     Get the matrix of elements versus species
                T_cell             = Told(i,j,k)
                FuncCount(i,j,k)   = 0
 
+#ifdef ALWAYS_NEW_J
+            FIRST = .TRUE.
+#endif
+
                if (do_diag.eq.1) then
                   FuncCount(i,j,k) = 0
                   CALL CKYTCP(RWRK(NP),T_cell,Z(1),IWRK(ckbi),RWRK(ckbr),Ct)
