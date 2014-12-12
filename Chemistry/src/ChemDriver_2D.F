@@ -88,12 +88,6 @@
       Pdyne = Patm * P1atm
       scale = million
 
-#ifdef MIKE1
-      do n=1,Nrxns
-         RevKt(n) = zero
-      end do      
-#endif      
-
       do j=lo(2),hi(2)
          do i=lo(1),hi(1)
             do n=1,Nspec
@@ -111,12 +105,7 @@
             endif
             CALL CKYTX(Yt,IWRK(ckbi),RWRK(ckbr),Xt)
 #endif
-#ifdef MIKE1
             CALL CKKFKR(Pdyne,T(i,j),Xt,IWRK(ckbi),RWRK(ckbr),FwdKt,RevKt)
-#else
-            CALL CKQXP(Pdyne,T(i,j),Xt,IWRK(ckbi),RWRK(ckbr),FwdKt)
-c            call bl_abort("FORT_FRrateXTP not implemented")
-#endif
             do n=1,Nrxns
                FwdK(i,j,n) = FwdKt(rxns(n)+1)*scale
                RevK(i,j,n) = RevKt(rxns(n)+1)*scale

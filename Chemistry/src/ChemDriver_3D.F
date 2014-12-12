@@ -98,11 +98,7 @@
                endif
                CALL CKYTX(Yt,IWRK(ckbi),RWRK(ckbr),Xt)
 #endif
-#ifdef MIKE1
                CALL CKKFKR(Pdyne,T(i,j,k),Xt,IWRK(ckbi),RWRK(ckbr),FwdKt,RevKt)
-#else
-               call bl_abort('FORT_FRrateXTP: CKKFKR not available')
-#endif
                do n=1,Nrxns
                   FwdK(i,j,k,n) = FwdKt(rxns(n)+1)*scale
                   RevK(i,j,k,n) = RevKt(rxns(n)+1)*scale
