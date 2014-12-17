@@ -5575,7 +5575,7 @@ HeatTransfer::advance (Real time,
         const FArrayBox& d = Dn[mfi];
         const FArrayBox& dd = DDn[mfi];
         const FArrayBox& r = get_old_data(RhoYdot_Type)[mfi];
-        const Box& gbox = Box(mfi.validbox()).grow(nGrowAdvForcing);
+        const Box& gbox = BoxLib::grow(mfi.validbox(),nGrowAdvForcing);
         
         f.copy(d,gbox,0,gbox,0,nspecies+1); // add Dn to RhoY and RhoH
         f.plus(r,gbox,gbox,0,0,nspecies); // add R to RhoY, no contribution for RhoH
@@ -5725,7 +5725,7 @@ HeatTransfer::advance (Real time,
             const FArrayBox& dn = Dn[mfi];
             const FArrayBox& ddn = DDn[mfi];
             const FArrayBox& r = get_new_data(RhoYdot_Type)[mfi];
-	    const Box& gbox = Box(mfi.validbox()).grow(nGrowAdvForcing);
+	    const Box& gbox = BoxLib::grow(mfi.validbox(),nGrowAdvForcing);
             
             f.copy(dn,gbox,0,gbox,0,nspecies+1); // add Dn to RhoY and RhoH
             f.plus(r,gbox,gbox,0,0,nspecies); // add R to RhoY, no contribution for RhoH
@@ -5753,7 +5753,7 @@ HeatTransfer::advance (Real time,
           const FArrayBox& ddn = DDn[mfi];
           const FArrayBox& ddnp1 = DDnp1[mfi];
           const FArrayBox& r = get_new_data(RhoYdot_Type)[mfi];
-          const Box& gbox = Box(mfi.validbox()).grow(nGrowAdvForcing);
+          const Box& gbox = BoxLib::grow(mfi.validbox(),nGrowAdvForcing);
 
           f.copy(dn,gbox,0,gbox,0,nspecies+1); // add Dn to RhoY and RhoH
           f.plus(dnp1,gbox,gbox,0,0,nspecies+1);
@@ -8071,7 +8071,7 @@ HeatTransfer::RhoH_to_Temp (MultiFab& S,
     int max_iters = 0;
     for (MFIter mfi(S); mfi.isValid(); ++mfi)
     {
-        Box box = Box(mfi.validbox()).grow(nGrow);
+        const Box& box = BoxLib::(mfi.validbox(),nGrow);
         max_iters = std::max(max_iters, RhoH_to_Temp(S[mfi],box,dominmax));
     }
 

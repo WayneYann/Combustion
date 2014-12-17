@@ -4463,7 +4463,7 @@ HeatTransfer::advance (Real time,
 	const FArrayBox& dn = Dn[mfi];
 	const FArrayBox& ddn = DDn[mfi];
 	const FArrayBox& r = get_new_data(RhoYdot_Type)[mfi];
-	const Box& gbox = Box(mfi.validbox()).grow(nGrowAdvForcing);
+	const Box& gbox = BoxLib::grow(mfi.validbox(),nGrowAdvForcing);
 	f.copy(dn,gbox,0,gbox,0,nspecies+1); // add Dn to RhoY and RhoH
 	f.plus(ddn,gbox,gbox,0,nspecies,1); // add DDn to RhoH forcing
 	f.plus(r,gbox,gbox,0,0,nspecies); // add R to RhoY, no contribution for RhoH
@@ -6048,7 +6048,7 @@ HeatTransfer::compute_Wbar_fluxes(Real time,
 
     for (MFIter mfi(rho_and_species); mfi.isValid(); ++mfi)
     {
-      const Box& gbox = Box(mfi.validbox()).grow(nGrowOp);
+      const Box& gbox = BoxLib::grow(mfi.validbox(),nGrowOp);
       getChemSolve().getMwmixGivenY(Wbar[mfi],rho_and_species[mfi],gbox,1,0);
     }
 
@@ -6883,7 +6883,7 @@ HeatTransfer::RhoH_to_Temp (MultiFab& S,
     int max_iters = 0;
     for (MFIter mfi(S); mfi.isValid(); ++mfi)
     {
-        Box box = Box(mfi.validbox()).grow(nGrow);
+        const Box& box = BoxLib::grow(mfi.validbox(),nGrow);
         max_iters = std::max(max_iters, RhoH_to_Temp(S[mfi],box,dominmax));
     }
 

@@ -418,7 +418,7 @@ DDOp::setCoefficients(const MultiFab& T,
     for (MFIter mfi(T); mfi.isValid(); ++mfi)
     {
         const Box&  box = mfi.validbox();
-        const Box& gbox = Box(box).grow(nGrow);
+        const Box& gbox = BoxLib::grow(box,nGrow);
         int Full0_Mix1 = (transport_model == DD_Model_Full ? 0 : 1);
         const FArrayBox& Tfab = T[mfi];
         const FArrayBox& Yfab = Y[mfi];
