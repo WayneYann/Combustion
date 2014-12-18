@@ -154,6 +154,10 @@ ifeq ($(USE_METIS),TRUE)
   DEFINES += -DBL_USE_METIS
 endif
 
+ifeq ($(REGRESSIONTEST),TRUE)
+  DEFINES += -DREGRESSIONTEST
+endif
+
 all: $(executable)
 	$(SILENT) $(RM) buildInfo.cpp
 	@echo SUCCESS

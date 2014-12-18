@@ -647,7 +647,12 @@ c     Get the matrix of elements versus species
 
 !$omp do private(i,j,k,m,TT1,ISTATE,sum,atoln,Ytemp,Yres,newJ_triggered)
 !$omp&private(scale,bad_soln,Ct,Qt,node,weight,TT1save,TT2,tspecies)
-!$omp&private(lout,name) schedule(dynamic,1)
+!$omp&private(lout,name)
+#ifdef REGRESSIONTEST
+!$omp&schedule(static)
+#else
+!$omp&schedule(dynamic,1)
+#endif
       do k=lo(3),hi(3)
          do j=lo(2),hi(2)
             do i=lo(1),hi(1)
@@ -978,7 +983,12 @@ c     Get the matrix of elements versus species
       !
 !$omp do private(i,j,k,strang_fix,TT1,ISTATE,Y,node,Ct,Qt,res)
 !$omp&private(rhoYtemp,Z,rho,sum,rhoInv,lout,name,weight,NIter)
-!$omp&private(TT1save,TT2,m,Yold,rhooldInv) schedule(dynamic,1)
+!$omp&private(TT1save,TT2,m,Yold,rhooldInv) 
+#ifdef REGRESSIONTEST
+!$omp&schedule(static)
+#else
+!$omp&schedule(dynamic,1)
+#endif
       do k=lo(3),hi(3)
          do j=lo(2),hi(2)
             do i=lo(1),hi(1)
