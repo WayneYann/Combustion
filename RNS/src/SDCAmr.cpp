@@ -500,8 +500,8 @@ SDCAmr::coarseTimeStep (Real stop_time)
     if (ParallelDescriptor::IOProcessor())
       std::cout << "\nCoarse TimeStep time: " << run_stop << '\n' ;
 
-    long min_fab_kilobytes  = BoxLib::total_bytes_allocated_in_fabs_hwm/1024;
-    long max_fab_kilobytes  = BoxLib::total_bytes_allocated_in_fabs_hwm/1024;
+    long min_fab_kilobytes  = BoxLib::TotalBytesAllocatedInFabsHWM()/1024;
+    long max_fab_kilobytes  = min_fab_kilobytes;
     
     ParallelDescriptor::ReduceLongMin(min_fab_kilobytes, IOProc);
     ParallelDescriptor::ReduceLongMax(max_fab_kilobytes, IOProc);
@@ -517,7 +517,7 @@ SDCAmr::coarseTimeStep (Real stop_time)
     //
     // Reset to zero to calculate high-water-mark for next timestep.
     //
-    BoxLib::total_bytes_allocated_in_fabs_hwm = 0;
+    BoxLib::ResetTotalBytesAllocatedInFabsHWM();
   }
 
   BL_PROFILE_ADD_STEP(level_steps[0]);
