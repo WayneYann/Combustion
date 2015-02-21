@@ -17240,91 +17240,91 @@ void comp_qfqr(double * restrict qf, double * restrict qr, double * restrict sc,
 
     /*reaction 260: NC12H26 => 3 C2H4 + 2 nC3H7 */
     qf[259] = sc[51];
-    qr[259] = sc[23]*sc[23]*sc[23]*sc[37]*sc[37];
+    qr[259] = 0.0;
 
     /*reaction 261: NC12H26 => 2 C2H4 + 2 pC4H9 */
     qf[260] = sc[51];
-    qr[260] = sc[23]*sc[23]*sc[50]*sc[50];
+    qr[260] = 0.0;
 
     /*reaction 262: NC12H26 + H => 4 C2H4 + pC4H9 + H2 */
     qf[261] = sc[0]*sc[51];
-    qr[261] = sc[4]*sc[23]*sc[23]*sc[23]*sc[23]*sc[50];
+    qr[261] = 0.0;
 
     /*reaction 263: NC12H26 + H => C4H81 + 2 C2H4 + pC4H9 + H2 */
     qf[262] = sc[0]*sc[51];
-    qr[262] = sc[4]*sc[23]*sc[23]*sc[49]*sc[50];
+    qr[262] = 0.0;
 
     /*reaction 264: NC12H26 + H => C3H6 + C6H12 + nC3H7 + H2 */
     qf[263] = sc[0]*sc[51];
-    qr[263] = sc[4]*sc[36]*sc[37]*sc[52];
+    qr[263] = 0.0;
 
     /*reaction 265: NC12H26 + H => C5H10 + 2 C2H4 + nC3H7 + H2 */
     qf[264] = sc[0]*sc[51];
-    qr[264] = sc[4]*sc[23]*sc[23]*sc[37]*sc[54];
+    qr[264] = 0.0;
 
     /*reaction 266: NC12H26 + H => C6H12 + C2H4 + pC4H9 + H2 */
     qf[265] = sc[0]*sc[51];
-    qr[265] = sc[4]*sc[23]*sc[50]*sc[52];
+    qr[265] = 0.0;
 
     /*reaction 267: NC12H26 + CH3 => 4 C2H4 + pC4H9 + CH4 */
     qf[266] = sc[11]*sc[51];
-    qr[266] = sc[12]*sc[23]*sc[23]*sc[23]*sc[23]*sc[50];
+    qr[266] = 0.0;
 
     /*reaction 268: NC12H26 + CH3 => C4H81 + 2 C2H4 + pC4H9 + CH4 */
     qf[267] = sc[11]*sc[51];
-    qr[267] = sc[12]*sc[23]*sc[23]*sc[49]*sc[50];
+    qr[267] = 0.0;
 
     /*reaction 269: NC12H26 + CH3 => C3H6 + C6H12 + nC3H7 + CH4 */
     qf[268] = sc[11]*sc[51];
-    qr[268] = sc[12]*sc[36]*sc[37]*sc[52];
+    qr[268] = 0.0;
 
     /*reaction 270: NC12H26 + CH3 => C5H10 + 2 C2H4 + nC3H7 + CH4 */
     qf[269] = sc[11]*sc[51];
-    qr[269] = sc[12]*sc[23]*sc[23]*sc[37]*sc[54];
+    qr[269] = 0.0;
 
     /*reaction 271: NC12H26 + CH3 => C6H12 + C2H4 + pC4H9 + CH4 */
     qf[270] = sc[11]*sc[51];
-    qr[270] = sc[12]*sc[23]*sc[50]*sc[52];
+    qr[270] = 0.0;
 
     /*reaction 272: NC12H26 + O => 4 C2H4 + pC4H9 + OH */
     qf[271] = sc[1]*sc[51];
-    qr[271] = sc[2]*sc[23]*sc[23]*sc[23]*sc[23]*sc[50];
+    qr[271] = 0.0;
 
     /*reaction 273: NC12H26 + O => C4H81 + 2 C2H4 + pC4H9 + OH */
     qf[272] = sc[1]*sc[51];
-    qr[272] = sc[2]*sc[23]*sc[23]*sc[49]*sc[50];
+    qr[272] = 0.0;
 
     /*reaction 274: NC12H26 + O => C3H6 + C6H12 + nC3H7 + OH */
     qf[273] = sc[1]*sc[51];
-    qr[273] = sc[2]*sc[36]*sc[37]*sc[52];
+    qr[273] = 0.0;
 
     /*reaction 275: NC12H26 + O => C5H10 + 2 C2H4 + nC3H7 + OH */
     qf[274] = sc[1]*sc[51];
-    qr[274] = sc[2]*sc[23]*sc[23]*sc[37]*sc[54];
+    qr[274] = 0.0;
 
     /*reaction 276: NC12H26 + O => C6H12 + C2H4 + pC4H9 + OH */
     qf[275] = sc[1]*sc[51];
-    qr[275] = sc[2]*sc[23]*sc[50]*sc[52];
+    qr[275] = 0.0;
 
     /*reaction 277: NC12H26 + OH => 4 C2H4 + pC4H9 + H2O */
     qf[276] = sc[2]*sc[51];
-    qr[276] = sc[5]*sc[23]*sc[23]*sc[23]*sc[23]*sc[50];
+    qr[276] = 0.0;
 
     /*reaction 278: NC12H26 + OH => C4H81 + 2 C2H4 + pC4H9 + H2O */
     qf[277] = sc[2]*sc[51];
-    qr[277] = sc[5]*sc[23]*sc[23]*sc[49]*sc[50];
+    qr[277] = 0.0;
 
     /*reaction 279: NC12H26 + OH => C3H6 + C6H12 + nC3H7 + H2O */
     qf[278] = sc[2]*sc[51];
-    qr[278] = sc[5]*sc[36]*sc[37]*sc[52];
+    qr[278] = 0.0;
 
     /*reaction 280: NC12H26 + OH => C5H10 + 2 C2H4 + nC3H7 + H2O */
     qf[279] = sc[2]*sc[51];
-    qr[279] = sc[5]*sc[23]*sc[23]*sc[37]*sc[54];
+    qr[279] = 0.0;
 
     /*reaction 281: NC12H26 + OH => C6H12 + C2H4 + pC4H9 + H2O */
     qf[280] = sc[2]*sc[51];
-    qr[280] = sc[5]*sc[23]*sc[50]*sc[52];
+    qr[280] = 0.0;
 
     /*reaction 282: C6H12 + H <=> C2H4 + pC4H9 */
     qf[281] = sc[0]*sc[52];
@@ -17348,7 +17348,7 @@ void comp_qfqr(double * restrict qf, double * restrict qr, double * restrict sc,
 
     /*reaction 287: C6H11 + HO2 => CH2O + OH + aC3H5 + C2H4 */
     qf[286] = sc[3]*sc[53];
-    qr[286] = sc[2]*sc[14]*sc[23]*sc[34];
+    qr[286] = 0.0;
 
     /*reaction 288: C6H12 + O <=> C2H4 + nC3H7 + HCO */
     qf[287] = sc[1]*sc[52];

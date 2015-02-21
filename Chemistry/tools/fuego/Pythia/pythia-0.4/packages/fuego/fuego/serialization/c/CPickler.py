@@ -4737,8 +4737,14 @@ class CPickler(CMill):
             self._write()
             reaction = mechanism.reaction(id=i)
             self._write(self.line('reaction %d: %s' % (reaction.id, reaction.equation())))
-            self._write("qf[%d] = %s;" % (i, self._sortedPhaseSpace(mechanism, reaction.reactants))) 
-            self._write("qr[%d] = %s;" % (i, self._sortedPhaseSpace(mechanism, reaction.products))) 
+            self._write("qf[%d] = %s;" % (i, self._sortedPhaseSpace(mechanism, reaction.reactants)))
+            if reaction.reversible:
+                self._write("qr[%d] = %s;" % (i, self._sortedPhaseSpace(mechanism, reaction.products)))
+            else:
+                self._write("qr[%d] = 0.0;" % (i))
+            if reaction.rev:
+                print "reaction.rev not finished"
+                sys.exit(1)
 
         self._write()
         self._write('double T = tc[1];')
