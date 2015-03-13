@@ -15,10 +15,12 @@ namespace
 {
     bool initialized = false;
     ChemDriver::TRANSPORT transport = transport_DEF;
+    static int number_of_species = -1;
 
     void ChemDriver_Finalize() {
       initialized = false;
       transport = transport_DEF;
+      number_of_species = -1;
     }
 }
 
@@ -193,6 +195,7 @@ ChemDriver::initOnce ()
 
     reaction_map.resize(numReactions());
     FORT_GET_REACTION_MAP(reaction_map.dataPtr());
+    number_of_species = numSpecies();
 }
 
 void
@@ -330,8 +333,37 @@ Array<Real>
 ChemDriver::elementAtomicWt() const
 {
     Array<Real> awt(numElements());
-    FORT_GETCKAWT(awt.dataPtr());
+    CD_MWT(awt.dataPtr());
     return awt;
+}
+
+extern "C" {
+  void CD_MWT(Real* mwt)
+  {
+    if (!initialized) {
+      BoxLib::Abort("Must construct the ChemDriver prior to calling CD_MWT");
+    }
+    FORT_GETCKMWT(mwt);
+  }
+  void CD_XTY_PT(const Real* X, Real* Y)
+  {
+    if (!initialized) {
+      BoxLib::Abort("Must construct the ChemDriver prior to calling CD_XTY_PT");
+    }
+    static Array<int> idx(BL_SPACEDIM,0);
+    static int* p = idx.dataPtr();
+    FORT_MOLETOMASS(p, p, X, ARLIM(p), ARLIM(p), Y, ARLIM(p), ARLIM(p));
+  }
+
+  void CD_YTX_PT(const Real* Y, Real* X)
+  {
+    if (!initialized) {
+      BoxLib::Abort("Must construct the ChemDriver prior to calling CD_YTX_PT");
+    }
+    static Array<int> idx(BL_SPACEDIM,0);
+    static int* p = idx.dataPtr();
+    FORT_MASSTOMOLE(p, p, Y, ARLIM(p), ARLIM(p), X, ARLIM(p), ARLIM(p));
+  }
 }
 
 Array<Real>
@@ -340,10 +372,7 @@ ChemDriver::massFracToMoleFrac(const Array<Real>& Y) const
     int nc = Y.size();
     BL_ASSERT(nc = numSpecies());
     Array<Real> X(nc);
-    Box box(IntVect(D_DECL(0,0,0)),IntVect(D_DECL(0,0,0)));
-    FORT_MASSTOMOLE(box.loVect(), box.hiVect(),
-		    Y.dataPtr(), ARLIM(box.loVect()), ARLIM(box.hiVect()),
-		    X.dataPtr(), ARLIM(box.loVect()), ARLIM(box.hiVect()));
+    CD_YTX_PT(Y.dataPtr(), X.dataPtr());
     return X;
 }
 
@@ -353,10 +382,7 @@ ChemDriver::moleFracToMassFrac(const Array<Real>& X) const
     int nc = X.size();
     BL_ASSERT(nc==numSpecies());
     Array<Real> Y(nc);
-    Box box(IntVect(D_DECL(0,0,0)),IntVect(D_DECL(0,0,0)));
-    FORT_MOLETOMASS(box.loVect(), box.hiVect(),
-		    X.dataPtr(), ARLIM(box.loVect()), ARLIM(box.hiVect()),
-		    Y.dataPtr(), ARLIM(box.loVect()), ARLIM(box.hiVect()));
+    CD_XTY_PT(X.dataPtr(),Y.dataPtr());
     return Y;
 }
 

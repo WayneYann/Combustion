@@ -2,6 +2,9 @@
 #define _ChemDriver_F_H_
 
 #ifdef BL_LANG_FORT
+#    define CD_XTY_PT            cdxtypt
+#    define CD_YTX_PT            cdytxpt
+#    define CD_MWT               cdmwt
 #    define FORT_USINGEG         dusingeg
 #    define FORT_USINGMC         dusingmc
 #    define FORT_MCLINKNAME      dmclink
@@ -68,6 +71,9 @@
 #    define FORT_GET_REACTION_MAP dgrm
 #else
 #  if defined(BL_FORT_USE_UPPERCASE)
+#    define CD_XTY_PT            CDXTYPT
+#    define CD_YTX_PT            CDYTXPT
+#    define CD_MWT               CDMWT
 #    define FORT_USINGEG         DUSINGEG
 #    define FORT_USINGMC         DUSINGMC
 #    define FORT_MCLINKNAME      DMCLINK
@@ -132,6 +138,9 @@
 #    define FORT_SETNU           DSETNU
 #    define FORT_GET_REACTION_MAP DGRM
 #  elif defined(BL_FORT_USE_LOWERCASE)
+#    define CD_XTY_PT            cdxtypt
+#    define CD_YTX_PT            cdytxpt
+#    define CD_MWT               cdmwt
 #    define FORT_USINGEG         dusingeg
 #    define FORT_USINGMC         dusingmc
 #    define FORT_MCLINKNAME      dmclink
@@ -196,6 +205,9 @@
 #    define FORT_SETNU           dsetnu
 #    define FORT_GET_REACTION_MAP dgrm
 #  elif defined(BL_FORT_USE_UNDERSCORE)
+#    define CD_XTY_PT            cdxtypt_
+#    define CD_YTX_PT            cdytxpt_
+#    define CD_MWT               cdmwt_
 #    define FORT_USINGEG         dusingeg_
 #    define FORT_USINGMC         dusingmc_
 #    define FORT_MCLINKNAME      dmclink_
