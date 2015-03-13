@@ -550,7 +550,7 @@ c     Get the matrix of elements versus species
       end do
       end
 
-      subroutine FORT_CONPSOLV(lo, hi,
+      integer function FORT_CONPSOLV(lo, hi,
      &                         Ynew, DIMS(Ynew), Tnew, DIMS(Tnew),
      &                         Yold, DIMS(Yold), Told, DIMS(Told),
      &                         FuncCount, DIMS(FuncCount),
@@ -826,7 +826,8 @@ c     Get the matrix of elements versus species
  995              format(a,4(i4,a))
  996              format(a16,1x,4e30.22)
                   close(lout)
-                  call bl_abort('VODE failed, see drop file, exiting')
+                  FORT_CONPSOLV = 0
+                  return
 !$omp end critical(output)
                end if
              enddo
@@ -875,11 +876,11 @@ c     Get the matrix of elements versus species
       if (verbose .and. nfails .gt. 0) then
          print*, '*** DVODE failures for last chem block: ', nfails; call flush(6)
       end if
-
+      FORT_CONPSOLV = 1
       end
  
 #ifdef LMC_SDC
-      subroutine FORT_CONPSOLV_SDC(lo, hi,
+      integer function FORT_CONPSOLV_SDC(lo, hi,
      &     rhoYnew,   DIMS(rhoYnew), 
      &     rhoHnew,   DIMS(rhoHnew),
      &     Tnew,      DIMS(Tnew),
@@ -1135,7 +1136,8 @@ c     Get the matrix of elements versus species
  995                    format(a,3(i4,a))
  996                    format(a,1x,4e30.22)
                         close(lout)
-                        call bl_abort('VODE failed, exiting')
+                        FORT_CONPSOLV_SDC = 0
+                        return
 !$omp end critical(output)
                      end if
                   end if
@@ -1196,7 +1198,7 @@ c     Get the matrix of elements versus species
       if (verbose .and. nfails .gt. 0) then
          print*, '*** DVODE failures for last chem block: ', nfails; call flush(6)
       end if
-
+      FORT_CONPSOLV_SDC = 1
       end
 #endif
 

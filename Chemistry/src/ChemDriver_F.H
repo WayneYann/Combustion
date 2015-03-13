@@ -366,7 +366,7 @@ extern "C" {
                        const Real* Y,  ARLIM_P(Ylo),  ARLIM_P(Yhi),
                        const Real* Yn, ARLIM_P(Ynlo), ARLIM_P(Ynhi));
 
-    void FORT_CONPSOLV(const int* lo, const int* hi,
+    int FORT_CONPSOLV(const int* lo, const int* hi,
 		       Real* Ynew, ARLIM_P(Ynlo), ARLIM_P(Ynhi),
 		       Real* Tnew, ARLIM_P(Tnlo), ARLIM_P(Tnhi),
 		       const Real* Yold, ARLIM_P(Yolo), ARLIM_P(Yohi),
@@ -376,7 +376,7 @@ extern "C" {
                        const int* do_diag, const int* do_stiff);
 
 #ifdef LMC_SDC
-    void FORT_CONPSOLV_SDC(const int* lo, const int* hi,
+    int FORT_CONPSOLV_SDC(const int* lo, const int* hi,
 			   Real* rhoYnew, ARLIM_P(rhoYnlo), ARLIM_P(rhoYnhi),
 			   Real* rhoHnew, ARLIM_P(rhoHnlo), ARLIM_P(rhoHnhi),
 			   Real* Tnew, ARLIM_P(Tnlo), ARLIM_P(Tnhi),

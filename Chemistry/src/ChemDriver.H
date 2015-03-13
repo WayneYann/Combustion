@@ -58,7 +58,7 @@ public:
     static void SetTransport(const ChemDriver::TRANSPORT& tran_in);
     static ChemDriver::TRANSPORT Transport ();
 
-    void solveTransient (FArrayBox&        Ynew,
+    bool solveTransient (FArrayBox&        Ynew,
                          FArrayBox&        Tnew,
                          const FArrayBox&  Yold,
                          const FArrayBox&  Told,
@@ -72,7 +72,7 @@ public:
                          bool              use_stiff_solver = true) const;
 
 #ifdef LMC_SDC
-    void solveTransient_sdc(FArrayBox&        rhoYnew,
+    bool solveTransient_sdc(FArrayBox&        rhoYnew,
                             FArrayBox&        rhoHnew,
                             FArrayBox&        Tnew,
                             const FArrayBox&  rhoYold,
