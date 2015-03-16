@@ -587,7 +587,7 @@ c     Get the matrix of elements versus species
       REAL_T TT1, TT2, RU, RUC, P1atm, sum, atoln
       integer i, j, k, m, MF, ISTATE, LOUTCK, lout, nfails
 
-      integer nsub, node, nthrds
+      integer nsub, node
       REAL_T dtloc, weight, TT1save, scale, tspecies(0:maxspec), nwdot(0:maxspec)
       REAL_T Ct(maxspec),Qt(maxreac),Ytemp(maxspec),Yres(maxspec)
 
@@ -637,6 +637,8 @@ c     Get the matrix of elements versus species
 
       nfails = 0
 
+      FORT_CONPSOLV = 1
+
 !$omp parallel
       !
       ! Force recalculation of jacobian for each XYZ block.
@@ -654,6 +656,7 @@ c     Get the matrix of elements versus species
 !$omp&schedule(dynamic,1)
 #endif
       do k=lo(3),hi(3)
+         if (FORT_CONPSOLV .eq. 0) cycle
          do j=lo(2),hi(2)
             do i=lo(1),hi(1)
                TT1    = zero
@@ -756,9 +759,9 @@ c     Get the matrix of elements versus species
                         tspecies(m) = Ytemp(m)
                      end do
                      if (verbose) then
-!$omp critical(failures)
+!$omp atomic
                         nfails = nfails + 1
-!$omp end critical(failures)
+!$omp end atomic
                      end if
 
 #if !defined(BL_USE_DOUBLE)
@@ -827,8 +830,8 @@ c     Get the matrix of elements versus species
  996              format(a16,1x,4e30.22)
                   close(lout)
                   FORT_CONPSOLV = 0
-                  return
 !$omp end critical(output)
+                  goto 800
                end if
              enddo
 
@@ -869,6 +872,7 @@ c     Get the matrix of elements versus species
 #endif
             end do
          end do
+ 800     continue
       end do
 !$omp end do
 !$omp end parallel
@@ -876,7 +880,6 @@ c     Get the matrix of elements versus species
       if (verbose .and. nfails .gt. 0) then
          print*, '*** DVODE failures for last chem block: ', nfails; call flush(6)
       end if
-      FORT_CONPSOLV = 1
       end
  
 #ifdef LMC_SDC
@@ -970,6 +973,8 @@ c     Get the matrix of elements versus species
 
       nfails = 0
 
+      FORT_CONPSOLV_SDC = 1
+
 !$omp parallel
       !
       ! Force recalculation of jacobian for each XYZ block.
@@ -991,6 +996,7 @@ c     Get the matrix of elements versus species
 !$omp&schedule(dynamic,1)
 #endif
       do k=lo(3),hi(3)
+         if (FORT_CONPSOLV_SDC .eq. 0) cycle
          do j=lo(2),hi(2)
             do i=lo(1),hi(1)
 
@@ -1077,9 +1083,9 @@ c     Get the matrix of elements versus species
                      TT2                = TT1 + dtloc
 
                      if (verbose) then
-!$omp critical(failures)
+!$omp atomic
                         nfails = nfails + 1
-!$omp end critical(failures)
+!$omp end atomic
                      end if
 
 #if !defined(BL_USE_DOUBLE)
@@ -1137,8 +1143,8 @@ c     Get the matrix of elements versus species
  996                    format(a,1x,4e30.22)
                         close(lout)
                         FORT_CONPSOLV_SDC = 0
-                        return
 !$omp end critical(output)
+                        goto 800
                      end if
                   end if
                   
@@ -1191,6 +1197,7 @@ c     Get the matrix of elements versus species
 
             end do
          end do
+ 800     continue
       end do
 !$omp end do
 !$omp end parallel
@@ -1198,7 +1205,6 @@ c     Get the matrix of elements versus species
       if (verbose .and. nfails .gt. 0) then
          print*, '*** DVODE failures for last chem block: ', nfails; call flush(6)
       end if
-      FORT_CONPSOLV_SDC = 1
       end
 #endif
 
