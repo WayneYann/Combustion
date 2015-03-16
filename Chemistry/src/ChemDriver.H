@@ -6,8 +6,18 @@
 
 #include <Array.H>
 #include <FArrayBox.H>
+#include <ChemDriver_F.H>
+
 extern "C" {
 #include <ReactionData.H>
+}
+
+// Selected pointwise conversions w/static linkage callable from Fortran/C, internally verifies
+//   that the chemistry has been initialized prior.  BEWARE: argument array lengths cannot be checked!!
+extern "C" {
+  void CD_XTY_PT(const Real* X, Real* Y); // Mole fraction, X, to mass fraction, Y
+  void CD_YTX_PT(const Real* X, Real* Y); // Mass fraction, Y, to mole fraction, X
+  void CD_MWT(Real* mwt); // Species molecular weight, mwt
 };
 
 class ChemDriver
@@ -48,7 +58,7 @@ public:
     static void SetTransport(const ChemDriver::TRANSPORT& tran_in);
     static ChemDriver::TRANSPORT Transport ();
 
-    void solveTransient (FArrayBox&        Ynew,
+    bool solveTransient (FArrayBox&        Ynew,
                          FArrayBox&        Tnew,
                          const FArrayBox&  Yold,
                          const FArrayBox&  Told,
@@ -62,7 +72,7 @@ public:
                          bool              use_stiff_solver = true) const;
 
 #ifdef LMC_SDC
-    void solveTransient_sdc(FArrayBox&        rhoYnew,
+    bool solveTransient_sdc(FArrayBox&        rhoYnew,
                             FArrayBox&        rhoHnew,
                             FArrayBox&        Tnew,
                             const FArrayBox&  rhoYold,
