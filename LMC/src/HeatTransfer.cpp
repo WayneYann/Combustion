@@ -4932,6 +4932,7 @@ HeatTransfer::compute_differential_diffusion_terms (MultiFab& visc_terms,
 						    int       sComp,
                                                     Real      time)
 {
+    BL_PROFILE("HeatTransfer::compute_differential_diffusion_terms()");
     if (hack_nospecdiff)
     {
         if (verbose && ParallelDescriptor::IOProcessor())

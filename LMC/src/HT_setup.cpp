@@ -502,13 +502,14 @@ HeatTransfer::variableSetUp ()
     if (verbose_vode!=0)
         getChemSolve().set_verbose_vode();
 
-    std::cout << " fuel name " << fuelName << std::endl;
-
     int fuelID = getChemSolve().index(fuelName);
     int oxidID = getChemSolve().index(oxidizerName);
     int prodID = getChemSolve().index(productName);
 
-    std::cout << " index for fueld and oxidizer " << fuelID << " " << oxidID << std::endl;
+    if (ParallelDescriptor::IOProcessor()) {
+      std::cout << " fuel name " << fuelName << std::endl;
+      std::cout << " index for fueld and oxidizer " << fuelID << " " << oxidID << std::endl;
+    }
     FORT_SET_PROB_SPEC(&fuelID, &oxidID, &prodID, &nspecies);
     //
     // Get a species to use as a flame tracker.

@@ -2859,6 +2859,7 @@ HeatTransfer::differential_diffusion_update (MultiFab& Force,
                                              int       DComp,
                                              MultiFab& DDnew)
 {
+  BL_PROFILE("HT::differential_diffusion_update()");
   //
   // Recompute the D[Nspec+1] = Div(Fi.Hi) using
   // Fi.Hi based on solution here.
@@ -4886,7 +4887,7 @@ HeatTransfer::advance_chemistry (MultiFab&       mf_old,
                                  int             nCompF,
                                  bool            use_stiff_solver)
 {
-    BL_PROFILE("HeatTransfer:::advance_chemistry()");
+    BL_PROFILE("HT:::advance_chemistry()");
 
     const Real strt_time = ParallelDescriptor::second();
 
@@ -5103,6 +5104,7 @@ HeatTransfer::compute_scalar_advection_fluxes_and_divergence (const MultiFab& Fo
                                                               const MultiFab& DivU,
                                                               Real            dt)
 {
+  BL_PROFILE("HT::comp_sc_adv_fluxes_and_div()");
   //
   // Compute -Div(advective fluxes)  [ which is -aofs in NS, BTW ... careful...
   //
@@ -5291,6 +5293,7 @@ enum SYNC_SCHEME {ReAdvect, UseEdgeState, Other};
 void
 HeatTransfer::mac_sync ()
 {
+    BL_PROFILE("HT::mac_sync()");
     if (verbose && ParallelDescriptor::IOProcessor())
         std::cout << "... mac_sync\n";
 
@@ -6016,6 +6019,7 @@ void
 HeatTransfer::compute_Wbar_fluxes(Real time,
 				  Real inc)
 {
+    BL_PROFILE("HT::compute_Wbar_fluxes()");
     MultiFab** betaWbar  = 0;
 
     // allocate edge-beta for Wbar
@@ -6149,6 +6153,7 @@ void
 HeatTransfer::differential_spec_diffuse_sync (Real dt,
                                               bool Wbar_corrector)
 {
+   BL_PROFILE("HT::differential_spec_diffuse_sync()");
   
   // Diffuse the species syncs such that sum(SpecDiffSyncFluxes) = 0
   // After exiting, SpecDiffusionFluxnp1 should contain rhoD grad (delta Y)^sync
@@ -6325,6 +6330,7 @@ HeatTransfer::differential_spec_diffuse_sync (Real dt,
 void
 HeatTransfer::reflux ()
 {
+    BL_PROFILE("HT::reflux()");
     // no need to reflux if this is the finest level
     if (level == parent->finestLevel()) return;
 
@@ -6451,6 +6457,7 @@ HeatTransfer::calcViscosity (const Real time,
 void
 HeatTransfer::calcDiffusivity (const Real time)
 {
+    BL_PROFILE("HT::calcDiffusivity()");
     if (do_mcdd) return;
 
     const TimeLevel whichTime = which_time(State_Type, time);
@@ -6523,6 +6530,7 @@ HeatTransfer::calcDiffusivity (const Real time)
 void
 HeatTransfer::calcDiffusivity_Wbar (const Real time)
 {
+    BL_PROFILE("HT::calcDiffusivity_Wbar()");
   // diffn_cc or diffnp1_cc contains cell-centered transport coefficients from Y's
   //
     if (do_mcdd) return;
@@ -6556,6 +6564,7 @@ void
 HeatTransfer::getViscosity (MultiFab*  beta[BL_SPACEDIM],
                             const Real time)
 {
+    BL_PROFILE("HT::getViscosity()");
     const TimeLevel whichTime = which_time(State_Type, time);
 
     BL_ASSERT(whichTime == AmrOldTime || whichTime == AmrNewTime);
@@ -6585,6 +6594,7 @@ HeatTransfer::getDiffusivity (MultiFab*  beta[BL_SPACEDIM],
                               const int  dst_comp,
                               const int  ncomp)
 {
+    BL_PROFILE("HT::getDiffusivity()");
     BL_ASSERT(state_comp > Density);
 
     const TimeLevel whichTime = which_time(State_Type, time);
@@ -6618,6 +6628,7 @@ void
 HeatTransfer::getDiffusivity_Wbar (MultiFab*  beta[BL_SPACEDIM],
 				   const Real time)	   
 {
+    BL_PROFILE("HT::getDiffusivity_Wbar()");
     MultiFab* diff = diffWbar_cc;
 
     for (MFIter diffMfi(*diff); diffMfi.isValid(); ++diffMfi)
@@ -6715,6 +6726,7 @@ HeatTransfer::calc_divu (Real      time,
                          MultiFab& divu,
 			 bool      is_divu_iter)
 {
+    BL_PROFILE("HT::calc_divu()");
     const int nGrow = 0;
 
     int       vtCompY=0, vtCompT=0;
@@ -6798,6 +6810,7 @@ HeatTransfer::calc_dpdt (Real      time,
                          MultiFab& dpdt,
                          MultiFab* u_mac)
 {
+  BL_PROFILE("HT::calc_dpdt()");
   Real p_amb, dpdt_factor;
 
   FORT_GETPAMB(&p_amb, &dpdt_factor);
@@ -6863,6 +6876,7 @@ HeatTransfer::RhoH_to_Temp (MultiFab& S,
                             int       nGrow,
                             int       dominmax)
 {
+    BL_PROFILE("HT::RhoH_to_Temp()");
     const Real strt_time = ParallelDescriptor::second();
     //
     // If this hasn't been set yet, we cannnot do it correct here (scan multilevel),
