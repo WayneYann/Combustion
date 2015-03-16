@@ -4996,9 +4996,9 @@ HeatTransfer::advance_chemistry (MultiFab&       mf_old,
             {
                 const int s_spec = 0, s_rhoh = nspecies, s_temp = nspecies+2;
 
-                getChemSolve().solveTransient_sdc(rYn,rHn,Tn,rYo,rHo,To,frc,fc,ba[i],
-                                                  s_spec,s_rhoh,s_temp,dt,Patm,chemDiag,
-                                                  use_stiff_solver);
+                bool ok = getChemSolve().solveTransient_sdc(rYn,rHn,Tn,rYo,rHo,To,frc,fc,ba[i],
+							    s_spec,s_rhoh,s_temp,dt,Patm,chemDiag,
+							    use_stiff_solver);
             }
         }
 

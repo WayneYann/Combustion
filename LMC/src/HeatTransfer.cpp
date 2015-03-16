@@ -6613,7 +6613,12 @@ HeatTransfer::strang_chem (MultiFab&  mf,
                     chemDiag = &( (*auxDiag["REACTIONS"])[Smfi] );
                 }
 
-                getChemSolve().solveTransient(fb,fb,fb,fb,fc,bx,ycomp,Tcomp,0.5*dt,Patm,chemDiag);
+                bool ok = getChemSolve().solveTransient(fb,fb,fb,fb,fc,bx,ycomp,Tcomp,0.5*dt,Patm,chemDiag);
+
+		if (!ok) {
+		  BoxLib::Abort("ChemDriver::solveTransient failed");
+		}
+
             }
             //
             // When ngrow>0 this does NOT properly update FuncCount_Type since parallel
@@ -6679,7 +6684,12 @@ HeatTransfer::strang_chem (MultiFab&  mf,
                 FArrayBox& fc = fcnCntTemp[Smfi];
                 chemDiag = (do_diag ? &(diagTemp[Smfi]) : 0);
 
-                getChemSolve().solveTransient(fb,fb,fb,fb,fc,bx,ycomp,Tcomp,0.5*dt,Patm,chemDiag);
+                bool ok = getChemSolve().solveTransient(fb,fb,fb,fb,fc,bx,ycomp,Tcomp,0.5*dt,Patm,chemDiag);
+
+		if (!ok) {
+		  BoxLib::Abort("ChemDriver::solveTransient failed");
+		}
+
             }
 
             mf.copy(tmp); // Parallel copy.
