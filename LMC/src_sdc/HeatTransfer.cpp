@@ -2859,6 +2859,7 @@ HeatTransfer::differential_diffusion_update (MultiFab& Force,
                                              int       DComp,
                                              MultiFab& DDnew)
 {
+  BL_PROFILE_REGION_START("R::HT::differential_diffusion_update()");
   BL_PROFILE("HT::differential_diffusion_update()");
   //
   // Recompute the D[Nspec+1] = Div(Fi.Hi) using
@@ -2966,6 +2967,8 @@ HeatTransfer::differential_diffusion_update (MultiFab& Force,
       std::cout << "HeatTransfer::differential_diffusion_update(): lev: " << level 
 		<< ", time: " << run_time << '\n';
   }
+
+  BL_PROFILE_REGION_STOP("R::HT::differential_diffusion_update()");
 }
 
 void
@@ -4306,6 +4309,8 @@ HeatTransfer::advance (Real time,
 		       int  iteration,
 		       int  ncycle)
 {
+    BL_PROFILE_REGION_START("R::HT::advance()[src_sdc]");
+    BL_PROFILE("HT::advance()[src_sdc]");
     is_predictor = true;
     updateFluxReg = false;
 
@@ -4751,6 +4756,8 @@ HeatTransfer::advance (Real time,
         std::cout << "HeatTransfer::advance(): at end of time step\n";
 
     temperature_stats(S_new);
+
+    BL_PROFILE_REGION_STOP("R::HT::advance()[src_sdc]");
 
     return dt_test;
 }
@@ -6153,6 +6160,7 @@ void
 HeatTransfer::differential_spec_diffuse_sync (Real dt,
                                               bool Wbar_corrector)
 {
+   BL_PROFILE_REGION_START("R::HT::differential_spec_diffuse_sync()");
    BL_PROFILE("HT::differential_spec_diffuse_sync()");
   
   // Diffuse the species syncs such that sum(SpecDiffSyncFluxes) = 0
@@ -6325,6 +6333,8 @@ HeatTransfer::differential_spec_diffuse_sync (Real dt,
         if (ParallelDescriptor::IOProcessor())
             std::cout << "HeatTransfer::differential_spec_diffuse_sync(): lev: " << level << ", time: " << run_time << '\n';
     }
+
+   BL_PROFILE_REGION_STOP("R::HT::differential_spec_diffuse_sync()");
 }
 
 void
