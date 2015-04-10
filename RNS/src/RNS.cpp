@@ -92,7 +92,7 @@ int          RNS::RK_order      = 2;
 
 RNS::RiemannType RNS::Riemann   = RNS::JBB;
 Real             RNS::difmag    = -1.0;  // for JBB & HLLC Riemann solvers
-Real             RNS::HLL_factor = 0.1;
+Real             RNS::HLL_factor = 0.0;
 
 std::string  RNS::fuelName           = "";
 int          RNS::fuelID             = -1;
