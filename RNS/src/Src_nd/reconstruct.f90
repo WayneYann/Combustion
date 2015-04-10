@@ -1,8 +1,8 @@
 module reconstruct_module
 
   use meth_params_module, only : ndim, NVAR, URHO, UMX, UMY, UMZ, UEDEN, UTEMP, &
-       UFS, NSPEC, NCHARV, CFS, do_component_weno, do_mp5
-  use weno_module, only : mp5, weno5, vweno5, weno5_center
+       UFS, NSPEC, NCHARV, CFS
+  use weno_module, only : weno5, vweno5, weno5_center
   use eos_module, only : eos_given_RTY, eos_given_ReY, eos_get_eref
   use renorm_module, only : floor_species
   use passinfo_module, only : level
@@ -23,39 +23,6 @@ contains
   !               lo-3:hi+3 if UL & UR are present
   !   UL  & UR  : lo  :hi+1
   !   UG1 & UG2 : lo  :hi
-  !   U0        : lo  :hi   if UL & UR are not present; 
-  !               lo-1:hi+1 if UL & UR are present
-  subroutine reconstruct(lo, hi, &
-       Ulo, Uhi, &
-       ULRlo, ULRhi, &
-       UGlo, UGhi, &
-       U0lo, U0hi, &
-       U, UL, UR, UG1, UG2, U0, dir)
-
-    integer, intent(in) :: lo, hi, Ulo, Uhi, ULRlo, ULRhi, UGlo, UGhi, U0lo, U0hi 
-    integer, intent(in), optional :: dir
-    double precision, intent(in),target           :: U ( Ulo: Uhi,NVAR)
-    double precision, intent(in),target, optional :: U0(U0lo:U0hi,NVAR)
-    double precision, intent(out), dimension(ULRlo:ULRhi,NVAR), optional :: UL, UR
-    double precision, intent(out), dimension( UGlo: UGhi,NVAR), optional :: UG1, UG2
-
-    if (do_component_weno) then
-       call reconstruct_comp(lo, hi, &
-            Ulo, Uhi, &
-            ULRlo, ULRhi, &
-            UGlo, UGhi, &
-            U, UL, UR, UG1, UG2)
-    else
-       call reconstruct_char(lo, hi, &
-            Ulo, Uhi, &
-            ULRlo, ULRhi, &
-            UGlo, UGhi, &
-            U0lo, U0hi, &
-            U, UL, UR, UG1, UG2, U0, dir)
-    end if
-
-  end subroutine reconstruct
-
   subroutine reconstruct_comp(lo, hi, &
        Ulo, Uhi, &
        ULRlo, ULRhi, &
@@ -169,7 +136,19 @@ contains
   end subroutine reconstruct_comp
     
 
-  subroutine reconstruct_char(lo, hi, &
+  ! characteristic based
+  !
+  ! L and R in UL and UR are relative to face
+  ! UG1 and UG2 are at two Gauss points
+  !
+  ! Minimal ranges:
+  !   U         : lo-2:hi+2 if UL & UR are not present; 
+  !               lo-3:hi+3 if UL & UR are present
+  !   UL  & UR  : lo  :hi+1
+  !   UG1 & UG2 : lo  :hi
+  !   U0        : lo  :hi   if UL & UR are not present; 
+  !               lo-1:hi+1 if UL & UR are present
+  subroutine reconstruct(lo, hi, &
        Ulo, Uhi, &
        ULRlo, ULRhi, &
        UGlo, UGhi, &
@@ -263,15 +242,9 @@ contains
              call weno5(charv(:,ivar), vp(ivar), vm(ivar), vg1(ivar), vg2(ivar))
           end do
        else if (do_face) then
-          if (do_mp5) then
-             do ivar=1,NCHARV
-                call mp5(charv(:,ivar), vp(ivar), vm(ivar))
-             end do
-          else
-             do ivar=1,NCHARV
-                call weno5(charv(:,ivar), vp=vp(ivar), vm=vm(ivar))
-             end do
-          end if
+          do ivar=1,NCHARV
+             call weno5(charv(:,ivar), vp=vp(ivar), vm=vm(ivar))
+          end do
        else  ! do_gauss
           do ivar=1,NCHARV
              call weno5(charv(:,ivar), vg1=vg1(ivar), vg2=vg2(ivar))
@@ -379,7 +352,7 @@ contains
 
     Nullify(Ubase)
 
-  end subroutine reconstruct_char
+  end subroutine reconstruct
 
 
   subroutine reconstruct_center(lo,hi,U,Ulo,Uhi,Uc,clo,chi,idir)

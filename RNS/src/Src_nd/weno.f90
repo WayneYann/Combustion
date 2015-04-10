@@ -2,13 +2,9 @@ module weno_module
 
   implicit none
 
-  integer, save :: weno_type = 0
+  integer, parameter, private :: wenop = 1
 
-  integer, parameter :: wenojs = 0
-  integer, parameter :: wenom  = 1
-  integer, parameter :: wenoz  = 2
-
-  double precision, save :: epsjs = 1.d-6, epsm = 1.d-40, epsz = 1.d-15
+  double precision, save :: epsjs = 1.d-6
   double precision, parameter :: b1=13.d0/12.d0, oneSixth=1.d0/6.d0
 
   ! Three types of third-order coefficients for converting cell averages to cell center point values
@@ -80,7 +76,7 @@ module weno_module
 
   private
 
-  public :: weno_type, epsjs, epsm, epsz, mp5, weno5, vweno5, weno5_center,  &
+  public :: epsjs, weno5, vweno5, weno5_center,  &
        cellavg2gausspt_1d, cellavg2gausspt_2d, cellavg2gausspt_2d_v1, &
        cellavg2gausspt_2d_v2, cellavg2gausspt_3d, &
        cellavg2dergausspt_1d, cellavg2dergausspt_2d, cellavg2face_1d
@@ -101,38 +97,15 @@ contains
     beta_1 = b1*(v(-1)-2.d0*v( 0)+v(1))**2 + 0.25d0*(v(-1)-v(1))**2
     beta_0 = b1*(v( 0)-2.d0*v( 1)+v(2))**2 + 0.25d0*(3.d0*v(0)-4.d0*v(1)+v(2))**2
 
-    if (weno_type .eq. wenojs) then
-       beta_2 = 1.d0/(epsjs+beta_2)**2
-       beta_1 = 1.d0/(epsjs+beta_1)**2
-       beta_0 = 1.d0/(epsjs+beta_0)**2
-    else if (weno_type .eq. wenom) then
-       beta_2 = 1.d0/(epsm+beta_2)**2
-       beta_1 = 1.d0/(epsm+beta_1)**2
-       beta_0 = 1.d0/(epsm+beta_0)**2
-    else if (weno_type .eq. wenoz) then
-       tau5 = beta_2-beta_0
-       beta_2 = 1.d0 + (tau5/(beta_2+epsz))**2
-       beta_1 = 1.d0 + (tau5/(beta_1+epsz))**2
-       beta_0 = 1.d0 + (tau5/(beta_0+epsz))**2
-    else
-       call bl_error("unknown weno type")
-    end if
+    beta_2 = 1.d0/(epsjs+beta_2)**wenop
+    beta_1 = 1.d0/(epsjs+beta_1)**wenop
+    beta_0 = 1.d0/(epsjs+beta_0)**wenop
 
     if (present(vp)) then
        alpha_2 =      beta_2
        alpha_1 = 6.d0*beta_1
        alpha_0 = 3.d0*beta_0
        alpha1 = 1.d0/(alpha_2 + alpha_1 + alpha_0)
-
-       if (weno_type .eq. wenom) then
-          alpha_2 = alpha_2*alpha1
-          alpha_1 = alpha_1*alpha1
-          alpha_0 = alpha_0*alpha1
-          alpha_2 = alpha_2*(0.11d0-0.3d0*alpha_2+alpha_2**2)/(0.01d0+0.8d0*alpha_2)
-          alpha_1 = alpha_1*(0.96d0-1.8d0*alpha_1+alpha_1**2)/(0.36d0-0.2d0*alpha_1)
-          alpha_0 = alpha_0*(0.39d0-0.9d0*alpha_0+alpha_0**2)/(0.09d0+0.4d0*alpha_0)
-          alpha1 = 1.d0/(alpha_2 + alpha_1 + alpha_0)
-       end if
 
        vr_2 = 2.d0*v(-2) - 7.d0*v(-1) + 11.d0*v(0)
        vr_1 =     -v(-1) + 5.d0*v( 0) +  2.d0*v(1)
@@ -147,16 +120,6 @@ contains
        alpha_0 =      beta_0
        alpha1 = 1.d0/(alpha_2 + alpha_1 + alpha_0)
 
-       if (weno_type .eq. wenom) then
-          alpha_2 = alpha_2*alpha1
-          alpha_1 = alpha_1*alpha1
-          alpha_0 = alpha_0*alpha1
-          alpha_2 = alpha_2*(0.39d0-0.9d0*alpha_2+alpha_2**2)/(0.09d0+0.4d0*alpha_2)
-          alpha_1 = alpha_1*(0.96d0-1.8d0*alpha_1+alpha_1**2)/(0.36d0-0.2d0*alpha_1)
-          alpha_0 = alpha_0*(0.11d0-0.3d0*alpha_0+alpha_0**2)/(0.01d0+0.8d0*alpha_0)
-          alpha1 = 1.d0/(alpha_2 + alpha_1 + alpha_0)
-       end if
-       
        vr_2 =      -v(-2) + 5.d0*v(-1) + 2.d0*v(0)
        vr_1 =  2.d0*v(-1) + 5.d0*v(0 ) -      v(1) 
        vr_0 = 11.d0*v( 0) - 7.d0*v(1 ) + 2.d0*v(2)
@@ -170,16 +133,6 @@ contains
        alpha_0 = d_g1( 0)*beta_0
        alpha1 = 1.d0/(alpha_2 + alpha_1 + alpha_0)
 
-       if (weno_type .eq. wenom) then
-          alpha_2 = alpha_2*alpha1
-          alpha_1 = alpha_1*alpha1
-          alpha_0 = alpha_0*alpha1
-          alpha_2 = gmap(alpha_2,d_g1(-2))
-          alpha_1 = gmap(alpha_1,d_g1(-1))
-          alpha_0 = gmap(alpha_0,d_g1( 0))
-          alpha1 = 1.d0/(alpha_2 + alpha_1 + alpha_0)
-       end if
-       
        vr_2 = L3_cg1(-2)*v(-2) + L3_cg1(-1)*v(-1) + L3_cg1(0)*v(0)
        vr_1 = C3_cg1(-1)*v(-1) + C3_cg1( 0)*v( 0) + C3_cg1(1)*v(1)
        vr_0 = R3_cg1( 0)*v( 0) + R3_cg1( 1)*v( 1) + R3_cg1(2)*v(2)
@@ -193,16 +146,6 @@ contains
        alpha_0 = d_g2( 0)*beta_0
        alpha1 = 1.d0/(alpha_2 + alpha_1 + alpha_0)
 
-       if (weno_type .eq. wenom) then
-          alpha_2 = alpha_2*alpha1
-          alpha_1 = alpha_1*alpha1
-          alpha_0 = alpha_0*alpha1
-          alpha_2 = gmap(alpha_2,d_g2(-2))
-          alpha_1 = gmap(alpha_1,d_g2(-1))
-          alpha_0 = gmap(alpha_0,d_g2( 0))
-          alpha1 = 1.d0/(alpha_2 + alpha_1 + alpha_0)
-       end if
-       
        vr_2 = L3_cg2(-2)*v(-2) + L3_cg2(-1)*v(-1) + L3_cg2(0)*v(0)
        vr_1 = C3_cg2(-1)*v(-1) + C3_cg2( 0)*v( 0) + C3_cg2(1)*v(1)
        vr_0 = R3_cg2( 0)*v( 0) + R3_cg2( 1)*v( 1) + R3_cg2(2)*v(2)
@@ -212,68 +155,6 @@ contains
 
     return
   end subroutine weno5
-
-
-  subroutine mp5(v, vp, vm)
-    double precision, intent(in)  :: v(-2:2)
-    double precision, intent(out) :: vp , vm   ! v_{i+1/2} & v_{i-1/2}
-
-    double precision, parameter :: B1 = 1.d0/60.d0, B2 = 4.d0/3.d0, alpha = 4.d0, &
-         epsmp5 = 1.d-10
-    double precision :: vor,vmp,djm1,dj,djp1,dm4jph,dm4jmh,vul,vav,vmd,vlc,vmin,vmax
-
-    vor = B1*(2.d0*v(-2)-13.d0*v(-1)+47.d0*v(0)+27.d0*v(1)-3.d0*v(2))
-    vmp = v(0) + dmm(v(1)-v(0),alpha*(v(0)-v(-1)))
-    if ((vor-v(0))*(vor-vmp) .le. epsmp5) then
-       vp = vor
-    else
-       djm1 = v(-2)-2.d0*v(-1)+v(0)
-       dj   = v(-1)-2.d0*v( 0)+v(1)
-       djp1 = v( 0)-2.d0*v( 1)+v(2)
-       dm4jph = dm4(4.d0*dj-djp1, 4.d0*djp1-dj, dj, djp1)
-       dm4jmh = dm4(4.d0*dj-djm1, 4.d0*djm1-dj, dj, djm1)
-       vul = v(0) + alpha*(v(0)-v(-1))
-       vav = 0.5d0*(v(0)+v(1))
-       vmd = vav - 0.5d0*dm4jph
-       vlc = v(0) + 0.5d0*(v(0)-v(-1)) + B2*dm4jmh
-       vmin = max(min(v(0),v(1),vmd), min(v(0),vul,vlc))
-       vmax = min(max(v(0),v(1),vmd), max(v(0),vul,vlc))
-       vp = vor + dmm(vmin-vor,vmax-vor)
-    end if
-
-    vor = B1*(2.d0*v(2)-13.d0*v(1)+47.d0*v(0)+27.d0*v(-1)-3.d0*v(-2))
-    vmp = v(0) + dmm(v(-1)-v(0),alpha*(v(0)-v(1)))
-    if ((vor-v(0))*(vor-vmp) .le. epsmp5) then
-       vm = vor
-    else
-       djm1 = v(2)-2.d0*v( 1)+v( 0)
-       dj   = v(1)-2.d0*v( 0)+v(-1)
-       djp1 = v(0)-2.d0*v(-1)+v(-2)
-       dm4jph = dm4(4.d0*dj-djp1, 4.d0*djp1-dj, dj, djp1)
-       dm4jmh = dm4(4.d0*dj-djm1, 4.d0*djm1-dj, dj, djm1)
-       vul = v(0) + alpha*(v(0)-v(1))
-       vav = 0.5d0*(v(0)+v(-1))
-       vmd = vav - 0.5d0*dm4jph
-       vlc = v(0) + 0.5d0*(v(0)-v(1)) + B2*dm4jmh
-       vmin = max(min(v(0),v(-1),vmd), min(v(0),vul,vlc))
-       vmax = min(max(v(0),v(-1),vmd), max(v(0),vul,vlc))
-       vm = vor + dmm(vmin-vor,vmax-vor)
-    end if
-    
-    return
-
-    contains 
-      double precision function dmm(x,y) 
-        double precision, intent(in) :: x,y
-        dmm = 0.5d0*(sign(1.d0,x)+sign(1.d0,y))*min(abs(x),abs(y))
-      end function dmm
-      !
-      double precision function dm4(w,x,y,z) 
-        double precision, intent(in) :: w,x,y,z
-        dm4 = 0.125d0*(sign(1.d0,w)+sign(1.d0,x))*min(abs(w),abs(x),abs(y),abs(z))* &
-             abs((sign(1.d0,w)+sign(1.d0,y))*(sign(1.d0,w)+sign(1.d0,z)))
-      end function dm4
-  end subroutine mp5
 
   subroutine vweno5(lo, hi, v, vlo, vhi, glo, ghi, vp, vm, vg1, vg2)
     integer, intent(in) :: lo, hi, vlo, vhi, glo, ghi
@@ -293,24 +174,12 @@ contains
        beta_0(i) = b1*(v(i  )-2.d0*v(i+1)+v(i+2))**2 + 0.25d0*(3.d0*v(i)-4.d0*v(i+1)+v(i+2))**2
     end do
 
-    if (weno_type .eq. wenojs .or. weno_type .eq. wenom) then
-       !DEC$ SIMD
-       do i=lo,hi
-          beta_2(i) = 1.d0/(epsjs+beta_2(i))**2
-          beta_1(i) = 1.d0/(epsjs+beta_1(i))**2
-          beta_0(i) = 1.d0/(epsjs+beta_0(i))**2
-       end do
-    else if (weno_type .eq. wenoz) then
-       !DEC$ SIMD
-       do i=lo,hi
-          tau5(i) = beta_2(i)-beta_0(i)
-          beta_2(i) = 1.d0 + (tau5(i)/(beta_2(i)+epsz))**2
-          beta_1(i) = 1.d0 + (tau5(i)/(beta_1(i)+epsz))**2
-          beta_0(i) = 1.d0 + (tau5(i)/(beta_0(i)+epsz))**2
-       end do
-    else
-       call bl_error("unknown weno type")
-    end if
+    !DEC$ SIMD
+    do i=lo,hi
+       beta_2(i) = 1.d0/(epsjs+beta_2(i))**wenop
+       beta_1(i) = 1.d0/(epsjs+beta_1(i))**wenop
+       beta_0(i) = 1.d0/(epsjs+beta_0(i))**wenop
+    end do
 
     if (present(vp)) then
        !DEC$ SIMD
@@ -403,13 +272,6 @@ contains
     alpha_0 = gamma_m_lr*beta_0
     vc = vc-sigma_m*(alpha_2*v_2 + alpha_1*v_1 + alpha_0*v_0)/(alpha_2 + alpha_1 + alpha_0)
   end subroutine weno5_center
-
-
-  function gmap(omg, k)
-    double precision, intent(in) :: omg, k
-    double precision gmap
-    gmap = omg*(k+k*k-3.d0*k*omg+omg*omg)/(k*k+omg*(1.d0-2.d0*k))
-  end function gmap
 
 
   subroutine cellavg2gausspt_1d(lo,hi, u, ulo,uhi, u1, u2, glo,ghi)

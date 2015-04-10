@@ -149,13 +149,6 @@ std::vector<int> RNS::blocksize(BL_SPACEDIM, 2048);
 int          RNS::do_quartic_interp   = 1;
 
 int          RNS::do_weno             = 1;
-int          RNS::do_mp5              = 0;
-int          RNS::weno_type           = 0; // 0: Jiang-Shu; 1: WENO-M; 2: WENO-Z
-int          RNS::do_quadrature_weno  = 0;
-int          RNS::do_component_weno   = 0;
-Real         RNS::eps_wenojs          = 1.e-6;
-Real         RNS::eps_wenom           = 1.e-40;
-Real         RNS::eps_wenoz           = 1.e-15;
 
 int          RNS::do_chemistry        = 1;
 int          RNS::use_vode            = 0;
@@ -322,13 +315,6 @@ RNS::read_params ()
     pp.query("do_quartic_interp", do_quartic_interp);
 
     pp.query("do_weno", do_weno);
-    pp.query("do_mp5", do_mp5);
-    pp.query("weno_type", weno_type);
-    pp.query("do_quadrature_weno", do_quadrature_weno);
-    pp.query("do_component_weno", do_component_weno);
-    pp.query("eps_wenojs", eps_wenojs);
-    pp.query("eps_wenom", eps_wenom);
-    pp.query("eps_wenoz", eps_wenoz);
     if (ChemDriver::isNull())
     {
 	do_weno = 1;  // must do weno
