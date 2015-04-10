@@ -5,15 +5,17 @@ module mdcd_module
   double precision, parameter, private :: dsp = 0.0463783d0
   double precision, parameter, private :: dss = 0.01d0
 
-  integer, parameter, private :: wenop = 2
+  integer, parameter, private :: wenop = 1
   double precision, parameter, private :: eps = 1.d-6
   double precision, parameter, private :: b1=13.d0/12.d0, oneSixth=1.d0/6.d0
 
-  double precision, dimension(0:3), parameter, private :: Ck = &
+  double precision, dimension(0:3), parameter, private :: mdcd_Ck = &
        (/ 1.5d0*dsp+1.5d0*dss, 0.5d0-1.5d0*dsp+4.5d0*dss, 0.5d0-1.5d0*dsp-4.5d0*dss, 1.5d0*dsp-1.5d0*dss /)
 
   double precision, dimension(0:3), parameter, private :: weno5_Ck = &
        (/ 1.d0, 6.d0, 3.d0, 0.d0 /)
+
+  double precision, dimension(0:3), parameter, private :: Ck = weno5_Ck
 
 contains
 
