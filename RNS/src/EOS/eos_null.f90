@@ -130,6 +130,7 @@ contains
     dpdr(1) = (gamma_const-1.d0)*e
     dpdr(2) = (gamma_const-1.d0)*e
     dpde    = (gamma_const-1.d0)*rho
+    if (present(ierr)) ierr = 0
   end subroutine eos_given_RTY
 
 

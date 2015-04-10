@@ -153,15 +153,23 @@ contains
        do n=1,nspec
           Y0(n) = UL(i,UFS+n-1) * rhoInv
        end do
+       call floor_species(nspec, Y0)
        eref = eos_get_eref(Y0)
        UL(i,UEDEN) = UL(i,UEDEN) + UL(i,URHO) * eref
+       do n=1,nspec
+          UL(i,UFS+n-1) = UL(i,URHO)*Y0(n)
+       end do
 
        rhoInv = 1.d0/UR(i,URHO)
        do n=1,nspec
           Y0(n) = UR(i,UFS+n-1) * rhoInv
        end do
+       call floor_species(nspec, Y0)
        eref = eos_get_eref(Y0)
        UR(i,UEDEN) = UR(i,UEDEN) + UR(i,URHO) * eref
+       do n=1,nspec
+          UR(i,UFS+n-1) = UR(i,URHO)*Y0(n)
+       end do
     end do
 
   end subroutine reconstruct
