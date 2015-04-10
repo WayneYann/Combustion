@@ -70,13 +70,13 @@ contains
     double precision, intent(out) :: UR(flo:fhi,NVAR)
 
     integer :: i, n, ii, ivar, m
-    double precision, allocatable :: Y(:,:), w(:), v(:)
+    double precision, allocatable :: Y(:,:), RoeW(:), v(:)
     double precision :: rhoInv, rho0, Y0(nspec), T0, v0(3), fac, eref
     double precision :: egv1(NCHARV,NCHARV), egv2(NCHARV,NCHARV), Uii(NCHARV), charv(-3:2,NCHARV)
     double precision :: cvl(NCHARV), cvr(NCHARV)
 
     allocate(Y(lo-3:hi+3,nspec))
-    allocate(w(lo-3:hi+3))
+    allocate(RoeW(lo-3:hi+3))
     allocate(v(lo-3:hi+3))
 
     v0 = 0.d0
@@ -87,20 +87,20 @@ contains
     do i=lo-3,hi+3
        rhoInv = 1.d0/U(i,URHO)
 
-       w(i) = sqrt(U(i,URHO))
+       RoeW(i) = sqrt(U(i,URHO))
 
        do n=1,nspec
-          Y(i,n) = U(i,UFS+n-1)*rhoInv*w(i)
+          Y(i,n) = U(i,UFS+n-1)*rhoInv*RoeW(i)
        end do
 
-       v(i) = U(i,UMX)*rhoInv*w(i)
+       v(i) = U(i,UMX)*rhoInv*RoeW(i)
     end do
     
     do i=lo, hi+1
-       rho0 = w(i-1)*w(i)
-       fac = 1.d0 / (w(i-1)+w(i))
+       rho0 = RoeW(i-1)*RoeW(i)
+       fac = 1.d0 / (RoeW(i-1)+RoeW(i))
        Y0 = (Y(i-1,:) + Y(i,:)) * fac
-       T0 = (U(i-1,UTEMP)*w(i-1) + U(i,UTEMP)*w(i)) * fac
+       T0 = (U(i-1,UTEMP)*RoeW(i-1) + U(i,UTEMP)*RoeW(i)) * fac
        v0(1) = (v(i-1) + v(i)) * fac
 
        call floor_species(nspec, Y0)
