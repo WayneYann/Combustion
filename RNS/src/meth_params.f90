@@ -23,6 +23,7 @@ module meth_params_module
   integer         , save :: URHO, UMX, UMY, UMZ, UEDEN, UTEMP, UFS
 
   ! primitive variables
+  integer         , save :: QVAR
   integer         , save :: QCVAR, QFVAR  ! cell-centered and face
   integer         , save :: QRHO, QU, QV, QW, QPRES, QTEMP, QFY, QFX, QFH
 

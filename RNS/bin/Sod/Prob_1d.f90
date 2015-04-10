@@ -168,7 +168,7 @@ subroutine rns_initdata(level,time,lo,hi,nscal, &
      if (xcen <= xsep) then
         state(i,URHO ) = rho_l
         state(i,UMX  ) = rho_l*u_l
-        state(i,UEDEN) = rhoe_l + 0.5*rho_l*u_l*u_l
+        state(i,UEDEN) = rhoe_l + 0.5d0*rho_l*u_l*u_l
         e = rhoe_l/rho_l
 
         Y(1) = 6.d0/7.d0
@@ -180,7 +180,7 @@ subroutine rns_initdata(level,time,lo,hi,nscal, &
      else
         state(i,URHO ) = rho_r
         state(i,UMX  ) = rho_r*u_r
-        state(i,UEDEN) = rhoe_r + 0.5*rho_r*u_r*u_r
+        state(i,UEDEN) = rhoe_r + 0.5d0*rho_r*u_r*u_r
         e = rhoe_r/rho_r
 
         Y(1) = 1.d0/7.d0

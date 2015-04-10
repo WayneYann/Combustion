@@ -75,6 +75,7 @@ subroutine set_method_params(dm,Density,Xmom,Eden,Temp,FirstSpec, &
   QFX   = UFS +   NumSpec
   QFH   = UFS + 2*NumSpec
 
+  QVAR  = QTEMP +   NumSpec
   QCVAR = QTEMP + 2*NumSpec
   QFVAR = QTEMP + 3*NumSpec
 
