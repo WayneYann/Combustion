@@ -19,36 +19,8 @@ contains
     double precision, intent(inout) :: fx(fxlo(1):fxhi(1),fxlo(2):fxhi(2),NVAR)
     double precision, intent(inout) :: fy(fylo(1):fyhi(1),fylo(2):fyhi(2),NVAR)
 
-    integer :: tlo(3), thi(3), tUlo(3), tUhi(3), tfxlo(3), tfxhi(3), tfylo(3), tfyhi(3)
-    double precision :: tdx(3)
-
-    tlo(1:2) = lo
-    tlo(3) = 1
-    thi(1:2) = hi
-    thi(3) = 1
-    
-    tUlo(1:2) = Ulo
-    tUlo(3) = 1
-    tUhi(1:2) = Uhi
-    tUhi(3) = 1
-    
-    tfxlo(1:2) = fxlo
-    tfxlo(3) = 1
-    tfxhi(1:2) = fxhi
-    tfxhi(3) = 1
-    
-    tfylo(1:2) = fylo
-    tfylo(3) = 1
-    tfyhi(1:2) = fyhi
-    tfyhi(3) = 1
-    
-    tdx(1:2) = dx
-    tdx(3) = 0.d0
-    
-    call hypterm_xy(1.d0,tlo,thi,U,tUlo,tUhi,fx,tfxlo,tfxhi,fy,tfylo,tfyhi,tdx,tlo,thi)
-
-    fx = 0.d0
-    call hypterm_x(lo,hi,U,Ulo,Uhi,fx,fxlo,fxhi,dx)
+    call hypterm_x(lo,hi,U,Ulo,Uhi,fx,fxlo,fxhi)
+    call hypterm_y(lo,hi,U,Ulo,Uhi,fy,fylo,fyhi)
 
     if (difmag .gt. 0.0d0) then
        call add_artifical_viscocity(lo,hi,U,Ulo,Uhi,fx,fxlo,fxhi,fy,fylo,fyhi,dx)
@@ -57,7 +29,7 @@ contains
   end subroutine hypterm
 
 
-  subroutine hypterm_x(lo,hi,U,Ulo,Uhi,fx,fxlo,fxhi,dx)
+  subroutine hypterm_x(lo,hi,U,Ulo,Uhi,fx,fxlo,fxhi)
 
     use meth_params_module, only : NVAR, URHO, UMX, UMY, UTEMP, UFS, UEDEN, NSPEC, NCHARV, CFS
     use reconstruct_module, only : get_eigen_matrices_q
@@ -68,7 +40,6 @@ contains
     use riemann_module, only : riemann
 
     integer, intent(in) :: lo(2), hi(2), Ulo(2), Uhi(2), fxlo(2), fxhi(2)
-    double precision, intent(in   ) :: dx(2)
     double precision, intent(in   ) ::  U( Ulo(1): Uhi(1), Ulo(2): Uhi(2),NVAR)
     double precision, intent(inout) :: fx(fxlo(1):fxhi(1),fxlo(2):fxhi(2),NVAR)
 
@@ -227,13 +198,11 @@ contains
                 Uii(2) = U0(i,j+jj,UMX)
                 Uii(3) = 0.d0   ! becuase of 2d 
                 Uii(4) = U0(i,j+jj,UEDEN)
-
+                rhoInv = 1.d0/U0(i,j+jj,URHO)
                 do n=1,nspec
                    Uii(CFS+n-1) = U0(i,j+jj,UFS+n-1)
+                   Y0(n) = Uii(CFS+n-1)*rhoInv
                 end do
-
-                rhoInv = 1.d0/U0(i,j+jj,URHO)
-                Y0 = Uii(CFS:CFS+nspec-1)*rhoInv
                 eref = eos_get_eref(Y0)
                 Uii(4) = Uii(4) - U0(i,j+jj,URHO)*eref
 
@@ -313,6 +282,254 @@ contains
     deallocate(UL0, UR0, UL1, UR1, UL2, UR2)
 
   end subroutine hypterm_x
+
+
+  subroutine hypterm_y(lo,hi,U,Ulo,Uhi,fy,fylo,fyhi)
+
+    use meth_params_module, only : NVAR, URHO, UMX, UMY, UTEMP, UFS, UEDEN, NSPEC, NCHARV, CFS
+    use reconstruct_module, only : get_eigen_matrices_q
+    use renorm_module, only : floor_species
+    use eos_module, only : eos_get_eref
+    use mdcd_module, only : mdcd
+    use weno_module, only : weno5
+    use riemann_module, only : riemann
+
+    integer, intent(in) :: lo(2), hi(2), Ulo(2), Uhi(2), fylo(2), fyhi(2)
+    double precision, intent(in   ) ::  U( Ulo(1): Uhi(1), Ulo(2): Uhi(2),NVAR)
+    double precision, intent(inout) :: fy(fylo(1):fyhi(1),fylo(2):fyhi(2),NVAR)
+
+    integer :: i, j, n, ii, jj, ivar, m, ilr, ierr
+    double precision :: RoeWl, RoeWr, rhoInvl, rhoInvr
+    double precision, allocatable :: flux(:,:)
+    double precision, dimension(:,:,:), allocatable, target :: UL0, UR0, UL1, UR1, UL2, UR2
+    double precision, dimension(:,:,:), pointer :: U0, U1, U2
+    double precision :: rhoInv, rho0, Y0(nspec), T0, v0(3), fac, eref
+    double precision :: p, c, gamc, dpdr(nspec), dpde, e
+    double precision :: egv1(NCHARV,NCHARV), egv2(NCHARV,NCHARV), Uii(NCHARV), charv(-3:2,NCHARV)
+    double precision :: cvl(NCHARV), cvr(NCHARV)
+    
+    allocate(flux(lo(2):hi(2)+1,NVAR))
+
+    ! x-face, y-average
+    allocate(UL0(lo(1)-3:hi(1)+3,lo(2):hi(2)+1,NVAR))
+    allocate(UR0(lo(1)-3:hi(1)+3,lo(2):hi(2)+1,NVAR))
+
+    ! x-face, y-Gauss
+    allocate(UL1(lo(1)-3:hi(1)+3,lo(2):hi(2)+1,NVAR))
+    allocate(UR1(lo(1)-3:hi(1)+3,lo(2):hi(2)+1,NVAR))
+    allocate(UL2(lo(1)-3:hi(1)+3,lo(2):hi(2)+1,NVAR))
+    allocate(UR2(lo(1)-3:hi(1)+3,lo(2):hi(2)+1,NVAR))
+
+    UL0 = 0.d0
+    UR0 = 0.d0
+    UL1 = 0.d0
+    UR1 = 0.d0
+    UL2 = 0.d0
+    UR2 = 0.d0
+
+    do j = lo(2), hi(2)+1
+       do i = lo(1)-3, hi(1)+3
+
+          rhoInvl = 1.d0/U(i,j-1,URHO)
+          rhoInvr = 1.d0/U(i,j  ,URHO)
+          RoeWl = sqrt(U(i,j-1,URHO))
+          RoeWr = sqrt(U(i,j  ,URHO))
+          rho0 = RoeWl*Roewr
+          fac = 1.d0/(RoeWl+RoeWr)
+          do n=1,nspec
+             Y0(n) = (U(i,j-1,UFS+n-1)*rhoInvl*RoeWl+U(i,j,UFS+n-1)*rhoInvr*RoeWr)*fac
+          end do
+          T0 = (U(i,j-1,UTEMP)*RoeWl+U(i,j,UTEMP)*RoeWr)*fac
+          v0(1) = (U(i,j-1,UMY)*rhoInvl*RoeWl+U(i,j,UMY)*rhoInvr*RoeWr)*fac
+          v0(2) = (U(i,j-1,UMX)*rhoInvl*RoeWl+U(i,j,UMX)*rhoInvr*RoeWr)*fac
+          v0(3) = 0.d0
+
+          call floor_species(nspec,Y0)
+
+          ! egv1: left matrix;  egv2: right matrix
+          call get_eigen_matrices_q(rho0, Y0, T0, v0, egv1, egv2)
+
+          do jj=-3,2
+             Uii(1) = U(i,j+jj,UMY)
+             Uii(2) = U(i,j+jj,UMX)
+             Uii(3) = 0d0
+             Uii(4) = U(i,j+jj,UEDEN)
+             rhoInv = 1.d0/U(i,j+jj,URHO)
+             do n=1,nspec
+                Uii(CFS+n-1) = U(i,j+jj,UFS+n-1)
+                Y0(n) = Uii(CFS+n-1)*rhoInv
+             end do
+             eref = eos_get_eref(Y0)
+             Uii(4) = Uii(4) - U(i,j+jj,URHO)*eref
+             do n=1,NCHARV
+                charv(jj,n) = dot_product(egv1(:,n),Uii)
+             end do
+          end do
+
+          do ivar=1,NCHARV
+             call mdcd(charv(:,ivar), cvl(ivar), cvr(ivar))
+          end do
+
+          egv1 = transpose(egv2)  ! egv1 now holds transposed right matrix
+
+          do n=1,NCHARV
+             UL0(i,j,UMY  ) = UL0(i,j,UMY  ) + cvl(n)*egv2(1,n)
+             UR0(i,j,UMY  ) = UR0(i,j,UMY  ) + cvr(n)*egv2(1,n)
+             UL0(i,j,UMX  ) = UL0(i,j,UMX  ) + cvl(n)*egv2(2,n)
+             UR0(i,j,UMX  ) = UR0(i,j,UMX  ) + cvr(n)*egv2(2,n)
+             UL0(i,j,UEDEN) = UL0(i,j,UEDEN) + cvl(n)*egv2(4,n)
+             UR0(i,j,UEDEN) = UR0(i,j,UEDEN) + cvr(n)*egv2(4,n)
+          end do
+
+          do m=1,nspec
+             UL0(i,j,UFS+m-1) = UL0(i,j,UFS+m-1) + dot_product(cvl, egv1(:,CFS+m-1))
+             UR0(i,j,UFS+m-1) = UR0(i,j,UFS+m-1) + dot_product(cvr, egv1(:,CFS+m-1))
+             UL0(i,j,URHO   ) = UL0(i,j,URHO) + UL0(i,j,UFS+m-1)
+             UR0(i,j,URHO   ) = UR0(i,j,URHO) + UR0(i,j,UFS+m-1)
+          end do
+          
+          rhoInv = 1.d0/UL0(i,j,URHO)
+          do n=1,nspec
+             Y0(n) = UL0(i,j,UFS+n-1) * rhoInv
+          end do
+          call floor_species(nspec, Y0)
+          eref = eos_get_eref(Y0)
+          UL0(i,j,UEDEN) = UL0(i,j,UEDEN) + UL0(i,j,URHO) * eref
+          do n=1,nspec
+             UL0(i,j,UFS+n-1) = UL0(i,j,URHO)*Y0(n)
+          end do
+          
+          rhoInv = 1.d0/UR0(i,j,URHO)
+          do n=1,nspec
+             Y0(n) = UR0(i,j,UFS+n-1) * rhoInv
+          end do
+          call floor_species(nspec, Y0)
+          eref = eos_get_eref(Y0)
+          UR0(i,j,UEDEN) = UR0(i,j,UEDEN) + UR0(i,j,URHO) * eref
+          do n=1,nspec
+             UR0(i,j,UFS+n-1) = UR0(i,j,URHO)*Y0(n)
+          end do
+
+          call mdcd(U(i,j-3:j+2,UTEMP), UL0(i,j,UTEMP), UR0(i,j,UTEMP))
+       end do
+    end do
+
+    do ilr = 1, 2
+       if (ilr .eq. 1) then
+          U0 => UL0
+          U1 => UL1
+          U2 => UL2
+       else
+          U0 => UR0
+          U1 => UR1
+          U2 => UR2
+       end if
+
+       do j = lo(2), hi(2)+1
+          do i = lo(1), hi(1)
+             
+             rho0 = U0(i,j,URHO)
+             rhoInv = 1.d0/rho0
+             do n=1,nspec
+                Y0(n) = U0(i,j,UFS+n-1) * rhoInv
+             end do
+             v0(1) = U0(i,j,UMX) * rhoInv
+             v0(2) = U0(i,j,UMY) * rhoInv
+             v0(3) = 0.d0
+             T0 = U0(i,j,UTEMP)
+
+             ! egv1: left matrix;  egv2: right matrix
+             call get_eigen_matrices_q(rho0, Y0, T0, v0, egv1, egv2)
+
+             do ii=-2,2
+                Uii(1) = U0(i+ii,j,UMX)
+                Uii(2) = U0(i+ii,j,UMY)
+                Uii(3) = 0.d0   ! becuase of 2d 
+                Uii(4) = U0(i+ii,j,UEDEN)
+                rhoInv = 1.d0/U0(i+ii,j,URHO)
+                do n=1,nspec
+                   Uii(CFS+n-1) = U0(i+ii,j,UFS+n-1)
+                   Y0(n) = Uii(CFS+n-1)*rhoInv
+                end do
+                eref = eos_get_eref(Y0)
+                Uii(4) = Uii(4) - U0(i+ii,j,URHO)*eref
+
+                do n=1,NCHARV
+                   charv(ii,n) = dot_product(egv1(:,n),Uii)
+                enddo
+             enddo
+
+             do ivar=1,NCHARV
+                call weno5(charv(-2:2,ivar), vg1=cvl(ivar), vg2=cvr(ivar))
+             enddo
+
+             egv1 = transpose(egv2)  ! egv1 now holds transposed right matrix
+
+             do n=1,NCHARV
+                U1(i,j,UMX  ) = U1(i,j,UMX  ) + cvl(n)*egv2(1,n)
+                U2(i,j,UMX  ) = U2(i,j,UMX  ) + cvr(n)*egv2(1,n)
+                U1(i,j,UMY  ) = U1(i,j,UMY  ) + cvl(n)*egv2(2,n)
+                U2(i,j,UMY  ) = U2(i,j,UMY  ) + cvr(n)*egv2(2,n)
+                U1(i,j,UEDEN) = U1(i,j,UEDEN) + cvl(n)*egv2(4,n)
+                U2(i,j,UEDEN) = U2(i,j,UEDEN) + cvr(n)*egv2(4,n)
+             end do
+
+             do m=1,nspec
+                U1(i,j,UFS+m-1) = U1(i,j,UFS+m-1) + dot_product(cvl, egv1(:,CFS+m-1))
+                U2(i,j,UFS+m-1) = U2(i,j,UFS+m-1) + dot_product(cvr, egv1(:,CFS+m-1))
+                U1(i,j,URHO   ) = U1(i,j,URHO   ) + U1(i,j,UFS+m-1)
+                U2(i,j,URHO   ) = U2(i,j,URHO   ) + U2(i,j,UFS+m-1)
+             end do
+
+             rhoInv = 1.d0/U1(i,j,URHO)
+             do n=1,nspec
+                Y0(n) = U1(i,j,UFS+n-1) * rhoInv
+             end do
+             call floor_species(nspec, Y0)
+             eref = eos_get_eref(Y0)
+             U1(i,j,UEDEN) = U1(i,j,UEDEN) + U1(i,j,URHO) * eref
+             do n=1,nspec
+                U1(i,j,UFS+n-1) = U1(i,j,URHO)*Y0(n)
+             end do
+
+             rhoInv = 1.d0/U2(i,j,URHO)
+             do n=1,nspec
+                Y0(n) = U2(i,j,UFS+n-1) * rhoInv
+             end do
+             call floor_species(nspec, Y0)
+             eref = eos_get_eref(Y0)
+             U2(i,j,UEDEN) = U2(i,j,UEDEN) + U2(i,j,URHO) * eref
+             do n=1,nspec
+                U2(i,j,UFS+n-1) = U2(i,j,URHO)*Y0(n)
+             end do
+
+             U1(i,j,UTEMP) = U0(i,j,UTEMP)
+             U2(i,j,UTEMP) = U0(i,j,UTEMP)
+          end do
+       end do
+
+       Nullify(U0,U1,U2)
+    end do
+
+    do i=lo(1),hi(1)
+       call riemann(lo(2),hi(2),UL1(i,:,:),UR1(i,:,:),lo(2),hi(2)+1,flux,lo(2),hi(2)+1)
+       do n=1,NVAR
+          do j=lo(2),hi(2)+1
+             fy(i,j,n) = fy(i,j,n) + 0.5d0*flux(j,n)
+          end do
+       end do
+       call riemann(lo(2),hi(2),UL2(i,:,:),UR2(i,:,:),lo(2),hi(2)+1,flux,lo(2),hi(2)+1)
+       do n=1,NVAR
+          do j=lo(2),hi(2)+1
+             fy(i,j,n) = fy(i,j,n) + 0.5d0*flux(j,n)
+          end do
+       end do
+    end do
+
+    deallocate(flux)
+    deallocate(UL0, UR0, UL1, UR1, UL2, UR2)
+
+  end subroutine hypterm_y
 
 
   subroutine add_artifical_viscocity(lo,hi,U,Ulo,Uhi,fx,fxlo,fxhi,fy,fylo,fyhi,dx)
