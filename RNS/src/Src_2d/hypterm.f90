@@ -264,13 +264,13 @@ contains
     end do
 
     do j=lo(2),hi(2)
-       call riemann(lo(1),hi(1),UL1(:,j,:),UR1(:,j,:),lo(1),hi(1)+1,flux,lo(1),hi(1)+1)
+       call riemann(lo(1),hi(1),UL1(:,j,:),UR1(:,j,:),lo(1),hi(1)+1,flux,lo(1),hi(1)+1,dir=1)
        do n=1,NVAR
           do i=lo(1),hi(1)+1
              fx(i,j,n) = fx(i,j,n) + 0.5d0*flux(i,n)
           end do
        end do
-       call riemann(lo(1),hi(1),UL2(:,j,:),UR2(:,j,:),lo(1),hi(1)+1,flux,lo(1),hi(1)+1)
+       call riemann(lo(1),hi(1),UL2(:,j,:),UR2(:,j,:),lo(1),hi(1)+1,flux,lo(1),hi(1)+1,dir=1)
        do n=1,NVAR
           do i=lo(1),hi(1)+1
              fx(i,j,n) = fx(i,j,n) + 0.5d0*flux(i,n)
@@ -512,13 +512,13 @@ contains
     end do
 
     do i=lo(1),hi(1)
-       call riemann(lo(2),hi(2),UL1(i,:,:),UR1(i,:,:),lo(2),hi(2)+1,flux,lo(2),hi(2)+1)
+       call riemann(lo(2),hi(2),UL1(i,:,:),UR1(i,:,:),lo(2),hi(2)+1,flux,lo(2),hi(2)+1,dir=2)
        do n=1,NVAR
           do j=lo(2),hi(2)+1
              fy(i,j,n) = fy(i,j,n) + 0.5d0*flux(j,n)
           end do
        end do
-       call riemann(lo(2),hi(2),UL2(i,:,:),UR2(i,:,:),lo(2),hi(2)+1,flux,lo(2),hi(2)+1)
+       call riemann(lo(2),hi(2),UL2(i,:,:),UR2(i,:,:),lo(2),hi(2)+1,flux,lo(2),hi(2)+1,dir=2)
        do n=1,NVAR
           do j=lo(2),hi(2)+1
              fy(i,j,n) = fy(i,j,n) + 0.5d0*flux(j,n)
