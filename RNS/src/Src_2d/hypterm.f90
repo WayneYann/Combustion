@@ -47,8 +47,8 @@ contains
     
     call hypterm_xy(1.d0,tlo,thi,U,tUlo,tUhi,fx,tfxlo,tfxhi,fy,tfylo,tfyhi,tdx,tlo,thi)
 
-!    fx = 0.d0
-!    call hypterm_x(lo,hi,U,Ulo,Uhi,fx,fxlo,fxhi,dx)
+    fx = 0.d0
+    call hypterm_x(lo,hi,U,Ulo,Uhi,fx,fxlo,fxhi,dx)
 
     if (difmag .gt. 0.0d0) then
        call add_artifical_viscocity(lo,hi,U,Ulo,Uhi,fx,fxlo,fxhi,fy,fylo,fyhi,dx)
@@ -229,13 +229,13 @@ contains
                 Uii(4) = U0(i,j+jj,UEDEN)
 
                 do n=1,nspec
-                   Uii(CFS+n-1) = U(i,j+jj,UFS+n-1)
+                   Uii(CFS+n-1) = U0(i,j+jj,UFS+n-1)
                 end do
 
                 rhoInv = 1.d0/U0(i,j+jj,URHO)
                 Y0 = Uii(CFS:CFS+nspec-1)*rhoInv
                 eref = eos_get_eref(Y0)
-                Uii(4) = Uii(4) - U(i,j+jj,URHO)*eref
+                Uii(4) = Uii(4) - U0(i,j+jj,URHO)*eref
 
                 do n=1,NCHARV
                    charv(jj,n) = dot_product(egv1(:,n),Uii)
