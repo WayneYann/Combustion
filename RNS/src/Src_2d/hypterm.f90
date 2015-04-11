@@ -310,11 +310,11 @@ contains
     
     allocate(flux(lo(2):hi(2)+1,NVAR))
 
-    ! x-face, y-average
+    ! x-average, y-face
     allocate(UL0(lo(1)-3:hi(1)+3,lo(2):hi(2)+1,NVAR))
     allocate(UR0(lo(1)-3:hi(1)+3,lo(2):hi(2)+1,NVAR))
 
-    ! x-face, y-Gauss
+    ! x-Gauss, y-face
     allocate(UL1(lo(1)-3:hi(1)+3,lo(2):hi(2)+1,NVAR))
     allocate(UR1(lo(1)-3:hi(1)+3,lo(2):hi(2)+1,NVAR))
     allocate(UL2(lo(1)-3:hi(1)+3,lo(2):hi(2)+1,NVAR))
