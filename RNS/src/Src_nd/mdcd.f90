@@ -15,7 +15,7 @@ module mdcd_module
   double precision, dimension(0:3), parameter, private :: weno5_Ck = &
        (/ 1.d0, 6.d0, 3.d0, 0.d0 /)
 
-  double precision, dimension(0:3), parameter, private :: Ck = weno5_Ck
+  double precision, dimension(0:3), parameter, private :: Ck = mdcd_Ck
 
 contains
 
