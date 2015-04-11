@@ -59,8 +59,8 @@ contains
     allocate(flux(lo(1):hi(1)+1,NVAR))
 
     ! x-face, y-average
-    allocate(UL0(lo(1):hi(1)+1,lo(2)-3:hi(2)+3,NVAR))
-    allocate(UR0(lo(1):hi(1)+1,lo(2)-3:hi(2)+3,NVAR))
+    allocate(UL0(lo(1):hi(1)+1,lo(2)-2:hi(2)+2,NVAR))
+    allocate(UR0(lo(1):hi(1)+1,lo(2)-2:hi(2)+2,NVAR))
 
     ! x-face, y-Gauss
     allocate(UL1(lo(1):hi(1)+1,lo(2)  :hi(2)  ,NVAR))
@@ -75,7 +75,7 @@ contains
     UL2 = 0.d0
     UR2 = 0.d0
 
-    do j = lo(2)-3, hi(2)+3
+    do j = lo(2)-2, hi(2)+2
        do i = lo(1)-3, hi(1)+3
           rhoInv = 1.d0/U(i,j,URHO)
           RoeW(i) = sqrt(U(i,j,URHO))
@@ -311,14 +311,14 @@ contains
     allocate(flux(lo(2):hi(2)+1,NVAR))
 
     ! x-average, y-face
-    allocate(UL0(lo(1)-3:hi(1)+3,lo(2):hi(2)+1,NVAR))
-    allocate(UR0(lo(1)-3:hi(1)+3,lo(2):hi(2)+1,NVAR))
+    allocate(UL0(lo(1)-2:hi(1)+2,lo(2):hi(2)+1,NVAR))
+    allocate(UR0(lo(1)-2:hi(1)+2,lo(2):hi(2)+1,NVAR))
 
     ! x-Gauss, y-face
-    allocate(UL1(lo(1)-3:hi(1)+3,lo(2):hi(2)+1,NVAR))
-    allocate(UR1(lo(1)-3:hi(1)+3,lo(2):hi(2)+1,NVAR))
-    allocate(UL2(lo(1)-3:hi(1)+3,lo(2):hi(2)+1,NVAR))
-    allocate(UR2(lo(1)-3:hi(1)+3,lo(2):hi(2)+1,NVAR))
+    allocate(UL1(lo(1)  :hi(1)  ,lo(2):hi(2)+1,NVAR))
+    allocate(UR1(lo(1)  :hi(1)  ,lo(2):hi(2)+1,NVAR))
+    allocate(UL2(lo(1)  :hi(1)  ,lo(2):hi(2)+1,NVAR))
+    allocate(UR2(lo(1)  :hi(1)  ,lo(2):hi(2)+1,NVAR))
 
     UL0 = 0.d0
     UR0 = 0.d0
@@ -328,7 +328,7 @@ contains
     UR2 = 0.d0
 
     do j = lo(2), hi(2)+1
-       do i = lo(1)-3, hi(1)+3
+       do i = lo(1)-2, hi(1)+2
 
           rhoInvl = 1.d0/U(i,j-1,URHO)
           rhoInvr = 1.d0/U(i,j  ,URHO)
