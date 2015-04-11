@@ -90,18 +90,18 @@ contains
        RoeW(i) = sqrt(U(i,URHO))
 
        do n=1,nspec
-          Y(i,n) = U(i,UFS+n-1)*rhoInv*RoeW(i)
+          Y(i,n) = U(i,UFS+n-1)*rhoInv
        end do
 
-       v(i) = U(i,UMX)*rhoInv*RoeW(i)
+       v(i) = U(i,UMX)*rhoInv
     end do
     
     do i=lo, hi+1
        rho0 = RoeW(i-1)*RoeW(i)
        fac = 1.d0 / (RoeW(i-1)+RoeW(i))
-       Y0 = (Y(i-1,:) + Y(i,:)) * fac
+       Y0 = (Y(i-1,:)*RoeW(i-1) + Y(i,:)*RoeW(i)) * fac
        T0 = (U(i-1,UTEMP)*RoeW(i-1) + U(i,UTEMP)*RoeW(i)) * fac
-       v0(1) = (v(i-1) + v(i)) * fac
+       v0(1) = (v(i-1)*RoeW(i-1) + v(i)*RoeW(i)) * fac
 
        call floor_species(nspec, Y0)
 

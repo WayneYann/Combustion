@@ -47,8 +47,8 @@ contains
     
     call hypterm_xy(1.d0,tlo,thi,U,tUlo,tUhi,fx,tfxlo,tfxhi,fy,tfylo,tfyhi,tdx,tlo,thi)
 
-    fx = 0.d0
-    call hypterm_x(lo,hi,U,Ulo,Uhi,fx,fxlo,fxhi,dx)
+!    fx = 0.d0
+!    call hypterm_x(lo,hi,U,Ulo,Uhi,fx,fxlo,fxhi,dx)
 
     if (difmag .gt. 0.0d0) then
        call add_artifical_viscocity(lo,hi,U,Ulo,Uhi,fx,fxlo,fxhi,fy,fylo,fyhi,dx)
@@ -109,19 +109,19 @@ contains
           rhoInv = 1.d0/U(i,j,URHO)
           RoeW(i) = sqrt(U(i,j,URHO))
           do n=1,nspec
-             Y(i,n) = U(i,j,UFS+n-1)*rhoInv*RoeW(i)
+             Y(i,n) = U(i,j,UFS+n-1)*rhoInv
           end do
-          v(i,1) = U(i,j,UMX)*rhoInv*RoeW(i)
-          v(i,2) = U(i,j,UMY)*rhoInv*RoeW(i)
+          v(i,1) = U(i,j,UMX)*rhoInv
+          v(i,2) = U(i,j,UMY)*rhoInv
        end do
 
        do i = lo(1), hi(1)+1
           rho0 = RoeW(i-1)*RoeW(i)
           fac = 1.d0/(RoeW(i-1)+RoeW(i))
-          Y0 = (Y(i-1,:)+Y(i,:))*fac
+          Y0 = (Y(i-1,:)*RoeW(i-1)+Y(i,:)*RoeW(i))*fac
           T0 = (U(i-1,j,UTEMP)*RoeW(i-1)+U(i,j,UTEMP)*RoeW(i))*fac
-          v0(1) = (v(i-1,1)+v(i,1))*fac
-          v0(2) = (v(i-1,2)+v(i,2))*fac
+          v0(1) = (v(i-1,1)*RoeW(i-1)+v(i,1)*RoeW(i))*fac
+          v0(2) = (v(i-1,2)*RoeW(i-1)+v(i,2)*RoeW(i))*fac
           v0(3) = 0.d0
 
           call floor_species(nspec,Y0)
@@ -217,11 +217,12 @@ contains
              v0(1) = U0(i,j,UMY) * rhoInv
              v0(2) = U0(i,j,UMX) * rhoInv
              v0(3) = 0.d0
+             T0 = U0(i,j,UTEMP)
 
              ! egv1: left matrix;  egv2: right matrix
              call get_eigen_matrices_q(rho0, Y0, T0, v0, egv1, egv2)
 
-             do jj=-3,2
+             do jj=-2,2
                 Uii(1) = U0(i,j+jj,UMY)
                 Uii(2) = U0(i,j+jj,UMX)
                 Uii(3) = 0.d0   ! becuase of 2d 
@@ -231,7 +232,8 @@ contains
                    Uii(CFS+n-1) = U(i,j+jj,UFS+n-1)
                 end do
 
-                Y0 = Uii(CFS:CFS+nspec-1)/U0(i,j+jj,URHO)
+                rhoInv = 1.d0/U0(i,j+jj,URHO)
+                Y0 = Uii(CFS:CFS+nspec-1)*rhoInv
                 eref = eos_get_eref(Y0)
                 Uii(4) = Uii(4) - U(i,j+jj,URHO)*eref
 
@@ -241,7 +243,7 @@ contains
              enddo
 
              do ivar=1,NCHARV
-                call weno5(charv(:,ivar), vg1=cvl(ivar), vg2=cvr(ivar))
+                call weno5(charv(-2:2,ivar), vg1=cvl(ivar), vg2=cvr(ivar))
              enddo
 
              egv1 = transpose(egv2)  ! egv1 now holds transposed right matrix
