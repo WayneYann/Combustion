@@ -91,7 +91,7 @@ contains
     double precision :: vr_2, vr_1, vr_0
     double precision :: beta_2, beta_1, beta_0
     double precision :: alpha_2, alpha_1, alpha_0
-    double precision :: alpha1, tau5, ris
+    double precision :: alpha1
 
     beta_2 = b1*(v(-2)-2.d0*v(-1)+v(0))**2 + 0.25d0*(v(-2)-4.d0*v(-1)+3.d0*v(0))**2
     beta_1 = b1*(v(-1)-2.d0*v( 0)+v(1))**2 + 0.25d0*(v(-1)-v(1))**2
@@ -165,7 +165,7 @@ contains
     integer :: i
     double precision, dimension(lo:hi) :: vr_2, vr_1, vr_0
     double precision, dimension(lo:hi) :: alpha_2, alpha_1, alpha_0
-    double precision, dimension(lo:hi) :: beta_2, beta_1, beta_0, tau5
+    double precision, dimension(lo:hi) :: beta_2, beta_1, beta_0
 
     !DEC$ SIMD
     do i=lo,hi
