@@ -43,12 +43,11 @@ contains
     double precision, intent(in   ) ::  U( Ulo(1): Uhi(1), Ulo(2): Uhi(2),NVAR)
     double precision, intent(inout) :: fx(fxlo(1):fxhi(1),fxlo(2):fxhi(2),NVAR)
 
-    integer :: i, j, n, ii, jj, ivar, m, ilr, ierr
+    integer :: i, j, n, ii, jj, ivar, m, ilr
     double precision, allocatable :: Y(:,:), RoeW(:), v(:,:), flux(:,:)
     double precision, dimension(:,:,:), allocatable, target :: UL0, UR0, UL1, UR1, UL2, UR2
     double precision, dimension(:,:,:), pointer :: U0, U1, U2
     double precision :: rhoInv, rho0, Y0(nspec), T0, v0(3), fac, eref
-    double precision :: p, c, gamc, dpdr(nspec), dpde, e
     double precision :: egv1(NCHARV,NCHARV), egv2(NCHARV,NCHARV), Uii(NCHARV), charv(-3:2,NCHARV)
     double precision :: cvl(NCHARV), cvr(NCHARV)
 
@@ -298,13 +297,12 @@ contains
     double precision, intent(in   ) ::  U( Ulo(1): Uhi(1), Ulo(2): Uhi(2),NVAR)
     double precision, intent(inout) :: fy(fylo(1):fyhi(1),fylo(2):fyhi(2),NVAR)
 
-    integer :: i, j, n, ii, jj, ivar, m, ilr, ierr
+    integer :: i, j, n, ii, jj, ivar, m, ilr
     double precision :: RoeWl, RoeWr, rhoInvl, rhoInvr
     double precision, allocatable :: flux(:,:)
     double precision, dimension(:,:,:), allocatable, target :: UL0, UR0, UL1, UR1, UL2, UR2
     double precision, dimension(:,:,:), pointer :: U0, U1, U2
     double precision :: rhoInv, rho0, Y0(nspec), T0, v0(3), fac, eref
-    double precision :: p, c, gamc, dpdr(nspec), dpde, e
     double precision :: egv1(NCHARV,NCHARV), egv2(NCHARV,NCHARV), Uii(NCHARV), charv(-3:2,NCHARV)
     double precision :: cvl(NCHARV), cvr(NCHARV)
     
