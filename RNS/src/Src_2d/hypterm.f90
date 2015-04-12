@@ -161,7 +161,8 @@ contains
              UR0(i,j,UFS+n-1) = UR0(i,j,URHO)*Y0(n)
           end do
 
-          call mdcd(U(i-3:i+2,j,UTEMP), UL0(i,j,UTEMP), UR0(i,j,UTEMP))
+          UL0(i,j,UTEMP) = T0
+          UR0(i,j,UTEMP) = T0
        enddo
     end do
 
@@ -408,7 +409,8 @@ contains
              UR0(i,j,UFS+n-1) = UR0(i,j,URHO)*Y0(n)
           end do
 
-          call mdcd(U(i,j-3:j+2,UTEMP), UL0(i,j,UTEMP), UR0(i,j,UTEMP))
+          UL0(i,j,UTEMP) = T0
+          UR0(i,j,UTEMP) = T0
        end do
     end do
 
