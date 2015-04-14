@@ -47,6 +47,13 @@ module weno_module
   double precision, dimension(-2:0), parameter :: d_g2 = &
        (/ (210.d0-sqrt(3.d0))/1080.d0,  11.d0/18.d0,  (210.d0+sqrt(3.d0))/1080.d0  /)
 
+  ! Numerical tuned 4th-order weights for two Gauss points
+  double precision, parameter :: gauss_phi = 0.2233d0
+  double precision, dimension(-2:0), parameter :: weno4_d_g1 = &
+       (/ (1.d0-gauss_phi)*(7.d0/18.d0), 11.d0/18.d0, gauss_phi*(7.d0/18.d0) /)
+  double precision, dimension(-2:0), parameter :: weno4_d_g2 = &
+       (/ gauss_phi*(7.d0/18.d0), 11.d0/18.d0, (1.d0-gauss_phi)*(7.d0/18.d0) /)
+
   ! Fifth-order coefficients for converting cell averages to two Gauss point values
   double precision, dimension(-2:2), parameter :: cg1 = &
        (/ -(1.d0+70.d0*sqrt(3.d0))/4320.d0, (4.d0+500.d0*sqrt(3.d0))/4320.d0, &
@@ -76,12 +83,55 @@ module weno_module
 
   private
 
-  public :: epsjs, weno5, vweno5, weno5_center,  &
+  public :: epsjs, weno4, weno5, vweno5, weno5_center,  &
        cellavg2gausspt_1d, cellavg2gausspt_2d, cellavg2gausspt_2d_v1, &
        cellavg2gausspt_2d_v2, cellavg2gausspt_3d, &
        cellavg2dergausspt_1d, cellavg2dergausspt_2d, cellavg2face_1d
 
 contains
+
+  subroutine weno4(v, vg1, vg2)
+    double precision, intent(in)  :: v(-2:2)
+    double precision, intent(out) :: vg1, vg2  ! at two Gauss points
+
+    double precision :: vr_2, vr_1, vr_0
+    double precision :: beta_2, beta_1, beta_0
+    double precision :: alpha_2, alpha_1, alpha_0
+    double precision :: alpha1
+
+    beta_2 = b1*(v(-2)-2.d0*v(-1)+v(0))**2 + 0.25d0*(v(-2)-4.d0*v(-1)+3.d0*v(0))**2
+    beta_1 = b1*(v(-1)-2.d0*v( 0)+v(1))**2 + 0.25d0*(v(-1)-v(1))**2
+    beta_0 = b1*(v( 0)-2.d0*v( 1)+v(2))**2 + 0.25d0*(3.d0*v(0)-4.d0*v(1)+v(2))**2
+
+    beta_2 = 1.d0/(epsjs+beta_2)**wenop
+    beta_1 = 1.d0/(epsjs+beta_1)**wenop
+    beta_0 = 1.d0/(epsjs+beta_0)**wenop
+
+    alpha_2 = weno4_d_g1(-2)*beta_2
+    alpha_1 = weno4_d_g1(-1)*beta_1
+    alpha_0 = weno4_d_g1( 0)*beta_0
+    alpha1 = 1.d0/(alpha_2 + alpha_1 + alpha_0)
+    
+    vr_2 = L3_cg1(-2)*v(-2) + L3_cg1(-1)*v(-1) + L3_cg1(0)*v(0)
+    vr_1 = C3_cg1(-1)*v(-1) + C3_cg1( 0)*v( 0) + C3_cg1(1)*v(1)
+    vr_0 = R3_cg1( 0)*v( 0) + R3_cg1( 1)*v( 1) + R3_cg1(2)*v(2)
+    
+    vg1 = alpha1*(alpha_2*vr_2 + alpha_1*vr_1 + alpha_0*vr_0)
+
+    alpha_2 = weno4_d_g2(-2)*beta_2
+    alpha_1 = weno4_d_g2(-1)*beta_1
+    alpha_0 = weno4_d_g2( 0)*beta_0
+    alpha1 = 1.d0/(alpha_2 + alpha_1 + alpha_0)
+    
+    vr_2 = L3_cg2(-2)*v(-2) + L3_cg2(-1)*v(-1) + L3_cg2(0)*v(0)
+    vr_1 = C3_cg2(-1)*v(-1) + C3_cg2( 0)*v( 0) + C3_cg2(1)*v(1)
+    vr_0 = R3_cg2( 0)*v( 0) + R3_cg2( 1)*v( 1) + R3_cg2(2)*v(2)
+    
+    vg2 = alpha1*(alpha_2*vr_2 + alpha_1*vr_1 + alpha_0*vr_0)
+
+    return
+  end subroutine weno4
+
 
   subroutine weno5(v, vp, vm, vg1, vg2)
     double precision, intent(in)  :: v(-2:2)
@@ -155,6 +205,7 @@ contains
 
     return
   end subroutine weno5
+
 
   subroutine vweno5(lo, hi, v, vlo, vhi, glo, ghi, vp, vm, vg1, vg2)
     integer, intent(in) :: lo, hi, vlo, vhi, glo, ghi

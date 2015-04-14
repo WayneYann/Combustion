@@ -37,7 +37,7 @@ contains
     use renorm_module, only : floor_species
     use eos_module, only : eos_get_eref
     use mdcd_module, only : mdcd
-    use weno_module, only : weno5
+    use weno_module, only : weno4
     use riemann_module, only : riemann
 
     integer, intent(in) :: lo(3), hi(3), Ulo(3), Uhi(3), fxlo(3), fxhi(3)
@@ -104,7 +104,7 @@ contains
              end do
 
              do ivar=1,NCHARV
-                call weno5(charv(-2:2,ivar), vg1=cvl(ivar), vg2=cvr(ivar))
+                call weno4(charv(-2:2,ivar), cvl(ivar), cvr(ivar))
              end do
 
              egv1 = transpose(egv2)  ! egv1 now holds transposed right matrix
@@ -199,7 +199,7 @@ contains
                 end do
 
                 do ivar=1,NCHARV
-                   call weno5(charv(-2:2,ivar), vg1=cvl(ivar), vg2=cvr(ivar))
+                   call weno4(charv(-2:2,ivar), cvl(ivar), cvr(ivar))
                 end do
                 
                 egv1 = transpose(egv2)  ! egv1 now holds transposed right matrix
@@ -371,7 +371,7 @@ contains
     use renorm_module, only : floor_species
     use eos_module, only : eos_get_eref
     use mdcd_module, only : mdcd
-    use weno_module, only : weno5
+    use weno_module, only : weno4
     use riemann_module, only : riemann
 
     integer, intent(in) :: lo(3), hi(3), Ulo(3), Uhi(3), fylo(3), fyhi(3)
@@ -437,7 +437,7 @@ contains
              end do
 
              do ivar=1,NCHARV
-                call weno5(charv(-2:2,ivar), vg1=cvl(ivar), vg2=cvr(ivar))
+                call weno4(charv(-2:2,ivar), cvl(ivar), cvr(ivar))
              end do
 
              egv1 = transpose(egv2)  ! egv1 now holds transposed right matrix
@@ -532,7 +532,7 @@ contains
                 end do
 
                 do ivar=1,NCHARV
-                   call weno5(charv(-2:2,ivar), vg1=cvl(ivar), vg2=cvr(ivar))
+                   call weno4(charv(-2:2,ivar), cvl(ivar), cvr(ivar))
                 end do
                 
                 egv1 = transpose(egv2)  ! egv1 now holds transposed right matrix
@@ -704,7 +704,7 @@ contains
     use renorm_module, only : floor_species
     use eos_module, only : eos_get_eref
     use mdcd_module, only : mdcd
-    use weno_module, only : weno5
+    use weno_module, only : weno4
     use riemann_module, only : riemann
 
     integer, intent(in) :: lo(3), hi(3), Ulo(3), Uhi(3), fzlo(3), fzhi(3)
@@ -770,7 +770,7 @@ contains
              end do
 
              do ivar=1,NCHARV
-                call weno5(charv(-2:2,ivar), vg1=cvl(ivar), vg2=cvr(ivar))
+                call weno4(charv(-2:2,ivar), cvl(ivar), cvr(ivar))
              end do
 
              egv1 = transpose(egv2)  ! egv1 now holds transposed right matrix
@@ -865,7 +865,7 @@ contains
                 end do
 
                 do ivar=1,NCHARV
-                   call weno5(charv(-2:2,ivar), vg1=cvl(ivar), vg2=cvr(ivar))
+                   call weno4(charv(-2:2,ivar), cvl(ivar), cvr(ivar))
                 end do
                 
                 egv1 = transpose(egv2)  ! egv1 now holds transposed right matrix
