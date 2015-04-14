@@ -33,7 +33,7 @@ contains
 
   subroutine hypterm_x(lo,hi,U,Ulo,Uhi,fx,fxlo,fxhi)
     use meth_params_module, only : NVAR, URHO, UMX, UMY, UMZ, UTEMP, UFS, UEDEN, NSPEC, NCHARV, CFS
-    use reconstruct_module, only : get_eigen_matrices_q
+    use eigen_module, only : get_eigen_matrices
     use renorm_module, only : floor_species
     use eos_module, only : eos_get_eref
     use mdcd_module, only : mdcd
@@ -83,7 +83,7 @@ contains
              T0 = U(i,j,k,UTEMP)
 
              ! egv1: left matrix;  egv2: right matrix
-             call get_eigen_matrices_q(rho0, Y0, T0, v0, egv1, egv2)
+             call get_eigen_matrices(rho0, Y0, T0, v0, egv1, egv2)
 
              do kk=-2,2
                 Uch(1) = U(i,j,k+kk,UMZ)
@@ -179,7 +179,7 @@ contains
                 T0 = UZ(i,j,k,UTEMP)
                 
                 ! egv1: left matrix;  egv2: right matrix
-                call get_eigen_matrices_q(rho0, Y0, T0, v0, egv1, egv2)
+                call get_eigen_matrices(rho0, Y0, T0, v0, egv1, egv2)
 
                 do jj=-2,2
                    Uch(1) = UZ(i,j+jj,k,UMY)
@@ -278,7 +278,7 @@ contains
                    call floor_species(nspec,Y0)
 
                    ! egv1: left matrix;  egv2: right matrix
-                   call get_eigen_matrices_q(rho0, Y0, T0, v0, egv1, egv2)
+                   call get_eigen_matrices(rho0, Y0, T0, v0, egv1, egv2)
 
                    do ii=-3,2
                       Uch(1) = UY(i+ii,j,UMX)
@@ -367,7 +367,7 @@ contains
 
   subroutine hypterm_y(lo,hi,U,Ulo,Uhi,fy,fylo,fyhi)
     use meth_params_module, only : NVAR, URHO, UMX, UMY, UMZ, UTEMP, UFS, UEDEN, NSPEC, NCHARV, CFS
-    use reconstruct_module, only : get_eigen_matrices_q
+    use eigen_module, only : get_eigen_matrices
     use renorm_module, only : floor_species
     use eos_module, only : eos_get_eref
     use mdcd_module, only : mdcd
@@ -417,7 +417,7 @@ contains
              T0 = U(i,j,k,UTEMP)
 
              ! egv1: left matrix;  egv2: right matrix
-             call get_eigen_matrices_q(rho0, Y0, T0, v0, egv1, egv2)
+             call get_eigen_matrices(rho0, Y0, T0, v0, egv1, egv2)
 
              do ii=-2,2
                 Uch(1) = U(i+ii,j,k,UMX)
@@ -512,7 +512,7 @@ contains
                 T0 = UX(i,j,k,UTEMP)
 
                 ! egv1: left matrix;  egv2: right matrix
-                call get_eigen_matrices_q(rho0, Y0, T0, v0, egv1, egv2)
+                call get_eigen_matrices(rho0, Y0, T0, v0, egv1, egv2)
 
                 do kk=-2,2
                    Uch(1) = UX(i,j,k+kk,UMZ)
@@ -611,7 +611,7 @@ contains
                    call floor_species(nspec,Y0)
 
                    ! egv1: left matrix;  egv2: right matrix
-                   call get_eigen_matrices_q(rho0, Y0, T0, v0, egv1, egv2)
+                   call get_eigen_matrices(rho0, Y0, T0, v0, egv1, egv2)
 
                    do jj=-3,2
                       Uch(1) = UZ(j+jj,k,UMY)
@@ -700,7 +700,7 @@ contains
 
   subroutine hypterm_z(lo,hi,U,Ulo,Uhi,fz,fzlo,fzhi)
     use meth_params_module, only : NVAR, URHO, UMX, UMY, UMZ, UTEMP, UFS, UEDEN, NSPEC, NCHARV, CFS
-    use reconstruct_module, only : get_eigen_matrices_q
+    use eigen_module, only : get_eigen_matrices
     use renorm_module, only : floor_species
     use eos_module, only : eos_get_eref
     use mdcd_module, only : mdcd
@@ -750,7 +750,7 @@ contains
              T0 = U(i,j,k,UTEMP)
 
              ! egv1: left matrix;  egv2: right matrix
-             call get_eigen_matrices_q(rho0, Y0, T0, v0, egv1, egv2)
+             call get_eigen_matrices(rho0, Y0, T0, v0, egv1, egv2)
 
              do jj=-2,2
                 Uch(1) = U(i,j+jj,k,UMY)
@@ -845,7 +845,7 @@ contains
                 T0 = UY(i,j,k,UTEMP)
 
                 ! egv1: left matrix;  egv2: right matrix
-                call get_eigen_matrices_q(rho0, Y0, T0, v0, egv1, egv2)
+                call get_eigen_matrices(rho0, Y0, T0, v0, egv1, egv2)
 
                 do ii=-2,2
                    Uch(1) = UY(i+ii,j,k,UMX)
@@ -944,7 +944,7 @@ contains
                    call floor_species(nspec,Y0)
 
                    ! egv1: left matrix;  egv2: right matrix
-                   call get_eigen_matrices_q(rho0, Y0, T0, v0, egv1, egv2)
+                   call get_eigen_matrices(rho0, Y0, T0, v0, egv1, egv2)
 
                    do kk=-3,2
                       Uch(1) = UX(i,k+kk,UMZ)

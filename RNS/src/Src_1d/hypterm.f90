@@ -60,7 +60,7 @@ contains
 
   subroutine reconstruct(lo, hi, U, Ulo, Uhi, UL, UR, flo, fhi)
     use meth_params_module, only : NVAR, URHO, UMX, UTEMP, UFS, UEDEN, NSPEC, NCHARV, CFS
-    use reconstruct_module, only : get_eigen_matrices_q
+    use eigen_module, only : get_eigen_matrices
     use renorm_module, only : floor_species
     use eos_module, only : eos_get_eref
     use mdcd_module, only : mdcd
@@ -106,7 +106,7 @@ contains
        call floor_species(nspec, Y0)
 
        ! egv1: left matrix;  egv2: right matrix
-       call get_eigen_matrices_q(rho0, Y0, T0, v0, egv1, egv2)
+       call get_eigen_matrices(rho0, Y0, T0, v0, egv1, egv2)
 
        do ii=-3,2
           Uii(1) = U(i+ii,UMX)
