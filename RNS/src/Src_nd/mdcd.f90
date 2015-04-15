@@ -2,11 +2,12 @@ module mdcd_module
 
   implicit none
 
+  integer         , save :: wenop = 1
+  double precision, save :: eps = 1.d-6
+
   double precision, parameter, private :: dsp = 0.0463783d0
   double precision, parameter, private :: dss = 0.01d0
 
-  integer, parameter, private :: wenop = 1
-  double precision, parameter, private :: eps = 1.d-6
   double precision, parameter, private :: b1=13.d0/12.d0, oneSixth=1.d0/6.d0
 
   double precision, dimension(0:3), parameter, private :: mdcd_Ck = &
@@ -17,7 +18,19 @@ module mdcd_module
 
   double precision, dimension(0:3), parameter, private :: Ck = mdcd_Ck
 
+  private
+
+  public :: init_mdcd, mdcd
+
 contains
+
+  subroutine init_mdcd(weno_p_in,weno_eps_in)
+    integer, intent(in) :: weno_p_in
+    double precision, intent(in) :: weno_eps_in
+    wenop = weno_p_in
+    eps = weno_eps_in
+  end subroutine init_mdcd
+
 
   subroutine mdcd(v, vl, vr)
     double precision, intent(in) :: v(-2:3)

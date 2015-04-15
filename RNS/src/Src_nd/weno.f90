@@ -2,9 +2,9 @@ module weno_module
 
   implicit none
 
-  integer, parameter, private :: wenop = 1
+  integer         , save :: wenop = 1
+  double precision, save :: eps = 1.d-6
 
-  double precision, save :: epsjs = 1.d-6
   double precision, parameter :: b1=13.d0/12.d0, oneSixth=1.d0/6.d0
 
   ! Three types of third-order coefficients for converting cell averages to cell center point values
@@ -48,11 +48,11 @@ module weno_module
        (/ (210.d0-sqrt(3.d0))/1080.d0,  11.d0/18.d0,  (210.d0+sqrt(3.d0))/1080.d0  /)
 
   ! Numerical tuned 4th-order weights for two Gauss points
-  double precision, parameter :: gauss_phi = 0.2233d0
-  double precision, dimension(-2:0), parameter :: weno4_d_g1 = &
-       (/ (1.d0-gauss_phi)*(7.d0/18.d0), 11.d0/18.d0, gauss_phi*(7.d0/18.d0) /)
-  double precision, dimension(-2:0), parameter :: weno4_d_g2 = &
-       (/ gauss_phi*(7.d0/18.d0), 11.d0/18.d0, (1.d0-gauss_phi)*(7.d0/18.d0) /)
+  double precision, parameter :: phi_def = 0.2233d0
+  double precision, dimension(-2:0), save :: weno4_d_g1 = &
+       (/ (1.d0-phi_def)*(7.d0/18.d0), 11.d0/18.d0, phi_def*(7.d0/18.d0) /)
+  double precision, dimension(-2:0), save :: weno4_d_g2 = &
+       (/ phi_def*(7.d0/18.d0), 11.d0/18.d0, (1.d0-phi_def)*(7.d0/18.d0) /)
 
   ! Fifth-order coefficients for converting cell averages to two Gauss point values
   double precision, dimension(-2:2), parameter :: cg1 = &
@@ -83,14 +83,31 @@ module weno_module
 
   private
 
-  public :: epsjs, weno4, weno5, vweno5, weno5_center,  &
+  public :: init_weno, weno4_gauss, weno5_gauss, weno5_face, vweno5, weno5_center,  &
        cellavg2gausspt_1d, cellavg2gausspt_2d, cellavg2gausspt_2d_v1, &
        cellavg2gausspt_2d_v2, cellavg2gausspt_3d, &
        cellavg2dergausspt_1d, cellavg2dergausspt_2d, cellavg2face_1d
 
 contains
 
-  subroutine weno4(v, vg1, vg2)
+  subroutine init_weno(weno_p_in,weno_eps_in,weno_gauss_phi_in)
+    integer, intent(in) :: weno_p_in
+    double precision, intent(in) :: weno_eps_in, weno_gauss_phi_in
+
+    wenop = weno_p_in
+    eps = weno_eps_in
+
+    if (weno_gauss_phi_in < 0.0) then
+       weno4_d_g1 = d_g1
+    else
+       weno4_d_g1(-2) = (1.d0-weno_gauss_phi_in)*(7.d0/18.d0)
+       weno4_d_g1(-1) = 11.d0/18.d0
+       weno4_d_g1( 0) = weno_gauss_phi_in*(7.d0/18.d0)
+    end if
+    weno4_d_g2 = weno4_d_g1(0:-2:-1)
+  end subroutine init_weno
+
+  subroutine weno4_gauss(v, vg1, vg2)
     double precision, intent(in)  :: v(-2:2)
     double precision, intent(out) :: vg1, vg2  ! at two Gauss points
 
@@ -103,9 +120,9 @@ contains
     beta_1 = b1*(v(-1)-2.d0*v( 0)+v(1))**2 + 0.25d0*(v(-1)-v(1))**2
     beta_0 = b1*(v( 0)-2.d0*v( 1)+v(2))**2 + 0.25d0*(3.d0*v(0)-4.d0*v(1)+v(2))**2
 
-    beta_2 = 1.d0/(epsjs+beta_2)**wenop
-    beta_1 = 1.d0/(epsjs+beta_1)**wenop
-    beta_0 = 1.d0/(epsjs+beta_0)**wenop
+    beta_2 = 1.d0/(eps+beta_2)**wenop
+    beta_1 = 1.d0/(eps+beta_1)**wenop
+    beta_0 = 1.d0/(eps+beta_0)**wenop
 
     alpha_2 = weno4_d_g1(-2)*beta_2
     alpha_1 = weno4_d_g1(-1)*beta_1
@@ -130,13 +147,12 @@ contains
     vg2 = alpha1*(alpha_2*vr_2 + alpha_1*vr_1 + alpha_0*vr_0)
 
     return
-  end subroutine weno4
+  end subroutine weno4_gauss
 
 
-  subroutine weno5(v, vp, vm, vg1, vg2)
+  subroutine weno5_gauss(v, vg1, vg2)
     double precision, intent(in)  :: v(-2:2)
-    double precision, intent(out), optional :: vp , vm   ! v_{i+1/2} & v_{i-1/2}
-    double precision, intent(out), optional :: vg1, vg2  ! at two Gauss points
+    double precision, intent(out) :: vg1, vg2  ! at two Gauss points
 
     double precision :: vr_2, vr_1, vr_0
     double precision :: beta_2, beta_1, beta_0
@@ -147,64 +163,77 @@ contains
     beta_1 = b1*(v(-1)-2.d0*v( 0)+v(1))**2 + 0.25d0*(v(-1)-v(1))**2
     beta_0 = b1*(v( 0)-2.d0*v( 1)+v(2))**2 + 0.25d0*(3.d0*v(0)-4.d0*v(1)+v(2))**2
 
-    beta_2 = 1.d0/(epsjs+beta_2)**wenop
-    beta_1 = 1.d0/(epsjs+beta_1)**wenop
-    beta_0 = 1.d0/(epsjs+beta_0)**wenop
+    beta_2 = 1.d0/(eps+beta_2)**wenop
+    beta_1 = 1.d0/(eps+beta_1)**wenop
+    beta_0 = 1.d0/(eps+beta_0)**wenop
 
-    if (present(vp)) then
-       alpha_2 =      beta_2
-       alpha_1 = 6.d0*beta_1
-       alpha_0 = 3.d0*beta_0
-       alpha1 = 1.d0/(alpha_2 + alpha_1 + alpha_0)
+    alpha_2 = d_g1(-2)*beta_2
+    alpha_1 = d_g1(-1)*beta_1
+    alpha_0 = d_g1( 0)*beta_0
+    alpha1 = 1.d0/(alpha_2 + alpha_1 + alpha_0)
+    
+    vr_2 = L3_cg1(-2)*v(-2) + L3_cg1(-1)*v(-1) + L3_cg1(0)*v(0)
+    vr_1 = C3_cg1(-1)*v(-1) + C3_cg1( 0)*v( 0) + C3_cg1(1)*v(1)
+    vr_0 = R3_cg1( 0)*v( 0) + R3_cg1( 1)*v( 1) + R3_cg1(2)*v(2)
+    
+    vg1 = alpha1*(alpha_2*vr_2 + alpha_1*vr_1 + alpha_0*vr_0)
 
-       vr_2 = 2.d0*v(-2) - 7.d0*v(-1) + 11.d0*v(0)
-       vr_1 =     -v(-1) + 5.d0*v( 0) +  2.d0*v(1)
-       vr_0 = 2.d0*v( 0) + 5.d0*v( 1) -       v(2)
-       
-       vp = oneSixth*alpha1*(alpha_2*vr_2 + alpha_1*vr_1 + alpha_0*vr_0)
-    end if
-
-    if (present(vm)) then
-       alpha_2 = 3.d0*beta_2
-       alpha_1 = 6.d0*beta_1
-       alpha_0 =      beta_0
-       alpha1 = 1.d0/(alpha_2 + alpha_1 + alpha_0)
-
-       vr_2 =      -v(-2) + 5.d0*v(-1) + 2.d0*v(0)
-       vr_1 =  2.d0*v(-1) + 5.d0*v(0 ) -      v(1) 
-       vr_0 = 11.d0*v( 0) - 7.d0*v(1 ) + 2.d0*v(2)
-       
-       vm = oneSixth*alpha1*(alpha_2*vr_2 + alpha_1*vr_1 + alpha_0*vr_0)
-    end if
-
-    if (present(vg1)) then
-       alpha_2 = d_g1(-2)*beta_2
-       alpha_1 = d_g1(-1)*beta_1
-       alpha_0 = d_g1( 0)*beta_0
-       alpha1 = 1.d0/(alpha_2 + alpha_1 + alpha_0)
-
-       vr_2 = L3_cg1(-2)*v(-2) + L3_cg1(-1)*v(-1) + L3_cg1(0)*v(0)
-       vr_1 = C3_cg1(-1)*v(-1) + C3_cg1( 0)*v( 0) + C3_cg1(1)*v(1)
-       vr_0 = R3_cg1( 0)*v( 0) + R3_cg1( 1)*v( 1) + R3_cg1(2)*v(2)
-
-       vg1 = alpha1*(alpha_2*vr_2 + alpha_1*vr_1 + alpha_0*vr_0)
-    end if
-
-    if (present(vg2)) then
-       alpha_2 = d_g2(-2)*beta_2
-       alpha_1 = d_g2(-1)*beta_1
-       alpha_0 = d_g2( 0)*beta_0
-       alpha1 = 1.d0/(alpha_2 + alpha_1 + alpha_0)
-
-       vr_2 = L3_cg2(-2)*v(-2) + L3_cg2(-1)*v(-1) + L3_cg2(0)*v(0)
-       vr_1 = C3_cg2(-1)*v(-1) + C3_cg2( 0)*v( 0) + C3_cg2(1)*v(1)
-       vr_0 = R3_cg2( 0)*v( 0) + R3_cg2( 1)*v( 1) + R3_cg2(2)*v(2)
-
-       vg2 = alpha1*(alpha_2*vr_2 + alpha_1*vr_1 + alpha_0*vr_0)
-    end if
+    alpha_2 = d_g2(-2)*beta_2
+    alpha_1 = d_g2(-1)*beta_1
+    alpha_0 = d_g2( 0)*beta_0
+    alpha1 = 1.d0/(alpha_2 + alpha_1 + alpha_0)
+    
+    vr_2 = L3_cg2(-2)*v(-2) + L3_cg2(-1)*v(-1) + L3_cg2(0)*v(0)
+    vr_1 = C3_cg2(-1)*v(-1) + C3_cg2( 0)*v( 0) + C3_cg2(1)*v(1)
+    vr_0 = R3_cg2( 0)*v( 0) + R3_cg2( 1)*v( 1) + R3_cg2(2)*v(2)
+    
+    vg2 = alpha1*(alpha_2*vr_2 + alpha_1*vr_1 + alpha_0*vr_0)
 
     return
-  end subroutine weno5
+  end subroutine weno5_gauss
+
+
+  subroutine weno5_face(v, vp, vm)
+    double precision, intent(in)  :: v(-2:2)
+    double precision, intent(out) :: vp , vm   ! v_{i+1/2} & v_{i-1/2}
+
+    double precision :: vr_2, vr_1, vr_0
+    double precision :: beta_2, beta_1, beta_0
+    double precision :: alpha_2, alpha_1, alpha_0
+    double precision :: alpha1
+
+    beta_2 = b1*(v(-2)-2.d0*v(-1)+v(0))**2 + 0.25d0*(v(-2)-4.d0*v(-1)+3.d0*v(0))**2
+    beta_1 = b1*(v(-1)-2.d0*v( 0)+v(1))**2 + 0.25d0*(v(-1)-v(1))**2
+    beta_0 = b1*(v( 0)-2.d0*v( 1)+v(2))**2 + 0.25d0*(3.d0*v(0)-4.d0*v(1)+v(2))**2
+
+    beta_2 = 1.d0/(eps+beta_2)**wenop
+    beta_1 = 1.d0/(eps+beta_1)**wenop
+    beta_0 = 1.d0/(eps+beta_0)**wenop
+
+    alpha_2 =      beta_2
+    alpha_1 = 6.d0*beta_1
+    alpha_0 = 3.d0*beta_0
+    alpha1 = 1.d0/(alpha_2 + alpha_1 + alpha_0)
+    
+    vr_2 = 2.d0*v(-2) - 7.d0*v(-1) + 11.d0*v(0)
+    vr_1 =     -v(-1) + 5.d0*v( 0) +  2.d0*v(1)
+    vr_0 = 2.d0*v( 0) + 5.d0*v( 1) -       v(2)
+    
+    vp = oneSixth*alpha1*(alpha_2*vr_2 + alpha_1*vr_1 + alpha_0*vr_0)
+
+    alpha_2 = 3.d0*beta_2
+    alpha_1 = 6.d0*beta_1
+    alpha_0 =      beta_0
+    alpha1 = 1.d0/(alpha_2 + alpha_1 + alpha_0)
+    
+    vr_2 =      -v(-2) + 5.d0*v(-1) + 2.d0*v(0)
+    vr_1 =  2.d0*v(-1) + 5.d0*v(0 ) -      v(1) 
+    vr_0 = 11.d0*v( 0) - 7.d0*v(1 ) + 2.d0*v(2)
+    
+    vm = oneSixth*alpha1*(alpha_2*vr_2 + alpha_1*vr_1 + alpha_0*vr_0)
+
+    return
+  end subroutine weno5_face
 
 
   subroutine vweno5(lo, hi, v, vlo, vhi, glo, ghi, vp, vm, vg1, vg2)
@@ -227,9 +256,9 @@ contains
 
     !DEC$ SIMD
     do i=lo,hi
-       beta_2(i) = 1.d0/(epsjs+beta_2(i))**wenop
-       beta_1(i) = 1.d0/(epsjs+beta_1(i))**wenop
-       beta_0(i) = 1.d0/(epsjs+beta_0(i))**wenop
+       beta_2(i) = 1.d0/(eps+beta_2(i))**wenop
+       beta_1(i) = 1.d0/(eps+beta_1(i))**wenop
+       beta_0(i) = 1.d0/(eps+beta_0(i))**wenop
     end do
 
     if (present(vp)) then
@@ -299,13 +328,13 @@ contains
     double precision :: v_2, v_1, v_0
 
     beta_2 = b1*(v(-2)-2.d0*v(-1)+v(0))**2 + 0.25d0*(v(-2)-4.d0*v(-1)+3.d0*v(0))**2
-    beta_2 = 1.d0/(epsjs+beta_2)**2
+    beta_2 = 1.d0/(eps+beta_2)**2
 
     beta_1 = b1*(v(-1)-2.d0*v( 0)+v(1))**2 + 0.25d0*(v(-1)-v(1))**2
-    beta_1 = 1.d0/(epsjs+beta_1)**2
+    beta_1 = 1.d0/(eps+beta_1)**2
 
     beta_0 = b1*(v( 0)-2.d0*v( 1)+v(2))**2 + 0.25d0*(3.d0*v(0)-4.d0*v(1)+v(2))**2
-    beta_0 = 1.d0/(epsjs+beta_0)**2
+    beta_0 = 1.d0/(eps+beta_0)**2
 
     v_2 = L3_cc(-2)*v(-2) + L3_cc(-1)*v(-1) + L3_cc(0)*v(0)
     v_1 = C3_cc(-1)*v(-1) + C3_cc( 0)*v( 0) + C3_cc(1)*v(1)

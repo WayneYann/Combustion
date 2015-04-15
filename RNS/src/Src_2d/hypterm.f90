@@ -30,12 +30,12 @@ contains
 
   subroutine hypterm_x(lo,hi,U,Ulo,Uhi,fx,fxlo,fxhi)
 
-    use meth_params_module, only : NVAR, URHO, UMX, UMY, UTEMP, UFS, UEDEN, NSPEC, NCHARV, CFS
+    use meth_params_module, only : NVAR, URHO, UMX, UMY, UTEMP, UFS, UEDEN, NSPEC, NCHARV, CFS, do_mdcd
     use eigen_module, only : get_eigen_matrices
     use renorm_module, only : floor_species
     use eos_module, only : eos_get_eref
     use mdcd_module, only : mdcd
-    use weno_module, only : weno4
+    use weno_module, only : weno4_gauss, weno5_face
     use riemann_module, only : riemann
 
     integer, intent(in) :: lo(2), hi(2), Ulo(2), Uhi(2), fxlo(2), fxhi(2)
@@ -103,7 +103,7 @@ contains
           end do
           
           do ivar=1,NCHARV
-             call weno4(charv(-2:2,ivar), cvl(ivar), cvr(ivar))
+             call weno4_gauss(charv(-2:2,ivar), cvl(ivar), cvr(ivar))
           end do
 
           egv1 = transpose(egv2)  ! egv1 now holds transposed right matrix
@@ -205,9 +205,15 @@ contains
                 end do
              end do
 
-             do ivar=1,NCHARV
-                call mdcd(charv(:,ivar), cvl(ivar), cvr(ivar))
-             end do
+             if (do_mdcd) then
+                do ivar=1,NCHARV
+                   call mdcd(charv(:,ivar), cvl(ivar), cvr(ivar))
+                end do
+             else
+                do ivar=1,NCHARV
+                   call weno5_face(charv(:,ivar), cvl(ivar), cvr(ivar))
+                end do
+             end if
              
              egv1 = transpose(egv2)  ! egv1 now holds transposed right matrix
              
@@ -272,12 +278,12 @@ contains
 
   subroutine hypterm_y(lo,hi,U,Ulo,Uhi,fy,fylo,fyhi)
 
-    use meth_params_module, only : NVAR, URHO, UMX, UMY, UTEMP, UFS, UEDEN, NSPEC, NCHARV, CFS
+    use meth_params_module, only : NVAR, URHO, UMX, UMY, UTEMP, UFS, UEDEN, NSPEC, NCHARV, CFS, do_mdcd
     use eigen_module, only : get_eigen_matrices
     use renorm_module, only : floor_species
     use eos_module, only : eos_get_eref
     use mdcd_module, only : mdcd
-    use weno_module, only : weno4
+    use weno_module, only : weno4_gauss, weno5_face
     use riemann_module, only : riemann
 
     integer, intent(in) :: lo(2), hi(2), Ulo(2), Uhi(2), fylo(2), fyhi(2)
@@ -339,7 +345,7 @@ contains
           enddo
 
           do ivar=1,NCHARV
-             call weno4(charv(-2:2,ivar), cvl(ivar), cvr(ivar))
+             call weno4_gauss(charv(-2:2,ivar), cvl(ivar), cvr(ivar))
           enddo
 
           egv1 = transpose(egv2)  ! egv1 now holds transposed right matrix
@@ -435,9 +441,15 @@ contains
                 end do
              end do
              
-             do ivar=1,NCHARV
-                call mdcd(charv(:,ivar), cvl(ivar), cvr(ivar))
-             end do
+             if (do_mdcd) then
+                do ivar=1,NCHARV
+                   call mdcd(charv(:,ivar), cvl(ivar), cvr(ivar))
+                end do
+             else
+                do ivar=1,NCHARV
+                   call weno5_face(charv(:,ivar), cvl(ivar), cvr(ivar))
+                end do
+             end if
              
              egv1 = transpose(egv2)  ! egv1 now holds transposed right matrix
 

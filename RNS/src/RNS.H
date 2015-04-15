@@ -392,6 +392,10 @@ protected:
     static int         do_quartic_interp;
 
     static int         do_weno;
+    static int         do_mdcd_weno;
+    static int         weno_p;
+    static Real        weno_eps;
+    static Real        weno_gauss_phi;
 
     static int         use_vode;
     static int         new_J_cell;

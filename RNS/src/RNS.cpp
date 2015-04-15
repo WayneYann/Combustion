@@ -149,6 +149,10 @@ std::vector<int> RNS::blocksize(BL_SPACEDIM, 2048);
 int          RNS::do_quartic_interp   = 1;
 
 int          RNS::do_weno             = 1;
+int          RNS::do_mdcd_weno        = 1;
+int          RNS::weno_p              = 1;
+Real         RNS::weno_eps            = 1.e-6;
+Real         RNS::weno_gauss_phi      = 0.2233;
 
 int          RNS::do_chemistry        = 1;
 int          RNS::use_vode            = 0;
@@ -319,6 +323,11 @@ RNS::read_params ()
     {
 	do_weno = 1;  // must do weno
     }
+
+    pp.query("do_mdcd_weno", do_mdcd_weno);
+    pp.query("weno_p", weno_p);
+    pp.query("weno_eps", weno_eps);
+    pp.query("weno_gauss_phi", weno_gauss_phi);
 
     pp.query("do_chemistry", do_chemistry);
     pp.query("use_vode", use_vode);

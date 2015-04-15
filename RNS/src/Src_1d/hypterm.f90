@@ -59,11 +59,12 @@ contains
   end subroutine hypterm
 
   subroutine reconstruct(lo, hi, U, Ulo, Uhi, UL, UR, flo, fhi)
-    use meth_params_module, only : NVAR, URHO, UMX, UTEMP, UFS, UEDEN, NSPEC, NCHARV, CFS
+    use meth_params_module, only : NVAR, URHO, UMX, UTEMP, UFS, UEDEN, NSPEC, NCHARV, CFS, do_mdcd
     use eigen_module, only : get_eigen_matrices
     use renorm_module, only : floor_species
     use eos_module, only : eos_get_eref
     use mdcd_module, only : mdcd
+    use weno_module, only : weno5_face
     integer, intent(in) :: lo, hi, Ulo, Uhi, flo, fhi
     double precision, intent(in) :: U(Ulo:Uhi,NVAR)
     double precision, intent(out) :: UL(flo:fhi,NVAR)
@@ -126,9 +127,15 @@ contains
           end do
        end do
 
-       do ivar=1,NCHARV
-          call mdcd(charv(:,ivar), cvl(ivar), cvr(ivar))
-       end do
+       if (do_mdcd) then
+          do ivar=1,NCHARV
+             call mdcd(charv(:,ivar), cvl(ivar), cvr(ivar))
+          end do
+       else
+          do ivar=1,NCHARV
+             call weno5_face(charv(:,ivar), cvl(ivar), cvr(ivar))
+          end do
+       end if
 
        egv1 = transpose(egv2)  ! egv1 now holds transposed right matrix
 
