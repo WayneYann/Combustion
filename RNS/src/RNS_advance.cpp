@@ -175,28 +175,28 @@ RNS::fill_rk_boundary(MultiFab& U, Real time, Real dt, int stage, int iteration,
     BL_ASSERT(level > 0);
     BL_ASSERT(RK_order > 2);
 
-    static MultiFab* U0;
-    static MultiFab* k1;
-    static MultiFab* k2;
-    static MultiFab* k3;
-    static MultiFab* k4;
+    static PArray<MultiFab> U0(10,PArrayManage);
+    static PArray<MultiFab> k1(10,PArrayManage);
+    static PArray<MultiFab> k2(10,PArrayManage);
+    static PArray<MultiFab> k3(10,PArrayManage);
+    static PArray<MultiFab> k4(10,PArrayManage);
 
     const int ncomp = U.nComp();
     const int ngrow = U.nGrow();
 
     if (iteration == 1 && stage == 0) {
 
-	U0 = new MultiFab(grids, ncomp, ngrow);
-	k1 = new MultiFab(grids, ncomp, ngrow);
-	k2 = new MultiFab(grids, ncomp, ngrow);
-	k3 = new MultiFab(grids, ncomp, ngrow);
-	k4 = (RK_order == 4) ? new MultiFab(grids, ncomp, ngrow) : 0;
+	U0.set(level, new MultiFab(grids, ncomp, ngrow));
+	k1.set(level, new MultiFab(grids, ncomp, ngrow));
+	k2.set(level, new MultiFab(grids, ncomp, ngrow));
+	k3.set(level, new MultiFab(grids, ncomp, ngrow));
+	if (RK_order == 4) k4.set(level, new MultiFab(grids, ncomp, ngrow));
 
-	U0->setVal(0.0);
-	k1->setVal(0.0);
-	k2->setVal(0.0);
-	k3->setVal(0.0);
-	if (k4) k4->setVal(0.0);
+	U0[level].setVal(0.0);
+	k1[level].setVal(0.0);
+	k2[level].setVal(0.0);
+	k3[level].setVal(0.0);
+	if (RK_order == 4) k4[level].setVal(0.0);
 
 	RNS& levelG = *dynamic_cast<RNS*>(&getLevel(level-1));
 
@@ -252,23 +252,23 @@ RNS::fill_rk_boundary(MultiFab& U, Real time, Real dt, int stage, int iteration,
 	    switch (ii) {
 	    case 0:
 		UG = &(levelG.get_old_data(0));
-		UF = U0;
+		UF = &U0[level];
 		break;
 	    case 1:
 		UG = &(levelG.getRKk(0));
-		UF = k1;
+		UF = &k1[level];
 		break;
 	    case 2:
 		UG = &(levelG.getRKk(1));
-		UF = k2;
+		UF = &k2[level];
 		break;
 	    case 3:
 		UG = &(levelG.getRKk(2));
-		UF = k3;
+		UF = &k3[level];
 		break;
 	    case 4:
 		UG = &(levelG.getRKk(3));
-		UF = k4;
+		UF = &k4[level];
 		break;
 	    }
 
@@ -358,21 +358,21 @@ RNS::fill_rk_boundary(MultiFab& U, Real time, Real dt, int stage, int iteration,
 		BL_FORT_PROC_CALL(RNS_FILL_RK3_BNDRY, rns_fill_rk3_bndry)
 		    (ba[ibox].loVect(), ba[ibox].hiVect(),
 		     BL_TO_FORTRAN(U[mfi]),
-		     BL_TO_FORTRAN((*U0)[mfi]),
-		     BL_TO_FORTRAN((*k1)[mfi]),
-		     BL_TO_FORTRAN((*k2)[mfi]),
-		     BL_TO_FORTRAN((*k3)[mfi]),
+		     BL_TO_FORTRAN(U0[level][mfi]),
+		     BL_TO_FORTRAN(k1[level][mfi]),
+		     BL_TO_FORTRAN(k2[level][mfi]),
+		     BL_TO_FORTRAN(k3[level][mfi]),
 		     dtdt, xsi0, stage);
 	    }
 	    else {
 		BL_FORT_PROC_CALL(RNS_FILL_RK4_BNDRY, rns_fill_rk4_bndry)
 		    (ba[ibox].loVect(), ba[ibox].hiVect(),
 		     BL_TO_FORTRAN(U[mfi]),
-		     BL_TO_FORTRAN((*U0)[mfi]),
-		     BL_TO_FORTRAN((*k1)[mfi]),
-		     BL_TO_FORTRAN((*k2)[mfi]),
-		     BL_TO_FORTRAN((*k3)[mfi]),
-		     BL_TO_FORTRAN((*k4)[mfi]),
+		     BL_TO_FORTRAN(U0[level][mfi]),
+		     BL_TO_FORTRAN(k1[level][mfi]),
+		     BL_TO_FORTRAN(k2[level][mfi]),
+		     BL_TO_FORTRAN(k3[level][mfi]),
+		     BL_TO_FORTRAN(k4[level][mfi]),
 		     dtdt, xsi0, stage);
 	    }
 	}
@@ -381,11 +381,11 @@ RNS::fill_rk_boundary(MultiFab& U, Real time, Real dt, int stage, int iteration,
     fill_boundary(U, time, RNS::use_FillBoundary);
 
     if (iteration == ncycle && stage+1 == RK_order) {
-	delete U0;
-	delete k1;
-	delete k2;
-	delete k3;
-	if (k4) delete k4;
+	U0.clear(level);
+	k1.clear(level);
+	k2.clear(level);
+	k3.clear(level);
+	if (RK_order == 4) k4.clear(level);
     }
 }
 #endif
