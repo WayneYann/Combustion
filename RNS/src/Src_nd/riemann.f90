@@ -139,14 +139,10 @@ contains
        call floor_species(nspec, Y)
 
        if (e .le. 0.d0 .and. allow_negative_energy .eqv. .false.) then
-          call eos_given_RTY(e,p,c,gamc,dpdr,dpde,rho,T,Y,ierr=ierr)
+          call eos_given_RTY(e,p,c,gamc,dpdr,dpde,rho,T,Y)
        else
           call eos_given_ReY(p,c,gamc,T,dpdr,dpde,rho,e,Y,ierr=ierr)
        end if
-!       if (ierr .ne. 0) then
-!          print *, 'compute_flux_and_alpha: eos failed', level, U(i,UFS:UFS+nspec-1)*rhoinv 
-!          call bl_error("compute_flux_and_alpha: eos failed")
-!       end if
 
        vn = v(idir)
 
