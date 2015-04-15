@@ -138,7 +138,7 @@ contains
 
        call floor_species(nspec, Y)
 
-       if (e .le. 0.d0 .and. allow_negative_energy .eqv. .false.) then
+       if ((e .le. 0.d0) .and. (allow_negative_energy .eqv. .false.)) then
           call eos_given_RTY(e,p,c,gamc,dpdr,dpde,rho,T,Y)
        else
           call eos_given_ReY(p,c,gamc,T,dpdr,dpde,rho,e,Y,ierr=ierr)
@@ -211,7 +211,7 @@ contains
        Yl    = UL(i,UFS:UFS+nspec-1) * rinvl
        rel   = retl - 0.5d0*rl*(vl(1)**2+vl(2)**2+vl(3)**2)
        el    = rel * rinvl       
-       if (el .le. 0.d0 .and. allow_negative_energy .eqv. .false.) then
+       if ((el .le. 0.d0) .and. (allow_negative_energy .eqv. .false.)) then
           call eos_given_RTY(el, pl, cl, gamcl, dpdr, dpde, rl, Tl, Yl)
        else
           call eos_given_ReY(pl, cl, gamcl, Tl, dpdr, dpde, rl, el, Yl)
@@ -227,7 +227,7 @@ contains
        Yr    = UR(i,UFS:UFS+nspec-1) * rinvr
        rer   = retr - 0.5d0*rr*(vr(1)**2+vr(2)**2+vr(3)**2)
        er    = rer * rinvr       
-       if (er .le. 0.d0 .and. allow_negative_energy .eqv. .false.) then
+       if ((er .le. 0.d0) .and. (allow_negative_energy .eqv. .false.)) then
           call eos_given_RTY(er, pr, cr, gamcr, dpdr, dpde, rr, Tr, Yr)
        else
           call eos_given_ReY(pr, cr, gamcr, Tr, dpdr, dpde, rr, er, Yr)
@@ -390,7 +390,7 @@ contains
        Yl    = UL(i,UFS:UFS+nspec-1) * rinvl
        rel   = retl - 0.5d0*rl*(vl(1)**2+vl(2)**2+vl(3)**2)
        el    = rel * rinvl       
-       if (el .le. 0.d0 .and. allow_negative_energy .eqv. .false.) then
+       if ((el .le. 0.d0) .and. (allow_negative_energy .eqv. .false.)) then
           call eos_given_RTY(el, pl, cl, gamcl, dpdr, dpde, rl, Tl, Yl)
        else
           call eos_given_ReY(pl, cl, gamcl, Tl, dpdr, dpde, rl, el, Yl)
@@ -406,7 +406,7 @@ contains
        Yr    = UR(i,UFS:UFS+nspec-1) * rinvr
        rer   = retr - 0.5d0*rr*(vr(1)**2+vr(2)**2+vr(3)**2)
        er    = rer * rinvr       
-       if (er .le. 0.d0 .and. allow_negative_energy .eqv. .false.) then
+       if ((er .le. 0.d0) .and. (allow_negative_energy .eqv. .false.)) then
           call eos_given_RTY(er, pr, cr, gamcr, dpdr, dpde, rr, Tr, Yr)
        else
           call eos_given_ReY(pr, cr, gamcr, Tr, dpdr, dpde, rr, er, Yr)
