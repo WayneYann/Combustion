@@ -409,7 +409,7 @@ contains
     UX1 = 0.d0
     UX2 = 0.d0
 
-    do k = lo(3)-2, hi(3)-2
+    do k = lo(3)-2, hi(3)+2
        do j = lo(2)-3, hi(2)+3
           do i = lo(1), hi(1)
              rho0 = U(i,j,k,URHO)
