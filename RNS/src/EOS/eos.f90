@@ -12,6 +12,8 @@ module eos_module
   double precision, save, public :: smallp = 1.d-50
   double precision, save, public :: smallc = 1.d-50
 
+  logical, parameter, public :: allow_negative_energy = .true.
+
   logical, save, private :: initialized = .false.
 
   private :: nspecies, Ru, inv_mwt
@@ -143,13 +145,13 @@ contains
   end subroutine eos_get_e
 
 
-  subroutine eos_given_RTY(e, P, C, dpdr, dpde, rho, T, Y, pt_index)
-    double precision, intent(  out) :: e, P, C, dpdr(nspecies), dpde
+  subroutine eos_given_RTY(e, P, C, G, dpdr, dpde, rho, T, Y, pt_index)
+    double precision, intent(  out) :: e, P, C, G, dpdr(nspecies), dpde
     double precision, intent(in   ) :: rho, T, Y(nspecies)
     integer, optional, intent(in   ) :: pt_index(:)
     
     integer :: iwrk
-    double precision :: rwrk, Cv, G, X(nspecies)
+    double precision :: rwrk, Cv, X(nspecies)
 
     call ckpy(rho, T, Y, iwrk, rwrk, P)
     P = max(P,smallp)

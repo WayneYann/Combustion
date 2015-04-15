@@ -15,7 +15,7 @@ contains
     double precision, intent(out) :: lv(NCHARV,NCHARV), rv(NCHARV,NCHARV)
     
     integer :: m, n
-    double precision :: rhoInv, p, c, dpdr(NSPEC), dpde, e, ek, H
+    double precision :: rhoInv, p, c, gamc, dpdr(NSPEC), dpde, e, ek, H
     double precision :: gt, b, d(NSPEC), gtinv, cinv
     double precision :: eref
 
@@ -23,7 +23,7 @@ contains
     
     ek = 0.5d0*(vel(1)**2 + vel(2)**2 + vel(3)**2)
 
-    call eos_given_RTY(e, p, c, dpdr, dpde, rho, T, Y)
+    call eos_given_RTY(e, p, c, gamc, dpdr, dpde, rho, T, Y)
     
     eref = eos_get_eref(Y)
     e = e - eref
