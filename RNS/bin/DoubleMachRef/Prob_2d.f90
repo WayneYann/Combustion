@@ -75,8 +75,8 @@ subroutine rns_initdata(level,time,lo,hi,nscal, &
      state0(UMY)   = -rho0*v0*cos(thetashock)
      state0(UEDEN) = rho0*(ei0 + 0.5d0*v0**2)
      state0(UTEMP) = 0.d0
-     Y(1) = 0.25d0
-     Y(2) = 0.75d0
+     Y(1) = 0.5d0
+     Y(2) = 0.5d0
      call eos_get_T(state0(UTEMP), ei0, Y)
      state0(UFS)   = Y(1) * rho0
      state0(UFS+1) = Y(2) * rho0
@@ -86,8 +86,8 @@ subroutine rns_initdata(level,time,lo,hi,nscal, &
      state1(UMY)   = -rho1*v1*cos(thetashock)
      state1(UEDEN) = rho1*(ei1 + 0.5d0*v1**2)
      state1(UTEMP) = 0.d0
-     Y(1) = 0.75d0
-     Y(2) = 0.25d0
+     Y(1) = 0.5d0
+     Y(2) = 0.5d0
      call eos_get_T(state1(UTEMP), ei1, Y)
      state1(UFS)   = Y(1) * rho1
      state1(UFS+1) = Y(2) * rho1
