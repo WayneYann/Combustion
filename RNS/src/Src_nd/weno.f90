@@ -193,11 +193,11 @@ contains
   end subroutine weno5_gauss
 
 
-  subroutine weno5_face(v, vp, vm)
-    double precision, intent(in)  :: v(-2:2)
-    double precision, intent(out) :: vp , vm   ! v_{i+1/2} & v_{i-1/2}
+  subroutine weno5_face(v, vl, vr)
+    double precision, intent(in)  :: v(-2:3)
+    double precision, intent(out) :: vl , vr   ! left and right at i+1/2
 
-    double precision :: vr_2, vr_1, vr_0
+    double precision :: vr_2, vr_1, vr_0, vl_2, vl_1, vl_0
     double precision :: beta_2, beta_1, beta_0
     double precision :: alpha_2, alpha_1, alpha_0
     double precision :: alpha1
@@ -215,22 +215,32 @@ contains
     alpha_0 = 3.d0*beta_0
     alpha1 = 1.d0/(alpha_2 + alpha_1 + alpha_0)
     
-    vr_2 = 2.d0*v(-2) - 7.d0*v(-1) + 11.d0*v(0)
-    vr_1 =     -v(-1) + 5.d0*v( 0) +  2.d0*v(1)
-    vr_0 = 2.d0*v( 0) + 5.d0*v( 1) -       v(2)
+    vl_2 = 2.d0*v(-2) - 7.d0*v(-1) + 11.d0*v(0)
+    vl_1 =     -v(-1) + 5.d0*v( 0) +  2.d0*v(1)
+    vl_0 = 2.d0*v( 0) + 5.d0*v( 1) -       v(2)
     
-    vp = oneSixth*alpha1*(alpha_2*vr_2 + alpha_1*vr_1 + alpha_0*vr_0)
+    vl = oneSixth*alpha1*(alpha_2*vl_2 + alpha_1*vl_1 + alpha_0*vl_0)
 
-    alpha_2 = 3.d0*beta_2
+    !-----------------------------------------------------------
+
+    beta_2 = b1*(v(3)-2.d0*v( 2)+v( 1))**2 + 0.25d0*(v(3)-4.d0*v(2)+3.d0*v(1))**2
+    beta_1 = b1*(v(2)-2.d0*v( 1)+v( 0))**2 + 0.25d0*(v(2)-v(0))**2
+    beta_0 = b1*(v(1)-2.d0*v( 0)+v(-1))**2 + 0.25d0*(3.d0*v(1)-4.d0*v(0)+v(-1))**2
+
+    beta_2 = 1.d0/(eps+beta_2)**wenop
+    beta_1 = 1.d0/(eps+beta_1)**wenop
+    beta_0 = 1.d0/(eps+beta_0)**wenop
+
+    alpha_2 =      beta_2
     alpha_1 = 6.d0*beta_1
-    alpha_0 =      beta_0
+    alpha_0 = 3.d0*beta_0
     alpha1 = 1.d0/(alpha_2 + alpha_1 + alpha_0)
     
-    vr_2 =      -v(-2) + 5.d0*v(-1) + 2.d0*v(0)
-    vr_1 =  2.d0*v(-1) + 5.d0*v(0 ) -      v(1) 
-    vr_0 = 11.d0*v( 0) - 7.d0*v(1 ) + 2.d0*v(2)
+    vr_2 = 11.d0*v( 1) - 7.d0*v( 2) +  2.d0*v(3)
+    vr_1 = vl_0
+    vr_0 = vl_1
     
-    vm = oneSixth*alpha1*(alpha_2*vr_2 + alpha_1*vr_1 + alpha_0*vr_0)
+    vr = oneSixth*alpha1*(alpha_2*vr_2 + alpha_1*vr_1 + alpha_0*vr_0)
 
     return
   end subroutine weno5_face
