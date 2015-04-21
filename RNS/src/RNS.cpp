@@ -347,6 +347,9 @@ RNS::read_params ()
     }
     pp.query("f2comp_simple_dUdt", f2comp_simple_dUdt);
     pp.query("f2comp_nbdf", f2comp_nbdf);
+
+    // Inform BoxLib boundary functions are thread safe.
+    StateDescriptor::setBndryFuncThreadSafety(1);
 }
 
 RNS::RNS ()
