@@ -15,10 +15,12 @@ namespace
 {
     bool initialized = false;
     ChemDriver::TRANSPORT transport = transport_DEF;
+    static int number_of_species = -1;
 
     void ChemDriver_Finalize() {
       initialized = false;
       transport = transport_DEF;
+      number_of_species = -1;
     }
 }
 
@@ -54,6 +56,94 @@ ChemDriver::~ChemDriver ()
 {
     FORT_FINALIZECHEM();
 }
+
+extern "C" {
+  double* GetParamPtr(int                reaction_id,
+                      REACTION_PARAMETER param_id,
+                      int                species_id,
+                      int                get_default);
+  void ResetAllParametersToDefault();
+};
+
+ChemDriver::Parameter::Parameter(int                _reaction_id,
+                                 REACTION_PARAMETER _param_id,
+                                 int                _species_id)
+  :reaction_id(_reaction_id),
+   param_id(_param_id),
+   species_id(_species_id)
+{
+  rp = GetParamPtr(reaction_id,param_id,species_id,0);
+  rdefp = GetParamPtr(reaction_id,param_id,species_id,1);
+}
+
+Real
+ChemDriver::Parameter::Parameter::Value() const
+{
+  return *rp;
+}
+
+Real
+ChemDriver::Parameter::Parameter::DefaultValue() const
+{
+  return *rdefp;
+}
+
+void
+ChemDriver::Parameter::Parameter::ResetToDefault()
+{
+  *rp = *rdefp;
+}
+
+std::ostream&
+ChemDriver::Parameter::operator<<(std::ostream& os) const
+{
+  // FIXME: Hard-coded list of parameters invites errors later...
+  os << "(r: " << reaction_id << " p: ";
+  if (param_id == FWD_A)          {os << "FWD_A";}
+  else if (param_id == FWD_BETA)  {os << "FWD_BETA";}
+  else if (param_id == FWD_EA)    {os << "FWD_EA";}
+  else if (param_id == LOW_A)     {os << "LOW_A";}
+  else if (param_id == LOW_BETA)  {os << "LOW_BETA";}
+  else if (param_id == LOW_EA)    {os << "LOW_EA";}
+  else if (param_id == REV_A)     {os << "REV_A";}
+  else if (param_id == REV_BETA)  {os << "REV_BETA";}
+  else if (param_id == REV_EA)    {os << "REV_EA";}
+  else if (param_id == TROE_A)    {os << "TROE_A";}
+  else if (param_id == TROE_TS)   {os << "TROE_TS";}
+  else if (param_id == TROE_TSS)  {os << "TROE_TSS";}
+  else if (param_id == TROE_TSSS) {os << "TROE_TSSS";}
+  else if (param_id == SRI_A)     {os << "SRI_A";}
+  else if (param_id == SRI_B)     {os << "SRI_B";}
+  else if (param_id == SRI_C)     {os << "SRI_C";}
+  else if (param_id == SRI_D)     {os << "SRI_D";}
+  else if (param_id == SRI_E)     {os << "SRI_E";}
+  else if (param_id == THIRD_BODY) {
+    os << "THIRD_BODY s: " << species_id;
+  }
+  else {
+    BoxLib::Abort("Unknown reaction parameter");
+  }
+  os << " v: " << Value() << " DEF: " << DefaultValue() << ")";
+  return os;
+}
+
+std::ostream& operator<< (std::ostream&  os, const ChemDriver::Parameter& param)
+{
+  return param.operator<<(os);
+}
+
+void
+ChemDriver::Parameter::operator=(Real new_value)
+{
+  *rp = new_value;
+}
+
+void
+ChemDriver::ResetAllParamsToDefault()
+{
+  ResetAllParametersToDefault();
+}
+
 
 void
 ChemDriver::SetTransport (const ChemDriver::TRANSPORT& tran_in)
@@ -105,6 +195,7 @@ ChemDriver::initOnce ()
 
     reaction_map.resize(numReactions());
     FORT_GET_REACTION_MAP(reaction_map.dataPtr());
+    number_of_species = numSpecies();
 }
 
 void
@@ -242,8 +333,37 @@ Array<Real>
 ChemDriver::elementAtomicWt() const
 {
     Array<Real> awt(numElements());
-    FORT_GETCKAWT(awt.dataPtr());
+    CD_MWT(awt.dataPtr());
     return awt;
+}
+
+extern "C" {
+  void CD_MWT(Real* mwt)
+  {
+    if (!initialized) {
+      BoxLib::Abort("Must construct the ChemDriver prior to calling CD_MWT");
+    }
+    FORT_GETCKMWT(mwt);
+  }
+  void CD_XTY_PT(const Real* X, Real* Y)
+  {
+    if (!initialized) {
+      BoxLib::Abort("Must construct the ChemDriver prior to calling CD_XTY_PT");
+    }
+    static Array<int> idx(BL_SPACEDIM,0);
+    static int* p = idx.dataPtr();
+    FORT_MOLETOMASS(p, p, X, ARLIM(p), ARLIM(p), Y, ARLIM(p), ARLIM(p));
+  }
+
+  void CD_YTX_PT(const Real* Y, Real* X)
+  {
+    if (!initialized) {
+      BoxLib::Abort("Must construct the ChemDriver prior to calling CD_YTX_PT");
+    }
+    static Array<int> idx(BL_SPACEDIM,0);
+    static int* p = idx.dataPtr();
+    FORT_MASSTOMOLE(p, p, Y, ARLIM(p), ARLIM(p), X, ARLIM(p), ARLIM(p));
+  }
 }
 
 Array<Real>
@@ -252,10 +372,7 @@ ChemDriver::massFracToMoleFrac(const Array<Real>& Y) const
     int nc = Y.size();
     BL_ASSERT(nc = numSpecies());
     Array<Real> X(nc);
-    Box box(IntVect(D_DECL(0,0,0)),IntVect(D_DECL(0,0,0)));
-    FORT_MASSTOMOLE(box.loVect(), box.hiVect(),
-		    Y.dataPtr(), ARLIM(box.loVect()), ARLIM(box.hiVect()),
-		    X.dataPtr(), ARLIM(box.loVect()), ARLIM(box.hiVect()));
+    CD_YTX_PT(Y.dataPtr(), X.dataPtr());
     return X;
 }
 
@@ -265,10 +382,7 @@ ChemDriver::moleFracToMassFrac(const Array<Real>& X) const
     int nc = X.size();
     BL_ASSERT(nc==numSpecies());
     Array<Real> Y(nc);
-    Box box(IntVect(D_DECL(0,0,0)),IntVect(D_DECL(0,0,0)));
-    FORT_MOLETOMASS(box.loVect(), box.hiVect(),
-		    X.dataPtr(), ARLIM(box.loVect()), ARLIM(box.hiVect()),
-		    Y.dataPtr(), ARLIM(box.loVect()), ARLIM(box.hiVect()));
+    CD_XTY_PT(X.dataPtr(),Y.dataPtr());
     return Y;
 }
 
@@ -321,7 +435,7 @@ ChemDriver::molarProduction(FArrayBox&       Q,
     const Box& mabx = C.box();
     const Box& mbbx = T.box();
     const Box& mobx = Q.box();
-    const Box ovlp = box & mabx & mbbx & mobx;
+    const Box& ovlp = box & mabx & mbbx & mobx;
 
     const int idx = index(specName) + 1; // to fortran indexing
 
@@ -611,7 +725,7 @@ ChemDriver::decodeStringFromFortran(const int* coded,
 #include "iostream"
 using std::cout;
 using std::endl;
-void
+bool
 ChemDriver::solveTransient(FArrayBox&        Ynew,
                            FArrayBox&        Tnew,
                            const FArrayBox&  Yold,
@@ -636,18 +750,19 @@ ChemDriver::solveTransient(FArrayBox&        Ynew,
     const int do_diag  = (chemDiag!=0);
     Real*     diagData = do_diag ? chemDiag->dataPtr() : 0;
     const int do_stiff = (use_stiff_solver);
-    FORT_CONPSOLV(box.loVect(), box.hiVect(),
-                  Ynew.dataPtr(sCompY), ARLIM(Ynew.loVect()), ARLIM(Ynew.hiVect()),
-                  Tnew.dataPtr(sCompT), ARLIM(Tnew.loVect()), ARLIM(Tnew.hiVect()),
-                  Yold.dataPtr(sCompY), ARLIM(Yold.loVect()), ARLIM(Yold.hiVect()),
-                  Told.dataPtr(sCompT), ARLIM(Told.loVect()), ARLIM(Told.hiVect()),
-                  FuncCount.dataPtr(),
-                  ARLIM(FuncCount.loVect()), ARLIM(FuncCount.hiVect()),
-                  &Patm, &dt, diagData, &do_diag, &do_stiff);
+    int success = FORT_CONPSOLV(box.loVect(), box.hiVect(),
+				Ynew.dataPtr(sCompY), ARLIM(Ynew.loVect()), ARLIM(Ynew.hiVect()),
+				Tnew.dataPtr(sCompT), ARLIM(Tnew.loVect()), ARLIM(Tnew.hiVect()),
+				Yold.dataPtr(sCompY), ARLIM(Yold.loVect()), ARLIM(Yold.hiVect()),
+				Told.dataPtr(sCompT), ARLIM(Told.loVect()), ARLIM(Told.hiVect()),
+				FuncCount.dataPtr(),
+				ARLIM(FuncCount.loVect()), ARLIM(FuncCount.hiVect()),
+				&Patm, &dt, diagData, &do_diag, &do_stiff);
+    return success > 0;
 }
 
 #ifdef LMC_SDC
-void
+bool
 ChemDriver::solveTransient_sdc(FArrayBox&        rhoYnew,
 			       FArrayBox&        rhoHnew,
 			       FArrayBox&        Tnew,
@@ -680,16 +795,17 @@ ChemDriver::solveTransient_sdc(FArrayBox&        rhoYnew,
     Real*     diagData = do_diag ? chemDiag->dataPtr() : 0;
     const int do_stiff = (use_stiff_solver);
 
-    FORT_CONPSOLV_SDC(box.loVect(), box.hiVect(),
-                      rhoYnew.dataPtr(sComprhoY), ARLIM(rhoYnew.loVect()),   ARLIM(rhoYnew.hiVect()),
-                      rhoHnew.dataPtr(sComprhoH), ARLIM(rhoHnew.loVect()),   ARLIM(rhoHnew.hiVect()),
-                      Tnew.dataPtr(sCompT),       ARLIM(Tnew.loVect()),      ARLIM(Tnew.hiVect()),
-                      rhoYold.dataPtr(sComprhoY), ARLIM(rhoYold.loVect()),   ARLIM(rhoYold.hiVect()),
-                      rhoHold.dataPtr(sComprhoH), ARLIM(rhoHold.loVect()),   ARLIM(rhoHold.hiVect()),
-                      Told.dataPtr(sCompT),       ARLIM(Told.loVect()),      ARLIM(Told.hiVect()),
-                      const_src.dataPtr(0),       ARLIM(const_src.loVect()), ARLIM(const_src.hiVect()),
-                      FuncCount.dataPtr(),        ARLIM(FuncCount.loVect()), ARLIM(FuncCount.hiVect()),
-		      &Patm, &dt, diagData, &do_diag, &do_stiff);
+    int success = FORT_CONPSOLV_SDC(box.loVect(), box.hiVect(),
+				    rhoYnew.dataPtr(sComprhoY), ARLIM(rhoYnew.loVect()),   ARLIM(rhoYnew.hiVect()),
+				    rhoHnew.dataPtr(sComprhoH), ARLIM(rhoHnew.loVect()),   ARLIM(rhoHnew.hiVect()),
+				    Tnew.dataPtr(sCompT),       ARLIM(Tnew.loVect()),      ARLIM(Tnew.hiVect()),
+				    rhoYold.dataPtr(sComprhoY), ARLIM(rhoYold.loVect()),   ARLIM(rhoYold.hiVect()),
+				    rhoHold.dataPtr(sComprhoH), ARLIM(rhoHold.loVect()),   ARLIM(rhoHold.hiVect()),
+				    Told.dataPtr(sCompT),       ARLIM(Told.loVect()),      ARLIM(Told.hiVect()),
+				    const_src.dataPtr(0),       ARLIM(const_src.loVect()), ARLIM(const_src.hiVect()),
+				    FuncCount.dataPtr(),        ARLIM(FuncCount.loVect()), ARLIM(FuncCount.hiVect()),
+				    &Patm, &dt, diagData, &do_diag, &do_stiff);
+    return success > 0;
 }
 #endif
 
@@ -1465,7 +1581,7 @@ ChemDriver::getEdges (const std::string& trElt, int PrintVerbose, int HackSplitt
             int pc1 = p1->second;
 
             Group b0(pc0 * groups[ps0] - rc0 * groups[rs0]);
-            Group b1(pc1 * groups[ps1] - rc0 * groups[rs0]);            
+            Group b1(pc1 * groups[ps1] - rc0 * groups[rs0]);
             int pick = 0;
 
             // HACK

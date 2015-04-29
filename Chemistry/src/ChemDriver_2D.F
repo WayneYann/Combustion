@@ -88,12 +88,6 @@
       Pdyne = Patm * P1atm
       scale = million
 
-#ifdef MIKE1
-      do n=1,Nrxns
-         RevKt(n) = zero
-      end do      
-#endif      
-
       do j=lo(2),hi(2)
          do i=lo(1),hi(1)
             do n=1,Nspec
@@ -111,12 +105,7 @@
             endif
             CALL CKYTX(Yt,IWRK(ckbi),RWRK(ckbr),Xt)
 #endif
-#ifdef MIKE1
             CALL CKKFKR(Pdyne,T(i,j),Xt,IWRK(ckbi),RWRK(ckbr),FwdKt,RevKt)
-#else
-            CALL CKQXP(Pdyne,T(i,j),Xt,IWRK(ckbi),RWRK(ckbr),FwdKt)
-c            call bl_abort("FORT_FRrateXTP not implemented")
-#endif
             do n=1,Nrxns
                FwdK(i,j,n) = FwdKt(rxns(n)+1)*scale
                RevK(i,j,n) = RevKt(rxns(n)+1)*scale
@@ -174,6 +163,7 @@ c            call bl_abort("FORT_FRrateXTP not implemented")
             T_cell = T(i,j)
             call conpFY_sdc(ndummy,tdummy,Zt,Zdott,RWRK,IWRK)
 
+            call CKHMS(T(i,j),IWRK(ckbi),RWRK(ckbr),H_CGS)
             Q(i,j) = 0.d0
             do n= 1, Nspec
                Q(i,j) = Q(i,j) - Zdott(n) * H_CGS(n) * 1.d-4
@@ -558,7 +548,7 @@ c     Get the matrix of elements versus species
       end do
       end
 
-      subroutine FORT_CONPSOLV(lo, hi,
+      integer function FORT_CONPSOLV(lo, hi,
      &     Ynew, DIMS(Ynew), 
      &     Tnew, DIMS(Tnew),
      &     Yold, DIMS(Yold), 
@@ -819,7 +809,8 @@ c
 995               format(a,3(i4,a))
 996               format(a16,1x,4e30.22)
                   close(lout)
-                  call bl_abort('VODE failed, see drop file, exiting...')
+                  FORT_CONPSOLV = 0
+                  return
                end if
             enddo
 
@@ -845,10 +836,11 @@ c
       endif
       end do
       end do
+      FORT_CONPSOLV = 1
       end
 
 #ifdef LMC_SDC
-      subroutine FORT_CONPSOLV_SDC(lo, hi,
+      integer function FORT_CONPSOLV_SDC(lo, hi,
      &     rhoYnew,   DIMS(rhoYnew), 
      &     rhoHnew,   DIMS(rhoHnew),
      &     Tnew,      DIMS(Tnew),
@@ -965,6 +957,18 @@ c
             c_0(1:Nspec+1)     = const_src(i,j,1:Nspec+1)
             T_cell             = Told(i,j)
             FuncCount(i,j)     = 0
+
+#ifdef ALWAYS_NEW_J
+            FIRST = .TRUE.
+#endif
+
+!           if(i.eq.0 .and. j.eq.0)then
+!               write(6,*) " in conpsolv"
+!               print *, "Z", Z(1:Nspec)
+!               print *, "c_0", c_0(1:Nspec)
+!               print *, "rhoH_INIT", rhoH_INIT
+!               print *, "T_cell", T_cell
+!           endif
 
             if (do_diag.eq.1) then
                FuncCount(i,j) = 0
@@ -1087,7 +1091,8 @@ c
  995                 format(a,3(i4,a))
  996                 format(a,1x,4e30.22)
                      close(lout)
-                     call bl_abort('VODE failed, exiting')
+                     FORT_CONPSOLV_SDC = 0
+                     return
                   end if
                end if
                   
@@ -1144,7 +1149,7 @@ c
       if (verbose .and. nfails .gt. 0) then
          print*, '*** DVODE failures for last chem block: ', nfails; call flush(6)
       end if
-
+      FORT_CONPSOLV_SDC = 1
       end
 #endif
 

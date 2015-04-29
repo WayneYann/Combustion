@@ -76,6 +76,7 @@ contains
 
   subroutine chemistry_close()
     deallocate(elem_names,spec_names,molecular_weight,inv_mwt,std_heat_formation)
+    call ckfinalize()
   end subroutine chemistry_close
 
 

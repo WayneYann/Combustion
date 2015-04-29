@@ -2,6 +2,9 @@
 #define _ChemDriver_F_H_
 
 #ifdef BL_LANG_FORT
+#    define CD_XTY_PT            cdxtypt
+#    define CD_YTX_PT            cdytxpt
+#    define CD_MWT               cdmwt
 #    define FORT_USINGEG         dusingeg
 #    define FORT_USINGMC         dusingmc
 #    define FORT_MCLINKNAME      dmclink
@@ -68,6 +71,9 @@
 #    define FORT_GET_REACTION_MAP dgrm
 #else
 #  if defined(BL_FORT_USE_UPPERCASE)
+#    define CD_XTY_PT            CDXTYPT
+#    define CD_YTX_PT            CDYTXPT
+#    define CD_MWT               CDMWT
 #    define FORT_USINGEG         DUSINGEG
 #    define FORT_USINGMC         DUSINGMC
 #    define FORT_MCLINKNAME      DMCLINK
@@ -132,6 +138,9 @@
 #    define FORT_SETNU           DSETNU
 #    define FORT_GET_REACTION_MAP DGRM
 #  elif defined(BL_FORT_USE_LOWERCASE)
+#    define CD_XTY_PT            cdxtypt
+#    define CD_YTX_PT            cdytxpt
+#    define CD_MWT               cdmwt
 #    define FORT_USINGEG         dusingeg
 #    define FORT_USINGMC         dusingmc
 #    define FORT_MCLINKNAME      dmclink
@@ -196,6 +205,9 @@
 #    define FORT_SETNU           dsetnu
 #    define FORT_GET_REACTION_MAP dgrm
 #  elif defined(BL_FORT_USE_UNDERSCORE)
+#    define CD_XTY_PT            cdxtypt_
+#    define CD_YTX_PT            cdytxpt_
+#    define CD_MWT               cdmwt_
 #    define FORT_USINGEG         dusingeg_
 #    define FORT_USINGMC         dusingmc_
 #    define FORT_MCLINKNAME      dmclink_
@@ -354,7 +366,7 @@ extern "C" {
                        const Real* Y,  ARLIM_P(Ylo),  ARLIM_P(Yhi),
                        const Real* Yn, ARLIM_P(Ynlo), ARLIM_P(Ynhi));
 
-    void FORT_CONPSOLV(const int* lo, const int* hi,
+    int FORT_CONPSOLV(const int* lo, const int* hi,
 		       Real* Ynew, ARLIM_P(Ynlo), ARLIM_P(Ynhi),
 		       Real* Tnew, ARLIM_P(Tnlo), ARLIM_P(Tnhi),
 		       const Real* Yold, ARLIM_P(Yolo), ARLIM_P(Yohi),
@@ -364,7 +376,7 @@ extern "C" {
                        const int* do_diag, const int* do_stiff);
 
 #ifdef LMC_SDC
-    void FORT_CONPSOLV_SDC(const int* lo, const int* hi,
+    int FORT_CONPSOLV_SDC(const int* lo, const int* hi,
 			   Real* rhoYnew, ARLIM_P(rhoYnlo), ARLIM_P(rhoYnhi),
 			   Real* rhoHnew, ARLIM_P(rhoHnlo), ARLIM_P(rhoHnhi),
 			   Real* Tnew, ARLIM_P(Tnlo), ARLIM_P(Tnhi),

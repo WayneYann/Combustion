@@ -12,6 +12,7 @@
 
 #ifdef USE_SDCLIB
 class SDCAmr;
+#include <MLSDCAmr.H>
 #endif
 
 #include <iostream>
@@ -24,7 +25,11 @@ enum StateType { State_Type = 0,
 
 class RNS
     :
+#ifdef USE_SDCLIB
+    public MLSDCAmrLevel
+#else
     public AmrLevel
+#endif
 {
 public:
     //
@@ -129,7 +134,7 @@ public:
     //
     // fill boundary
     //
-    void fill_boundary(MultiFab& U, Real time, int type, 
+    void fill_boundary(MultiFab& U, Real time, int type,
 		       bool isCorrection=false, bool isFEval=false);
     // choices for "type" in fill_boundary:
     static const int no_fill               = 0;
@@ -145,7 +150,7 @@ public:
     // Given U, compute Uprime (i.e., dUdt) for AD
     //
     void dUdt_AD(MultiFab& U, MultiFab& Uprime, Real time, int fill_boundary_type,
-		 FluxRegister* fine=0, FluxRegister* current=0, Real dt=0.0, 
+		 FluxRegister* fine=0, FluxRegister* current=0, Real dt=0.0,
 		 bool partialUpdate = false);
     //
     // Given U, compute Uprime (i.e., dUdt) for chemistry
@@ -270,10 +275,6 @@ public:
 
     static class ChemDriver* chemSolve;
 
-#ifdef USE_SDCLIB
-    SDCAmr* getSDCAmr() { return (SDCAmr*) parent; }
-#endif
-
     // which grids touch fine?
     std::vector<int> touchFine;
     void buildTouchFine();
@@ -283,6 +284,11 @@ public:
     void zeroChemStatus();
 
     static int check_imex_order(int ho_imex);
+
+#ifdef USE_SDCLIB
+    void restrict(MLSDCAmrEncap& F, MLSDCAmrEncap& G, Real t, MLSDCAmrLevel& levelG);
+    void interpolate(MLSDCAmrEncap& F, MLSDCAmrEncap& G, Real t, bool correction, bool evaluation, MLSDCAmrLevel& levelG);
+#endif
 
 protected:
 
@@ -305,7 +311,7 @@ protected:
 
     void sum_conserved_variables ();
     void volWgtSumCons(Array<Real>& s);
-    
+
     void sum_chemstatus();
 
     //
@@ -329,7 +335,7 @@ protected:
     static Real      change_max;
     static int       do_reflux;
     static Array<int> lo_bc;
-    static Array<int> hi_bc;       
+    static Array<int> hi_bc;
     static BCRec     phys_bc;
     static int       NUM_GROW;
 
@@ -386,20 +392,17 @@ protected:
     static int         do_quartic_interp;
 
     static int         do_weno;
-    static int         do_mp5;
-    static int         weno_type;
-    static int         do_quadrature_weno;
-    static int         do_component_weno;
-    static Real        eps_wenojs;
-    static Real        eps_wenoz;
-    static Real        eps_wenom;
+    static int         do_mdcd_weno;
+    static int         weno_p;
+    static Real        weno_eps;
+    static Real        weno_gauss_phi;
 
     static int         use_vode;
     static int         new_J_cell;
     static int         chem_do_weno;
 
     enum ChemSolverType { CC_BURNING = 0, // 0: burn at cell centers
-			  GAUSS_BURNING,  // 1: burn at Gauss points using BDF/VODE 
+			  GAUSS_BURNING,  // 1: burn at Gauss points using BDF/VODE
 			  SPLIT_BURNING,  // 2: burn at Gauss points by splitting
 			  BECC_BURNING,   // 3: burn at cell center using backward Euler
 			  BEGP_BURNING,   // 4: burn at Gauss points using backward Euler
@@ -414,6 +417,9 @@ protected:
     static Real        startCPUTime;
 
     Real getCPUTime();
+
+    int num_ad_evals;
+    int num_chem_evals;
 };
 
 //

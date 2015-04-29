@@ -89,20 +89,8 @@ class CPickler(CMill):
         self._outdent()
         self._write()
 
-        self._write('struct ReactionData {')
-        self._indent()
-        self._write('double fwd_A,fwd_beta,fwd_Ea;')
-        self._write('double low_A,low_beta,low_Ea;')
-        self._write('double rev_A,rev_beta,rev_Ea;')
-        self._write('double troe_a,troe_Ts, troe_Tss, troe_Tsss;')
-        self._write('double sri_a, sri_b, sri_c, sri_d, sri_e;')
-        self._write('double activation_units, prefactor_units, phase_units;')
-        self._write('int is_PD, troe_len, sri_len;')
-        self._outdent()
-        self._write('};')
         self._write()
         nReactions = len(mechanism.reaction())
-        self._write('static struct ReactionData R[%d], R_DEF[%d];' % (nReactions, nReactions))
         self._write()
         self._write('static double fwd_A[%d], fwd_beta[%d], fwd_Ea[%d];' 
                     % (nReactions,nReactions,nReactions))
@@ -116,8 +104,28 @@ class CPickler(CMill):
                     % (nReactions,nReactions,nReactions,nReactions,nReactions))
         self._write('static double activation_units[%d], prefactor_units[%d], phase_units[%d];'
                     % (nReactions,nReactions,nReactions))
-        self._write('static int is_PD[%d], troe_len[%d], sri_len[%d];' 
+        self._write('static int is_PD[%d], troe_len[%d], sri_len[%d], nTB[%d], *TBid[%d];' 
+                    % (nReactions,nReactions,nReactions,nReactions,nReactions))
+        self._write('static double *TB[%d];' 
+                    % (nReactions))
+
+        self._write()
+        self._write('static double fwd_A_DEF[%d], fwd_beta_DEF[%d], fwd_Ea_DEF[%d];' 
                     % (nReactions,nReactions,nReactions))
+        self._write('static double low_A_DEF[%d], low_beta_DEF[%d], low_Ea_DEF[%d];' 
+                    % (nReactions,nReactions,nReactions))
+        self._write('static double rev_A_DEF[%d], rev_beta_DEF[%d], rev_Ea_DEF[%d];' 
+                    % (nReactions,nReactions,nReactions))
+        self._write('static double troe_a_DEF[%d],troe_Ts_DEF[%d], troe_Tss_DEF[%d], troe_Tsss_DEF[%d];' 
+                    % (nReactions,nReactions,nReactions,nReactions))
+        self._write('static double sri_a_DEF[%d], sri_b_DEF[%d], sri_c_DEF[%d], sri_d_DEF[%d], sri_e_DEF[%d];'
+                    % (nReactions,nReactions,nReactions,nReactions,nReactions))
+        self._write('static double activation_units_DEF[%d], prefactor_units_DEF[%d], phase_units_DEF[%d];'
+                    % (nReactions,nReactions,nReactions))
+        self._write('static int is_PD_DEF[%d], troe_len_DEF[%d], sri_len_DEF[%d], nTB_DEF[%d], *TBid_DEF[%d];' 
+                    % (nReactions,nReactions,nReactions,nReactions,nReactions))
+        self._write('static double *TB_DEF[%d];' 
+                    % (nReactions))
 
         # build reverse reaction map
         rmap = {}
@@ -139,78 +147,175 @@ class CPickler(CMill):
         self._outdent()
         self._write('}')
         self._write()
-        self._write('struct ReactionData* GetReactionData(int id)')
-        self._write('{')
-        self._indent()
-        self._write('if (id<0 || id>=%d) {' % (nReactions) )
-        self._indent()
-        self._write('printf("GetReactionData: Bad reaction id = %d",id);')
-        self._write('abort();')
-        self._outdent()
-        self._write('};')
-        self._write('return &(R[rxn_map[id]]);')
-        self._outdent()
-        self._write('}')
+        self._write("")
+        self._write("#include <ReactionData.H>")
+        self._write("double* GetParamPtr(int                reaction_id,")
+        self._write("                    REACTION_PARAMETER param_id,")
+        self._write("                    int                species_id,")
+        self._write("                    int                get_default)")
+        self._write("{")
+        self._write("  double* ret = 0;")
+        self._write("  if (reaction_id<0 || reaction_id>=%d) {" % (nReactions))
+        self._write("    printf(\"Bad reaction id = %d\",reaction_id);")
+        self._write("    abort();")
+        self._write("  };")
+        self._write("  int mrid = rxn_map[reaction_id];")
         self._write()
-        self._write('struct ReactionData* GetDefaultReactionData(int id)')
-        self._write('{')
-        self._indent()
-        self._write('if (id<0 || id>=%d) {' % (nReactions) )
-        self._indent()
-        self._write('printf("GetDefaultReactionData: Bad reaction id = %d",id);')
-        self._write('abort();')
-        self._outdent()
-        self._write('};')
-        self._write('return &(R_DEF[rxn_map[id]]);')
-        self._outdent()
-        self._write('}')
+        self._write("  if (param_id == THIRD_BODY) {")
+        self._write("    if (species_id<0 || species_id>=%d) {" % (self.nSpecies))
+        self._write("      printf(\"GetParamPtr: Bad species id = %d\",species_id);")
+        self._write("      abort();")
+        self._write("    }")
+        self._write("    if (get_default) {")
+        self._write("      for (int i=0; i<nTB_DEF[mrid]; ++i) {")
+        self._write("        if (species_id == TBid_DEF[mrid][i]) {")
+        self._write("          ret = &(TB_DEF[mrid][i]);")
+        self._write("        }")
+        self._write("      }")
+        self._write("    }")
+        self._write("    else {")
+        self._write("      for (int i=0; i<nTB[mrid]; ++i) {")
+        self._write("        if (species_id == TBid[mrid][i]) {")
+        self._write("          ret = &(TB[mrid][i]);")
+        self._write("        }")
+        self._write("      }")
+        self._write("    }")
+        self._write("    if (ret == 0) {")
+        self._write("      printf(\"GetParamPtr: No TB for reaction id = %d\",reaction_id);")
+        self._write("      abort();")
+        self._write("    }")
+        self._write("  }")
+        self._write("  else {")
+        self._write("    if (     param_id == FWD_A)     {ret = (get_default ? &(fwd_A_DEF[mrid]) : &(fwd_A[mrid]));}")
+        self._write("      else if (param_id == FWD_BETA)  {ret = (get_default ? &(fwd_beta_DEF[mrid]) : &(fwd_beta[mrid]));}")
+        self._write("      else if (param_id == FWD_EA)    {ret = (get_default ? &(fwd_Ea_DEF[mrid]) : &(fwd_Ea[mrid]));}")
+        self._write("      else if (param_id == LOW_A)     {ret = (get_default ? &(low_A_DEF[mrid]) : &(low_A[mrid]));}")
+        self._write("      else if (param_id == LOW_BETA)  {ret = (get_default ? &(low_beta_DEF[mrid]) : &(low_beta[mrid]));}")
+        self._write("      else if (param_id == LOW_EA)    {ret = (get_default ? &(low_Ea_DEF[mrid]) : &(low_Ea[mrid]));}")
+        self._write("      else if (param_id == REV_A)     {ret = (get_default ? &(rev_A_DEF[mrid]) : &(rev_A[mrid]));}")
+        self._write("      else if (param_id == REV_BETA)  {ret = (get_default ? &(rev_beta_DEF[mrid]) : &(rev_beta[mrid]));}")
+        self._write("      else if (param_id == REV_EA)    {ret = (get_default ? &(rev_Ea_DEF[mrid]) : &(rev_Ea[mrid]));}")
+        self._write("      else if (param_id == TROE_A)    {ret = (get_default ? &(troe_a_DEF[mrid]) : &(troe_a[mrid]));}")
+        self._write("      else if (param_id == TROE_TS)   {ret = (get_default ? &(troe_Ts_DEF[mrid]) : &(troe_Ts[mrid]));}")
+        self._write("      else if (param_id == TROE_TSS)  {ret = (get_default ? &(troe_Tss_DEF[mrid]) : &(troe_Tss[mrid]));}")
+        self._write("      else if (param_id == TROE_TSSS) {ret = (get_default ? &(troe_Tsss_DEF[mrid]) : &(troe_Tsss[mrid]));}")
+        self._write("      else if (param_id == SRI_A)     {ret = (get_default ? &(sri_a_DEF[mrid]) : &(sri_a[mrid]));}")
+        self._write("      else if (param_id == SRI_B)     {ret = (get_default ? &(sri_b_DEF[mrid]) : &(sri_b[mrid]));}")
+        self._write("      else if (param_id == SRI_C)     {ret = (get_default ? &(sri_c_DEF[mrid]) : &(sri_c[mrid]));}")
+        self._write("      else if (param_id == SRI_D)     {ret = (get_default ? &(sri_d_DEF[mrid]) : &(sri_d[mrid]));}")
+        self._write("      else if (param_id == SRI_E)     {ret = (get_default ? &(sri_e_DEF[mrid]) : &(sri_e[mrid]));}")
+        self._write("    else {")
+        self._write("      printf(\"GetParamPtr: Unknown parameter id\");")
+        self._write("      abort();")
+        self._write("    }")
+        self._write("  }")
+        self._write("  return ret;")
+        self._write("}")
         self._write()
-
-        self._write('void CopyReactionDataToTranspose(int i, const struct ReactionData * rhs)')
-        self._write('{')
-        self._indent()
-        self._write('fwd_A[i]    = rhs->fwd_A;')
-        self._write('fwd_beta[i] = rhs->fwd_beta;')
-        self._write('fwd_Ea[i]   = rhs->fwd_Ea;')
-        self._write('low_A[i]    = rhs->low_A;')
-        self._write('low_beta[i] = rhs->low_beta;')
-        self._write('low_Ea[i]   = rhs->low_Ea;')
-        self._write('rev_A[i]    = rhs->rev_A;')
-        self._write('rev_beta[i] = rhs->rev_beta;')
-        self._write('rev_Ea[i]   = rhs->rev_Ea;')
-        self._write('troe_a[i]    = rhs->troe_a;')
-        self._write('troe_Ts[i]   = rhs->troe_Ts;')
-        self._write('troe_Tss[i]  = rhs->troe_Tss;')
-        self._write('troe_Tsss[i] = rhs->troe_Tsss;')
-        self._write('sri_a[i] = rhs->sri_a;')
-        self._write('sri_b[i] = rhs->sri_b;')
-        self._write('sri_c[i] = rhs->sri_c;')
-        self._write('sri_d[i] = rhs->sri_d;')
-        self._write('sri_e[i] = rhs->sri_e;')
-        self._write('activation_units[i] = rhs->activation_units;')
-        self._write('prefactor_units[i]  = rhs->prefactor_units;')
-        self._write('phase_units[i]      = rhs->phase_units;')
-        self._write('is_PD[i]    = rhs->is_PD;')
-        self._write('troe_len[i] = rhs->troe_len;')
-        self._write('sri_len[i]  = rhs->sri_len;')
-        self._outdent()
-        self._write('}')
+        self._write("void ResetAllParametersToDefault()")
+        self._write("{")
+        self._write("    for (int i=0; i<%d; i++) {" % (nReactions))
+        self._write("        if (nTB[i] != 0) {")
+        self._write("            nTB[i] = 0;")
+        self._write("            free(TB[i]);")
+        self._write("            free(TBid[i]);")
+        self._write("        }")
+        self._write("")
+        self._write("        fwd_A[i]    = fwd_A_DEF[i];")
+        self._write("        fwd_beta[i] = fwd_beta_DEF[i];")
+        self._write("        fwd_Ea[i]   = fwd_Ea_DEF[i];")
+        self._write("")
+        self._write("        low_A[i]    = low_A_DEF[i];")
+        self._write("        low_beta[i] = low_beta_DEF[i];")
+        self._write("        low_Ea[i]   = low_Ea_DEF[i];")
+        self._write("")
+        self._write("        rev_A[i]    = rev_A_DEF[i];")
+        self._write("        rev_beta[i] = rev_beta_DEF[i];")
+        self._write("        rev_Ea[i]   = rev_Ea_DEF[i];")
+        self._write("")
+        self._write("        troe_a[i]    = troe_a_DEF[i];")
+        self._write("        troe_Ts[i]   = troe_Ts_DEF[i];")
+        self._write("        troe_Tss[i]  = troe_Tss_DEF[i];")
+        self._write("        troe_Tsss[i] = troe_Tsss_DEF[i];")
+        self._write("")
+        self._write("        sri_a[i] = sri_a_DEF[i];")
+        self._write("        sri_b[i] = sri_b_DEF[i];")
+        self._write("        sri_c[i] = sri_c_DEF[i];")
+        self._write("        sri_d[i] = sri_d_DEF[i];")
+        self._write("        sri_e[i] = sri_e_DEF[i];")
+        self._write("")
+        self._write("        is_PD[i]    = is_PD_DEF[i];")
+        self._write("        troe_len[i] = troe_len_DEF[i];")
+        self._write("        sri_len[i]  = sri_len_DEF[i];")
+        self._write("")
+        self._write("        activation_units[i] = activation_units_DEF[i];")
+        self._write("        prefactor_units[i]  = prefactor_units_DEF[i];")
+        self._write("        phase_units[i]      = phase_units_DEF[i];")
+        self._write("")
+        self._write("        nTB[i]  = nTB_DEF[i];")
+        self._write("        if (nTB[i] != 0) {")
+        self._write("           TB[i] = (double *) malloc(sizeof(double) * nTB[i]);")
+        self._write("           TBid[i] = (int *) malloc(sizeof(int) * nTB[i]);")
+        self._write("           for (int j=0; j<nTB[i]; j++) {")
+        self._write("             TB[i][j] = TB_DEF[i][j];")
+        self._write("             TBid[i][j] = TBid_DEF[i][j];")
+        self._write("           }")
+        self._write("        }")
+        self._write("    }")
+        self._write("}")
         self._write()
-
-        self._write('void SetReactionData(int id, const struct ReactionData * rhs)')
-        self._write('{')
-        self._indent()
-        self._write('if (id<0 || id>=%d) {' % nReactions)
-        self._indent()
-        self._write('printf("SetReactionData: Bad reaction id = %d",id);')
-        self._write('abort();')
-        self._outdent()
-        self._write('}')
-        self._write('R[rxn_map[id]] = *rhs;')
-        self._write('CopyReactionDataToTranspose(rxn_map[id],rhs);')
-        self._outdent()
-        self._write('}')
-        
+        self._write("void SetAllDefaults()")
+        self._write("{")
+        self._write("    for (int i=0; i<%d; i++) {" % (nReactions))
+        self._write("        if (nTB_DEF[i] != 0) {")
+        self._write("            nTB_DEF[i] = 0;")
+        self._write("            free(TB_DEF[i]);")
+        self._write("            free(TBid_DEF[i]);")
+        self._write("        }")
+        self._write("")
+        self._write("        fwd_A_DEF[i]    = fwd_A[i];")
+        self._write("        fwd_beta_DEF[i] = fwd_beta[i];")
+        self._write("        fwd_Ea_DEF[i]   = fwd_Ea[i];")
+        self._write("")
+        self._write("        low_A_DEF[i]    = low_A[i];")
+        self._write("        low_beta_DEF[i] = low_beta[i];")
+        self._write("        low_Ea_DEF[i]   = low_Ea[i];")
+        self._write("")
+        self._write("        rev_A_DEF[i]    = rev_A[i];")
+        self._write("        rev_beta_DEF[i] = rev_beta[i];")
+        self._write("        rev_Ea_DEF[i]   = rev_Ea[i];")
+        self._write("")
+        self._write("        troe_a_DEF[i]    = troe_a[i];")
+        self._write("        troe_Ts_DEF[i]   = troe_Ts[i];")
+        self._write("        troe_Tss_DEF[i]  = troe_Tss[i];")
+        self._write("        troe_Tsss_DEF[i] = troe_Tsss[i];")
+        self._write("")
+        self._write("        sri_a_DEF[i] = sri_a[i];")
+        self._write("        sri_b_DEF[i] = sri_b[i];")
+        self._write("        sri_c_DEF[i] = sri_c[i];")
+        self._write("        sri_d_DEF[i] = sri_d[i];")
+        self._write("        sri_e_DEF[i] = sri_e[i];")
+        self._write("")
+        self._write("        is_PD_DEF[i]    = is_PD[i];")
+        self._write("        troe_len_DEF[i] = troe_len[i];")
+        self._write("        sri_len_DEF[i]  = sri_len[i];")
+        self._write("")
+        self._write("        activation_units_DEF[i] = activation_units[i];")
+        self._write("        prefactor_units_DEF[i]  = prefactor_units[i];")
+        self._write("        phase_units_DEF[i]      = phase_units[i];")
+        self._write("")
+        self._write("        nTB_DEF[i]  = nTB[i];")
+        self._write("        if (nTB_DEF[i] != 0) {")
+        self._write("           TB_DEF[i] = (double *) malloc(sizeof(double) * nTB_DEF[i]);")
+        self._write("           TBid_DEF[i] = (int *) malloc(sizeof(int) * nTB_DEF[i]);")
+        self._write("           for (int j=0; j<nTB_DEF[i]; j++) {")
+        self._write("             TB_DEF[i][j] = TB[i][j];")
+        self._write("             TBid_DEF[i][j] = TBid[i][j];")
+        self._write("           }")
+        self._write("        }")
+        self._write("    }")
+        self._write("}")
+                
         return
 
     def _renderDocument(self, mechanism, options=None):
@@ -357,6 +462,7 @@ class CPickler(CMill):
             '#if defined(BL_FORT_USE_UPPERCASE)',
             '#define CKINDX CKINDX',
             '#define CKINIT CKINIT',
+            '#define CKFINALIZE CKFINALIZE',
             '#define CKXNUM CKXNUM',
             '#define CKSYME CKSYME',
             '#define CKSYMS CKSYMS',
@@ -440,6 +546,7 @@ class CPickler(CMill):
             '#elif defined(BL_FORT_USE_LOWERCASE)',
             '#define CKINDX ckindx',
             '#define CKINIT ckinit',
+            '#define CKFINALIZE ckfinalize',
             '#define CKXNUM ckxnum',
             '#define CKSYME cksyme',
             '#define CKSYMS cksyms',
@@ -523,6 +630,7 @@ class CPickler(CMill):
             '#elif defined(BL_FORT_USE_UNDERSCORE)',
             '#define CKINDX ckindx_',
             '#define CKINIT ckinit_',
+            '#define CKFINALIZE ckfinalize_',
             '#define CKXNUM ckxnum_',
             '#define CKSYME cksyme_',
             '#define CKSYMS cksyms_',
@@ -622,6 +730,7 @@ class CPickler(CMill):
             'void progressRate(double * restrict qdot, double * restrict speciesConc, double T);',
             'void progressRateFR(double * restrict q_f, double * restrict q_r, double * restrict speciesConc, double T);',
             'void CKINIT'+sym+'();',
+            'void CKFINALIZE'+sym+'();',
             'void CKINDX'+sym+'(int * iwrk, double * restrict rwrk, int * mm, int * kk, int * ii, int * nfit );',
             'void CKXNUM'+sym+'(char * line, int * nexp, int * lout, int * nval, double * restrict rval, int * kerr, int lenline);',
             'void CKSNUM'+sym+'(char * line, int * nexp, int * lout, char * kray, int * nn, int * knum, int * nval, double * restrict rval, int * kerr, int lenline, int lenkray);',
@@ -840,8 +949,21 @@ class CPickler(CMill):
         nReactions = len(mechanism.reaction())
         
         self._write()
-        self._write(
-            self.line(' Initializes static database'))
+        self._write(self.line(' Finalizes parameter database'))
+        self._write('void CKFINALIZE()')
+        self._write('{')
+        self._write('  for (int i=0; i<%d; ++i) {' % (nReactions))
+        self._write('    free(TB[i]); TB[i] = 0; ')
+        self._write('    free(TBid[i]); TBid[i] = 0;')
+        self._write('    nTB[i] = 0;')
+        self._write()
+        self._write('    free(TB_DEF[i]); TB_DEF[i] = 0; ')
+        self._write('    free(TBid_DEF[i]); TBid_DEF[i] = 0;')
+        self._write('    nTB_DEF[i] = 0;')
+        self._write('  }')
+        self._write('}')
+        self._write()
+        self._write(self.line(' Initializes parameter database'))
         self._write('void CKINIT'+sym+'()')
         self._write('{')
 
@@ -858,9 +980,9 @@ class CPickler(CMill):
 
             A, beta, E = reaction.arrhenius
             self._write("// (%d):  %s" % (reaction.orig_id - 1, reaction.equation()))
-            self._write("R[%d].fwd_A     = %.17g;" % (id,A))
-            self._write("R[%d].fwd_beta  = %.17g;" % (id,beta))
-            self._write("R[%d].fwd_Ea    = %.17g;" % (id,E))
+            self._write("fwd_A[%d]     = %.17g;" % (id,A))
+            self._write("fwd_beta[%d]  = %.17g;" % (id,beta))
+            self._write("fwd_Ea[%d]    = %.17g;" % (id,E))
 
             dim = self._phaseSpaceUnits(reaction.reactants)
             thirdBody = reaction.thirdBody
@@ -872,59 +994,66 @@ class CPickler(CMill):
             else:
                 uc = self._prefactorUnits(reaction.units["prefactor"], 1-dim) # Case 1 PD, TB
                 low_A, low_beta, low_E = low
-                self._write("R[%d].low_A     = %.17g;" % (id,low_A))
-                self._write("R[%d].low_beta  = %.17g;" % (id,low_beta))
-                self._write("R[%d].low_Ea    = %.17g;" % (id,low_E))
+                self._write("low_A[%d]     = %.17g;" % (id,low_A))
+                self._write("low_beta[%d]  = %.17g;" % (id,low_beta))
+                self._write("low_Ea[%d]    = %.17g;" % (id,low_E))
                 if reaction.troe:
                     troe = reaction.troe
                     ntroe = len(troe)
                     is_troe = True
-                    self._write("R[%d].troe_a    = %.17g;" % (id,troe[0]))
+                    self._write("troe_a[%d]    = %.17g;" % (id,troe[0]))
                     if ntroe>1:
-                        self._write("R[%d].troe_Tsss = %.17g;" % (id,troe[1]))
+                        self._write("troe_Tsss[%d] = %.17g;" % (id,troe[1]))
                     if ntroe>2:
-                        self._write("R[%d].troe_Ts   = %.17g;" % (id,troe[2]))
+                        self._write("troe_Ts[%d]   = %.17g;" % (id,troe[2]))
                     if ntroe>3:
-                        self._write("R[%d].troe_Tss  = %.17g;" % (id,troe[3]))
-                    self._write("R[%d].troe_len  = %d;" % (id,ntroe))
+                        self._write("troe_Tss[%d]  = %.17g;" % (id,troe[3]))
+                    self._write("troe_len[%d]  = %d;" % (id,ntroe))
                 if reaction.sri:
                     sri = reaction.sri
                     nsri = len(sri)
                     is_sri = True
-                    self._write("R[%d].sri_a     = %.17g;" % (id,sri[0]))
+                    self._write("sri_a[%d]     = %.17g;" % (id,sri[0]))
                     if nsri>1:
-                        self._write("R[%d].sri_b     = %.17g;" % (id,sri[1]))
+                        self._write("sri_b[%d]     = %.17g;" % (id,sri[1]))
                     if nsri>2:
-                        self._write("R[%d].sri_c     = %.17g;" % (id,sri[2]))
+                        self._write("sri_c[%d]     = %.17g;" % (id,sri[2]))
                     if nsri>3:
-                        self._write("R[%d].sri_d     = %.17g;" % (id,sri[3]))
+                        self._write("sri_d[%d]     = %.17g;" % (id,sri[3]))
                     if nsri>4:
-                        self._write("R[%d].sri_e     = %.17g;" % (id,sri[4]))
-                    self._write("R[%d].sri_len   = %d;" % (id,nsri))
+                        self._write("sri_e[%d]     = %.17g;" % (id,sri[4]))
+                    self._write("sri_len[%d]   = %d;" % (id,nsri))
 
-            self._write("R[%d].prefactor_units  = %.17g;" % (id,uc.value))
+            self._write("prefactor_units[%d]  = %.17g;" % (id,uc.value))
             aeuc = self._activationEnergyUnits(reaction.units["activation"])
-            self._write("R[%d].activation_units = %.17g;" % (id,aeuc / Rc / kelvin))
-            self._write("R[%d].phase_units      = 1e-%d;" % (id,dim*6))
+            self._write("activation_units[%d] = %.17g;" % (id,aeuc / Rc / kelvin))
+            self._write("phase_units[%d]      = 1e-%d;" % (id,dim*6))
 
             if low:
-                self._write("R[%d].is_PD = 1;" % (id) )
+                self._write("is_PD[%d] = 1;" % (id) )
             else:
-                self._write("R[%d].is_PD = 0;" % (id) )
+                self._write("is_PD[%d] = 0;" % (id) )
+
+
+            if thirdBody:
+                efficiencies = reaction.efficiencies
+                self._write("nTB[%d] = %d;" % (id, len(efficiencies)))
+                self._write("TB[%d] = (double *) malloc(%d * sizeof(double));" % (id, len(efficiencies)))
+                self._write("TBid[%d] = (int *) malloc(%d * sizeof(int));" % (id, len(efficiencies)))
+                for i, eff in enumerate(efficiencies):
+                    symbol, efficiency = eff
+                    self._write("TBid[%d][%d] = %.17g; TB[%d][%d] = %.17g; // %s"
+                                % (id, i, mechanism.species(symbol).id, id, i, efficiency, symbol ))
+            else:
+                self._write("nTB[%d] = 0;" % (id))
 
             self._write()
-            
-        self._write('for (int i=0; i<%d; i++)' % nReactions)
-        self._write('{')
-        self._indent()
-        self._write("R_DEF[i] = R[i];")
-        self._write("CopyReactionDataToTranspose(i,&(R[i]));")
-        self._outdent()
-        self._write('}')
-        self._write()
 
+        self._write("SetAllDefaults();")
         self._outdent()
-        self._write('}')
+        self._write("}")
+        self._write()
+            
         return
 
     def _thermo(self, mechanism):
@@ -4608,8 +4737,14 @@ class CPickler(CMill):
             self._write()
             reaction = mechanism.reaction(id=i)
             self._write(self.line('reaction %d: %s' % (reaction.id, reaction.equation())))
-            self._write("qf[%d] = %s;" % (i, self._sortedPhaseSpace(mechanism, reaction.reactants))) 
-            self._write("qr[%d] = %s;" % (i, self._sortedPhaseSpace(mechanism, reaction.products))) 
+            self._write("qf[%d] = %s;" % (i, self._sortedPhaseSpace(mechanism, reaction.reactants)))
+            if reaction.reversible:
+                self._write("qr[%d] = %s;" % (i, self._sortedPhaseSpace(mechanism, reaction.products)))
+            else:
+                self._write("qr[%d] = 0.0;" % (i))
+            if reaction.rev:
+                print "reaction.rev not finished"
+                sys.exit(1)
 
         self._write()
         self._write('double T = tc[1];')
@@ -5298,6 +5433,8 @@ class CPickler(CMill):
             self._write('dcdc_fac = q/alpha*(1.0/(Pr+1.0) + dlogFdlogPr);')
 
         def dqdc_simple(dqdc_s, k):
+            if dqdc_s ==  "0":
+                dqdc_s = ''
             if k in sorted(rea_dict.keys()):
                 dps = self._DphaseSpace(mechanism,sorted_reactants,rea_dict[k][0])
                 if dps == "1.0":
@@ -5321,23 +5458,19 @@ class CPickler(CMill):
             self._indent()
 
             for k in range(nSpecies):
-                dqdc_s = ''
-                dcdc = self._Denhancement(mechanism,reaction,k,True)
-                if dcdc == 1:
+                dqdc_s = self._Denhancement(mechanism,reaction,k,True)
+                if dqdc_s != "0":
                     if isPD:
-                        dqdc_s +=' dcdc_fac'
+                        if dqdc_s == "1":
+                            dqdc_s ='dcdc_fac'
+                        else:
+                            dqdc_s +='*dcdc_fac'
                     elif has_alpha:
-                        dqdc_s +=' q_nocor'
-                elif dcdc == -1:
-                    if isPD:
-                        dqdc_s +=' -dcdc_fac'
-                    elif has_alpha:
-                        dqdc_s +=' -q_nocor'                        
-                elif dcdc != 0.0:
-                    if isPD:
-                        dqdc_s +=' %.17g*dcdc_fac'%dcdc
-                    elif has_alpha:
-                        dqdc_s +=' %.17g*q_nocor'%dcdc
+                        if dqdc_s == "1":
+                            dqdc_s ='q_nocor'
+                        else:
+                            dqdc_s +='*q_nocor'
+
                 dqdc_s = dqdc_simple(dqdc_s,k)
                 if dqdc_s:
                     symb_k = self.species[k].symbol
@@ -5357,23 +5490,17 @@ class CPickler(CMill):
             self._indent()
 
             for k in range(nSpecies):
-                dqdc_s = ''
-                dcdc = self._Denhancement(mechanism,reaction,k,False)
-                if dcdc == 1:
-                    if isPD:
-                        dqdc_s +=' dcdc_fac'
-                    elif has_alpha:
-                        dqdc_s +=' q_nocor'
-                elif dcdc == -1:
-                    if isPD:
-                        dqdc_s +=' -dcdc_fac'
-                    elif has_alpha:
-                        dqdc_s +=' -q_nocor'                        
-                elif dcdc != 0.0:
-                    if isPD:
-                        dqdc_s +=' %.17g*dcdc_fac'%dcdc
-                    elif has_alpha:
-                        dqdc_s +=' %.17g*q_nocor'%dcdc
+                dqdc_s = self._Denhancement(mechanism,reaction,k,False)
+                if dqdc_s != '0':
+                    if dqdc_s == '1':
+                        dqdc_s ='dcdc_fac'
+                    elif isPD:
+                        dqdc_s +='*dcdc_fac'
+                elif has_alpha:
+                    if dqdc_s == '1':
+                        dqdc_s ='q_nocor'
+                    else:
+                        dqdc_s +='*q_nocor'
                 dqdc_s = dqdc_simple(dqdc_s,k)
                 if dqdc_s:
                     self._write('dqdc[%d] = %s;' % (k,dqdc_s))
@@ -6387,15 +6514,11 @@ class CPickler(CMill):
             return "sc[%d]" % mechanism.species(species).id
 
         alpha = ["mixture"]
-        for symbol, efficiency in efficiencies:
-            factor = efficiency - 1
+        for i, eff in enumerate(efficiencies):
+            symbol, efficiency = eff
+            factor = "(TB[%d][%d] - 1)" % (reaction.id-1, i)
             conc = "sc[%d]" % mechanism.species(symbol).id
-            if factor == 1:
-                alpha.append(conc)
-            elif factor == -1:
-                alpha.append('-'+conc)
-            elif factor != 0:
-                alpha.append("%.17g*%s" % (factor, conc))
+            alpha.append("%s*%s" % (factor, conc))
 
         return " + ".join(alpha).replace('+ -','- ')
 
@@ -6412,24 +6535,26 @@ class CPickler(CMill):
         if not efficiencies:
             if species == "<mixture>":
                 if consP:
-                    return 0.0
+                    return "0"
                 else:
-                    return 1.0
+                    return "1"
             elif mechanism.species(species).id == kid:
-                return 1.0
+                return "1"
             else:
-                return 0.0
+                return "0"
         else:
             if consP:
-                for symbol, efficiency in efficiencies:
+                for i, eff in enumerate(efficiencies):
+                    symbol, efficiency = eff
                     if mechanism.species(symbol).id == kid:
-                        return efficiency-1.0
-                return 0.0
+                        return "(TB[%d][%d] - 1)" % (reaction.id-1, i)
+                return "0"
             else:
-                for symbol, efficiency in efficiencies:
+                for i, eff in enumerate(efficiencies):
+                    symbol, efficiency = eff
                     if mechanism.species(symbol).id == kid:
-                        return efficiency
-                return 1.0
+                        return "TB[%d][%d]" % (reaction.id-1,i)
+                return "1"
 
     def _venhancement(self, mechanism, reaction):
         thirdBody = reaction.thirdBody
@@ -6447,15 +6572,11 @@ class CPickler(CMill):
             return "sc[%d*npt+i]" % mechanism.species(species).id
 
         alpha = ["mixture[i]"]
-        for symbol, efficiency in efficiencies:
-            factor = efficiency - 1
+        for i, eff in enumerate(efficiencies):
+            symbol, efficiency = eff
+            factor = "(TB[%d][%d] - 1)" % (reaction.id-1,i)
             conc = "sc[%d*npt+i]" % mechanism.species(symbol).id
-            if factor == 1:
-                alpha.append(conc)
-            elif factor == -1:
-                alpha.append('-'+conc)
-            elif factor != 0:
-                alpha.append("%.17g*%s" % (factor, conc))
+            alpha.append("%s*%s" % (factor, conc))
 
         return " + ".join(alpha)
 

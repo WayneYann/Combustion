@@ -971,6 +971,8 @@ HeatTransfer::init_once ()
                             &var_diff, &constant_rhoD_val,
                             &prandtl,  &schmidt, &unity_Le);
 
+    // initialize default typical values
+    FORT_INIT_TYPVALS_COMMON();
     //
     // make space for typical values
     //
@@ -1218,7 +1220,7 @@ HeatTransfer::estTimeStep ()
     {
         const int        i   = U_fpi.index();
         FArrayBox&       U   = U_fpi();
-        const FArrayBox& Rho = (*rho_ctime)[i];
+        const FArrayBox& Rho = (*rho_ctime)[U_fpi];
         const int*       lo  = grids[i].loVect();
         const int*       hi  = grids[i].hiVect();
 
@@ -1227,7 +1229,7 @@ HeatTransfer::estTimeStep ()
 
         geom.GetVolume(volume, grids, i, GEOM_GROW);
 
-        DEF_CLIMITS((*divu)[i],sdat,slo,shi);
+        DEF_CLIMITS((*divu)[U_fpi],sdat,slo,shi);
         DEF_CLIMITS(Rho,rhodat,rholo,rhohi);
         DEF_CLIMITS(U,vel,ulo,uhi);
 
@@ -1240,7 +1242,7 @@ HeatTransfer::estTimeStep ()
 #endif
         FORT_EST_DIVU_DT(divu_ceiling,&divu_dt_factor,
                          dx,sdat,ARLIM(slo),ARLIM(shi),
-                         (*dsdt)[i].dataPtr(),
+                         (*dsdt)[U_fpi].dataPtr(),
                          rhodat,ARLIM(rholo),ARLIM(rhohi),
                          vel,ARLIM(ulo),ARLIM(uhi),
                          vol,ARLIM(v_lo),ARLIM(v_hi),
@@ -1294,7 +1296,7 @@ HeatTransfer::checkTimeStep (Real dt)
     {
         const int        i   = U_fpi.index();
         FArrayBox&       U   = U_fpi();
-        const FArrayBox& Rho = (*rho_ctime)[i];
+        const FArrayBox& Rho = (*rho_ctime)[U_fpi];
         const int*       lo  = grids[i].loVect();
         const int*       hi  = grids[i].hiVect();
 
@@ -1647,7 +1649,7 @@ HeatTransfer::init (AmrLevel& old)
          fpi.isValid();
          ++fpi)
     {
-        Ydot[fpi.index()].copy(fpi());
+        Ydot[fpi].copy(fpi());
     }
 
     RhoH_to_Temp(get_new_data(State_Type));
@@ -1658,7 +1660,7 @@ HeatTransfer::init (AmrLevel& old)
          fpi.isValid();
          ++fpi)
     {
-        FuncCount[fpi.index()].copy(fpi());
+        FuncCount[fpi].copy(fpi());
     }
 }
 
@@ -1779,7 +1781,7 @@ HeatTransfer::post_timestep (int crse_iteration)
                      fpi.isValid();
                      ++fpi)
                 {
-                    tmf[fpi.index()].copy(fpi(),0,0,mf.nComp());
+                    tmf[fpi].copy(fpi(),0,0,mf.nComp());
                 }
 
                 HTPC->Timestamp(basename, tmf, lev, curr_time, timestamp_indices);
@@ -2374,7 +2376,7 @@ HeatTransfer::avgDown ()
     {
         const int i = mfi.index();
 
-        injectDown(crse_P_fine_BA[i],crse_P_fine[i],P_fine[i],fine_ratio);
+        injectDown(crse_P_fine_BA[i],crse_P_fine[mfi],P_fine[mfi],fine_ratio);
     }
 
     P_crse.copy(crse_P_fine);  // Parallel copy
@@ -2789,14 +2791,14 @@ HeatTransfer::differential_spec_diffusion_update (Real dt,
             {
                 const int        i    = mfi.index();
                 const Box&       vbox = mfi.validbox();
-                const FArrayBox& Y    = rho_and_species_old[i];
-                const FArrayBox& wbar = Wbar_old[i];
+                const FArrayBox& Y    = rho_and_species_old[mfi];
+                const FArrayBox& wbar = Wbar_old[mfi];
                 const Real       mult = -(1 - be_cn_theta);
 
                 for (int d=0; d<BL_SPACEDIM; ++d) 
                 {
-                    const FArrayBox& rhoDe = (*beta[d])[i];
-                    FArrayBox&       flux  = (*SpecDiffFluxn[d])[i];
+                    const FArrayBox& rhoDe = (*beta[d])[mfi];
+                    FArrayBox&       flux  = (*SpecDiffFluxn[d])[mfi];
 		  
                     area.resize(BoxLib::surroundingNodes(grids[i],d),1);
                     geom.GetFaceArea(area,grids,i,d,GEOM_GROW);
@@ -2825,13 +2827,12 @@ HeatTransfer::differential_spec_diffusion_update (Real dt,
         //
         for (MFIter mfi(rho_and_species_old); mfi.isValid(); ++mfi)
         {
-            const int        i     = mfi.index();
-            const FArrayBox& state = rho_and_species_old[i];
+            const FArrayBox& state = rho_and_species_old[mfi];
             const Box&       box   = mfi.validbox();
 	  
             for (int d=0; d < BL_SPACEDIM; ++d)
             {
-                FArrayBox& fab = (*SpecDiffFluxn[d])[i];
+                FArrayBox& fab = (*SpecDiffFluxn[d])[mfi];
 
                 FORT_REPAIR_FLUX(box.loVect(), box.hiVect(),
                                  fab.dataPtr(),  ARLIM(fab.loVect()),  ARLIM(fab.hiVect()),
@@ -2852,11 +2853,11 @@ HeatTransfer::differential_spec_diffusion_update (Real dt,
             const int  i    = mfi.index();
             const Box& box  = mfi.validbox();
             const Real mult = -dt;
-            FArrayBox& rhs  = Rhs[i];
+            FArrayBox& rhs  = Rhs[mfi];
 
-            FArrayBox* f[BL_SPACEDIM] = { D_DECL(&(*SpecDiffFluxn[0])[i],
-                                                 &(*SpecDiffFluxn[1])[i],
-                                                 &(*SpecDiffFluxn[2])[i]) };
+            FArrayBox* f[BL_SPACEDIM] = { D_DECL(&(*SpecDiffFluxn[0])[mfi],
+                                                 &(*SpecDiffFluxn[1])[mfi],
+                                                 &(*SpecDiffFluxn[2])[mfi]) };
             geom.GetVolume(vol,grids,i,GEOM_GROW);
             //
             // Increment Rhs with -dt*(1 - theta)*Div(Fluxn).
@@ -2947,14 +2948,14 @@ HeatTransfer::differential_spec_diffusion_update (Real dt,
             {
                 const int        i    = mfi.index();
                 const Box&       vbox = mfi.validbox();
-                const FArrayBox& Y    = rho_and_species_new[i];
-                const FArrayBox& wbar = Wbar_new[i];
+                const FArrayBox& Y    = rho_and_species_new[mfi];
+                const FArrayBox& wbar = Wbar_new[mfi];
                 const Real       mult = -1;
 
                 for (int d=0; d<BL_SPACEDIM; ++d) 
                 {
-                    const FArrayBox& rhoDe = (*beta[d])[i];
-                    FArrayBox& flux        = (*SpecDiffFluxnp1[d])[i];
+                    const FArrayBox& rhoDe = (*beta[d])[mfi];
+                    FArrayBox& flux        = (*SpecDiffFluxnp1[d])[mfi];
 
                     flux.setVal(0);
 		  
@@ -2987,9 +2988,9 @@ HeatTransfer::differential_spec_diffusion_update (Real dt,
                 const Real mult1 = -dt*be_cn_theta;
                 FArrayBox& rhs   = Rhs[mfi];
 
-                FArrayBox* f[BL_SPACEDIM] = { D_DECL(&(*SpecDiffFluxnp1[0])[i],
-                                                     &(*SpecDiffFluxnp1[1])[i],
-                                                     &(*SpecDiffFluxnp1[2])[i]) };
+                FArrayBox* f[BL_SPACEDIM] = { D_DECL(&(*SpecDiffFluxnp1[0])[mfi],
+                                                     &(*SpecDiffFluxnp1[1])[mfi],
+                                                     &(*SpecDiffFluxnp1[2])[mfi]) };
                 geom.GetVolume(vol,grids,i,GEOM_GROW);
                 //
                 // Increment Rhs with -dt*theta*Div(WbarFlux^*.A)/Vol.
@@ -3117,12 +3118,12 @@ HeatTransfer::differential_spec_diffusion_update (Real dt,
         for (MFIter mfi(rho_and_species_new); mfi.isValid(); ++mfi)
         {
             const int        i     = mfi.index();
-            const FArrayBox& state = rho_and_species_new[i];
+            const FArrayBox& state = rho_and_species_new[mfi];
             const Box&       box   = mfi.validbox();
 	  
             for (int d =0; d < BL_SPACEDIM; ++d)
             {
-                FArrayBox& fab = (*SpecDiffFluxnp1[d])[i];
+                FArrayBox& fab = (*SpecDiffFluxnp1[d])[mfi];
 
                 FORT_REPAIR_FLUX(box.loVect(), box.hiVect(),
                                  fab.dataPtr(),  ARLIM(fab.loVect()),  ARLIM(fab.hiVect()),
@@ -3165,13 +3166,13 @@ HeatTransfer::differential_spec_diffusion_update (Real dt,
         FArrayBox& snew = Rhs[mfi];
         const Real mult = -dt;
 
-        FArrayBox* fn[BL_SPACEDIM] =  { D_DECL(&(*SpecDiffFluxn[0])[i],
-                                               &(*SpecDiffFluxn[1])[i],
-                                               &(*SpecDiffFluxn[2])[i]) };
+        FArrayBox* fn[BL_SPACEDIM] =  { D_DECL(&(*SpecDiffFluxn[0])[mfi],
+                                               &(*SpecDiffFluxn[1])[mfi],
+                                               &(*SpecDiffFluxn[2])[mfi]) };
 
-        FArrayBox* fnp1[BL_SPACEDIM] = { D_DECL(&(*SpecDiffFluxnp1[0])[i],
-                                                &(*SpecDiffFluxnp1[1])[i],
-                                                &(*SpecDiffFluxnp1[2])[i]) };
+        FArrayBox* fnp1[BL_SPACEDIM] = { D_DECL(&(*SpecDiffFluxnp1[0])[mfi],
+                                                &(*SpecDiffFluxnp1[1])[mfi],
+                                                &(*SpecDiffFluxnp1[2])[mfi]) };
         geom.GetVolume(vol,grids,i,GEOM_GROW);
         //
         // Snew = Sold + Fext - (1-theta)*dt*Div(Fluxn.A)/Vol - theta*dt*Div(Fluxnp1.A)/Vol.
@@ -3286,7 +3287,7 @@ HeatTransfer::make_rho_prev_time ()
          fpi.isValid();
          ++fpi)
     {
-        (*rho_ptime)[fpi.index()].copy(fpi());
+        (*rho_ptime)[fpi].copy(fpi());
     }
 }
 
@@ -3299,7 +3300,7 @@ HeatTransfer::make_rho_curr_time ()
          fpi.isValid();
          ++fpi)
     {
-        (*rho_ctime)[fpi.index()].copy(fpi());
+        (*rho_ctime)[fpi].copy(fpi());
     }
 }
 
@@ -3429,7 +3430,7 @@ HeatTransfer::adjust_spec_diffusion_update (MultiFab&              Phi_new,
 
         for (int d =0; d < BL_SPACEDIM; ++d)
         {
-            FArrayBox& fab = (*flux[d])[mfi.index()];
+            FArrayBox& fab = (*flux[d])[mfi];
 
             FORT_REPAIR_FLUX(box.loVect(), box.hiVect(),
                              fab.dataPtr(),  ARLIM(fab.loVect()),  ARLIM(fab.hiVect()),
@@ -3472,32 +3473,32 @@ HeatTransfer::adjust_spec_diffusion_update (MultiFab&              Phi_new,
 	FORT_RECOMP_UPDATE(box.loVect(), box.hiVect(),
 			   update.dataPtr(),
 			   ARLIM(update.loVect()),       ARLIM(update.hiVect()),
-			   (*flux[0])[iGrid].dataPtr(),
-                           ARLIM((*flux[0])[iGrid].loVect()),
-                           ARLIM((*flux[0])[iGrid].hiVect()),
-			   (*flux[1])[iGrid].dataPtr(),
-			   ARLIM((*flux[1])[iGrid].loVect()),
-                           ARLIM((*flux[1])[iGrid].hiVect()),
+			   (*flux[0])[mfi].dataPtr(),
+                           ARLIM((*flux[0])[mfi].loVect()),
+                           ARLIM((*flux[0])[mfi].hiVect()),
+			   (*flux[1])[mfi].dataPtr(),
+			   ARLIM((*flux[1])[mfi].loVect()),
+                           ARLIM((*flux[1])[mfi].hiVect()),
 #if BL_SPACEDIM == 3
-			   (*flux[2])[iGrid].dataPtr(),
-			   ARLIM((*flux[2])[iGrid].loVect()),
-                           ARLIM((*flux[2])[iGrid].hiVect()),
+			   (*flux[2])[mfi].dataPtr(),
+			   ARLIM((*flux[2])[mfi].loVect()),
+                           ARLIM((*flux[2])[mfi].hiVect()),
 #endif
 			   volume.dataPtr(),
 			   ARLIM(volume.loVect()),ARLIM(volume.hiVect()),
 			   &nspecies);
 	
 	if (delta_rhs)
-	    update.plus((*delta_rhs)[iGrid],box,dataComp,0,nspecies);
+	    update.plus((*delta_rhs)[mfi],box,dataComp,0,nspecies);
 
 	update.mult(dt,box,0,nspecies);
 
         tmp.resize(box,1);
-        tmp.copy((*rho_half)[iGrid],0,0,1);
+        tmp.copy((*rho_half)[mfi],0,0,1);
         tmp.invert(1);
 
 	if (Phi_old)
-	    update.plus((*Phi_old)[iGrid],box,sCompS,0,nspecies);
+	    update.plus((*Phi_old)[mfi],box,sCompS,0,nspecies);
 
         Phi_new[mfi].copy(update,box,0,box,sCompS,nspecies);
     }
@@ -6369,7 +6370,7 @@ HeatTransfer::advance (Real time,
 
     for (MFIter mfi(*rho_ctime); mfi.isValid(); ++mfi)
     {
-        const Box box = BoxLib::grow(mfi.validbox(),LinOp_grow);
+        const Box& box = BoxLib::grow(mfi.validbox(),LinOp_grow);
         Rho_hold[mfi.index()].copy((*rho_ctime)[mfi],box,0,box,0,1);
     }
     //
@@ -7828,7 +7829,7 @@ HeatTransfer::scalar_advection (Real dt,
 
             for (int d = 0; d < BL_SPACEDIM; ++d)
             {
-                const Box ebox = BoxLib::surroundingNodes(box,d);
+                const Box& ebox = BoxLib::surroundingNodes(box,d);
                 eTemp.resize(ebox,1);
                 FPLoc bc_lo = fpi_phys_loc(get_desc_lst()[State_Type].getBC(Temp).lo(d));
                 FPLoc bc_hi = fpi_phys_loc(get_desc_lst()[State_Type].getBC(Temp).hi(d));
@@ -7919,7 +7920,7 @@ HeatTransfer::scalar_advection (Real dt,
 
             for (int d = 0; d < BL_SPACEDIM; ++d)
             {
-                const Box ebox = BoxLib::surroundingNodes(box,d);
+                const Box& ebox = BoxLib::surroundingNodes(box,d);
                 eTemp.resize(ebox,1);
                 FPLoc bc_lo = fpi_phys_loc(get_desc_lst()[State_Type].getBC(Temp).lo(d));
                 FPLoc bc_hi = fpi_phys_loc(get_desc_lst()[State_Type].getBC(Temp).hi(d));
@@ -8364,8 +8365,8 @@ HeatTransfer::mac_sync ()
         {
             for (MFIter Vsyncmfi(*Vsync); Vsyncmfi.isValid(); ++Vsyncmfi)
             {
-                const int i    = Vsyncmfi.index();
-                const Box vbox = (*rho_ctime).box(i);
+                const int  i    = Vsyncmfi.index();
+                const Box& vbox = (*rho_ctime).box(i);
 
                 D_TERM((*Vsync)[i].divide((*rho_ctime)[i],vbox,0,Xvel,1);,
                        (*Vsync)[i].divide((*rho_ctime)[i],vbox,0,Yvel,1);,
@@ -8483,7 +8484,7 @@ HeatTransfer::mac_sync ()
 
                     for (int d = 0; d < BL_SPACEDIM; ++d)
                     {
-                        const Box ebox = BoxLib::surroundingNodes(box,d);
+                        const Box& ebox = BoxLib::surroundingNodes(box,d);
                         eTemp.resize(ebox,1);
                         FPLoc bc_lo = fpi_phys_loc(get_desc_lst()[State_Type].getBC(Temp).lo(d));
                         FPLoc bc_hi = fpi_phys_loc(get_desc_lst()[State_Type].getBC(Temp).hi(d));
@@ -8956,7 +8957,7 @@ HeatTransfer::differential_spec_diffuse_sync (Real dt)
     const Real      S_tol_abs = -1;
     MultiFab&       S_new     = get_new_data(State_Type);
     const Real*     dx        = geom.CellSize();
-    const IntVect   rr        = level > 0 ? parent->refRatio(level-1) : IntVect::TheUnitVector();
+    const IntVect&  rr        = level > 0 ? parent->refRatio(level-1) : IntVect::TheUnitVector();
     //
     // This will be owned & delete'd by the ABecLaplacian.
     //
@@ -9441,7 +9442,7 @@ HeatTransfer::zeroBoundaryVisc (MultiFab*  beta[BL_SPACEDIM],
         for (MFIter mfi(*(beta[dir])); mfi.isValid(); ++mfi)
         {
             FArrayBox& beta_fab = (*(beta[dir]))[mfi];
-            const Box ebox      = BoxLib::surroundingNodes(mfi.validbox(),dir);
+            const Box& ebox     = BoxLib::surroundingNodes(mfi.validbox(),dir);
             FORT_ZEROVISC(beta_fab.dataPtr(dst_comp),
                           ARLIM(beta_fab.loVect()), ARLIM(beta_fab.hiVect()),
                           ebox.loVect(),  ebox.hiVect(),
@@ -9571,9 +9572,9 @@ HeatTransfer::calc_divu (Real      time,
 
         BL_ASSERT(box == grids[iGrid]);
 
-        getChemSolve().getMwmixGivenY(mwmix[iGrid],species[iGrid],
+        getChemSolve().getMwmixGivenY(mwmix[Rho_mfi],species[Rho_mfi],
                                       box,sCompY,sCompMw);
-        getChemSolve().getCpmixGivenTY(cp[iGrid],temp[iGrid],species[iGrid],
+        getChemSolve().getCpmixGivenTY(cp[Rho_mfi],temp[Rho_mfi],species[Rho_mfi],
                                        box,sCompT,sCompY,sCompCp);
     }
 
@@ -9601,8 +9602,8 @@ HeatTransfer::calc_divu (Real      time,
     for (MFIter Divu_mfi(divu); Divu_mfi.isValid(); ++Divu_mfi)
     {
         const int iGrid = Divu_mfi.index();
-        divu[iGrid].divide(rho[iGrid],grids[iGrid],sCompR,0,1);
-        divu[iGrid].divide(temp[iGrid],grids[iGrid],sCompT,0,1);
+        divu[iGrid].divide(rho[Divu_mfi],grids[iGrid],sCompR,0,1);
+        divu[iGrid].divide(temp[Divu_mfi],grids[iGrid],sCompT,0,1);
     }
     showMF("divu",divu,"divu_VT_T_over_rhoT",level);
 
@@ -9610,7 +9611,7 @@ HeatTransfer::calc_divu (Real      time,
 
     delta_divu.setVal(0.0);
 
-    const Array<Real> mwt = getChemSolve().speciesMolecWt();
+    const Array<Real>& mwt = getChemSolve().speciesMolecWt();
 
     if (do_mcdd)
     {
@@ -9639,9 +9640,9 @@ HeatTransfer::calc_divu (Real      time,
     {
         const int  iGrid = Divu_mfi.index();
         const Box& box   = Divu_mfi.validbox();
-        delta_divu[iGrid].divide(rho[iGrid],box,sCompR,0,1);
-        delta_divu[iGrid].mult(mwmix[iGrid],box,0,0,1);
-        divu[iGrid].plus(delta_divu[iGrid],box,0,0,1);
+        delta_divu[Divu_mfi].divide(rho[Divu_mfi],box,sCompR,0,1);
+        delta_divu[Divu_mfi].mult(mwmix[Divu_mfi],box,0,0,1);
+        divu[Divu_mfi].plus(delta_divu[Divu_mfi],box,0,0,1);
     }
     showMF("divu",divu,"divu_1",level);
 
@@ -9666,22 +9667,22 @@ HeatTransfer::calc_divu (Real      time,
 
             h.resize(BoxLib::grow(grids[i],nGrow),nspecies);
 
-            getChemSolve().getHGivenT(h,temp[i],grids[i],sCompT,sCompH);
+            getChemSolve().getHGivenT(h,temp[Ydot_fpi],grids[i],sCompT,sCompH);
 
             for (int istate = first_spec; istate <= last_spec; istate++)
             {
                 const int ispec = istate-first_spec;
 
-                delta_divu[i].copy(h,ispec,0,1);
-                delta_divu[i].divide(cp[i]);
-                delta_divu[i].divide(temp[i]);
-                delta_divu[i].mult(Ydot_fpi(),ispec,0,1);
-                divu[i].plus(delta_divu[i]);
+                delta_divu[Ydot_fpi].copy(h,ispec,0,1);
+                delta_divu[Ydot_fpi].divide(cp[Ydot_fpi]);
+                delta_divu[Ydot_fpi].divide(temp[Ydot_fpi]);
+                delta_divu[Ydot_fpi].mult(Ydot_fpi(),ispec,0,1);
+                divu[Ydot_fpi].plus(delta_divu[Ydot_fpi]);
 
-                delta_divu[i].copy(mwmix[i],0,0,1);
-                delta_divu[i].divide(mwt[ispec]);
-                delta_divu[i].mult(Ydot_fpi(),ispec,0,1);
-                divu[i].minus(delta_divu[i]);
+                delta_divu[Ydot_fpi].copy(mwmix[Ydot_fpi],0,0,1);
+                delta_divu[Ydot_fpi].divide(mwt[ispec]);
+                delta_divu[Ydot_fpi].mult(Ydot_fpi(),ispec,0,1);
+                divu[Ydot_fpi].minus(delta_divu[Ydot_fpi]);
             }
         }
     }
@@ -9731,14 +9732,14 @@ HeatTransfer::calc_dpdt (Real      time,
          Temp_fpi.isValid();
          ++Temp_fpi)
     {
-        temp[Temp_fpi.index()].copy(Temp_fpi(),0,sCompT,1);
+        temp[Temp_fpi].copy(Temp_fpi(),0,sCompT,1);
     }
 
     for (FillPatchIterator rhoRT_fpi(*this,rhoRT,nGrow,time,State_Type,pComp,1);
          rhoRT_fpi.isValid();
          ++rhoRT_fpi)
     {
-        rhoRT[rhoRT_fpi.index()].copy(rhoRT_fpi(),0,0,1);
+        rhoRT[rhoRT_fpi].copy(rhoRT_fpi(),0,0,1);
     }
     //
     // Note that state contains rho*species, so divide species by rho.
@@ -9751,17 +9752,17 @@ HeatTransfer::calc_dpdt (Real      time,
          Spec_fpi.isValid();
          ++Spec_fpi)
     {
-        const int i  = Spec_fpi.index();
-        const Box bx = BoxLib::grow(grids[i],nGrow);
+        const int  i  = Spec_fpi.index();
+        const Box& bx = BoxLib::grow(grids[i],nGrow);
 
-        species[i].copy(Spec_fpi(),0,sCompY,nspecies);
+        species[Spec_fpi].copy(Spec_fpi(),0,sCompY,nspecies);
 
         tmp.resize(bx,1);
-        tmp.copy(rho[i],sCompR,0,1);
+        tmp.copy(rho[Spec_fpi],sCompR,0,1);
         tmp.invert(1);
 
         for (int ispecies = 0; ispecies < nspecies; ispecies++)
-            species[i].mult(tmp,0,ispecies,1);
+            species[Spec_fpi].mult(tmp,0,ispecies,1);
     }
 
     tmp.clear();
@@ -9770,13 +9771,13 @@ HeatTransfer::calc_dpdt (Real      time,
     
     for (MFIter Rho_mfi(rho); Rho_mfi.isValid(); ++Rho_mfi)
     {
-        const int idx = Rho_mfi.index();
-        const Box box = BoxLib::grow(Rho_mfi.validbox(),nGrow);
+        const int  idx = Rho_mfi.index();
+        const Box& box = BoxLib::grow(Rho_mfi.validbox(),nGrow);
         
         BL_ASSERT(Rho_mfi.validbox() == grids[idx]);
         
-        getChemSolve().getMwmixGivenY(mwmix[idx],species[idx],box,sCompY,sCompMw);
-        getChemSolve().getCpmixGivenTY(cp[idx],temp[idx],species[idx],box,sCompT,sCompY,sCompCp);
+        getChemSolve().getMwmixGivenY(mwmix[Rho_mfi],species[Rho_mfi],box,sCompY,sCompMw);
+        getChemSolve().getCpmixGivenTY(cp[Rho_mfi],temp[Rho_mfi],species[Rho_mfi],box,sCompT,sCompY,sCompCp);
     }
 
     temp.clear();
@@ -9795,13 +9796,13 @@ HeatTransfer::calc_dpdt (Real      time,
     for (MFIter mfi(gamma); mfi.isValid(); ++mfi)
     {
         const int idx = mfi.index();
-        gamma[idx].copy(cp[idx]);
+        gamma[mfi].copy(cp[mfi]);
         rmix.resize(BoxLib::grow(grids[idx],nGrow),1);
         rmix.setVal(rgas);
-        rmix.divide(mwmix[idx]);
-        gamma[idx].minus(rmix);
-        gamma[idx].divide(cp[idx]);
-        gamma[idx].invert(1.0);
+        rmix.divide(mwmix[mfi]);
+        gamma[mfi].minus(rmix);
+        gamma[mfi].divide(cp[mfi]);
+        gamma[mfi].invert(1.0);
     }
 
     rmix.clear();
@@ -9814,31 +9815,31 @@ HeatTransfer::calc_dpdt (Real      time,
     {
         const int i = mfi.index();
         
-        dpdt[i].copy(S_old[i],grids[i],pComp,grids[i],0,1);
-        dpdt[i].plus(-p_amb);
-        dpdt[i].mult(1.0/dt);
+        dpdt[mfi].copy(S_old[mfi],grids[i],pComp,grids[i],0,1);
+        dpdt[mfi].plus(-p_amb);
+        dpdt[mfi].mult(1.0/dt);
 
         ugradp.resize(grids[i],1);
         
         const int* lo = grids[i].loVect();
         const int* hi = grids[i].hiVect();
 
-        FORT_COMPUTE_UGRADP(rhoRT[i].dataPtr(0), 
-                            ARLIM(rhoRT[i].box().loVect()), 
-                            ARLIM(rhoRT[i].box().hiVect()),
+        FORT_COMPUTE_UGRADP(rhoRT[mfi].dataPtr(0), 
+                            ARLIM(rhoRT[mfi].box().loVect()), 
+                            ARLIM(rhoRT[mfi].box().hiVect()),
                             ugradp.dataPtr(), 
                             ARLIM(ugradp.box().loVect()), 
                             ARLIM(ugradp.box().hiVect()),
-                            u_mac[0][i].dataPtr(),
-                            ARLIM(u_mac[0][i].box().loVect()),
-                            ARLIM(u_mac[0][i].box().hiVect()),
-                            u_mac[1][i].dataPtr(),
-                            ARLIM(u_mac[1][i].box().loVect()),
-                            ARLIM(u_mac[1][i].box().hiVect()),
+                            u_mac[0][mfi].dataPtr(),
+                            ARLIM(u_mac[0][mfi].box().loVect()),
+                            ARLIM(u_mac[0][mfi].box().hiVect()),
+                            u_mac[1][mfi].dataPtr(),
+                            ARLIM(u_mac[1][mfi].box().loVect()),
+                            ARLIM(u_mac[1][mfi].box().hiVect()),
 #if (BL_SPACEDIM == 3)
-                            u_mac[2][i].dataPtr(),
-                            ARLIM(u_mac[2][i].box().loVect()),
-                            ARLIM(u_mac[2][i].box().hiVect()),
+                            u_mac[2][mfi].dataPtr(),
+                            ARLIM(u_mac[2][mfi].box().loVect()),
+                            ARLIM(u_mac[2][mfi].box().hiVect()),
 #endif
                             lo,hi,dx);
         //
@@ -9849,31 +9850,31 @@ HeatTransfer::calc_dpdt (Real      time,
         //  p is the current value, p0 is the value we're trying to get to,
         //  so dp/dt = (p0 - p)/dt.)
         //
-        dpdt[i].minus(ugradp,0,0,1);
+        dpdt[mfi].minus(ugradp,0,0,1);
         //
         // Make sure to divide by gamma *after* subtracting ugradp.
         //
-        dpdt[i].divide(gamma[i]);
+        dpdt[mfi].divide(gamma[mfi]);
 
         if (dpdt_option == 0)
         {
-            dpdt[i].divide(S_old[i],pComp,0,1);
+            dpdt[mfi].divide(S_old[mfi],pComp,0,1);
         }
         else if (dpdt_option == 1)
         {
-            dpdt[i].divide(p_amb);
+            dpdt[mfi].divide(p_amb);
         }
         else
         {
             const int ncomp = 1;
             p_denom.resize(grids[i],ncomp);
-            p_denom.copy(S_old[i],grids[i],pComp,grids[i],0,ncomp);
-            Real num_norm = dpdt[i].norm(0,0,1);
+            p_denom.copy(S_old[mfi],grids[i],pComp,grids[i],0,ncomp);
+            Real num_norm = dpdt[mfi].norm(0,0,1);
             FabMinMax(p_denom,grids[i],2*num_norm*Real_MIN,p_amb,0,ncomp);
-            dpdt[i].divide(p_denom);
+            dpdt[mfi].divide(p_denom);
         }
         
-        dpdt[i].mult(dpdt_factor);
+        dpdt[mfi].mult(dpdt_factor);
     }
 }
 
@@ -9894,9 +9895,9 @@ HeatTransfer::calc_dsdt (Real      time,
     for (MFIter mfi(dsdt); mfi.isValid(); ++mfi)
     {
         const int k = mfi.index();
-        dsdt[k].copy(Divu_new[k],grids[k]);
-        dsdt[k].minus(Divu_old[k],grids[k],0,0,1);
-        dsdt[k].divide(dt,grids[k],0,1);
+        dsdt[mfi].copy(Divu_new[mfi],grids[k]);
+        dsdt[mfi].minus(Divu_old[mfi],grids[k],0,0,1);
+        dsdt[mfi].divide(dt,grids[k],0,1);
     }
 }
 
@@ -9925,7 +9926,7 @@ HeatTransfer::RhoH_to_Temp (MultiFab& S,
     {
         const int k   = mfi.index();
         Box       box = BoxLib::grow(sgrids[k],nGrow);
-        S[k].copy(temp[k],box,0,box,Temp,1);
+        S[mfi].copy(temp[mfi],box,0,box,Temp,1);
     }
 }
 
@@ -9986,21 +9987,21 @@ HeatTransfer::RhoH_to_Temp (MultiFab& S,
 
     for (MFIter mfi(S); mfi.isValid(); ++mfi)
     {
-        const int k   = mfi.index();
-        const Box box = BoxLib::grow(sgrids[k],nGrow);
+        const int  k   = mfi.index();
+        const Box& box = BoxLib::grow(sgrids[k],nGrow);
         //
         // Convert rho*h to h and rho*Y to Y for this operation.
         //
         tmp.resize(box,1);
-        tmp.copy(S[k],Density,0,1);
+        tmp.copy(S[mfi],Density,0,1);
         tmp.invert(1);
 
-        S[k].mult(tmp,0,RhoH,1);
+        S[mfi].mult(tmp,0,RhoH,1);
 
         for (int spec = first_spec; spec <= last_spec; spec++)
-            S[k].mult(tmp,0,spec,1);
+            S[mfi].mult(tmp,0,spec,1);
 
-        int iters = getChemSolve().getTGivenHY(temp[k],S[k],S[k],
+        int iters = getChemSolve().getTGivenHY(temp[mfi],S[mfi],S[mfi],
                                                box,RhoH,first_spec,sCompT,errMAX);
         if (iters < 0)
             BoxLib::Error("HeatTransfer::RhoH_to_Temp: error in H->T");
@@ -10008,13 +10009,13 @@ HeatTransfer::RhoH_to_Temp (MultiFab& S,
         max_iters = std::max(max_iters,iters);
 
         if (dominmax)
-            FabMinMax(S[k], box, htt_tempmin, htt_tempmax, Temp, 1);
+            FabMinMax(S[mfi], box, htt_tempmin, htt_tempmax, Temp, 1);
         //
         // Convert back to rho*h and rho*Y
         //
-        S[k].mult(S[k],box,Density,RhoH,1);
+        S[mfi].mult(S[mfi],box,Density,RhoH,1);
         for (int spec = first_spec; spec <= last_spec; spec++)
-            S[k].mult(S[k],box,Density,spec,1);
+            S[mfi].mult(S[mfi],box,Density,spec,1);
     }
 
     if (verbose)
@@ -10081,13 +10082,13 @@ HeatTransfer::compute_cp_and_hmix (const MultiFab& S,
 	    sCompY = 1;
 	    if (tmp_temp)
 	    {
-		tmp.copy((*temp)[iGrid],0,sCompT,1);
+		tmp.copy((*temp)[mfi],0,sCompT,1);
 	    }
             else
             {
-		tmp.copy(S[iGrid],Temp,sCompT,1);
+		tmp.copy(S[mfi],Temp,sCompT,1);
 	    }
-	    tmp.copy(S[iGrid],first_spec,sCompY,nCompY);
+	    tmp.copy(S[mfi],first_spec,sCompY,nCompY);
 	}
         else
         {
@@ -10095,15 +10096,15 @@ HeatTransfer::compute_cp_and_hmix (const MultiFab& S,
 	    sCompY = first_spec;
 	}
 	
-	const FArrayBox& state = need_tmp_data ? tmp : S[iGrid];
+	const FArrayBox& state = need_tmp_data ? tmp : S[mfi];
 
 	const int sCompCp = 0;
-	getChemSolve().getCpmixGivenTY(cp[iGrid],state,state,box,sCompT,sCompY,sCompCp);
+	getChemSolve().getCpmixGivenTY(cp[mfi],state,state,box,sCompT,sCompY,sCompCp);
 
 	if (calchmix)
 	{
 	    const int sCompH = 0;
-	    getChemSolve().getHmixGivenTY(hmix[iGrid],state,state,box,sCompT,sCompY,sCompH);
+	    getChemSolve().getHmixGivenTY(hmix[mfi],state,state,box,sCompT,sCompY,sCompH);
 	}
     }
 }
@@ -10141,7 +10142,7 @@ HeatTransfer::compute_cp (Real      time,
         for (int k = 0; k < nspecies; k++)
             state.mult(tmp,0,sCompY+k,1);
 	
-	getChemSolve().getCpmixGivenTY(cp[iGrid],state,state,validBox,sCompT,sCompY,sCompCp);
+	getChemSolve().getCpmixGivenTY(cp[fpi],state,state,validBox,sCompT,sCompY,sCompCp);
     }
 }
 
@@ -10199,12 +10200,12 @@ HeatTransfer::compute_rhohmix (Real      time,
         for (int k = 0; k < nspecies; k++)
             state.mult(tmp,0,sCompY+k,1);
 	
-	getChemSolve().getHmixGivenTY(rhohmix[iGrid],state,state,validBox,
+	getChemSolve().getHmixGivenTY(rhohmix[fpi],state,state,validBox,
 				      sCompT,sCompY,sCompH);
         //
         // Convert hmix to rho*hmix
         //
-        rhohmix[iGrid].mult(state,validBox,sCompR,sCompH,1);
+        rhohmix[fpi].mult(state,validBox,sCompR,sCompH,1);
     }
 }
  
@@ -10225,11 +10226,11 @@ HeatTransfer::compute_h (Real      time,
          fpi.isValid();
          ++fpi)
     {
-	const Box box = BoxLib::grow(grids[fpi.index()],nGrow);
+	const Box& box = BoxLib::grow(grids[fpi.index()],nGrow);
 
-	BL_ASSERT(box == h[fpi.index()].box());
+	BL_ASSERT(box == h[fpi].box());
 
-	getChemSolve().getHGivenT(h[fpi.index()],fpi(),box,sCompT,sCompH);
+	getChemSolve().getHGivenT(h[fpi],fpi(),box,sCompT,sCompH);
     }
 }
 
@@ -10633,7 +10634,7 @@ HeatTransfer::derive (const std::string& name,
              fpi.isValid();
              ++fpi)
         {
-            tmf[fpi.index()].copy(fpi());
+            tmf[fpi].copy(fpi());
         }
 
         int num_smooth_pre = 3;
@@ -10673,7 +10674,7 @@ HeatTransfer::derive (const std::string& name,
             const FArrayBox& Tg = tmf[mfi];
             FArrayBox& MC = mf[mfi];
             const Box& box = mfi.validbox();
-            const Box nodebox = BoxLib::surroundingNodes(box);
+            const Box& nodebox = BoxLib::surroundingNodes(box);
             nWork.resize(nodebox,BL_SPACEDIM);
             
             FORT_MCURVE(box.loVect(),box.hiVect(),

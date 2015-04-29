@@ -23,6 +23,7 @@ module meth_params_module
   integer         , save :: URHO, UMX, UMY, UMZ, UEDEN, UTEMP, UFS
 
   ! primitive variables
+  integer         , save :: QVAR
   integer         , save :: QCVAR, QFVAR  ! cell-centered and face
   integer         , save :: QRHO, QU, QV, QW, QPRES, QTEMP, QFY, QFX, QFH
 
@@ -34,7 +35,8 @@ module meth_params_module
   integer, save :: xblksize=2048, yblksize=2048, zblksize=2048
   integer, save :: nthreads=1
 
-  logical, save :: do_weno, do_mp5, do_quadrature_weno, do_component_weno;
+  logical, save :: do_weno = .true. 
+  logical, save :: do_mdcd = .true.
 
   ! chemistry
   logical, save :: use_vode

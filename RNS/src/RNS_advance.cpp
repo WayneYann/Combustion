@@ -111,7 +111,7 @@ RNS::fill_boundary(MultiFab& U, Real time, int type_in, bool isCorrection, bool 
 	BoxArray grids_g(grids);
 	for (int ibox=0; ibox<grids_g.size(); ibox++)
 	{
-	    const Box b = BoxLib::grow(grids_g[ibox], NUM_GROW);
+	    const Box& b = BoxLib::grow(grids_g[ibox], NUM_GROW);
 	    grids_g.set(ibox, b);
 	}
 
@@ -123,12 +123,12 @@ RNS::fill_boundary(MultiFab& U, Real time, int type_in, bool isCorrection, bool 
 	    int i = mfi.index();
 
 	    const Box& vbox = grids[i];
-	    const Box& gbox = Utmp[i].box();
+	    const Box& gbox = Utmp[mfi].box();
 	    const BoxArray& ba = BoxLib::boxComplement(gbox, vbox);
 
 	    for (int ibox=0; ibox<ba.size(); ibox++)
 	    {
-		U[i].copy(Utmp[i], ba[ibox]);
+		U[mfi].copy(Utmp[mfi], ba[ibox]);
 	    }
 	}
     }
@@ -175,32 +175,32 @@ RNS::fill_rk_boundary(MultiFab& U, Real time, Real dt, int stage, int iteration,
     BL_ASSERT(level > 0);
     BL_ASSERT(RK_order > 2);
 
-    static MultiFab* U0;
-    static MultiFab* k1;
-    static MultiFab* k2;
-    static MultiFab* k3;
-    static MultiFab* k4;
+    static PArray<MultiFab> U0(10,PArrayManage);
+    static PArray<MultiFab> k1(10,PArrayManage);
+    static PArray<MultiFab> k2(10,PArrayManage);
+    static PArray<MultiFab> k3(10,PArrayManage);
+    static PArray<MultiFab> k4(10,PArrayManage);
 
     const int ncomp = U.nComp();
     const int ngrow = U.nGrow();
 
     if (iteration == 1 && stage == 0) {
 
-	U0 = new MultiFab(grids, ncomp, ngrow);
-	k1 = new MultiFab(grids, ncomp, ngrow);
-	k2 = new MultiFab(grids, ncomp, ngrow);
-	k3 = new MultiFab(grids, ncomp, ngrow);
-	k4 = (RK_order == 4) ? new MultiFab(grids, ncomp, ngrow) : 0;
+	U0.set(level, new MultiFab(grids, ncomp, ngrow));
+	k1.set(level, new MultiFab(grids, ncomp, ngrow));
+	k2.set(level, new MultiFab(grids, ncomp, ngrow));
+	k3.set(level, new MultiFab(grids, ncomp, ngrow));
+	if (RK_order == 4) k4.set(level, new MultiFab(grids, ncomp, ngrow));
 
-	U0->setVal(0.0);
-	k1->setVal(0.0);
-	k2->setVal(0.0);
-	k3->setVal(0.0);
-	if (k4) k4->setVal(0.0);
+	U0[level].setVal(0.0);
+	k1[level].setVal(0.0);
+	k2[level].setVal(0.0);
+	k3[level].setVal(0.0);
+	if (RK_order == 4) k4[level].setVal(0.0);
 
 	RNS& levelG = *dynamic_cast<RNS*>(&getLevel(level-1));
 
-	const IntVect         ratio = levelG.fineRatio();
+	const IntVect&        ratio = levelG.fineRatio();
 	const DescriptorList& dl    = get_desc_lst();
 	const Array<BCRec>&   bcs   = dl[0].getBCs();
 	Interpolater&         map   = *dl[0].interp();
@@ -252,23 +252,23 @@ RNS::fill_rk_boundary(MultiFab& U, Real time, Real dt, int stage, int iteration,
 	    switch (ii) {
 	    case 0:
 		UG = &(levelG.get_old_data(0));
-		UF = U0;
+		UF = &U0[level];
 		break;
 	    case 1:
 		UG = &(levelG.getRKk(0));
-		UF = k1;
+		UF = &k1[level];
 		break;
 	    case 2:
 		UG = &(levelG.getRKk(1));
-		UF = k2;
+		UF = &k2[level];
 		break;
 	    case 3:
 		UG = &(levelG.getRKk(2));
-		UF = k3;
+		UF = &k3[level];
 		break;
 	    case 4:
 		UG = &(levelG.getRKk(3));
-		UF = k4;
+		UF = &k4[level];
 		break;
 	    }
 
@@ -318,8 +318,7 @@ RNS::fill_rk_boundary(MultiFab& U, Real time, Real dt, int stage, int iteration,
 		MultiFab UG2(ba_G2, ncomp, 0);
 		for (MFIter mfi(UG2); mfi.isValid(); ++mfi)
 		{
-		    int i = mfi.index();
-		    UG2[i].copy((*UG_safe)[i]);  // Fab to Fab copy
+		    UG2[mfi].copy((*UG_safe)[mfi]);  // Fab to Fab copy
 		}
 		
 		UC.copy(UG2);
@@ -350,7 +349,7 @@ RNS::fill_rk_boundary(MultiFab& U, Real time, Real dt, int stage, int iteration,
 	int i = mfi.index();
 
 	const Box& vbox = grids[i];
-	const Box& gbox = U[i].box();
+	const Box& gbox = U[mfi].box();
 	const BoxArray& ba = BoxLib::boxComplement(gbox, vbox);
 
 	for (int ibox=0; ibox<ba.size(); ibox++)
@@ -358,22 +357,22 @@ RNS::fill_rk_boundary(MultiFab& U, Real time, Real dt, int stage, int iteration,
 	    if (RK_order == 3) {
 		BL_FORT_PROC_CALL(RNS_FILL_RK3_BNDRY, rns_fill_rk3_bndry)
 		    (ba[ibox].loVect(), ba[ibox].hiVect(),
-		     BL_TO_FORTRAN(U[i]),
-		     BL_TO_FORTRAN((*U0)[i]),
-		     BL_TO_FORTRAN((*k1)[i]),
-		     BL_TO_FORTRAN((*k2)[i]),
-		     BL_TO_FORTRAN((*k3)[i]),
+		     BL_TO_FORTRAN(U[mfi]),
+		     BL_TO_FORTRAN(U0[level][mfi]),
+		     BL_TO_FORTRAN(k1[level][mfi]),
+		     BL_TO_FORTRAN(k2[level][mfi]),
+		     BL_TO_FORTRAN(k3[level][mfi]),
 		     dtdt, xsi0, stage);
 	    }
 	    else {
 		BL_FORT_PROC_CALL(RNS_FILL_RK4_BNDRY, rns_fill_rk4_bndry)
 		    (ba[ibox].loVect(), ba[ibox].hiVect(),
-		     BL_TO_FORTRAN(U[i]),
-		     BL_TO_FORTRAN((*U0)[i]),
-		     BL_TO_FORTRAN((*k1)[i]),
-		     BL_TO_FORTRAN((*k2)[i]),
-		     BL_TO_FORTRAN((*k3)[i]),
-		     BL_TO_FORTRAN((*k4)[i]),
+		     BL_TO_FORTRAN(U[mfi]),
+		     BL_TO_FORTRAN(U0[level][mfi]),
+		     BL_TO_FORTRAN(k1[level][mfi]),
+		     BL_TO_FORTRAN(k2[level][mfi]),
+		     BL_TO_FORTRAN(k3[level][mfi]),
+		     BL_TO_FORTRAN(k4[level][mfi]),
 		     dtdt, xsi0, stage);
 	    }
 	}
@@ -382,11 +381,11 @@ RNS::fill_rk_boundary(MultiFab& U, Real time, Real dt, int stage, int iteration,
     fill_boundary(U, time, RNS::use_FillBoundary);
 
     if (iteration == ncycle && stage+1 == RK_order) {
-	delete U0;
-	delete k1;
-	delete k2;
-	delete k3;
-	if (k4) delete k4;
+	U0.clear(level);
+	k1.clear(level);
+	k2.clear(level);
+	k3.clear(level);
+	if (RK_order == 4) k4.clear(level);
     }
 }
 #endif
@@ -430,7 +429,7 @@ RNS::dUdt_AD(MultiFab& U, MultiFab& Uprime, Real time, int fill_boundary_type,
 	if (partialUpdate && !touchFine[i]) {
 	    if (do_reflux && fine) {
 		for (int idim = 0; idim < BL_SPACEDIM ; idim++) {
-		    fluxes[idim][i].setVal(0.0);
+		    fluxes[idim][mfi].setVal(0.0);
 		}
 	    }
 	    continue;
@@ -445,8 +444,8 @@ RNS::dUdt_AD(MultiFab& U, MultiFab& Uprime, Real time, int fill_boundary_type,
 
 	BL_FORT_PROC_CALL(RNS_DUDT_AD,rns_dudt_ad)
 	    (bx.loVect(), bx.hiVect(),
-	     BL_TO_FORTRAN(U[i]),
-	     BL_TO_FORTRAN(Uprime[i]),
+	     BL_TO_FORTRAN(U[mfi]),
+	     BL_TO_FORTRAN(Uprime[mfi]),
 	     D_DECL(BL_TO_FORTRAN(flux[0]),
 		    BL_TO_FORTRAN(flux[1]),
 		    BL_TO_FORTRAN(flux[2])),
@@ -458,7 +457,7 @@ RNS::dUdt_AD(MultiFab& U, MultiFab& Uprime, Real time, int fill_boundary_type,
 	    {
 		for (int idim = 0; idim < BL_SPACEDIM ; idim++)
 		{
-		    fluxes[idim][i].copy(flux[idim]);
+		    fluxes[idim][mfi].copy(flux[idim]);
 		}
 	    }
 
@@ -466,7 +465,7 @@ RNS::dUdt_AD(MultiFab& U, MultiFab& Uprime, Real time, int fill_boundary_type,
 	    {
 		for (int idim = 0; idim < BL_SPACEDIM ; idim++)
 		{
-		    current->FineAdd(flux[idim],area[idim][i],idim,i,0,0,NUM_STATE,dt);
+		    current->FineAdd(flux[idim],area[idim][mfi],idim,i,0,0,NUM_STATE,dt);
 		}
 	    }
 	}
@@ -479,6 +478,8 @@ RNS::dUdt_AD(MultiFab& U, MultiFab& Uprime, Real time, int fill_boundary_type,
 	    fine->CrseInit(fluxes[idim],area[idim],idim,0,0,NUM_STATE,-dt);
 	}
     }
+
+    num_ad_evals ++;
 }
 
 
@@ -506,9 +507,11 @@ RNS::dUdt_chemistry(const MultiFab& U, MultiFab& Uprime, bool partialUpdate)
 	const int* hi = bx.hiVect();
 
 	BL_FORT_PROC_CALL(RNS_DUDT_CHEM, rns_dudt_chem)
-	    (lo, hi, BL_TO_FORTRAN(U[i]), BL_TO_FORTRAN(Uprime[i]),
-	     BL_TO_FORTRAN((*chemstatus)[i]));
+	    (lo, hi, BL_TO_FORTRAN(U[mfi]), BL_TO_FORTRAN(Uprime[mfi]),
+	     BL_TO_FORTRAN((*chemstatus)[mfi]));
     }
+
+    num_chem_evals ++;
 }
 
 
@@ -518,11 +521,10 @@ RNS::update_rk(MultiFab& U1, const MultiFab& U2, Real c, const MultiFab& Uprime)
 {
     for (MFIter mfi(U1); mfi.isValid(); ++mfi)
     {
-	const int   i = mfi.index();
 	const Box& bx = mfi.validbox();
 
-	U1[i].copy(U2[i], bx);
-	U1[i].saxpy(c, Uprime[i]);
+	U1[mfi].copy(U2[mfi], bx);
+	U1[mfi].saxpy(c, Uprime[mfi]);
     }
 }
 
@@ -533,12 +535,10 @@ RNS::update_rk(MultiFab& U, Real a, const MultiFab& Ua, Real b, const MultiFab& 
 {
     for (MFIter mfi(U); mfi.isValid(); ++mfi)
     {
-	const int   i = mfi.index();
-
-	U[i].setVal(0.0);
-	U[i].saxpy(a, Ua[i]);
-	U[i].saxpy(b, Ub[i]);
-	U[i].saxpy(c, Uprime[i]);
+	U[mfi].setVal(0.0);
+	U[mfi].saxpy(a, Ua[mfi]);
+	U[mfi].saxpy(b, Ub[mfi]);
+	U[mfi].saxpy(c, Uprime[mfi]);
     }
 }
 
@@ -548,16 +548,15 @@ RNS::post_update(MultiFab& U)
 {
     for (MFIter mfi(U); mfi.isValid(); ++mfi)
     {
-	const int   i = mfi.index();
 	const Box& bx = mfi.validbox();
         const int* lo = bx.loVect();
         const int* hi = bx.hiVect();
 
 	BL_FORT_PROC_CALL(RNS_ENFORCE_CONSISTENT_Y, rns_enforce_consistent_y)
-	    (lo, hi, BL_TO_FORTRAN(U[i]));
+	    (lo, hi, BL_TO_FORTRAN(U[mfi]));
 
 	BL_FORT_PROC_CALL(RNS_COMPUTE_TEMP, rns_compute_temp)
-	    (lo, hi, BL_TO_FORTRAN(U[i]));
+	    (lo, hi, BL_TO_FORTRAN(U[mfi]));
     }
 }
 
@@ -575,13 +574,12 @@ RNS::advance_chemistry(MultiFab& U, Real dt)
 
     for (MFIter mfi(U); mfi.isValid(); ++mfi)
     {
-	const int   i = mfi.index();
 	const Box& bx = mfi.validbox();
 	const int* lo = bx.loVect();
 	const int* hi = bx.hiVect();
 
 	BL_FORT_PROC_CALL(RNS_ADVCHEM, rns_advchem)
-	    (lo, hi, BL_TO_FORTRAN(U[i]), BL_TO_FORTRAN((*chemstatus)[i]), dt);
+	    (lo, hi, BL_TO_FORTRAN(U[mfi]), BL_TO_FORTRAN((*chemstatus)[mfi]), dt);
     }
 
     post_update(U);
@@ -602,14 +600,13 @@ RNS::advance_chemistry(MultiFab& U, const MultiFab& Uguess, Real dt)
 
     for (MFIter mfi(U); mfi.isValid(); ++mfi)
     {
-	const int   i = mfi.index();
 	const Box& bx = mfi.validbox();
 	const int* lo = bx.loVect();
 	const int* hi = bx.hiVect();
 
 	BL_FORT_PROC_CALL(RNS_ADVCHEM2, rns_advchem2)
-	    (lo, hi, BL_TO_FORTRAN(U[i]), BL_TO_FORTRAN((*chemstatus)[i]),
-	     BL_TO_FORTRAN(Uguess[i]), dt);
+	    (lo, hi, BL_TO_FORTRAN(U[mfi]), BL_TO_FORTRAN((*chemstatus)[mfi]),
+	     BL_TO_FORTRAN(Uguess[mfi]), dt);
     }
 
     post_update(U);
@@ -694,12 +691,11 @@ RNS::advance_AD(MultiFab& Unew, Real time, Real dt, int iteration, int ncycle)
 	RK_k[stage].mult(dt);
 	for (MFIter mfi(Unew); mfi.isValid(); ++mfi)
 	{
-	    const int i = mfi.index();
 	    const Box& bx = mfi.validbox();
 	    
-	    Unew[i].copy(U0[i], bx);
-	    Unew[i].saxpy(0.25, RK_k[0][i]);
-	    Unew[i].saxpy(0.25, RK_k[1][i]);
+	    Unew[mfi].copy(U0[mfi], bx);
+	    Unew[mfi].saxpy(0.25, RK_k[0][mfi]);
+	    Unew[mfi].saxpy(0.25, RK_k[1][mfi]);
 	}
 	post_update(Unew);
 
@@ -722,13 +718,12 @@ RNS::advance_AD(MultiFab& Unew, Real time, Real dt, int iteration, int ncycle)
 	RK_k[stage].mult(dt);
 	for (MFIter mfi(Unew); mfi.isValid(); ++mfi)
 	{
-	    const int i = mfi.index();
 	    const Box& bx = mfi.validbox();
 	    
-	    Unew[i].copy(U0[i], bx);
-	    Unew[i].saxpy(1./6., RK_k[0][i]);
-	    Unew[i].saxpy(1./6., RK_k[1][i]);
-	    Unew[i].saxpy(2./3., RK_k[2][i]);
+	    Unew[mfi].copy(U0[mfi], bx);
+	    Unew[mfi].saxpy(1./6., RK_k[0][mfi]);
+	    Unew[mfi].saxpy(1./6., RK_k[1][mfi]);
+	    Unew[mfi].saxpy(2./3., RK_k[2][mfi]);
 	}
 	post_update(Unew);
     }
@@ -811,14 +806,13 @@ RNS::advance_AD(MultiFab& Unew, Real time, Real dt, int iteration, int ncycle)
 	RK_k[stage].mult(dt);
 	for (MFIter mfi(Unew); mfi.isValid(); ++mfi)
 	{
-	    const int i = mfi.index();
 	    const Box& bx = mfi.validbox();
 
-	    Unew[i].copy(U0[i], bx);
-	    Unew[i].saxpy(1./6., RK_k[0][i]);
-	    Unew[i].saxpy(1./3., RK_k[1][i]);
-	    Unew[i].saxpy(1./3., RK_k[2][i]);
-	    Unew[i].saxpy(1./6., RK_k[3][i]);
+	    Unew[mfi].copy(U0[mfi], bx);
+	    Unew[mfi].saxpy(1./6., RK_k[0][mfi]);
+	    Unew[mfi].saxpy(1./3., RK_k[1][mfi]);
+	    Unew[mfi].saxpy(1./3., RK_k[2][mfi]);
+	    Unew[mfi].saxpy(1./6., RK_k[3][mfi]);
 	}
 	post_update(Unew);	
     }
@@ -834,8 +828,8 @@ BEGIN_EXTERN_C
 void sdc_f1eval(void *Fp, void *Qp, double t, sdc_state *state, void *ctx)
 {
   RNS&      rns    = *((RNS*) ctx);
-  RNSEncap& Q      = *((RNSEncap*) Qp);
-  RNSEncap& F      = *((RNSEncap*) Fp);
+  MLSDCAmrEncap& Q      = *((MLSDCAmrEncap*) Qp);
+  MLSDCAmrEncap& F      = *((MLSDCAmrEncap*) Fp);
   MultiFab& U      = *Q.U;
   MultiFab& Uprime = *F.U;
 
@@ -877,8 +871,8 @@ void sdc_f1eval(void *Fp, void *Qp, double t, sdc_state *state, void *ctx)
 void sdc_f2eval(void *Fp, void *Qp, double t, sdc_state *state, void *ctx)
 {
   RNS&      rns    = *((RNS*) ctx);
-  RNSEncap& Q      = *((RNSEncap*) Qp);
-  RNSEncap& F      = *((RNSEncap*) Fp);
+  MLSDCAmrEncap& Q      = *((MLSDCAmrEncap*) Qp);
+  MLSDCAmrEncap& F      = *((MLSDCAmrEncap*) Fp);
   MultiFab& U      = *Q.U;
   MultiFab& Uprime = *F.U;
   Real dt = state->dt;
@@ -922,9 +916,9 @@ void sdc_f2comp(void *Fp, void *Qp, double t, double dt, void *RHSp, sdc_state *
 {
   static int first = 1;
   RNS&      rns    = *((RNS*) ctx);
-  RNSEncap& Q      = *((RNSEncap*) Qp);
-  RNSEncap& F      = *((RNSEncap*) Fp);
-  RNSEncap& RHS    = *((RNSEncap*) RHSp);
+  MLSDCAmrEncap& Q      = *((MLSDCAmrEncap*) Qp);
+  MLSDCAmrEncap& F      = *((MLSDCAmrEncap*) Fp);
+  MLSDCAmrEncap& RHS    = *((MLSDCAmrEncap*) RHSp);
   MultiFab& U      = *Q.U;
   MultiFab& Uprime = *F.U;
   MultiFab& Urhs   = *RHS.U;
@@ -940,11 +934,11 @@ void sdc_f2comp(void *Fp, void *Qp, double t, double dt, void *RHSp, sdc_state *
   BL_FORT_PROC_CALL(RNS_PASSINFO, rns_passinfo)(rns.Level(),state->iter,t);
 
   if (first) {
-      const SDCAmr* sdcamr = rns.getSDCAmr();
-      if (rns.check_imex_order(sdcamr->ho_imex)) {
-	  BoxLib::Warning("\n*** ho_imex is incompatible with chem_solver");
-      }
-      first = 0;
+      // const MLSDCAmr* sdcamr = rns.getMLSDCAmr();
+      // if (rns.check_imex_order(sdcamr->ho_imex)) {
+      //     BoxLib::Warning("\n*** ho_imex is incompatible with chem_solver");
+      // }
+      // first = 0;
   }
 
   if (rns.verbose > 1 && ParallelDescriptor::IOProcessor()) {
@@ -989,7 +983,7 @@ void sdc_f2comp(void *Fp, void *Qp, double t, double dt, void *RHSp, sdc_state *
 void sdc_poststep_hook(void *Qp, sdc_state *state, void *ctx)
 {
   RNS&      rns = *((RNS*) ctx);
-  RNSEncap& Q   = *((RNSEncap*) Qp);
+  MLSDCAmrEncap& Q   = *((MLSDCAmrEncap*) Qp);
   MultiFab& U   = *Q.U;
 
   rns.post_update(U);

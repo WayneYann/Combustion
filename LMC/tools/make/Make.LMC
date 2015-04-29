@@ -114,6 +114,11 @@ ifeq ($(CHEMISTRY_MODEL), LUDME)
   vpath %.f   $(VPATH_LOCATIONS) $(COMBUSTION_DIR)/Chemistry/data/Lu/PMFs
   vpath %.c $(VPATH_LOCATIONS) $(COMBUSTION_DIR)/Chemistry/data/Lu
 endif
+ifeq ($(CHEMISTRY_MODEL), WANGDODECANE)
+  cEXE_sources += dodecane_wang.c
+  vpath %.f   $(VPATH_LOCATIONS) $(COMBUSTION_DIR)/Chemistry/data/dodecane_wang/PMFs
+  vpath %.c $(VPATH_LOCATIONS) $(COMBUSTION_DIR)/Chemistry/data/dodecane_wang
+endif
 
 # Enable time-dependent turbulence forcing term
 ifeq ($(USE_TDEPFORCING), TRUE)
@@ -154,6 +159,10 @@ ifeq ($(USE_METIS),TRUE)
   DEFINES += -DBL_USE_METIS
 endif
 
+ifeq ($(REGRESSIONTEST),TRUE)
+  DEFINES += -DREGRESSIONTEST
+endif
+
 all: $(executable)
 	$(SILENT) $(RM) buildInfo.cpp
 	@echo SUCCESS
@@ -166,10 +175,12 @@ CEXE_headers += $(BOXLIB_HOME)/Tools/C_scripts/buildInfo.H
 INCLUDE_LOCATIONS +=  $(BOXLIB_HOME)/Tools/C_scripts
 
 buildInfo.cpp: $(BOXLIB_HOME)/Tools/C_scripts/make_build_info_cpp
-	$(BOXLIB_HOME)/Tools/C_scripts/make_build_info_cpp "$(BOXLIB_HOME)" \
-            "$(COMP)" "$(FCOMP)" \
-            "AUX=$(CHEMISTRY_MODEL)" \
-            "GIT=$(COMBUSTION_DIR)" "GIT=$(BOXLIB_HOME)" "GIT=$(IAMR_DIR)"
+	$(BOXLIB_HOME)/Tools/C_scripts/makebuildinfo_C.py \
+          --boxlib_home "$(BOXLIB_HOME)" \
+          --COMP "$(COMP)" \
+          --FCOMP "$(FCOMP)" \
+          --AUX "$(CHEMISTRY_MODEL)" \
+          --GIT "$(COMBUSTION_DIR) $(BOXLIB_HOME) $(IAMR_DIR)" 
 
 
 vpath %.c   $(VPATH_LOCATIONS)

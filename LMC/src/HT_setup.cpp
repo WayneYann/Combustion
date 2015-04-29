@@ -486,6 +486,7 @@ HeatTransfer::variableSetUp ()
     pp.query("oxidizerName",oxidizerName);
     pp.query("productName",productName);
     pp.query("do_group_bndry_fills",do_group_bndry_fills);
+
     //
     // Set scale of chemical components, used in ODE solves
     //
@@ -504,6 +505,11 @@ HeatTransfer::variableSetUp ()
     int fuelID = getChemSolve().index(fuelName);
     int oxidID = getChemSolve().index(oxidizerName);
     int prodID = getChemSolve().index(productName);
+
+    if (ParallelDescriptor::IOProcessor()) {
+      std::cout << " fuel name " << fuelName << std::endl;
+      std::cout << " index for fueld and oxidizer " << fuelID << " " << oxidID << std::endl;
+    }
     FORT_SET_PROB_SPEC(&fuelID, &oxidID, &prodID, &nspecies);
     //
     // Get a species to use as a flame tracker.

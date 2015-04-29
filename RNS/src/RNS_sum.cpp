@@ -53,7 +53,6 @@ RNS::volWgtSumCons(Array<Real>& s)
 
     for (MFIter mfi(Unew); mfi.isValid(); ++mfi)
     {
-	int i = mfi.index();
         const Box& bx = mfi.validbox();
 
 	FArrayBox msk(bx,1);
@@ -67,9 +66,9 @@ RNS::volWgtSumCons(Array<Real>& s)
 	}
 
 	BL_FORT_PROC_CALL(RNS_SUM_CONS, rns_sum_cons)
-	    (BL_TO_FORTRAN(Unew[i]),
+	    (BL_TO_FORTRAN(Unew[mfi]),
 	     BL_TO_FORTRAN(msk),
-	     BL_TO_FORTRAN(volume[i]),
+	     BL_TO_FORTRAN(volume[mfi]),
 	     &s[0]);
     }
 }

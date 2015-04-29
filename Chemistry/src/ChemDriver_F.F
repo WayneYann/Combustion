@@ -104,6 +104,13 @@ c
       integer mcr, mci, FORT_USINGEG, FORT_USINGMC
       integer ierr, LOUTCK
       !
+      ! Set a few default values
+      !
+      verbose_vode       = 0
+      max_vode_subcycles = 15000
+      spec_scalY         = one
+      thickFacCH         = one
+      !
       ! Get chemistry mechanism parameters.
       !
       CALL CKINIT()
@@ -234,6 +241,8 @@ c
       deallocate(RWRK)
       deallocate(IWRK)
 !$omp end parallel
+
+      call CKFINALIZE();
 
       end
 
@@ -1581,15 +1590,4 @@ c     Hardwire the unit number to 26 for the moment
 c      write(name, '(2a)') 'vode.failed.', myproc(idx:30)
       open(unit=lout, file=name, form='formatted', status='replace')
       open_vode_failure_file = lout
-      end
-    
-      block data tranjunk
-#include "cdwrk.H"
-#include "conp.H"
-      
-      data verbose_vode / 0 /
-      data max_vode_subcycles / 15000 /
-      data spec_scalY / maxspec*one /
-      data thickFacCH / 1.d0 /
-
       end

@@ -51,8 +51,12 @@ subroutine rns_initdata(level,time,lo,hi,nscal, &
   double precision state(state_l1:state_h1,state_l2:state_h2,NVAR)
   
   ! local variables
-  integer :: i, j
-  double precision :: xcen, ycen, ei0, ei1, Y(2)
+  integer :: i, j, ii, jj
+  double precision :: xcen, ycen, ei0, ei1, Y(2), xg, yg, w
+
+  integer, parameter :: ngp = 2
+  double precision, parameter :: gp(2) = (/ -1.d0/sqrt(3.d0), 1.d0/sqrt(3.d0) /)
+  double precision, parameter :: wgp(2) = (/ 1.d0, 1.d0 /)
 
   logical, save :: first_call = .true.
 
@@ -71,8 +75,8 @@ subroutine rns_initdata(level,time,lo,hi,nscal, &
      state0(UMY)   = -rho0*v0*cos(thetashock)
      state0(UEDEN) = rho0*(ei0 + 0.5d0*v0**2)
      state0(UTEMP) = 0.d0
-     Y(1) = 0.25d0
-     Y(2) = 0.75d0
+     Y(1) = 0.5d0
+     Y(2) = 0.5d0
      call eos_get_T(state0(UTEMP), ei0, Y)
      state0(UFS)   = Y(1) * rho0
      state0(UFS+1) = Y(2) * rho0
@@ -82,8 +86,8 @@ subroutine rns_initdata(level,time,lo,hi,nscal, &
      state1(UMY)   = -rho1*v1*cos(thetashock)
      state1(UEDEN) = rho1*(ei1 + 0.5d0*v1**2)
      state1(UTEMP) = 0.d0
-     Y(1) = 0.75d0
-     Y(2) = 0.25d0
+     Y(1) = 0.5d0
+     Y(2) = 0.5d0
      call eos_get_T(state1(UTEMP), ei1, Y)
      state1(UFS)   = Y(1) * rho1
      state1(UFS+1) = Y(2) * rho1
@@ -101,11 +105,22 @@ subroutine rns_initdata(level,time,lo,hi,nscal, &
      do i = state_l1, state_h1
         xcen = xlo(1) + delta(1)*(dble(i-lo(1)) + 0.5d0)
 
-        if (ycen .gt. tan(thetashock)*(xcen-xshock0_lo)) then
-           state(i,j,:) = state1
-        else
-           state(i,j,:) = state0
-        end if
+        state(i,j,:) = 0.d0
+
+        do jj = 1, ngp
+           yg = ycen + 0.5d0*delta(2)*gp(jj)
+           do ii = 1, ngp
+              xg = xcen + 0.5d0*delta(2)*gp(ii)
+
+              w = wgp(ii)*wgp(jj)*0.25d0
+
+              if (yg .gt. tan(thetashock)*(xg-xshock0_lo)) then
+                 state(i,j,:) = state(i,j,:) + w*state1
+              else
+                 state(i,j,:) = state(i,j,:) + w*state0
+              end if
+           end do
+        end do
 
      end do
   end do

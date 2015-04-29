@@ -93,7 +93,7 @@ contains
 
 
   subroutine compute_flux_and_alpha(lo, hi, U, F, ap, am, dir)
-    use eos_module, only : eos_given_ReY
+    use eos_module, only : eos_given_ReY, eos_given_RTY, allow_negative_energy
     integer, intent(in) :: lo, hi
     integer, intent(in), optional :: dir
     double precision, intent(in   ) ::  U(lo:hi+1,NVAR)
@@ -138,11 +138,11 @@ contains
 
        call floor_species(nspec, Y)
 
-       call eos_given_ReY(p,c,gamc,T,dpdr,dpde,rho,e,Y,ierr=ierr)
-!       if (ierr .ne. 0) then
-!          print *, 'compute_flux_and_alpha: eos failed', level, U(i,UFS:UFS+nspec-1)*rhoinv 
-!          call bl_error("compute_flux_and_alpha: eos failed")
-!       end if
+       if ((e .le. 0.d0) .and. (allow_negative_energy .eqv. .false.)) then
+          call eos_given_RTY(e,p,c,gamc,dpdr,dpde,rho,T,Y)
+       else
+          call eos_given_ReY(p,c,gamc,T,dpdr,dpde,rho,e,Y,ierr=ierr)
+       end if
 
        vn = v(idir)
 
@@ -169,7 +169,7 @@ contains
 
   subroutine riemann_JBB(lo, hi, UL, UR, flx, dir)
 !    use prob_params_module, only : physbc_lo,Symmetry
-    use eos_module, only : smalld, smallp, eos_given_ReY
+    use eos_module, only : smalld, smallp, eos_given_ReY, eos_given_RTY, allow_negative_energy
     integer, intent(in) :: lo, hi
     integer, intent(in), optional :: dir
     double precision, intent(in ) ::  UL(lo:hi+1,NVAR)
@@ -211,7 +211,11 @@ contains
        Yl    = UL(i,UFS:UFS+nspec-1) * rinvl
        rel   = retl - 0.5d0*rl*(vl(1)**2+vl(2)**2+vl(3)**2)
        el    = rel * rinvl       
-       call eos_given_ReY(pl, cl, gamcl, Tl, dpdr, dpde, rl, el, Yl)
+       if ((el .le. 0.d0) .and. (allow_negative_energy .eqv. .false.)) then
+          call eos_given_RTY(el, pl, cl, gamcl, dpdr, dpde, rl, Tl, Yl)
+       else
+          call eos_given_ReY(pl, cl, gamcl, Tl, dpdr, dpde, rl, el, Yl)
+       end if
 
        rr    = max(UR(i,URHO), smalld)
        rinvr = 1.d0/rr
@@ -223,7 +227,11 @@ contains
        Yr    = UR(i,UFS:UFS+nspec-1) * rinvr
        rer   = retr - 0.5d0*rr*(vr(1)**2+vr(2)**2+vr(3)**2)
        er    = rer * rinvr       
-       call eos_given_ReY(pr, cr, gamcr, Tr, dpdr, dpde, rr, er, Yr)
+       if ((er .le. 0.d0) .and. (allow_negative_energy .eqv. .false.)) then
+          call eos_given_RTY(er, pr, cr, gamcr, dpdr, dpde, rr, Tr, Yr)
+       else
+          call eos_given_ReY(pr, cr, gamcr, Tr, dpdr, dpde, rr, er, Yr)
+       end if
 
        csmall = max(small, small*cl, small*cr)
        wsmall = smalld*csmall
@@ -347,7 +355,7 @@ contains
 
   subroutine riemann_HLLC(lo, hi, UL, UR, flx, dir)
 !    use prob_params_module, only : physbc_lo,Symmetry
-    use eos_module, only : smalld, smallp, eos_given_ReY
+    use eos_module, only : smalld, smallp, eos_given_ReY, eos_given_RTY, allow_negative_energy
     integer, intent(in) :: lo, hi
     integer, intent(in), optional :: dir
     double precision, intent(in ) ::  UL(lo:hi+1,NVAR)
@@ -382,7 +390,11 @@ contains
        Yl    = UL(i,UFS:UFS+nspec-1) * rinvl
        rel   = retl - 0.5d0*rl*(vl(1)**2+vl(2)**2+vl(3)**2)
        el    = rel * rinvl       
-       call eos_given_ReY(pl, cl, gamcl, Tl, dpdr, dpde, rl, el, Yl)
+       if ((el .le. 0.d0) .and. (allow_negative_energy .eqv. .false.)) then
+          call eos_given_RTY(el, pl, cl, gamcl, dpdr, dpde, rl, Tl, Yl)
+       else
+          call eos_given_ReY(pl, cl, gamcl, Tl, dpdr, dpde, rl, el, Yl)
+       end if
 
        rr    = max(UR(i,URHO), smalld)
        rinvr = 1.d0/rr
@@ -394,7 +406,11 @@ contains
        Yr    = UR(i,UFS:UFS+nspec-1) * rinvr
        rer   = retr - 0.5d0*rr*(vr(1)**2+vr(2)**2+vr(3)**2)
        er    = rer * rinvr       
-       call eos_given_ReY(pr, cr, gamcr, Tr, dpdr, dpde, rr, er, Yr)
+       if ((er .le. 0.d0) .and. (allow_negative_energy .eqv. .false.)) then
+          call eos_given_RTY(er, pr, cr, gamcr, dpdr, dpde, rr, Tr, Yr)
+       else
+          call eos_given_ReY(pr, cr, gamcr, Tr, dpdr, dpde, rr, er, Yr)
+       end if
 
        ! wave speed estimates
        Sl = min(vl(1)-cl, vr(1)-cr)
