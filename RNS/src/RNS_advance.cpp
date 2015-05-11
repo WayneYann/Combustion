@@ -97,41 +97,39 @@ RNS::fill_boundary(MultiFab& U, Real time, int type_in, bool isCorrection, bool 
     switch (type)
     {
     case use_FillPatchIterator:
-
-	for (FillPatchIterator fpi(*this, U, NUM_GROW, time, State_Type, 0, NUM_STATE);
-	     fpi.isValid(); ++fpi)
 	{
-	    U[fpi].copy(fpi());
+	    FillPatchIterator fpi(*this, U, NUM_GROW, time, State_Type, 0, NUM_STATE);
+	    MultiFab::Copy(U, fpi.get_mf(), 0, 0, NUM_STATE, NUM_GROW);
 	}
 
 	break;
 
     case use_FillCoarsePatch:  // so that valid region of U will not be touched
-    {
-	BoxArray grids_g(grids);
-	for (int ibox=0; ibox<grids_g.size(); ibox++)
 	{
-	    const Box& b = BoxLib::grow(grids_g[ibox], NUM_GROW);
-	    grids_g.set(ibox, b);
-	}
+	    BoxArray grids_g(grids);
+	    for (int ibox=0; ibox<grids_g.size(); ibox++) {
+		const Box& b = BoxLib::grow(grids_g[ibox], NUM_GROW);
+		grids_g.set(ibox, b);
+	    }
+	    
+	    MultiFab Utmp(grids_g, NUM_STATE, 0);
+	    FillCoarsePatch(Utmp, 0, time, State_Type, 0, NUM_STATE);
 
-	MultiFab Utmp(grids_g, NUM_STATE, 0);
-	FillCoarsePatch(Utmp, 0, time, State_Type, 0, NUM_STATE);
+#ifdef _OPENMP
+#pragma omp parallel
+#endif
+	    for (MFIter mfi(U); mfi.isValid(); ++mfi) {
+		int i = mfi.index();
 
-	for (MFIter mfi(U); mfi.isValid(); ++mfi)
-	{
-	    int i = mfi.index();
-
-	    const Box& vbox = grids[i];
-	    const Box& gbox = Utmp[mfi].box();
-	    const BoxArray& ba = BoxLib::boxComplement(gbox, vbox);
-
-	    for (int ibox=0; ibox<ba.size(); ibox++)
-	    {
-		U[mfi].copy(Utmp[mfi], ba[ibox]);
+		const Box& vbox = grids[i];
+		const Box& gbox = Utmp[mfi].box();
+		const BoxArray& ba = BoxLib::boxComplement(gbox, vbox);
+		
+		for (int ibox=0; ibox<ba.size(); ibox++) {
+		    U[mfi].copy(Utmp[mfi], ba[ibox]);
+		}
 	    }
 	}
-    }
 
     // no break; so it will go to next case and call FillBoundary
 
@@ -149,6 +147,9 @@ RNS::fill_boundary(MultiFab& U, Real time, int type_in, bool isCorrection, bool 
 
 	if (isFEval) BL_FORT_PROC_CALL(SET_SDC_BOUNDARY_FLAG, set_sdc_boundary_flag)();
 
+#ifdef _OPENMP
+#pragma omp parallel
+#endif
 	for (MFIter mfi(U); mfi.isValid(); ++mfi)
 	{
 	    setPhysBoundaryValues(U[mfi],
