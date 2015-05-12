@@ -46,7 +46,7 @@ BL_FORT_PROC_DECL(SET_METHOD_PARAMS,set_method_params)
      const int& Eden, const int& Temp, const int& FirstSpec, 
      const int& NUM_STATE, const int& NumSpec,
      const Real& small_dens, const Real& small_temp, const Real& small_pres,
-     const Real& gamma, const Real& gravity, const Real& Treference,
+     const Real& gamma, const int& grav_dir, const Real& gravity, const Real& Treference,
      const int& riemann, const Real& difmag, const Real& HLL_factor, const int* blocksize,
      const int& do_weno, const int& do_mdcd_weno, const int& weno_p, const Real& weno_eps, const Real& weno_gauss_phi,
      const int& use_vode, const int& new_J_cell, const int& chem_solver, const int& chem_do_weno);

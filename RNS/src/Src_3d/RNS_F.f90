@@ -6,7 +6,7 @@ subroutine rns_dudt_ad (lo, hi, &
      yflx,yf_l1,yf_l2,yf_l3,yf_h1,yf_h2,yf_h3, &
      zflx,zf_l1,zf_l2,zf_l3,zf_h1,zf_h2,zf_h3, &
      dx)
-  use meth_params_module, only : NVAR, gravity, URHO, UMZ, UEDEN, do_weno, &
+  use meth_params_module, only : NVAR, gravity_dir, gravity, URHO, UMX, UEDEN, do_weno, &
        xblksize, yblksize, zblksize, nthreads
   use hypterm_module, only : hypterm
   use difterm_module, only : difterm
@@ -26,6 +26,7 @@ subroutine rns_dudt_ad (lo, hi, &
   double precision,intent(out)::zflx(zf_l1:zf_h1,zf_l2:zf_h2,zf_l3:zf_h3,NVAR)
   double precision,intent(in) :: dx(3)
 
+  integer :: igrav
   integer :: Ulo(3),Uhi(3),fxlo(3),fxhi(3),fylo(3),fyhi(3),fzlo(3),fzhi(3),tlo(3),thi(3)
   integer :: iblock, nblocks, nblocksxy, iblockxy, i, j, k, n, ib, jb, kb, nb(3), boxsize(3)
   double precision :: dxinv(3)
@@ -169,12 +170,13 @@ subroutine rns_dudt_ad (lo, hi, &
   !$omp end do
 
   if (gravity .ne. 0.d0) then
+     igrav = UMX + gravity_dir-1
      !$omp do collapse(2)
      do    k=lo(3),hi(3)
         do j=lo(2),hi(2)
         do i=lo(1),hi(1)
-           dUdt(i,j,k,UMZ  ) = dUdt(i,j,k,UMZ  ) + U(i,j,k,URHO)*gravity
-           dUdt(i,j,k,UEDEN) = dUdt(i,j,k,UEDEN) + U(i,j,k,UMZ )*gravity
+           dUdt(i,j,k,igrav) = dUdt(i,j,k,igrav) + U(i,j,k,URHO)*gravity
+           dUdt(i,j,k,UEDEN) = dUdt(i,j,k,UEDEN) + U(i,j,k,igrav)*gravity
         end do
         end do
      end do
