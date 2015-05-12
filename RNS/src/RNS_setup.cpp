@@ -194,7 +194,7 @@ RNS::variableSetUp ()
     const Real* prob_hi   = Geometry::ProbHi();
     
     BL_FORT_PROC_CALL(SET_PROBLEM_PARAMS, set_problem_params)
-	(dm,phys_bc.lo(),phys_bc.hi(),prob_lo,prob_hi,Outflow,Symmetry,coord_type);
+	(dm,phys_bc.lo(),phys_bc.hi(),prob_lo,prob_hi,Outflow,Symmetry,SlipWall,NoSlipWall,coord_type);
     
     Interpolater* interp;
     if (do_quartic_interp)

@@ -125,7 +125,7 @@ end subroutine set_method_params
 ! ::: 
 
 subroutine set_problem_params(dm,physbc_lo_in,physbc_hi_in, phys_prob_lo_in,   &
-     phys_prob_hi_in, Outflow_in,Symmetry_in,coord_type_in)
+     phys_prob_hi_in, Outflow_in,Symmetry_in,SlipWall_in,NoSlipWall_in,coord_type_in)
 
   use prob_params_module
 
@@ -133,8 +133,7 @@ subroutine set_problem_params(dm,physbc_lo_in,physbc_hi_in, phys_prob_lo_in,   &
   
   integer, intent(in) :: dm
   integer, intent(in) :: physbc_lo_in(dm),physbc_hi_in(dm)
-  integer, intent(in) :: Outflow_in
-  integer, intent(in) :: Symmetry_in
+  integer, intent(in) :: Outflow_in,Symmetry_in,SlipWall_in,NoSlipWall_in
   integer, intent(in) :: coord_type_in
   double precision, intent(in) :: phys_prob_lo_in(dm),phys_prob_hi_in(dm)
 
@@ -151,6 +150,8 @@ subroutine set_problem_params(dm,physbc_lo_in,physbc_hi_in, phys_prob_lo_in,   &
   
   Outflow  = Outflow_in
   Symmetry = Symmetry_in
+  SlipWall = SlipWall_in
+  NoSlipWall = NoSlipWall_in
   
   coord_type = coord_type_in
 
