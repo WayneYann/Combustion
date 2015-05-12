@@ -60,7 +60,7 @@ contains
     state_cf(URHO)  = rhot
     state_cf(UMX)   = rhot*v_cf
     state_cf(UMY)   = 0.d0
-    state_cf(UMY)   = 0.d0
+    state_cf(UMZ)   = 0.d0
     state_cf(UEDEN) = rhot*(et+0.5d0*v_cf**2)
     state_cf(UTEMP) = T_cf
     state_cf(UFS:UFS+nspec-1) = rhot*Yt
@@ -77,7 +77,7 @@ contains
     state_jet(URHO)  = rhot
     state_jet(UMX)   = 0.d0
     state_jet(UMY)   = rhot*v_jet
-    state_jet(UMY)   = 0.d0
+    state_jet(UMZ)   = 0.d0
     state_jet(UEDEN) = rhot*(et+0.5d0*v_jet**2)
     state_jet(UTEMP) = T_jet
     state_jet(UFS:UFS+nspec-1) = rhot*Yt
