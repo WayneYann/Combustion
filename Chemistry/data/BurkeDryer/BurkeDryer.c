@@ -9562,7 +9562,7 @@ H2O2+OH = HO2+H2O                           	1.740E+12  0.00  3.180E+02
    DUPLICATE
 H2O2+OH = HO2+H2O                           	7.590E+13  0.00  7.270E+03
    DUPLICATE
-
+END
 
 \\
 \\
