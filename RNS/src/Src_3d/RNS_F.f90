@@ -6,6 +6,7 @@ subroutine rns_dudt_ad (lo, hi, &
      yflx,yf_l1,yf_l2,yf_l3,yf_h1,yf_h2,yf_h3, &
      zflx,zf_l1,zf_l2,zf_l3,zf_h1,zf_h2,zf_h3, &
      dx)
+  use prob_params_module, only : physbc_lo, physbc_hi, NoSlipWall
   use meth_params_module, only : NVAR, gravity_dir, gravity, URHO, UMX, UEDEN, do_weno, &
        xblksize, yblksize, zblksize, nthreads
   use hypterm_module, only : hypterm
@@ -31,7 +32,8 @@ subroutine rns_dudt_ad (lo, hi, &
   integer :: iblock, nblocks, nblocksxy, iblockxy, i, j, k, n, ib, jb, kb, nb(3), boxsize(3)
   double precision :: dxinv(3)
   integer, allocatable :: bxlo(:), bxhi(:), bylo(:), byhi(:), bzlo(:), bzhi(:)
-  double precision, allocatable :: bxflx(:,:,:,:), byflx(:,:,:,:), bzflx(:,:,:,:)
+  double precision, allocatable :: bxflx_h(:,:,:,:), byflx_h(:,:,:,:), bzflx_h(:,:,:,:)
+  double precision, allocatable :: bxflx_d(:,:,:,:), byflx_d(:,:,:,:), bzflx_d(:,:,:,:)
 
   integer, parameter :: blocksize_min = 4
 
@@ -72,7 +74,7 @@ subroutine rns_dudt_ad (lo, hi, &
   nblocks   = nb(1)*nb(2)*nb(3)
 
   !$omp parallel private(fxlo,fxhi,fylo,fyhi,fzlo,fzhi,tlo,thi) &
-  !$omp private(iblock,iblockxy,i,j,k,n,ib,jb,kb,bxflx,byflx,bzflx)
+  !$omp private(iblock,iblockxy,i,j,k,n,ib,jb,kb,bxflx_h,byflx_h,bzflx_h,bxflx_d,byflx_d,bzflx_d)
 
   !$omp do
   do iblock = 0, nblocks-1
@@ -106,19 +108,40 @@ subroutine rns_dudt_ad (lo, hi, &
      fzhi(2) = thi(2)
      fzhi(3) = thi(3)+1
      
-     allocate(bxflx(fxlo(1):fxhi(1),fxlo(2):fxhi(2),fxlo(3):fxhi(3),NVAR))
-     allocate(byflx(fylo(1):fyhi(1),fylo(2):fyhi(2),fylo(3):fyhi(3),NVAR))
-     allocate(bzflx(fzlo(1):fzhi(1),fzlo(2):fzhi(2),fzlo(3):fzhi(3),NVAR))
+     allocate(bxflx_h(fxlo(1):fxhi(1),fxlo(2):fxhi(2),fxlo(3):fxhi(3),NVAR))
+     allocate(byflx_h(fylo(1):fyhi(1),fylo(2):fyhi(2),fylo(3):fyhi(3),NVAR))
+     allocate(bzflx_h(fzlo(1):fzhi(1),fzlo(2):fzhi(2),fzlo(3):fzhi(3),NVAR))
+
+     allocate(bxflx_d(fxlo(1):fxhi(1),fxlo(2):fxhi(2),fxlo(3):fxhi(3),NVAR))
+     allocate(byflx_d(fylo(1):fyhi(1),fylo(2):fyhi(2),fylo(3):fyhi(3),NVAR))
+     allocate(bzflx_d(fzlo(1):fzhi(1),fzlo(2):fzhi(2),fzlo(3):fzhi(3),NVAR))
      
-     bxflx = 0.d0
-     byflx = 0.d0
-     bzflx = 0.d0
+     bxflx_h = 0.d0
+     byflx_h = 0.d0
+     bzflx_h = 0.d0
      
      if (do_weno) then
-        call hypterm(tlo,thi,U,Ulo,Uhi,bxflx,fxlo,fxhi,byflx,fylo,fyhi,bzflx,fzlo,fzhi,dx)
+        call hypterm(tlo,thi,U,Ulo,Uhi,bxflx_h,fxlo,fxhi,byflx_h,fylo,fyhi,bzflx_h,fzlo,fzhi,dx)
      end if
-     call difterm(tlo,thi,U,Ulo,Uhi,bxflx,fxlo,fxhi,byflx,fylo,fyhi,bzflx,fzlo,fzhi,dxinv)
+
+     bxflx_d = 0.d0
+     byflx_d = 0.d0
+     bzflx_d = 0.d0
+
+     call difterm(tlo,thi,U,Ulo,Uhi,bxflx_d,fxlo,fxhi,byflx_d,fylo,fyhi,bzflx_d,fzlo,fzhi,dxinv)
      
+     if (tlo(1) .eq. 0 .and. physbc_lo(1) .eq. NoSlipWall) then
+        bxflx_d(tlo(1),:,:,:) = 0.d0
+     end if
+
+     if (tlo(2) .eq. 0 .and. physbc_lo(2) .eq. NoSlipWall) then
+        bxflx_d(:,tlo(2),:,:) = 0.d0
+     end if
+
+     if (tlo(3) .eq. 0 .and. physbc_lo(3) .eq. NoSlipWall) then
+        bxflx_d(:,:,tlo(3),:) = 0.d0
+     end if
+
      ! Note that fluxes are on faces.  So don't double count!
      if (thi(1) .ne. hi(1)) fxhi(1) = fxhi(1) - 1
      if (thi(2) .ne. hi(2)) fyhi(2) = fyhi(2) - 1
@@ -128,7 +151,7 @@ subroutine rns_dudt_ad (lo, hi, &
         do    k=fxlo(3),fxhi(3)
            do j=fxlo(2),fxhi(2)
               do i=fxlo(1),fxhi(1)
-                 xflx(i,j,k,n) = bxflx(i,j,k,n)
+                 xflx(i,j,k,n) = bxflx_h(i,j,k,n) + bxflx_d(i,j,k,n)
               end do
            end do
         end do
@@ -136,7 +159,7 @@ subroutine rns_dudt_ad (lo, hi, &
         do    k=fylo(3),fyhi(3)
            do j=fylo(2),fyhi(2)
               do i=fylo(1),fyhi(1)
-                 yflx(i,j,k,n) = byflx(i,j,k,n)
+                 yflx(i,j,k,n) = byflx_h(i,j,k,n) + byflx_d(i,j,k,n)
               end do
            end do
         end do
@@ -144,13 +167,13 @@ subroutine rns_dudt_ad (lo, hi, &
         do    k=fzlo(3),fzhi(3)
            do j=fzlo(2),fzhi(2)
               do i=fzlo(1),fzhi(1)
-                 zflx(i,j,k,n) = bzflx(i,j,k,n)
+                 zflx(i,j,k,n) = bzflx_h(i,j,k,n) + bzflx_d(i,j,k,n)
               end do
            end do
         end do
      end do
      
-     deallocate(bxflx,byflx,bzflx)
+     deallocate(bxflx_h,byflx_h,bzflx_h,bxflx_d,byflx_d,bzflx_d)
      
   end do
   !$omp end do
