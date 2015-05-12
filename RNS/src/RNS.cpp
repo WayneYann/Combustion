@@ -413,8 +413,10 @@ RNS::~RNS ()
     delete [] RK_k;
     delete flux_reg_RK;
 
+#if 0
     cout << "Number of AD evals:   " << Level() << " " << num_ad_evals << endl;
     cout << "Number of CHEM evals: " << Level() << " " << num_chem_evals << endl;
+#endif
 }
 
 void
