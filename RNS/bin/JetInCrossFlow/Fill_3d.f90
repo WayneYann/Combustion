@@ -171,6 +171,9 @@ end subroutine rns_regfill
 ! Fill density
 subroutine rns_denfill(adv,adv_l1,adv_l2,adv_l3,adv_h1,adv_h2,adv_h3, &
      domlo,domhi,delta,xlo,time,bc)
+
+  use probdata_module, only : state_cf, state_jet, r_jet
+  use meth_params_module, only : URHO
   
   implicit none
   include 'bc_types.fi'
@@ -180,13 +183,26 @@ subroutine rns_denfill(adv,adv_l1,adv_l2,adv_l3,adv_h1,adv_h2,adv_h3, &
   double precision delta(3), xlo(3), time
   double precision adv(adv_l1:adv_h1,adv_l2:adv_h2,adv_l3:adv_h3)
 
+  integer :: i, j, k
+  double precision :: x, z
+
   call filcc(adv,adv_l1,adv_l2,adv_l3,adv_h1,adv_h2,adv_h3, &
        domlo,domhi,delta,xlo,bc)
   
   !     XLO
-  if ( bc(1,1,1).eq.EXT_DIR .and. adv_l1.lt.domlo(1)) then
-     print *,'denfill: SHOULD NEVER GET HERE bc(1,1,1) .eq. EXT_DIR) '
-     stop
+  if (adv_l1.lt.domlo(1)) then
+     if ( bc(1,1,1).eq.EXT_DIR ) then
+        do k = adv_l3, adv_h3
+           do j = adv_l2, adv_h2
+              do i = adv_l1, domlo(1)-1
+                 adv(i,j,k) = state_cf(URHO)
+              end do
+           end do
+        end do
+     else
+        print *,'denfill: SHOULD NEVER GET HERE bc(1,1,1) .eq. EXT_DIR) '
+        stop
+     end if
   end if
   
   !     XHI
@@ -196,11 +212,20 @@ subroutine rns_denfill(adv,adv_l1,adv_l2,adv_l3,adv_h1,adv_h2,adv_h3, &
   end if
   
   !     YLO
-  if ( bc(2,1,1).eq.EXT_DIR .and. adv_l2.lt.domlo(2)) then
-     print *,'denfill: SHOULD NEVER GET HERE bc(2,1,1) .eq. EXT_DIR) '
-     stop
+  if (adv_l2.lt.domlo(2)) then
+     do k = adv_l3, adv_h3
+        z = (DBLE(k-adv_l3)+.5d0)*delta(3)+xlo(3)
+        do j = adv_l2, domlo(2)-1
+           do i = adv_l1, adv_h1
+              x = (DBLE(i-adv_l1)+.5d0)*delta(1)+xlo(1)
+              if (x**2+z**2 .le. r_jet**2) then
+                 adv(i,j,k) = state_jet(URHO)
+              end if
+           end do
+        end do
+     end do
   end if
-  
+
   !     YHI
   if ( bc(2,2,1).eq.EXT_DIR .and. adv_h2.gt.domhi(2)) then
      print *,'denfill: SHOULD NEVER GET HERE bc(2,2,1) .eq. EXT_DIR) '
@@ -225,6 +250,9 @@ end subroutine rns_denfill
 ! Fill x-momentum
 subroutine rns_mxfill(adv,adv_l1,adv_l2,adv_l3,adv_h1,adv_h2,adv_h3, &
      domlo,domhi,delta,xlo,time,bc)
+
+  use probdata_module, only : state_cf, state_jet, r_jet
+  use meth_params_module, only : UMX
   
   implicit none
   include 'bc_types.fi'
@@ -234,13 +262,26 @@ subroutine rns_mxfill(adv,adv_l1,adv_l2,adv_l3,adv_h1,adv_h2,adv_h3, &
   double precision delta(3), xlo(3), time
   double precision adv(adv_l1:adv_h1,adv_l2:adv_h2,adv_l3:adv_h3)
   
+  integer :: i, j, k
+  double precision :: x, z
+
   call filcc(adv,adv_l1,adv_l2,adv_l3,adv_h1,adv_h2,adv_h3, &
        domlo,domhi,delta,xlo,bc)
   
   !     XLO
-  if ( bc(1,1,1).eq.EXT_DIR .and. adv_l1.lt.domlo(1)) then
-     print *,'mxfill: SHOULD NEVER GET HERE bc(1,1,1) .eq. EXT_DIR) '
-     stop
+  if (adv_l1.lt.domlo(1)) then
+     if ( bc(1,1,1).eq.EXT_DIR ) then
+        do k = adv_l3, adv_h3
+           do j = adv_l2, adv_h2
+              do i = adv_l1, domlo(1)-1
+                 adv(i,j,k) = state_cf(UMX)
+              end do
+           end do
+        end do
+     else
+        print *,'mxfill: SHOULD NEVER GET HERE bc(1,1,1) .eq. EXT_DIR) '
+        stop
+     end if
   end if
   
   !     XHI
@@ -250,9 +291,18 @@ subroutine rns_mxfill(adv,adv_l1,adv_l2,adv_l3,adv_h1,adv_h2,adv_h3, &
   end if
   
   !     YLO
-  if ( bc(2,1,1).eq.EXT_DIR .and. adv_l2.lt.domlo(2)) then
-     print *,'mxfill: SHOULD NEVER GET HERE bc(2,1,1) .eq. EXT_DIR) '
-     stop
+  if (adv_l2.lt.domlo(2)) then
+     do k = adv_l3, adv_h3
+        z = (DBLE(k-adv_l3)+.5d0)*delta(3)+xlo(3)
+        do j = adv_l2, domlo(2)-1
+           do i = adv_l1, adv_h1
+              x = (DBLE(i-adv_l1)+.5d0)*delta(1)+xlo(1)
+              if (x**2+z**2 .le. r_jet**2) then
+                 adv(i,j,k) = state_jet(UMX)
+              end if
+           end do
+        end do
+     end do
   end if
   
   !     YHI
@@ -279,6 +329,9 @@ end subroutine rns_mxfill
 ! Fill y-momentum
 subroutine rns_myfill(adv,adv_l1,adv_l2,adv_l3,adv_h1,adv_h2,adv_h3, &
      domlo,domhi,delta,xlo,time,bc)
+
+  use probdata_module, only : state_cf, state_jet, r_jet
+  use meth_params_module, only : UMY
   
   implicit none
   include 'bc_types.fi'
@@ -288,13 +341,26 @@ subroutine rns_myfill(adv,adv_l1,adv_l2,adv_l3,adv_h1,adv_h2,adv_h3, &
   double precision delta(3), xlo(3), time
   double precision adv(adv_l1:adv_h1,adv_l2:adv_h2,adv_l3:adv_h3)
 
+  integer :: i, j, k
+  double precision :: x, z
+
   call filcc(adv,adv_l1,adv_l2,adv_l3,adv_h1,adv_h2,adv_h3, &
        domlo,domhi,delta,xlo,bc)
   
   !     XLO
-  if ( bc(1,1,1).eq.EXT_DIR .and. adv_l1.lt.domlo(1)) then
-     print *,'myfill: SHOULD NEVER GET HERE bc(1,1,1) .eq. EXT_DIR) '
-     stop
+  if (adv_l1.lt.domlo(1)) then
+     if ( bc(1,1,1).eq.EXT_DIR ) then
+        do k = adv_l3, adv_h3
+           do j = adv_l2, adv_h2
+              do i = adv_l1, domlo(1)-1
+                 adv(i,j,k) = state_cf(UMY)
+              end do
+           end do
+        end do
+     else
+        print *,'myfill: SHOULD NEVER GET HERE bc(1,1,1) .eq. EXT_DIR) '
+        stop
+     end if
   end if
   
   !     XHI
@@ -304,9 +370,18 @@ subroutine rns_myfill(adv,adv_l1,adv_l2,adv_l3,adv_h1,adv_h2,adv_h3, &
   end if
   
   !     YLO
-  if ( bc(2,1,1).eq.EXT_DIR .and. adv_l2.lt.domlo(2)) then
-     print *,'myfill: SHOULD NEVER GET HERE bc(2,1,1) .eq. EXT_DIR) '
-     stop
+  if (adv_l2.lt.domlo(2)) then
+     do k = adv_l3, adv_h3
+        z = (DBLE(k-adv_l3)+.5d0)*delta(3)+xlo(3)
+        do j = adv_l2, domlo(2)-1
+           do i = adv_l1, adv_h1
+              x = (DBLE(i-adv_l1)+.5d0)*delta(1)+xlo(1)
+              if (x**2+z**2 .le. r_jet**2) then
+                 adv(i,j,k) = state_jet(UMY)
+              end if
+           end do
+        end do
+     end do
   end if
   
   !     YHI
@@ -333,6 +408,9 @@ end subroutine rns_myfill
 ! Fill z-momentum
 subroutine rns_mzfill(adv,adv_l1,adv_l2,adv_l3,adv_h1,adv_h2,adv_h3, &
      domlo,domhi,delta,xlo,time,bc)
+
+  use probdata_module, only : state_cf, state_jet, r_jet
+  use meth_params_module, only : UMZ
   
   implicit none
   include 'bc_types.fi'
@@ -342,13 +420,26 @@ subroutine rns_mzfill(adv,adv_l1,adv_l2,adv_l3,adv_h1,adv_h2,adv_h3, &
   double precision delta(3), xlo(3), time
   double precision adv(adv_l1:adv_h1,adv_l2:adv_h2,adv_l3:adv_h3)
 
+  integer :: i, j, k
+  double precision :: x, z
+
   call filcc(adv,adv_l1,adv_l2,adv_l3,adv_h1,adv_h2,adv_h3, &
        domlo,domhi,delta,xlo,bc)
   
   !     XLO
-  if ( bc(1,1,1).eq.EXT_DIR .and. adv_l1.lt.domlo(1)) then
-     print *,'mzfill: SHOULD NEVER GET HERE bc(1,1,1) .eq. EXT_DIR) '
-     stop
+  if (adv_l1.lt.domlo(1)) then
+     if ( bc(1,1,1).eq.EXT_DIR ) then
+        do k = adv_l3, adv_h3
+           do j = adv_l2, adv_h2
+              do i = adv_l1, domlo(1)-1
+                 adv(i,j,k) = state_cf(UMZ)
+              end do
+           end do
+        end do
+     else
+        print *,'mzfill: SHOULD NEVER GET HERE bc(1,1,1) .eq. EXT_DIR) '
+        stop
+     end if
   end if
   
   !     XHI
@@ -358,9 +449,18 @@ subroutine rns_mzfill(adv,adv_l1,adv_l2,adv_l3,adv_h1,adv_h2,adv_h3, &
   end if
   
   !     YLO
-  if ( bc(2,1,1).eq.EXT_DIR .and. adv_l2.lt.domlo(2)) then
-     print *,'mzfill: SHOULD NEVER GET HERE bc(2,1,1) .eq. EXT_DIR) '
-     stop
+  if (adv_l2.lt.domlo(2)) then
+     do k = adv_l3, adv_h3
+        z = (DBLE(k-adv_l3)+.5d0)*delta(3)+xlo(3)
+        do j = adv_l2, domlo(2)-1
+           do i = adv_l1, adv_h1
+              x = (DBLE(i-adv_l1)+.5d0)*delta(1)+xlo(1)
+              if (x**2+z**2 .le. r_jet**2) then
+                 adv(i,j,k) = state_jet(UMZ)
+              end if
+           end do
+        end do
+     end do
   end if
   
   !     YHI
@@ -388,6 +488,9 @@ end subroutine rns_mzfill
 subroutine rns_tempfill(adv,adv_l1,adv_l2,adv_l3,adv_h1,adv_h2,adv_h3, &
      domlo,domhi,delta,xlo,time,bc)
   
+  use probdata_module, only : state_cf, state_jet, r_jet, T_cf, T_jet
+  use meth_params_module, only : UTEMP
+
   implicit none
   include 'bc_types.fi'
   integer adv_l1,adv_l2,adv_l3,adv_h1,adv_h2,adv_h3
@@ -396,13 +499,26 @@ subroutine rns_tempfill(adv,adv_l1,adv_l2,adv_l3,adv_h1,adv_h2,adv_h3, &
   double precision delta(3), xlo(3), time
   double precision adv(adv_l1:adv_h1,adv_l2:adv_h2,adv_l3:adv_h3)
 
+  integer :: i, j, k
+  double precision :: x, z
+
   call filcc(adv,adv_l1,adv_l2,adv_l3,adv_h1,adv_h2,adv_h3, &
        domlo,domhi,delta,xlo,bc)
   
   !     XLO
-  if ( bc(1,1,1).eq.EXT_DIR .and. adv_l1.lt.domlo(1)) then
-     print *,'tempfill: SHOULD NEVER GET HERE bc(1,1,1) .eq. EXT_DIR) '
-     stop
+  if (adv_l1.lt.domlo(1)) then
+     if ( bc(1,1,1).eq.EXT_DIR ) then
+        do k = adv_l3, adv_h3
+           do j = adv_l2, adv_h2
+              do i = adv_l1, domlo(1)-1
+                 adv(i,j,k) = state_cf(UTEMP)
+              end do
+           end do
+        end do
+     else
+        print *,'tempfill: SHOULD NEVER GET HERE bc(1,1,1) .eq. EXT_DIR) '
+        stop
+     end if
   end if
   
   !     XHI
@@ -412,9 +528,20 @@ subroutine rns_tempfill(adv,adv_l1,adv_l2,adv_l3,adv_h1,adv_h2,adv_h3, &
   end if
   
   !     YLO
-  if ( bc(2,1,1).eq.EXT_DIR .and. adv_l2.lt.domlo(2)) then
-     print *,'tempfill: SHOULD NEVER GET HERE bc(2,1,1) .eq. EXT_DIR) '
-     stop
+  if (adv_l2.lt.domlo(2)) then
+     do k = adv_l3, adv_h3
+        z = (DBLE(k-adv_l3)+.5d0)*delta(3)+xlo(3)
+        do j = adv_l2, domlo(2)-1
+           do i = adv_l1, adv_h1
+              x = (DBLE(i-adv_l1)+.5d0)*delta(1)+xlo(1)
+              if (x**2+z**2 .le. r_jet**2) then
+                 adv(i,j,k) = T_jet
+              else
+                 adv(i,j,k) = T_cf
+              end if
+           end do
+        end do
+     end do
   end if
   
   !     YHI

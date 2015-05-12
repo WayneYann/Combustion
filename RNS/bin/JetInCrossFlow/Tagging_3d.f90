@@ -424,6 +424,24 @@
       double precision delta(3), xlo(3), problo(3), time
 
       integer i, j, k
+      double precision :: x, y, z
+
+      ! force tagging near the jet hole
+      !$omp parallel do private(i,j,k) collapse(2)
+      do k = lo(3), hi(3)
+         do j = lo(2), hi(2)
+            do i = lo(1), hi(1)
+               x = problo(1) + (i+0.5d0)*delta(1)
+               y = problo(2) + (j+0.5d0)*delta(2)
+               z = problo(3) + (k+0.5d0)*delta(3)
+
+               if (y .le. 2.d0*r_jet .and. x**2+z**2 .le. 1.5d0*r_jet**2) then
+                  tag(i,j,k) = set
+               end if
+            end do
+         end do
+      end do
+      !$omp end parallel do
 
 !     Tag on regions of high flame tracer
       if (level .lt. max_tracerr_lev) then
