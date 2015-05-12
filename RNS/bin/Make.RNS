@@ -54,6 +54,10 @@ else ifeq (${CHEMISTRY_MODEL}, LIDRYER)
   cEXE_sources += LiDryer.c
   vpath %.f $(VPATH_LOCATIONS) ${MECHDIR}/LiDryer/PMFs
   vpath %.c $(VPATH_LOCATIONS) ${MECHDIR}/LiDryer
+else ifeq (${CHEMISTRY_MODEL}, BURKEDRYER)
+  cEXE_sources += BurkeDryer.c
+#  vpath %.f $(VPATH_LOCATIONS) ${MECHDIR}/BurkeDryer/PMFs
+  vpath %.c $(VPATH_LOCATIONS) ${MECHDIR}/BurkeDryer
 else ifeq ($(CHEMISTRY_MODEL), DRM19)
   cEXE_sources += drm19.c
   vpath %.f $(VPATH_LOCATIONS) ${MECHDIR}/gri/PMFs
@@ -75,6 +79,9 @@ else ifeq (${CHEMISTRY_MODEL}, DODECANEZHAO1)
 else ifeq (${CHEMISTRY_MODEL}, INERT)
   cEXE_sources += inert30.c
   vpath %.c $(VPATH_LOCATIONS) ${MECHDIR}/inert
+else ifeq (${CHEMISTRY_MODEL}, AIR)
+  cEXE_sources += air.c
+  vpath %.c $(VPATH_LOCATIONS) ${MECHDIR}/air
 else ifeq (${CHEMISTRY_MODEL}, NULL)
   DEFINES += -DNULLCHEMISTRY
 else ifeq (${CHEMISTRY_MODEL}, LOCAL)

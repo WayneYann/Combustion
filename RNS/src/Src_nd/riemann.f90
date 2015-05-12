@@ -13,9 +13,10 @@ module riemann_module
 
 contains
 
-  subroutine riemann(lo, hi, UL, UR, Ulo, Uhi, flx, flo, fhi, dir)
+  subroutine riemann(lo, hi, UL, UR, Ulo, Uhi, flx, flo, fhi, dir, lo_bc_vfac)
     integer, intent(in) :: lo, hi, Ulo, Uhi, flo, fhi
     integer, intent(in), optional :: dir
+    double precision, intent(in), optional :: lo_bc_vfac
     double precision, intent(in ) ::  UL(Ulo:Uhi,NVAR)
     double precision, intent(in ) ::  UR(Ulo:Uhi,NVAR)
     double precision              :: flx(flo:fhi,NVAR)
@@ -26,7 +27,7 @@ contains
     case (HLL_solver)
        call riemann_HLL(lo, hi, UL(lo:hi+1,:), UR(lo:hi+1,:), flx(lo:hi+1,:), dir)
     case (JBB_solver)
-       call riemann_JBB(lo, hi, UL(lo:hi+1,:), UR(lo:hi+1,:), flx(lo:hi+1,:), dir)
+       call riemann_JBB(lo, hi, UL(lo:hi+1,:), UR(lo:hi+1,:), flx(lo:hi+1,:), dir, lo_bc_vfac)
     case (HLLC_solver)
        call riemann_HLLC(lo, hi, UL(lo:hi+1,:), UR(lo:hi+1,:), flx(lo:hi+1,:), dir)
     case default
@@ -167,17 +168,17 @@ contains
   end subroutine compute_flux_and_alpha
 
 
-  subroutine riemann_JBB(lo, hi, UL, UR, flx, dir)
-!    use prob_params_module, only : physbc_lo,Symmetry
+  subroutine riemann_JBB(lo, hi, UL, UR, flx, dir, lo_bc_vfac_in)
     use eos_module, only : smalld, smallp, eos_given_ReY, eos_given_RTY, allow_negative_energy
     integer, intent(in) :: lo, hi
     integer, intent(in), optional :: dir
+    double precision, intent(in), optional :: lo_bc_vfac_in
     double precision, intent(in ) ::  UL(lo:hi+1,NVAR)
     double precision, intent(in ) ::  UR(lo:hi+1,NVAR)
     double precision, intent(out) :: flx(lo:hi+1,NVAR)
 
     integer :: i, n, idir, ivel(3), idim
-    double precision :: vflag(3), dpdr(NSPEC), dpde
+    double precision :: vflag(3), dpdr(NSPEC), dpde, lo_bc_vfac
     double precision :: rgdnv,regdnv, pgdnv, vgdnv(3), ekgdnv
     double precision :: rl, retl, Tl, Yl(NSPEC), vl(3), el, pl, rel, rinvl
     double precision :: rr, retr, Tr, Yr(NSPEC), vr(3), er, pr, rer, rinvr
@@ -195,6 +196,12 @@ contains
        idir = dir
     else
        idir = 1
+    end if
+
+    if (present(lo_bc_vfac_in)) then
+       lo_bc_vfac = lo_bc_vfac_in
+    else
+       lo_bc_vfac = 1.d0
     end if
 
     call set_vel(idir, ivel, vflag)
@@ -319,8 +326,8 @@ contains
 
        pgdnv = max(pgdnv,smallp)
 
-       ! Enforce that fluxes through a symmetry plane are hard zero.
-!       if (i .eq.0 .and. physbc_lo(idir) .eq. Symmetry) vgdnv(1) = 0.d0
+       ! special boundary
+       if (i .eq. lo) vgdnv(1) = vgdnv(1) * lo_bc_vfac
 
        flx(i,URHO) = rgdnv*vgdnv(1)
 
@@ -354,7 +361,6 @@ contains
 
 
   subroutine riemann_HLLC(lo, hi, UL, UR, flx, dir)
-!    use prob_params_module, only : physbc_lo,Symmetry
     use eos_module, only : smalld, smallp, eos_given_ReY, eos_given_RTY, allow_negative_energy
     integer, intent(in) :: lo, hi
     integer, intent(in), optional :: dir

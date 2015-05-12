@@ -1,0 +1,8 @@
+ &files
+   CHEMKIN_input = "chem.inp"
+   THERMO_input = "therm.dat"
+   TRANLIB_input = "tran.dat"
+   CHEMKIN_linking_file = "BurkeDryer.asc"
+   TRANLIB_c_file = "BurkeDryer-tran.c"
+   log_file = "BurkeDryer.log"
+ /

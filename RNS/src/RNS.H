@@ -353,6 +353,7 @@ protected:
     static Real      small_pres;
     static Real      gamma;
 
+    static int       gravity_dir; // 1: x, 2: y, 3: z
     static Real      gravity;
     static Real      Treference;
 

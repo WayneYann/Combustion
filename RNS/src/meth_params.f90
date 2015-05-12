@@ -29,6 +29,7 @@ module meth_params_module
 
   double precision, save :: small_dens, small_temp, small_pres  
 
+  integer         , save :: gravity_dir
   double precision, save :: gravity
 
   ! blocking, values will be reset in set_method_params
