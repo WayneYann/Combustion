@@ -6,19 +6,19 @@
 #amr.regrid_on_restart=1
 
 #particles.particle_init_file = dogmeat.particles2d
-particles.particle_restart_file = dogmeat.particles2d
-particles.restart_from_nonparticle_chkfile = 1
-particles.timestamp_dir = Timestamps
-particles.pverbose = 2
+#particles.particle_restart_file = dogmeat.particles2d
+#particles.restart_from_nonparticle_chkfile = 1
+#particles.timestamp_dir = Timestamps
+#particles.pverbose = 2
 ht.do_curvature_sample = false
 #particles.timestamp_indices = 0 1 3 4 5 6 7 8 9 10 11 12 14
-particles.timestamp_indices =  0 1 3 4 5 6 7 8 9 10 11 12 14 15
-ht.do_curvature_sample=1
+#particles.timestamp_indices =  0 1 3 4 5 6 7 8 9 10 11 12 14 15
+#ht.do_curvature_sample=1
 
 
 
-ns.do_active_control = 0
-#ns.do_active_control = 1
+#ns.do_active_control = 0
+ns.do_active_control = 1
 mg.smooth_on_cg_unstable=1
 
 max_step  = 10000
@@ -39,10 +39,6 @@ amr.derive_plot_vars=rhoRT mag_vort particle_count mean_progress_curvature
 #amr.derive_plot_vars=mean_progress_curvature
 
 geometry.coord_sys = 0  # 0 => cart, 1 => RZ
-
-geometry.prob_lo   = 0.000 0.00
-geometry.prob_hi   = 0.008 0.032
-geometry.prob_hi   = 0.008 0.008
 
 # multigrid class
 mg.usecg = 1
@@ -65,10 +61,21 @@ ns.do_group_bndry_fills = 1
 
 cg.cg_solver=1
 
-amr.n_cell    = 128 512
-amr.n_cell    = 128 128
-#amr.n_cell    = 64 256
-#amr.n_cell    = 32 64
+geometry.prob_lo    = 0.0 0.0
+geometry.prob_hi    = 0.0001875 0.012
+geometry.prob_hi    = 0.000375 0.012
+amr.n_cell          = 8 256
+amr.blocking_factor = 8
+max_step            = 5000
+amr.check_file      = chk_2d_
+amr.plot_file       = plt_2d_
+amr.check_int       = 10
+amr.plot_int        = 10
+ns.cfl              = 0.7
+ns.cfl              = 0.1 
+ns.cfl              = 0.45
+
+amr.max_grid_size   = 64
 
 amr.v=1
 amr.max_level =  0            # maximum level number allowed
@@ -77,14 +84,8 @@ amr.regrid_int      = 2       # how often to regrid
 amr.n_error_buf     = 4 2 1 2 # number of buffer cells in error est
 amr.grid_eff        = 0.9     # what constitutes an efficient grid
 amr.grid_eff        = 0.7     # what constitutes an efficient grid
-amr.blocking_factor = 16      # block factor in grid generation
-amr.check_file      = chk     # root name of checkpoint file
-amr.check_int       = 10       # number of timesteps between checkpoints
-amr.plot_file       = plt
-amr.plot_int        = 10
 amr.grid_log        = grdlog  # name of grid logging file
-amr.max_grid_size   = 128
-amr.max_grid_size   = 64
+
 #amr.derive_plot_vars=ALL
 
 amr.probin_file = probin.2dcontrol # This will default to file "probin" if not set
@@ -126,7 +127,7 @@ ns.divu_dt_factor = .4
 ns.min_rho_divu_ceiling = .01
 
 ns.tranfile        = tran.asc.chem-H
-ns.fuelName        = H2
+ns.fuelName        = CH4
 ns.oxidizerName    = O2
 ns.flameTracName   = H
 ns.unity_Le = 0
