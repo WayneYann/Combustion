@@ -74,8 +74,8 @@ subroutine rns_initdata(level,time,lo,hi,nscal, &
   call CKUBMS(T0, Y0, iwrk, rwrk, e0)
 
   state0(URHO)  = rho0
-  state0(UMX)   = 0.d0
-  state0(UMY)   = rho0*v_cf
+  state0(UMX)   = rho0*v_cf
+  state0(UMY)   = 0.d0
   state0(UMZ)   = 0.d0
   state0(UEDEN) = rho0*(e0+0.5d0*v_cf**2)
   state0(UTEMP) = T0
@@ -89,8 +89,8 @@ subroutine rns_initdata(level,time,lo,hi,nscal, &
         do i = lo(1), hi(1)
            state(i,j,k,:) = state0
            if (y .lt. 1.d0) then
-              state(i,j,k,UMY) = state0(UMY) * y
-              state(i,j,k,UEDEN) = rho0*e0 + state(i,j,k,UMY)**2/(2.d0*rho0)
+              state(i,j,k,UMX) = state0(UMX) * y
+              state(i,j,k,UEDEN) = rho0*e0 + state(i,j,k,UMX)**2/(2.d0*rho0)
            end if
         end do
      end do
