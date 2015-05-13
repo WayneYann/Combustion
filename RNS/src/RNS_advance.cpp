@@ -423,6 +423,9 @@ RNS::dUdt_AD(MultiFab& U, MultiFab& Uprime, Real time, int fill_boundary_type,
     int iteration=-1;
     BL_FORT_PROC_CALL(RNS_PASSINFO,rns_passinfo)(level,iteration,time);
 
+    const int*  domain_lo = geom.Domain().loVect();
+    const int*  domain_hi = geom.Domain().hiVect();
+
     for (MFIter mfi(Uprime); mfi.isValid(); ++mfi)
     {
 	int i = mfi.index();
@@ -445,6 +448,7 @@ RNS::dUdt_AD(MultiFab& U, MultiFab& Uprime, Real time, int fill_boundary_type,
 
 	BL_FORT_PROC_CALL(RNS_DUDT_AD,rns_dudt_ad)
 	    (bx.loVect(), bx.hiVect(),
+	     domain_lo, domain_hi,
 	     BL_TO_FORTRAN(U[mfi]),
 	     BL_TO_FORTRAN(Uprime[mfi]),
 	     D_DECL(BL_TO_FORTRAN(flux[0]),

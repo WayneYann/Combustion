@@ -4,6 +4,7 @@
 
 BL_FORT_PROC_DECL(RNS_DUDT_AD,rns_dudt_ad)
     (const int lo[], const int hi[],
+     const int* domain_lo, const int* domain_hi,
      const BL_FORT_FAB_ARG(U),
      BL_FORT_FAB_ARG(dUdt),
      D_DECL(BL_FORT_FAB_ARG(xflux),

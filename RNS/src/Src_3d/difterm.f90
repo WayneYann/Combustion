@@ -5,7 +5,7 @@ module difterm_module
   public :: difterm
 contains
 
-  subroutine difterm(lo,hi,U,Ulo,Uhi,fx,fxlo,fxhi,fy,fylo,fyhi,fz,fzlo,fzhi,dxinv)
+  subroutine difterm(lo,hi,domlo,domhi,U,Ulo,Uhi,fx,fxlo,fxhi,fy,fylo,fyhi,fz,fzlo,fzhi,dx)
 
     use meth_params_module, only : NVAR, NSPEC, QFVAR, QU, QV, QW
     use polyinterp_module, only : cc2zgauss_3d, cc2DzGauss_3d, cc2xyGauss_3d, &
@@ -14,9 +14,9 @@ contains
     use variables_module, only : ctoprim
     use transport_properties, only : get_transport_properties
 
-    integer, intent(in) :: lo(3), hi(3), Ulo(3), Uhi(3), fxlo(3), fxhi(3), &
-         fylo(3), fyhi(3), fzlo(3), fzhi(3)
-    double precision,intent(in   )::dxinv(3)
+    integer, intent(in) :: lo(3), hi(3), domlo(3), domhi(3), Ulo(3), Uhi(3), &
+         fxlo(3), fxhi(3), fylo(3), fyhi(3), fzlo(3), fzhi(3)
+    double precision,intent(in   )::dx(3)
     double precision,intent(in   ):: U( Ulo(1): Uhi(1), Ulo(2): Uhi(2), Ulo(3): Uhi(3),NVAR)
     double precision,intent(inout)::fx(fxlo(1):fxhi(1),fxlo(2):fxhi(2),fxlo(3):fxhi(3),NVAR)
     double precision,intent(inout)::fy(fylo(1):fyhi(1),fylo(2):fyhi(2),fylo(3):fyhi(3),NVAR)
@@ -38,7 +38,7 @@ contains
     double precision, allocatable, dimension(:,:,:,:) :: Ddiazc1,Ddiazc2,Ddiazc3,Ddiazc4
     double precision, allocatable, dimension(:,:,:,:) :: dveldx1, dveldx2, dveldx3, dveldx4
     double precision, allocatable, dimension(:,:,:,:) :: dveldy1, dveldy2, dveldy3, dveldy4
-
+    
     g2lo = lo-2 ;    g2hi = hi+2
 
     allocate(Qcc   (g2lo(1):g2hi(1),g2lo(2):g2hi(2),g2lo(3):g2hi(3),QFVAR))
@@ -95,11 +95,11 @@ contains
             dveldz1(:,:,:,n), dveldz2(:,:,:,n), QzGlo,QzGhi)
     end do
 
-    call diff_xy(lo,hi, dveldz1, Qz1, muz1, xiz1, lamz1, Ddiaz1, QzGlo, QzGhi, &
-         fx, fxlo, fxhi, fy, fylo, fyhi, dxinv)
+    call diff_xy(lo,hi, domlo, domhi, dveldz1, Qz1, muz1, xiz1, lamz1, Ddiaz1, QzGlo, QzGhi, &
+         fx, fxlo, fxhi, fy, fylo, fyhi, dx)
 
-    call diff_xy(lo,hi, dveldz2, Qz2, muz2, xiz2, lamz2, Ddiaz2, QzGlo, QzGhi, &
-         fx, fxlo, fxhi, fy, fylo, fyhi, dxinv)
+    call diff_xy(lo,hi, domlo, domhi, dveldz2, Qz2, muz2, xiz2, lamz2, Ddiaz2, QzGlo, QzGhi, &
+         fx, fxlo, fxhi, fy, fylo, fyhi, dx)
 
     deallocate(Qz1,Qz2,dveldz1,dveldz2)
     deallocate(muz1,muz2,xiz1,xiz2,lamz1,lamz2,Ddiaz1,Ddiaz2)
@@ -174,14 +174,14 @@ contains
 
     deallocate(Qcc,mucc,xicc,lamcc,Ddiacc)
 
-    call diff_z(lo,hi,Qzc1,muzc1,xizc1,lamzc1,Ddiazc1,dveldx1,dveldy1,Qzclo,Qzchi, &
-         fz, fzlo, fzhi, dxinv)
-    call diff_z(lo,hi,Qzc2,muzc2,xizc2,lamzc2,Ddiazc2,dveldx2,dveldy2,Qzclo,Qzchi, &
-         fz, fzlo, fzhi, dxinv)
-    call diff_z(lo,hi,Qzc3,muzc3,xizc3,lamzc3,Ddiazc3,dveldx3,dveldy3,Qzclo,Qzchi, &
-         fz, fzlo, fzhi, dxinv)
-    call diff_z(lo,hi,Qzc4,muzc4,xizc4,lamzc4,Ddiazc4,dveldx4,dveldy4,Qzclo,Qzchi, &
-         fz, fzlo, fzhi, dxinv)
+    call diff_z(lo,hi,domlo,domhi,Qzc1,muzc1,xizc1,lamzc1,Ddiazc1,dveldx1,dveldy1,Qzclo,Qzchi, &
+         fz, fzlo, fzhi, dx)
+    call diff_z(lo,hi,domlo,domhi,Qzc2,muzc2,xizc2,lamzc2,Ddiazc2,dveldx2,dveldy2,Qzclo,Qzchi, &
+         fz, fzlo, fzhi, dx)
+    call diff_z(lo,hi,domlo,domhi,Qzc3,muzc3,xizc3,lamzc3,Ddiazc3,dveldx3,dveldy3,Qzclo,Qzchi, &
+         fz, fzlo, fzhi, dx)
+    call diff_z(lo,hi,domlo,domhi,Qzc4,muzc4,xizc4,lamzc4,Ddiazc4,dveldx4,dveldy4,Qzclo,Qzchi, &
+         fz, fzlo, fzhi, dx)
 
     deallocate(Qzc1,Qzc2,Qzc3,Qzc4)
     deallocate(muzc1,  muzc2,  muzc3,  muzc4)     
@@ -195,14 +195,15 @@ contains
   end subroutine difterm
 
 
-  subroutine diff_xy(lo, hi, dveldz, Q, mu, xi, lam, Ddia, qlo, qhi, &
-       fx, fxlo, fxhi, fy, fylo, fyhi, dxinv)
+  subroutine diff_xy(lo, hi, domlo, domhi, dveldz, Q, mu, xi, lam, Ddia, qlo, qhi, &
+       fx, fxlo, fxhi, fy, fylo, fyhi, dx)
     
     use meth_params_module, only : NVAR, NSPEC, QCVAR, QFVAR, QU, QV
     use polyinterp_module, only : cc2xface_2d, cc2yface_2d, cc2DxYface_2d, cc2DyXface_2d
+    use RNS_boundary_module, only : get_diff_bc_flag
 
-    integer, intent(in) :: lo(3), hi(3), qlo(3), qhi(3), fxlo(3), fxhi(3), fylo(3), fyhi(3)
-    double precision,intent(in   )::dxinv(3)
+    integer, intent(in) :: lo(3), hi(3), domlo(3), domhi(3), qlo(3), qhi(3), fxlo(3), fxhi(3), fylo(3), fyhi(3)
+    double precision,intent(in   )::dx(3)
     double precision,intent(in   )::dveldz( qlo(1): qhi(1), qlo(2): qhi(2), qlo(3): qhi(3),3)
     double precision,intent(in   )::     Q( qlo(1): qhi(1), qlo(2): qhi(2), qlo(3): qhi(3),QFVAR) 
     double precision,intent(in   )::    mu( qlo(1): qhi(1), qlo(2): qhi(2), qlo(3): qhi(3)) 
@@ -212,7 +213,8 @@ contains
     double precision,intent(inout)::    fx(fxlo(1):fxhi(1),fxlo(2):fxhi(2),fxlo(3):fxhi(3),NVAR)
     double precision,intent(inout)::    fy(fylo(1):fyhi(1),fylo(2):fyhi(2),fylo(3):fyhi(3),NVAR)
 
-    integer :: k, n
+    double precision :: dxinv(3)
+    integer :: k, n, bc_flag(2)
     integer :: g2lo(2), g2hi(2)
     double precision, allocatable :: Qc1(:,:,:), Qc2(:,:,:)
     double precision, allocatable :: tmp1(:,:), tmp2(:,:)
@@ -224,6 +226,8 @@ contains
     double precision, allocatable :: dveldt1(:,:,:), dveldt2(:,:,:)  ! dt means dx or dy
     integer :: tlo(2), thi(2)
     double precision, parameter :: fac = 0.25d0 ! due to Gauss quadrature
+
+    dxinv = 1.d0/dx
 
     g2lo = lo(1:2)-2  
     g2hi = hi(1:2)+2
@@ -300,12 +304,13 @@ contains
        tlo = lo(1:2)
        thi(1) = hi(1)+1
        thi(2) = hi(2)
+       call get_diff_bc_flag(1,lo(1),hi(1)+1,domlo,domhi,dx,bc_flag)
        call comp_diff_flux_x(tlo, thi, k, fx, fxlo, fxhi, &
             Qf1, mu1, xi1, lam1, Ddia1, dveldt1, dveldz1, Qflo, Qfhi, &
-            Qc1, g2lo, g2hi, dxinv, fac)
+            Qc1, g2lo, g2hi, dxinv, fac, bc_flag)
        call comp_diff_flux_x(tlo, thi, k, fx, fxlo, fxhi, &
             Qf2, mu2, xi2, lam2, Ddia2, dveldt2, dveldz2, Qflo, Qfhi, &
-            Qc2, g2lo, g2hi, dxinv, fac)
+            Qc2, g2lo, g2hi, dxinv, fac, bc_flag)
 
        ! ----- compute y-direction flux -----
 
@@ -349,12 +354,13 @@ contains
        tlo = lo(1:2)
        thi(1) = hi(1)
        thi(2) = hi(2)+1
+       call get_diff_bc_flag(2,lo(2),hi(2)+1,domlo,domhi,dx,bc_flag)
        call comp_diff_flux_y(tlo, thi, k, fy, fylo, fyhi, &
             Qf1, mu1, xi1, lam1, Ddia1, dveldt1, dveldz1, Qflo, Qfhi, &
-            Qc1, g2lo, g2hi, dxinv, fac)
+            Qc1, g2lo, g2hi, dxinv, fac, bc_flag)
        call comp_diff_flux_y(tlo, thi, k, fy, fylo, fyhi, &
             Qf2, mu2, xi2, lam2, Ddia2, dveldt2, dveldz2, Qflo, Qfhi, &
-            Qc2, g2lo, g2hi, dxinv, fac)
+            Qc2, g2lo, g2hi, dxinv, fac, bc_flag)
 
     end do
 
@@ -367,12 +373,12 @@ contains
 
   subroutine comp_diff_flux_x(lo, hi, k, flx, flo, fhi, &
        Qf, mu, xi, lam, Ddia, dveldy, dveldz, Qflo, Qfhi, &
-       Qc, Qclo, Qchi, dxinv, fac)
+       Qc, Qclo, Qchi, dxinv, fac, bc_flag)
 
     use meth_params_module
     use derivative_stencil_module, only : FD4
 
-    integer, intent(in) :: lo(2), hi(2), k, flo(3), fhi(3), Qflo(2), Qfhi(2), Qclo(2), Qchi(2)
+    integer, intent(in) :: lo(2), hi(2), k, flo(3), fhi(3), Qflo(2), Qfhi(2), Qclo(2), Qchi(2), bc_flag(2)
     double precision, intent(in) :: dxinv(3), fac
     double precision, intent(inout) ::   flx( flo(1): fhi(1), flo(2): fhi(2),flo(3):fhi(3),NVAR)
     double precision, intent(in   ) ::    Qf(Qflo(1):Qfhi(1),Qflo(2):Qfhi(2),QFVAR)
@@ -389,7 +395,11 @@ contains
     double precision :: dudx, dudy, dudz, dvdx, dvdy, dwdx, dwdz, divu
     double precision :: dTdx, dXdx, Vd
     double precision :: ek, rhovn
-    double precision, dimension(lo(1):hi(1)) :: dlnpdx, Vc
+    double precision, dimension(lo(1):hi(1)) :: dlnpdx, Vc, msk
+
+    msk = 1.d0
+    if (bc_flag(1).eq.0) msk(lo(1)) = 0.d0
+    if (bc_flag(2).eq.0) msk(hi(1)) = 0.d0
 
     do j=lo(2),hi(2)
        do i=lo(1),hi(1)
@@ -405,9 +415,9 @@ contains
           dudz = dxinv(3)*dveldz(i,j,1)
           dwdz = dxinv(3)*dveldz(i,j,2)
           divu = dudx + dvdy + dwdz
-          tauxx = mu(i,j)*(2.d0*dudx-twoThirds*divu) + xi(i,j)*divu
-          tauxy = mu(i,j)*(dudy+dvdx)
-          tauxz = mu(i,j)*(dudz+dwdx)
+          tauxx = msk(i)*(mu(i,j)*(2.d0*dudx-twoThirds*divu) + xi(i,j)*divu)
+          tauxy = msk(i)*(mu(i,j)*(dudy+dvdx))
+          tauxz = msk(i)*(mu(i,j)*(dudz+dwdx))
           flx(i,j,k,UMX)   = flx(i,j,k,UMX)   - fac*tauxx
           flx(i,j,k,UMY)   = flx(i,j,k,UMY)   - fac*tauxy
           flx(i,j,k,UMZ)   = flx(i,j,k,UMZ)   - fac*tauxz
@@ -433,7 +443,7 @@ contains
           do i = lo(1), hi(1)
              dXdx = dxinv(1) * (FD4(-2)*Qc(i-2,j,QXN) + FD4(-1)*Qc(i-1,j,QXN) &
                   + FD4(0)*Qc(i,j,QXN) + FD4(1)*Qc(i+1,j,QXN))
-             Vd = -Ddia(i,j,n)*(dXdx + (Qf(i,j,QXN)-Qf(i,j,QYN))*dlnpdx(i))
+             Vd = -Ddia(i,j,n)*(dXdx + (Qf(i,j,QXN)-Qf(i,j,QYN))*dlnpdx(i))*msk(i)
              
              flx(i,j,k,UYN) = flx(i,j,k,UYN) + fac*Vd
              Vc(i) = Vc(i) + Vd
@@ -477,12 +487,12 @@ contains
 
   subroutine comp_diff_flux_y(lo, hi, k, flx, flo, fhi, &
        Qf, mu, xi, lam, Ddia, dveldx, dveldz, Qflo, Qfhi, &
-       Qc, Qclo, Qchi, dxinv, fac)
+       Qc, Qclo, Qchi, dxinv, fac, bc_flag)
 
     use meth_params_module
     use derivative_stencil_module, only : FD4
 
-    integer, intent(in) :: lo(2), hi(2), k, flo(3), fhi(3), Qflo(2), Qfhi(2), Qclo(2), Qchi(2)
+    integer, intent(in) :: lo(2), hi(2), k, flo(3), fhi(3), Qflo(2), Qfhi(2), Qclo(2), Qchi(2), bc_flag(2)
     double precision, intent(in) :: dxinv(3), fac
     double precision, intent(inout) ::   flx( flo(1): fhi(1), flo(2): fhi(2),flo(3):fhi(3),NVAR)
     double precision, intent(in   ) ::    Qf(Qflo(1):Qfhi(1),Qflo(2):Qfhi(2),QFVAR)
@@ -499,7 +509,12 @@ contains
     double precision :: dudx, dudy, dvdx, dvdy, dvdz, dwdy, dwdz, divu
     double precision :: dTdy, dXdy, Vd
     double precision :: ek, rhovn
+    double precision :: msk(lo(2):hi(2))
     double precision, allocatable :: dlnpdy(:,:), Vc(:,:)
+
+    msk = 1.d0
+    if (bc_flag(1).eq.0) msk(lo(2)) = 0.d0
+    if (bc_flag(2).eq.0) msk(hi(2)) = 0.d0
 
     allocate(dlnpdy(lo(1):hi(1),lo(2):hi(2)))
     allocate(    Vc(lo(1):hi(1),lo(2):hi(2)))
@@ -518,9 +533,9 @@ contains
           dvdz = dxinv(3)*dveldz(i,j,1)
           dwdz = dxinv(3)*dveldz(i,j,2)
           divu = dudx + dvdy + dwdz
-          tauyy = mu(i,j)*(2.d0*dvdy-twoThirds*divu) + xi(i,j)*divu
-          tauxy = mu(i,j)*(dudy+dvdx)
-          tauyz = mu(i,j)*(dwdy+dvdz)
+          tauyy = msk(j)*(mu(i,j)*(2.d0*dvdy-twoThirds*divu) + xi(i,j)*divu)
+          tauxy = msk(j)*(mu(i,j)*(dudy+dvdx))
+          tauyz = msk(j)*(mu(i,j)*(dwdy+dvdz))
           flx(i,j,k,UMX)   = flx(i,j,k,UMX)   - fac*tauxy
           flx(i,j,k,UMY)   = flx(i,j,k,UMY)   - fac*tauyy
           flx(i,j,k,UMZ)   = flx(i,j,k,UMZ)   - fac*tauyz
@@ -548,7 +563,7 @@ contains
           do i = lo(1), hi(1)
              dXdy = dxinv(2) * (FD4(-2)*Qc(i,j-2,QXN) + FD4(-1)*Qc(i,j-1,QXN) &
                   + FD4(0)*Qc(i,j,QXN) + FD4(1)*Qc(i,j+1,QXN))
-             Vd = -Ddia(i,j,n)*(dXdy + (Qf(i,j,QXN)-Qf(i,j,QYN))*dlnpdy(i,j))
+             Vd = -Ddia(i,j,n)*(dXdy + (Qf(i,j,QXN)-Qf(i,j,QYN))*dlnpdy(i,j))*msk(j)
              
              flx(i,j,k,UYN) = flx(i,j,k,UYN) + fac*Vd
              Vc(i,j) = Vc(i,j) + Vd
@@ -594,13 +609,14 @@ contains
   end subroutine comp_diff_flux_y
 
 
-  subroutine diff_z(lo, hi, Q, mu, xi, lam, Ddia, dveldx, dveldy, qlo, qhi, &
-       f, flo, fhi, dxinv)
+  subroutine diff_z(lo, hi, domlo, domhi, Q, mu, xi, lam, Ddia, dveldx, dveldy, qlo, qhi, &
+       f, flo, fhi, dx)
     
     use meth_params_module, only : NVAR, NSPEC, QFVAR
     use polyinterp_module, only : cc2zface_3d
+    use RNS_boundary_module, only : get_diff_bc_flag
     
-    integer, intent(in) :: lo(3), hi(3), qlo(3), qhi(3), flo(3), fhi(3)
+    integer, intent(in) :: lo(3), hi(3), domlo(3), domhi(3), qlo(3), qhi(3), flo(3), fhi(3)
     double precision, intent(in   )::     Q(qlo(1):qhi(1),qlo(2):qhi(2),qlo(3):qhi(3),QFVAR)
     double precision, intent(in   )::    mu(qlo(1):qhi(1),qlo(2):qhi(2),qlo(3):qhi(3),3)
     double precision, intent(in   )::    xi(qlo(1):qhi(1),qlo(2):qhi(2),qlo(3):qhi(3))
@@ -609,12 +625,15 @@ contains
     double precision, intent(in   )::dveldx(qlo(1):qhi(1),qlo(2):qhi(2),qlo(3):qhi(3),2)
     double precision, intent(in   )::dveldy(qlo(1):qhi(1),qlo(2):qhi(2),qlo(3):qhi(3),2)
     double precision, intent(inout)::     f(flo(1):fhi(1),flo(2):fhi(2),flo(3):fhi(3),NVAR)
-    double precision, intent(in) :: dxinv(3)
+    double precision, intent(in) :: dx(3)
 
-    integer :: n, Qflo(3), Qfhi(3)
+    double precision  :: dxinv(3)
+    integer :: n, Qflo(3), Qfhi(3), bc_flag(2)
     double precision, dimension(:,:,:,:), allocatable :: Qf, dvdxf, dvdyf, Ddiaf
     double precision, dimension(:,:,:)  , allocatable :: muf, xif, lamf
     double precision, parameter :: fac = 0.25d0 ! due to Gauss quadrature
+
+    dxinv = 1.d0/dx
 
     Qflo = lo
     Qfhi(1:2) = hi(1:2)
@@ -644,9 +663,10 @@ contains
        call cc2zface_3d(lo,hi,Ddia(:,:,:,n),qlo,qhi,Ddiaf(:,:,:,n),Qflo,Qfhi)
     end do
 
+    call get_diff_bc_flag(3,lo(3),hi(3)+1,domlo,domhi,dx,bc_flag)
     call comp_diff_flux_z(Qflo, Qfhi, f, flo, fhi, &
          Qf, muf, xif, lamf, Ddiaf, dvdxf, dvdyf, Qflo, Qfhi, &
-         Q, qlo, qhi, dxinv, fac)
+         Q, qlo, qhi, dxinv, fac, bc_flag)
 
     deallocate(Qf, dvdxf, dvdyf, Ddiaf, muf, xif, lamf)
 
@@ -655,12 +675,12 @@ contains
 
   subroutine comp_diff_flux_z(lo, hi, flx, flo, fhi, &
        Qf, mu, xi, lam, Ddia, dveldx, dveldy, Qflo, Qfhi, &
-       Q , Qlo, Qhi, dxinv, fac)
+       Q , Qlo, Qhi, dxinv, fac, bc_flag)
 
     use meth_params_module
     use derivative_stencil_module, only : FD4
 
-    integer, intent(in) :: lo(3),hi(3),flo(3),fhi(3),Qflo(3),Qfhi(3),Qlo(3),Qhi(3)
+    integer, intent(in) :: lo(3),hi(3),flo(3),fhi(3),Qflo(3),Qfhi(3),Qlo(3),Qhi(3), bc_flag(2)
     double precision, intent(in) :: dxinv(3), fac
     double precision, intent(inout)::   flx( flo(1): fhi(1), flo(2): fhi(2), flo(3): fhi(3),NVAR)
     double precision, intent(in   )::    Qf(Qflo(1):Qfhi(1),Qflo(2):Qfhi(2),Qflo(3):Qfhi(3),QFVAR)
@@ -678,6 +698,11 @@ contains
     double precision :: dTdz, dXdz, Vd
     double precision :: ek, rhovn
     double precision, dimension(lo(1):hi(1)) :: dlnpdz, Vc
+    double precision :: msk(lo(3):hi(3))
+
+    msk = 1.d0
+    if (bc_flag(1).eq.0) msk(lo(3)) = 0.d0
+    if (bc_flag(2).eq.0) msk(hi(3)) = 0.d0
 
     do k      =lo(3),hi(3)
        do j   =lo(2),hi(2)
@@ -695,9 +720,9 @@ contains
              dvdy = dxinv(2)*dveldy(i,j,k,1)
              dwdy = dxinv(2)*dveldy(i,j,k,2)
              divu = dudx + dvdy + dwdz
-             tauxz = mu(i,j,k)*(dudz+dwdx)
-             tauyz = mu(i,j,k)*(dvdz+dwdy)
-             tauzz = mu(i,j,k)*(2.d0*dwdz-twoThirds*divu) + xi(i,j,k)*divu
+             tauxz = msk(k)*(mu(i,j,k)*(dudz+dwdx))
+             tauyz = msk(k)*(mu(i,j,k)*(dvdz+dwdy))
+             tauzz = msk(k)*(mu(i,j,k)*(2.d0*dwdz-twoThirds*divu) + xi(i,j,k)*divu)
              flx(i,j,k,UMX)   = flx(i,j,k,UMX)   - fac*tauxz
              flx(i,j,k,UMY)   = flx(i,j,k,UMY)   - fac*tauyz
              flx(i,j,k,UMZ)   = flx(i,j,k,UMZ)   - fac*tauzz
@@ -723,7 +748,7 @@ contains
              do i = lo(1), hi(1)
                 dXdz = dxinv(3) * (FD4(-2)*Q(i,j,k-2,QXN) + FD4(-1)*Q(i,j,k-1,QXN) &
                      + FD4(0)*Q(i,j,k,QXN) + FD4(1)*Q(i,j,k+1,QXN))
-                Vd = -Ddia(i,j,k,n)*(dXdz + (Qf(i,j,k,QXN)-Qf(i,j,k,QYN))*dlnpdz(i))
+                Vd = -Ddia(i,j,k,n)*(dXdz + (Qf(i,j,k,QXN)-Qf(i,j,k,QYN))*dlnpdz(i))*msk(k)
                 
                 flx(i,j,k,UYN) = flx(i,j,k,UYN) + fac*Vd
                 Vc(i) = Vc(i) + Vd

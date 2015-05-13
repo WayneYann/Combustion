@@ -1,5 +1,5 @@
 
-subroutine rns_dudt_ad (lo, hi, &
+subroutine rns_dudt_ad (lo, hi, domlo, domhi, &
      U, U_l1, U_h1, &
      dUdt, Ut_l1, Ut_h1, &
      flux, f_l1, f_h1, &
@@ -9,7 +9,7 @@ subroutine rns_dudt_ad (lo, hi, &
   use difterm_module, only : difterm
   implicit none
 
-  integer, intent(in) :: lo(1), hi(1)
+  integer, intent(in) :: lo(1), hi(1), domlo(1), domhi(1)
   integer, intent(in) ::  U_l1,  U_h1
   integer, intent(in) :: Ut_l1, Ut_h1
   integer, intent(in) ::  f_l1,  f_h1
@@ -34,8 +34,8 @@ subroutine rns_dudt_ad (lo, hi, &
      stop
   end if
 
-  call hypterm(lo,hi,U,Ulo,Uhi,flux, dx)
-  call difterm(lo,hi,U,Ulo,Uhi,fdif, dxinv)
+  call hypterm(lo,hi,domlo,domhi,U,Ulo,Uhi,flux, dx)
+  call difterm(lo,hi,domlo,domhi,U,Ulo,Uhi,fdif, dx)
   
   do n=1, NVAR
      flux(lo(1),n) = flux(lo(1),n) + fdif(lo(1),n)
@@ -50,7 +50,7 @@ subroutine rns_dudt_ad (lo, hi, &
   if (gravity .ne. 0.d0) then
      do i=lo(1),hi(1)
         dUdt(i,UMX  ) = dUdt(i,UMX  ) + U(i,URHO)*gravity
-        dUdt(i,UEDEN) = dUdt(i,UEDEN) + U(i,UMX )*gravity
+        dUdt(i,UEDEN) = dUdt(i,UEDEN) + U(i,UMX)*gravity
      end do
   end if
 

@@ -13,10 +13,9 @@ module riemann_module
 
 contains
 
-  subroutine riemann(lo, hi, UL, UR, Ulo, Uhi, flx, flo, fhi, dir, lo_bc_vfac)
+  subroutine riemann(lo, hi, UL, UR, Ulo, Uhi, flx, flo, fhi, dir, bc_flag)
     integer, intent(in) :: lo, hi, Ulo, Uhi, flo, fhi
-    integer, intent(in), optional :: dir
-    double precision, intent(in), optional :: lo_bc_vfac
+    integer, intent(in) :: dir, bc_flag(2)
     double precision, intent(in ) ::  UL(Ulo:Uhi,NVAR)
     double precision, intent(in ) ::  UR(Ulo:Uhi,NVAR)
     double precision              :: flx(flo:fhi,NVAR)
@@ -27,7 +26,7 @@ contains
     case (HLL_solver)
        call riemann_HLL(lo, hi, UL(lo:hi+1,:), UR(lo:hi+1,:), flx(lo:hi+1,:), dir)
     case (JBB_solver)
-       call riemann_JBB(lo, hi, UL(lo:hi+1,:), UR(lo:hi+1,:), flx(lo:hi+1,:), dir, lo_bc_vfac)
+       call riemann_JBB(lo, hi, UL(lo:hi+1,:), UR(lo:hi+1,:), flx(lo:hi+1,:), dir,bc_flag)
     case (HLLC_solver)
        call riemann_HLLC(lo, hi, UL(lo:hi+1,:), UR(lo:hi+1,:), flx(lo:hi+1,:), dir)
     case default
@@ -46,7 +45,7 @@ contains
 
   subroutine riemann_HLL(lo, hi, UL, UR, flx, dir)
     integer, intent(in) :: lo, hi
-    integer, intent(in), optional :: dir
+    integer, intent(in) :: dir
     double precision, intent(in ) ::  UL(lo:hi+1,NVAR)
     double precision, intent(in ) ::  UR(lo:hi+1,NVAR)
     double precision, intent(out) :: flx(lo:hi+1,NVAR)
@@ -96,21 +95,15 @@ contains
   subroutine compute_flux_and_alpha(lo, hi, U, F, ap, am, dir)
     use eos_module, only : eos_given_ReY, eos_given_RTY, allow_negative_energy
     integer, intent(in) :: lo, hi
-    integer, intent(in), optional :: dir
+    integer, intent(in) :: dir
     double precision, intent(in   ) ::  U(lo:hi+1,NVAR)
     double precision, intent(out  ) ::  F(lo:hi+1,NVAR)
     double precision, intent(inout) :: ap(lo:hi+1)
     double precision, intent(inout) :: am(lo:hi+1)
 
-    integer :: i, n, idir, ierr
+    integer :: i, n, ierr
     double precision :: rho, m(3), rhoE, v(3), vn
     double precision :: rhoInv, p, c, gamc, dpdr(NSPEC), dpde, T, e, ek, Y(NSPEC)
-
-    if (present(dir)) then
-       idir = dir
-    else
-       idir = 1
-    end if
 
     do i=lo,hi+1
 
@@ -145,7 +138,7 @@ contains
           call eos_given_ReY(p,c,gamc,T,dpdr,dpde,rho,e,Y,ierr=ierr)
        end if
 
-       vn = v(idir)
+       vn = v(dir)
 
        ap(i) = max(ap(i), c+vn)
        am(i) = max(am(i), c-vn)
@@ -158,7 +151,7 @@ contains
        if (ndim .eq. 3) then
           F(i,UMZ  ) = m(3)*vn
        end if
-       F(i,UMX+idir-1) = F(i,UMX+idir-1) + p
+       F(i,UMX+dir-1) = F(i,UMX+dir-1) + p
        F(i,UEDEN) = (rhoE + p) * vn
        F(i,UTEMP) = 0.d0
        do n=1,NSPEC
@@ -168,17 +161,16 @@ contains
   end subroutine compute_flux_and_alpha
 
 
-  subroutine riemann_JBB(lo, hi, UL, UR, flx, dir, lo_bc_vfac_in)
+  subroutine riemann_JBB(lo, hi, UL, UR, flx, dir, bc_flag)
     use eos_module, only : smalld, smallp, eos_given_ReY, eos_given_RTY, allow_negative_energy
     integer, intent(in) :: lo, hi
-    integer, intent(in), optional :: dir
-    double precision, intent(in), optional :: lo_bc_vfac_in
+    integer, intent(in) :: dir, bc_flag(2)
     double precision, intent(in ) ::  UL(lo:hi+1,NVAR)
     double precision, intent(in ) ::  UR(lo:hi+1,NVAR)
     double precision, intent(out) :: flx(lo:hi+1,NVAR)
 
-    integer :: i, n, idir, ivel(3), idim
-    double precision :: vflag(3), dpdr(NSPEC), dpde, lo_bc_vfac
+    integer :: i, n, ivel(3), idim
+    double precision :: vflag(3), dpdr(NSPEC), dpde
     double precision :: rgdnv,regdnv, pgdnv, vgdnv(3), ekgdnv
     double precision :: rl, retl, Tl, Yl(NSPEC), vl(3), el, pl, rel, rinvl
     double precision :: rr, retr, Tr, Yr(NSPEC), vr(3), er, pr, rer, rinvr
@@ -192,19 +184,7 @@ contains
     
     double precision, parameter :: small  = 1.d-8
 
-    if (present(dir)) then
-       idir = dir
-    else
-       idir = 1
-    end if
-
-    if (present(lo_bc_vfac_in)) then
-       lo_bc_vfac = lo_bc_vfac_in
-    else
-       lo_bc_vfac = 1.d0
-    end if
-
-    call set_vel(idir, ivel, vflag)
+    call set_vel(dir, ivel, vflag)
 
     do i=lo,hi+1
        
@@ -327,7 +307,8 @@ contains
        pgdnv = max(pgdnv,smallp)
 
        ! special boundary
-       if (i .eq. lo) vgdnv(1) = vgdnv(1) * lo_bc_vfac
+       if (i.eq.lo   .and. bc_flag(1).eq.0) vgdnv(1) = 0.d0
+       if (i.eq.hi+1 .and. bc_flag(2).eq.0) vgdnv(1) = 0.d0
 
        flx(i,URHO) = rgdnv*vgdnv(1)
 
@@ -363,12 +344,12 @@ contains
   subroutine riemann_HLLC(lo, hi, UL, UR, flx, dir)
     use eos_module, only : smalld, smallp, eos_given_ReY, eos_given_RTY, allow_negative_energy
     integer, intent(in) :: lo, hi
-    integer, intent(in), optional :: dir
+    integer, intent(in) :: dir
     double precision, intent(in ) ::  UL(lo:hi+1,NVAR)
     double precision, intent(in ) ::  UR(lo:hi+1,NVAR)
     double precision, intent(out) :: flx(lo:hi+1,NVAR)
 
-    integer :: i, n, idir, ivel(3), idim
+    integer :: i, n, ivel(3), idim
     double precision :: vflag(3), dpdr(NSPEC), dpde
     double precision :: rl, retl, Tl, Yl(NSPEC), vl(3), el, pl, rel, rinvl
     double precision :: rr, retr, Tr, Yr(NSPEC), vr(3), er, pr, rer, rinvr
@@ -376,13 +357,7 @@ contains
     double precision :: cr, gamcr, Smur, Sr
     double precision :: Sstar, rstar, vstar(3), etstar
 
-    if (present(dir)) then
-       idir = dir
-    else
-       idir = 1
-    end if
-
-    call set_vel(idir, ivel, vflag)
+    call set_vel(dir, ivel, vflag)
 
     do i=lo,hi+1
        
@@ -509,8 +484,8 @@ contains
   end subroutine riemann_HLLC
 
 
-  subroutine set_vel(idir, ivel, vflag)
-    integer, intent(in) :: idir
+  subroutine set_vel(dir, ivel, vflag)
+    integer, intent(in) :: dir
     integer, intent(out) :: ivel(3)
     double precision, intent(out) :: vflag(3)
     if (ndim .eq. 1) then
@@ -524,7 +499,7 @@ contains
        vflag(1) = 1.d0
        vflag(2) = 1.d0
        vflag(3) = 0.d0   
-       if (idir .eq. 1) then
+       if (dir .eq. 1) then
           ivel(1) = UMX
           ivel(2) = UMY
           ivel(3) = UMX
@@ -537,11 +512,11 @@ contains
        vflag(1) = 1.d0
        vflag(2) = 1.d0
        vflag(3) = 1.d0 
-       if (idir .eq. 1) then
+       if (dir .eq. 1) then
           ivel(1) = UMX
           ivel(2) = UMY
           ivel(3) = UMZ
-       else if (idir .eq. 2) then
+       else if (dir .eq. 2) then
           ivel(1) = UMY
           ivel(2) = UMZ
           ivel(3) = UMX
