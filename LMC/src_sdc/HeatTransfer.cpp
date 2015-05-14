@@ -6765,11 +6765,13 @@ HeatTransfer::calc_divu (Real      time,
 	do_reflux = do_reflux_hold;
     }
     //
-    // If divu_iter, pressure iter, or the first time step use RhoYdot_Type.
-    //
+    // if we are in the initial projection (time=0, dt=-1), set RhoYdot=0
+    // if we are in a divu_iter (time=0, dt>0), use I_R
+    // if we are in an init_iter or regular time step (time=dt, dt>0), use instananeous
     MultiFab   RhoYdotTmp;
     MultiFab&  S       = get_data(State_Type,time);
     const bool use_IR  = (time == 0 && dt > 0);
+
     MultiFab&  RhoYdot = (use_IR) ? get_new_data(RhoYdot_Type) : RhoYdotTmp;
 
     if (!use_IR)
