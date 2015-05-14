@@ -15,7 +15,6 @@ contains
     use polyinterp_module, only : cc2xface_2d, cc2yface_2d, cc2DxYface_2d, cc2DyXface_2d
     use variables_module, only : ctoprim
     use transport_properties, only : get_transport_properties
-    use RNS_boundary_module, only : get_diff_bc_flag
 
     integer, intent(in) :: lo(2), hi(2), domlo(2), domhi(2), Ulo(2), Uhi(2), &
          fxlo(2), fxhi(2), fylo(2), fyhi(2)
@@ -30,7 +29,7 @@ contains
     double precision, allocatable :: mu1(:,:), xi1(:,:), lam1(:,:), Ddia1(:,:,:)
     double precision, allocatable :: mu2(:,:), xi2(:,:), lam2(:,:), Ddia2(:,:,:)
     double precision, allocatable :: tmp1(:,:), tmp2(:,:)
-    integer :: i, j, n, g, bc_flag(2)
+    integer :: i, j, n, g
     integer :: g2lo(2), g2hi(2), Qflo(2), Qfhi(2), flo(2), fhi(2), tlo(3), thi(3)
     double precision :: dxinv(2)
 
@@ -123,13 +122,12 @@ contains
     flo = lo
     fhi(1) = hi(1)+1
     fhi(2) = hi(2)
-    call get_diff_bc_flag(1,flo(1),fhi(1),domlo,domhi,dx,bc_flag)
     call comp_diff_flux_x(flo, fhi, fx, fxlo, fxhi, &
          Qf1, mu1, xi1, lam1, Ddia1, dvel1, Qflo, Qfhi, &
-         Qc1, g2lo, g2hi, dxinv, 0.5d0, bc_flag)
+         Qc1, g2lo, g2hi, dxinv, 0.5d0, domlo, domhi)
     call comp_diff_flux_x(flo, fhi, fx, fxlo, fxhi, &
          Qf2, mu2, xi2, lam2, Ddia2, dvel2, Qflo, Qfhi, &
-         Qc2, g2lo, g2hi, dxinv, 0.5d0, bc_flag)
+         Qc2, g2lo, g2hi, dxinv, 0.5d0, domlo, domhi)
     
 
     ! ----- compute y-direction flux -----
@@ -171,13 +169,12 @@ contains
     flo = lo
     fhi(1) = hi(1)
     fhi(2) = hi(2)+1
-    call get_diff_bc_flag(2,flo(2),fhi(2),domlo,domhi,dx,bc_flag)
     call comp_diff_flux_y(flo, fhi, fy, fylo, fyhi, &
          Qf1, mu1, xi1, lam1, Ddia1, dvel1, Qflo, Qfhi, &
-         Qc1, g2lo, g2hi, dxinv, 0.5d0, bc_flag)
+         Qc1, g2lo, g2hi, dxinv, 0.5d0, domlo, domhi)
     call comp_diff_flux_y(flo, fhi, fy, fylo, fyhi, &
          Qf2, mu2, xi2, lam2, Ddia2, dvel2, Qflo, Qfhi, &
-         Qc2, g2lo, g2hi, dxinv, 0.5d0, bc_flag)
+         Qc2, g2lo, g2hi, dxinv, 0.5d0, domlo, domhi)
 
     deallocate(Qcc,mucc,xicc,lamcc,Ddiacc)
     deallocate(Qc1,Qc2,tmp1,tmp2)
@@ -190,12 +187,13 @@ contains
 
   subroutine comp_diff_flux_x(lo, hi, flx, flo, fhi, &
        Qf, mu, xi, lam, Ddia, dvel, Qflo, Qfhi, &
-       Qc, Qclo, Qchi, dxinv, fac, bc_flag)
+       Qc, Qclo, Qchi, dxinv, fac, domlo, domhi)
 
+    use prob_params_module, only : physbc_lo, physbc_hi, NoSlipWall
     use meth_params_module
     use derivative_stencil_module, only : FD4
 
-    integer, intent(in) :: lo(2), hi(2), flo(2), fhi(2), Qflo(2), Qfhi(2), Qclo(2), Qchi(2), bc_flag(2)
+    integer, intent(in) :: lo(2), hi(2), flo(2), fhi(2), Qflo(2), Qfhi(2), Qclo(2), Qchi(2), domlo(2), domhi(2)
     double precision, intent(in) :: dxinv(2), fac
     double precision, intent(inout) ::  flx( flo(1): fhi(1), flo(2): fhi(2),NVAR)
     double precision, intent(in   ) ::   Qf(Qflo(1):Qfhi(1),Qflo(2):Qfhi(2),QFVAR)
@@ -214,8 +212,14 @@ contains
     double precision, parameter :: twoThirds = 2.d0/3.d0
 
     msk = 1.d0
-    if (bc_flag(1).eq.0) msk(lo(1)) = 0.d0
-    if (bc_flag(2).eq.0) msk(hi(1)) = 0.d0
+
+    if (lo(1).eq.domlo(1) .and. physbc_lo(1) .eq. NoSlipWall) then
+       msk(lo(1)) = 0.d0
+    end if
+
+    if (hi(1).eq.domhi(1)+1 .and. physbc_hi(1) .eq. NoSlipWall) then
+       msk(hi(1)) = 0.d0
+    end if
 
     do j=lo(2),hi(2)
        do i=lo(1),hi(1)
@@ -295,12 +299,13 @@ contains
 
   subroutine comp_diff_flux_y(lo, hi, flx, flo, fhi, &
        Qf, mu, xi, lam, Ddia, dvel, Qflo, Qfhi, &
-       Qc, Qclo, Qchi, dxinv, fac, bc_flag)
+       Qc, Qclo, Qchi, dxinv, fac, domlo, domhi)
 
+    use prob_params_module, only : physbc_lo, physbc_hi, NoSlipWall
     use meth_params_module
     use derivative_stencil_module, only : FD4
 
-    integer, intent(in) :: lo(2), hi(2), flo(2), fhi(2), Qflo(2), Qfhi(2), Qclo(2), Qchi(2), bc_flag(2)
+    integer, intent(in) :: lo(2), hi(2), flo(2), fhi(2), Qflo(2), Qfhi(2), Qclo(2), Qchi(2), domlo(2), domhi(2)
     double precision, intent(in) :: dxinv(2), fac
     double precision, intent(inout) ::  flx( flo(1): fhi(1), flo(2): fhi(2),NVAR)
     double precision, intent(in   ) ::   Qf(Qflo(1):Qfhi(1),Qflo(2):Qfhi(2),QFVAR)
@@ -315,13 +320,19 @@ contains
     double precision :: tauyy, tauxy, dudx, dudy, dvdx, dvdy, divu
     double precision :: dTdy, dXdy, Vd
     double precision :: ek, rhovn
-    double precision :: msk(lo(2):hi(2))
     double precision, allocatable :: dlnpdy(:,:), Vc(:,:)
     double precision, parameter :: twoThirds = 2.d0/3.d0
+    double precision :: msk(lo(2):hi(2))
 
     msk = 1.d0
-    if (bc_flag(1).eq.0) msk(lo(2)) = 0.d0
-    if (bc_flag(2).eq.0) msk(hi(2)) = 0.d0
+
+    if (lo(2).eq.domlo(2) .and. physbc_lo(2) .eq. NoSlipWall) then
+       msk(lo(2)) = 0.d0
+    end if
+
+    if (hi(2).eq.domhi(2)+1 .and. physbc_hi(2) .eq. NoSlipWall) then
+       msk(hi(2)) = 0.d0
+    end if
 
     allocate(dlnpdy(lo(1):hi(1),lo(2):hi(2)))
     allocate(    Vc(lo(1):hi(1),lo(2):hi(2)))

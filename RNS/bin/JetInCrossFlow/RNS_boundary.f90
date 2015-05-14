@@ -17,7 +17,7 @@ contains
 
     vfac = 1.d0
 
-    if (dir .eq. 1 .and. idx(1) .eq. 0) then
+    if (dir .eq. 2 .and. idx(1) .eq. 0) then
        x = phys_prob_lo(1) + (idx(1)+0.5d0)*dx(1)
        z = phys_prob_lo(3) + (idx(3)+0.5d0)*dx(3)
 

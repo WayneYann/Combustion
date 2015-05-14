@@ -1,6 +1,8 @@
 &fortin
 
-   pamb = 5.06625d6  ! 5 Patm
+  pamb = 1.01325d6  ! 1 Patm
+
+  delta_bl_0 = 0.7d0
    
 /
 

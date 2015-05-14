@@ -15,7 +15,6 @@ contains
     use convert_module, only : cellavg2cc_1d
     use variables_module, only : ctoprim
     use transport_properties, only : get_transport_properties
-    use RNS_boundary_module, only : get_diff_bc_flag
 
     integer, intent(in) :: lo(1), hi(1), domlo(1), domhi(1), Ulo(1), Uhi(1)
     double precision, intent(in ) ::   U(Ulo(1):Uhi(1)  ,NVAR)
@@ -27,7 +26,7 @@ contains
     double precision :: dxinv(1)
     integer :: Qclo(3), Qchi(3)
     integer :: Qflo(3), Qfhi(3)
-    integer :: n, bc_flag(2)
+    integer :: n
 
     dxinv = 1.d0/dx
 
@@ -63,9 +62,7 @@ contains
     ! transport coefficients on face
     call get_transport_properties(Qflo,Qfhi, Qf, Qflo,Qfhi,QFVAR, mu, xi, lam, Ddia, Qflo,Qfhi)
 
-    call get_diff_bc_flag(1,Qflo(1),Qfhi(1),domlo,domhi,dx,bc_flag)
-
-    call comp_diff_flux(flx, Qf, mu, xi, lam, Ddia, Qflo, Qfhi, Qc, Qclo, Qchi, dxinv, bc_flag)
+    call comp_diff_flux(flx, Qf, mu, xi, lam, Ddia, Qflo, Qfhi, Qc, Qclo, Qchi, dxinv, domlo, domhi)
 
     deallocate(Qc,Qf)
     deallocate(mu,xi,lam,Ddia)
@@ -73,12 +70,13 @@ contains
   end subroutine difterm
 
 
-  subroutine comp_diff_flux(flx, Qf, mu, xi, lam, Ddia, Qflo, Qfhi, Qc, Qclo, Qchi, dxinv, bc_flag)
+  subroutine comp_diff_flux(flx, Qf, mu, xi, lam, Ddia, Qflo, Qfhi, Qc, Qclo, Qchi, dxinv, domlo, domhi)
 
+    use prob_params_module, only : physbc_lo, physbc_hi, NoSlipWall
     use meth_params_module
     use derivative_stencil_module, only : FD4
 
-    integer, intent(in) :: Qflo(1), Qfhi(1), Qclo(1), Qchi(1), bc_flag(2)
+    integer, intent(in) :: Qflo(1), Qfhi(1), Qclo(1), Qchi(1), domlo(1), domhi(1)
     double precision, intent(in) :: dxinv(1)
     double precision, intent(in)  ::   Qc(Qclo(1):Qchi(1),QCVAR)
     double precision, intent(in)  ::   Qf(Qflo(1):Qfhi(1),QFVAR)
@@ -94,8 +92,14 @@ contains
     double precision, parameter :: fourThirds = 4.d0/3.d0
 
     msk = 1.d0
-    if (bc_flag(1).eq.0) msk(Qflo(1)) = 0.d0
-    if (bc_flag(2).eq.0) msk(Qfhi(1)) = 0.d0
+
+    if (Qflo(1).eq.domlo(1) .and. physbc_lo(1) .eq. NoSlipWall) then
+       msk(Qflo(1)) = 0.d0
+    end if
+
+    if (Qfhi(1).eq.domhi(1)+1 .and. physbc_hi(1) .eq. NoSlipWall) then
+       msk(Qfhi(1)) = 0.d0
+    end if
 
     flx(:,URHO) = 0.d0
     flx(:,UTEMP) = 0.d0
