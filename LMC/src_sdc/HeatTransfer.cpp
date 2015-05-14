@@ -6784,7 +6784,7 @@ HeatTransfer::calc_divu (Real      time,
         }
         else if (dt > 0)
         {
-            // a regular time step, but not the first one, use instantaneous omegadot
+            // init_iter or regular time step, use instantaneous omegadot
             RhoYdot.define(grids,nspecies,0,Fab_allocate);
             compute_instantaneous_reaction_rates(RhoYdot,S,nGrow);
         }
