@@ -40,7 +40,7 @@ end subroutine PROBINIT
 
 
 subroutine rns_initdata(level,time,lo,hi,nscal, &
-     state,state_l1,state_l2,state_l3,state_h1,state_h2,state_h3, &
+     state,state_l1,state_l2,state_h1,state_h2, &
      delta,xlo,xhi)
 
   use probdata_module
@@ -50,13 +50,13 @@ subroutine rns_initdata(level,time,lo,hi,nscal, &
   implicit none
 
   integer level, nscal
-  integer lo(3), hi(3)
-  integer state_l1,state_l2,state_l3,state_h1,state_h2,state_h3
-  double precision xlo(3), xhi(3), time, delta(3)
-  double precision state(state_l1:state_h1,state_l2:state_h2,state_l3:state_h3,NVAR)
+  integer lo(2), hi(2)
+  integer state_l1,state_l2,state_h1,state_h2
+  double precision xlo(2), xhi(2), time, delta(2)
+  double precision state(state_l1:state_h1,state_l2:state_h2,NVAR)
   
   ! local variables
-  integer :: i, j, k, iwrk
+  integer :: i, j, iwrk
   integer :: iN2, iO2
   double precision :: y, rwrk, X0(nspec), Y0(nspec), rho0, e0, T0, state0(NVAR)
 
@@ -76,23 +76,21 @@ subroutine rns_initdata(level,time,lo,hi,nscal, &
   state0(URHO)  = rho0
   state0(UMX)   = rho0*v_cf
   state0(UMY)   = 0.d0
-  state0(UMZ)   = 0.d0
   state0(UEDEN) = rho0*(e0+0.5d0*v_cf**2)
   state0(UTEMP) = T0
   state0(UFS:UFS+nspec-1) = rho0*Y0
 
-  !$omp parallel do private(i,j,k,y)
-  do k = lo(3), hi(3)
-     do j = lo(2), hi(2)
-        y = xlo(2) + (j-lo(2)+0.5d0)*delta(2)
-        y = y / delta_bl_0
-        do i = lo(1), hi(1)
-           state(i,j,k,:) = state0
-           if (y .lt. 1.d0) then
-              state(i,j,k,UMX) = state0(UMX) * y
-              state(i,j,k,UEDEN) = rho0*e0 + state(i,j,k,UMX)**2/(2.d0*rho0)
-           end if
-        end do
+  !$omp parallel do private(i,j,y)
+  do j = lo(2), hi(2)
+     y = xlo(2) + (j-lo(2)+0.5d0)*delta(2)
+     y = y / delta_bl_0
+     y = (y - 0.5d0)*6.d0
+     do i = lo(1), hi(1)
+        state(i,j,:) = state0
+        if (y .le. 3.d0) then
+           state(i,j,UMX) = state0(UMX) * (tanh(y)+1.d0)*0.5d0
+           state(i,j,UEDEN) = rho0*e0 + state(i,j,UMX)**2/(2.d0*rho0)
+        end if
      end do
   end do
   !$omp end parallel do

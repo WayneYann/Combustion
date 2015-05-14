@@ -14,7 +14,7 @@ subroutine rns_grpfill(adv,adv_l1,adv_l2,adv_l3,adv_h1,adv_h2,adv_h3, &
   double precision delta(3), xlo(3), time
   double precision adv(adv_l1:adv_h1,adv_l2:adv_h2,adv_l3:adv_h3,NVAR)
   
-  integer n, i, j, k, ii, kk, iwrk
+  integer n, i, j, k, iwrk
   integer bc(3,2,NVAR)
   double precision :: rhoInv, Yt(nspec), rwrk, et
 
@@ -383,7 +383,6 @@ subroutine rns_tempfill(adv,adv_l1,adv_l2,adv_l3,adv_h1,adv_h2,adv_h3, &
   double precision adv(adv_l1:adv_h1,adv_l2:adv_h2,adv_l3:adv_h3)
 
   integer :: i, j, k
-  double precision :: x, z
 
   call filcc(adv,adv_l1,adv_l2,adv_l3,adv_h1,adv_h2,adv_h3, &
        domlo,domhi,delta,xlo,bc)
