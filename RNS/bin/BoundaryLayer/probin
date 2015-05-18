@@ -2,7 +2,9 @@
 
   pamb = 1.01325d6  ! 1 Patm
 
-  delta_bl_0 = 0.7d0
+  bl_h = 1.d0
+
+  max_denerr_lev = 2
    
 /
 

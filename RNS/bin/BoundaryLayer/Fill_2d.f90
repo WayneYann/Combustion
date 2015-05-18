@@ -35,15 +35,12 @@ subroutine rns_grpfill(adv,adv_l1,adv_l2,adv_h1,adv_h2, &
   if (adv_l2.lt.domlo(2)) then
      do j = adv_l2, domlo(2)-1
         do i = adv_l1, adv_h1
-           ! zero velocity
-           adv(i,j,UMX) = 0.d0
-           adv(i,j,UMY) = 0.d0
            ! fixed T
            adv(i,j,UTEMP) = T_cf
            rhoInv = 1.d0/adv(i,j,URHO)
            Yt = adv(i,j,UFS:UFS+NSPEC-1)*rhoInv
            call CKUBMS(T_cf, Yt, iwrk, rwrk, et)
-           adv(i,j,UEDEN) = adv(i,j,URHO)*et
+           adv(i,j,UEDEN) = adv(i,j,URHO)*et + (adv(i,j,UMX)**2+adv(i,j,UMY)**2)/(2.d0*adv(i,j,URHO))
         end do
      end do
   end if
@@ -177,14 +174,6 @@ subroutine rns_mxfill(adv,adv_l1,adv_l2,adv_h1,adv_h2, &
   call filcc(adv,adv_l1,adv_l2,adv_h1,adv_h2,domlo,domhi,delta,xlo,bc)
 
   ! YLO: Wall
-  if (adv_l2.lt.domlo(2)) then
-     do j = adv_l2, domlo(2)-1
-        do i = adv_l1, adv_h1
-           ! zero velocity
-           adv(i,j) = 0.d0
-        end do
-     end do
-  end if
   
   !     XLO
   if ( bc(1,1,1).eq.EXT_DIR .and. adv_l1.lt.domlo(1)) then
@@ -230,14 +219,6 @@ subroutine rns_myfill(adv,adv_l1,adv_l2,adv_h1,adv_h2, &
   call filcc(adv,adv_l1,adv_l2,adv_h1,adv_h2,domlo,domhi,delta,xlo,bc)
 
   ! YLO: Wall
-  if (adv_l2.lt.domlo(2)) then
-     do j = adv_l2, domlo(2)-1
-        do i = adv_l1, adv_h1
-           ! zero velocity
-           adv(i,j) = 0.d0
-        end do
-     end do
-  end if
     
   !     XLO
   if ( bc(1,1,1).eq.EXT_DIR .and. adv_l1.lt.domlo(1)) then

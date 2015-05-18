@@ -2,6 +2,8 @@ module RNS_boundary_module
 
   implicit none
 
+  double precision, save :: Twall = -1.d0
+
 contains
 
   subroutine get_hyper_bc_flag(dir,lo,hi,domain_lo,domain_hi,dx,flag)
