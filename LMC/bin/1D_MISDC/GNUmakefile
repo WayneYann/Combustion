@@ -71,10 +71,10 @@ clean:
 	\rm -rf ${EXEname} ${f_objects} ${C_objects} Linkeg
 
 %.o: %.cpp
-	${CCOMP} -c $^ -o $*.o
+	${CCOMP} ${C_includedirs} -c $^ -o $*.o
 
 %.o: %.c
-	${cCOMP} -c $^ -o $*.o
+	${cCOMP} ${C_includedirs} -c $^ -o $*.o
 
 %.o: %.f
 	${fCOMP} -c $^ -o $*.o
