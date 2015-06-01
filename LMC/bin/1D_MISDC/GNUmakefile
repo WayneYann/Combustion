@@ -56,6 +56,7 @@ f_sources += lmc.f ${chem_sources} prob.f fill_ghost.f \
 
 f_includes += spec.h
 C_sources += main.cpp
+C_includedirs += -I../../../Chemistry/src
 
 C_objects := $(C_sources:%.cpp=%.o)
 f_objects := $(f_sources:%.f=%.o)
