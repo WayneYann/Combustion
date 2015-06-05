@@ -852,11 +852,16 @@ c     with T.  Discont_NiterMAX is fairly large because this process can be part
 c     slow to converge if the Htarg value happens to lay between the discontinuous function
 c     values.  
          if (Niter .ge. NiterMAX) then
+            print *,'WILL: Niter before loop: ', Niter
             do while (.not. stalled)
                dT = - (H - Htarg) * (old_T - T)/(old_H - H)
+               print *,'WILL: Tsec  = ',Tsec
                Tsec = T + dT
                soln_bad = out_of_bounds(Tsec)
                if (soln_bad) then
+                  print *,'WILL: Tsec  = ',Tsec
+                  print *,'WILL: TMAX  = ',TMAX
+                  print *,'WILL: Niter = ',Niter
                   Niter = -3
                   goto 100
                endif

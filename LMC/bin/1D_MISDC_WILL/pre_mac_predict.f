@@ -16,8 +16,12 @@
       real*8 slo,shi
       integer i
 
-      dth  = 0.5d0 * dt
-      dthx = 0.5d0 * dt / dx
+c     WILL: changed this to do space-centered only extrapolation
+c      dth  = 0.5d0 * dt
+c      dthx = 0.5d0 * dt / dx
+      dth = 0.0d0
+      dthx = 0.0d0
+      
       eps = 1.d-6
 
       call mkslopes(vel_old,slope,lo,hi,bc)

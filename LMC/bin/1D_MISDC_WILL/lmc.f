@@ -111,6 +111,7 @@ c     Set defaults, change with namelist
       rho_divu_ceiling  = 0.01
       unlim = 0
       probtype = 1
+      verbose_vode = 0
 
       open(9,file='probin',form='formatted',status='old')
       read(9,fortin)
