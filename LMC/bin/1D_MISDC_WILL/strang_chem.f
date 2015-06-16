@@ -23,13 +23,14 @@
       parameter (NiterMAX = 30)
       double precision res(NiterMAX), errMAX
 
-c     Shut off diagnostics
+c     Turn of diagnotics
       do_diag = 0
 
       print *,'... chemistry'
 c     Evolve chem over grid
       do i=lo,hi
          if (use_strang) then
+
 C           integrating Y_m's not rhoY_m
             do n = 1,Nspec
                RYold(n) = scal_old(i,FirstSpec+n-1)/scal_old(i,Density)
@@ -57,7 +58,14 @@ c     Set linear source terms in common for ode integrators access
             rhoh_INIT = scal_old(i,RhoH)
             T_INIT = scal_old(i,Temp)
          endif
-
+         
+c     WILL: do VODE diagnostics for the first gridpoint...
+         if (i .eq. (lo+hi)/2) then
+            do_diag = 1
+         else
+            do_diag = 0
+         end if
+         
          call chemsolve(RYnew, Tnew, RYold, Told, FuncCount, dt,
      &                  diag, do_diag, ifail, i)
          if (ifail.ne.0) then

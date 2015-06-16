@@ -136,18 +136,6 @@ c     compute U^{ADV,*}
       call pre_mac_predict(vel_old(0,:),scal_old(0,:,:),gp(0,:),
      $                     macvel_old(0,:),dx(0),dt(0),lo(0),hi(0),bc(0,:))
 
-c      if (initial_S_type .eq. 1) then
-c     extrapolate S^{n-1} and S^n to get S^{n+1/2}
-c         do i=lo(0),hi(0)
-c            divu_extrap(0,i) = divu_old(0,i) + 0.5d0*dt(0)*dSdt(0,i)
-c         end do
-c      else
-c     set S^{n+1/2} to S^n
-c         do i=lo(0),hi(0)
-c            divu_extrap(0,i) = divu_old(0,i)
-c         end do
-c      end if
-
 c     compute ptherm = p(rho,T,Y)
 c     this is needed for any dpdt-based correction scheme
       call compute_pthermo(scal_old(0,:,:),lo(0),hi(0),bc(0,:))
@@ -468,7 +456,12 @@ c     compute A+D source terms for reaction integration
 c     using piecewise linear A term
 c     attempting to use piecewise linear D term
 c     currently only works with piecewise constant D
-            const_diff = .true.
+            if (misdc .eq. 1) then
+               const_diff = .false.
+            else
+               const_diff = .true.
+            end if
+            
             do n = 1,nscal
                do i=lo(0),hi(0)
                   if (const_diff) then
@@ -491,13 +484,7 @@ c     add differential diffusion
                lin_src_new(0,i,RhoH) = lin_src_new(0,i,RhoH)
      $               + diffdiff_new(0,i)
             end do
-            
-            
-c            print *,"WILL: diffusion slope size: ",
-c     $         maxval(abs(diff_new(0,:,:) - diff_old(0,:,:)))/dt
-c            print *,"WILL: diffusion average: ",
-c     $         maxval(0.5d0*(diff_old(0,:,:)+diff_new(0,:,:)))
-
+   
 c     solve equations (50), (51) and (52)
             call strang_chem(scal_old(0,:,:),scal_new(0,:,:),
      $                       const_src(0,:,:),lin_src_old(0,:,:),

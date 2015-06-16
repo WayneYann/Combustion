@@ -59,6 +59,12 @@ def solve_it(a, d, r, dt, max_iter=10, do_linear=True, plot_it=False):
             # move on to the next MISDC iteration...
             y_prev = y_curr
         
+            residual = (y[n] + (a+d+r)*(int_4(y_prev, 0, dt) + 
+                                    int_4(y_prev, 1, dt) +
+                                    int_4(y_prev, 2, dt))
+                             - y_curr[3])
+            print 'iteration: ', k, ' residual: ', residual
+        
         y[n+1] = y_prev[N_A - 1]
     
     exact = np.exp(C*t)
