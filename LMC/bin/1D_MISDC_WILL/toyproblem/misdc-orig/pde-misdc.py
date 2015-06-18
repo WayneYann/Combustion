@@ -1,8 +1,12 @@
+from __future__ import division
 import numpy as np
 import sys
 import pdb
 import matplotlib.pyplot as plt
+from scipy.sparse.linalg import spsolve
+from scipy.sparse import csc_matrix
 from scipy.interpolate import interp1d
+from scipy.optimize import newton
 from math import *
 
 ###########################
@@ -12,23 +16,29 @@ from math import *
 N_A = 2
 # piecewise linear or constants
 do_linear = False
-# use RK solver
-do_RK = True
 
 endpt = 20.0
 max_iter = 2
 # coefficients
 a = -1.0
-eps = 10
-r = -100.0
+eps = 10.0
+#r = -275.0
+r = -200.0
+
+#a = -1.0
+#eps = 0.4
+#r = -7.0
+
 # gridsize
-Nx = 1000
+Nx = 300
 # spacing
 h = float(endpt/Nx)
 # timestep
 dt = h/5
+# final time
+FT = 2.0
 # number of timesteps
-Nt = int(ceil(1/dt))
+Nt = int(ceil(FT/dt))
 
 # this is unfortunately hard coded according to the number of substeps...
 if N_A == 4:
@@ -45,7 +55,7 @@ elif N_A == 2:
 def int_4(f, m, l):
     return np.apply_along_axis(lambda f_j: np.dot(f_j, weights[m])*0.5*l, 0, f)
 def int_2(f, m, l):
-    return 0.5*(f[0]+f[1])
+    return 0.5*(f[0]+f[1])*l
 def integ(f, m, l):
     if N_A==4:
         return int_4(f, m, l)
@@ -54,9 +64,10 @@ def integ(f, m, l):
 
 # calculate the value of the interpolating polynomial at an arbitrary time t
 def interp_4(f, t):
-    return (2*pow(dt,3)*f[0] + 10*pow(t,3)*(-f[0] + sqrt(5)*f[1] - sqrt(5)*f[2] + f[3]) + 
-    pow(dt,2)*t*(-12*f[0] + 5*(1 + sqrt(5))*f[1] + 5*f[2] - 5*sqrt(5)*f[2] + 2*f[3]) - 
-    5*dt*pow(t,2)*(-4*f[0] + f[1] + 3*sqrt(5)*f[1] + f[2] - 3*sqrt(5)*f[2] + 2*f[3]))/(2.*pow(dt,3))
+    return (2*pow(dt,3)*f[0] + 10*pow(t,3)*(-f[0] + sqrt(5)*f[1] - sqrt(5)*f[2] 
+            + f[3]) + pow(dt,2)*t*(-12*f[0] + 5*(1 + sqrt(5))*f[1] + 5*f[2]
+            - 5*sqrt(5)*f[2] + 2*f[3]) - 5*dt*pow(t,2)*(-4*f[0] + f[1] 
+            + 3*sqrt(5)*f[1] + f[2] - 3*sqrt(5)*f[2] + 2*f[3]))/(2.*pow(dt,3))
 
 def interp_const(f, t):
     return 0.5*(f[0]+f[1])
@@ -94,6 +105,12 @@ def rk4(f, t_n, y_n, dtp):
 def FR(z):
     return r*z*(z-1)*(z-0.5)
 
+def FRprime(z):
+    return r*(3*z**2 - 3*z + 0.5)
+
+def FRprime2(z):
+    return r*(6*z - 3)
+
 def FA(z):
     return np.dot(A, z) - a*bc/(2*h)
 
@@ -111,9 +128,6 @@ def I_R(z, m):
     
     return integ(Rz, m, dt)
 
-IMEX = False
-IMP = False
-
 def advance(n):
     # boundary values
     y[n+1][0] = y[n][0]
@@ -121,7 +135,7 @@ def advance(n):
         
     # stupid predictor
     y_prev = np.array([y[n][1:-1]]*N_A)
-    y_curr = y_prev
+    y_curr = np.copy(y_prev)
     
     # corrector iterations
     for k in range(max_iter):
@@ -129,22 +143,25 @@ def advance(n):
         for m in range(0,N_A-1):
             dtp = dt*(quad_pts[m+1] - quad_pts[m])
             
-            y_AD = np.linalg.solve(I - dtp*D,
-                       y_AD + dtp*(
-                       FA(y_curr[m]) - FA(y_prev[m])
-                     + eps*bc/h**2   - FD(y_prev[m+1])
-                     + I_AD(y_prev, m)
-                     + I_R(y_prev, m)))
+            y_AD = spsolve(Dinv[m],
+                       y_AD + dtp*(FA(y_curr[m]) - FA(y_prev[m])
+                                 + eps*bc/h**2   - FD(y_prev[m+1]))
+                            + I_AD(y_prev, m)
+                            + I_R(y_prev, m))
             
-            if do_RK:
-                f_const = (FD(y_AD) - FD(y_prev[m+1]) 
-                         + FA(y_curr[m]) - FA(y_prev[m]))
-                f = f_const + AD_RHS(y_prev)
-                
-                soln = rk4(f, quad_pts[m]*dt, y_curr[m], dtp)
-                y_curr[m+1] = soln
-            else:
-                y_curr[m+1] = y_curr[m]
+            rhs = (y_curr[m] + dtp*(FA(y_curr[m]) - FA(y_prev[m])
+                                  + FD(y_AD)      - FD(y_prev[m+1])
+                                  - FR(y_prev[m+1]))
+                             + I_AD(y_prev, m)
+                             + I_R(y_prev, m))
+            
+            for j in range(Nx - 2):
+                soln = newton(lambda x: x - dtp*FR(x) - rhs[j],
+                          y_curr[m+1][j],
+                          fprime = lambda x: 1 - dtp*FRprime(x),
+                          fprime2 = lambda x: dtp*FRprime2(x),
+                          maxiter = 5000)
+                y_curr[m+1][j] = soln
         
         # move on to the next MISDC iteration...
         y_prev = y_curr
@@ -167,6 +184,15 @@ Dxx = (-I*2 + np.diag([1]*(Nx-3),1) + np.diag([1]*(Nx-3),-1))/h**2
 D = eps*Dxx
 A = a*Dx
 
+# we treat diffusion implicitly
+# for efficiency, we create the sparse matrices now
+# which we later use in the sparse solve
+# (I - dtp D) y = RHS
+Dinv = np.empty(N_A - 1, dtype=object)
+for m in range(N_A - 1):
+    dtp = dt*(quad_pts[m+1] - quad_pts[m])
+    Dinv[m] = csc_matrix(I - dtp*D)
+
 # create the boundary condition
 bc = np.zeros(Nx-2)
 bc[0] = 1
@@ -175,16 +201,14 @@ bc[-1] = 0
 plt.ion()
 for n in range(Nt):
     advance(n)
-#    if (n+1)%1 == 0:
-#        print 't = ', dt*n
-#        plt.cla()
-#        plt.plot(x,y[n+1])
-#        plt.ylim((0,1.1))
-#        plt.draw()
+    if (n+1)%10 == 0 or n == Nt-1:
+        print 't = ', dt*(n+1)
+        plt.cla()
+        plt.plot(x,y[n+1])
+        plt.ylim((0,1.1))
+        plt.draw()
 
-#plt.cla()
-#plt.ylim((0,1.1))
-#plt.plot(x,y[Nt-1])
+np.savetxt('ft', np.array([x, y[Nt]]).T)
 
 #data = np.loadtxt('data')
 #exactx = data[:,0]
@@ -196,8 +220,8 @@ for n in range(Nt):
 #exacti = exact(x)
 
 #l1 = np.sum(exacty)*20/len(exacty)
-#l1err = h*np.sum(np.abs(y[Nt-1]-exacti))
+#l1err = h*np.sum(np.abs(y[Nt]-exacti))
 
 #print l1err/l1
 
-#plt.show(block=True)
+plt.show(block=True)
