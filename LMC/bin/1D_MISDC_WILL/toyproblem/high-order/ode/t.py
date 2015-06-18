@@ -135,14 +135,14 @@ def solve_it(a, d, r, dt, max_iter=10, plot_it=False, exact=False):
         
         # less stupid predictor
         
-        for m in range(0, N_A-1):
-            dtp = dt*(quad_pts[m+1] - quad_pts[m])
-            y_AD = (y_prev[m] + dtp*a*y[n])/(1 - d*dtp)
-            y_prev[m+1] = (y_prev[m] + dtp*(a*y_prev[m] + d*y_AD))/(1 - r*dtp)
-        
-        I_R[0] = r*int_4(y_prev, 0, dt)
-        I_R[1] = r*int_4(y_prev, 1, dt)
-        I_R[2] = r*int_4(y_prev, 2, dt)
+#        for m in range(0, N_A-1):
+#            dtp = dt*(quad_pts[m+1] - quad_pts[m])
+#            y_AD = (y_prev[m] + dtp*a*y[n])/(1 - d*dtp)
+#            y_prev[m+1] = (y_prev[m] + dtp*(a*y_prev[m] + d*y_AD))/(1 - r*dtp)
+#        
+#        I_R[0] = r*int_4(y_prev, 0, dt)
+#        I_R[1] = r*int_4(y_prev, 1, dt)
+#        I_R[2] = r*int_4(y_prev, 2, dt)
         
         # corrector iterations
         for k in range(max_iter):

@@ -53,7 +53,7 @@ def FD(d, y, t):
 
 def FR(r, y, t):
     #return -sin(t) + r*(cos(t) - y)
-    return r*y*(y-1)*(y-0.5)
+    return -r*y*(y-1)*(y-0.5)
 
 def AD_RHS(a, d, y, t, dt):
     return map(lambda j:   FA(a, y[j], t+quad_pts[j]*dt) 
@@ -71,7 +71,7 @@ def solve_it(a, d, r, dt, max_iter=10, plot_it=False):
     #number of timesteps to run
     #N = 1
     N = int(1/dt)
-    #N = 1
+    #N = 100
     
     C = a + d + r
     
@@ -97,7 +97,6 @@ def solve_it(a, d, r, dt, max_iter=10, plot_it=False):
                 
                 y_AD = (y_AD + dtp*(
                           FA(a,y_curr[m],t) - FA(a,y_prev[m],t)
-#                        + d*cos(tt)
                         - FD(d,y_prev[m+1],tt))
                         + I_AD(a, d, y_prev, m, dt*n, dt)
                         + I_R(r, y_prev, dt*n, m ,dt))/(1 - dtp*d)
@@ -115,6 +114,8 @@ def solve_it(a, d, r, dt, max_iter=10, plot_it=False):
             y_prev = y_curr
         
         y[n+1] = y_prev[N_A - 1]
+    
+    print y
     
     #exact = np.exp((a-d+r)*T)
     #exact = np.cos(T)
