@@ -1,3 +1,4 @@
+from __future__ import division
 import numpy as np
 import sys
 import pdb
@@ -5,26 +6,27 @@ import matplotlib.pyplot as plt
 from scipy.sparse.linalg import spsolve
 from scipy.sparse import csc_matrix
 from scipy.interpolate import interp1d
+from scipy.optimize import newton
 from math import *
 
 ###########################
 # here are our parameters #
 ###########################
 # number of advection substeps
-N_A = 2
+N_A = 4
 # piecewise linear or constants
 do_linear = False
 
 endpt = 20.0
 max_iter = 2
 # coefficients
-a = -1.0
-eps = 10
-r = -200.0
-
 #a = -1.0
-#eps = 0.4
-#r = -7.0
+#eps = 500
+#r = -300.0
+
+a = -1.0
+eps = 0.4
+r = -7.0
 
 # gridsize
 Nx = 300
@@ -44,7 +46,8 @@ if N_A == 4:
     # quadrature weights computed using Mathematica
     weights = [[0.2206011330,   0.3793988670, -0.06781472846, 0.02060113296],
                [-0.07453559925, 0.5217491947,  0.5217491947, -0.07453559925],
-               [0.02060113296, -0.06781472846, 0.3793988670,  0.2206011330]]
+               [0.02060113296, -0.06781472846, 0.3793988670,  0.2206011330],
+               [1.0/6.0, 5.0/6.0, 5.0/6.0, 1.0/6.0]]
 elif N_A == 2:
     quad_pts = [0, 1]
 
@@ -61,6 +64,7 @@ def integ(f, m, l):
 
 # calculate the value of the interpolating polynomial at an arbitrary time t
 def interp_4(f, t):
+    #return int_4(f, -1, 1)
     return (2*pow(dt,3)*f[0] + 10*pow(t,3)*(-f[0] + sqrt(5)*f[1] - sqrt(5)*f[2] + f[3]) + 
     pow(dt,2)*t*(-12*f[0] + 5*(1 + sqrt(5))*f[1] + 5*f[2] - 5*sqrt(5)*f[2] + 2*f[3]) - 
     5*dt*pow(t,2)*(-4*f[0] + f[1] + 3*sqrt(5)*f[1] + f[2] - 3*sqrt(5)*f[2] + 2*f[3]))/(2.*pow(dt,3))
@@ -84,7 +88,7 @@ def rhs(f, z, t):
     return interp(f,t) + FR(z)
 
 def rk4(f, t_n, y_n, dtp):
-    M = 10
+    M = 5
     h_rk = dtp/float(M)
     
     z = y_n
@@ -98,9 +102,28 @@ def rk4(f, t_n, y_n, dtp):
         z  = z + (k1 + 2*k2 + 2*k3 + k4)/6.0;
     return z
 
+def be(f, t_n, y_n, dtp):
+    M = 70
+    h_be = dtp/float(M)
+    
+    z = y_n
+    for t in np.linspace(t_n, t_n+dtp-h_be, M):
+        z = newton(lambda x: x - h_be*FR(x) - z - h_be*interp(f, t),
+                   z,
+                   fprime  = lambda x: 1 - h_be*FRprime(x),
+                   fprime2 = lambda x: h_be*FRprime2(x),
+                   maxiter = 1000)
+    return z
+
 def FR(z):
     return r*z*(z-1)*(z-0.5)
 
+def FRprime(z):
+    return r*(3*z**2 - 3*z + 0.5)
+
+def FRprime2(z):
+    return r*(6*z - 3)
+    
 def FA(z):
     return np.dot(A, z) - a*bc/(2*h)
 
@@ -145,7 +168,23 @@ def advance(n):
             
             f_const = (FD(y_AD) - FD(y_prev[m+1]) 
                      + FA(y_curr[m]) - FA(y_prev[m]))
-            f = f_const + AD_RHS(y_prev)
+            f = [f_const + int_4(AD_RHS(y_prev), -1, 1)]*4
+            
+#            b = y_curr[m] + dtp*0.5*(f[0]+f[1])
+#            
+#            #for j in range(Nx - 2):
+#            #    soln = be(f[:,j], quad_pts[m]*dt, y_curr[m][j], dtp)
+#            #    y_curr[m+1][j] = soln
+#            
+#            for j in range(Nx - 2):
+#                #pdb.set_trace()
+##                soln = newton(lambda x: x - dtp*FR(x) - y_curr[m][j] - dtp*interp(f[:,j], 0),
+##                              y_curr[m][j],
+##                              fprime = lambda x: 1 - dtp*FRprime(x),
+##                              fprime2 = lambda x: dtp*FRprime2(x),
+##                              maxiter = 2000)
+#                soln = be(f[:,j], quad_pts[m]*dt, y_curr[m][j], dtp)
+#                y_curr[m+1][j] = soln
             
             soln = rk4(f, quad_pts[m]*dt, y_curr[m], dtp)
             y_curr[m+1] = soln
@@ -186,14 +225,18 @@ bc[0] = 1
 bc[-1] = 0
 
 plt.ion()
+
+skip = 10
+
 for n in range(Nt):
     advance(n)
-    if (n+1)%10 == 0 or n == Nt-1:
+    if (n+1)%skip == 0 or n == Nt-1:
         print 't = ', dt*(n+1)
         plt.cla()
         plt.plot(x,y[n+1])
         plt.ylim((0,1.1))
         plt.draw()
+        plt.pause(0.2)
 
 np.savetxt('ft', np.array([x, y[Nt]]).T)
 
