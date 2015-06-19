@@ -1,9 +1,9 @@
 &fortin
-  nx = 2048
-  nsteps = 640
-  plot_int = 640
+  nx = 256
+  nsteps = 80
+  plot_int = 80
   chk_int = 1000
-  fixed_dt = 0.03125e-4
+  fixed_dt = 0.25e-4
   stop_time = 1.e4
   problo = 0.
   probhi = 1.2

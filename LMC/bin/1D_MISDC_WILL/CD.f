@@ -575,6 +575,33 @@ C     calculate molar concentrations from mass fractions; result in RPAR(NC)
       end
 
 
+      subroutine write_vode_diag(Z,dt,nt)
+      implicit none
+      include 'spec.h'
+      
+      real*8 Z(0:Nspec,0:nt)
+      real*8 dt
+      real*8 time
+
+      character pltfile*(2)
+      
+      integer i,l,n,nt
+      
+      pltfile(1:2) = 'vd'
+      
+ 2006 format(200(E23.15E3,1X))
+
+      open(10,file=pltfile,form='formatted')
+      print *,'...writing data to ',pltfile
+      write(10,*) nt
+
+      do i=0,nt
+         write(10,2006) (i*dt),(Z(n,i),n=0,Nspec)
+      end do
+
+      close(10)
+
+      end
 
 
       subroutine chemsolve(RYnew, Tnew, RYold, Told, FuncCount, dt,
@@ -594,30 +621,16 @@ C     calculate molar concentrations from mass fractions; result in RPAR(NC)
       integer NEQ, ITOL, IOPT, ITASK, open_vode_failure_file
       parameter (ITOL=1, IOPT=1, ITASK=1)
       double precision RTOL, ATOL(Nspec+1), ATOLEPS, TT1, TT2
-C      parameter (RTOL=1.0E-8, ATOLEPS=1.0E-8)
       parameter (RTOL=1.0D-13, ATOLEPS=1.0D-13)
       external vodeF_T_RhoY, vodeJ, open_vode_failure_file
       integer n, MF, ISTATE
 
       integer nsubchem, nsub, node
-      double precision dtloc, weight, TT1save
+      double precision dtloc, weight
       double precision C(Nspec),Q(Nreac)
 
 c     DVODE workspace requirements      
       integer dvr, dvi
-
-c     METH = 2 (backward diffs)
-c     MAXORD = 5
-c     NEQ = Nspec+1 
-c     NYH = NEQ = Nspec+1
-c     MITER = 2
-c     JSV = 1
-c     JSV = SIGN(MF)
-c     MF = JSV*(10*METH + MITER) = 22
-c     LWM = 2*(Nspec+1)**2 + 2    (MITER = 2, MF<0)
-c     lenr = 20 + NYH*(MAXORD + 1) + 3*NEQ + LWM
-c          = 20 + (Nspec+1)*(6) + 3*(Nspec+1) + 2*(Nspec+1)**2 + 2
-c          = 22 + (Nspec+1)*9 + 2*(Nspec+1)**2
 c     
       parameter (dvr = 22 + 9*(maxspec+1) + 2*(maxspec+1)**2)
       parameter (dvi = 30 + maxspec + 1)
@@ -629,6 +642,8 @@ c
       save / VODE_SPACE /
 
       double precision Z(0:Nspec)
+      double precision Z_DIAG(0:Nspec,0:nchemdiag)
+      
       double precision RPAR, RWRK
       integer IPAR, IWRK
 
@@ -657,10 +672,12 @@ C      DVIWRK(10) = 0
       if (do_diag.eq.1) nsubchem = nchemdiag
 
       
+c      MF = 22
       MF = 22
+      
       ATOL(1) = ATOLEPS
       TT1 = 0.d0
-      TT2 = dt
+      
       if (do_diag.eq.1) then
          nsub = nsubchem
          dtloc = dt/nsubchem
@@ -677,12 +694,7 @@ C      DVIWRK(10) = 0
          Z(n) = RYold(n)
       end do
 
-c     Always form Jacobian to start
-      if (i .eq. 0) then
-         FIRST = .TRUE.
-      else
-         FIRST = .FALSE.
-      end if
+      Z_DIAG(:,0) = Z(:)
 
       if (do_diag .eq. 1 .and. use_strang) then
          FuncCount = 0
@@ -702,20 +714,23 @@ c     Always form Jacobian to start
          else
             weight = 0.5d0
          endif
-
-         TT1save = TT1
+         
          TT2 = TT1 + dtloc
 
 c     HACK
          FIRST = .TRUE.
 
          CALL DVODE
-     &        (vodeF_T_RhoY, NEQ, Z(0), TT1, TT2, ITOL, RTOL, ATOL,
+     &        (vodeF_T_RhoY, NEQ, Z, TT1, TT2, ITOL, RTOL, ATOLEPS,
      &        ITASK, ISTATE, IOPT, DVRWRK, dvr, DVIWRK,
      &        dvi, vodeJ, MF, RPAR, IPAR)
 
+         if(do_diag .eq. 1) then
+            Z_DIAG(:,node) = Z(:)
+         end if
+         
          TT1 = TT2
-
+         
          if (do_diag .eq. 1 .and. use_strang) then
             do n=1,Nspec
                C(n) = Z(n)*invmwt(n)
@@ -757,6 +772,11 @@ c     HACK
          if (ISTATE.LE.-1) ifail = 1
 
       enddo
+      
+      if (do_diag .eq. 1) then
+         call write_vode_diag(Z_DIAG, dtloc, nsub)
+      end if
+      
       end
 
 
@@ -852,11 +872,16 @@ c     with T.  Discont_NiterMAX is fairly large because this process can be part
 c     slow to converge if the Htarg value happens to lay between the discontinuous function
 c     values.  
          if (Niter .ge. NiterMAX) then
+c            print *,'WILL: Niter before loop: ', Niter
             do while (.not. stalled)
                dT = - (H - Htarg) * (old_T - T)/(old_H - H)
+c               print *,'WILL: Tsec  = ',Tsec
                Tsec = T + dT
                soln_bad = out_of_bounds(Tsec)
                if (soln_bad) then
+c                  print *,'WILL: Tsec  = ',Tsec
+c                  print *,'WILL: TMAX  = ',TMAX
+c                  print *,'WILL: Niter = ',Niter
                   Niter = -3
                   goto 100
                endif
