@@ -16,3 +16,4 @@ f90EXE_sources += renorm.f90
 
 f90EXE_sources += passinfo.f90
 
+f90EXE_sources += RNS_boundary.f90

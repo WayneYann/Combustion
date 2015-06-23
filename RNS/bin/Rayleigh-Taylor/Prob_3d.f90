@@ -10,7 +10,7 @@ subroutine PROBINIT (init,name,namlen,problo,probhi)
 
   integer untin,i
 
-  namelist /fortin/ prob_type, frac, rho_1, rho_2, p0_base, pertmag, &
+  namelist /fortin/ prob_type, prob_dir, frac, rho_1, rho_2, p0_base, pertmag, &
        dengrad, max_dengrad_lev
 
   ! Build "probin" filename -- the name of file containing fortin namelist.
@@ -27,6 +27,7 @@ subroutine PROBINIT (init,name,namlen,problo,probhi)
   
   ! set namelist defaults here
   prob_type = 0
+  prob_dir = 0
   frac = 0.5d0
   rho_1 = 1.0d0
   rho_2 = 2.0d0
@@ -159,7 +160,15 @@ subroutine rns_initdata(level,time,lo,hi,nscal, &
                  xcen = xcen + pertmag*(r-0.5d0)*delta(1)
               end if
 
-              r2d = min(sqrt((xcen-center(1))**2+(ycen-center(2))**2), 0.5d0*L_x)
+              if (prob_dir .eq. 1) then
+                 r2d = abs(xcen-center(1))
+              else if (prob_dir .eq. 2) then
+                 r2d = abs(ycen-center(2))
+              else
+                 r2d = sqrt((xcen-center(1))**2+(ycen-center(2))**2)
+              end if
+              r2d = min(r2d, 0.5d0*L_x)
+
               pertheight = 0.5d0 - 0.01d0*cos(2.0d0*PI*r2d/L_x)
               state(i,j,k,URHO) = rho_1 + ((rho_2-rho_1)/2.0d0)* &
                    (1.d0+tanh((zcen-pertheight)/0.005d0))

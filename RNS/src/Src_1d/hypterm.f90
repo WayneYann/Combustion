@@ -10,24 +10,29 @@ module hypterm_module
 
 contains
 
-  subroutine hypterm(lo,hi,U,Ulo,Uhi,flx,dx)
+  subroutine hypterm(lo,hi,domlo,domhi,U,Ulo,Uhi,flx,dx)
     use meth_params_module, only : NVAR, URHO, UMX, UTEMP, difmag
-    integer, intent(in) :: lo(1), hi(1), Ulo(1), Uhi(1)
+    use RNS_boundary_module, only : get_hyper_bc_flag
+    integer, intent(in) :: lo(1), hi(1), domlo(1), domhi(1), Ulo(1), Uhi(1)
     double precision, intent(in) :: dx(1)
     double precision, intent(in ) ::   U(Ulo(1):Uhi(1)  ,NVAR)
     double precision, intent(out) :: flx( lo(1): hi(1)+1,NVAR)
 
     double precision, allocatable :: UL(:,:), UR(:,:)
 
-    integer :: i, n
+    integer :: i, n, dir, bc_flag(2)
     double precision, allocatable :: divv(:), v(:)
+
+    dir = 1
 
     allocate(UL(lo(1):hi(1)+1,NVAR))
     allocate(UR(lo(1):hi(1)+1,NVAR))
 
     call reconstruct(lo(1), hi(1), U, Ulo(1), Uhi(1), UL, UR, lo(1), hi(1)+1)
 
-    call riemann(lo(1),hi(1), UL, UR, lo(1),hi(1)+1, flx, lo(1),hi(1)+1)
+    call get_hyper_bc_flag(dir,lo,hi+1,domlo,domhi,dx,bc_flag)
+
+    call riemann(lo(1),hi(1), UL, UR, lo(1),hi(1)+1, flx, lo(1),hi(1)+1, dir, bc_flag)
     
     deallocate(UL,UR)
 

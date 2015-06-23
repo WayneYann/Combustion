@@ -1,0 +1,12 @@
+&fortin
+
+   pamb = 1.01325d6  ! 1 Patm
+   
+   max_tracerr_lev = 4
+   tracerr = 1.d-8
+
+   max_vorterr_lev = 4
+   vorterr = 5.d4
+/
+
+   
