@@ -20,7 +20,7 @@ N_R = 4
 do_linear = True
 
 endpt = 20.0
-max_iter = 2
+max_iter = 3
 # coefficients
 #a = -1.0
 #eps = 10.0
@@ -28,8 +28,12 @@ max_iter = 2
 #r = -200.0
 
 a = -1.0
-eps = 20.0
-r = -300.0
+eps = 0.3
+r = -70.0
+
+#a = -1.0
+#eps = 0.04
+#r = -50.0
 
 # gridsize
 Nx = 400
@@ -55,6 +59,7 @@ if N_R == 4:
     weights_A = [(1-sqrt(1/5.0))*0.5, sqrt(1.0/5.0), (1-sqrt(1/5.0))*0.5, 1.0]
 else:
     r_quad_pts = [0, 1]
+    weights_A = [1, 1]
 
 # perform our Gaussian sub-interval integration
 def int_4(f, m, l):
@@ -125,10 +130,28 @@ def FD(z):
 def AD_RHS(z):
     return np.apply_along_axis(lambda z_m: FA(z_m) + FD(z_m), 1, z)
 
+def A_RHS(z):
+    return np.apply_along_axis(lambda z_m: FA(z_m), 1, z)
+
+def D_RHS(z):
+    return np.apply_along_axis(lambda z_m: FD(z_m), 1, z)
+
 def I_AD(z, m):
-    ADz = AD_RHS(z)
-    
-    return 0.5*(ADz[0]+ADz[3])*dt*weights_A[m]
+    if m==-1 or not do_linear or N_R==2:
+        ADz = AD_RHS(z)
+        return 0.5*(ADz[0]+ADz[N_R-1])*dt*weights_A[m]
+    else:
+        Az = A_RHS(z)
+        Dz = D_RHS(z)
+        
+        t1 = r_quad_pts[m]*dt
+        t2 = r_quad_pts[m+1]*dt
+        
+        dtp = t2-t1
+        c = Az[0]
+        sl = (Az[3] - Az[0])/dtp
+        
+        return dtp*(c + 0.5*sl*(t1+t2)) + 0.5*(Dz[0]+Dz[3])*dt*weights_A[m]
 
     return integ(ADz, m, dt)
 

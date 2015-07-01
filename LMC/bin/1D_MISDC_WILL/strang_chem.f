@@ -23,7 +23,7 @@
       parameter (NiterMAX = 30)
       double precision res(NiterMAX), errMAX
 
-c     Turn of diagnotics
+c     Turn off diagnotics
       do_diag = 0
 
       print *,'... chemistry'
@@ -60,11 +60,11 @@ c     Set linear source terms in common for ode integrators access
          endif
          
 c     WILL: do VODE diagnostics for the first gridpoint...
-         if (i .eq. (lo+hi)/2) then
-            do_diag = 1
-         else
-            do_diag = 0
-         end if
+c         if (i .eq. (lo+hi)/2) then
+c            do_diag = 1
+c         else
+c            do_diag = 0
+c         end if
          
          call chemsolve(RYnew, Tnew, RYold, Told, FuncCount, dt,
      &                  diag, do_diag, ifail, i)

@@ -13,7 +13,7 @@ from math import *
 # here are our parameters #
 ###########################
 # number of advection substeps
-N_A = 2
+N_A = 4
 # piecewise linear or constants
 do_linear = False
 
@@ -21,8 +21,8 @@ endpt = 20.0
 max_iter = 2
 # coefficients
 a = -1.0
-eps = 5.0
-r = -75.0
+eps = 10.0
+r = -100.0
 #r = -75.0
 
 #a = -1.0
@@ -30,7 +30,7 @@ r = -75.0
 #r = -7.0
 
 # gridsize
-Nx = 300
+Nx = 400
 # spacing
 h = float(endpt/Nx)
 # timestep
@@ -159,8 +159,8 @@ def advance(n):
                 soln = newton(lambda x: x - dtp*FR(x) - rhs[j],
                           y_curr[m+1][j],
                           fprime = lambda x: 1 - dtp*FRprime(x),
-                          fprime2 = lambda x: dtp*FRprime2(x),
-                          maxiter = 5000)
+                          fprime2 = lambda x: -dtp*FRprime2(x),
+                          maxiter = 500)
                 y_curr[m+1][j] = soln
         
         # move on to the next MISDC iteration...

@@ -662,7 +662,8 @@ C      DVIWRK(1) = 0
 C      DVIWRK(2) = 0
 C      DVIWRK(3) = 0
 C      DVIWRK(4) = 0
-      DVIWRK(5) = 0
+c      DVIWRK(5) = 0
+      DVIWRK(5) = 2
       DVIWRK(6) = max_vode_subcycles
       DVIWRK(7) = 0
 C      DVIWRK(8) = 0
@@ -672,8 +673,8 @@ C      DVIWRK(10) = 0
       if (do_diag.eq.1) nsubchem = nchemdiag
 
       
-c      MF = 22
       MF = 22
+c      MF = 10
       
       ATOL(1) = ATOLEPS
       TT1 = 0.d0

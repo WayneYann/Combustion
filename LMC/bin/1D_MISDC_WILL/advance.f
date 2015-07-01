@@ -111,7 +111,6 @@ c      real*8       macvel(0:nlevs-1, 0:nfine  )
       
       ! WILL - temporary flag
       logical const_diff
-      const_diff = .true.
 
 c     "diffdiff" means "differential diffusion", which corresponds to
 c     sum_m div [ h_m (rho D_m - lambda/cp) grad Y_m ]
@@ -456,11 +455,13 @@ c     compute A+D source terms for reaction integration
 c     using piecewise linear A term
 c     attempting to use piecewise linear D term
 c     currently only works with piecewise constant D
-            if (misdc .eq. 1) then
-               const_diff = .false.
-            else
-               const_diff = .true.
-            end if
+            !if (misdc .eq. 1) then
+            !   const_diff = .false.
+            !else
+            !   const_diff = .true.
+            !end if
+            
+            const_diff = .false.
             
             do n = 1,nscal
                do i=lo(0),hi(0)
@@ -490,7 +491,6 @@ c     solve equations (50), (51) and (52)
      $                       const_src(0,:,:),lin_src_old(0,:,:),
      $                       lin_src_new(0,:,:),
      $                       I_R(0,:,:),dt(0),lo(0),hi(0),bc(0,:))
-            
 C----------------------------------------------------------------
 c     End MISDC iterations
 C----------------------------------------------------------------

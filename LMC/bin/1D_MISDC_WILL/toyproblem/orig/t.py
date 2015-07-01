@@ -58,15 +58,9 @@ def solve_it(a, d, r, dt, max_iter=10, do_linear=True, plot_it=False):
             # compute the effect of the reaction term by integrating
             #I_R = (y_next - y[n])/dt - f_const - 0.5*(f_lin_prev + f_lin_next)
             I_R = (y_next - y[n]) - f_const*dt - 0.5*dt*(f_lin_prev + f_lin_next)
+            
             y_prev = y_next
             residuals[i+1] = y[n] - y_next + dt*I_R + 0.5*dt*(a+d)*(y[n] + y_next)
-            
-            if False:
-                print 'i=',i,'  y_next: ', y_next
-                print 'i=',i,'  I_R:    ', I_R
-                print 'i=',i,'  y_AD:   ', y_AD
-                print 'i=',i,'  resid:  ', residuals[i+1]
-                print
         
         y[n+1] = y_next
     

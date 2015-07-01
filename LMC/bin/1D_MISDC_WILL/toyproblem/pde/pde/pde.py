@@ -16,24 +16,30 @@ from math import *
 N_A = 2
 # piecewise linear or constants
 do_linear = False
+# use `modified' pde
+use_modified = False
 
 endpt = 20.0
 max_iter = 2
 # coefficients
-a = -1.0
-eps = 70.0
-r = -400.0
+#a = -1.0
+#eps = 200.0
+#r = -1000.0
 
 a = -1.0
-eps = 0.4
-r = -7.0
+eps = 600.0
+r = -1100.0
+
+#a   = -1.0
+#eps = 10.0
+#r   = -40.0
 
 # gridsize
 Nx = 300
 # spacing
 h = float(endpt/Nx)
 # timestep
-dt = h/5
+dt = h/10.0
 # final time
 FT = 2.0
 # number of timesteps
@@ -69,6 +75,7 @@ def interp_4(f, t):
 
 def interp_const(f, t):
     return 0.5*(f[0]+f[1])
+    #return f[1]
 
 def interp_linear(f, t):
     return (1-t/dt)*f[0] + (t/dt)*f[1]
@@ -101,7 +108,10 @@ def rk4(f, t_n, y_n, dtp):
     return z
 
 def FR(z):
-    return r*z*(z-1)*(z-0.5)
+    if use_modified:
+        return r*z*(z-1)
+    else:
+        return r*z*(z-1)*(z-0.5)
 
 def FRprime(z):
     return r*(3*z**2 - 3*z + 0.5)
@@ -165,6 +175,7 @@ def advance(n):
             
             soln = rk4(f, quad_pts[m]*dt, y_curr[m], dtp)
             
+            
 #            rhs = (y_curr[m] + dtp*(FA(y_curr[m]) - FA(y_prev[m])
 #                                  + FD(y_AD)      - FD(y_prev[m+1])
 #                                  - FR(y_prev[m+1]))
@@ -182,12 +193,6 @@ def advance(n):
 #            do_linear = True
 #            soln_lin = rk4(f, quad_pts[m]*dt, y_curr[m], dtp)
 #            do_linear = False
-#            
-#            
-#            print 'difference diff eqns:   ', np.max(np.abs(soln_lin - soln))
-#            print 'difference lin miscd:   ', np.max(np.abs(soln_lin - soln_int))
-#            print 'difference const misdc: ', np.max(np.abs(soln - soln_int))
-#            print
             
             y_curr[m+1] = soln
         

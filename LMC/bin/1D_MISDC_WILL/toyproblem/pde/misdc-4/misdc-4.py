@@ -159,7 +159,7 @@ def advance(n):
                           y_curr[m+1][j],
                           fprime = lambda x: 1 - dtp*FRprime(x),
                           fprime2 = lambda x: dtp*FRprime2(x),
-                          maxiter = 5000)
+                          maxiter = 2000)
                 y_curr[m+1][j] = soln
         
         # move on to the next MISDC iteration...

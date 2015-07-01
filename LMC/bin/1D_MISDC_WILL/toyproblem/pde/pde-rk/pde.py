@@ -13,9 +13,11 @@ from math import *
 # here are our parameters #
 ###########################
 # number of advection substeps
-N_A = 4
+N_A = 2
 # piecewise linear or constants
-do_linear = False
+do_linear = True
+# use modified PDE
+use_modified = False
 
 endpt = 20.0
 max_iter = 2
@@ -25,8 +27,8 @@ max_iter = 2
 #r = -300.0
 
 a = -1.0
-eps = 0.4
-r = -7.0
+eps = 10.0
+r = -30.0
 
 # gridsize
 Nx = 300
@@ -116,7 +118,11 @@ def be(f, t_n, y_n, dtp):
     return z
 
 def FR(z):
-    return r*z*(z-1)*(z-0.5)
+    if use_modified:
+        return r*z*(z-1)
+    else:
+        return r*z*(z-1)*(z-0.5)
+    
 
 def FRprime(z):
     return r*(3*z**2 - 3*z + 0.5)
@@ -168,7 +174,8 @@ def advance(n):
             
             f_const = (FD(y_AD) - FD(y_prev[m+1]) 
                      + FA(y_curr[m]) - FA(y_prev[m]))
-            f = [f_const + int_4(AD_RHS(y_prev), -1, 1)]*4
+            
+            f = f_const + AD_RHS(y_prev)
             
 #            b = y_curr[m] + dtp*0.5*(f[0]+f[1])
 #            
@@ -226,7 +233,7 @@ bc[-1] = 0
 
 plt.ion()
 
-skip = 10
+skip = 5
 
 for n in range(Nt):
     advance(n)
@@ -235,6 +242,7 @@ for n in range(Nt):
         plt.cla()
         plt.plot(x,y[n+1])
         plt.ylim((0,1.1))
+        plt.axhline(y=0.5)
         plt.draw()
         plt.pause(0.2)
 
