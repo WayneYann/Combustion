@@ -4,6 +4,7 @@
 
 BL_FORT_PROC_DECL(RNS_DUDT_AD,rns_dudt_ad)
     (const int lo[], const int hi[],
+     const int* domain_lo, const int* domain_hi,
      const BL_FORT_FAB_ARG(U),
      BL_FORT_FAB_ARG(dUdt),
      D_DECL(BL_FORT_FAB_ARG(xflux),
@@ -46,7 +47,7 @@ BL_FORT_PROC_DECL(SET_METHOD_PARAMS,set_method_params)
      const int& Eden, const int& Temp, const int& FirstSpec, 
      const int& NUM_STATE, const int& NumSpec,
      const Real& small_dens, const Real& small_temp, const Real& small_pres,
-     const Real& gamma, const Real& gravity, const Real& Treference,
+     const Real& gamma, const int& grav_dir, const Real& gravity, const Real& Treference,
      const int& riemann, const Real& difmag, const Real& HLL_factor, const int* blocksize,
      const int& do_weno, const int& do_mdcd_weno, const int& weno_p, const Real& weno_eps, const Real& weno_gauss_phi,
      const int& use_vode, const int& new_J_cell, const int& chem_solver, const int& chem_do_weno);
@@ -55,8 +56,9 @@ BL_FORT_PROC_DECL(SET_PROBLEM_PARAMS,set_problem_params)
     (const int& dm,
      const int* physbc_lo, const int* physbc_hi,
      const Real* phys_lo, const Real* phys_hi,
-     const int& Outflow_value, 
-     const int& Symmetry_value, const int& coord_type);
+     const int& Outflow_value, const int& Symmetry_value, 
+     const int& SlipWall_value, const int& NoSlipWall_value,
+     const int& coord_type);
 
 BL_FORT_PROC_DECL(RNS_INITDATA,rns_initdata)
     (const int& level, const Real& time, 

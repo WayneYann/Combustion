@@ -1,0 +1,8 @@
+ &files
+   CHEMKIN_input = "chem.inp"
+   THERMO_input = "therm.dat"
+   TRANLIB_input = "tran.dat"
+   CHEMKIN_linking_file = "air.asc"
+   TRANLIB_c_file = "air-tran.c"
+   log_file = "air.log"
+ /

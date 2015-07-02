@@ -85,6 +85,7 @@ Real         RNS::small_temp    = -1.e200;
 Real         RNS::small_pres    = -1.e200;
 Real         RNS::gamma         = 1.4;
 
+int          RNS::gravity_dir   = BL_SPACEDIM;
 Real         RNS::gravity       = 0.0;
 Real         RNS::Treference    = 298.0;
 
@@ -204,6 +205,7 @@ RNS::read_params ()
     pp.query("small_pres",small_pres);
     pp.query("gamma",gamma);
 
+    pp.query("gravity_dir", gravity_dir);
     pp.query("gravity", gravity);
     pp.query("Treference",Treference);
 
@@ -413,8 +415,10 @@ RNS::~RNS ()
     delete [] RK_k;
     delete flux_reg_RK;
 
+#if 0
     cout << "Number of AD evals:   " << Level() << " " << num_ad_evals << endl;
     cout << "Number of CHEM evals: " << Level() << " " << num_chem_evals << endl;
+#endif
 }
 
 void

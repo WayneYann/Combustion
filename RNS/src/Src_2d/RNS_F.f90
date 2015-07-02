@@ -1,5 +1,5 @@
 
-subroutine rns_dudt_ad (lo, hi, &
+subroutine rns_dudt_ad (lo, hi, domlo, domhi, &
      U, U_l1, U_l2, U_h1, U_h2, &
      dUdt, Ut_l1, Ut_l2, Ut_h1, Ut_h2, &
      xflx, xf_l1, xf_l2, xf_h1, xf_h2, &
@@ -12,7 +12,7 @@ subroutine rns_dudt_ad (lo, hi, &
   use threadbox_module, only : build_threadbox_2d, get_lo_hi
   implicit none
 
-  integer, intent(in) :: lo(2), hi(2)
+  integer, intent(in) :: lo(2), hi(2), domlo(2), domhi(2)
   integer, intent(in) ::  U_l1,  U_h1,  U_l2,  U_h2
   integer, intent(in) :: Ut_l1, Ut_h1, Ut_l2, Ut_h2
   integer, intent(in) :: xf_l1, xf_h1, xf_l2, xf_h2
@@ -92,9 +92,9 @@ subroutine rns_dudt_ad (lo, hi, &
      byflx = 0.d0
      
      if (do_weno) then
-        call hypterm(tlo,thi,U,Ulo,Uhi,bxflx,fxlo,fxhi,byflx,fylo,fyhi,dx)
+        call hypterm(tlo,thi,domlo,domhi,U,Ulo,Uhi,bxflx,fxlo,fxhi,byflx,fylo,fyhi,dx)
      end if
-     call difterm(tlo,thi,U,Ulo,Uhi,bxflx,fxlo,fxhi,byflx,fylo,fyhi,dxinv)
+     call difterm(tlo,thi,domlo,domhi,U,Ulo,Uhi,bxflx,fxlo,fxhi,byflx,fylo,fyhi,dx)
      
      ! Note that fluxes are on faces.  So don't double count!
      if (thi(1) .ne. hi(1)) fxhi(1) = fxhi(1) - 1

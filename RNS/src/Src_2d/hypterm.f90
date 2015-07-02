@@ -8,18 +8,18 @@ module hypterm_module
 
 contains
 
-  subroutine hypterm(lo,hi,U,Ulo,Uhi,fx,fxlo,fxhi,fy,fylo,fyhi,dx)
+  subroutine hypterm(lo,hi,domlo,domhi,U,Ulo,Uhi,fx,fxlo,fxhi,fy,fylo,fyhi,dx)
 
     use meth_params_module, only : NVAR, difmag
 
-    integer, intent(in) :: lo(2), hi(2), Ulo(2), Uhi(2), fxlo(2), fxhi(2), fylo(2), fyhi(2)
+    integer, intent(in) :: lo(2), hi(2), domlo(2), domhi(2), Ulo(2), Uhi(2), fxlo(2), fxhi(2), fylo(2), fyhi(2)
     double precision, intent(in   ) :: dx(2)
     double precision, intent(in   ) ::  U( Ulo(1): Uhi(1), Ulo(2): Uhi(2),NVAR)
     double precision, intent(inout) :: fx(fxlo(1):fxhi(1),fxlo(2):fxhi(2),NVAR)
     double precision, intent(inout) :: fy(fylo(1):fyhi(1),fylo(2):fyhi(2),NVAR)
 
-    call hypterm_x(lo,hi,U,Ulo,Uhi,fx,fxlo,fxhi)
-    call hypterm_y(lo,hi,U,Ulo,Uhi,fy,fylo,fyhi)
+    call hypterm_x(lo,hi,domlo,domhi,U,Ulo,Uhi,fx,fxlo,fxhi,dx)
+    call hypterm_y(lo,hi,domlo,domhi,U,Ulo,Uhi,fy,fylo,fyhi,dx)
 
     if (difmag .gt. 0.0d0) then
        call add_artifical_viscocity(lo,hi,U,Ulo,Uhi,fx,fxlo,fxhi,fy,fylo,fyhi,dx)
@@ -28,7 +28,7 @@ contains
   end subroutine hypterm
 
 
-  subroutine hypterm_x(lo,hi,U,Ulo,Uhi,fx,fxlo,fxhi)
+  subroutine hypterm_x(lo,hi,domlo,domhi,U,Ulo,Uhi,fx,fxlo,fxhi,dx)
 
     use meth_params_module, only : NVAR, URHO, UMX, UMY, UTEMP, UFS, UEDEN, NSPEC, NCHARV, CFS, do_mdcd
     use eigen_module, only : get_eigen_matrices
@@ -37,12 +37,14 @@ contains
     use mdcd_module, only : mdcd
     use weno_module, only : weno4_gauss, weno5_face
     use riemann_module, only : riemann
+    use RNS_boundary_module, only : get_hyper_bc_flag
 
-    integer, intent(in) :: lo(2), hi(2), Ulo(2), Uhi(2), fxlo(2), fxhi(2)
+    integer, intent(in) :: lo(2), hi(2), domlo(2), domhi(2), Ulo(2), Uhi(2), fxlo(2), fxhi(2)
+    double precision, intent(in) :: dx(2)
     double precision, intent(in   ) ::  U( Ulo(1): Uhi(1), Ulo(2): Uhi(2),NVAR)
     double precision, intent(inout) :: fx(fxlo(1):fxhi(1),fxlo(2):fxhi(2),NVAR)
 
-    integer :: i, j, n, ii, jj, ivar, m, g
+    integer :: i, j, n, ii, jj, ivar, m, g, bc_flag(2)
     double precision, allocatable :: Y(:,:), RoeW(:), v(:,:), flux(:,:)
     double precision, dimension(:,:,:), allocatable, target :: UG1,UG2
     double precision, dimension(:,:)  , allocatable, target :: UL,UR
@@ -259,7 +261,10 @@ contains
              UR(i,UTEMP) = T0
           end do
 
-          call riemann(lo(1),hi(1),UL,UR,lo(1),hi(1)+1,flux,lo(1),hi(1)+1,dir=1)
+          call get_hyper_bc_flag(1,(/lo(1),j/),(/hi(1)+1,j/),domlo,domhi,dx,bc_flag)
+
+          call riemann(lo(1),hi(1),UL,UR,lo(1),hi(1)+1,flux,lo(1),hi(1)+1, &
+               dir=1, bc_flag=bc_flag)
           do n=1,NVAR
              do i=lo(1),hi(1)+1
                 fx(i,j,n) = fx(i,j,n) + 0.5d0*flux(i,n)
@@ -276,7 +281,7 @@ contains
   end subroutine hypterm_x
     
 
-  subroutine hypterm_y(lo,hi,U,Ulo,Uhi,fy,fylo,fyhi)
+  subroutine hypterm_y(lo,hi,domlo,domhi,U,Ulo,Uhi,fy,fylo,fyhi,dx)
 
     use meth_params_module, only : NVAR, URHO, UMX, UMY, UTEMP, UFS, UEDEN, NSPEC, NCHARV, CFS, do_mdcd
     use eigen_module, only : get_eigen_matrices
@@ -285,12 +290,14 @@ contains
     use mdcd_module, only : mdcd
     use weno_module, only : weno4_gauss, weno5_face
     use riemann_module, only : riemann
+    use RNS_boundary_module, only : get_hyper_bc_flag
 
-    integer, intent(in) :: lo(2), hi(2), Ulo(2), Uhi(2), fylo(2), fyhi(2)
+    integer, intent(in) :: lo(2), hi(2), domlo(2), domhi(2), Ulo(2), Uhi(2), fylo(2), fyhi(2)
+    double precision, intent(in) :: dx(2)
     double precision, intent(in   ) ::  U( Ulo(1): Uhi(1), Ulo(2): Uhi(2),NVAR)
     double precision, intent(inout) :: fy(fylo(1):fyhi(1),fylo(2):fyhi(2),NVAR)
 
-    integer :: i, j, n, ii, jj, ivar, m, g
+    integer :: i, j, n, ii, jj, ivar, m, g, bc_flag(2)
     double precision :: RoeWl, RoeWr, rhoInvl, rhoInvr
     double precision, allocatable :: flux(:,:)
     double precision, dimension(:,:,:), allocatable, target :: UG1,UG2
@@ -495,7 +502,10 @@ contains
              UR(j,UTEMP) = T0
           end do
 
-          call riemann(lo(2),hi(2),UL,UR,lo(2),hi(2)+1,flux,lo(2),hi(2)+1,dir=2)
+          call get_hyper_bc_flag(2,(/i,lo(2)/),(/i,hi(2)+1/),domlo,domhi,dx,bc_flag)
+
+          call riemann(lo(2),hi(2),UL,UR,lo(2),hi(2)+1,flux,lo(2),hi(2)+1, &
+               dir=2, bc_flag=bc_flag)
           do n=1,NVAR
              do j=lo(2),hi(2)+1
                 fy(i,j,n) = fy(i,j,n) + 0.5d0*flux(j,n)

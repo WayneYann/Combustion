@@ -8,7 +8,7 @@ module difterm_module
 
 contains
 
-  subroutine difterm(lo,hi,U,Ulo,Uhi,fx,fxlo,fxhi,fy,fylo,fyhi,dxinv)
+  subroutine difterm(lo,hi,domlo,domhi,U,Ulo,Uhi,fx,fxlo,fxhi,fy,fylo,fyhi,dx)
 
     use meth_params_module, only : NVAR, NSPEC, QCVAR, QFVAR, QU, QV
     use convert_module, only : cellavg2cc_2d
@@ -16,8 +16,9 @@ contains
     use variables_module, only : ctoprim
     use transport_properties, only : get_transport_properties
 
-    integer, intent(in) :: lo(2), hi(2), Ulo(2), Uhi(2), fxlo(2), fxhi(2), fylo(2), fyhi(2)
-    double precision, intent(in   ) :: dxinv(2)
+    integer, intent(in) :: lo(2), hi(2), domlo(2), domhi(2), Ulo(2), Uhi(2), &
+         fxlo(2), fxhi(2), fylo(2), fyhi(2)
+    double precision, intent(in   ) :: dx(2)
     double precision, intent(in   ) ::  U( Ulo(1): Uhi(1), Ulo(2): Uhi(2),NVAR)
     double precision, intent(inout) :: fx(fxlo(1):fxhi(1),fxlo(2):fxhi(2),NVAR)
     double precision, intent(inout) :: fy(fylo(1):fyhi(1),fylo(2):fyhi(2),NVAR)
@@ -30,6 +31,9 @@ contains
     double precision, allocatable :: tmp1(:,:), tmp2(:,:)
     integer :: i, j, n, g
     integer :: g2lo(2), g2hi(2), Qflo(2), Qfhi(2), flo(2), fhi(2), tlo(3), thi(3)
+    double precision :: dxinv(2)
+
+    dxinv = 1.d0/dx
 
     g2lo = lo-2
     g2hi = hi+2
@@ -120,10 +124,10 @@ contains
     fhi(2) = hi(2)
     call comp_diff_flux_x(flo, fhi, fx, fxlo, fxhi, &
          Qf1, mu1, xi1, lam1, Ddia1, dvel1, Qflo, Qfhi, &
-         Qc1, g2lo, g2hi, dxinv, 0.5d0)
+         Qc1, g2lo, g2hi, dxinv, 0.5d0, domlo, domhi)
     call comp_diff_flux_x(flo, fhi, fx, fxlo, fxhi, &
          Qf2, mu2, xi2, lam2, Ddia2, dvel2, Qflo, Qfhi, &
-         Qc2, g2lo, g2hi, dxinv, 0.5d0)
+         Qc2, g2lo, g2hi, dxinv, 0.5d0, domlo, domhi)
     
 
     ! ----- compute y-direction flux -----
@@ -167,10 +171,10 @@ contains
     fhi(2) = hi(2)+1
     call comp_diff_flux_y(flo, fhi, fy, fylo, fyhi, &
          Qf1, mu1, xi1, lam1, Ddia1, dvel1, Qflo, Qfhi, &
-         Qc1, g2lo, g2hi, dxinv, 0.5d0)
+         Qc1, g2lo, g2hi, dxinv, 0.5d0, domlo, domhi)
     call comp_diff_flux_y(flo, fhi, fy, fylo, fyhi, &
          Qf2, mu2, xi2, lam2, Ddia2, dvel2, Qflo, Qfhi, &
-         Qc2, g2lo, g2hi, dxinv, 0.5d0)
+         Qc2, g2lo, g2hi, dxinv, 0.5d0, domlo, domhi)
 
     deallocate(Qcc,mucc,xicc,lamcc,Ddiacc)
     deallocate(Qc1,Qc2,tmp1,tmp2)
@@ -183,12 +187,12 @@ contains
 
   subroutine comp_diff_flux_x(lo, hi, flx, flo, fhi, &
        Qf, mu, xi, lam, Ddia, dvel, Qflo, Qfhi, &
-       Qc, Qclo, Qchi, dxinv, fac)
+       Qc, Qclo, Qchi, dxinv, fac, domlo, domhi)
 
     use meth_params_module
     use derivative_stencil_module, only : FD4
 
-    integer, intent(in) :: lo(2), hi(2), flo(2), fhi(2), Qflo(2), Qfhi(2), Qclo(2), Qchi(2)
+    integer, intent(in) :: lo(2), hi(2), flo(2), fhi(2), Qflo(2), Qfhi(2), Qclo(2), Qchi(2), domlo(2), domhi(2)
     double precision, intent(in) :: dxinv(2), fac
     double precision, intent(inout) ::  flx( flo(1): fhi(1), flo(2): fhi(2),NVAR)
     double precision, intent(in   ) ::   Qf(Qflo(1):Qfhi(1),Qflo(2):Qfhi(2),QFVAR)
@@ -216,8 +220,8 @@ contains
           dudy = dxinv(2)*dvel(i,j,1)
           dvdy = dxinv(2)*dvel(i,j,2)
           divu = dudx + dvdy
-          tauxx = mu(i,j)*(2.d0*dudx-twoThirds*divu) + xi(i,j)*divu
-          tauxy = mu(i,j)*(dudy+dvdx)
+          tauxx = (mu(i,j)*(2.d0*dudx-twoThirds*divu) + xi(i,j)*divu)
+          tauxy = (mu(i,j)*(dudy+dvdx))
           flx(i,j,UMX)   = flx(i,j,UMX)   - fac*tauxx
           flx(i,j,UMY)   = flx(i,j,UMY)   - fac*tauxy
           flx(i,j,UEDEN) = flx(i,j,UEDEN) - fac*(tauxx*Qf(i,j,QU)+tauxy*Qf(i,j,QV))
@@ -284,12 +288,14 @@ contains
 
   subroutine comp_diff_flux_y(lo, hi, flx, flo, fhi, &
        Qf, mu, xi, lam, Ddia, dvel, Qflo, Qfhi, &
-       Qc, Qclo, Qchi, dxinv, fac)
+       Qc, Qclo, Qchi, dxinv, fac, domlo, domhi)
 
+    use prob_params_module, only : physbc_lo, physbc_hi, NoSlipWall
     use meth_params_module
     use derivative_stencil_module, only : FD4
+    use RNS_boundary_module, only : Twall
 
-    integer, intent(in) :: lo(2), hi(2), flo(2), fhi(2), Qflo(2), Qfhi(2), Qclo(2), Qchi(2)
+    integer, intent(in) :: lo(2), hi(2), flo(2), fhi(2), Qflo(2), Qfhi(2), Qclo(2), Qchi(2), domlo(2), domhi(2)
     double precision, intent(in) :: dxinv(2), fac
     double precision, intent(inout) ::  flx( flo(1): fhi(1), flo(2): fhi(2),NVAR)
     double precision, intent(in   ) ::   Qf(Qflo(1):Qfhi(1),Qflo(2):Qfhi(2),QFVAR)
@@ -300,17 +306,95 @@ contains
     double precision, intent(in   ) :: dvel(Qflo(1):Qfhi(1),Qflo(2):Qfhi(2),2)
     double precision, intent(in   ) ::   Qc(Qclo(1):Qchi(1),Qclo(2):Qchi(2),QCVAR)
 
-    integer :: i, j, n, UYN, QYN, QXN, QHN
+    integer :: i, j, n, UYN, QYN, QXN, QHN, jstart
     double precision :: tauyy, tauxy, dudx, dudy, dvdx, dvdy, divu
     double precision :: dTdy, dXdy, Vd
     double precision :: ek, rhovn
+    double precision :: dlnpdytmp, Vctmp, foo
     double precision, allocatable :: dlnpdy(:,:), Vc(:,:)
     double precision, parameter :: twoThirds = 2.d0/3.d0
 
-    allocate(dlnpdy(lo(1):hi(1),lo(2):hi(2)))
-    allocate(    Vc(lo(1):hi(1),lo(2):hi(2)))
+    jstart = lo(2)
 
-    do j=lo(2),hi(2)
+    if (lo(2).eq.domlo(2) .and. physbc_lo(2).eq.NoSlipWall) then
+       jstart = lo(2)+2
+
+       ! the face on the wall
+       j = lo(2)
+       do i=lo(1),hi(1)
+          ! viscous stress
+          dudy = 0.5d0*dxinv(2)*Qc(i,lo(2),QU)
+          dvdy = 0.5d0*dxinv(2)*Qc(i,lo(2),QV)
+          dudx = 0.d0
+          dvdx = 0.d0
+          divu = dudx + dvdy
+          tauyy = mu(i,j)*(2.d0*dvdy-twoThirds*divu) + xi(i,j)*divu
+          tauxy = mu(i,j)*(dudy+dvdx)
+          flx(i,j,UMX) = flx(i,j,UMX) - fac*tauxy
+          flx(i,j,UMY) = flx(i,j,UMY) - fac*tauyy
+
+          ! thermal conduction
+          dTdy = 0.5d0*dxinv(2)*(Qc(i,lo(2),QTEMP)-Twall)
+          flx(i,j,UEDEN) = flx(i,j,UEDEN) - fac*lam(i,j)*dTdy
+       end do
+
+       ! the next face
+       j = lo(2)+1
+       do i=lo(1),hi(1)
+          ! viscous stress
+          dudy = dxinv(2)*(Qc(i,lo(2)+1,QU)-Qc(i,lo(2),QU))
+          dvdy = dxinv(2)*(Qc(i,lo(2)+1,QV)-Qc(i,lo(2),QV))
+          dudx = dxinv(1)*dvel(i,j,1)
+          dvdx = dxinv(1)*dvel(i,j,2)
+          divu = dudx + dvdy
+          tauyy = mu(i,j)*(2.d0*dvdy-twoThirds*divu) + xi(i,j)*divu
+          tauxy = mu(i,j)*(dudy+dvdx)
+          flx(i,j,UMX)   = flx(i,j,UMX)   - fac*tauxy
+          flx(i,j,UMY)   = flx(i,j,UMY)   - fac*tauyy
+          flx(i,j,UEDEN) = flx(i,j,UEDEN) - fac* &
+               0.5d0*( tauxy*(Qc(i,lo(2),QU)+Qc(i,lo(2)+1,QU)) &
+               &     + tauyy*(Qc(i,lo(2),QV)+Qc(i,lo(2)+1,QV)) )
+
+          ! thermal conduction
+          dTdy = dxinv(2) * (Qc(i,lo(2)+1,QTEMP) - Qc(i,lo(2),QTEMP))
+          flx(i,j,UEDEN) = flx(i,j,UEDEN) - fac*lam(i,j)*dTdy
+
+          ! compute dpdy
+          dlnpdytmp = dxinv(2) * (Qc(i,lo(2)+1,QPRES) - Qc(i,lo(2),QPRES)) &
+               / (0.5d0*(Qc(i,lo(2),QPRES) + Qc(i,lo(2)+1,QPRES)))
+
+          Vctmp = 0.d0
+
+          do n=1,NSPEC
+             UYN = UFS+n-1
+             QYN = QFY+n-1
+             QXN = QFX+n-1
+             QHN = QFH+n-1
+
+             dXdy = dxinv(2) * (Qc(i,lo(2)+1,QXN) - Qc(i,lo(2),QXN))
+             Vd = -Ddia(i,j,n)*(dXdy + dlnpdytmp* &
+                  0.5d0*(Qc(i,lo(2),QXN)+Qc(i,lo(2)+1,QXN) &
+                  &    - Qc(i,lo(2),QYN)-Qc(i,lo(2)+1,QYN)) ) 
+             flx(i,j,UYN) = flx(i,j,UYN) + fac*Vd
+             Vctmp = Vctmp + Vd
+             flx(i,j,UEDEN) = flx(i,j,UEDEN) + fac*Vd*Qf(i,j,QHN)
+          end do
+
+          do n=1,NSPEC
+             UYN = UFS+n-1
+             QYN = QFY+n-1
+             QHN = QFH+n-1
+             foo = fac*0.5d0*(Qc(i,lo(2),QYN)+Qc(i,lo(2)+1,QYN))*Vctmp
+             flx(i,j,UYN) = flx(i,j,UYN) - foo
+             flx(i,j,UEDEN) = flx(i,j,UEDEN) - foo*Qf(i,j,QHN)
+          end do
+       end do
+    end if
+
+    allocate(dlnpdy(lo(1):hi(1),jstart:hi(2)))
+    allocate(    Vc(lo(1):hi(1),jstart:hi(2)))
+
+    do j=jstart,hi(2)
        do i=lo(1),hi(1)
           ! viscous stress
           dudy = dxinv(2)*(FD4(-2)*Qc(i,j-2,QU) + FD4(-1)*Qc(i,j-1,QU) &
@@ -320,8 +404,8 @@ contains
           dudx = dxinv(1)*dvel(i,j,1)
           dvdx = dxinv(1)*dvel(i,j,2)
           divu = dudx + dvdy
-          tauyy = mu(i,j)*(2.d0*dvdy-twoThirds*divu) + xi(i,j)*divu
-          tauxy = mu(i,j)*(dudy+dvdx)
+          tauyy = (mu(i,j)*(2.d0*dvdy-twoThirds*divu) + xi(i,j)*divu)
+          tauxy = (mu(i,j)*(dudy+dvdx))
           flx(i,j,UMX)   = flx(i,j,UMX)   - fac*tauxy
           flx(i,j,UMY)   = flx(i,j,UMY)   - fac*tauyy
           flx(i,j,UEDEN) = flx(i,j,UEDEN) - fac*(tauxy*Qf(i,j,QU)+tauyy*Qf(i,j,QV))
@@ -343,7 +427,7 @@ contains
        QYN = QFY+n-1
        QXN = QFX+n-1
        QHN = QFH+n-1
-       do j = lo(2), hi(2)
+       do j = jstart, hi(2)
           do i = lo(1), hi(1)
              dXdy = dxinv(2) * (FD4(-2)*Qc(i,j-2,QXN) + FD4(-1)*Qc(i,j-1,QXN) &
                   + FD4(0)*Qc(i,j,QXN) + FD4(1)*Qc(i,j+1,QXN))
@@ -360,7 +444,7 @@ contains
        UYN = UFS+n-1
        QYN = QFY+n-1
        QHN = QFH+n-1
-       do j= lo(2), hi(2)
+       do j= jstart, hi(2)
           do i = lo(1), hi(1)
              flx(i,j,UYN )  = flx(i,j,UYN  ) - (fac*Qf(i,j,QYN)*Vc(i,j))
              flx(i,j,UEDEN) = flx(i,j,UEDEN) - (fac*Qf(i,j,QYN)*Vc(i,j))*Qf(i,j,QHN)

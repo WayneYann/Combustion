@@ -30,7 +30,7 @@ static int norm_vel_bc[] =
 
 static int tang_vel_bc[] =
 {
-    INT_DIR, EXT_DIR, FOEXTRAP, REFLECT_EVEN, REFLECT_EVEN, REFLECT_EVEN
+    INT_DIR, EXT_DIR, FOEXTRAP, REFLECT_EVEN, REFLECT_EVEN, REFLECT_ODD
 };
 
 static
@@ -184,7 +184,7 @@ RNS::variableSetUp ()
 
     BL_FORT_PROC_CALL(SET_METHOD_PARAMS, set_method_params)
 	(dm, Density, Xmom, Eden, Temp, FirstSpec, NUM_STATE, NumSpec, 
-	 small_dens, small_temp, small_pres, gamma, gravity, Treference,
+	 small_dens, small_temp, small_pres, gamma, gravity_dir, gravity, Treference,
 	 riemann, difmag, HLL_factor, &blocksize[0], 
 	 do_weno, do_mdcd_weno, weno_p, weno_eps, weno_gauss_phi,
 	 use_vode, new_J_cell, chem_solver_i, chem_do_weno);
@@ -194,7 +194,7 @@ RNS::variableSetUp ()
     const Real* prob_hi   = Geometry::ProbHi();
     
     BL_FORT_PROC_CALL(SET_PROBLEM_PARAMS, set_problem_params)
-	(dm,phys_bc.lo(),phys_bc.hi(),prob_lo,prob_hi,Outflow,Symmetry,coord_type);
+	(dm,phys_bc.lo(),phys_bc.hi(),prob_lo,prob_hi,Outflow,Symmetry,SlipWall,NoSlipWall,coord_type);
     
     Interpolater* interp;
     if (do_quartic_interp)
@@ -276,7 +276,7 @@ RNS::variableSetUp ()
     desc_lst.resetComponentBCs(State_Type,
 			       Temp,
 			       bcs[Temp],
-			       BndryFunc(BL_FORT_PROC_CALL(RNS_MXFILL,rns_tempfill),
+			       BndryFunc(BL_FORT_PROC_CALL(RNS_TEMPFILL,rns_tempfill),
 					 BL_FORT_PROC_CALL(RNS_GRPFILL,rns_grpfill)));
 			           
     //

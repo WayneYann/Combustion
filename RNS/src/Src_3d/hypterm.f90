@@ -8,21 +8,21 @@ module hypterm_module
 
 contains
 
-  subroutine hypterm(lo,hi,U,Ulo,Uhi,fx,fxlo,fxhi,fy,fylo,fyhi,fz,fzlo,fzhi,dx)
+  subroutine hypterm(lo,hi,domlo,domhi,U,Ulo,Uhi,fx,fxlo,fxhi,fy,fylo,fyhi,fz,fzlo,fzhi,dx)
 
     use meth_params_module, only : NVAR, difmag
 
-    integer, intent(in) :: lo(3), hi(3), Ulo(3), Uhi(3), fxlo(3), fxhi(3), &
-         fylo(3), fyhi(3), fzlo(3), fzhi(3)
+    integer, intent(in) :: lo(3), hi(3), domlo(3), domhi(3), Ulo(3), Uhi(3), &
+         fxlo(3), fxhi(3), fylo(3), fyhi(3), fzlo(3), fzhi(3)
     double precision,intent(in   )::dx(3)
     double precision,intent(in   ):: U( Ulo(1): Uhi(1), Ulo(2): Uhi(2), Ulo(3): Uhi(3),NVAR)
     double precision,intent(inout)::fx(fxlo(1):fxhi(1),fxlo(2):fxhi(2),fxlo(3):fxhi(3),NVAR)
     double precision,intent(inout)::fy(fylo(1):fyhi(1),fylo(2):fyhi(2),fylo(3):fyhi(3),NVAR)
     double precision,intent(inout)::fz(fzlo(1):fzhi(1),fzlo(2):fzhi(2),fzlo(3):fzhi(3),NVAR)
 
-    call hypterm_x(lo,hi,U,Ulo,Uhi,fx,fxlo,fxhi)
-    call hypterm_y(lo,hi,U,Ulo,Uhi,fy,fylo,fyhi)
-    call hypterm_z(lo,hi,U,Ulo,Uhi,fz,fzlo,fzhi)
+    call hypterm_x(lo,hi,domlo,domhi,U,Ulo,Uhi,fx,fxlo,fxhi,dx)
+    call hypterm_y(lo,hi,domlo,domhi,U,Ulo,Uhi,fy,fylo,fyhi,dx)
+    call hypterm_z(lo,hi,domlo,domhi,U,Ulo,Uhi,fz,fzlo,fzhi,dx)
     
     if (difmag .gt. 0.0d0) then
        call add_artifical_viscocity(lo,hi,U,Ulo,Uhi,fx,fxlo,fxhi,fy,fylo,fyhi,fz,fzlo,fzhi,dx)
@@ -31,7 +31,7 @@ contains
   end subroutine hypterm
 
 
-  subroutine hypterm_x(lo,hi,U,Ulo,Uhi,fx,fxlo,fxhi)
+  subroutine hypterm_x(lo,hi,domlo,domhi,U,Ulo,Uhi,fx,fxlo,fxhi,dx)
     use meth_params_module, only : NVAR, URHO, UMX, UMY, UMZ, UTEMP, UFS, UEDEN, NSPEC, NCHARV, CFS, do_mdcd
     use eigen_module, only : get_eigen_matrices
     use renorm_module, only : floor_species
@@ -39,12 +39,14 @@ contains
     use mdcd_module, only : mdcd
     use weno_module, only : weno4_gauss, weno5_face
     use riemann_module, only : riemann
+    use RNS_boundary_module, only : get_hyper_bc_flag
 
-    integer, intent(in) :: lo(3), hi(3), Ulo(3), Uhi(3), fxlo(3), fxhi(3)
+    integer, intent(in) :: lo(3), hi(3), domlo(3), domhi(3), Ulo(3), Uhi(3), fxlo(3), fxhi(3)
+    double precision, intent(in) :: dx(3)
     double precision, intent(in   ) ::  U( Ulo(1): Uhi(1), Ulo(2): Uhi(2), Ulo(3): Uhi(3),NVAR)
     double precision, intent(inout) :: fx(fxlo(1):fxhi(1),fxlo(2):fxhi(2),fxlo(3):fxhi(3),NVAR)
 
-    integer :: i, j, k, n, ii, jj, kk, ivar, m, gy, gz
+    integer :: i, j, k, n, ii, jj, kk, ivar, m, gy, gz, bc_flag(2)
     double precision :: RoeWl, RoeWr, rhoInvl, rhoInvr
     double precision, dimension(:,:,:,:), allocatable, target :: UZ1,UZ2
     double precision, dimension(:,:,:)  , allocatable, target :: UY1,UY2
@@ -353,7 +355,11 @@ contains
                    UR(i,UTEMP) = T0
                 end do
              
-                call riemann(lo(1),hi(1),UL,UR,lo(1),hi(1)+1,flux,lo(1),hi(1)+1,dir=1)
+                call get_hyper_bc_flag(1,(/lo(1),j,k/),(/hi(1)+1,j,k/),domlo,domhi,dx,bc_flag)
+
+                call riemann(lo(1),hi(1),UL,UR,lo(1),hi(1)+1,flux,lo(1),hi(1)+1, &
+                     dir=1, bc_flag=bc_flag)
+
                 do n=1,NVAR
                    do i=lo(1),hi(1)+1
                       fx(i,j,k,n) = fx(i,j,k,n) + 0.25d0*flux(i,n)
@@ -371,7 +377,7 @@ contains
   end subroutine hypterm_x
 
 
-  subroutine hypterm_y(lo,hi,U,Ulo,Uhi,fy,fylo,fyhi)
+  subroutine hypterm_y(lo,hi,domlo,domhi,U,Ulo,Uhi,fy,fylo,fyhi,dx)
     use meth_params_module, only : NVAR, URHO, UMX, UMY, UMZ, UTEMP, UFS, UEDEN, NSPEC, NCHARV, CFS, do_mdcd
     use eigen_module, only : get_eigen_matrices
     use renorm_module, only : floor_species
@@ -379,12 +385,14 @@ contains
     use mdcd_module, only : mdcd
     use weno_module, only : weno4_gauss, weno5_face
     use riemann_module, only : riemann
+    use RNS_boundary_module, only : get_hyper_bc_flag
 
-    integer, intent(in) :: lo(3), hi(3), Ulo(3), Uhi(3), fylo(3), fyhi(3)
+    integer, intent(in) :: lo(3), hi(3), domlo(3), domhi(3), Ulo(3), Uhi(3), fylo(3), fyhi(3)
+    double precision, intent(in) :: dx(3)
     double precision, intent(in   ) ::  U( Ulo(1): Uhi(1), Ulo(2): Uhi(2), Ulo(3): Uhi(3),NVAR)
     double precision, intent(inout) :: fy(fylo(1):fyhi(1),fylo(2):fyhi(2),fylo(3):fyhi(3),NVAR)
 
-    integer :: i, j, k, n, ii, jj, kk, ivar, m, gx, gz
+    integer :: i, j, k, n, ii, jj, kk, ivar, m, gx, gz, bc_flag(2)
     double precision :: RoeWl, RoeWr, rhoInvl, rhoInvr
     double precision, dimension(:,:,:,:), allocatable, target :: UX1,UX2
     double precision, dimension(:,:,:)  , allocatable, target :: UZ1,UZ2
@@ -692,7 +700,11 @@ contains
                    UR(j,UTEMP) = T0
                 end do
              
-                call riemann(lo(2),hi(2),UL,UR,lo(2),hi(2)+1,flux,lo(2),hi(2)+1,dir=2)
+                call get_hyper_bc_flag(2,(/i,lo(2),k/),(/i,hi(2)+1,k/),domlo,domhi,dx,bc_flag)
+
+                call riemann(lo(2),hi(2),UL,UR,lo(2),hi(2)+1,flux,lo(2),hi(2)+1, &
+                     dir=2, bc_flag=bc_flag)
+
                 do n=1,NVAR
                    do j=lo(2),hi(2)+1
                       fy(i,j,k,n) = fy(i,j,k,n) + 0.25d0*flux(j,n)
@@ -710,7 +722,7 @@ contains
   end subroutine hypterm_y
 
 
-  subroutine hypterm_z(lo,hi,U,Ulo,Uhi,fz,fzlo,fzhi)
+  subroutine hypterm_z(lo,hi,domlo,domhi,U,Ulo,Uhi,fz,fzlo,fzhi,dx)
     use meth_params_module, only : NVAR, URHO, UMX, UMY, UMZ, UTEMP, UFS, UEDEN, NSPEC, NCHARV, CFS, do_mdcd
     use eigen_module, only : get_eigen_matrices
     use renorm_module, only : floor_species
@@ -718,12 +730,14 @@ contains
     use mdcd_module, only : mdcd
     use weno_module, only : weno4_gauss, weno5_face
     use riemann_module, only : riemann
+    use RNS_boundary_module, only : get_hyper_bc_flag
 
-    integer, intent(in) :: lo(3), hi(3), Ulo(3), Uhi(3), fzlo(3), fzhi(3)
+    integer, intent(in) :: lo(3), hi(3), domlo(3), domhi(3), Ulo(3), Uhi(3), fzlo(3), fzhi(3)
+    double precision, intent(in) :: dx(3)
     double precision, intent(in   ) ::  U( Ulo(1): Uhi(1), Ulo(2): Uhi(2), Ulo(3): Uhi(3),NVAR)
     double precision, intent(inout) :: fz(fzlo(1):fzhi(1),fzlo(2):fzhi(2),fzlo(3):fzhi(3),NVAR)
 
-    integer :: i, j, k, n, ii, jj, kk, ivar, m, gx, gy
+    integer :: i, j, k, n, ii, jj, kk, ivar, m, gx, gy, bc_flag(3)
     double precision :: RoeWl, RoeWr, rhoInvl, rhoInvr
     double precision, dimension(:,:,:,:), allocatable, target :: UY1,UY2
     double precision, dimension(:,:,:)  , allocatable, target :: UX1,UX2
@@ -1031,7 +1045,11 @@ contains
                    UR(k,UTEMP) = T0
                 end do
 
-                call riemann(lo(3),hi(3),UL,UR,lo(3),hi(3)+1,flux,lo(3),hi(3)+1,dir=3)
+                call get_hyper_bc_flag(3,(/i,j,lo(3)/),(/i,j,hi(3)+1/),domlo,domhi,dx,bc_flag)
+
+                call riemann(lo(3),hi(3),UL,UR,lo(3),hi(3)+1,flux,lo(3),hi(3)+1, &
+                     dir=3, bc_flag=bc_flag)
+
                 do n=1,NVAR
                    do k=lo(3),hi(3)+1
                       fz(i,j,k,n) = fz(i,j,k,n) + 0.25d0*flux(k,n)
