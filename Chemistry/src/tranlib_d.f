@@ -1,4 +1,4 @@
-C     CVS $Revision: 1.2 $ created $Date: 1999/04/01 20:57:49 $
+C     CVS $Revision: 1.1.1.1 $ created $Date: 2006/05/26 19:09:34 $
 C
       SUBROUTINE MCABS
 C
@@ -140,12 +140,7 @@ C*****precision > single
 C      IMPLICIT REAL (A-H, O-Z), INTEGER (I-N)
 C*****END precision > single
 C
-      COMMON /MCMCMC/ RU, PATMOS, SMALL, NKK, NO, NLITE, INLIN, IKTDIF,
-     1                IPVT, NWT, NEPS, NSIG, NDIP, NPOL, NZROT, NLAM,
-     2                NETA, NDIF, NTDIF, NXX, NVIS, NXI, NCP, NCROT,
-     3                NCINT, NBIND, NEOK, NSGM, NAST, NBST, NCST, NXL,
-     4                NR, NWRK, K3
-      COMMON /MCCONS/ VERS, PREC, KERR, LENI, LENR
+      include 'mccom.fh'
 C
       DIMENSION IMCWRK(*), RMCWRK(*)
       CHARACTER*16 PRVERS, VERS, PREC, PRDATE, IFMT, RFMT, CFMT, LFMT
@@ -422,7 +417,7 @@ C*****precision > single
 C      IMPLICIT REAL (A-H, O-Z), INTEGER (I-N)
 C*****END precision > single
 C
-      COMMON /MCCONS/ VERS, PREC, KERR, LENI, LENR
+      include 'mccom.fh'
       PARAMETER (NLIST = 1)
       LOGICAL KERR, VOK, POK, LBIN
       CHARACTER*16 LIST(NLIST), VERS, PREC, PRVERS, IFMT, RFMT, LFMT,
@@ -562,12 +557,7 @@ C*****precision > single
 C      IMPLICIT REAL (A-H, O-Z), INTEGER (I-N)
 C*****END precision > single
 C
-      COMMON /MCMCMC/ RU, PATMOS, SMALL, NKK, NO, NLITE, INLIN, IKTDIF,
-     1                IPVT, NWT,  NEPS,  NSIG, NDIP, NPOL, NZROT, NLAM,
-     2                NETA, NDIF,  NTDIF, NXX, NVIS, NXI,  NCP,  NCROT,
-     3                NCINT, NBIND, NEOK, NSGM, NAST, NBST, NCST,
-     4                NXL, NR, NWRK, K3
-      COMMON /MCCONS/ VERS, PREC, KERR, LENI, LENR
+      include 'mccom.fh'
 C
       LOGICAL KERR, IERR
       CHARACTER PREC*16, VERS*16, P*16, V*16
@@ -649,11 +639,7 @@ C*****precision > single
 C      IMPLICIT REAL (A-H, O-Z), INTEGER (I-N)
 C*****END precision > single
 C
-      COMMON /MCMCMC/ RU, PATMOS, SMALL, NKK, NO, NLITE, INLIN, IKTDIF,
-     1                IPVT, NWT, NEPS, NSIG, NDIP, NPOL, NZROT, NLAM,
-     2                NETA, NDIF, NTDIF, NXX, NVIS, NXI, NCP, NCROT,
-     3                NCINT, NBIND, NEOK, NSGM, NAST, NBST, NCST,
-     4                NXL, NR, NWRK, K3
+      include 'mccom.fh'
       DIMENSION IMCWRK(*), RMCWRK(*), EPS(*), SIG(*), DIP(*), POL(*),
      1          ZROT(*), NLIN(*)
 C
@@ -696,12 +682,7 @@ C*****precision > single
 C      IMPLICIT REAL (A-H, O-Z), INTEGER (I-N)
 C*****END precision > single
 C
-      COMMON /MCMCMC/ RU, PATMOS, SMALL, NKK, NO, NLITE, INLIN, IKTDIF,
-     1                IPVT, NWT, NEPS, NSIG, NDIP, NPOL, NZROT, NLAM,
-     2                NETA, NDIF, NTDIF, NXX, NVIS, NXI, NCP,
-     3                NCROT, NCINT, NBIND, NEOK, NSGM,
-     4                NAST, NBST, NCST, NXL, NR, NWRK, K3
-      COMMON /MCCONS/ VERS, PREC, KERR, LENI, LENR
+      include 'mccom.fh'
       DIMENSION IMCWRK(*), RMCWRK(*)
       CHARACTER VERS*16, PREC*16
       LOGICAL KERR
@@ -752,11 +733,7 @@ C*****precision > single
 C      IMPLICIT REAL (A-H, O-Z), INTEGER (I-N)
 C*****END precision > single
 C
-      COMMON /MCMCMC/ RU, PATMOS, SMALL, NKK, NO, NLITE, INLIN, IKTDIF,
-     1                IPVT, NWT, NEPS, NSIG, NDIP, NPOL, NZROT, NLAM,
-     2                NETA, NDIF, NTDIF, NXX, NVIS, NXI, NCP, NCROT,
-     3                NCINT, NBIND, NEOK, NSGM, NAST, NBST,
-     4                NCST, NXL, NR, NWRK, K3
+      include 'mccom.fh'
       DIMENSION VIS(*), RMCWRK(*)
 C
       ALOGT = LOG(T)
@@ -807,11 +784,7 @@ C      IMPLICIT REAL (A-H, O-Z), INTEGER (I-N)
 C      PARAMETER (ZERO=0.0, ONE=1.0, EIGHT=8.0)
 C*****END precision > single
 C
-      COMMON /MCMCMC/ RU, PATMOS, SMALL, NKK, NO, NLITE, INLIN, IKTDIF,
-     1                IPVT, NWT, NEPS, NSIG, NDIP, NPOL, NZROT, NLAM,
-     2                NETA, NDIF, NTDIF, NXX, NVIS, NXI, NCP, NCROT,
-     3                NCINT, NBIND, NEOK, NSGM, NAST, NBST,
-     4                NCST, NXL, NR, NWRK, K3
+      include 'mccom.fh'
       DIMENSION X(*), RMCWRK(*)
 C
 C     In the following call, the species molecular weights are stored
@@ -880,11 +853,7 @@ C*****precision > single
 C      IMPLICIT REAL (A-H, O-Z), INTEGER (I-N)
 C*****END precision > single
 C
-      COMMON /MCMCMC/ RU, PATMOS, SMALL, NKK, NO, NLITE, INLIN, IKTDIF,
-     1                IPVT, NWT, NEPS, NSIG, NDIP, NPOL, NZROT, NLAM,
-     2                NETA, NDIF, NTDIF, NXX, NVIS, NXI, NCP, NCROT,
-     3                NCINT, NBIND, NEOK, NSGM, NAST, NBST,
-     4                NCST, NXL, NR, NWRK, K3
+      include 'mccom.fh'
       DIMENSION CON(*), RMCWRK(*)
 C
       ALOGT = LOG(T)
@@ -934,11 +903,7 @@ C      IMPLICIT REAL (A-H,O-Z), INTEGER (I-N)
 C      PARAMETER (ZERO=0.0, ONE=1.0)
 C*****END precision > single
 C
-      COMMON /MCMCMC/ RU, PATMOS, SMALL, NKK, NO, NLITE, INLIN, IKTDIF,
-     1                IPVT, NWT, NEPS, NSIG, NDIP, NPOL, NZROT, NLAM,
-     2                NETA, NDIF, NTDIF, NXX, NVIS, NXI, NCP, NCROT,
-     3                NCINT, NBIND, NEOK, NSGM, NAST, NBST,
-     4                NCST, NXL, NR, NWRK, K3
+      include 'mccom.fh'
       DIMENSION X(*), RMCWRK(*)
 C
 C     In the following call, the pure species conductivities are in
@@ -1000,11 +965,7 @@ C*****precision > single
 C      IMPLICIT REAL (A-H,O-Z), INTEGER (I-N)
 C*****END precision > single
 C
-      COMMON /MCMCMC/ RU, PATMOS, SMALL, NKK, NO, NLITE, INLIN, IKTDIF,
-     1                IPVT, NWT, NEPS, NSIG, NDIP, NPOL, NZROT, NLAM,
-     2                NETA, NDIF, NTDIF, NXX, NVIS, NXI, NCP, NCROT,
-     3                NCINT, NBIND, NEOK, NSGM, NAST, NBST,
-     4                NCST, NXL, NR, NWRK, K3
+      include 'mccom.fh'
       DIMENSION RMCWRK(*), DJK(KDIM,*)
 C
       PFAC = PATMOS/P
@@ -1072,11 +1033,7 @@ C*****precision > single
 C      IMPLICIT REAL (A-H,O-Z), INTEGER (I-N)
 C*****END precision > single
 C
-      COMMON /MCMCMC/ RU, PATMOS, SMALL, NKK, NO, NLITE, INLIN, IKTDIF,
-     1                IPVT, NWT, NEPS, NSIG, NDIP, NPOL, NZROT, NLAM,
-     2                NETA, NDIF, NTDIF, NXX, NVIS, NXI, NCP, NCROT,
-     3                NCINT, NBIND, NEOK, NSGM, NAST, NBST,
-     4                NCST, NXL, NR, NWRK, K3
+      include 'mccom.fh'
       DIMENSION X(*), D(*), RMCWRK(*)
 C
       CALL MCEDIF (T, NO, NKK, X, RMCWRK(NDIF), RMCWRK(NWT), SMALL,
@@ -1242,11 +1199,7 @@ C*****precision > single
 C      IMPLICIT REAL (A-H,O-Z), INTEGER (I-N)
 C*****END precision > single
 C
-      COMMON /MCMCMC/ RU, PATMOS, SMALL, NKK, NO, NLITE, INLIN, IKTDIF,
-     1                IPVT, NWT, NEPS, NSIG, NDIP, NPOL, NZROT, NLAM,
-     2                NETA, NDIF, NTDIF, NXX, NVIS, NXI, NCP, NCROT,
-     3                NCINT, NBIND, NEOK, NSGM, NAST, NBST,
-     4                NCST, NXL, NR, NWRK, K3
+      include 'mccom.fh'
       DIMENSION X(*), IMCWRK(*), RMCWRK(*), D(KDIM,*)
 C
       CALL MCORDF (P, T, X, NKK, KDIM, SMALL, RMCWRK(NWT), RMCWRK,
@@ -1304,11 +1257,7 @@ C*****precision > single
 C      IMPLICIT REAL (A-H,O-Z), INTEGER (I-N)
 C*****END precision > single
 C
-      COMMON /MCMCMC/ RU, PATMOS, SMALL, NKK, NO, NLITE, INLIN, IKTDIF,
-     1                IPVT, NWT, NEPS, NSIG, NDIP, NPOL, NZROT, NLAM,
-     2                NETA, NDIF, NTDIF, NXX, NVIS, NXI, NCP, NCROT,
-     3                NCINT, NBIND, NEOK, NSGM, NAST, NBST,
-     4                NCST, NXL, NR, NWRK, K3
+      include 'mccom.fh'
       DIMENSION X(*), IMCWRK(*), RMCWRK(*), ICKWRK(*), CKWRK(*), DT(*)
 C
       CALL MCLMDT (P, T, X, NKK, K3, SMALL, RMCWRK(NWT), RMCWRK(NEOK),
@@ -2173,11 +2122,7 @@ C      IMPLICIT REAL (A-H, O-Z), INTEGER (I-N)
 C      PARAMETER (ZERO = 0.0)
 C*****END precision > single
 C
-      COMMON /MCMCMC/ RU, PATMOS, SMALL, NKK, NO, NLITE, INLIN, IKTDIF,
-     1                IPVT, NWT, NEPS, NSIG, NDIP, NPOL, NZROT, NLAM,
-     2                NETA, NDIF, NTDIF, NXX, NVIS, NXI, NCP, NCROT,
-     3                NCINT, NBIND, NEOK, NSGM, NAST, NBST,
-     4                NCST, NXL, NR, NWRK, K3
+      include 'mccom.fh'
       DIMENSION X(*), IMCWRK(*), RMCWRK(*), TDR(*)
 C
 C     In this subroutine, temporary storage is assigned as:
