@@ -593,12 +593,7 @@ C*****precision > single
 C      IMPLICIT REAL (A-H, O-Z), INTEGER (I-N)
 C*****END precision > single
 C
-      COMMON /MCMCMC/ RU, PATMOS, SMALL, NKK, NO, NLITE, INLIN, IKTDIF,
-     1                IPVT, NWT, NEPS, NSIG, NDIP, NPOL, NZROT, NLAM,
-     2                NETA, NDIF, NTDIF, NXX, NVIS, NXI, NCP, NCROT,
-     3                NCINT, NBIND, NEOK, NSGM, NAST, NBST, NCST, NXL,
-     4                NR, NWRK, K3
-      COMMON /MCCONS/ VERS, PREC, KERR, LENI, LENR
+      include 'mccom.fh'
 C
       DIMENSION IMCWRK(*), RMCWRK(*)
       CHARACTER*16 PRVERS, VERS, PREC, PRDATE, IFMT, RFMT, CFMT, LFMT

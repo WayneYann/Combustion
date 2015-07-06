@@ -38,7 +38,8 @@ public:
               int                species_id = -1);
     std::ostream& operator<<(std::ostream& os) const;
     void operator=(Real new_value);
-    Real Value() const;
+    const Real& Value() const;
+    Real& Value();
     Real DefaultValue() const;
     void ResetToDefault();
     int SpeciesID() const {return species_id;}
