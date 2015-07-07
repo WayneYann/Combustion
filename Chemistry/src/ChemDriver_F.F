@@ -149,7 +149,7 @@ c
       NFDIM=165
       NT=50
       NRANGE = MAXTP-1
-      NLITEMAX=2
+      NLITEMAX=3
       mcr = Nspec*(19+2*NO+NO*NLITEMAX)+(NO+15)*Nspec**2
       mci = 4*Nspec + NLITEMAX
       LLINKMC = 44
