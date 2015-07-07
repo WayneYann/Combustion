@@ -4712,8 +4712,8 @@ HeatTransfer::advance (Real time,
     showMF("sdc",get_new_data(State_Type),"sdc_Snew_preProj",level,parent->levelSteps(level));
 
     // compute delta_chi correction
-    calc_dpdt(cur_time,dt,dpdt,u_mac);
-    MultiFab::Add(get_new_data(Divu_Type),dpdt,0,0,1,0);
+    //    calc_dpdt(cur_time,dt,dpdt,u_mac);
+    //    MultiFab::Add(get_new_data(Divu_Type),dpdt,0,0,1,0);
 
     //
     // Increment rho average.
@@ -6767,11 +6767,13 @@ HeatTransfer::calc_divu (Real      time,
 	do_reflux = do_reflux_hold;
     }
     //
-    // If divu_iter, pressure iter, or the first time step use RhoYdot_Type.
-    //
+    // if we are in the initial projection (time=0, dt=-1), set RhoYdot=0
+    // if we are in a divu_iter (time=0, dt>0), use I_R
+    // if we are in an init_iter or regular time step (time=dt, dt>0), use instananeous
     MultiFab   RhoYdotTmp;
     MultiFab&  S       = get_data(State_Type,time);
     const bool use_IR  = (time == 0 && dt > 0);
+
     MultiFab&  RhoYdot = (use_IR) ? get_new_data(RhoYdot_Type) : RhoYdotTmp;
 
     if (!use_IR)
@@ -6784,7 +6786,7 @@ HeatTransfer::calc_divu (Real      time,
         }
         else if (dt > 0)
         {
-            // a regular time step, but not the first one, use instantaneous omegadot
+            // init_iter or regular time step, use instantaneous omegadot
             RhoYdot.define(grids,nspecies,0,Fab_allocate);
             compute_instantaneous_reaction_rates(RhoYdot,S,nGrow);
         }

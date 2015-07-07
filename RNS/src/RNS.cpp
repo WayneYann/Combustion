@@ -85,6 +85,7 @@ Real         RNS::small_temp    = -1.e200;
 Real         RNS::small_pres    = -1.e200;
 Real         RNS::gamma         = 1.4;
 
+int          RNS::gravity_dir   = BL_SPACEDIM;
 Real         RNS::gravity       = 0.0;
 Real         RNS::Treference    = 298.0;
 
@@ -92,7 +93,7 @@ int          RNS::RK_order      = 2;
 
 RNS::RiemannType RNS::Riemann   = RNS::JBB;
 Real             RNS::difmag    = -1.0;  // for JBB & HLLC Riemann solvers
-Real             RNS::HLL_factor = 0.1;
+Real             RNS::HLL_factor = 0.0;
 
 std::string  RNS::fuelName           = "";
 int          RNS::fuelID             = -1;
@@ -149,13 +150,10 @@ std::vector<int> RNS::blocksize(BL_SPACEDIM, 2048);
 int          RNS::do_quartic_interp   = 1;
 
 int          RNS::do_weno             = 1;
-int          RNS::do_mp5              = 0;
-int          RNS::weno_type           = 0; // 0: Jiang-Shu; 1: WENO-M; 2: WENO-Z
-int          RNS::do_quadrature_weno  = 0;
-int          RNS::do_component_weno   = 0;
-Real         RNS::eps_wenojs          = 1.e-6;
-Real         RNS::eps_wenom           = 1.e-40;
-Real         RNS::eps_wenoz           = 1.e-15;
+int          RNS::do_mdcd_weno        = 1;
+int          RNS::weno_p              = 1;
+Real         RNS::weno_eps            = 1.e-6;
+Real         RNS::weno_gauss_phi      = 0.2233;
 
 int          RNS::do_chemistry        = 1;
 int          RNS::use_vode            = 0;
@@ -207,6 +205,7 @@ RNS::read_params ()
     pp.query("small_pres",small_pres);
     pp.query("gamma",gamma);
 
+    pp.query("gravity_dir", gravity_dir);
     pp.query("gravity", gravity);
     pp.query("Treference",Treference);
 
@@ -322,17 +321,15 @@ RNS::read_params ()
     pp.query("do_quartic_interp", do_quartic_interp);
 
     pp.query("do_weno", do_weno);
-    pp.query("do_mp5", do_mp5);
-    pp.query("weno_type", weno_type);
-    pp.query("do_quadrature_weno", do_quadrature_weno);
-    pp.query("do_component_weno", do_component_weno);
-    pp.query("eps_wenojs", eps_wenojs);
-    pp.query("eps_wenom", eps_wenom);
-    pp.query("eps_wenoz", eps_wenoz);
     if (ChemDriver::isNull())
     {
 	do_weno = 1;  // must do weno
     }
+
+    pp.query("do_mdcd_weno", do_mdcd_weno);
+    pp.query("weno_p", weno_p);
+    pp.query("weno_eps", weno_eps);
+    pp.query("weno_gauss_phi", weno_gauss_phi);
 
     pp.query("do_chemistry", do_chemistry);
     pp.query("use_vode", use_vode);
@@ -352,6 +349,9 @@ RNS::read_params ()
     }
     pp.query("f2comp_simple_dUdt", f2comp_simple_dUdt);
     pp.query("f2comp_nbdf", f2comp_nbdf);
+
+    // Inform BoxLib boundary functions are thread safe.
+    StateDescriptor::setBndryFuncThreadSafety(1);
 }
 
 RNS::RNS ()
@@ -415,8 +415,10 @@ RNS::~RNS ()
     delete [] RK_k;
     delete flux_reg_RK;
 
+#if 0
     cout << "Number of AD evals:   " << Level() << " " << num_ad_evals << endl;
     cout << "Number of CHEM evals: " << Level() << " " << num_chem_evals << endl;
+#endif
 }
 
 void

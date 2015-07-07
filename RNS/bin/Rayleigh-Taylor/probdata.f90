@@ -1,6 +1,6 @@
 module probdata_module
 
-  integer, save :: prob_type
+  integer, save :: prob_type, prob_dir
 
   double precision, save :: frac
 

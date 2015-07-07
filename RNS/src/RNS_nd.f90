@@ -16,25 +16,23 @@ end subroutine get_method_params
 ! ::: 
 subroutine set_method_params(dm,Density,Xmom,Eden,Temp,FirstSpec, &
      NUM_STATE, NumSpec, small_dens_in, small_temp_in, small_pres_in, &
-     gamma_in, grav_in, Tref_in, riemann_in, difmag_in, HLL_factor_in, blocksize, &
-     do_weno_in, do_mp5_in, weno_type_in, do_quadrature_weno_in, do_comp_weno_in, &
-     eps_wenojs, eps_wenom, eps_wenoz, &
+     gamma_in, grav_dir_in, grav_in, Tref_in, riemann_in, difmag_in, HLL_factor_in, blocksize, &
+     do_weno_in, do_mdcd_weno_in, weno_p_in, weno_eps_in, weno_gauss_phi_in, &
      use_vode_in, new_J_cell_in, chem_solver_in, chem_do_weno_in)
 
   use meth_params_module
+  use weno_module, only : init_weno
+  use mdcd_module, only : init_mdcd
   use eos_module
-  use weno_module, only : weno_type, epsjs, epsm, epsz
 
   implicit none 
 
   integer, intent(in) :: dm
   integer, intent(in) :: Density, Xmom, Eden, Temp, FirstSpec, NUM_STATE, NumSpec, &
-       riemann_in, blocksize(*), do_weno_in, do_mp5_in, weno_type_in, &
-       do_quadrature_weno_in, do_comp_weno_in, &
-       use_vode_in, new_J_cell_in, chem_solver_in, chem_do_weno_in
+       riemann_in, blocksize(*), do_weno_in, do_mdcd_weno_in, weno_p_in, &
+       use_vode_in, new_J_cell_in, chem_solver_in, chem_do_weno_in, grav_dir_in
   double precision, intent(in) :: small_dens_in, small_temp_in, small_pres_in, &
-       gamma_in, grav_in, Tref_in, difmag_in, HLL_factor_in, &
-       eps_wenojs, eps_wenom, eps_wenoz
+       gamma_in, grav_in, Tref_in, difmag_in, HLL_factor_in, weno_eps_in, weno_gauss_phi_in
   
   ndim = dm
 
@@ -75,6 +73,7 @@ subroutine set_method_params(dm,Density,Xmom,Eden,Temp,FirstSpec, &
   QFX   = UFS +   NumSpec
   QFH   = UFS + 2*NumSpec
 
+  QVAR  = QTEMP +   NumSpec
   QCVAR = QTEMP + 2*NumSpec
   QFVAR = QTEMP + 3*NumSpec
 
@@ -90,6 +89,7 @@ subroutine set_method_params(dm,Density,Xmom,Eden,Temp,FirstSpec, &
   call eos_get_small_dens(small_dens)
   call eos_get_small_temp(small_temp)
 
+  gravity_dir = grav_dir_in
   gravity = grav_in
 
   riemann_solver = riemann_in
@@ -110,14 +110,9 @@ subroutine set_method_params(dm,Density,Xmom,Eden,Temp,FirstSpec, &
   !$omp end parallel
 
   do_weno = (do_weno_in .ne. 0)
-  do_mp5  = (do_mp5_in  .ne. 0)
-  weno_type = weno_type_in
-  do_quadrature_weno = (do_quadrature_weno_in .ne. 0)
-  do_component_weno = (do_comp_weno_in .ne. 0)
-
-  epsjs = eps_wenojs
-  epsm  = eps_wenom
-  epsz  = eps_wenoz
+  do_mdcd = (do_mdcd_weno_in .ne. 0)
+  call init_weno(weno_p_in,weno_eps_in,weno_gauss_phi_in)
+  call init_mdcd(weno_p_in,weno_eps_in)
 
   use_vode = (use_vode_in .ne. 0)
   new_J_cell = (new_J_cell_in .ne. 0)
@@ -131,7 +126,7 @@ end subroutine set_method_params
 ! ::: 
 
 subroutine set_problem_params(dm,physbc_lo_in,physbc_hi_in, phys_prob_lo_in,   &
-     phys_prob_hi_in, Outflow_in,Symmetry_in,coord_type_in)
+     phys_prob_hi_in, Outflow_in,Symmetry_in,SlipWall_in,NoSlipWall_in,coord_type_in)
 
   use prob_params_module
 
@@ -139,8 +134,7 @@ subroutine set_problem_params(dm,physbc_lo_in,physbc_hi_in, phys_prob_lo_in,   &
   
   integer, intent(in) :: dm
   integer, intent(in) :: physbc_lo_in(dm),physbc_hi_in(dm)
-  integer, intent(in) :: Outflow_in
-  integer, intent(in) :: Symmetry_in
+  integer, intent(in) :: Outflow_in,Symmetry_in,SlipWall_in,NoSlipWall_in
   integer, intent(in) :: coord_type_in
   double precision, intent(in) :: phys_prob_lo_in(dm),phys_prob_hi_in(dm)
 
@@ -157,6 +151,8 @@ subroutine set_problem_params(dm,physbc_lo_in,physbc_hi_in, phys_prob_lo_in,   &
   
   Outflow  = Outflow_in
   Symmetry = Symmetry_in
+  SlipWall = SlipWall_in
+  NoSlipWall = NoSlipWall_in
   
   coord_type = coord_type_in
 

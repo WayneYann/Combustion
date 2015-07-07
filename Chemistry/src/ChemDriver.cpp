@@ -76,8 +76,14 @@ ChemDriver::Parameter::Parameter(int                _reaction_id,
   rdefp = GetParamPtr(reaction_id,param_id,species_id,1);
 }
 
-Real
+const Real&
 ChemDriver::Parameter::Parameter::Value() const
+{
+  return *rp;
+}
+
+Real&
+ChemDriver::Parameter::Parameter::Value()
 {
   return *rp;
 }
@@ -135,7 +141,8 @@ std::ostream& operator<< (std::ostream&  os, const ChemDriver::Parameter& param)
 void
 ChemDriver::Parameter::operator=(Real new_value)
 {
-  *rp = new_value;
+  Real& val = Value();
+  val = new_value;
 }
 
 void

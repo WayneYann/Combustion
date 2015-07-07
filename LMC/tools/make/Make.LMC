@@ -104,6 +104,11 @@ ifeq ($(CHEMISTRY_MODEL), LIDRYER)
   vpath %.f   $(VPATH_LOCATIONS) $(COMBUSTION_DIR)/Chemistry/data/LiDryer/PMFs
   vpath %.c $(VPATH_LOCATIONS) $(COMBUSTION_DIR)/Chemistry/data/LiDryer
 endif
+ifeq ($(CHEMISTRY_MODEL), LIDRYERMOD)
+  cEXE_sources += LiDryerMOD.c
+  vpath %.f   $(VPATH_LOCATIONS) $(COMBUSTION_DIR)/Chemistry/data/LiDryer/PMFs
+  vpath %.c $(VPATH_LOCATIONS) $(COMBUSTION_DIR)/Chemistry/data/LiDryer
+endif
 ifeq ($(CHEMISTRY_MODEL), LUDME)
   cEXE_sources += LuDME.c
   vpath %.f   $(VPATH_LOCATIONS) $(COMBUSTION_DIR)/Chemistry/data/Lu/PMFs

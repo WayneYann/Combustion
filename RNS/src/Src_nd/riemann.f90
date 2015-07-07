@@ -13,9 +13,9 @@ module riemann_module
 
 contains
 
-  subroutine riemann(lo, hi, UL, UR, Ulo, Uhi, flx, flo, fhi, dir)
+  subroutine riemann(lo, hi, UL, UR, Ulo, Uhi, flx, flo, fhi, dir, bc_flag)
     integer, intent(in) :: lo, hi, Ulo, Uhi, flo, fhi
-    integer, intent(in), optional :: dir
+    integer, intent(in) :: dir, bc_flag(2)
     double precision, intent(in ) ::  UL(Ulo:Uhi,NVAR)
     double precision, intent(in ) ::  UR(Ulo:Uhi,NVAR)
     double precision              :: flx(flo:fhi,NVAR)
@@ -26,7 +26,7 @@ contains
     case (HLL_solver)
        call riemann_HLL(lo, hi, UL(lo:hi+1,:), UR(lo:hi+1,:), flx(lo:hi+1,:), dir)
     case (JBB_solver)
-       call riemann_JBB(lo, hi, UL(lo:hi+1,:), UR(lo:hi+1,:), flx(lo:hi+1,:), dir)
+       call riemann_JBB(lo, hi, UL(lo:hi+1,:), UR(lo:hi+1,:), flx(lo:hi+1,:), dir,bc_flag)
     case (HLLC_solver)
        call riemann_HLLC(lo, hi, UL(lo:hi+1,:), UR(lo:hi+1,:), flx(lo:hi+1,:), dir)
     case default
@@ -45,7 +45,7 @@ contains
 
   subroutine riemann_HLL(lo, hi, UL, UR, flx, dir)
     integer, intent(in) :: lo, hi
-    integer, intent(in), optional :: dir
+    integer, intent(in) :: dir
     double precision, intent(in ) ::  UL(lo:hi+1,NVAR)
     double precision, intent(in ) ::  UR(lo:hi+1,NVAR)
     double precision, intent(out) :: flx(lo:hi+1,NVAR)
@@ -93,23 +93,17 @@ contains
 
 
   subroutine compute_flux_and_alpha(lo, hi, U, F, ap, am, dir)
-    use eos_module, only : eos_given_ReY
+    use eos_module, only : eos_given_ReY, eos_given_RTY, allow_negative_energy
     integer, intent(in) :: lo, hi
-    integer, intent(in), optional :: dir
+    integer, intent(in) :: dir
     double precision, intent(in   ) ::  U(lo:hi+1,NVAR)
     double precision, intent(out  ) ::  F(lo:hi+1,NVAR)
     double precision, intent(inout) :: ap(lo:hi+1)
     double precision, intent(inout) :: am(lo:hi+1)
 
-    integer :: i, n, idir, ierr
+    integer :: i, n, ierr
     double precision :: rho, m(3), rhoE, v(3), vn
     double precision :: rhoInv, p, c, gamc, dpdr(NSPEC), dpde, T, e, ek, Y(NSPEC)
-
-    if (present(dir)) then
-       idir = dir
-    else
-       idir = 1
-    end if
 
     do i=lo,hi+1
 
@@ -138,13 +132,13 @@ contains
 
        call floor_species(nspec, Y)
 
-       call eos_given_ReY(p,c,gamc,T,dpdr,dpde,rho,e,Y,ierr=ierr)
-!       if (ierr .ne. 0) then
-!          print *, 'compute_flux_and_alpha: eos failed', level, U(i,UFS:UFS+nspec-1)*rhoinv 
-!          call bl_error("compute_flux_and_alpha: eos failed")
-!       end if
+       if ((e .le. 0.d0) .and. (allow_negative_energy .eqv. .false.)) then
+          call eos_given_RTY(e,p,c,gamc,dpdr,dpde,rho,T,Y)
+       else
+          call eos_given_ReY(p,c,gamc,T,dpdr,dpde,rho,e,Y,ierr=ierr)
+       end if
 
-       vn = v(idir)
+       vn = v(dir)
 
        ap(i) = max(ap(i), c+vn)
        am(i) = max(am(i), c-vn)
@@ -157,7 +151,7 @@ contains
        if (ndim .eq. 3) then
           F(i,UMZ  ) = m(3)*vn
        end if
-       F(i,UMX+idir-1) = F(i,UMX+idir-1) + p
+       F(i,UMX+dir-1) = F(i,UMX+dir-1) + p
        F(i,UEDEN) = (rhoE + p) * vn
        F(i,UTEMP) = 0.d0
        do n=1,NSPEC
@@ -167,16 +161,15 @@ contains
   end subroutine compute_flux_and_alpha
 
 
-  subroutine riemann_JBB(lo, hi, UL, UR, flx, dir)
-!    use prob_params_module, only : physbc_lo,Symmetry
-    use eos_module, only : smalld, smallp, eos_given_ReY
+  subroutine riemann_JBB(lo, hi, UL, UR, flx, dir, bc_flag)
+    use eos_module, only : smalld, smallp, eos_given_ReY, eos_given_RTY, allow_negative_energy
     integer, intent(in) :: lo, hi
-    integer, intent(in), optional :: dir
+    integer, intent(in) :: dir, bc_flag(2)
     double precision, intent(in ) ::  UL(lo:hi+1,NVAR)
     double precision, intent(in ) ::  UR(lo:hi+1,NVAR)
     double precision, intent(out) :: flx(lo:hi+1,NVAR)
 
-    integer :: i, n, idir, ivel(3), idim
+    integer :: i, n, ivel(3), idim
     double precision :: vflag(3), dpdr(NSPEC), dpde
     double precision :: rgdnv,regdnv, pgdnv, vgdnv(3), ekgdnv
     double precision :: rl, retl, Tl, Yl(NSPEC), vl(3), el, pl, rel, rinvl
@@ -191,13 +184,7 @@ contains
     
     double precision, parameter :: small  = 1.d-8
 
-    if (present(dir)) then
-       idir = dir
-    else
-       idir = 1
-    end if
-
-    call set_vel(idir, ivel, vflag)
+    call set_vel(dir, ivel, vflag)
 
     do i=lo,hi+1
        
@@ -211,7 +198,11 @@ contains
        Yl    = UL(i,UFS:UFS+nspec-1) * rinvl
        rel   = retl - 0.5d0*rl*(vl(1)**2+vl(2)**2+vl(3)**2)
        el    = rel * rinvl       
-       call eos_given_ReY(pl, cl, gamcl, Tl, dpdr, dpde, rl, el, Yl)
+       if ((el .le. 0.d0) .and. (allow_negative_energy .eqv. .false.)) then
+          call eos_given_RTY(el, pl, cl, gamcl, dpdr, dpde, rl, Tl, Yl)
+       else
+          call eos_given_ReY(pl, cl, gamcl, Tl, dpdr, dpde, rl, el, Yl)
+       end if
 
        rr    = max(UR(i,URHO), smalld)
        rinvr = 1.d0/rr
@@ -223,7 +214,11 @@ contains
        Yr    = UR(i,UFS:UFS+nspec-1) * rinvr
        rer   = retr - 0.5d0*rr*(vr(1)**2+vr(2)**2+vr(3)**2)
        er    = rer * rinvr       
-       call eos_given_ReY(pr, cr, gamcr, Tr, dpdr, dpde, rr, er, Yr)
+       if ((er .le. 0.d0) .and. (allow_negative_energy .eqv. .false.)) then
+          call eos_given_RTY(er, pr, cr, gamcr, dpdr, dpde, rr, Tr, Yr)
+       else
+          call eos_given_ReY(pr, cr, gamcr, Tr, dpdr, dpde, rr, er, Yr)
+       end if
 
        csmall = max(small, small*cl, small*cr)
        wsmall = smalld*csmall
@@ -311,8 +306,9 @@ contains
 
        pgdnv = max(pgdnv,smallp)
 
-       ! Enforce that fluxes through a symmetry plane are hard zero.
-!       if (i .eq.0 .and. physbc_lo(idir) .eq. Symmetry) vgdnv(1) = 0.d0
+       ! special boundary
+       if (i.eq.lo   .and. bc_flag(1).eq.0) vgdnv(1) = 0.d0
+       if (i.eq.hi+1 .and. bc_flag(2).eq.0) vgdnv(1) = 0.d0
 
        flx(i,URHO) = rgdnv*vgdnv(1)
 
@@ -346,15 +342,14 @@ contains
 
 
   subroutine riemann_HLLC(lo, hi, UL, UR, flx, dir)
-!    use prob_params_module, only : physbc_lo,Symmetry
-    use eos_module, only : smalld, smallp, eos_given_ReY
+    use eos_module, only : smalld, smallp, eos_given_ReY, eos_given_RTY, allow_negative_energy
     integer, intent(in) :: lo, hi
-    integer, intent(in), optional :: dir
+    integer, intent(in) :: dir
     double precision, intent(in ) ::  UL(lo:hi+1,NVAR)
     double precision, intent(in ) ::  UR(lo:hi+1,NVAR)
     double precision, intent(out) :: flx(lo:hi+1,NVAR)
 
-    integer :: i, n, idir, ivel(3), idim
+    integer :: i, n, ivel(3), idim
     double precision :: vflag(3), dpdr(NSPEC), dpde
     double precision :: rl, retl, Tl, Yl(NSPEC), vl(3), el, pl, rel, rinvl
     double precision :: rr, retr, Tr, Yr(NSPEC), vr(3), er, pr, rer, rinvr
@@ -362,13 +357,7 @@ contains
     double precision :: cr, gamcr, Smur, Sr
     double precision :: Sstar, rstar, vstar(3), etstar
 
-    if (present(dir)) then
-       idir = dir
-    else
-       idir = 1
-    end if
-
-    call set_vel(idir, ivel, vflag)
+    call set_vel(dir, ivel, vflag)
 
     do i=lo,hi+1
        
@@ -382,7 +371,11 @@ contains
        Yl    = UL(i,UFS:UFS+nspec-1) * rinvl
        rel   = retl - 0.5d0*rl*(vl(1)**2+vl(2)**2+vl(3)**2)
        el    = rel * rinvl       
-       call eos_given_ReY(pl, cl, gamcl, Tl, dpdr, dpde, rl, el, Yl)
+       if ((el .le. 0.d0) .and. (allow_negative_energy .eqv. .false.)) then
+          call eos_given_RTY(el, pl, cl, gamcl, dpdr, dpde, rl, Tl, Yl)
+       else
+          call eos_given_ReY(pl, cl, gamcl, Tl, dpdr, dpde, rl, el, Yl)
+       end if
 
        rr    = max(UR(i,URHO), smalld)
        rinvr = 1.d0/rr
@@ -394,7 +387,11 @@ contains
        Yr    = UR(i,UFS:UFS+nspec-1) * rinvr
        rer   = retr - 0.5d0*rr*(vr(1)**2+vr(2)**2+vr(3)**2)
        er    = rer * rinvr       
-       call eos_given_ReY(pr, cr, gamcr, Tr, dpdr, dpde, rr, er, Yr)
+       if ((er .le. 0.d0) .and. (allow_negative_energy .eqv. .false.)) then
+          call eos_given_RTY(er, pr, cr, gamcr, dpdr, dpde, rr, Tr, Yr)
+       else
+          call eos_given_ReY(pr, cr, gamcr, Tr, dpdr, dpde, rr, er, Yr)
+       end if
 
        ! wave speed estimates
        Sl = min(vl(1)-cl, vr(1)-cr)
@@ -487,8 +484,8 @@ contains
   end subroutine riemann_HLLC
 
 
-  subroutine set_vel(idir, ivel, vflag)
-    integer, intent(in) :: idir
+  subroutine set_vel(dir, ivel, vflag)
+    integer, intent(in) :: dir
     integer, intent(out) :: ivel(3)
     double precision, intent(out) :: vflag(3)
     if (ndim .eq. 1) then
@@ -502,7 +499,7 @@ contains
        vflag(1) = 1.d0
        vflag(2) = 1.d0
        vflag(3) = 0.d0   
-       if (idir .eq. 1) then
+       if (dir .eq. 1) then
           ivel(1) = UMX
           ivel(2) = UMY
           ivel(3) = UMX
@@ -515,11 +512,11 @@ contains
        vflag(1) = 1.d0
        vflag(2) = 1.d0
        vflag(3) = 1.d0 
-       if (idir .eq. 1) then
+       if (dir .eq. 1) then
           ivel(1) = UMX
           ivel(2) = UMY
           ivel(3) = UMZ
-       else if (idir .eq. 2) then
+       else if (dir .eq. 2) then
           ivel(1) = UMY
           ivel(2) = UMZ
           ivel(3) = UMX
