@@ -1100,8 +1100,8 @@ c     1 N/(m.m) = 0.1 dyne/(cm.cm)
       character*(72) line 
       integer j, str_len, istr, iend, lout
       logical error
-      data error /.false./
 
+      error = .false.
       lout = 6
       call CKSYMR(fortReacIdx,lout,IWRK(ckbi),RWRK(ckbr),
      &     CWRK(ckbc),str_len,line,error)
