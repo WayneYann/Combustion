@@ -7,5 +7,8 @@
      2                NETA, NDIF, NTDIF, NXX, NVIS, NXI, NCP, NCROT,
      3                NCINT, NBIND, NEOK, NSGM, NAST, NBST, NCST, NXL,
      4                NR, NWRK, K3
+      save /MCMCMC/
+
       COMMON /MCCONS/ VERS, PREC, KERR, LENI, LENR
+      save /MCCONS/
 !$omp threadprivate(/MCCONS/,/MCMCMC/)

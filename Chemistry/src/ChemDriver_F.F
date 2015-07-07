@@ -97,7 +97,6 @@ c
 #include "cdwrk.H"
 #include "conp.H"
       integer n, RTOT, lout, egrlen, egilen, idummy(1)
-      integer FORT_GETCKSPECNAME
       double precision rdummy(1)
       character*(maxspnml) name
       integer MAXFIT, NO, NFDIM, NT, NRANGE, NLITEMAX
