@@ -97,7 +97,6 @@ c
 #include "cdwrk.H"
 #include "conp.H"
       integer n, RTOT, lout, egrlen, egilen, idummy(1)
-      integer FORT_GETCKSPECNAME
       double precision rdummy(1)
       character*(maxspnml) name
       integer MAXFIT, NO, NFDIM, NT, NRANGE, NLITEMAX
@@ -149,7 +148,7 @@ c
       NFDIM=165
       NT=50
       NRANGE = MAXTP-1
-      NLITEMAX=2
+      NLITEMAX=3
       mcr = Nspec*(19+2*NO+NO*NLITEMAX)+(NO+15)*Nspec**2
       mci = 4*Nspec + NLITEMAX
       LLINKMC = 44
@@ -593,19 +592,14 @@ C*****precision > single
 C      IMPLICIT REAL (A-H, O-Z), INTEGER (I-N)
 C*****END precision > single
 C
-      COMMON /MCMCMC/ RU, PATMOS, SMALL, NKK, NO, NLITE, INLIN, IKTDIF,
-     1                IPVT, NWT, NEPS, NSIG, NDIP, NPOL, NZROT, NLAM,
-     2                NETA, NDIF, NTDIF, NXX, NVIS, NXI, NCP, NCROT,
-     3                NCINT, NBIND, NEOK, NSGM, NAST, NBST, NCST, NXL,
-     4                NR, NWRK, K3
-      COMMON /MCCONS/ VERS, PREC, KERR, LENI, LENR
+      include 'mccom.fh'
 C
       DIMENSION IMCWRK(*), RMCWRK(*)
-      CHARACTER*16 PRVERS, VERS, PREC, PRDATE, IFMT, RFMT, CFMT, LFMT
+      CHARACTER*16 PRVERS, PRDATE, IFMT, RFMT, CFMT, LFMT
       PARAMETER
      1(CFMT='(8A16)', IFMT='(10I12)', LFMT='(L8)', RFMT='(1P,5E24.16)')
 C
-      LOGICAL IOK, ROK, KERR, LBIN
+      LOGICAL IOK, ROK, LBIN
       INTEGER CKLSCH
       EXTERNAL CKLSCH
 C
@@ -1106,8 +1100,8 @@ c     1 N/(m.m) = 0.1 dyne/(cm.cm)
       character*(72) line 
       integer j, str_len, istr, iend, lout
       logical error
-      data error /.false./
 
+      error = .false.
       lout = 6
       call CKSYMR(fortReacIdx,lout,IWRK(ckbi),RWRK(ckbr),
      &     CWRK(ckbc),str_len,line,error)

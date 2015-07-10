@@ -3439,6 +3439,7 @@ void
 HeatTransfer::compute_differential_diffusion_fluxes (const Real& time,
                                                      const Real& dt)
 {
+    BL_PROFILE("HT:::compute_differential_diffusion_fluxes()");
     // explicit computation of species and enthalpy (heat) diffusion fluxes
     // save fluxes in class data
     const Real      strt_time = ParallelDescriptor::second();
@@ -3763,6 +3764,7 @@ HeatTransfer::compute_differential_diffusion_terms (MultiFab& D,
                                                     Real      time,
                                                     Real      dt)
 {
+    BL_PROFILE("HT:::compute_differential_diffusion_terms()");
     // 
     // Sets vt for species, RhoH and Temp together
     // Uses state at time to explicitly compute fluxes, and resets internal
@@ -4710,8 +4712,8 @@ HeatTransfer::advance (Real time,
     showMF("sdc",get_new_data(State_Type),"sdc_Snew_preProj",level,parent->levelSteps(level));
 
     // compute delta_chi correction
-    calc_dpdt(cur_time,dt,dpdt,u_mac);
-    MultiFab::Add(get_new_data(Divu_Type),dpdt,0,0,1,0);
+    //    calc_dpdt(cur_time,dt,dpdt,u_mac);
+    //    MultiFab::Add(get_new_data(Divu_Type),dpdt,0,0,1,0);
 
     //
     // Increment rho average.
