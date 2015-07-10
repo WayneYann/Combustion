@@ -1,0 +1,9 @@
+do for [i = 170:182] {
+    var=13
+    
+    plot sprintf('rht0%04d',i) u 1:var w lp ;
+    set title sprintf("time step %d",i) ; 
+    pause 0.25
+}
+
+set title ''

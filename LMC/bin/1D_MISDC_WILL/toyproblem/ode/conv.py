@@ -3,8 +3,8 @@ from math import *
 import matplotlib.pyplot as plt
 
 a = 1.0
-d = -20.0
-r = 10.0
+d = -0.4
+r = 7.0
 
 def method_str(m):
     if m==0:

@@ -69,7 +69,9 @@ def solve_it(a, d, r, dt, max_iter=10, method=0):
                 y_next = ((exp(r*dt)*(m+c*r) - m - c*r - m*r*dt)/r**2 + exp(r*dt)*y[n])
                 # compute the effect of the reaction term by integrating
                 I_R = (y_next - y[n]) - f_const*dt - 0.5*dt*(f_lin_prev + f_lin_next)
-            
+
+            I_R = (y_next - y[n]) - f_const*dt - 0.5*dt*(f_lin_prev + f_lin_next)
+	    
             y_prev = y_next
             residuals[i+1] = y[n] - y_next + dt*I_R + 0.5*dt*(a+d)*(y[n] + y_next)
         

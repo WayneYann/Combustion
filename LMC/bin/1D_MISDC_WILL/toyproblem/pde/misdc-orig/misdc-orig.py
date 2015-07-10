@@ -13,16 +13,16 @@ from math import *
 # here are our parameters #
 ###########################
 # number of advection substeps
-N_A = 4
+N_A = 2
 # piecewise linear or constants
 do_linear = False
 
 endpt = 20.0
-max_iter = 2
+max_iter = 1
 # coefficients
 a = -1.0
-eps = 10.0
-r = -100.0
+eps = 75.0
+r = -700.0
 #r = -75.0
 
 #a = -1.0
@@ -34,7 +34,7 @@ Nx = 400
 # spacing
 h = float(endpt/Nx)
 # timestep
-dt = h/5
+dt = h/5.0/4.0
 # final time
 FT = 2.0
 # number of timesteps

@@ -1,9 +1,9 @@
 &fortin
-  nx = 2048
-  nsteps = 640
-  plot_int = 640
+  nx = 512
+  nsteps = 100
+  plot_int = 1
   chk_int = 1000
-  fixed_dt = 0.0125e-5
+  fixed_dt = 0.125e-6
   stop_time = 1.e4
   problo = 0.
   probhi = 1.2
@@ -18,7 +18,7 @@
   do_initial_projection = 1
   num_divu_iters = 3
   num_init_iters = 2
-  misdc_iterMAX = 3
+  misdc_iterMAX = 2
   use_strang = .false.
   lim_rxns = 0
   V_in = 0.

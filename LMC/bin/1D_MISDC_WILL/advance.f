@@ -88,6 +88,9 @@ c      real*8         aofs(0:nlevs-1, 0:nfine-1,nscal)
       real*8         aofs_old(0:nlevs-1, 0:nfine-1,nscal)
       real*8         aofs_avg(0:nlevs-1, 0:nfine-1,nscal)
       
+c     WILLL: right-hand side used in backward euler solve
+      real*8       berhs(0:nfine-1,nscal)
+
       real*8 gamma_lo(0:nlevs-1, 0:nfine-1,Nspec)
       real*8 gamma_hi(0:nlevs-1, 0:nfine-1,Nspec)
       real*8    const_src(0:nlevs-1, 0:nfine-1,nscal)
@@ -450,42 +453,28 @@ c     WILL: TODO: make sure this is right
             enddo
             
             print *,'... react with const sources'
-
+            
+            
 c     compute A+D source terms for reaction integration
-c     using piecewise linear A term
-c     attempting to use piecewise linear D term
-c     currently only works with piecewise constant D
-            !if (misdc .eq. 1) then
-            !   const_diff = .false.
-            !else
-            !   const_diff = .true.
-            !end if
-            
-            const_diff = .false.
-            
             do n = 1,nscal
                do i=lo(0),hi(0)
-                  if (const_diff) then
-                     const_src(0,i,n) = 
-     $                  + 0.5d0*(diff_old(0,i,n)+diff_new(0,i,n))
-     $                  + diff_hat(0,i,n) - diff_new(0,i,n)
-                     lin_src_old(0,i,n) = aofs_old(0,i,n)
-                     lin_src_new(0,i,n) = aofs_new(0,i,n)
-                  else
-                     const_src(0,i,n) = diff_hat(0,i,n) - diff_new(0,i,n)
-                     lin_src_old(0,i,n) = aofs_old(0,i,n) + diff_old(0,i,n)
-                     lin_src_new(0,i,n) = aofs_new(0,i,n) + diff_new(0,i,n)
-                  end if
+!                  const_src(0,i,n) = 
+!     $                 + 0.5d0*(diff_old(0,i,n)+diff_new(0,i,n))
+!     $                 + 0.5d0*(aofs_old(0,i,n)+aofs_new(0,i,n))
+!     $                 + diff_hat(0,i,n) - diff_new(0,i,n)
+                  lin_src_old(0,i,n) = 0.d0
+                  lin_src_new(0,i,n) = 0.d0
+                  const_src(0,i,n) = diff_hat(0,i,n) - diff_new(0,i,n)
+     $                 + 0.5*(aofs_old(0,i,n) + aofs_new(0,i,n)
+     $                 +      diff_old(0,i,n) + diff_new(0,i,n))
                enddo
             enddo
 c     add differential diffusion
             do i=lo(0),hi(0)
-               lin_src_old(0,i,RhoH) = lin_src_old(0,i,RhoH)
-     $               + diffdiff_old(0,i)
-               lin_src_new(0,i,RhoH) = lin_src_new(0,i,RhoH)
-     $               + diffdiff_new(0,i)
+               const_src(0,i,RhoH) = const_src(0,i,RhoH)
+     $              + 0.5d0*(diffdiff_old(0,i)+diffdiff_new(0,i))
             end do
-   
+            
 c     solve equations (50), (51) and (52)
             call strang_chem(scal_old(0,:,:),scal_new(0,:,:),
      $                       const_src(0,:,:),lin_src_old(0,:,:),

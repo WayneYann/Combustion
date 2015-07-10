@@ -27,19 +27,19 @@ max_iter = 2
 #r = -1000.0
 
 a = -1.0
-eps = 600.0
-r = -1100.0
+eps = 75.0
+r = -700.0
 
 #a   = -1.0
 #eps = 10.0
 #r   = -40.0
 
 # gridsize
-Nx = 300
+Nx = 400
 # spacing
 h = float(endpt/Nx)
 # timestep
-dt = h/10.0
+dt = h/5.0
 # final time
 FT = 2.0
 # number of timesteps

@@ -285,7 +285,9 @@ c     return zero pressure
          const_src = 0.d0
          lin_src_old = 0.d0
          lin_src_new = 0.d0
-
+         
+         scal_new = scal_old
+         
          print *,' '
          print *,' '
          print *,'...doing num_divu_iters = ',num_divu_iters 
@@ -300,9 +302,11 @@ c     return zero pressure
      $                          const_src(l,:,:),lin_src_old(l,:,:),
      $                          lin_src_new(l,:,:),I_R(l,:,:),
      $                          0.5d0*dt(l),lo(l),hi(l),bc(l,:))
+     
+               exit
             end do
 
-c     reset temperature just in case strang_chem call is not well poased
+c     reset temperature just in case strang_chem call is not well posed
             scal_new(:,:,Temp) = scal_old(:,:,Temp)
 
             do l=0,nlevs-1

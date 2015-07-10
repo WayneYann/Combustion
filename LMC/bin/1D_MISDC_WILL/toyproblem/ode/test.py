@@ -24,7 +24,7 @@ def method_marker(m):
 
 misdc_iters = [1, 5, 10]
 
-dts = [0.125]
+dts = [0.0125]
 #for j in range(10):
 #    dts.append(dts[j]/2)
 
@@ -41,13 +41,13 @@ for method in [0, 1, 2]:
         
         for i in range(len(e)-1):
             print 'iters: ', n, 'order: ', log(e[i+1]/e[i])/log(dts[i+1]/dts[i])
-        
-        plt.loglog(dts, e, label=str(n)+' '+ method_str(method),
-                           marker=method_marker(method))
+#        
+#        plt.loglog(dts, e, label=str(n)+' '+ method_str(method),
+#                           marker=method_marker(method))
 
-fig.subplots_adjust(right=0.65)
+#fig.subplots_adjust(right=0.65)
 
-plt.xlabel('dt')
-plt.ylabel('L^1 error')
-plt.legend(loc=2, bbox_to_anchor=(1.0,0.8))
-plt.show()
+#plt.xlabel('dt')
+#plt.ylabel('L^1 error')
+#plt.legend(loc=2, bbox_to_anchor=(1.0,0.8))
+#plt.show()

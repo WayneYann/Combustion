@@ -552,6 +552,11 @@ C     calculate molar concentrations from mass fractions; result in RPAR(NC)
       else
 
          call CKWC(T,C,IWRK,RWRK,WDOTK)
+         
+!         if (IPAR(1) .eq. 100) then
+!            print *,'will:',TIME,WDOTK(7),Z(7)
+!         endif
+         
          do k= 1, Nspec
             ZP(k) = WDOTK(k)*mwt(k) + c_0(k) + c_1(k)*TIME
          end do
@@ -572,35 +577,6 @@ C     calculate molar concentrations from mass fractions; result in RPAR(NC)
       double precision T, Y(NEQ), PD(NRPD,NEQ), RPAR(*)
       print *,'Should not be in vodeJ'
       stop
-      end
-
-
-      subroutine write_vode_diag(Z,dt,nt)
-      implicit none
-      include 'spec.h'
-      
-      real*8 Z(0:Nspec,0:nt)
-      real*8 dt
-      real*8 time
-
-      character pltfile*(2)
-      
-      integer i,l,n,nt
-      
-      pltfile(1:2) = 'vd'
-      
- 2006 format(200(E23.15E3,1X))
-
-      open(10,file=pltfile,form='formatted')
-      print *,'...writing data to ',pltfile
-      write(10,*) nt
-
-      do i=0,nt
-         write(10,2006) (i*dt),(Z(n,i),n=0,Nspec)
-      end do
-
-      close(10)
-
       end
 
 
@@ -642,7 +618,6 @@ c
       save / VODE_SPACE /
 
       double precision Z(0:Nspec)
-      double precision Z_DIAG(0:Nspec,0:nchemdiag)
       
       double precision RPAR, RWRK
       integer IPAR, IWRK
@@ -686,6 +661,7 @@ c      MF = 10
          nsub = 1
          dtloc = dt
       endif
+      
       ISTATE = 1
       NEQ = Nspec + 1
 
@@ -694,8 +670,6 @@ c      MF = 10
       do n=1,Nspec
          Z(n) = RYold(n)
       end do
-
-      Z_DIAG(:,0) = Z(:)
 
       if (do_diag .eq. 1 .and. use_strang) then
          FuncCount = 0
@@ -721,14 +695,13 @@ c      MF = 10
 c     HACK
          FIRST = .TRUE.
 
+c     Will: pass i to vodeF_T_RhoY
+         IPAR = i
+
          CALL DVODE
      &        (vodeF_T_RhoY, NEQ, Z, TT1, TT2, ITOL, RTOL, ATOLEPS,
      &        ITASK, ISTATE, IOPT, DVRWRK, dvr, DVIWRK,
      &        dvi, vodeJ, MF, RPAR, IPAR)
-
-         if(do_diag .eq. 1) then
-            Z_DIAG(:,node) = Z(:)
-         end if
          
          TT1 = TT2
          
@@ -773,10 +746,6 @@ c     HACK
          if (ISTATE.LE.-1) ifail = 1
 
       enddo
-      
-      if (do_diag .eq. 1) then
-         call write_vode_diag(Z_DIAG, dtloc, nsub)
-      end if
       
       end
 
@@ -959,4 +928,3 @@ c      write(name, '(2a)') 'vode.failed.', myproc(idx:30)
       open(unit=lout, file=name, form='formatted', status='replace')
       open_vode_failure_file = lout
       end
-
