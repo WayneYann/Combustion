@@ -108,6 +108,7 @@ c      real*8       macvel(0:nlevs-1, 0:nfine  )
       real*8      veledge(0:nlevs-1, 0:nfine  )
 
       real*8 Y(Nspec),WDOTK(Nspec),C(Nspec),RWRK
+      real*8 wdotold(0:nfine-1, Nspec), wdotnew(0:nfine-1, Nspec)
       real*8 cpmix,rhocp,vel_theta,be_cn_theta
       
       integer i,is,misdc,n,rho_flag,IWRK
@@ -256,6 +257,20 @@ c     that have a backward Euler character
          be_cn_theta = 1.d0
 
          do misdc = 1, misdc_iterMAX
+            do i=lo(0),hi(0)
+               do n = 1,Nspec
+                  Y(n) = scal_old(0,i,FirstSpec+n-1)/scal_old(0,i,Density)
+               enddo
+               ! compute the production rates from the previous time step
+               call CKWYR(scal_old(0,i,Density), scal_old(0,i,Temp), Y, iwrk, rwrk, wdotold(i,:))
+               
+               do n = 1,Nspec
+                  Y(n) = scal_new(0,i,FirstSpec+n-1)/scal_new(0,i,Density)
+               enddo
+               ! compute the production rates from the previous iterate
+               call CKWYR(scal_new(0,i,Density), scal_new(0,i,Temp), Y, iwrk, rwrk, wdotnew(i,:))
+            end do
+            
             print *,'... doing SDC iter ',misdc
             
             print *,'... compute lagged diff_new, D(U^{n+1,k-1})'
@@ -362,7 +377,7 @@ c     WILL: updated this to store the new, old, and average A
      $                     dx(0),dt(0),lo(0),hi(0),bc(0,:))
 
             aofs_avg = 0.5d0*(aofs_old + aofs_new)
-
+            
 c     either the mac velocities have changed, or this was not called earlier
 c     because we are not using the fancy predictor
 
@@ -377,8 +392,11 @@ c     update rhoY_m with advection terms and set up RHS for equation (47) C-N so
                do n=1,Nspec
                   is = FirstSpec + n - 1
 c     includes deferred correction term for species
-                  dRhs(0,i,n) = dt(0)*(I_R(0,i,n) 
-     &                 + 0.5d0*(diff_old(0,i,is) - diff_new(0,i,is)))
+c                  dRhs(0,i,n) = dt(0)*(I_R(0,i,n) 
+c     &                 + 0.5d0*(diff_old(0,i,is) - diff_new(0,i,is)))
+                   dRhs(0,i,n) = dt(0)*(-diff_new(0,i,is)
+     $                  + 0.5d0*(diff_old(0,i,is) + diff_new(0,i,is))
+     $                  + I_R(0,i,n))
                enddo
 c     includes deferred correction term for enthalpy
 c     differential diffusion will be added later
@@ -445,6 +463,7 @@ c     Solve C-N system in equation (49) for h_{AD}^{(k+1)}
      $                    Rhs(0,:,RhoH),dx(0),dt(0),RhoH,be_cn_theta,
      $                    rho_flag,.false.,lo(0),hi(0),bc(0,:))
             
+            
 c     extract D for RhoH
 c     WILL: TODO: make sure this is right
             do i=lo(0),hi(0)
@@ -454,7 +473,6 @@ c     WILL: TODO: make sure this is right
             
             print *,'... react with const sources'
             
-            
 c     compute A+D source terms for reaction integration
             do n = 1,nscal
                do i=lo(0),hi(0)
@@ -462,21 +480,32 @@ c     compute A+D source terms for reaction integration
 !     $                 + 0.5d0*(diff_old(0,i,n)+diff_new(0,i,n))
 !     $                 + 0.5d0*(aofs_old(0,i,n)+aofs_new(0,i,n))
 !     $                 + diff_hat(0,i,n) - diff_new(0,i,n)
-                  lin_src_old(0,i,n) = 0.d0
-                  lin_src_new(0,i,n) = 0.d0
-                  const_src(0,i,n) = diff_hat(0,i,n) - diff_new(0,i,n)
+                  lin_src_old(0,i,n) = aofs_old(0,i,n) + diff_old(0,i,n)
+                  lin_src_new(0,i,n) = aofs_new(0,i,n) + diff_new(0,i,n)
+                  const_src(0,i,n)   = diff_hat(0,i,n) - diff_new(0,i,n)
      $                 + 0.5*(aofs_old(0,i,n) + aofs_new(0,i,n)
      $                 +      diff_old(0,i,n) + diff_new(0,i,n))
+                  lin_src_old(0,i,n) = 0.d0
+                  lin_src_new(0,i,n) = 0.d0
                enddo
             enddo
 c     add differential diffusion
             do i=lo(0),hi(0)
                const_src(0,i,RhoH) = const_src(0,i,RhoH)
      $              + 0.5d0*(diffdiff_old(0,i)+diffdiff_new(0,i))
+c     add the reaction forcing term
+               do n=1,Nspec
+                  const_src(0,i,FirstSpec+n-1) = const_src(0,i,FirstSpec+n-1) + 0.5*(wdotold(i,n)*mwt(n) - wdotnew(i,n)*mwt(n))
+                  const_src(0,i,FirstSpec+n-1) = const_src(0,i,FirstSpec+n-1) - wdotnew(i,n)*mwt(n)
+                  lin_src_old(0,i,FirstSpec+n-1) = lin_src_old(0,i,FirstSpec+n-1) + wdotold(i,n)*mwt(n)
+                  lin_src_new(0,i,FirstSpec+n-1) = lin_src_new(0,i,FirstSpec+n-1) + wdotnew(i,n)*mwt(n)
+               end do
             end do
-            
+
 c     solve equations (50), (51) and (52)
-            call strang_chem(scal_old(0,:,:),scal_new(0,:,:),
+            call strang_chem(scal_old(0,:,:), scal_new(0,:,:),
+     $                       diff_old(0,:,:), diff_new(0,:,:), diff_hat(0,:,:),
+     $                       aofs_old(0,:,:), aofs_new(0,:,:),
      $                       const_src(0,:,:),lin_src_old(0,:,:),
      $                       lin_src_new(0,:,:),
      $                       I_R(0,:,:),dt(0),lo(0),hi(0),bc(0,:))

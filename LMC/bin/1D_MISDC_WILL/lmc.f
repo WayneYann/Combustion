@@ -299,6 +299,8 @@ c     return zero pressure
             
             do l=0,nlevs-1
                call strang_chem(scal_old(l,:,:),scal_new(l,:,:),
+     $                          const_src(l,:,:),const_src(l,:,:),const_src(l,:,:),
+     $                          const_src(l,:,:),const_src(l,:,:),
      $                          const_src(l,:,:),lin_src_old(l,:,:),
      $                          lin_src_new(l,:,:),I_R(l,:,:),
      $                          0.5d0*dt(l),lo(l),hi(l),bc(l,:))
