@@ -9,7 +9,7 @@ r = 4.0
 misdc_iters = [1, 2, 3, 4, 5]
 
 dts = [0.125]
-for j in range(8):
+for j in range(5):
     dts.append(dts[j]/2)
 
 E = []

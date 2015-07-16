@@ -1,0 +1,161 @@
+
+Consider 
+\begin{eqnarray}
+  \label{eq:phiode}
+  \phi'(t)& = & (a+d+r)\phi\\
+  \phi(t_n)& = & \phi_n,
+\end{eqnarray}
+or equivalently
+\begin{equation}
+  \label{eq:phipicard}
+  \phi(t) =  \phi_n+ \int_{t_n}^t (a+d+r)\phi(\tau) d\tau.
+\end{equation}
+
+Let's assume that we have an approximate solution $\phik(t)$
+with $\phik(t_n) = \phi_n$.
+
+We define the residual
+\begin{equation}
+  \label{eq:resid}
+  \Res(\phik,t) = \phi_n + \int_{t_n}^t (a+d+r)\phik(\tau) d\tau -\phik(t) 
+\end{equation}
+We define the correction,
+\begin{eqnarray}
+  \c(t)& = & \int_{t_n}^t a(\phik(t)+\c(t))- a(\phik(t)) d\tau \\
+        & + &   \int_{t_n}^t d( \phik(t)+\c(t)) - d(\phik(t))d\tau  \\
+        & +  & \int_{t_n}^t r(\phik(t)+\c(t)) - r(\phik(t))d\tau \\
+       &  +  &  \Res(\phik,t) 
+\end{eqnarray}
+For the linear problem this simplifies to:
+\begin{equation}
+  \c(t) =  \int_{t_n}^t a\c(t) d\tau + \int_{t_n}^t d \c(t) d\tau   +  \int_{t_n}^t r\c(t) d\tau   +  \Res(\phik,t) \end{equation}
+
+We will do a coupled splitting of this equation by defining
+\begin{eqnarray}
+  \cA(t) & = & \int_{t_n}^t a\cA(t) d\tau + \Res(\phik,t)
+\end{eqnarray}
+
+\begin{eqnarray}
+  \cAD(t) & = &  \int_{t_n}^t a\cA(t) + d\cAD(t) d\tau + \Res(\phik,t) \\
+          & = &  \cA(t) +  \int_{t_n}^t d\cAD(t) d\tau 
+\end{eqnarray}
+and
+\begin{eqnarray}
+  \ck(t)& = & \int_{t_n}^t a\cA(t) + d\cAD(t) +  r\c^k(t) d\tau   +   \Res(\phik,t)  \\
+         & = &  \cAD(t) +  \int_{t_n}^t r\c^k(t) d\tau \\
+\end{eqnarray}
+
+To discretize these equations, we must first discretize $\Res(\phik,t)$ and then
+decide how to discretize each equation in turn.
+First we approximate the residual by applying the trapezoid rule to the $a$ and $d$ terms
+and leaving the $r$ integral ``exact''.  This is equivalent to assuming a linear profile
+of the $a$ and $d$ terms
+\begin{equation}
+  \label{eq:residtil}
+  \Restil(\phik,t)=  \phi_n + \int_{t_n}^t \ell_k(\tau) +  \int_{t_n}^t r\phik(\tau) d\tau -\phik(t) 
+\end{equation}
+where 
+\begin{equation} \label{eq:ell}
+  \ell_k(t) = (a+d)(\phikn+ \frac{t-t_n}{\Dt} \phiknp) = (a+d)(\phi_n\frac{t_{n+1}-t}{\Dt} + \frac{t-t_n}{\Dt} \phiknp)
+\end{equation}
+So doing the integral gives
+\begin{equation}
+  \label{eq:residtilII}
+  \Restil(\phik,t)=  \phi_n + (a+d)(\phikn(t-t_n)+ \frac{(t-t_n)^2}{2\Dt} \phiknp) +  \int_{t_n}^t r\phik(\tau) d\tau -\phik(t) 
+\end{equation}
+In particular 
+\begin{equation}
+  \label{eq:residtilII}
+  \Restil(\phik,t_{n+1})=  \phi_n + \frac{(a+d)\Dt}{2}(\phi_n +  \phiknp)+  \int_{t_n}^t r\phik(\tau) d\tau -\phik(t) 
+\end{equation}
+We leave for a moment the discussion of the exact integral piece. 
+If we treat the integral for $\cA$ with forward Euler 
+\begin{equation}
+  \cA(t_{n+1})  = \cA(t_{n})+\Dt a\cA(t_n)  + \RestilAD(\phik,t_{n+1}) =  \RestilAD(\phik,t_{n+1}) 
+\end{equation}
+where now we have introduced $\RestilAD(\phik,t_{n+1})$ as the manner in which  
+$\Restil(\phik,t_{n+1})$ is approximated.
+Likewise, approximating $\cAD(t_{n+1})$ with backward Euler gives
+\begin{equation} \label{eq:cAD}
+  \cAD(t_{n+1})  = \cAD(t_{n}) + d\Dt\cAD(t_{n+1})+ \RestilAD(\phik,t_{n+1}) = \frac{\RestilAD(\phik,t_{n+1})}{1-d \Delta t} 
+\end{equation}
+Now we want to turn the equation for $\ck(t)$ into an ODE by differentiating something.
+One choice is to go back to the original definition of $\ck(t)$ and write
+\begin{eqnarray}
+  (\ck)'(t) = a\cA(t) + d\cAD(t) +  r\c^k(t) + \Restil'(\phik,t)
+\end{eqnarray}
+differentiating the definition (\ref{eq:residtil}) gives
+\begin{eqnarray}
+  (\ck)'(t) = a\cA(t) + d\cAD(t) + r\c^k(t) +  \ell_k(t) +   r\phik(t)  -(\phik)'(t).
+\end{eqnarray}
+Rearranging slightly gives  
+\begin{eqnarray}
+  (\ck+\phik)'(t) = a\cA(t) + d\cAD(t)  + r(\c^k+\phik)(t) +  \ell_k(t). 
+\end{eqnarray}
+This is now an ODE for the new solution $\ck+\phik$.
+
+We are still left with the question of how to define 
+$a\cA(t) + d\cAD(t)$.  By setting the first to a ``forward Euler''
+approximation $a\cA(t_n) = 0$, we are left with just the 
+$d\cAD(t)$  We define implicitly  
+\begin{equation}
+  \label{eq:phiAD}
+  \phiAD = \phik(t)+\cAD(t)
+\end{equation}
+and apply a ``backward Euler'' rule so that
+\begin{equation}
+  \label{eq:phiAD}
+  \cAD(t)= \phiADnp - \phiknp
+\end{equation}
+Now we can get to Will's Eq (7) by approximating $\ell_k(t)$
+by a peicewise contstant term
+\begin{eqnarray}
+  (\c^k+\phik)'(t) =   r(\c^k+\phik)(t)+  d\phiADnp - d\phiknp
++  \frac{1}{2} (\ell_k(t_n)+\ell_k(t_{n+1})).  
+\end{eqnarray}
+
+This required a dubious mix of cancellation that is more apparent
+if I stick with
+\begin{eqnarray}
+  (\ck+\phik)'(t) = a\cA(t) + d\cAD(t)  + r(\c^k+\phik)(t) +  \ell_k(t). 
+\end{eqnarray}
+There are several definitions of $\cAD(t)$ that could be derived
+from \ref{eq:cAD}, for example 
+\begin{eqnarray}
+  d\cAD(t) = (\frac{t-t_n}{\Dt})d \cAD(t_{n+1})
+\end{eqnarray}
+would be a linear representation.  We could get more fancy and write
+\begin{eqnarray}
+  d\cAD(t) = \frac{\RestilAD(\phik,t_{n+1})}{1-d t}
+\end{eqnarray}
+
+Some ``conclusions''
+\begin{enumerate}
+\item If you look to consistently represent terms in both the residual
+and the correction equations as linear functions, you get something different
+than might if you cancel terms in different places using different representations
+of the integrals
+\item  I still haven't said how the $\RestilAD(\phik,t_{n+1})$ is going to be computed
+(or $\RestilAD(\phik,t_{n+1})$)
+\item  The formalism here be easier to make general by increasing the order of the 
+polynomial $\ell_k$ to something higher order
+\item  In this formulation, if we get $\Restil(\phik,t_{n+1}) = 0$ then more iterations
+will just keep it there.
+\item  It is not clear to me what function would satisfy $\Restil(\phik,t_{n+1}) = 0$
+given a exact treatment of the $r$ integral and trapezoid rule of the other two.
+I have tried to find a closed form, but can't.
+\end{enumerate}
+
+
+
+
+
+ 
+
+
+
+
+%%% Local Variables:
+%%% mode: latex
+%%% TeX-master: "paper"
+%%% End:

@@ -22,7 +22,8 @@ ifeq (${USE_INTEL},TRUE)
   fCOMP := ifort -warn unused -g -u -fpconstant -fbounds-check
   XTRALIBS :=  -L/opt/intel/fce/10.1.015/lib -lifcore -lm 
 else
-  fCOMP := gfortran -g -fbounds-check -O1 -Wall -ffixed-line-length-none
+#  fCOMP := gfortran -g -fbounds-check -O1 -Wall -ffixed-line-length-none
+  fCOMP := gfortran -g -fbounds-check -Wall -ffixed-line-length-none
   CCOMP := g++ -g -O0 -fno-exceptions -Wall -Wno-sign-compare -DBL_FORT_USE_UNDERSCORE
   cCOMP := gcc -g -O0 -std=c99 -fno-exceptions -Wall -Wno-sign-compare -DBL_FORT_USE_UNDERSCORE
   XTRALIBS :=  -lm -lgfortran
@@ -38,13 +39,16 @@ ifeq ($(REACTION_MECHANISM),LUDME)
   mech_source += ../../../Chemistry/data/Lu/LuDME.c
 endif
 
-chem_sources := CD.f ../../../Chemistry/src/vode.f ../../../Chemistry/src/EGini.f ../../../Chemistry/src/EGSlib.f
+chem_sources := CD.f ../../../Chemistry/src/vode.f \
+                    ../../../Chemistry/src/EGini.f \
+                    ../../../Chemistry/src/EGSlib.f \
+                    ../../../Chemistry/src/math_d.f
 
 pmf_object := $(pmf_source:%.f=%.o)
 mech_object := $(mech_source:%.c=%.o)
 chem_objects := $(chem_sources:%.f=%.o)
 
-f_sources += lmc.f ${chem_sources} prob.f fill_ghost.f \
+f_sources += lmc.f ${chem_sources} wchem.f prob.f fill_ghost.f \
              calc_divu.f get_temp_visc_terms.f get_spec_visc_terms.f \
              get_vel_visc_terms.f \
              get_rhoh_visc_terms.f project.f strang_chem.f \

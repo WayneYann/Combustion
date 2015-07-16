@@ -1,0 +1,8 @@
+do for [i = 0:500:5] {
+    var=8
+
+    plot sprintf('rht%05d',i) u 1:var,\
+         sprintf('../1D_MISDC/rht%05d', i) u 1:var ;
+    set title sprintf("time step %d",i) ;
+    pause 0.05
+}

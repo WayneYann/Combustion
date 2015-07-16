@@ -1,0 +1,112 @@
+\documentclass[12pt]{article}
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{pifont}
+\usepackage[margin=0.65in]{geometry}
+\usepackage{enumerate}
+\usepackage{caption}
+\usepackage{float}
+\usepackage{graphicx}
+\usepackage{subfig}\usepackage{graphicx}
+\usepackage{subfig}
+\usepackage{bm}
+
+\def\arraystretch{1.5}
+\captionsetup{aboveskip=8pt}
+\newcommand{\cmark}{\ding{51}}%
+\newcommand{\xmark}{\ding{55}}%
+\setlength{\parskip}{1em}
+
+\begin{document}
+\noindent
+
+Recalling from Michael's notes, equations (24-25), using Forward Euler for the 
+advection correction, we have $c^{(k)}_A = 0$. 
+Additionally, we notice that if the residual 
+$\bm{\tilde R}(\phi^{(k)},t_{n+1}) = 0,$ then we have that the term 
+$c^{(k)}_{AD} = 0$ satisfies the Backward Euler equation
+\begin{equation}
+   c_{AD}^{(k)} = \Delta t\left(d(u^{(k),n+1} + c_{AD}^{(k)}) 
+                              - d(u^{(k),n+1})\right)
+                  + \bm{\tilde R}(\phi^{(k)},t_{n+1}).
+\end{equation}
+Therefore, since the correction is given by the ODE
+\begin{align}
+   (c^{(k)})'(t) &= ac_A(t) + dc_{AD}(t) + rc^{(k)}(t) + \bm{\tilde R}'\\
+                 &= rc^{(k)}
+\end{align}
+with zero initial conditions, we have that $c^{(k)}(t) = 0$. Therefore, 
+$\phi^{(k+1)} = \phi^{(k)}$.
+
+Additionally, the update ODE for the new solution is given by
+\begin{align}
+   (c^{(k)} + \phi^{(k)})'(t) &= ac^{(k)}_A(t) + dc^{(k)}_{AD}(t) 
+                                 + r(c^{(k)} + \phi^{(k)})(t)
+                                 + \ell_k(t)\\
+                              &= r(c^{(k)} + \phi^{(k)})(t) + \ell_k(t)
+\end{align}
+We write $\phi^{(k+1)} = c^{(k)} + \phi^{(k)}$. We will additionally assume 
+$t_n = 0$. This is not an essential assumption, it entirely for the sake of 
+simplicity. Since $\ell_k(t)$ is a linear approximation, we can write
+\begin{equation}
+   \ell_k(t) = mt + b.
+\end{equation}
+Our update ODE is therefore
+\begin{equation}
+   \phi^{(k+1)}_t(t) = r\phi^{(k+1)}(t) + mt + b, \qquad \phi^{(k+1)}(0) = \phi_n
+\end{equation}
+the solution to which is given by
+\begin{equation}
+   \label{ode-soln}
+   \phi^{(k+1)}(t) = \frac{1}{r^2}\left(
+      e^{rt}r^2 \phi_n + be^{rt}r + e^{rt}m -mrt - m
+   \right)
+\end{equation}
+
+Recall that $\ell_k$ is given by
+\begin{equation}
+   \ell_k(t) = (a+d)\left(\phi_n\frac{t_{n+1}-t}{\Delta t} 
+                        + \frac{t-t_n}{\Delta t}\phi^{(k)}_{n+1} \right).
+\end{equation}
+Since $\phi^{(k+1)} = \phi^{(k)}$, we must have
+\begin{equation}
+   \ell_k(t) = (a+d)\left(\phi_n\frac{t_{n+1}-t}{\Delta t} 
+                        + \frac{t}{\Delta t}\phi^{(k+1)}_{n+1} \right).
+\end{equation}
+In other words,
+\begin{equation}
+   b= (a+d)\phi_n,\qquad
+   m= \frac{(a+d)\left(\phi^{(k+1)}_{n+1} - \phi_n\right)}{\Delta t}.
+\end{equation}
+We can then write
+\begin{equation}
+   \label{m-eqn}
+   \phi^{(k+1)}_{n+1} = \frac{m \Delta t}{a+d} + \phi_n.
+\end{equation}
+Solving simultaneously equations (\ref{ode-soln}) and (\ref{m-eqn}), we see 
+that
+\begin{equation}
+   m = \frac{\phi_n}{\frac{\Delta t}{(a-d)(e^{r\Delta t} -1)} - \frac{1}{r(a+d+r)}}.
+\end{equation}
+Using this expression to substitute for $m$ and $b$ in equation (\ref{ode-soln}), 
+we find that
+\begin{equation}
+   \phi^{(k+1)}(t) = \frac{\phi_n (a+d) \left(e^{\Delta t r} 
+      (t (a+d+r)+1)-(t-\Delta t) (a+d+r)-1\right)-\Delta t 
+      \phi_n e^{r t} (a+d+r)2}{a \left(\Delta t (-r)+e^{\Delta t r}-1\right)+d e^{\Delta t r}-\Delta t r (d+r)-d} .
+\end{equation}
+Expanding the Taylor series for $\phi^{(k+1)}(t_{n+1})$ around $0$, and 
+comparing with the exact solution $\phi(t_{n+1}) = \phi_n e^{(a+d+r)t_{n+1}}$, 
+we see that
+\begin{multline}
+   \phi^{(k+1)}_{n+1} - \phi(t_{n+1}) = \frac{1}{12} \phi_n (a+d) (a+d+r)^2 \Delta t^3 + \frac{1}{12} \phi_n (a+d) (a+d+r)^3 \Delta t^4 \\
+      +\frac{1}{720} \phi_n (a+d) (a+d+r)^2 \left(72 r (a+d)+39 (a+d)^2+32 r^2\right) \Delta t^5
+      + \mathcal{O}(\Delta t^6).
+\end{multline}
+In other words, the solution to which the MISDC iterations ``should'' converge 
+(given that the residual goes to zero) is locally third-order accurate, 
+in the case of a piecewise linear approximation for the advection and diffusion 
+terms. I have performed a similar analysis for the case of piecewise cubic, and 
+found (as expected) that the error is $\mathcal{O}(\Delta t^5)$.
+\end{document}

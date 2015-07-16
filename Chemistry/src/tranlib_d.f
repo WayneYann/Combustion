@@ -143,11 +143,11 @@ C
       include 'mccom.fh'
 C
       DIMENSION IMCWRK(*), RMCWRK(*)
-      CHARACTER*16 PRVERS, VERS, PREC, PRDATE, IFMT, RFMT, CFMT, LFMT
+      CHARACTER*16 PRVERS, PRDATE, IFMT, RFMT, CFMT, LFMT
       PARAMETER
      1(CFMT='(8A16)', IFMT='(10I12)', LFMT='(L8)', RFMT='(1P,5E24.16)')
 C
-      LOGICAL IOK, ROK, KERR, LBIN
+      LOGICAL IOK, ROK, LBIN
       INTEGER CKLSCH
       EXTERNAL CKLSCH
 C
@@ -419,9 +419,8 @@ C*****END precision > single
 C
       include 'mccom.fh'
       PARAMETER (NLIST = 1)
-      LOGICAL KERR, VOK, POK, LBIN
-      CHARACTER*16 LIST(NLIST), VERS, PREC, PRVERS, IFMT, RFMT, LFMT,
-     1             CFMT
+      LOGICAL VOK, POK, LBIN
+      CHARACTER*16 LIST(NLIST), PRVERS, IFMT, RFMT, LFMT, CFMT
       PARAMETER
      1(CFMT='(8A16)', IFMT='(10I12)', LFMT='(L8)', RFMT='(1P,5E24.16)')
       DATA LIST/'1.0'/
@@ -559,8 +558,8 @@ C*****END precision > single
 C
       include 'mccom.fh'
 C
-      LOGICAL KERR, IERR
-      CHARACTER PREC*16, VERS*16, P*16, V*16
+      LOGICAL IERR
+      CHARACTER P*16, V*16
 C
       KERR = .FALSE.
       IERR = .FALSE.
@@ -684,8 +683,6 @@ C*****END precision > single
 C
       include 'mccom.fh'
       DIMENSION IMCWRK(*), RMCWRK(*)
-      CHARACTER VERS*16, PREC*16
-      LOGICAL KERR
 C
       NPOINT = 41
       WRITE (LSAVE,ERR=999)   NPOINT, VERS,   PREC,   LENI,   LENR,

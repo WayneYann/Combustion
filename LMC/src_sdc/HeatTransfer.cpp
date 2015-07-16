@@ -3439,6 +3439,7 @@ void
 HeatTransfer::compute_differential_diffusion_fluxes (const Real& time,
                                                      const Real& dt)
 {
+    BL_PROFILE("HT:::compute_differential_diffusion_fluxes()");
     // explicit computation of species and enthalpy (heat) diffusion fluxes
     // save fluxes in class data
     const Real      strt_time = ParallelDescriptor::second();
@@ -3763,6 +3764,7 @@ HeatTransfer::compute_differential_diffusion_terms (MultiFab& D,
                                                     Real      time,
                                                     Real      dt)
 {
+    BL_PROFILE("HT:::compute_differential_diffusion_terms()");
     // 
     // Sets vt for species, RhoH and Temp together
     // Uses state at time to explicitly compute fluxes, and resets internal
