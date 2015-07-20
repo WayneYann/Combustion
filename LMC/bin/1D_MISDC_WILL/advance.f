@@ -114,7 +114,7 @@ c      real*8       macvel(0:nlevs-1, 0:nfine  )
       integer i,is,misdc,n,rho_flag,IWRK
       
       ! WILL - temporary flag
-      logical const_diff
+      logical const_quad
 
 c     "diffdiff" means "differential diffusion", which corresponds to
 c     sum_m div [ h_m (rho D_m - lambda/cp) grad Y_m ]
@@ -473,20 +473,22 @@ c     WILL: TODO: make sure this is right
             
             print *,'... react with const sources'
             
+            const_quad = .false.
+            
 c     compute A+D source terms for reaction integration
             do n = 1,nscal
                do i=lo(0),hi(0)
-!                  const_src(0,i,n) = 
-!     $                 + 0.5d0*(diff_old(0,i,n)+diff_new(0,i,n))
-!     $                 + 0.5d0*(aofs_old(0,i,n)+aofs_new(0,i,n))
-!     $                 + diff_hat(0,i,n) - diff_new(0,i,n)
-                  lin_src_old(0,i,n) = aofs_old(0,i,n) + diff_old(0,i,n)
-                  lin_src_new(0,i,n) = aofs_new(0,i,n) + diff_new(0,i,n)
-                  const_src(0,i,n)   = diff_hat(0,i,n) - diff_new(0,i,n)
-     $                 + 0.5*(aofs_old(0,i,n) + aofs_new(0,i,n)
-     $                 +      diff_old(0,i,n) + diff_new(0,i,n))
-                  lin_src_old(0,i,n) = 0.d0
-                  lin_src_new(0,i,n) = 0.d0
+                  if (const_quad) then
+                     const_src(0,i,n)   = diff_hat(0,i,n) - diff_new(0,i,n)
+     $                    + 0.5*(aofs_old(0,i,n) + aofs_new(0,i,n)
+     $                    +      diff_old(0,i,n) + diff_new(0,i,n))
+                     lin_src_old(0,i,n) = 0.d0
+                     lin_src_new(0,i,n) = 0.d0
+                  else
+                     const_src(0,i,n)   = diff_hat(0,i,n) - diff_new(0,i,n)
+                     lin_src_old(0,i,n) = aofs_old(0,i,n) + diff_old(0,i,n)
+                     lin_src_new(0,i,n) = aofs_new(0,i,n) + diff_new(0,i,n)
+                  end if
                enddo
             enddo
 c     add differential diffusion
@@ -495,10 +497,13 @@ c     add differential diffusion
      $              + 0.5d0*(diffdiff_old(0,i)+diffdiff_new(0,i))
 c     add the reaction forcing term
                do n=1,Nspec
-                  const_src(0,i,FirstSpec+n-1) = const_src(0,i,FirstSpec+n-1) + 0.5*(wdotold(i,n)*mwt(n) - wdotnew(i,n)*mwt(n))
-                  const_src(0,i,FirstSpec+n-1) = const_src(0,i,FirstSpec+n-1) - wdotnew(i,n)*mwt(n)
-                  lin_src_old(0,i,FirstSpec+n-1) = lin_src_old(0,i,FirstSpec+n-1) + wdotold(i,n)*mwt(n)
-                  lin_src_new(0,i,FirstSpec+n-1) = lin_src_new(0,i,FirstSpec+n-1) + wdotnew(i,n)*mwt(n)
+                  if (const_quad) then
+                     const_src(0,i,FirstSpec+n-1) = const_src(0,i,FirstSpec+n-1) + 0.5*(wdotold(i,n)*mwt(n) - wdotnew(i,n)*mwt(n))
+                  else
+                     const_src(0,i,FirstSpec+n-1) = const_src(0,i,FirstSpec+n-1) - wdotnew(i,n)*mwt(n)
+                     lin_src_old(0,i,FirstSpec+n-1) = lin_src_old(0,i,FirstSpec+n-1) + wdotold(i,n)*mwt(n)
+                     lin_src_new(0,i,FirstSpec+n-1) = lin_src_new(0,i,FirstSpec+n-1) + wdotnew(i,n)*mwt(n)
+                  end if
                end do
             end do
 

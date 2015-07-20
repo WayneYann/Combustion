@@ -17,6 +17,8 @@
         
         double precision :: prev_time
         
+        integer, parameter :: j_skip = 1
+        
         private :: wvode_j, wvode_rhs
         
         public :: bechem, wvode_chem, rk_chem
@@ -28,8 +30,9 @@
           double precision, intent(in ) :: rYh0(Nspec+1), dt
           double precision, intent(out) :: rYh(Nspec+1)
           
-          integer          :: M, n, NEQ, ipar(1)
-          double precision :: dt_rk, rpar(1), t
+          integer, parameter :: M = 30
+          integer            :: n, NEQ, ipar(1)
+          double precision   :: dt_rk, rpar(1), t
           double precision, dimension(Nspec+1) :: k1,k2,k3,k4,z
           
           if (.not. allocated(A)) then
@@ -38,7 +41,6 @@
             allocate(ipvt(Nspec+1))
           end if
           
-          M = 100
           NEQ = Nspec+1
           ipar(1) = 0
           rpar(1) = dt
@@ -99,7 +101,6 @@
           IPAR(1) = 0
           
           !stop
-          
         end subroutine WVODE_J
 
         ! WVODE_RHS supplies the right-hand side F for the ODE y' = F
@@ -121,10 +122,14 @@
           integer n, i, j, IWRK
           
           integer NiterMAX, Niter
-          parameter (NiterMAX = 30)
+          parameter (NiterMAX = 40)
           double precision res(NiterMAX), errMAX
           
-          errMax = hmix_TYP*1.e-20
+          errMax = hmix_TYP*1.e-21
+          
+          !if (IPAR(2) .eq. 135 .and. TIME .ne. prev_time) then
+          !  print *,TIME,Z
+          !end if
           
           rho = 0.d0
           do n = 1,Nspec
@@ -149,16 +154,12 @@
           
 !          if ((prev_time .ne. TIME .or. num_rhs .eq. 0)
 !     $         .and. MOD(num_rhs,50) .eq. 0) then
-!           if ((dtl .gt. rpar(1)/10.d0) .or. num_rhs .eq. 0) then
-!           if ((prev_time .eq. TIME) .or. mod(num_rhs, 50) .eq. 0) then
-          !if (IPAR(1) .eq. 1 .or. num_rhs .eq. 0 .or. (TIME-prev_time) .gt. rpar(1)/10) then
-          if (IPAR(1) .eq. 1 .or. mod(num_rhs, 20) .eq. 0) then
+          if (IPAR(1) .eq. 1 .or. mod(num_jac, j_skip) .eq. 0) then
              num_jac = num_jac + 1
              !     working under constant pressure
              cons_p = 1
              !     compute the molar concentrations
              call CKYTCR(rho, T, Y, iwrk, rwrk, C)
-             
              !     use the concentrarions to compute the reaction Jacobian
              call DWDOT(Jac, C, T, cons_p)
              !     compute C_p
@@ -172,9 +173,11 @@
                 end do
                 !     last row is derivative of enthalpy
                 i=Nspec+1
-                Jac(i,j) = Jac(i,j) * invmwt(j) * cp * rho
+                Jac(i, j) = 0.d0
+                !Jac(i,j) = Jac(i,j) * invmwt(j) * cp * rho
              end do
-
+             Jac(Nspec+1,Nspec+1) = 0.d0
+             
              !     last column is derivative wrt enhtalpy
              j = Nspec+1
              do i=1,Nspec
@@ -186,7 +189,7 @@
              do i=1,Nspec+1
                 A(i,i) = 1.d0 + A(i,i)
              end do
-
+            
              !     call LINPACK to get the LU factorization of the matrix A
              !     call dgefa(A, Nspec+1, Nspec+1, ipvt, info)
              call DGECO(A, Nspec+1, Nspec+1, ipvt, rcond, rwrk)
@@ -214,16 +217,17 @@
         !     rYh0 : (in)  initial condition for the ODE
         !     rYh  : (out) solution to the ODE
         !     dt   : (in)  time step
-        subroutine wvode_chem(rYh0, rYh, dt)
-          double precision, intent(in   ) :: rYh0(Nspec + 1)
-          double precision, intent(out  ) ::  rYh(Nspec + 1)
-          double precision, intent(in   ) ::   dt
+        subroutine wvode_chem(rYh0, rYh, dt, i)
+          double precision, intent(in ) :: rYh0(Nspec + 1)
+          double precision, intent(out) ::  rYh(Nspec + 1)
+          double precision, intent(in ) ::   dt
+          integer,          intent(in ) ::    i
           
           ! VODE stuff
           integer NEQ, ITOL, IOPT, ITASK
           parameter (ITOL=1, IOPT=1, ITASK=1)
           double precision RTOL, ATOLEPS, TT1, TT2
-          parameter (RTOL=1.0D-13, ATOLEPS=1.0D-13)
+          parameter (RTOL=1.0D-14, ATOLEPS=1.0D-14)
           integer MF, ISTATE
           
           ! need this
@@ -240,7 +244,7 @@
           integer DVIWRK(dvi)
 
           double precision RPAR(1)
-          integer IPAR
+          integer IPAR(2)
 
           FIRST = .true.
 
@@ -267,7 +271,7 @@
           
           MF = 22
           ! user supplied Jacobian
-          MF = 21
+          MF = 22
           
           ISTATE = 1
           NEQ = Nspec + 1
@@ -284,14 +288,25 @@
           ! we use IPAR=0 to indicate a "normal" call to the right hand side
           ! when the rhs is called from the Jacobian compute routine, IPAR 
           ! is set to 1, which signals a full recompute
-          IPAR = 0
+          IPAR(1) = 0
+          IPAR(2) = i
           ! RPAR is set to dt
           RPAR = dt
           
-          CALL DVODE
-     &         (WVODE_RHS, NEQ, rYh, TT1, TT2, ITOL, RTOL, ATOLEPS,
-     &         ITASK, ISTATE, IOPT, DVRWRK, dvr, DVIWRK,
-     &         dvi, WVODE_J, MF, RPAR, IPAR)
+          do while (TT1 .lt. dt)
+             if (TT1 .ne. 0) then
+               print *, 'trying again...'
+               print *, 'i = ', i
+             end if
+             CALL DVODE(WVODE_RHS, NEQ, rYh, TT1, TT2, ITOL, RTOL, ATOLEPS,
+     &                  ITASK, ISTATE, IOPT, DVRWRK, dvr, DVIWRK,
+     &                  dvi, WVODE_J, MF, RPAR, IPAR)
+             ISTATE = 1
+          end do
+          
+          if (i .eq. 135) then
+            print *,'calls to rhs = ', num_rhs
+          end if
           
 !          if (num_rhs .gt. 1000) then
 !             print *,'calls to rhs: ', num_rhs, '  jacobian recomputes: ', num_jac
@@ -304,24 +319,20 @@
 
          !     do a Backward Euler solve for the chemistry using Newton's method
          !     Y0 : initial guess
-         !     Qrh: source term for enthalpy equation -- appears in temperature eqn
-         !     Qry: source term for the species equation
          !     rho: density
          !     YT : input: right-hand side
          !     output: solution
          !     dt
          !     ierr : (optional) error
-         subroutine bechem(Y0, Qrh, Qry, rho, YT, dt, ierr)
+         subroutine bechem(Y0, rho, YT, dt, ierr)
            double precision, intent(in   ) :: dt
-           double precision, intent(in   ) :: Qrh
-           double precision, intent(in   ) :: Qry(Nspec)
            double precision, intent(in   ) :: rho
            double precision, intent(in   ) :: Y0(Nspec+1)
            double precision, intent(inout) :: YT(Nspec+1)
            integer, intent(out), optional :: ierr
 
            integer          :: iwrk, iter, n
-           double precision :: rwrk, rmax, rho_new, rho_inv, cp
+           double precision :: rwrk, rmax, rho_inv, cp
 
            double precision, dimension(Nspec+1) :: rhs, r, dYTdt
            double precision, dimension(Nspec)   :: Y, enthalpies
@@ -350,15 +361,9 @@
               !     Newton's method: iteratively solve J(x_{n+1} - x_n) = -F(x_n)
               !     F(x) is given by (I - wdot - rhs)
               
-              rho_new = 0.d0
-              do n = 1,Nspec
-                 rho_new = rho_new + YT(n)
-              enddo
-
               do n = 1,Nspec
                  Y(n) = YT(n)*rho_inv
               enddo
-
               !     compute wdot
               call CKWYR(rho, YT(Nspec+1), Y, iwrk, rwrk, dYTdt)
               !     compute enthalpies
@@ -370,11 +375,9 @@
               do n=1,Nspec
                  !     multiply by molecular weight to get the right units
                  dYTdt(n) = dYTdt(n) * mwt(n)
-                 !     dYTdt(Nspec+1) = dYTdt(Nspec+1) + enthalpies(n)*(Qry(n) + dYTdt(n))
                  dYtdt(Nspec+1) = dYTdt(Nspec+1) - enthalpies(n)*dYTdt(n)
               end do
               dYTdt(Nspec+1) = dYTdt(Nspec+1)*rho_inv/cp
-              !     dYTdt(Nspec+1) = (Qrh - dYTdt(Nspec+1))*rho_inv/cp
 
               r = -(YT - dt*dYTdt - rhs)
 
