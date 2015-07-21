@@ -1,6 +1,7 @@
 subroutine PROBINIT (init,name,namlen,problo,probhi)
 
   use probdata_module
+  use RNS_boundary_module
   implicit none
 
   integer init, namlen
@@ -9,7 +10,7 @@ subroutine PROBINIT (init,name,namlen,problo,probhi)
 
   integer untin,i
 
-  namelist /fortin/ pamb, v_cf, T_cf, delta_bl_0
+  namelist /fortin/ pamb, v_cf, T_cf, bl_h, max_denerr_lev
 
   integer maxlen
   parameter (maxlen=256)
@@ -28,13 +29,15 @@ subroutine PROBINIT (init,name,namlen,problo,probhi)
   pamb = 1.01325d6  ! 1 Patm
   v_cf = 5.5d3
   T_cf = 750.d0
-  delta_bl_0 = 0.7d0
+  bl_h = 1.d0
 
   ! Read namelists
   untin = 9
   open(untin,file=probin(1:namlen),form='formatted',status='old')
   read(untin,fortin)
   close(unit=untin)
+
+  Twall = T_cf
 
 end subroutine PROBINIT
 
@@ -58,7 +61,7 @@ subroutine rns_initdata(level,time,lo,hi,nscal, &
   ! local variables
   integer :: i, j, iwrk
   integer :: iN2, iO2
-  double precision :: y, rwrk, X0(nspec), Y0(nspec), rho0, e0, T0, state0(NVAR)
+  double precision :: y, rwrk, X0(nspec), Y0(nspec), rho0, e0, T0, state0(NVAR), v
 
   iN2 = get_species_index("N2")
   iO2 = get_species_index("O2")
@@ -80,17 +83,18 @@ subroutine rns_initdata(level,time,lo,hi,nscal, &
   state0(UTEMP) = T0
   state0(UFS:UFS+nspec-1) = rho0*Y0
 
-  !$omp parallel do private(i,j,y)
+  !$omp parallel do private(i,j,y,v)
   do j = lo(2), hi(2)
      y = xlo(2) + (j-lo(2)+0.5d0)*delta(2)
-     y = y / delta_bl_0
-     y = (y - 0.5d0)*6.d0
+     if (y .le. bl_h) then
+        v = v_cf * (1.d0-(1.d0-y/bl_h)**50)
+     else
+        v = v_cf
+     end if
      do i = lo(1), hi(1)
         state(i,j,:) = state0
-        if (y .le. 3.d0) then
-           state(i,j,UMX) = state0(UMX) * (tanh(y)+1.d0)*0.5d0
-           state(i,j,UEDEN) = rho0*e0 + state(i,j,UMX)**2/(2.d0*rho0)
-        end if
+        state(i,j,UMX  ) = rho0*v
+        state(i,j,UEDEN) = rho0*(e0 + 0.5d0*v**2)
      end do
   end do
   !$omp end parallel do

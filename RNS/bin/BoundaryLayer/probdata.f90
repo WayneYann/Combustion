@@ -4,7 +4,9 @@ module probdata_module
 
   double precision, save :: pamb
   double precision, save :: v_cf, T_cf
-  double precision, save :: delta_bl_0
+
+  ! boundary layer
+  double precision, save :: bl_h
 
   ! These determine the refinement criteria
   double precision, save :: denerr,   dengrad
