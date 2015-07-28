@@ -42,6 +42,9 @@
       integer, allocatable :: lo(:), hi(:), bc(:,:)
 
       real*8, allocatable :: dx(:), dt(:)
+      
+!     will...
+      logical provide_wdot
 
       real*8 problo,probhi
       real*8 time
@@ -170,6 +173,9 @@ c     u_bc, T_bc, Y_bc, h_bc, and rho_bc
 
       allocate(dx(0:nlevs-1))
       allocate(dt(0:nlevs-1))
+      
+      ! will..
+      provide_wdot = .false.
 
 !     only need to zero these so plotfile has sensible data
       divu_old = 0.d0
@@ -299,10 +305,8 @@ c     return zero pressure
             
             do l=0,nlevs-1
                call strang_chem(scal_old(l,:,:),scal_new(l,:,:),
-     $                          const_src(l,:,:),const_src(l,:,:),const_src(l,:,:),
-     $                          const_src(l,:,:),const_src(l,:,:),
-     $                          const_src(l,:,:),lin_src_old(l,:,:),
-     $                          lin_src_new(l,:,:),I_R(l,:,:),
+     $                          provide_wdot,
+     $                          const_src(l,:,:),I_R(l,:,:),
      $                          0.5d0*dt(l),lo(l),hi(l),bc(l,:))
      
                exit

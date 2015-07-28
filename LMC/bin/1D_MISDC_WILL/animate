@@ -1,9 +1,10 @@
-do for [i = 0:80] {
-    var=8
-    
-    plot sprintf('rht0%04d',i) u 1:var w lp ;
-    set title sprintf("time step %d",i) ; 
-    pause 0.05
+var = 14;
+i = 80;
+do for [var = 10:20] {
+    set title sprintf("variable %d", var) ;
+    plot sprintf('rht0%04d',i) u 1:var w lp, '../1D_MISDC/rht00080' u 1:var w lp ;
+#    set title sprintf("time step %d",i) ;
+    pause 1
 }
 
 set title ''

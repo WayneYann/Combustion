@@ -21,8 +21,8 @@
       do i=lo,hi
          visc_term = dt*(1.d0 - be_cn_theta)*visc(i)
          
-         scal_new(i,RhoH) = scal_old(i,RhoH) + dt*aofs(i,RhoH)
-         Rhs(i) = dRhs(i) + scal_new(i,RhoH) + visc_term
+         !scal_new(i,RhoH) = scal_old(i,RhoH) + dt*aofs(i,RhoH)
+         Rhs(i) = dRhs(i) + scal_old(i,RhoH) + dt*aofs(i,RhoH) + visc_term
          alpha(i) = scal_new(i,Density)
       enddo
       

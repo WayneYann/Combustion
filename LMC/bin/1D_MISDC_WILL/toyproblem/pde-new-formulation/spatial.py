@@ -18,7 +18,7 @@ r = -70.0
 #eps = 0.0
 #r = 0.0
 
-Nx = 100
+Nx = 200
 dt = (20.0/Nx)/5.0
 
 FT = dt*1
@@ -93,7 +93,7 @@ def orders(e):
    return o
 
 def do_it(i):
-   solns = solve_old(5, i=i)
+   solns = solve(5, i=i)
    e = errors(solns)
    o = orders(e)
    print e

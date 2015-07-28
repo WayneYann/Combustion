@@ -107,9 +107,9 @@ def solve_it(a, d, r, dt, max_iter=10, plot_it=False, exact=False):
 #            y_AD = (y_prev[m] + dtp*a*y[n])/(1 - d*dtp)
 #            y_prev[m+1] = (y_prev[m] + dtp*(a*y_prev[m] + d*y_AD))/(1 - r*dtp)
 #        
-#        I_R[0] = r*int_4(y_prev, 0, dt)
-#        I_R[1] = r*int_4(y_prev, 1, dt)
-#        I_R[2] = r*int_4(y_prev, 2, dt)
+        I_R[0] = r*int_4(y_prev, 0, dt)
+        I_R[1] = r*int_4(y_prev, 1, dt)
+        I_R[2] = r*int_4(y_prev, 2, dt)
         
         # corrector iterations
         for k in range(max_iter):
@@ -117,7 +117,8 @@ def solve_it(a, d, r, dt, max_iter=10, plot_it=False, exact=False):
             for m in range(0,N_A-1):
                 dtp = dt*(quad_pts[m+1] - quad_pts[m])
                 
-                I_R[m] = r*int_4(y_prev, m, dt)
+                if not exact:
+                   I_R[m] = r*int_4(y_prev, m, dt)
                 
                 y_AD = (y_AD + dtp*(
                           a*y_curr[m] - a*y_prev[m] 
@@ -126,7 +127,11 @@ def solve_it(a, d, r, dt, max_iter=10, plot_it=False, exact=False):
                         + I_R[m])/(1 - dtp*d)
                 
                 f_const = d*y_AD - d*y_prev[m+1] + a*y_curr[m] - a*y_prev[m]
+                
+                #f = f_const + 0*y_prev + int_4((a+d)*y_prev, 0, dt)/dtp
                 f = f_const + (a+d)*y_prev
+
+                #pdb.set_trace()
                 
                 if exact:
                     y_curr[m+1] = ode_solve_pt(f, r,

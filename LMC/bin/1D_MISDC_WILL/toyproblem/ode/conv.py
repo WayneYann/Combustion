@@ -22,7 +22,7 @@ def method_marker(m):
     elif m==2:
         return 'o'
 
-misdc_iters = [1, 5, 10, 20, 50]
+misdc_iters = [1, 2, 3, 4]
 
 dts = [0.125]
 for j in range(10):
@@ -31,7 +31,7 @@ for j in range(10):
 fig = plt.figure(1, figsize=(10,6))
 
 E = []
-for method in [0,1]:
+for method in [0,1, 2]:
     print method_str(method)
     for n in misdc_iters:
         e = []

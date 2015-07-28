@@ -30,7 +30,7 @@
           double precision, intent(in ) :: rYh0(Nspec+1), dt
           double precision, intent(out) :: rYh(Nspec+1)
           
-          integer, parameter :: M = 30
+          integer, parameter :: M = 20
           integer            :: n, NEQ, ipar(1)
           double precision   :: dt_rk, rpar(1), t
           double precision, dimension(Nspec+1) :: k1,k2,k3,k4,z
@@ -260,7 +260,11 @@
           DVRWRK(8)  = 0.d0
           DVRWRK(9)  = 0.d0
           DVRWRK(10) = 0.d0
-          DVIWRK(5)  = 2
+          
+          DVIWRK(1)  = 1
+          DVIWRK(2)  = 5
+          
+          DVIWRK(5)  = 5
           DVIWRK(6)  = max_vode_subcycles
           !DVIWRK(6)  = 5000
           !DVRWRK(7)  = dt/DVIWRK(6)
@@ -269,8 +273,9 @@
           DVIWRK(9)  = 0
           DVIWRK(10) = 0
           
-          MF = 22
+          ! MF = 22
           ! user supplied Jacobian
+          ! MF = 21
           MF = 22
           
           ISTATE = 1
@@ -304,9 +309,9 @@
              ISTATE = 1
           end do
           
-          if (i .eq. 135) then
+          !if (i .eq. 135) then
             print *,'calls to rhs = ', num_rhs
-          end if
+          !end if
           
 !          if (num_rhs .gt. 1000) then
 !             print *,'calls to rhs: ', num_rhs, '  jacobian recomputes: ', num_jac
@@ -321,79 +326,105 @@
          !     Y0 : initial guess
          !     rho: density
          !     YT : input: right-hand side
-         !     output: solution
-         !     dt
+         !          output: solution
+         !     dt : timestep
          !     ierr : (optional) error
-         subroutine bechem(Y0, rho, YT, dt, ierr)
+         subroutine bechem(Y0, rho, rYh, dt, ierr)
            double precision, intent(in   ) :: dt
            double precision, intent(in   ) :: rho
            double precision, intent(in   ) :: Y0(Nspec+1)
-           double precision, intent(inout) :: YT(Nspec+1)
-           integer, intent(out), optional :: ierr
+           double precision, intent(inout) :: rYh(Nspec+1)
+           integer, intent(out), optional  :: ierr
 
            integer          :: iwrk, iter, n
-           double precision :: rwrk, rmax, rho_inv, cp
+           double precision :: rwrk, rmax, rho_inv, cp, cp_inv, rho_new
+           double precision :: T, hmix
 
-           double precision, dimension(Nspec+1) :: rhs, r, dYTdt
+           double precision, dimension(Nspec+1) :: rhs, r, wdot
            double precision, dimension(Nspec)   :: Y, enthalpies
 
            double precision :: rcond
 
            logical :: diag
-
-           integer, parameter :: max_iter = 2000
-
-           diag = .false.
-
+           
+           integer, parameter :: max_iter = 100, NiterMAX = 40
+           integer :: Niter
+           double precision, parameter :: tol = 1.d-18
+           double precision res(NiterMAX), errMAX
+         
+           errMax = hmix_TYP*1.e-21
+         
            if (.not. allocated(A)) then
               allocate(Jac(Nspec+1,Nspec+1))
               allocate(A(Nspec+1,Nspec+1))
               allocate(ipvt(Nspec+1))
            end if
-
-           rhs = YT
-           YT = Y0
-
-           rho_inv = 1.d0/rho
-
+           
+           rhs = rYh
+           rYH = Y0
+           
            !     maximum number of iterations is max_iter
            do iter = 0, max_iter
               !     Newton's method: iteratively solve J(x_{n+1} - x_n) = -F(x_n)
               !     F(x) is given by (I - wdot - rhs)
               
+              rho_new = 0.d0
               do n = 1,Nspec
-                 Y(n) = YT(n)*rho_inv
+                rho_new = rho_new + rYh(n)
+              end do
+              rho_inv = 1.d0/rho_new
+              
+              do n = 1,Nspec
+                 Y(n) = rYh(n)*rho_inv
               enddo
+              hmix = rYh(Nspec+1)*rho_inv
+              
+              T = T_INIT
+              call FORT_TfromHYpt(T,hmix,Y,Nspec,errMax,NiterMAX,res,Niter)
+              T_INIT = T
+              
+              if (Niter.lt.0) then
+                print *,'bechem: H to T solve failed'
+                print *,'Niter =', Niter
+                stop
+              end if
+              
               !     compute wdot
-              call CKWYR(rho, YT(Nspec+1), Y, iwrk, rwrk, dYTdt)
+              call CKWYR(rho_new, T, Y, iwrk, rwrk, wdot)
               !     compute enthalpies
-              call CKHMS(YT(Nspec+1), iwrk, rwrk, enthalpies)
+              !call CKHMS(YT(Nspec+1), iwrk, rwrk, enthalpies)
               !     compute C_p
-              call CKCPBS(YT(Nspec+1), Y, iwrk, rwrk, cp)
-
-              dYTdt(Nspec+1) = 0.d0
+              call CKCPBS(T, Y, iwrk, rwrk, cp)
+              
+              cp_inv = 1/cp
+              
+              wdot(Nspec+1) = 0.d0
               do n=1,Nspec
                  !     multiply by molecular weight to get the right units
-                 dYTdt(n) = dYTdt(n) * mwt(n)
-                 dYtdt(Nspec+1) = dYTdt(Nspec+1) - enthalpies(n)*dYTdt(n)
+                 wdot(n) = wdot(n) * mwt(n)
+                 !dYtdt(Nspec+1) = dYTdt(Nspec+1) - enthalpies(n)*dYTdt(n)
               end do
-              dYTdt(Nspec+1) = dYTdt(Nspec+1)*rho_inv/cp
-
-              r = -(YT - dt*dYTdt - rhs)
+              !dYTdt(Nspec+1) = dYTdt(Nspec+1)*rho_inv/cp
+              r = -(rYh - rhs - dt*wdot)
 
               !     rmax = maxval(abs(r(1:Nspec)))
-              rmax = maxval(abs(r(1:Nspec)))
+              rmax = maxval(abs(r))
               if (isnan(rmax)) then
                  print *,'wchem: backward Euler solve returned NaN'
                  print *,'wchem: iteration: ', iter
                  print *,'wchem: reciprocal condition number of J = ', rcond
                  print *,'wchem: Cp = ', cp
                  print *,'wchem: density = ', rho
-                 print *,'wchem: temperature = ', YT(Nspec+1)
+                 print *,'wchem: temperature = ', T
+                 
+                 print *,'wchem: Y0:',Y0
                  stop
               endif
               !     if we have reached the desired tolerance then we are done
-              if (rmax .le. 1.d-18) then
+              if (rmax .le. tol) then
+                 if (iter .gt. 10) then
+                 print *,'iters=',iter
+                 end if
                  exit
               endif
 
@@ -402,12 +433,11 @@
 
               !     call LINPACK to solve the linear system Ax = r
               !     using the output from the factorization given by dgefa
-
               call dgesl(A, Nspec+1, Nspec+1, ipvt, r, 0)
 
               !     solve for the difference x = x_{n+1} - x_n
               !     so the next iterate is given by x_{n+1} = x_n + x
-              YT = YT + r
+              rYh = rYh + r
            end do
 
            if (iter .ge. max_iter) then
@@ -419,7 +449,7 @@
            if (present(ierr)) then
               if (iter .gt. 100) then
                  ierr = iter
-                 YT = rhs
+                 rYh = rhs
               else
                  ierr = 0
               end if
@@ -436,9 +466,9 @@
              double precision :: z(Nspec+1)
 
              !     compute the molar concentrations
-             call CKYTCR(rho, YT(Nspec+1), Y, iwrk, rwrk, C)
+             call CKYTCR(rho_new, T, Y, iwrk, rwrk, C)
              !     use the concentrarions to compute the reaction Jacobian
-             call DWDOT(Jac, C, YT(Nspec+1), consP)
+             call DWDOT(Jac, C, T, consP)
 
              !     convert to the appropriate units
              do j=1,Nspec
@@ -448,13 +478,15 @@
 
                 !     last row is derivative of temperatures
                 i=Nspec+1
-                Jac(i,j) = Jac(i,j) * invmwt(j) ! * rho! * cp
+                !Jac(i,j) = Jac(i,j) * invmwt(j) ! * rho! * cp
+                Jac(i, j) = 0.d0
              end do
-
+             Jac(Nspec+1, Nspec+1) = 0.d0
+             
              !     last column is derivative wrt temperature
              j = Nspec+1
              do i=1,Nspec
-                Jac(i,j) = Jac(i,j) * mwt(i) ! * rho_inv ! * cpinv
+                Jac(i,j) = Jac(i,j) * mwt(i) * rho_inv * cp_inv
              end do
 
              !     we are computing the Jacobian of the function (I - dt w)

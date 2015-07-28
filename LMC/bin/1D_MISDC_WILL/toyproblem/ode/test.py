@@ -2,9 +2,9 @@ import t
 from math import *
 import matplotlib.pyplot as plt
 
-a = 0.1
-d = -100.0
-r = 10.0
+a = 0.0
+d = -500.0
+r = 0.1
 
 def method_str(m):
     if m==0:
@@ -22,9 +22,9 @@ def method_marker(m):
     else:
         return 'o'
 
-misdc_iters = [1, 5, 10]
+misdc_iters = [1, 10, 100, 500, 5000]
 
-dts = [0.0125]
+dts = [1]
 #for j in range(10):
 #    dts.append(dts[j]/2)
 

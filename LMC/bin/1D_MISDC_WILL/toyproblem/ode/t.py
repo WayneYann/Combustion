@@ -41,7 +41,8 @@ def solve_it(a, d, r, dt, max_iter=10, method=0):
             A = y_prev*a
             D = y_prev*d
             
-            y_AD = (y[n] + dt*0.5*(A_n + A + 0.5*(D_n - D)) + I_R)/(1 - dt*d)
+            #y_AD = (y[n] + dt*0.5*(A_n + A + 0.5*(D_n - D)) + I_R)/(1 - dt*d)
+            y_AD = (y[n] + dt*(A_n + A + 0.5*(D_n - D)) + I_R)/(1 - dt*d)
             
             # compute the forcing term
             f_const = d*y_AD - d*y_prev
@@ -70,7 +71,7 @@ def solve_it(a, d, r, dt, max_iter=10, method=0):
                 # compute the effect of the reaction term by integrating
                 I_R = (y_next - y[n]) - f_const*dt - 0.5*dt*(f_lin_prev + f_lin_next)
 
-            I_R = (y_next - y[n]) - f_const*dt - 0.5*dt*(f_lin_prev + f_lin_next)
+            #I_R = (y_next - y[n]) - f_const*dt - 0.5*dt*(f_lin_prev + f_lin_next)
 	    
             y_prev = y_next
             residuals[i+1] = y[n] - y_next + dt*I_R + 0.5*dt*(a+d)*(y[n] + y_next)

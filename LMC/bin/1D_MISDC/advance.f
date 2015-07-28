@@ -139,6 +139,7 @@ c     reset delta_chi for the strang algorithm
       if (use_strang) then
          delta_chi = 0.d0
       end if
+      delta_chi = 0.d0
 
 c     delta_chi = delta_chi + (peos-p0)/(dt*peos) + (1/peos) u dot grad peos
       call add_dpdt(scal_old(0,:,:),scal_old(0,:,RhoRT),
@@ -675,6 +676,7 @@ c     compute A+D source terms for reaction integration
                do i=lo(0),hi(0)
                   const_src(0,i,n) = aofs(0,i,n) 
      $                 + 0.5d0*diff_hat(0,i,n) + 0.5d0*diff_old(0,i,n)
+     $                 - 0.5d0*diff_new(0,i,n)
                   lin_src_old(0,i,n) = 0.d0
                   lin_src_new(0,i,n) = 0.d0
                enddo
@@ -863,7 +865,7 @@ c     extract div gamma^n
                   do n=1,Nspec
                      is = FirstSpec + n - 1
                      diff_hat(0,i,is) = (scal_new(0,i,is)-scal_old(0,i,is))/dt(0) 
-     $                    - aofs(0,i,is) - dRhs(0,i,n)/dt(0)
+     $                    - aofs(0,i,is) - dRhs(0,i,n)/dt(0) + scal_old(0,i,is)
                   enddo
                enddo
 
@@ -910,11 +912,11 @@ c     extract D for RhoH
 c     compute A+D source terms for reaction integration
             do n = 1,nscal
                do i=lo(0),hi(0)
-                  const_src(0,i,n) = aofs(0,i,n)
+                  const_src(0,i,n) = 
      $                 + 0.5d0*(diff_old(0,i,n)+diff_new(0,i,n))
      $                 + diff_hat(0,i,n) - diff_new(0,i,n)
-                  lin_src_old(0,i,n) = 0.d0
-                  lin_src_new(0,i,n) = 0.d0
+                  lin_src_old(0,i,n) = aofs(0,i,n)
+                  lin_src_new(0,i,n) = aofs(0,i,n)
                enddo
             enddo
 c     add differential diffusion

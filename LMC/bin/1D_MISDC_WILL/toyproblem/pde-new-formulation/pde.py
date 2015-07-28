@@ -221,18 +221,20 @@ def solve_pde(a, eps, r, Nx=300, dt=None, FT=0.05,
        dtp = dt*(quad_pts[m+1] - quad_pts[m])
        Dinv[m] = csc_matrix(I - dtp*D)
    
-   plt.ion()
+   plot_it = True
+   if plot_it:
+      plt.ion()
    step = 10
    for n in range(Nt):
        advance(n)
-       if (n+1)%(int(1+Nt/10)) == 0:
-         print 't = ', dt*(n+1)
-#        if (n+1)%step == 0 or n == Nt-1:
-#           print 't = ', dt*(n+1)
-#           plt.cla()
-#           plt.plot(x,y[n+1])
-#           plt.ylim((0,1.1))
-#           plt.draw()
+#       if (n+1)%(int(1+Nt/10)) == 0:
+#         print 't = ', dt*(n+1)
+       if ((n+1)%step == 0 or n == Nt-1) and plot_it:
+          print 't = ', dt*(n+1)
+          plt.cla()
+          plt.plot(x,y[n+1])
+          plt.ylim((0,1.1))
+          plt.draw()
     
 #    np.savetxt('ft', np.array([x, y[Nt]]).T)
    
