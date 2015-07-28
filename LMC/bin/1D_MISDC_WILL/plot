@@ -1,0 +1,4 @@
+var = 3
+end = 200
+
+plot sprintf('rht00%03d',end) u 1:var, sprintf('../1D_MISDC/rht00%03d', end) u 1:var

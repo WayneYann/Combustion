@@ -1,15 +1,16 @@
 ! Fill the entire state
 subroutine rns_grpfill(adv,adv_l1,adv_h1, &
-     domlo,domhi,delta,xlo,time,bc)
+     domlo,domhi,delta,xlo,time,bc_in)
   
   use eos_module, only : gamma_const, eos_get_T
   use probdata_module
   use meth_params_module, only : NVAR, URHO, UMX, UEDEN, UTEMP, UFS, NSPEC
+  use sdc_boundary_module, only : isFEval
   implicit none
   include 'bc_types.fi'
   
   integer          :: adv_l1,adv_h1
-  integer          :: bc(1,2,*)
+  integer          :: bc_in(1,2,*)
   integer          :: domlo(1), domhi(1)
   double precision :: delta(1), xlo(1), time
   double precision :: adv(adv_l1:adv_h1,NVAR)
@@ -18,14 +19,22 @@ subroutine rns_grpfill(adv,adv_l1,adv_h1, &
   double precision, parameter :: Pi = 3.1415926535897932d0
   
   integer :: i, ii, n
+  integer          :: bc(1,2,NVAR)
   double precision :: xcen, xg
   double precision :: rhot, Pt, et, Tt, Yt(2), ekt
   
+  bc = bc_in(:,:,1:NVAR)
+  if (isFEval) then
+     where (bc .eq. EXT_DIR) bc = FOEXTRAP
+  end if
+
   do n = 1,NVAR
      call filcc(adv(adv_l1,n),adv_l1,adv_h1, &
           domlo,domhi,delta,xlo,bc(1,1,n))
   enddo
   
+  if (isFEval) return
+
 !  do n = 1, NVAR
      
      !        XLO

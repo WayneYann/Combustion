@@ -120,6 +120,21 @@ c     Note: typical values are defaulted to zero, and may be left that way
       Pr = prandtl
       Sc = schmidt
       LeEQ1 = unityLe .ne. 0
+      thickFacTR = one
+      end
+
+
+      subroutine FORT_INIT_TYPVALS_COMMON()
+      implicit none
+#include <cdwrk.H>
+#include <conp.H>
+      typVal_Density = zero
+      typVal_Temp    = zero
+      typVal_RhoH    = zero
+      typVal_Trac    = zero
+      typVal_Y       = zero
+      typVal_YMAX    = one
+      typVal_YMIN    = 1.d-6
       end
       
 c-----------------------------------------------------------------------
@@ -136,41 +151,6 @@ c-----------------------------------------------------------------------
       end
 
 c=======================================================================
-
-      block data FORT_INIT_VISC_DATA
-
-c ... what the hell kind of dinosuar is this? Well, block
-c     data is the only guranteed way (i.e., portable)
-c     to use data statements to initialize common block variables.
-c     block data is almost certainly not allowed in f90, but this
-c     routine should not be too painful to reimplement. I would just
-c     suck its functionality into some other initialization routine.
-c     -- rbp
-
-      implicit none
-#include <cdwrk.H>
-#include <conp.H>
-#include <visc.H>
-      data use_constant_mu     /.true./
-      data use_constant_lambda /.true./
-      data use_constant_rhoD   /.true./
-      data constant_mu_val     /1.85d-5/
-      data constant_lambda_val /1.85d-5/
-      data constant_rhoD_val   /1.85d-5/
-      data Pr / one /
-      data Sc / one /
-      data thickFacTR / one /
-
-      data typVal_Density / 0.d0 /
-      data typVal_Temp / 0.d0 /
-      data typVal_RhoH / 0.d0 /
-      data typVal_Trac / 0.d0 /
-      data typVal_Y / maxspec*0.d0 /
-      data typVal_YMAX / 1.d0 /
-      data typVal_YMIN / 1.d-6 /
-
-      end
-
 
       subroutine FORT_SET_COMMON(time1,iteration1)
       implicit none

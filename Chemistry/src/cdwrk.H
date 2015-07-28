@@ -54,7 +54,7 @@
       common / MCWORK / MCRWRK, MCIWRK
       save   / MCWORK /
 
-!$omp threadprivate(/EGWORK/)
+!$omp threadprivate(/EGWORK/,/MCWORK/)
       !
       ! Actual sizes
       !

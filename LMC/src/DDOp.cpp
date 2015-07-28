@@ -152,7 +152,7 @@ DDOp::define (const BoxArray& _grids,
         first_define = false;
     }
     amr_ratio = amrRatio;
-    const IntVect mg_ratio = MGIV;
+    const IntVect& mg_ratio = MGIV;
     grids = _grids;
     geom.define(box);
 
@@ -417,8 +417,8 @@ DDOp::setCoefficients(const MultiFab& T,
     FArrayBox tcpfab, tcoefs;
     for (MFIter mfi(T); mfi.isValid(); ++mfi)
     {
-        const Box& box = mfi.validbox();
-        const Box gbox = Box(box).grow(nGrow);
+        const Box&  box = mfi.validbox();
+        const Box& gbox = BoxLib::grow(box,nGrow);
         int Full0_Mix1 = (transport_model == DD_Model_Full ? 0 : 1);
         const FArrayBox& Tfab = T[mfi];
         const FArrayBox& Yfab = Y[mfi];
@@ -521,7 +521,7 @@ DDOp::applyOp_DoIt(MultiFab&         outYH,
         fluxYH[d].setVal(0,0,nc);
     }
 
-    const IntVect iv=IntVect::TheZeroVector();
+    const IntVect& iv=IntVect::TheZeroVector();
     FArrayBox dum(Box(iv,iv),1);
     if (getAlpha) {
         BL_ASSERT(alpha->nGrow()>=1);
@@ -612,7 +612,7 @@ DDOp::applyOp_DoIt(MultiFab&         outYH,
 
         for (int dir=0; dir<BL_SPACEDIM; ++dir) {
 
-            const Box ebox = BoxLib::surroundingNodes(box,dir);
+            const Box& ebox = BoxLib::surroundingNodes(box,dir);
 
             // Actually only need this if for_T0_H1 == 1, but resize here so dataPtr call below wont fail...
             F_dTe.resize(ebox,Nspec);
@@ -706,7 +706,7 @@ DDOp::applyOp_DoIt(MultiFab&         outYH,
 
                 const FArrayBox& src = stfs[mfi];
                 const Box& srcBox = src.box();
-                const Box dstBox = Box(srcBox).shift(dir,shiftCells); 
+                const Box& dstBox = Box(srcBox).shift(dir,shiftCells); 
                     
                 // Do T component
                 {

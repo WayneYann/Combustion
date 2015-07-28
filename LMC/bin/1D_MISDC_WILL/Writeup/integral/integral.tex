@@ -1,0 +1,49 @@
+\documentclass[12pt]{article}
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{pifont}
+\usepackage[margin=0.65in]{geometry}
+\usepackage{enumerate}
+\usepackage{caption}
+\usepackage{float}
+\usepackage{graphicx}
+\usepackage{subfig}\usepackage{graphicx}
+\usepackage{subfig}
+
+\def\arraystretch{1.5}
+\captionsetup{aboveskip=8pt}
+\newcommand{\cmark}{\ding{51}}%
+\newcommand{\xmark}{\ding{55}}%
+\setlength{\parskip}{1em}
+
+\begin{document}
+\noindent
+Equation (5) from my notes is
+\[
+\phi^{(k+1)}_t = R(\phi^{(k+1)},t) + D(\phi_{AD}^{(k+1),n+1})
+                 + \frac{1}{2}\left(A(\phi^n) + D(\phi^n) + 
+                    A(\phi^{(k+1),n+1})-D(\phi^{(k+1),n+1})\right).
+\]
+Integrating from $t^n$ to $t^{n+1}$, we have
+\begin{multline*}
+   \int_{t^n}^{t^{n+1}} \phi^{(k+1)}_t(\tau) d\tau = 
+      \int_{t^n}^{t^{n+1}} R(\phi^{(k+1)},\tau) d\tau \\
+      + \int_{t^n}^{t^{n+1}} \Big\{  D(\phi_{AD}^{(k+1),n+1})
+                 + \frac{1}{2}\left(A(\phi^n) + D(\phi^n) + 
+                    A(\phi^{(k+1),n+1})-D(\phi^{(k+1),n+1})\right) \Big\} d\tau
+\end{multline*}
+Here we are considering the case where the advection and diffusion terms are 
+approximated as piecewise constants, so all the terms in the second integral 
+on the right-hand side are actually constants, and can therefore be integrated 
+exactly. The case for piecewise polynomials of any degree is the same.
+Therefore,
+\begin{multline*}
+   \int_{t^n}^{t^{n+1}} R(\phi^{(k+1)},\tau) d\tau = \phi^{(k+1),n+1} - \phi^n \\
+    - \Delta t \Big\{  D(\phi_{AD}^{(k+1),n+1}) 
+                 + \frac{1}{2}\left(A(\phi^n) + D(\phi^n) + 
+                    A(\phi^{(k+1),n+1})-D(\phi^{(k+1),n+1})\right) \Big\},
+\end{multline*}
+where the right-hand side conists entirely of known quantities.
+
+\end{document}

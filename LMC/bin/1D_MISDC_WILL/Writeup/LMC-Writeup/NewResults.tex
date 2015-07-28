@@ -1,0 +1,39 @@
+\documentclass[12pt]{article}
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage[margin=0.65in]{geometry}
+\begin{document}
+\title{LMC Code Changes Writeup}
+\author{Will Pazner}
+%\maketitle
+We write the state variable $X = (\rho h, \rho Y_1, \ldots, \rho Y_N)$, and then
+solve the ODE
+\[
+   (I - t J)X_t = Q(t) + \Omega(X),
+\]
+where $Q(t)$ is a source term,
+$\Omega = (0, \dot\omega_1, \ldots, \dot\omega_N)$ 
+represents the reactions, and $J$ is the Jacobian of the reaction term.
+Using VODE to calculate the solution, and refining in time and space we 
+obtain the following results.
+
+
+
+\begin{center}
+\begin{tabular}{ c | c c c c c }
+Variable                & Error    & Order& Error    & Order& Error    \\
+\hline
+$Y({\rm H}_2)$          & 8.00E-08 & 2.09 & 1.88E-08 & 2.05 & 4.54E-09 \\
+$Y({\rm O}_2)$          & 1.31E-06 & 2.04 & 3.18E-07 & 2.05 & 7.67E-08 \\
+$Y({\rm N}_2)$          & 1.36E-07 & 1.99 & 3.42E-08 & 2.02 & 8.42E-09 \\
+$Y({\rm H}_2{\rm O})$   & 1.31E-06 & 2.04 & 3.19E-07 & 2.06 & 7.65E-08 \\
+$Y({\rm H}_2{\rm O}_2)$ & 4.85E-09 & 1.94 & 1.26E-09 & 1.97 & 3.21E-10 \\
+$Y({\rm HO}_2)$         & 1.67E-08 & 2.04 & 4.04E-09 & 2.10 & 9.39E-10 \\
+$\rho$                  & 1.01E-08 & 1.99 & 2.56E-09 & 1.98 & 6.46E-10 \\
+$T$                     & 1.36E-02 & 2.03 & 3.33E-03 & 2.06 & 7.97E-04 \\
+$\rho h$                & 1.23E+01 & 1.60 & 4.07E+00 & 1.30 & 1.66E+00 \\
+$U$                     & 2.98E-02 & 1.66 & 9.44E-03 & 1.42 & 3.52E-03 \\
+\end{tabular}
+\end{center}
+
+\end{document}

@@ -1,0 +1,11 @@
+&fortin
+
+  pamb = 1.01325d6  ! 1 Patm
+
+  bl_h = 1.d0
+
+  max_denerr_lev = 2
+   
+/
+
+   

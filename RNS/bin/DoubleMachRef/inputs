@@ -13,7 +13,7 @@ geometry.is_periodic = 0 0 0
 geometry.coord_sys   = 0  # 0 => cart, 1 => RZ  2=>spherical
 geometry.prob_lo     =   0.0     0.0     0.0  
 geometry.prob_hi     =   4.0     1.0     1.0  
-amr.n_cell           =   512     128     1
+amr.n_cell           =   960     240     1
 
 rns.Riemann    = 1     # 0: HLL,  1: JBB,  2: HLLC
 rns.gamma      = 1.4
@@ -28,7 +28,7 @@ rns.lo_bc       =  1   3   0
 rns.hi_bc       =  2   1   0
 
 # TIME STEP CONTROL
-rns.cfl            = 0.5     # cfl number for hyperbolic system
+rns.cfl            = 0.45    # cfl number for hyperbolic system
 rns.init_shrink    = 0.1     # scale back initial timestep
 rns.change_max     = 1.05    # scale back initial timestep
 rns.dt_cutoff      = 5.e-20  # level 0 timestep below which we halt
@@ -47,13 +47,14 @@ amr.max_grid_size   = 64
 amr.n_error_buf     = 2 2 2 2 # number of buffer cells in error est
 
 # CHECKPOINT FILES
-amr.checkpoint_files_output = 1
+amr.checkpoint_files_output = 0
 amr.check_file              = chk    # root name of checkpoint file
-amr.check_int               = 100    # number of timesteps between checkpoints
+amr.check_int               = 500    # number of timesteps between checkpoints
 
 # PLOTFILES
 amr.plot_files_output = 1
 amr.plot_file         = plt     # root name of plotfile
-amr.plot_int          = 100     # number of timesteps between plotfiles
+amr.plot_int          = 500     # number of timesteps between plotfiles
+rns.plot_cons         = 1
 
 

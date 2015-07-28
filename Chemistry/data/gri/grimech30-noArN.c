@@ -12955,7 +12955,7 @@ void comp_qfqr(double * restrict qf, double * restrict qr, double * restrict sc,
 
     /*reaction 144: CH2 + O2 => OH + H + CO */
     qf[143] = sc[3]*sc[10];
-    qr[143] = sc[1]*sc[4]*sc[14];
+    qr[143] = 0.0;
 
     /*reaction 145: CH2 + H2 <=> H + CH3 */
     qf[144] = sc[0]*sc[10];
@@ -13103,7 +13103,7 @@ void comp_qfqr(double * restrict qf, double * restrict qr, double * restrict sc,
 
     /*reaction 181: O + CH3 => H + H2 + CO */
     qf[180] = sc[2]*sc[12];
-    qr[180] = sc[0]*sc[1]*sc[14];
+    qr[180] = 0.0;
 
     /*reaction 182: O + C2H4 <=> H + CH2CHO */
     qf[181] = sc[2]*sc[24];
@@ -13119,11 +13119,11 @@ void comp_qfqr(double * restrict qf, double * restrict qr, double * restrict sc,
 
     /*reaction 185: OH + CH3 => H2 + CH2O */
     qf[184] = sc[4]*sc[12];
-    qr[184] = sc[0]*sc[17];
+    qr[184] = 0.0;
 
     /*reaction 186: CH2 + O2 => 2 H + CO2 */
     qf[185] = sc[3]*sc[10];
-    qr[185] = sc[1]*sc[1]*sc[15];
+    qr[185] = 0.0;
 
     /*reaction 187: CH2 + O2 <=> O + CH2O */
     qf[186] = sc[3]*sc[10];
@@ -13131,11 +13131,11 @@ void comp_qfqr(double * restrict qf, double * restrict qr, double * restrict sc,
 
     /*reaction 188: CH2 + CH2 => 2 H + C2H2 */
     qf[187] = sc[10]*sc[10];
-    qr[187] = sc[1]*sc[1]*sc[22];
+    qr[187] = 0.0;
 
     /*reaction 189: CH2(S) + H2O => H2 + CH2O */
     qf[188] = sc[5]*sc[11];
-    qr[188] = sc[0]*sc[17];
+    qr[188] = 0.0;
 
     /*reaction 190: C2H3 + O2 <=> O + CH2CHO */
     qf[189] = sc[3]*sc[23];
@@ -13151,11 +13151,11 @@ void comp_qfqr(double * restrict qf, double * restrict qr, double * restrict sc,
 
     /*reaction 193: O + CH3CHO => OH + CH3 + CO */
     qf[192] = sc[2]*sc[34];
-    qr[192] = sc[4]*sc[12]*sc[14];
+    qr[192] = 0.0;
 
     /*reaction 194: O2 + CH3CHO => HO2 + CH3 + CO */
     qf[193] = sc[3]*sc[34];
-    qr[193] = sc[6]*sc[12]*sc[14];
+    qr[193] = 0.0;
 
     /*reaction 195: H + CH3CHO <=> CH2CHO + H2 */
     qf[194] = sc[1]*sc[34];
@@ -13163,31 +13163,31 @@ void comp_qfqr(double * restrict qf, double * restrict qr, double * restrict sc,
 
     /*reaction 196: H + CH3CHO => CH3 + H2 + CO */
     qf[195] = sc[1]*sc[34];
-    qr[195] = sc[0]*sc[12]*sc[14];
+    qr[195] = 0.0;
 
     /*reaction 197: OH + CH3CHO => CH3 + H2O + CO */
     qf[196] = sc[4]*sc[34];
-    qr[196] = sc[5]*sc[12]*sc[14];
+    qr[196] = 0.0;
 
     /*reaction 198: HO2 + CH3CHO => CH3 + H2O2 + CO */
     qf[197] = sc[6]*sc[34];
-    qr[197] = sc[7]*sc[12]*sc[14];
+    qr[197] = 0.0;
 
     /*reaction 199: CH3 + CH3CHO => CH3 + CH4 + CO */
     qf[198] = sc[12]*sc[34];
-    qr[198] = sc[12]*sc[13]*sc[14];
+    qr[198] = 0.0;
 
     /*reaction 200: O + CH2CHO => H + CH2 + CO2 */
     qf[199] = sc[2]*sc[33];
-    qr[199] = sc[1]*sc[10]*sc[15];
+    qr[199] = 0.0;
 
     /*reaction 201: O2 + CH2CHO => OH + CO + CH2O */
     qf[200] = sc[3]*sc[33];
-    qr[200] = sc[4]*sc[14]*sc[17];
+    qr[200] = 0.0;
 
     /*reaction 202: O2 + CH2CHO => OH + 2 HCO */
     qf[201] = sc[3]*sc[33];
-    qr[201] = sc[4]*sc[16]*sc[16];
+    qr[201] = 0.0;
 
     /*reaction 203: H + CH2CHO <=> CH3 + HCO */
     qf[202] = sc[1]*sc[33];
@@ -13243,7 +13243,7 @@ void comp_qfqr(double * restrict qf, double * restrict qr, double * restrict sc,
 
     /*reaction 216: HO2 + C3H7 => OH + C2H5 + CH2O */
     qf[215] = sc[6]*sc[31];
-    qr[215] = sc[4]*sc[17]*sc[25];
+    qr[215] = 0.0;
 
     /*reaction 217: CH3 + C3H7 <=> 2 C2H5 */
     qf[216] = sc[12]*sc[31];

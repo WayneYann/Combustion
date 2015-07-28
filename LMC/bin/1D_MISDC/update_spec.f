@@ -26,8 +26,8 @@
             is = FirstSpec + n - 1
             visc_term = dt*(1.d0 - be_cn_theta)*visc(i,n)
 
-            scal_new(i,is) = scal_old(i,is) + dt*aofs(i,is)
-            Rhs(i,n) = dRhs(i,n) + visc_term + scal_new(i,is)
+            !scal_new(i,is) = scal_old(i,is) + dt*aofs(i,is)
+            Rhs(i,n) = dRhs(i,n) + visc_term + scal_old(i,is) + dt*aofs(i,is)
             alpha(i) = scal_new(i,Density)
          enddo
       enddo

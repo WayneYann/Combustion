@@ -28,20 +28,14 @@ subroutine rns_grpfill(adv,adv_l1,adv_l2,adv_h1,adv_h2, &
 
   bc = bc_in(:,:,1:NVAR)
   if (isFEval) then
-     do n=1,NVAR
-        if (bc(2,1,n) .eq. EXT_DIR) bc(2,1,n) = FOEXTRAP
-     end do
+     where (bc .eq. EXT_DIR) bc = FOEXTRAP
   end if
 
-  if (isFEval) bc(2,1,:) = FOEXTRAP
-
-  !$omp parallel do private(n)
   do n = 1,NVAR
      call filcc(adv(adv_l1,adv_l2,n), &
           adv_l1,adv_l2,adv_h1,adv_h2, &
           domlo,domhi,delta,xlo,bc(1,1,n))
   enddo
-  !$omp end parallel do
 
   if (isFEval) return
 
@@ -56,7 +50,6 @@ subroutine rns_grpfill(adv,adv_l1,adv_l2,adv_h1,adv_h2, &
         sigma = 2.5d0*xfrontw*splitx
 
         ! fill the corners too
-        !$omp parallel do private(i,j,n,iwrk,ii,x,xg,eta,eta1,rhot,u1t,u2t,Tt,et,Yt,rwrk)
         do j = adv_l2, domlo(2)-1 
            do i = adv_l1,adv_h1
         
@@ -124,7 +117,6 @@ subroutine rns_grpfill(adv,adv_l1,adv_l2,adv_h1,adv_h2, &
 
            end do
         end do
-        !$omp end parallel do
      else
         print *,'grpfill: SHOULD NEVER GET HERE bc(2,1,1) .ne. EXT_DIR) '
         stop
@@ -236,7 +228,6 @@ subroutine rns_denfill(adv,adv_l1,adv_l2,adv_h1,adv_h2, &
         sigma = 2.5d0*xfrontw*splitx
 
         ! fill the corners too
-        !$omp parallel do private(i,j,n,iwrk,ii,x,xg,eta,rhot,Tt,Yt,rwrk)
         do j = adv_l2, domlo(2)-1 
            do i = adv_l1,adv_h1
 
@@ -271,7 +262,6 @@ subroutine rns_denfill(adv,adv_l1,adv_l2,adv_h1,adv_h2, &
 
            end do
         end do
-        !$omp end parallel do
      else
         print *,'SHOULD NEVER GET HERE bc(2,1,1) .ne. EXT_DIR) '
         stop
@@ -411,7 +401,6 @@ subroutine rns_myfill(adv,adv_l1,adv_l2,adv_h1,adv_h2, &
         sigma = 2.5d0*xfrontw*splitx
 
         ! fill the corners too
-        !$omp parallel do private(i,j,n,iwrk,ii,x,xg,eta,eta1,rhot,u2t,Tt,Yt,rwrk)
         do j = adv_l2, domlo(2)-1 
            do i = adv_l1,adv_h1
 
@@ -456,7 +445,6 @@ subroutine rns_myfill(adv,adv_l1,adv_l2,adv_h1,adv_h2, &
 
            end do
         end do
-        !$omp end parallel do
      else
         print *,'SHOULD NEVER GET HERE bc(1,1,1) .ne. EXT_DIR) '
         stop
@@ -535,7 +523,6 @@ subroutine rns_tempfill(adv,adv_l1,adv_l2,adv_h1,adv_h2, &
         sigma = 2.5d0*xfrontw*splitx
 
         ! fill the corners too
-        !$omp parallel do private(i,j,ii,x,xg,eta,Tt)
         do j = adv_l2, domlo(2)-1 
            do i = adv_l1,adv_h1
 
@@ -566,7 +553,6 @@ subroutine rns_tempfill(adv,adv_l1,adv_l2,adv_h1,adv_h2, &
 
            end do
         end do
-        !$omp end parallel do
      else
         print *,'SHOULD NEVER GET HERE bc(2,1,1) .ne. EXT_DIR) '
         stop

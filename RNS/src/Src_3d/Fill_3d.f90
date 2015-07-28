@@ -1,26 +1,33 @@
 ! Fill the entire state
 subroutine rns_grpfill(adv,adv_l1,adv_l2,adv_l3,adv_h1,adv_h2,adv_h3, &
-     domlo,domhi,delta,xlo,time,bc)
+     domlo,domhi,delta,xlo,time,bc_in)
  
   use meth_params_module, only : NVAR
+  use sdc_boundary_module, only : isFEval
   
   implicit none
   include 'bc_types.fi'
   integer adv_l1,adv_l2,adv_l3,adv_h1,adv_h2,adv_h3
-  integer bc(3,2,*)
+  integer bc_in(3,2,*)
   integer domlo(3), domhi(3)
   double precision delta(3), xlo(3), time
   double precision adv(adv_l1:adv_h1,adv_l2:adv_h2,adv_l3:adv_h3,NVAR)
   
   integer n
+  integer bc(3,2,NVAR)
 
-  !$omp parallel do private(n)
+  bc = bc_in(:,:,1:NVAR)
+  if (isFEval) then
+     where (bc .eq. EXT_DIR) bc = FOEXTRAP
+  end if
+
   do n = 1,NVAR
      call filcc(adv(adv_l1,adv_l2,adv_l3,n), &
           adv_l1,adv_l2,adv_l3,adv_h1,adv_h2,adv_h3, &
           domlo,domhi,delta,xlo,bc(1,1,n))
   enddo
-  !$omp end parallel do
+
+  if (isFEval) return
 
   do n = 1, NVAR
 

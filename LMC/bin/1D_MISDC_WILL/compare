@@ -1,0 +1,10 @@
+do for [var = 2:44]{
+#var = 61;
+#var = 41;
+time = 65;
+plot sprintf('rht0%04d',time*2) u 1:var w lp, \
+sprintf('bad/rht0%04d',time) u 1:var w lp, \
+sprintf('~/Desktop/methane-plots/orig/rht0%04d',time) u 1:var w lp;
+set title sprintf('var = %d', var);
+pause 1
+}

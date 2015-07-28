@@ -27,6 +27,7 @@ c     Shut off diagnostics
       do_diag = 0
 
       print *,'... chemistry'
+      
 c     Evolve chem over grid
       do i=lo,hi
          if (use_strang) then

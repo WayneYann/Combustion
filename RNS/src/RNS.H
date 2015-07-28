@@ -353,6 +353,7 @@ protected:
     static Real      small_pres;
     static Real      gamma;
 
+    static int       gravity_dir; // 1: x, 2: y, 3: z
     static Real      gravity;
     static Real      Treference;
 
@@ -392,13 +393,10 @@ protected:
     static int         do_quartic_interp;
 
     static int         do_weno;
-    static int         do_mp5;
-    static int         weno_type;
-    static int         do_quadrature_weno;
-    static int         do_component_weno;
-    static Real        eps_wenojs;
-    static Real        eps_wenoz;
-    static Real        eps_wenom;
+    static int         do_mdcd_weno;
+    static int         weno_p;
+    static Real        weno_eps;
+    static Real        weno_gauss_phi;
 
     static int         use_vode;
     static int         new_J_cell;

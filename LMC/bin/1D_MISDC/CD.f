@@ -485,8 +485,7 @@ C
 C     For SDC
 C     Variables in Z are:  Z(0)   = rho*h
 C                          Z(K) = rho*Y(K)
-
-
+      
       if (Pcgs.lt.0.d0) then
          print *,'vodeF_T_RhoY: Must set Pcgs before calling vode'
          stop

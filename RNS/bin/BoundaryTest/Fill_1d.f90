@@ -26,10 +26,7 @@ subroutine rns_grpfill(adv,adv_l1,adv_h1, &
 
   bc = bc_in(:,:,1:NVAR)
   if (isFEval) then
-     do n=1,NVAR
-        if (bc(1,1,n) .eq. EXT_DIR) bc(1,1,n) = FOEXTRAP
-        if (bc(1,2,n) .eq. EXT_DIR) bc(1,2,n) = FOEXTRAP
-     end do
+     where (bc .eq. EXT_DIR) bc = FOEXTRAP
   end if
 
   do n = 1,NVAR

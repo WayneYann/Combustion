@@ -1,0 +1,2 @@
+var = 3;
+plot 'rht00080' u 1:var w lp, 'rht00160' u 1:var w lp, 'rht00320' u 1:var w lp, '../1D_MISDC/rht00640' u 1:var w lp

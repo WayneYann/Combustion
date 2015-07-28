@@ -98,11 +98,7 @@
                endif
                CALL CKYTX(Yt,IWRK(ckbi),RWRK(ckbr),Xt)
 #endif
-#ifdef MIKE1
                CALL CKKFKR(Pdyne,T(i,j,k),Xt,IWRK(ckbi),RWRK(ckbr),FwdKt,RevKt)
-#else
-               call bl_abort('FORT_FRrateXTP: CKKFKR not available')
-#endif
                do n=1,Nrxns
                   FwdK(i,j,k,n) = FwdKt(rxns(n)+1)*scale
                   RevK(i,j,k,n) = RevKt(rxns(n)+1)*scale
@@ -162,6 +158,7 @@
                T_cell = T(i,j,k)
                call conpFY_sdc(ndummy,tdummy,Zt,Zdott,RWRK,IWRK)
                
+               call CKHMS(T(i,j,k),IWRK(ckbi),RWRK(ckbr),H_CGS)
                Q(i,j,k) = 0.d0
                do n= 1, Nspec
                   Q(i,j,k) = Q(i,j,k) - Zdott(n) * H_CGS(n) * 1.d-4
@@ -553,7 +550,7 @@ c     Get the matrix of elements versus species
       end do
       end
 
-      subroutine FORT_CONPSOLV(lo, hi,
+      integer function FORT_CONPSOLV(lo, hi,
      &                         Ynew, DIMS(Ynew), Tnew, DIMS(Tnew),
      &                         Yold, DIMS(Yold), Told, DIMS(Told),
      &                         FuncCount, DIMS(FuncCount),
@@ -590,7 +587,7 @@ c     Get the matrix of elements versus species
       REAL_T TT1, TT2, RU, RUC, P1atm, sum, atoln
       integer i, j, k, m, MF, ISTATE, LOUTCK, lout, nfails
 
-      integer nsub, node, nthrds
+      integer nsub, node
       REAL_T dtloc, weight, TT1save, scale, tspecies(0:maxspec), nwdot(0:maxspec)
       REAL_T Ct(maxspec),Qt(maxreac),Ytemp(maxspec),Yres(maxspec)
 
@@ -640,6 +637,8 @@ c     Get the matrix of elements versus species
 
       nfails = 0
 
+      FORT_CONPSOLV = 1
+
 !$omp parallel
       !
       ! Force recalculation of jacobian for each XYZ block.
@@ -650,8 +649,14 @@ c     Get the matrix of elements versus species
 
 !$omp do private(i,j,k,m,TT1,ISTATE,sum,atoln,Ytemp,Yres,newJ_triggered)
 !$omp&private(scale,bad_soln,Ct,Qt,node,weight,TT1save,TT2,tspecies)
-!$omp&private(lout,name) schedule(dynamic,1)
+!$omp&private(lout,name)
+#ifdef REGRESSIONTEST
+!$omp&schedule(static)
+#else
+!$omp&schedule(dynamic,1)
+#endif
       do k=lo(3),hi(3)
+         if (FORT_CONPSOLV .eq. 0) cycle
          do j=lo(2),hi(2)
             do i=lo(1),hi(1)
                TT1    = zero
@@ -754,9 +759,9 @@ c     Get the matrix of elements versus species
                         tspecies(m) = Ytemp(m)
                      end do
                      if (verbose) then
-!$omp critical(failures)
+!$omp atomic
                         nfails = nfails + 1
-!$omp end critical(failures)
+!$omp end atomic
                      end if
 
 #if !defined(BL_USE_DOUBLE)
@@ -824,8 +829,9 @@ c     Get the matrix of elements versus species
  995              format(a,4(i4,a))
  996              format(a16,1x,4e30.22)
                   close(lout)
-                  call bl_abort('VODE failed, see drop file, exiting')
+                  FORT_CONPSOLV = 0
 !$omp end critical(output)
+                  goto 800
                end if
              enddo
 
@@ -866,6 +872,7 @@ c     Get the matrix of elements versus species
 #endif
             end do
          end do
+ 800     continue
       end do
 !$omp end do
 !$omp end parallel
@@ -873,11 +880,10 @@ c     Get the matrix of elements versus species
       if (verbose .and. nfails .gt. 0) then
          print*, '*** DVODE failures for last chem block: ', nfails; call flush(6)
       end if
-
       end
  
 #ifdef LMC_SDC
-      subroutine FORT_CONPSOLV_SDC(lo, hi,
+      integer function FORT_CONPSOLV_SDC(lo, hi,
      &     rhoYnew,   DIMS(rhoYnew), 
      &     rhoHnew,   DIMS(rhoHnew),
      &     Tnew,      DIMS(Tnew),
@@ -967,6 +973,8 @@ c     Get the matrix of elements versus species
 
       nfails = 0
 
+      FORT_CONPSOLV_SDC = 1
+
 !$omp parallel
       !
       ! Force recalculation of jacobian for each XYZ block.
@@ -981,8 +989,14 @@ c     Get the matrix of elements versus species
       !
 !$omp do private(i,j,k,strang_fix,TT1,ISTATE,Y,node,Ct,Qt,res)
 !$omp&private(rhoYtemp,Z,rho,sum,rhoInv,lout,name,weight,NIter)
-!$omp&private(TT1save,TT2,m,Yold,rhooldInv) schedule(dynamic,1)
+!$omp&private(TT1save,TT2,m,Yold,rhooldInv) 
+#ifdef REGRESSIONTEST
+!$omp&schedule(static)
+#else
+!$omp&schedule(dynamic,1)
+#endif
       do k=lo(3),hi(3)
+         if (FORT_CONPSOLV_SDC .eq. 0) cycle
          do j=lo(2),hi(2)
             do i=lo(1),hi(1)
 
@@ -1069,9 +1083,9 @@ c     Get the matrix of elements versus species
                      TT2                = TT1 + dtloc
 
                      if (verbose) then
-!$omp critical(failures)
+!$omp atomic
                         nfails = nfails + 1
-!$omp end critical(failures)
+!$omp end atomic
                      end if
 
 #if !defined(BL_USE_DOUBLE)
@@ -1128,8 +1142,9 @@ c     Get the matrix of elements versus species
  995                    format(a,3(i4,a))
  996                    format(a,1x,4e30.22)
                         close(lout)
-                        call bl_abort('VODE failed, exiting')
+                        FORT_CONPSOLV_SDC = 0
 !$omp end critical(output)
+                        goto 800
                      end if
                   end if
                   
@@ -1182,6 +1197,7 @@ c     Get the matrix of elements versus species
 
             end do
          end do
+ 800     continue
       end do
 !$omp end do
 !$omp end parallel
@@ -1189,7 +1205,6 @@ c     Get the matrix of elements versus species
       if (verbose .and. nfails .gt. 0) then
          print*, '*** DVODE failures for last chem block: ', nfails; call flush(6)
       end if
-
       end
 #endif
 

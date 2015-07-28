@@ -1,24 +1,33 @@
 ! Fill the entire state
 subroutine rns_grpfill(adv,adv_l1,adv_h1, &
-     domlo,domhi,delta,xlo,time,bc)
+     domlo,domhi,delta,xlo,time,bc_in)
   
   use meth_params_module, only : NVAR
+  use sdc_boundary_module, only : isFEval
   use inflow_module
   implicit none
   include 'bc_types.fi'
   
   integer          :: adv_l1,adv_h1
-  integer          :: bc(1,2,*)
+  integer          :: bc_in(1,2,*)
   integer          :: domlo(1), domhi(1)
   double precision :: delta(1), xlo(1), time
   double precision :: adv(adv_l1:adv_h1,NVAR)
   
   integer n, i
-  
+  integer bc(1,2,NVAR)
+
+  bc = bc_in(:,:,1:NVAR)
+  if (isFEval) then
+     where (bc .eq. EXT_DIR) bc = FOEXTRAP
+  end if
+
   do n = 1,NVAR
      call filcc(adv(adv_l1,n),adv_l1,adv_h1, &
           domlo,domhi,delta,xlo,bc(1,1,n))
   enddo
+
+  if (isFEval) return
 
   !        XLO
   if (adv_l1.lt.domlo(1)) then

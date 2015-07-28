@@ -1,0 +1,39 @@
+This is pdfTeX, Version 3.1415926-2.5-1.40.14 (TeX Live 2013/Debian) (format=pdflatex 2015.1.26)  9 JUL 2015 17:03
+entering extended mode
+ restricted \write18 enabled.
+ %&-line parsing enabled.
+**/home/wepazner/Documents/Code/Combustion/LMC/bin/1D_MISDC_WILL/Writeup/minion
+-paper/deltaMISDC.tex
+
+(/home/wepazner/Documents/Code/Combustion/LMC/bin/1D_MISDC_WILL/Writeup/minion-
+paper/deltaMISDC.tex
+LaTeX2e <2011/06/27>
+Babel <3.9h> and hyphenation patterns for 34 languages loaded.
+
+! LaTeX Error: Missing \begin{document}.
+
+See the LaTeX manual or LaTeX Companion for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+l.2 C
+     onsider
+? 
+! Emergency stop.
+ ...                                              
+                                                  
+l.2 C
+     onsider
+You're in trouble here.  Try typing  <return>  to proceed.
+If that doesn't work, type  X <return>  to quit.
+
+ 
+Here is how much of TeX's memory you used:
+ 7 strings out of 494005
+ 528 string characters out of 6160056
+ 49073 words of memory out of 5000000
+ 3499 multiletter control sequences out of 15000+600000
+ 3640 words of font info for 14 fonts, out of 8000000 for 9000
+ 589 hyphenation exceptions out of 8191
+ 5i,0n,4p,110b,14s stack positions out of 5000i,500n,10000p,200000b,80000s
+!  ==> Fatal error occurred, no output PDF file produced!

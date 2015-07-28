@@ -1,9 +1,9 @@
 &fortin
   nx = 512
-  nsteps = 5000
-  plot_int = 80
+  nsteps = 160
+  plot_int = 160
   chk_int = 1000
-  fixed_dt = 0.25e-4
+  fixed_dt = 0.125e-4
   stop_time = 1.e4
   problo = 0.
   probhi = 1.2

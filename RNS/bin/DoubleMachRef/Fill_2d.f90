@@ -1,26 +1,38 @@
 ! Fill the entire state
 subroutine rns_grpfill(adv,adv_l1,adv_l2,adv_h1,adv_h2, &
-     domlo,domhi,delta,xlo,time,bc)
+     domlo,domhi,delta,xlo,time,bc_in)
  
   use meth_params_module, only : NVAR
   use probdata_module
+  use sdc_boundary_module, only : isFEval
   
   implicit none
   include 'bc_types.fi'
   integer adv_l1,adv_l2,adv_h1,adv_h2
-  integer bc(2,2,*)
+  integer bc_in(2,2,*)
   integer domlo(2), domhi(2)
   double precision delta(2), xlo(2), time
   double precision adv(adv_l1:adv_h1,adv_l2:adv_h2,NVAR)
   
-  integer i, j, n
-  double precision :: xcen, xshock
-  
+  integer i, j, n, ii, jj
+  integer bc(2,2,NVAR)
+  double precision :: xcen, ycen, xshock, xg, yg, w
+  integer, parameter :: ngp = 2
+  double precision, parameter :: gp(2) = (/ -1.d0/sqrt(3.d0), 1.d0/sqrt(3.d0) /)
+  double precision, parameter :: wgp(2) = (/ 1.d0, 1.d0 /)  
+
+  bc = bc_in(:,:,1:NVAR)
+  if (isFEval) then
+     where (bc .eq. EXT_DIR) bc = FOEXTRAP
+  end if
+
   do n = 1,NVAR
      call filcc(adv(adv_l1,adv_l2,n), &
           adv_l1,adv_l2,adv_h1,adv_h2, &
           domlo,domhi,delta,xlo,bc(1,1,n))
   enddo
+
+  if (isFEval) return
   
   ! XLO
   if (adv_l1.lt.domlo(1)) then
@@ -54,16 +66,30 @@ subroutine rns_grpfill(adv,adv_l1,adv_l2,adv_h1,adv_h2, &
      
   ! YHI
   if (adv_h2 .gt. domhi(2)) then
-     xshock = xshock0_hi + vshock_x*time
+     xshock = xshock0_lo + vshock_x*time
      do n=1,NVAR
         do j = domhi(2)+1, adv_h2
+           ycen = delta(2)*(j+0.5d0)
            do i = adv_l1, adv_h1
               xcen = delta(1)*(i + 0.5d0)
-              if (xcen < xshock) then
-                 adv(i,j,n) = state1(n)
-              else
-                 adv(i,j,n) = state0(n)
-              end if
+
+              adv(i,j,:) = 0.d0
+              
+              do jj = 1, ngp
+                 yg = ycen + 0.5d0*delta(2)*gp(jj)
+                 do ii = 1, ngp
+                    xg = xcen + 0.5d0*delta(2)*gp(ii)
+                    
+                    w = wgp(ii)*wgp(jj)*0.25d0
+
+                    if (yg .gt. tan(thetashock)*(xg-xshock)) then
+                       adv(i,j,:) = adv(i,j,:) + w*state1
+                    else
+                       adv(i,j,:) = adv(i,j,:) + w*state0
+                    end if
+                 end do
+              end do
+
            end do
         end do
      end do

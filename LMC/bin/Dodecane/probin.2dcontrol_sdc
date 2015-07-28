@@ -39,7 +39,7 @@
  /
   &control
   h_control = .002
-  h_control = .006
+  h_control = .004
   changeMax_control = .2
   tau_control = 2.e-4
   sest = 1.5
