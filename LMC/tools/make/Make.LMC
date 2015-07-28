@@ -114,6 +114,11 @@ ifeq ($(CHEMISTRY_MODEL), WANGDODECANE)
   vpath %.f   $(VPATH_LOCATIONS) $(COMBUSTION_DIR)/Chemistry/data/dodecane_wang/PMFs
   vpath %.c $(VPATH_LOCATIONS) $(COMBUSTION_DIR)/Chemistry/data/dodecane_wang
 endif
+ifeq ($(CHEMISTRY_MODEL), ZHAODODECANE)
+  cEXE_sources += dodecane_zhao_1.c
+  vpath %.f   $(VPATH_LOCATIONS) $(COMBUSTION_DIR)/Chemistry/data/dodecane_zhao_1/PMFs
+  vpath %.c $(VPATH_LOCATIONS) $(COMBUSTION_DIR)/Chemistry/data/dodecane_zhao_1
+endif
 
 # Enable time-dependent turbulence forcing term
 ifeq ($(USE_TDEPFORCING), TRUE)
