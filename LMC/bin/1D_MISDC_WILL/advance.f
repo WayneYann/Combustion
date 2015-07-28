@@ -380,7 +380,14 @@ c     either the mac velocities have changed, or this was not called earlier
 c     because we are not using the fancy predictor
 
             scal_1_AD = scal_1_prev
-            aofs_avg = quadrature_1(aofs_n, aofs_1, aofs_2, dt)
+            do i=lo(0),hi(0)
+               do n=1,nscal
+                  aofs_avg(0,i,n) = quadrature_1(aofs_n(0,i,n),
+     $                                           aofs_1(0,i,n),
+     $                                           aofs_2(0,i,n), dt)/dt1
+               enddo
+            enddo
+            
             print *,'... update rho'
             call update_rho(scal_old(0,:,:),scal_1_AD(0,:,:),aofs_avg(0,:,:),
      &                      dt1,lo(0),hi(0),bc(0,:))
@@ -407,7 +414,7 @@ c     differential diffusion will be added later
      &                             dt(0))
             enddo
 c     WILL: TODO: make sure this should be aofs_avg
-            call update_spec(scal_old(0,:,:),scal_1_prev(0,:,:),aofs_avg(0,:,:),
+            call update_spec(scal_old(0,:,:),scal_1_prev(0,:,:),
      &                       alpha(0,:),beta_n(0,:,:),
      &                       dRhs(0,0:,1:),Rhs(0,0:,FirstSpec:),
      &                       dx(0),dt1,be_cn_theta,lo(0),hi(0),bc(0,:))
@@ -455,7 +462,7 @@ c     add differential diffusion to forcing for enthalpy solve in equation (49)
 
 c     WILL: TODO: double check this
 c     update rhoh with advection terms and set up RHS for equation (49) C-N solve
-            call update_rhoh(scal_old(0,:,:),scal_1_prev(0,:,:),aofs_avg(0,:,:),
+            call update_rhoh(scal_old(0,:,:),scal_1_prev(0,:,:),
      &                       alpha(0,:),beta_n(0,:,:),
      &                       dRhs(0,:,0),Rhs(0,:,RhoH),dx(0),dt1,
      &                       be_cn_theta,lo(0),hi(0),bc(0,:))
@@ -672,13 +679,21 @@ c     compute advective flux divergence
             call scal_aofs(scal_2_prev(0,:,:),macvel_2(0,:),aofs_2(0,:,:),
      $                     dx(0),dt2,lo(0),hi(0),bc(0,:))
 
-            aofs_avg = 0.5d0*(aofs_1 + aofs_2)
+            do i=lo(0),hi(0)
+               do n=1,nscal
+                  aofs_avg(0,i,n) = aofs_curr(0,i,n) - aofs_1(0,i,n)
+     $                            + quadrature_2(aofs_n(0,i,n),
+     $                                           aofs_1(0,i,n),
+     $                                           aofs_2(0,i,n), dt)/dt2
+               enddo
+            enddo
             
             scal_2_AD = scal_2_prev
             print *,'... update rho'
             call update_rho(scal_1_prev(0,:,:),scal_2_AD(0,:,:),aofs_avg(0,:,:),
      &                      dt2,lo(0),hi(0),bc(0,:))
-
+            aofs_avg = 0.5d0*(aofs_1 + aofs_2)
+            
 c     update rhoY_m with advection terms and set up RHS for equation (47) C-N solve
             print *,'... do correction diffusion solve for species'
             do i=lo(0),hi(0)
@@ -700,7 +715,7 @@ c     differential diffusion will be added later
             enddo
             
 c     WILL: TODO: make sure this should be aofs_avg
-            call update_spec(scal_1_AD(0,:,:),scal_2_AD(0,:,:),aofs_avg(0,:,:),
+            call update_spec(scal_1_AD(0,:,:),scal_2_AD(0,:,:),
      &                       alpha(0,:),beta_1(0,:,:),
      &                       dRhs(0,0:,1:),Rhs(0,0:,FirstSpec:),
      &                       dx(0),dt2,be_cn_theta,lo(0),hi(0),bc(0,:))
@@ -748,7 +763,7 @@ c     should this use the Gauss-Lobatto quadrature rule??
             print *,'... do correction diffusion solve for rhoh'
 
 c     update rhoh with advection terms and set up RHS for equation (49) C-N solve
-            call update_rhoh(scal_1_AD(0,:,:),scal_2_AD(0,:,:),aofs_avg(0,:,:),
+            call update_rhoh(scal_1_AD(0,:,:),scal_2_AD(0,:,:),
      &                       alpha(0,:),beta_1(0,:,:),
      &                       dRhs(0,:,0),Rhs(0,:,RhoH),dx(0),dt2,
      &                       be_cn_theta,lo(0),hi(0),bc(0,:))

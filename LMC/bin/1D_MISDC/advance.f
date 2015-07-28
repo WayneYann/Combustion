@@ -865,7 +865,7 @@ c     extract div gamma^n
                   do n=1,Nspec
                      is = FirstSpec + n - 1
                      diff_hat(0,i,is) = (scal_new(0,i,is)-scal_old(0,i,is))/dt(0) 
-     $                    - aofs(0,i,is) - dRhs(0,i,n)/dt(0) + scal_old(0,i,is)
+     $                    - aofs(0,i,is) - dRhs(0,i,n)/dt(0)
                   enddo
                enddo
 
