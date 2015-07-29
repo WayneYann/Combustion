@@ -4456,10 +4456,10 @@ HeatTransfer::advance (Real time,
 
       // add to time-centered DivU
       // JBBHACK
-      if(sdc_iter == 1 ){
+//      if(sdc_iter == 1 ){
         MultiFab::Add(dpdt,delta_dpdt,0,0,1,nGrowAdvForcing);
         showMF("sdc",dpdt,"sdc_mac_rhs2",level,sdc_iter,parent->levelSteps(level));
-      }
+//      }
 
       MultiFab::Add(mac_divu,dpdt,0,0,1,nGrowAdvForcing);
 
