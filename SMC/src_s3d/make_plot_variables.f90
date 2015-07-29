@@ -17,7 +17,7 @@ module make_plot_variables_module
 contains
 
   subroutine make_plotvar(plotdata,icomp,Q,dx,dt,U0,U)
-    use threadbox_module
+    use smc_threadbox_module
     type(multifab), intent(inout) :: plotdata
     type(multifab), intent(in   ) :: Q
     integer, intent(in) :: icomp

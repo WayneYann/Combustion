@@ -1,4 +1,4 @@
-module threadbox_module
+module smc_threadbox_module
 
   use bl_error_module
   use parallel
@@ -82,17 +82,17 @@ contains
     end if
 
     if (tb_idim_more .eq. tb_idim_less .and. ndim.gt.1) then
-       call bl_error("threadbox_module: tb_idim_more .eq. tb_idim_less")
+       call bl_error("smc_threadbox_module: tb_idim_more .eq. tb_idim_less")
     end if
     if (tb_idim_more < 1 .or. tb_idim_more > ndim) then
-       call bl_error("threadbox_module: invalid tb_idim_more")
+       call bl_error("smc_threadbox_module: invalid tb_idim_more")
     end if
     if (tb_idim_less < 1 .or. tb_idim_less > ndim) then
-       call bl_error("threadbox_module: invalid tb_idim_less")
+       call bl_error("smc_threadbox_module: invalid tb_idim_less")
     end if
 
     if (tb_split_dim > ndim) then
-       call bl_error("threadbox_module: invalid tb_split_dim")
+       call bl_error("smc_threadbox_module: invalid tb_split_dim")
     end if
 
     !$omp parallel
@@ -254,7 +254,7 @@ contains
           if (box_size_i(idim) < nthreads_d(idim)) then
              print *, 'Box #', iglobal, 'idim =', idim, ' box size = ', box_size_i(idim), &
                   '  threads in this direction', nthreads_d(idim)
-             call bl_error("threadbox_module: Too many threads for such small box") 
+             call bl_error("smc_threadbox_module: Too many threads for such small box") 
           end if
        end do
 
@@ -630,4 +630,4 @@ contains
   end function tb_worktodo
 
 
-end module threadbox_module
+end module smc_threadbox_module

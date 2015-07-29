@@ -17,7 +17,7 @@ subroutine smc()
   use sdcquad_module
   use smc_bc_module
   use smcdata_module
-  use threadbox_module
+  use smc_threadbox_module
   use time_module
   use tranlib_module
   use variables_module
