@@ -4455,8 +4455,11 @@ HeatTransfer::advance (Real time,
       showMF("sdc",delta_dpdt,"sdc_mac_dpdt",level,sdc_iter,parent->levelSteps(level));
 
       // add to time-centered DivU
-      MultiFab::Add(dpdt,delta_dpdt,0,0,1,nGrowAdvForcing);
-      showMF("sdc",dpdt,"sdc_mac_rhs2",level,sdc_iter,parent->levelSteps(level));
+      // JBBHACK
+//      if(sdc_iter == 1 ){
+        MultiFab::Add(dpdt,delta_dpdt,0,0,1,nGrowAdvForcing);
+        showMF("sdc",dpdt,"sdc_mac_rhs2",level,sdc_iter,parent->levelSteps(level));
+//      }
 
       MultiFab::Add(mac_divu,dpdt,0,0,1,nGrowAdvForcing);
 
@@ -4712,6 +4715,7 @@ HeatTransfer::advance (Real time,
     showMF("sdc",get_new_data(State_Type),"sdc_Snew_preProj",level,parent->levelSteps(level));
 
     // compute delta_chi correction
+    // place to take dpdt stuf fout of nodal project
     //    calc_dpdt(cur_time,dt,dpdt,u_mac);
     //    MultiFab::Add(get_new_data(Divu_Type),dpdt,0,0,1,0);
 

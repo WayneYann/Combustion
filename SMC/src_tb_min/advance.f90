@@ -3,7 +3,7 @@ module advance_module
   use bl_error_module
   use kernels_module
   use multifab_module
-  use threadbox_module
+  use smc_threadbox_module
   use time_module
   use transport_properties
   use variables_module

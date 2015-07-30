@@ -8,7 +8,7 @@ module advance_module
   use multifab_module
   use nscbc_module
   use smc_bc_module
-  use threadbox_module
+  use smc_threadbox_module
   use transport_properties
   use variables_module
   use sdclib

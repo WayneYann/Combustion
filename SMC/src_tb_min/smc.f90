@@ -13,7 +13,7 @@ subroutine smc()
   use probin_module
   use runtime_init_module
   use smcdata_module
-  use threadbox_module
+  use smc_threadbox_module
   use time_module
   use variables_module
 

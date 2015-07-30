@@ -22,7 +22,7 @@ contains
     use variables_module, only : ncons, nprim
     use chemistry_module, only : nspecies
     use derivative_stencil_module, only : stencil_ng
-    use threadbox_module, only : tb_multifab_setval
+    use smc_threadbox_module, only : tb_multifab_setval
 
     implicit none
 

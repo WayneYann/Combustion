@@ -7,7 +7,7 @@ module initialize_module
   use nscbc_module
   use physbndry_reg_module
   use variables_module
-  use threadbox_module
+  use smc_threadbox_module
 
   implicit none
 

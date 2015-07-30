@@ -8,9 +8,10 @@
 
   pertmag = 0.
 
-  max_trac_lev = 4
+  max_trac_lev = 2
   flametracval = 1.e-4
   flametracval = 1.e-5
+  flametracval = 1.e-6
 
   max_temp_lev = 0
   temperr = 500
@@ -21,13 +22,15 @@
 
   phi_in = 1.
   phi_in = .7
+  phi_in = -1
   T_in = 443.
   T_in = 298.
 
  /
  &heattransin
   pamb = 101325.
-  dpdt_factor = 1.0
+  dpdt_factor = 0.3
+  dpdt_factor = 0.0
  /
   &flctin
   flct_file = ""

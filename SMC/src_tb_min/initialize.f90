@@ -2,7 +2,7 @@ module initialize_module
 
   use multifab_module
   use variables_module
-  use threadbox_module
+  use smc_threadbox_module
 
   implicit none
 

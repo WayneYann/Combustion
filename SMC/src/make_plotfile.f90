@@ -4,7 +4,7 @@ module make_plotfile_module
   use fabio_module
   use make_plot_variables_module
   use multifab_module
-  use threadbox_module, only : tb_multifab_setval
+  use smc_threadbox_module, only : tb_multifab_setval
   use variables_module
 
   use chemistry_module, only : nspecies, spec_names, get_species_index
