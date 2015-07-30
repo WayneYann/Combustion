@@ -195,7 +195,6 @@ c     this is needed for any dpdt-based correction scheme
       call compute_pthermo(scal_old(0,:,:),lo(0),hi(0),bc(0,:))
 
 c     reset delta_chi
-      delta_chi = 0.d0
       delta_chi_0 = 0.d0
       delta_chi_1 = 0.d0
       delta_chi_2 = 0.d0
@@ -203,9 +202,11 @@ c     reset delta_chi
 
 c     delta_chi = delta_chi + (peos-p0)/(dt*peos) + (1/peos) u dot grad peos
       call add_dpdt(scal_old(0,:,:),scal_old(0,:,RhoRT),
-     $              delta_chi_0(0,:),macvel_n(0,:),dx(0),dt(0),
+     $              delta_chi_0(0,:),macvel_n(0,:),dx(0),dt1,
      $              lo(0),hi(0),bc(0,:))
-
+      
+      print *,divu_old(0,:)
+      
 c     S_hat^{n+1/2} = S^{n+1/2} + delta_chi
       do i=lo(0),hi(0)
          divu_effect(0,i) = divu_old(0,i) + delta_chi_0(0,i)

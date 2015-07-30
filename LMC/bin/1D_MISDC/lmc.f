@@ -267,6 +267,8 @@ c     needed for seed to EOS after first strang_chem call
      &                        I_R(l,:,:),divu_old(l,:),dx(l),
      &                        lo(l),hi(l))
             end do
+            
+            stop
 
 c     passing in dt=-1 ensures we simply project div(u)=S and
 c     return zero pressure

@@ -78,10 +78,10 @@ program chemh_converge4
   do i=0,nx_0-1
      do j=1,26
         sum = 0.d0
-        do k=0,1
-           sum = sum + data1(2*i+k,j)
+        do k=0,3
+           sum = sum + data1(4*i+k,j)
         end do
-        data1_0(i,j) = sum / 2.d0
+        data1_0(i,j) = sum / 4.d0
      end do
   end do
   
@@ -107,10 +107,10 @@ program chemh_converge4
   do i=0,nx_1-1
      do j=1,26
         sum = 0.d0
-        do k=0,1
-           sum = sum + data2(2*i+k,j)
+        do k=0,3
+           sum = sum + data2(4*i+k,j)
         end do
-        data2_1(i,j) = sum / 2.d0
+        data2_1(i,j) = sum / 4.d0
      end do
   end do
   
@@ -136,10 +136,10 @@ program chemh_converge4
   do i=0,nx_2-1
      do j=1,26
         sum = 0.d0
-        do k=0,1
-           sum = sum + data3(2*i+k,j)
+        do k=0,3
+           sum = sum + data3(4*i+k,j)
         end do
-        data3_2(i,j) = sum / 2.d0
+        data3_2(i,j) = sum / 4.d0
      end do
   end do
   

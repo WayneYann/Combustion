@@ -37,7 +37,7 @@ c     Quantities passed in
          call CKHMS(T,IWRK,RWRK,HK)
 
          divu(i) = diff(i,Temp)/(rho*cpmix*T)
-
+         
          do n=1,Nspec
             divu(i) = divu(i)
      &           + (diff(i,FirstSpec+n-1) + I_R(i,n))

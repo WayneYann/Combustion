@@ -275,7 +275,11 @@ c     needed for seed to EOS after first strang_chem call
      &                        I_R(l,:,:),divu_old(l,:),dx(l),
      &                        lo(l),hi(l))
             end do
-
+            
+            do l=-1,nfine
+               print *,divu_old(0,l)
+            end do
+            
 c     passing in dt=-1 ensures we simply project div(u)=S and
 c     return zero pressure
             call project_level(vel_old(0,:),scal_old(:,0:,Density),
@@ -373,7 +377,7 @@ c     update pressure and I_R
          enddo
 
          doing_init_iters = 0
-
+         
          call write_plt(vel_old,scal_old,press_old,divu_old,I_R,
      &                  dx,0,time,lo,hi,bc)
 

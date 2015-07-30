@@ -30,7 +30,8 @@
          dpdt = (pthermo(i) - Pcgs) / dt
  !        dpdt = dpdt - ugradp
 
-         divu(i) = divu(i) + dpdt*dpdt_factor/pthermo(i)
+         !divu(i) = divu(i) + dpdt*dpdt_factor/pthermo(i)
+         divu(i) = divu(i) + dpdt*dpdt_factor/Pcgs
       end do
       
       end

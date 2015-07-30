@@ -5,14 +5,14 @@
       real*8 beta(-1:nfine  ,nscal)
       real*8 visc(-1:nfine)
       real*8 dx
-      integer lo,hi
+      integer lo,hi,i
 
 c     Compute Div(lambda.Grad(T)) + rho.D.Grad(Hi).Grad(Yi)
       call gamma_dot_gradh(scal,beta,visc,dx,lo,hi)
-
+      
 c     Add Div( lambda Grad(T) )
       call addDivLambdaGradT(scal,beta,visc,dx,lo,hi)
-
+      
       end
 
       subroutine addDivLambdaGradT(scal,beta,visc,dx,lo,hi)
@@ -22,6 +22,7 @@ c     Add Div( lambda Grad(T) )
       real*8 beta(-1:nfine  ,nscal)
       real*8 visc(-1:nfine)
       real*8 dx
+      real*8 new
       integer lo,hi
       
       integer i
@@ -41,8 +42,11 @@ c     Add Div( lambda Grad(T) )
          
          flux_hi = beta_hi*(scal(i+1,Temp) - scal(i  ,Temp)) 
          flux_lo = beta_lo*(scal(i  ,Temp) - scal(i-1,Temp)) 
-         visc(i) = visc(i) + (flux_hi - flux_lo) * dxsqinv
-
+         
+         new = visc(i) + (flux_hi - flux_lo) * dxsqinv
+         
+         visc(i) = new
+         
       enddo
 
       end
