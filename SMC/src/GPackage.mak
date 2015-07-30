@@ -43,7 +43,7 @@ f90sources += sdcquad.f90
 f90sources += smc.f90
 f90sources += smc_bc.f90
 f90sources += smcdata.f90
-f90sources += threadbox.f90
+f90sources += smc_threadbox.f90
 f90sources += time.f90
 
 ifdef CONVERGENCE
