@@ -205,8 +205,6 @@ c     delta_chi = delta_chi + (peos-p0)/(dt*peos) + (1/peos) u dot grad peos
      $              delta_chi_0(0,:),macvel_n(0,:),dx(0),dt1,
      $              lo(0),hi(0),bc(0,:))
       
-      print *,divu_old(0,:)
-      
 c     S_hat^{n+1/2} = S^{n+1/2} + delta_chi
       do i=lo(0),hi(0)
          divu_effect(0,i) = divu_old(0,i) + delta_chi_0(0,i)
@@ -335,10 +333,6 @@ c     that have a backward Euler character
                enddo
                ! compute the production rates from the previous iterate
                call CKWYR(scal_1_prev(0,i,Density), scal_1_prev(0,i,Temp), Y, iwrk, rwrk, wdot_1(i,:))
-               
-               do n=1,Nspec
-                  I_R_divu(0,i,n) = wdot_1(i,n)*mwt(n)
-               end do
             end do
 c     compute transport coefficients
 c        rho D_m     (for species)
@@ -392,7 +386,6 @@ c     because we are not using the fancy predictor
             print *,'... update rho'
             call update_rho(scal_old(0,:,:),scal_1_AD(0,:,:),aofs_avg(0,:,:),
      &                      dt1,lo(0),hi(0),bc(0,:))
-            aofs_avg = 0.5d0*(aofs_n + aofs_1)
             
 c     update rhoY_m with advection terms and set up RHS for equation (47) C-N solve
             print *,'... do correction diffusion solve for species'
@@ -414,7 +407,7 @@ c     differential diffusion will be added later
      &                             diff_2(0,i,RhoH)+aofs_2(0,i,RhoH),
      &                             dt(0))
             enddo
-c     WILL: TODO: make sure this should be aofs_avg
+            
             call update_spec(scal_old(0,:,:),scal_1_prev(0,:,:),
      &                       alpha(0,:),beta_n(0,:,:),
      &                       dRhs(0,0:,1:),Rhs(0,0:,FirstSpec:),
@@ -535,12 +528,12 @@ c     instantaneous omegadot for divu calc
      &                              mu_dummy(0,:),lo(0),hi(0))
 c     divu
                call calc_divu(scal_1_curr(0,:,:),beta_1(0,:,:),I_R_divu(0,:,:),
-     &                           divu_new(0,:),dx(0),lo(0),hi(0))
+     &                           divu_1(0,:),dx(0),lo(0),hi(0))
                
-               divu_1 = divu_new
-cccccccccccccccccccccccccccccccccccc
-c     update delta_chi
-cccccccccccccccccccccccccccccccccccc
+               
+!cccccccccccccccccccccccccccccccccccc
+!c     update delta_chi
+!cccccccccccccccccccccccccccccccccccc
 
                print *,'... updating S^{n+1} and macvel_1'
                print *,'    using fancy delta_chi'
@@ -550,18 +543,16 @@ c     this is needed for any dpdt-based correction scheme
                call compute_pthermo(scal_1_curr(0,:,:),lo(0),hi(0),bc(0,:))
                
 c     delta_chi = delta_chi + (peos-p0)/(dt*peos) + (1/peos) u dot grad peos
-c     completely reevaluate delta_chi_2
-               delta_chi_2 = 0.d0
+c     increment delta_chi_1
                call add_dpdt(scal_1_curr(0,:,:),scal_1_curr(0,:,RhoRT),
-     $                       delta_chi_2(0,:),macvel_1(0,:),dx(0),dt1,
+     $                       delta_chi_1(0,:),macvel_1(0,:),dx(0),dt1,
      $                       lo(0),hi(0),bc(0,:))
-c     and use that quantity to increment delta_chi_1
 
                delta_chi_1 = delta_chi_1 + delta_chi_2
                
 c     S_hat^{n+1} = S^{n+1} + delta_chi
                do i=lo(0),hi(0)
-                  divu_effect(0,i) = divu_new(0,i) + delta_chi_0(0,i) + delta_chi_1(0,i)
+                  divu_effect(0,i) = divu_1(0,i) + delta_chi_0(0,i) + delta_chi_1(0,i)
                end do
 
 c     macvel_1 will now satisfy div(umac) = S_hat^{n+1}
@@ -591,32 +582,76 @@ c     we compute grad Y_m using Y_m from the second argument
      $                                   diffdiff_1_curr(0,:),dx(0),lo(0),hi(0))
               end if
             
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!!!!!!!!!!!!!!!!!!!!!!!!! END FIRST SUBSTEP !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!! END FIRST SUBSTEP !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!!!!!!!!!!!!!!!!!!!!!!! START SECOND SUBSTEP !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!! START SECOND SUBSTEP !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
             
             do i=lo(0),hi(0)
                do n = 1,Nspec
                   Y(n) = scal_2_prev(0,i,FirstSpec+n-1)/scal_2_prev(0,i,Density)
                enddo
-               ! compute the production rates from the previous iterate
+c                compute the production rates from the previous iterate
                call CKWYR(scal_2_prev(0,i,Density), scal_2_prev(0,i,Temp), Y, iwrk, rwrk, wdot_2(i,:))
+c                computate instantaneous omega dot
+!               do n=1,Nspec
+!                  I_R_divu(0,i,n) = wdot_2(i,n)*mwt(n)
+!               end do
             end do
             
             print *,'... doing SDC iter ',misdc
             
-            print *,'... compute lagged diff_new, D(U^{n+1,k-1})'
+cccccccccccccccccccccccccccccccccccc
+c     compute S^{n+1}
+cccccccccccccccccccccccccccccccccccc
 
-c     compute transport coefficients
-c        rho D_m     (for species)
-c        lambda / cp (for enthalpy)
-c        lambda      (for temperature)
+!            print *,'... compute S^{n+1}'
+!            print *,'    old and new'
+!c     compute transport coefficients
+!c        rho D_m     (for species)
+!c        lambda / cp (for enthalpy)
+!c        lambda      (for temperature)
+!            call calc_diffusivities(scal_2_prev(0,:,:),beta_2(0,:,:),
+!     &                              mu_dummy(0,:),lo(0),hi(0))
+!c     divu
+!            call calc_divu(scal_2_prev(0,:,:),beta_2(0,:,:),I_R_divu(0,:,:),
+!     &                     divu_2(0,:),dx(0),lo(0),hi(0))
+!            
+!cccccccccccccccccccccccccccccccccccc
+!c     update delta_chi and project
+!cccccccccccccccccccccccccccccccccccc
+
+!            print *,'... updating S^{n+1} and macvel_2'
+!            print *,'    using fancy delta_chi'
+
+!c     compute ptherm = p(rho,T,Y)
+!c     this is needed for any dpdt-based correction scheme
+!            call compute_pthermo(scal_2_prev(0,:,:),lo(0),hi(0),bc(0,:))
+!               
+!c     delta_chi = delta_chi + (peos-p0)/(dt*peos) + (1/peos) u dot grad peos
+!c     completely reevaluate delta_chi_2
+!            call add_dpdt(scal_2_prev(0,:,:),scal_2_prev(0,:,RhoRT),
+!     $                    delta_chi_2(0,:),macvel_2(0,:),dx(0),dt1,
+!     $                    lo(0),hi(0),bc(0,:))
+
+!c     S_hat^{n+1} = S^{n+1} + delta_chi
+!            do i=lo(0),hi(0)
+!               divu_effect(0,i) = divu_2(0,i) + delta_chi_2(0,i) + delta_chi_3(0,i)
+!            end do
+
+!c     macvel_2 will now satisfy div(umac) = S_hat^{n+1}
+!c     WILL: changed scal_old to scal_1
+!            call macproj(macvel_2(0,:),scal_2_prev(0,:,Density),
+!     &                      divu_effect(0,:),dx,lo(0),hi(0),bc(0,:))       
+!            
+!            print *,'... compute lagged diff_new, D(U^{n+1,k-1})'
+
             call calc_diffusivities(scal_2_prev(0,:,:),beta_2(0,:,:),
      &                              mu_dummy(0,:),lo(0),hi(0))
+
 c     compute a conservative div gamma_m
 c     save gamma_m for differential diffusion computation
             call get_spec_visc_terms(scal_2_prev(0,:,:),beta_2(0,:,:),
@@ -640,41 +675,6 @@ c     we compute grad Y_m using Y_m from the second argument
      $                                 gamma_hi(0,:,:),beta_2(0,:,:),
      $                                 diffdiff_2(0,:),dx(0),lo(0),hi(0))
             end if
-
-cccccccccccccccccccccccccccccccccccc
-c     compute S^{n+1}
-cccccccccccccccccccccccccccccccccccc
-
-               print *,'... compute S^{n+1}'
-               print *,'    old and new'
-
-c     instantaneous omegadot for divu calc
-               do i=lo(0),hi(0)
-                  do n=1,Nspec
-                     I_R_divu(0,i,n) = wdot_2(i,n)*mwt(n)
-                  end do
-               end do
-
-c     divu
-               call calc_divu(scal_2_prev(0,:,:),beta_2(0,:,:),I_R_divu(0,:,:),
-     &                           divu_2(0,:),dx(0),lo(0),hi(0))
-            
-cccccccccccccccccccccccccccccccccccc
-c     update delta_chi and project
-cccccccccccccccccccccccccccccccccccc
-
-            print *,'... updating S^{n+1} and macvel_2'
-            print *,'    using fancy delta_chi'
-
-c     S_hat^{n+1} = S^{n+1} + delta_chi
-            do i=lo(0),hi(0)
-               divu_effect(0,i) = divu_new(0,i) + delta_chi_2(0,i) + delta_chi_3(0,i)
-            end do
-
-c     macvel_2 will now satisfy div(umac) = S_hat^{n+1}
-c     WILL: changed scal_old to scal_1
-            call macproj(macvel_2(0,:),scal_2_prev(0,:,Density),
-     &                      divu_effect(0,:),dx,lo(0),hi(0),bc(0,:))       
             
 c     compute advective flux divergence
             call scal_aofs(scal_2_prev(0,:,:),macvel_2(0,:),aofs_2(0,:,:),
@@ -691,7 +691,7 @@ c     compute advective flux divergence
             
             scal_2_AD = scal_2_prev
             print *,'... update rho'
-            call update_rho(scal_1_prev(0,:,:),scal_2_AD(0,:,:),aofs_avg(0,:,:),
+            call update_rho(scal_1_curr(0,:,:),scal_2_AD(0,:,:),aofs_avg(0,:,:),
      &                      dt2,lo(0),hi(0),bc(0,:))
             aofs_avg = 0.5d0*(aofs_1 + aofs_2)
             
@@ -814,8 +814,8 @@ c     solve equations (50), (51) and (52)
      $                       provide_wdot, const_src(0,:,:),
      $                       I_R(0,:,:),dt2,lo(0),hi(0),bc(0,:))
 
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 cccccccccccccccccccccccccccccccccccc
 c     compute S^{n+1}
@@ -829,7 +829,7 @@ c     instantaneous omegadot for divu calc
                   do n = 1,Nspec
                      Y(n) = scal_2_curr(0,i,FirstSpec+n-1)/scal_2_curr(0,i,Density)
                   enddo
-                  ! compute the production rates from the current iterate
+c                   compute the production rates from the current iterate
                   call CKWYR(scal_2_curr(0,i,Density), scal_2_curr(0,i,Temp), Y, iwrk, rwrk, WDOTK)
                   do n=1,Nspec
                      I_R_divu(0,i,n) = wdotk(n)*mwt(n)
@@ -839,7 +839,7 @@ c     instantaneous omegadot for divu calc
      &                              mu_dummy(0,:),lo(0),hi(0))
 c     divu
                call calc_divu(scal_2_curr(0,:,:),beta_2(0,:,:),I_R_divu(0,:,:),
-     &                           divu_new(0,:),dx(0),lo(0),hi(0))
+     &                        divu_2(0,:),dx(0),lo(0),hi(0))
 
 cccccccccccccccccccccccccccccccccccc
 c     update delta_chi and project
@@ -857,6 +857,15 @@ c     increment delta_chi_3
                call add_dpdt(scal_2_curr(0,:,:),scal_2_curr(0,:,RhoRT),
      $                       delta_chi_3(0,:),macvel_2(0,:),dx(0),dt2,
      $                       lo(0),hi(0),bc(0,:))
+
+c     S_hat^{n+1} = S^{n+1} + delta_chi
+            do i=lo(0),hi(0)
+               divu_effect(0,i) = divu_2(0,i) + delta_chi_2(0,i) + delta_chi_3(0,i)
+            end do
+
+c     macvel_2 will now satisfy div(umac) = S_hat^{n+1}
+            call macproj(macvel_2(0,:),scal_2_curr(0,:,Density),
+     &                      divu_effect(0,:),dx,lo(0),hi(0),bc(0,:))  
 
             scal_1_prev = scal_1_curr
             scal_2_prev = scal_2_curr
@@ -877,106 +886,9 @@ C----------------------------------------------------------------
       end if
       
       scal_new = scal_2_curr
-C----------------------------------------------------------------
-c     Step 3: Advance the velocity
-C----------------------------------------------------------------
-
-c     omegadot for divu_new computation is instantaneous
-c     value of omegadot at t^{n+1}
-      do i=lo(0),hi(0)
-         do n=1,Nspec
-            C(n) = scal_new(0,i,FirstSpec+n-1)*invmwt(n)
-         end do
-         call CKWC(scal_new(0,i,Temp),C,IWRK,RWRK,WDOTK)
-         
-         do n=1,Nspec
-            I_R_divu(0,i,n) = WDOTK(n)*mwt(n)
-         end do
-      end do
+      divu_new = divu_2
       
-c     compute transport coefficients
-c        rho D_m     (for species)
-c        lambda / cp (for enthalpy)
-c        lambda      (for temperature)       
-      call calc_diffusivities(scal_new(0,:,:),beta_2(0,:,:),
-     &                        mu_new(0,:),lo(0),hi(0))
-      
-c     calculate S
-      call calc_divu(scal_new(0,:,:),beta_2(0,:,:),I_R_divu(0,:,:),
-     &               divu_new(0,:),dx(0),lo(0),hi(0))
-      
-c     calculate dSdt
-      do i=lo(0),hi(0)
-         dSdt(0,i) = (divu_new(0,i) - divu_old(0,i)) / dt(0)
-      enddo
-
-      print *,'... update velocities'
-
-      vel_theta = 0.5d0
-
-c     get velocity visc terms to use as a forcing term for advection
-      call get_vel_visc_terms(vel_old(0,:),mu_old(0,:),visc(0,:),dx(0),
-     $                        lo(0),hi(0))
-
-      do i=lo(0),hi(0)
-         visc(0,i) = visc(0,i)/scal_old(0,i,Density)
-      enddo
-
-c     compute velocity edge states
-      call vel_edge_states(vel_old(0,:),scal_old(0,:,Density),gp(0,:),
-     $                     macvel_n(0,:),veledge(0,:),dx(0),dt(0),
-     $                     visc(0,:),lo(0),hi(0),bc(0,:))
-
-c     alculate rhohalf
-      do i=lo(0),hi(0)
-         !rhohalf(0,i) = 0.5d0*(scal_old(0,i,Density)+scal_new(0,i,Density))
-         rhohalf(0,i) = scal_1_curr(0,i,Density)
-      enddo      
-      
-      !macvel_avg = 0.5d0*(macvel_n + macvel_2)
-      macvel_avg = macvel_1
-      !macvel_avg = macvel_n/6.0 + macvel_1/3.0 + macvel_2/6.0
-
-c     update velocity and set up RHS for C-N diffusion solve
-      call update_vel(vel_old(0,:),vel_new(0,:),gp(0,:),rhohalf(0,:),
-     &                macvel_avg(0,:),veledge(0,:),alpha(0,:),mu_old(0,:),
-     &                vel_Rhs(0,:),dx(0),dt(0),vel_theta,
-     &                lo(0),hi(0),bc(0,:))
-
-      if (is_first_initial_iter .eq. 1) then
-
-c     during the first pressure initialization step, use an
-c     explicit update for diffusion
-         call get_vel_visc_terms(vel_old(0,:),mu_old(0,:),visc(0,:),
-     $                           dx(0),lo(0),hi(0))
-         do i=lo(0),hi(0)
-            vel_new(0,i) = vel_new(0,i) + visc(0,i)*dt(0)/rhohalf(0,i)
-         enddo
-
-      else
-
-c     crank-nicolson viscous solve
-         rho_flag = 1
-         call cn_solve(vel_new(0,:),alpha(0,:),mu_new(0,:),
-     $                 vel_Rhs(0,:),dx(0),dt(0),1,vel_theta,rho_flag,
-     $                 .true.,lo(0),hi(0),bc(0,:))
-
-      endif
-
-c     compute ptherm = p(rho,T,Y)
-c     this is needed for any dpdt-based correction scheme
-      call compute_pthermo(scal_new(0,:,:),lo(0),hi(0),bc(0,:))
-
-c     S_hat^{n+1} = S^{n+1} + dpdt_factor*(ptherm-p0)/(gamma*dt*p0)
-c                           + dpdt_factor*(u dot grad p)/(gamma*p0)
-      call add_dpdt_nodal(scal_new(0,:,:),scal_new(0,:,RhoRT),
-     &                    divu_new(0,:),vel_new(0,:),dx(0),dt(0),
-     &                    lo(0),hi(0),bc(0,:))
-
-c     project cell-centered velocities
-      print *,'...nodal projection...'
-      call project_level(vel_new(0,:),rhohalf(0,:),divu_new(0,:),
-     &                   press_old(0,:),press_new(0,:),dx(0),dt(0),
-     &                   lo(0),hi(0),bc(0,:))
+!      scal_new = scal_1_curr
+!      divu_new = divu_1
 
       end

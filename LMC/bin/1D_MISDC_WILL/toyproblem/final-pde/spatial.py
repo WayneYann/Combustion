@@ -12,14 +12,14 @@ from textwrap import wrap
 
 marker = itertools.cycle(('x', '.', '*', '+')) 
 
-a = -1.0
-eps = 10.0
-r = -70.0
-#eps = 0.0
-#r = 0.0
+ratio = 2
 
-Nx = 100
-dt = (20.0/Nx)/7.0
+a = -0.1
+eps = 1.0
+r = -10.0
+
+Nx = 50
+dt = (20.0/Nx)/2.0
 
 FT = dt*1
 
@@ -33,8 +33,9 @@ def solve(k, i=2):
    solns = []
    
    for j in range(k):
-      dtl = dt/(2**j)
-      (x, y) = pde.solve_pde(a, eps, r, Nx=Nx*(2**j), dt=dtl,
+      dtl = dt/(ratio**j)
+      
+      (x, y) = pde.solve_pde(a, eps, r, Nx=Nx*(ratio**j), dt=dtl,
                              FT=FT, max_iter=i)
       print
       solns.append((x,y))
@@ -57,23 +58,30 @@ def errors(solns):
 def orders(e):
    o = []
    for j in range(len(e)-1):
-      o.append(log(e[j]/e[j+1])/log(2))
+      o.append(log(e[j]/e[j+1])/log(ratio))
    return o
 
 def do_it(i):
-   solns = solve(7, i=i)
+   solns = solve(8, i=i)
    e = errors(solns)
    o = orders(e)
    print e
    print o
-   plt.loglog(hs[:-1], e, marker=marker.next(), label=str(i))   
+   plt.loglog(hs[:-1], e, marker=marker.next(), label=str(i))
+   return e
 
 fig = plt.figure(1, figsize=(10,6))
 
-do_it(1)
-do_it(2)
-do_it(3)
-do_it(4)
+E = []
+
+E.append(do_it(1))
+E.append(do_it(2))
+E.append(do_it(3))
+E.append(do_it(4))
+
+E.append(hs[:-1])
+
+np.savetxt('error-output', np.array(E))
 
 fig.subplots_adjust(right=0.6)
 fig.subplots_adjust(top=0.8)

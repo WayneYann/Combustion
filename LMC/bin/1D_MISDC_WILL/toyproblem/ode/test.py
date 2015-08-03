@@ -2,9 +2,11 @@ import t
 from math import *
 import matplotlib.pyplot as plt
 
-a = 0.0
-d = -500.0
-r = 0.1
+dx = 0.000001
+
+a = 2.0/dx
+d = -3.0/dx**2
+r = 3.0
 
 def method_str(m):
     if m==0:
@@ -22,16 +24,16 @@ def method_marker(m):
     else:
         return 'o'
 
-misdc_iters = [1, 10, 100, 500, 5000]
+misdc_iters = [1, 10, 100, 500, 5000, 20000]
 
-dts = [1]
+dts = [dx]
 #for j in range(10):
 #    dts.append(dts[j]/2)
 
 fig = plt.figure(1, figsize=(10,6))
 
 E = []
-for method in [0, 1, 2]:
+for method in [0,1,2]:
     print method_str(method)
     for n in misdc_iters:
         e = []
