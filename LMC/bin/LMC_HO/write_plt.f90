@@ -1,17 +1,14 @@
-      subroutine write_plt(vel,scal,press,divu,I_R,dx,nsteps,time,lo,hi,bc)
+      subroutine write_plt(vel,scal,press,divu,dx,nsteps,time,bc)
       implicit none
       include 'spec.h'
 
       integer nsteps
-      real*8   vel(-2:nx+1)
+      real*8   vel( 0:nx)
       real*8  scal(-2:nx+1,nscal)
       real*8 press(-1:nx+1)
       real*8  divu(-1:nx)
-      real*8   I_R(-1:nx  ,0:Nspec)
       real*8    dx
       real*8 time
-      integer lo
-      integer hi
       integer bc(2)
       
       real*8 Y(Nspec)
@@ -25,7 +22,7 @@
  1005 format(i5.5)
  1006 FORMAT(200(E23.15E3,1X))
  
-      call compute_pthermo(scal(:,:),lo,hi)
+      call compute_pthermo(scal(:,:))
 
       open(10,file=pltfile,form='formatted')
       print *,'...writing data to ',pltfile
@@ -33,7 +30,7 @@
       write(10,*) nx
       write(10,*) time
 
-      do i=lo,hi
+      do i=0,nx-1
          do n=1,Nspec
             Y(n) = scal(i,FirstSpec+n-1)/scal(i,Density)
          enddo
@@ -44,8 +41,7 @@
                            vel(i),&
                            press(i),&
                            scal(i,RhoRT),&
-                           divu(i),&
-                           (I_R(i,n),n=1,Nspec)
+                           divu(i)
       enddo
 
       close(10)

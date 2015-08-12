@@ -1,8 +1,15 @@
 module lmc_module
+
+   use div_u_module
+   use cell_conversions_module
+   use ghost_cells_module
+   use advance_module
+   
    implicit none
    
    private
    public :: lmc
+   
 contains
    
    subroutine lmc()
@@ -20,27 +27,27 @@ contains
       integer num_init_iters
 
 !     cell-centered, 2 ghost cells
-      real*8, allocatable ::   vel_new(:)
-      real*8, allocatable ::   vel_old(:)
       real*8, allocatable ::  scal_new(:,:)
       real*8, allocatable ::  scal_old(:,:)
-      real*8, allocatable :: scal_hold(:,:)
 
 !     cell-centered, 1 ghost cell
       real*8, allocatable :: beta_old(:,:)
       real*8, allocatable :: beta_new(:,:)
-      real*8, allocatable :: mu_dummy(:)
-      real*8, allocatable :: divu_old(:)
-      real*8, allocatable :: divu_new(:)
+
+!     face values, no ghost cells
+      real*8, allocatable :: vel(:)
 
 !     cell-centered, no ghost cells
       real*8, allocatable ::   delta_chi(:)
+      real*8, allocatable :: divu_old(:)
+      real*8, allocatable :: divu_new(:)
+      real*8, allocatable :: divu_avg(:)
 
 !     nodal, 1 ghost cell
       real*8, allocatable :: press_new(:)
       real*8, allocatable :: press_old(:)
 
-      integer, allocatable :: lo, hi, bc(:)
+      integer, allocatable :: bc(:)
 
       real*8, allocatable :: dx, dt
 
@@ -51,7 +58,7 @@ contains
       real*8 fixed_dt
       real*8 Patm
 
-      integer l,divu_iter,init_iter
+      integer divu_iter,init_iter
 
       character chkfile*(16)
 
@@ -110,6 +117,8 @@ contains
       probtype = 1
       verbose_vode = 0
       nchemdiag = 10
+      
+      nnodes = 3
 
       open(9,file='probin',form='formatted',status='old')
       read(9,fortin)
@@ -132,28 +141,26 @@ contains
       call probinit(problo,probhi)
 
 !     cell-centered, 2 ghost cells
-      allocate(  vel_new(-2:nx+1))
-      allocate(  vel_old(-2:nx+1))
-      allocate( scal_new(-2:nx+1,nscal))
-      allocate( scal_old(-2:nx+1,nscal))
-      allocate(scal_hold(-2:nx+1,nscal))
+      allocate(scal_new(-2:nx+1,nscal))
+      allocate(scal_old(-2:nx+1,nscal))
+
+!     face-values, no ghost cells
+      allocate(vel(0:nx))
 
 !     cell-centered, 1 ghost cell
       allocate(beta_old(-1:nx,nscal))
       allocate(beta_new(-1:nx,nscal))
-      allocate(mu_dummy(-1:nx))
-      allocate(divu_old(-1:nx))
-      allocate(divu_new(-1:nx))
 
 !     cell-centered, no ghost cells
-      allocate(  delta_chi(0:nx-1))
+      allocate(delta_chi(0:nx-1))
+      allocate( divu_old(0:nx-1))
+      allocate( divu_new(0:nx-1))
+      allocate( divu_avg(0:nx-1))
 
 !     nodal, 1 ghost cell
       allocate(press_new(-1:nx+1))
       allocate(press_old(-1:nx+1))
-
-      allocate(lo)
-      allocate(hi)
+      
       allocate(bc(2))
 
       allocate(dx)
@@ -164,7 +171,6 @@ contains
       divu_new = 0.d0
 
 !     must zero this or else RHS in mac project could be undefined
-      dSdt = 0.d0
       delta_chi = 0.d0
       
 !     initialize dx
@@ -178,10 +184,6 @@ contains
          dt = fixed_dt
       end if
 
-!     initialize lo and hi at each level
-      lo = 0
-      hi = nx-1
-
 !     initialize boundary conditions
 !     0=interior; 1=inflow; 2=outflow
       bc(1) = 1
@@ -193,18 +195,6 @@ contains
          
          print *,'checkfile not yet implemented'
          stop
-         
-!         call read_check(chkfile,vel_old,scal_old,press_old,
-!     $                   I_R,divu_old,dSdt,
-!     $                   time,at_nstep,dt,lo,hi)
-!
-!         call write_plt(vel_old,scal_old,press_old,divu_old,I_R,
-!     $                  dx,at_nstep,time,lo,hi,bc)
-!
-!         at_nstep = at_nstep + 1
-!
-!c     needed for seed to EOS after first strang_chem call
-!         scal_new(:,:,Temp) = scal_old(:,:,Temp)
                   
       else
          
@@ -215,137 +205,31 @@ contains
 ! computes rho and h, fills in rhoH and rhoY
 ! sets I_R to zero
 
-         call initdata(vel_old,scal_old,I_R,dx,lo,hi,bc)
-
-!     needed for seed to EOS after first strang_chem call
-         scal_new(:,Temp) = scal_old(:,Temp)
-
+         call initdata(vel,scal_old,dx,bc)
          press_old = 0.d0
+         
+         call write_plt(vel,scal_old,press_old,divu_old, dx,99999,time,bc)
+         
+!     needed for seed to EOS after first strang_chem call
+         !scal_new(:,Temp) = scal_old(:,Temp)
+         
 
-         call write_plt(vel_old,scal_old,press_old,divu_old,I_R, dx,99999,time,lo,hi,bc)
+         
+         
+         !call compute_diffusion_coefficients(beta_old, scal_old)
+         !call compute_div_u(divu_old, scal_old, beta_old, dx)
+         !call extrapolate_cc_to_avg(divu_avg, divu_old)
+         
+         !call compute_velocity(vel, divu_avg, dx)
 
-!         do l=0,nlevs-1
-!            call calc_diffusivities(scal_old(l,:,:),beta_old(l,:,:),
-!     &                              mu_dummy(l,:),lo(l),hi(l))
-!         end do
-!         
-!         if (do_initial_projection .eq. 1) then
-!
-!            print *,'initialVelocityProject: '
-!            do l=0,nlevs-1
-!               call calc_divu(scal_old(l,:,:),beta_old(l,:,:),
-!     &                        I_R(l,:,:),divu_old(l,:),dx(l),
-!     &                        lo(l),hi(l))
-!            end do
-!            
-!c     passing in dt=-1 ensures we simply project div(u)=S and
-!c     return zero pressure
-!            call project_level(vel_old(0,:),scal_old(:,0:,Density),
-!     $                         divu_old(0,:),press_old(0,:),
-!     $                         press_new(0,:),dx(0),-1.d0,
-!     $                         lo(0),hi(0),bc(0,:))
+      end if
+         
+      print *,' '      
+      print *,'START ADVANCING THE SOLUTION '
+      print *,' '            
 
-         end if
-!
-!         call write_plt(vel_old,scal_old,press_old,divu_old,I_R,
-!     &                  dx,99998,time,lo,hi,bc)
-!
-!         
-!         scal_new = scal_old
-!         
-!         print *,' '
-!         print *,' '
-!         print *,'...doing num_divu_iters = ',num_divu_iters 
-!         print *,' '
-!         print *,' '
-!         do divu_iter=1,num_divu_iters
-!
-!            print *,' ...doing divu_iter number',divu_iter,' dt=',dt
-!            
-!            do l=0,nlevs-1
-!               call strang_chem(scal_old(l,:,:),scal_new(l,:,:),
-!     $                          provide_wdot,
-!     $                          const_src(l,:,:),I_R(l,:,:),
-!     $                          0.5d0*dt(l),lo(l),hi(l),bc(l,:))
-!     
-!               exit
-!            end do
-!
-!c     reset temperature just in case strang_chem call is not well posed
-!            scal_new(:,:,Temp) = scal_old(:,:,Temp)
-!
-!            do l=0,nlevs-1
-!               call calc_divu(scal_old(l,:,:),beta_old(l,:,:),
-!     &                        I_R(l,:,:),divu_old(l,:),dx(l),
-!     &                        lo(l),hi(l))
-!            end do
-!
-!            print *,'divu_iters velocity Project: '
-!            
-!c     passing in dt=-1 ensures we simply project div(u)=S and
-!c     return zero pressure
-!            call project_level(vel_old(0,:),scal_old(:,0:,Density),
-!     $                         divu_old(0,:),press_old(0,:),
-!     $                         press_new(0,:),dx(0),-1.d0,
-!     $                         lo(0),hi(0),bc(0,:))
-!
-!         enddo
-!
-!         call write_plt(vel_old,scal_old,press_old,divu_old,I_R,
-!     &                  dx,99997,time,lo,hi,bc)
-!
-!         print *,' '
-!         print *,'...doing num_init_iters = ',num_init_iters 
-!         print *,' '
-!         if (num_init_iters .le. 0) then
-!            is_first_initial_iter = 0
-!         else
-!            is_first_initial_iter = 1
-!         endif
-!         do init_iter=1,num_init_iters
-!
-!            doing_init_iters = 1
-!
-!            print *,' '
-!            print *,'INITIAL PRESSURE ITERATION ',init_iter
-!
-!c     strang split overwrites scal_old so we preserve it
-!            if (use_strang) then
-!               scal_hold = scal_old
-!            end if
-!
-!            call advance(vel_old,vel_new,scal_old,scal_new,
-!     $                   I_R,press_old,press_new,
-!     $                   divu_old,divu_new,dSdt,beta_old,beta_new,
-!     $                   dx,dt,lo,hi,bc,delta_chi,-init_iter)
-!
-!c     restore scal_old
-!            if (use_strang) then
-!               scal_old = scal_hold
-!            end if
-!
-!c     update pressure and I_R
-!            press_old = press_new
-!
-!            is_first_initial_iter = 0          
-!
-!         enddo
-!
-!         doing_init_iters = 0
-!         
-!         call write_plt(vel_old,scal_old,press_old,divu_old,I_R,
-!     &                  dx,0,time,lo,hi,bc)
-!
-!         print *,' '      
-!         print *,' '      
-!         print *,'COMPLETED INITIAL ITERATIONS'
-!         print *,' '      
-!         print *,'START ADVANCING THE SOLUTION '
-!         print *,' '            
-!
-! 1001    format('Advancing: starting time = ',
-!     $        e15.9,' with dt = ',e15.9)
-!
+1001  format('Advancing: starting time = ', e15.9,' with dt = ',e15.9)
+
 !      endif
 !
 !      call write_plt(vel_new,scal_new,press_new,divu_new,I_R,
@@ -353,46 +237,38 @@ contains
 !      call write_check(at_nstep,vel_new,scal_new,press_new,
 !     $     I_R,divu_new,dSdt,dx,time,dt,lo,hi)
 !
-!C-- Now advance 
-!      do nsteps_taken = at_nstep, nsteps
-!
-!         if (time.ge.stop_time) exit
-!
-!         dt = min(dt,stop_time-time)
-!
-!         write(6,*)
-!         write(6,1001 )time,dt
-!         write(6,*)'STEP = ',nsteps_taken
-!         
-!         call advance(vel_old,vel_new,scal_old,scal_new,
-!     $                I_R,press_old,press_new,
-!     $                divu_old,divu_new,dSdt,beta_old,beta_new,
-!     $                dx,dt,lo,hi,bc,delta_chi,nsteps_taken)
-!
-!c     update state, time
-!         vel_old = vel_new
-!         scal_old = scal_new
-!         divu_old = divu_new
-!         press_old = press_new
-!
-!         time = time + dt(0)
-!
-!         if (MOD(nsteps_taken,plot_int).eq.0 .OR. 
-!     &        nsteps_taken.eq.nsteps) then 
-!            call write_plt(vel_new,scal_new,press_new,divu_new,I_R,
-!     $                     dx,nsteps_taken,time,lo,hi,bc)
-!         endif
+
+!!!!!!!!!!!!!!!!!!!!!!!
+!!! Advance in time !!!
+!!!!!!!!!!!!!!!!!!!!!!!
+
+      do nsteps_taken = at_nstep, nsteps
+         if (time.ge.stop_time) exit
+            dt = min(dt,stop_time-time)
+            write(6,*)
+            write(6,1001 )time,dt
+            write(6,*)'STEP = ',nsteps_taken
+         
+            call advance(scal_old, scal_new, vel, dt, dx)
+            
+            scal_old = scal_new
+            
+            time = time + dt
+            
+            if (mod(nsteps_taken,plot_int).eq.0 .or. nsteps_taken.eq.nsteps) then 
+               call write_plt(vel,scal_new,press_new,divu_new,dx,nsteps_taken,time,bc)
+            endif
+         
 !         if (MOD(nsteps_taken,chk_int).eq.0 .OR.
 !     &        nsteps_taken.eq.nsteps) then 
 !            call write_check(nsteps_taken,vel_new,scal_new,press_new,
 !     $                       I_R,divu_new,dSdt,dx,time,dt,lo,hi)
 !         endif
-!      enddo
-!
-!      print *,' '      
-!      print *,'COMPLETED SUCCESSFULLY'
-!      print *,' '      
-!
+      enddo
+
+      print *,' '      
+      print *,'COMPLETED SUCCESSFULLY'
+      print *,' '      
    end subroutine lmc
 
 end module lmc_module

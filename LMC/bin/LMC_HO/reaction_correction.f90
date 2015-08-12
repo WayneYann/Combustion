@@ -1,17 +1,18 @@
       subroutine reaction_correction(scal_mp1_cc, scal_m_cc, advection_kp1, &
                                      advection_k, diffusion_kp1, diffusion_k, &
-                                     I_k, dtm, lo, hi)
+                                     wdot_k, I_k, dtm)
+      use wchem_module
       implicit none
       include 'spec.h'
       double precision, intent(inout) ::  scal_mp1_cc(-2:nx+1, nscal)
       double precision, intent(in   ) ::    scal_m_cc(-2:nx+1, nscal)
-      double precision, intent(in   ) :: advection_kp1(0 :nx-1,nscal)
-      double precision, intent(in   ) ::   advection_k(0 :nx-1,nscal)
+      double precision, intent(in   ) :: advection_kp1( 0:nx-1,nscal)
+      double precision, intent(in   ) ::   advection_k( 0:nx-1,nscal)
       double precision, intent(in   ) :: diffusion_kp1(-1:nx,  nscal)
       double precision, intent(in   ) ::   diffusion_k(-1:nx,  nscal)
+      double precision, intent(in   ) ::        wdot_k( 0:nx-1,Nspec)
       double precision, intent(in   ) ::           I_k(0:nx-1, nscal)
       double precision, intent(in   ) ::           dtm
-      integer,          intnet(in   ) ::        lo, hi
       
       double precision :: rhs(Nspec+1)
       double precision :: guess(Nspec+1)
@@ -36,7 +37,7 @@
       do_diag = 0
       errMax = hmix_Typ*1.e-20
       
-      do i=lo,hi
+      do i=0,nx-1
          ! need to convert advection and diffusion to cell-centered 
          ! quantities here
          ! set up the parameters used for the VODE and BE solve
@@ -72,7 +73,7 @@
                         dtm, diag, do_diag, ifail, i)
          
          ! use the result from VODE as the intial guess for the Newton solve
-         guess(Nspec+1) = rhguess
+         guess(Nspec+1) = rhohguess
          
          ! call the nonlinear backward Euler solver
          call bechem(guess, scal_mp1_cc(i, Density), rhs, dtm)

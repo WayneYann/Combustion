@@ -50,15 +50,12 @@
 
 !----------------------------------------------------------------------
 
-      subroutine initdata(vel,scal,I_R,dx,lo,hi,bc)
+      subroutine initdata(vel,scal,dx,bc)
       implicit none
       include 'spec.h'
-      double precision  vel(-2:nx+1)
+      double precision  vel( 0:nx)
       double precision scal(-2:nx+1,nscal)
-      double precision  I_R(-1:nx  ,0:Nspec)
       double precision   dx
-      integer            lo
-      integer            hi
       integer            bc(2)
 
       double precision  x, rho, Y(Nspec), T, h
@@ -66,7 +63,7 @@
       double precision valsPMF(Nspec+3), RWRK, sum, sigma, cent
       integer i, n, nPMF, IWRK
 
-      do i=lo,hi
+      do i=0,nx-1
          x = (dble(i)+0.5d0)*dx
 
          if (probtype.eq.1) then
@@ -108,7 +105,7 @@
          scal(i,Temp) = T
          scal(i,RhoH) = rho * h
          vel(i) = valsPMF(2)
-         if (i .eq. lo) then
+         if (i .eq. 0) then
             hmix_TYP = ABS(h)
          else
             hmix_TYP = MAX(hmix_TYP,ABS(h))
@@ -119,14 +116,12 @@
       c_0 = 0.d0
       c_1 = 0.d0
 
-      I_R = 0.d0
-
 !     fill coarse level ghost cells
-      call set_bc_s(scal(:,:),lo,hi,bc)
-      call set_bc_v(vel(:)   ,lo,hi,bc)
+      call set_bc_s(scal(:,:),0,nx-1,bc)
+      !call set_bc_v(vel(:)   ,lo,hi,bc)
 
       vel_TYP = ABS(vel(0))
-      do i=lo,hi
+      do i=0,nx-1
          vel_TYP = MAX(vel_TYP,ABS(vel(i)))
       enddo
 

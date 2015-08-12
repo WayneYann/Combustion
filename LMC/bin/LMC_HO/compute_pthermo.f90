@@ -1,15 +1,14 @@
-      subroutine compute_pthermo(scal, lo, hi)
+      subroutine compute_pthermo(scal)
       implicit none
       include 'spec.h'
       double precision, intent(inout) :: scal(-2:nx+1,nscal)
-      integer,          intent(in   ) :: lo, hi
       
       double precision :: Y(Nspec)
       double precision :: RWRK
       integer ::    i, n, IWRK
 
       ! Define thermodynamic pressure
-      do i=lo,hi
+      do i=0,nx-1
          do n = 1,nspec
             Y(n) = scal(i,FirstSpec-1+n) / scal(i,Density)
          end do
@@ -18,9 +17,9 @@
       end do
       
       ! inflow
-      scal(lo-1,RhoRT) = scal(lo,RhoRT)
+      scal(-1,RhoRT) = scal(0,RhoRT)
 
       ! outflow
-      scal(hi+1,RhoRT) = scal(hi,RhoRT)
+      scal(nx,RhoRT) = scal(nx-1,RhoRT)
       
       end

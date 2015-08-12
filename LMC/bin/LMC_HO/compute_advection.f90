@@ -1,16 +1,12 @@
-      subroutine compute_advection(advection, scal_cc, vel, dx, lo, hi)
+      subroutine compute_advection(advection, scal_cc, vel, dx)
       implicit none
       include 'spec.h'
-      double precision, intent(out  ) :: advection(0 :nx-1,nscal)
+      double precision, intent(out  ) :: advection( 0:nx-1,nscal)
       double precision, intent(in   ) ::   scal_cc(-2:nx+1,nscal)
-      double precision, intent(in   ) ::       vel(0:nx-1)
+      double precision, intent(in   ) ::       vel( 0:nx)
       double precision, intent(in   ) ::  dx
-      integer,          intent(in   ) ::  lo, hi
-      
       
       double precision :: scal_face(0:nx, nscal)
-      double precision :: RWRK
-      integer          :: IWRK
       integer          :: i,n
       logical          :: compute_comp(nscal)
       
@@ -27,9 +23,9 @@
       ! using the stencil, given cell-average values
       do n = 1,nscal
          if (compute_comp(n)) then
-            do i = lo,hi+1
-               scal_face(i, n) = (-scal_cc(i-2,n) + 9.0*scal_avg(i-1,  n) &
-                             + 9.0*scal_cc(i,  n) - scal_avg(i+1,n))/16.0
+            do i = 0,nx
+               scal_face(i, n) = (-scal_cc(i-2,n) + 9.0*scal_cc(i-1,  n) &
+                             + 9.0*scal_cc(i,  n) - scal_cc(i+1,n))/16.0
             end do
             
 !            call mkslopes(scal_old(:,n),slope,lo,hi,bc)
@@ -64,7 +60,7 @@
       ! compute the advection term
       do n = 1,nscal
          if (compute_comp(n)) then
-             do i=lo,hi
+             do i=0,nx-1
                 advection(i,n) = - (vel(i+1)*scal_face(i+1,n) &
                                   - vel(i  )*scal_face(i  ,n)) / dx
              enddo

@@ -8,76 +8,69 @@
       data iCH4 / -1 /
       end
 
-      subroutine compute_diffusion_coefficients(beta, mu, scal, lo, hi)
-      implicit none
-      
-      include 'spec.h'
-      
-      double precision, intent(in   ) :: scal(-2:nx+1,nscal)
-      double precision, intent(out  ) :: beta(-1:nx,nscal)
-      double precision, intent(out  ) :: mu(-1:nx)
-      integer,          intent(in   ) :: lo, hi
-      
-      double precision Dt(Nspec), CPMS(Nspec), Y(Nspec)
-      double precision Tt, Wavg, rho
-      double precision X(Nspec), alpha, l1, l2, cpmix, RWRK
-      integer n, i, IWRK
-
-      double precision fourThirds
-
-      fourThirds = 4.d0 / 3.d0
-
-!     Ensure chem/tran initialized
-      if (traninit.lt.0) call initchem()
-      
-      do i=lo-1,hi+1
-         Tt = MAX(scal(i,Temp),TMIN_TRANS) 
-         rho = 0.d0
-         do n=1,Nspec
-            rho = rho + scal(i,FirstSpec+n-1)
-         enddo
-         do n=1,Nspec
-            Y(n) = scal(i,FirstSpec+n-1) / rho
-         enddo
+      subroutine compute_diffusion_coefficients(beta, scal)
+         implicit none
          
-         !  given y[species]: mass fractions
-         !  returns mean molecular weight (gm/mole)
-         CALL CKMMWY(Y,IWRK,RWRK,Wavg)
+         include 'spec.h'
+         
+         double precision, intent(in   ) :: scal(-2:nx+1,nscal)
+         double precision, intent(out  ) :: beta(-1:nx,nscal)
+         
+         double precision Dt(Nspec), CPMS(Nspec), Y(Nspec)
+         double precision Tt, Wavg, rho
+         double precision X(Nspec), alpha, l1, l2, cpmix, RWRK
+         integer n, i, IWRK
 
-         !  returns the specific heats at constant pressure
-         !  in mass units
-         CALL CKCPMS(Tt,IWRK,RWRK,CPMS)
+         double precision fourThirds
 
-         !  convert y[species] (mass fracs) to x[species] (mole fracs)
-         CALL CKYTX(Y,IWRK,RWRK,X)
+         fourThirds = 4.d0 / 3.d0
 
-         ! initialize the thermomolecular parameters that are needed in 
-         ! to evaluate the transport linear systems
-         CALL EGSPAR(Tt,X,Y,CPMS,EGRWRK,EGIWRK)
+   !     Ensure chem/tran initialized
+         if (traninit.lt.0) call initchem()
+         
+         do i=-1,nx
+            Tt = MAX(scal(i,Temp),TMIN_TRANS) 
+            rho = 0.d0
+            do n=1,Nspec
+               rho = rho + scal(i,FirstSpec+n-1)
+            enddo
+            do n=1,Nspec
+               Y(n) = scal(i,FirstSpec+n-1) / rho
+            enddo
+            
+            !  given y[species]: mass fractions
+            !  returns mean molecular weight (gm/mole)
+            CALL CKMMWY(Y,IWRK,RWRK,Wavg)
 
-         ! compute flux diffusion coefficients
-         CALL EGSV1(Pcgs,Tt,Y,Wavg,EGRWRK,Dt)
+            !  returns the specific heats at constant pressure
+            !  in mass units
+            CALL CKCPMS(Tt,IWRK,RWRK,CPMS)
 
-         do n=1,Nspec
-            beta(i,FirstSpec+n-1) = rho * Wavg * invmwt(n) * Dt(n)
-         end do
+            !  convert y[species] (mass fracs) to x[species] (mole fracs)
+            CALL CKYTX(Y,IWRK,RWRK,X)
 
-         alpha = 1.0D0
-         ! compute thermal conductivity
-         CALL EGSL1(alpha, Tt, X, EGRWRK, l1)
-         alpha = -1.0D0
-         !  compute thermal conductivity with a different averating para
-         CALL EGSL1(alpha, Tt, X, EGRWRK, l2)
-         beta(i,Temp) = .5d0 * (l1 + l2)
-         !  Returns the mean specific heat at CP
-         CALL CKCPBS(scal(i,Temp),Y,IWRK,RWRK,CPMIX)
-         beta(i,RhoH) = beta(i,Temp) / CPMIX
+            ! initialize the thermomolecular parameters that are needed in 
+            ! to evaluate the transport linear systems
+            CALL EGSPAR(Tt,X,Y,CPMS,EGRWRK,EGIWRK)
 
-         !  compute shear viscosity
-         CALL EGSE3(Tt, Y, EGRWRK, mu(i))            
-         mu(i) = fourThirds*mu(i)
-      enddo
-      
+            ! compute flux diffusion coefficients
+            CALL EGSV1(Pcgs,Tt,Y,Wavg,EGRWRK,Dt)
+
+            do n=1,Nspec
+               beta(i,FirstSpec+n-1) = rho * Wavg * invmwt(n) * Dt(n)
+            end do
+
+            alpha = 1.0D0
+            ! compute thermal conductivity
+            CALL EGSL1(alpha, Tt, X, EGRWRK, l1)
+            alpha = -1.0D0
+            !  compute thermal conductivity with a different averating para
+            CALL EGSL1(alpha, Tt, X, EGRWRK, l2)
+            beta(i,Temp) = .5d0 * (l1 + l2)
+            !  Returns the mean specific heat at CP
+            CALL CKCPBS(scal(i,Temp),Y,IWRK,RWRK,CPMIX)
+            beta(i,RhoH) = beta(i,Temp) / CPMIX
+         enddo
       end subroutine compute_diffusion_coefficients
       
       subroutine initchem
