@@ -18,7 +18,7 @@ def solve_pde(a, eps, r, Nx=300, dt=None, FT=0.05, max_iter=2):
    # spacing
    h = endpt/(Nx-1)
    
-   plot_it = False
+   plot_it = True
    
    # timestep
    if dt==None:

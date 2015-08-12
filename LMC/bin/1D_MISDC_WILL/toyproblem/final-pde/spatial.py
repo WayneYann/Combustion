@@ -62,7 +62,7 @@ def orders(e):
    return o
 
 def do_it(i):
-   solns = solve(8, i=i)
+   solns = solve(6, i=i)
    e = errors(solns)
    o = orders(e)
    print e
