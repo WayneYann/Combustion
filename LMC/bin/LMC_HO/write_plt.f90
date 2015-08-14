@@ -1,15 +1,13 @@
-      subroutine write_plt(vel,scal,press,divu,dx,nsteps,time,bc)
+      subroutine write_plt(vel,scal,divu,dx,nsteps,time)
       implicit none
       include 'spec.h'
 
       integer nsteps
       real*8   vel( 0:nx)
       real*8  scal(-2:nx+1,nscal)
-      real*8 press(-1:nx+1)
-      real*8  divu(-1:nx)
+      real*8  divu( 0:nx-1)
       real*8    dx
       real*8 time
-      integer bc(2)
       
       real*8 Y(Nspec)
       character pltfile*(8)
@@ -39,7 +37,6 @@
                            scal(i,Temp),&
                            scal(i,RhoH),&
                            vel(i),&
-                           press(i),&
                            scal(i,RhoRT),&
                            divu(i)
       enddo

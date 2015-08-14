@@ -30,10 +30,6 @@ contains
       real*8, allocatable ::  scal_new(:,:)
       real*8, allocatable ::  scal_old(:,:)
 
-!     cell-centered, 1 ghost cell
-      real*8, allocatable :: beta_old(:,:)
-      real*8, allocatable :: beta_new(:,:)
-
 !     face values, no ghost cells
       real*8, allocatable :: vel(:)
 
@@ -42,10 +38,6 @@ contains
       real*8, allocatable :: divu_old(:)
       real*8, allocatable :: divu_new(:)
       real*8, allocatable :: divu_avg(:)
-
-!     nodal, 1 ghost cell
-      real*8, allocatable :: press_new(:)
-      real*8, allocatable :: press_old(:)
 
       integer, allocatable :: bc(:)
 
@@ -58,7 +50,7 @@ contains
       real*8 fixed_dt
       real*8 Patm
 
-      integer divu_iter,init_iter
+      !integer divu_iter,init_iter
 
       character chkfile*(16)
 
@@ -147,19 +139,11 @@ contains
 !     face-values, no ghost cells
       allocate(vel(0:nx))
 
-!     cell-centered, 1 ghost cell
-      allocate(beta_old(-1:nx,nscal))
-      allocate(beta_new(-1:nx,nscal))
-
 !     cell-centered, no ghost cells
       allocate(delta_chi(0:nx-1))
       allocate( divu_old(0:nx-1))
       allocate( divu_new(0:nx-1))
       allocate( divu_avg(0:nx-1))
-
-!     nodal, 1 ghost cell
-      allocate(press_new(-1:nx+1))
-      allocate(press_old(-1:nx+1))
       
       allocate(bc(2))
 
@@ -206,9 +190,8 @@ contains
 ! sets I_R to zero
 
          call initdata(vel,scal_old,dx,bc)
-         press_old = 0.d0
          
-         call write_plt(vel,scal_old,press_old,divu_old, dx,99999,time,bc)
+         call write_plt(vel,scal_old,divu_old, dx,99999,time)
          
 !     needed for seed to EOS after first strang_chem call
          !scal_new(:,Temp) = scal_old(:,Temp)
@@ -256,7 +239,7 @@ contains
             time = time + dt
             
             if (mod(nsteps_taken,plot_int).eq.0 .or. nsteps_taken.eq.nsteps) then 
-               call write_plt(vel,scal_new,press_new,divu_new,dx,nsteps_taken,time,bc)
+               call write_plt(vel,scal_new,divu_new,dx,nsteps_taken,time)
             endif
          
 !         if (MOD(nsteps_taken,chk_int).eq.0 .OR.

@@ -1,4 +1,4 @@
-      subroutine compute_pthermo(scal)
+   subroutine compute_pthermo(scal)
       implicit none
       include 'spec.h'
       double precision, intent(inout) :: scal(-2:nx+1,nscal)
@@ -21,5 +21,4 @@
 
       ! outflow
       scal(nx,RhoRT) = scal(nx-1,RhoRT)
-      
-      end
+   end

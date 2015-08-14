@@ -7,13 +7,13 @@ module div_u_module
    private
    public :: compute_div_u
 contains
-
-   subroutine get_temp_visc_terms(scal,beta,visc,dx)
+   
+   subroutine get_temp_visc_terms(visc,scal,beta,dx)
       implicit none
       include 'spec.h'
-      double precision, intent(in ) :: scal(-2:nx+1,nscal)
-      double precision, intent(in ) :: beta(-1:nx  ,nscal)
       double precision, intent(out) :: visc(-1:nx)
+      double precision, intent(in ) :: scal(-2:nx+1,nscal)
+      double precision, intent(in ) :: beta(-2:nx+1,nscal)
       double precision, intent(in ) :: dx
 
       ! Compute Div(lambda.Grad(T)) + rho.D.Grad(Hi).Grad(Yi)
@@ -27,7 +27,7 @@ contains
       implicit none
       include 'spec.h'
       double precision, intent(in   ) :: scal(-2:nx+1,nscal)
-      double precision, intent(in   ) :: beta(-1:nx  ,nscal)
+      double precision, intent(in   ) :: beta(-2:nx+1,nscal)
       double precision, intent(inout) :: visc(-1:nx)
       double precision, intent(in   ) ::  dx
    
@@ -56,7 +56,7 @@ contains
       implicit none
       include 'spec.h'
       double precision, intent(in ) :: scal(-2:nx+1,nscal)
-      double precision, intent(in ) :: beta(-1:nx  ,nscal)
+      double precision, intent(in ) :: beta(-2:nx+1,nscal)
       double precision, intent(out) :: visc(-1:nx)
       double precision, intent(in ) :: dx
    
@@ -148,7 +148,7 @@ contains
       ! parameters
       double precision, intent (out  ) :: S(0:nx-1)
       double precision, intent (in   ) :: scal(-2:nx+1,nscal)
-      double precision, intent (in   ) :: beta(-1:nx,  nscal)
+      double precision, intent (in   ) :: beta(-2:nx+1,nscal)
       double precision, intent (in   ) :: dx
    
       ! local variables
@@ -169,10 +169,10 @@ contains
       integer :: iwrk
       integer :: i, n
    
-      call get_temp_visc_terms(scal, beta, diff(:,Temp), dx)
-      call get_spec_visc_terms(scal, beta, diff(:,FirstSpec:), &
+      call get_temp_visc_terms(diff(:,Temp), scal, beta, dx)
+      call get_spec_visc_terms(diff(:,FirstSpec:), scal, beta, &
                                gamma_lo,gamma_hi,dx)
-
+      
       do i=0,nx-1
          rho = scal(i,Density)
          do n = 1,Nspec

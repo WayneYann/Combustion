@@ -1,4 +1,6 @@
-      subroutine compute_production_rate(wdot, scal_cc)
+   
+   ! use the mass fractions and temperature to compute the production rate wdot
+   subroutine compute_production_rate(wdot, scal_cc)
       implicit none
       include 'spec.h'
       
@@ -16,5 +18,4 @@
          
          call CKWC(scal_cc(i,Temp), C, iwrk, rwrk, wdot(i,:))
       end do
-      
-      end subroutine compute_production_rate
+   end subroutine compute_production_rate

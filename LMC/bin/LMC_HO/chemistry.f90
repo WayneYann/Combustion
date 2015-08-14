@@ -14,7 +14,7 @@
          include 'spec.h'
          
          double precision, intent(in   ) :: scal(-2:nx+1,nscal)
-         double precision, intent(out  ) :: beta(-1:nx,nscal)
+         double precision, intent(out  ) :: beta(-2:nx+1,nscal)
          
          double precision Dt(Nspec), CPMS(Nspec), Y(Nspec)
          double precision Tt, Wavg, rho
@@ -28,7 +28,7 @@
    !     Ensure chem/tran initialized
          if (traninit.lt.0) call initchem()
          
-         do i=-1,nx
+         do i=-2,nx+1
             Tt = MAX(scal(i,Temp),TMIN_TRANS) 
             rho = 0.d0
             do n=1,Nspec
@@ -71,6 +71,7 @@
             CALL CKCPBS(scal(i,Temp),Y,IWRK,RWRK,CPMIX)
             beta(i,RhoH) = beta(i,Temp) / CPMIX
          enddo
+         
       end subroutine compute_diffusion_coefficients
       
       subroutine initchem
