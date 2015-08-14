@@ -964,6 +964,36 @@ void CKINDX(int * iwrk, double * restrict rwrk, int * mm, int * kk, int * ii, in
     *nfit = -1; /*Why do you need this anyway ?  */
 }
 
+char *strtok_r (char *s, const char *delim, char **save_ptr)
+{
+  char *token;
+
+  if (s == NULL)
+    s = *save_ptr;
+
+  /* Scan leading delimiters.  */
+  s += strspn (s, delim);
+  if (*s == '\0')
+    {
+      *save_ptr = s;
+      return NULL;
+    }
+
+  /* Find the end of the token.  */
+  token = s;
+  s = strpbrk (token, delim);
+  if (s == NULL)
+    /* This token finishes the string.  */
+    *save_ptr = __rawmemchr (token, '\0');
+  else
+    {
+      /* Terminate the token and make *SAVE_PTR point past it.  */
+      *s = '\0';
+      *save_ptr = s + 1;
+    }
+  return token;
+}
+
 
 /* ckxnum... for parsing strings  */
 void CKXNUM(char * line, int * nexp, int * lout, int * nval, double * restrict rval, int * kerr, int lenline )
@@ -971,6 +1001,7 @@ void CKXNUM(char * line, int * nexp, int * lout, int * nval, double * restrict r
     int n,i; /*Loop Counters */
     char *p; /*String Tokens */
     char cstr[1000];
+    char *saveptr;
     /* Strip Comments  */
     for (i=0; i<lenline; ++i) {
         if (line[i]=='!') {
@@ -980,7 +1011,7 @@ void CKXNUM(char * line, int * nexp, int * lout, int * nval, double * restrict r
         cstr[i] = line[i];
     }
 
-    p = strtok(cstr," ");
+    p = strtok_r(cstr," ", &saveptr);
     if (!p) {
         *nval = 0;
         *kerr = 1;
@@ -988,7 +1019,7 @@ void CKXNUM(char * line, int * nexp, int * lout, int * nval, double * restrict r
     }
     for (n=0; n<*nexp; ++n) {
         rval[n] = atof(p);
-        p = strtok(NULL, " ");
+        p = strtok_r(NULL, " ", &saveptr);
         if (!p) break;
     }
     *nval = n+1;
