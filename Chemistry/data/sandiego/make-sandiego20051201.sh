@@ -1,11 +1,35 @@
-#ln -sf sandiego20051201.mec sandiego20051201.mec
-ln -sf sandiego20050310.new.therm-hack sandiego20051201.therm
-ln -sf sandiego20021001.new.trans sandiego20051201.trans
-python ../../tools/fuego/Fuego/Pythia/products/bin/fmc.py -mechanism=sandiego20051201.mec -thermo=sandiego20051201.therm -name=mec.cpp
-echo Compiling sandiego20051201.cpp...
-cat mec.cpp ../header/header.start\
-            ../header/header.mec   sandiego20051201.mec\
-            ../header/header.therm sandiego20051201.therm\
-            ../header/header.trans sandiego20051201.trans\
-            ../header/header.end > sandiego20051201.cpp
-rm -f mec.cpp
+CHEMTOOLSDIR=../../tools
+
+CHEMINP=sandiego20051201.mec
+THERMINP=sandiego20050310.new.therm-hack
+TRANINP=sandiego20021001.new.trans
+FINALFILE=sandiego20051201.c
+
+CONVERT=${CHEMTOOLSDIR}/convert/convert.exe
+FMC=${CHEMTOOLSDIR}/fuego/Pythia/products/bin/fmc.py
+
+CHEMLK=chem.asc
+LOG=chem.log
+TRANC=tran.c
+CHEMC=chem.c
+TRANLOG=tran.log
+HEADERDIR=${CHEMTOOLSDIR}/../data/header
+
+python ${FMC} -mechanism=${CHEMINP} -thermo=${THERMINP} -name=${CHEMC}
+echo Compiling ${FINALFILE}...
+echo " &files"  > model_files.dat
+echo "   CHEMKIN_input = \"$CHEMINP\"" >> model_files.dat
+echo "   THERMO_input = \"$THERMINP\"" >> model_files.dat
+echo "   TRANLIB_input = \"$TRANINP\"" >> model_files.dat
+echo "   CHEMKIN_linking_file = \"$CHEMLK\"" >> model_files.dat
+echo "   TRANLIB_c_file = \"$TRANC\"" >> model_files.dat
+echo "   log_file = \"$TRANLOG\"" >> model_files.dat
+echo " /" >> model_files.dat
+${CONVERT} model_files.dat 2>&1 >> $TRANLOG
+cat ${CHEMC} ${TRANC} \
+          ${HEADERDIR}/header.start\
+          ${HEADERDIR}/header.mec   ${CHEMINP}\
+          ${HEADERDIR}/header.therm ${THERMINP}\
+          ${HEADERDIR}/header.trans ${TRANINP}\
+          ${HEADERDIR}/header.end > ${FINALFILE}
+rm -f ${CHEMC} ${CHEMLK} ${LOG} ${TRANC} ${TRANLOG} model_files.dat

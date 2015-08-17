@@ -1,8 +1,35 @@
-python ../../tools/fuego/Fuego/Pythia/products/bin/fmc.py -mechanism=prf_ethanol.mec -thermo=prf_ethanol.therm-hack -name=mec.cpp
-echo Compiling prf_ethanol.cpp...
-cat mec.cpp ../header/header.start\
-            ../header/header.mec   prf_ethanol.mec\
-            ../header/header.therm prf_ethanol.therm-hack\
-            ../header/header.trans prf_ethanol.trans\
-            ../header/header.end > prf_ethanol.cpp
-rm -f mec.cpp
+CHEMTOOLSDIR=../../tools
+
+CHEMINP=prf_ethanol.mec
+THERMINP=prf_ethanol.therm-hack
+TRANINP=prf_ethanol.trans
+FINALFILE=prf_ethanol.c
+
+CONVERT=${CHEMTOOLSDIR}/convert/convert.exe
+FMC=${CHEMTOOLSDIR}/fuego/Pythia/products/bin/fmc.py
+
+CHEMLK=chem.asc
+LOG=chem.log
+TRANC=tran.c
+CHEMC=chem.c
+TRANLOG=tran.log
+HEADERDIR=${CHEMTOOLSDIR}/../data/header
+
+python ${FMC} -mechanism=${CHEMINP} -thermo=${THERMINP} -name=${CHEMC}
+echo Compiling ${FINALFILE}...
+echo " &files"  > model_files.dat
+echo "   CHEMKIN_input = \"$CHEMINP\"" >> model_files.dat
+echo "   THERMO_input = \"$THERMINP\"" >> model_files.dat
+echo "   TRANLIB_input = \"$TRANINP\"" >> model_files.dat
+echo "   CHEMKIN_linking_file = \"$CHEMLK\"" >> model_files.dat
+echo "   TRANLIB_c_file = \"$TRANC\"" >> model_files.dat
+echo "   log_file = \"$TRANLOG\"" >> model_files.dat
+echo " /" >> model_files.dat
+${CONVERT} model_files.dat 2>&1 >> $TRANLOG
+cat ${CHEMC} ${TRANC} \
+          ${HEADERDIR}/header.start\
+          ${HEADERDIR}/header.mec   ${CHEMINP}\
+          ${HEADERDIR}/header.therm ${THERMINP}\
+          ${HEADERDIR}/header.trans ${TRANINP}\
+          ${HEADERDIR}/header.end > ${FINALFILE}
+rm -f ${CHEMC} ${CHEMLK} ${LOG} ${TRANC} ${TRANLOG} model_files.dat
