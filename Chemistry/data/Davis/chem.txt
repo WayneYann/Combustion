@@ -1,0 +1,138 @@
+                          C
+                       P  H
+                       H  A
+                       A  R
+ SPECIES               S  G  MOLECULAR  TEMPERATURE  ELEMENT COUNT
+ CONSIDERED            E  E  WEIGHT     LOW    HIGH  O  H  C  N  AR HE 
+ -------------------------------------------------------------------------------
+   1. H2               G  0    2.01594   200   3500   0  2  0  0  0  0
+   2. H                G  0    1.00797   200   3500   0  1  0  0  0  0
+   3. AR               G  0   39.94800   300   5000   0  0  0  0  1  0
+   4. N2               G  0   28.01340   300   5000   0  0  0  2  0  0
+   5. HE               G  0    4.00260   200   6000   0  0  0  0  0  1
+   6. O                G  0   15.99940   200   3500   1  0  0  0  0  0
+   7. OH               G  0   17.00737   200   6000   1  1  0  0  0  0
+   8. HCO              G  0   29.01852   200   3500   1  1  1  0  0  0
+   9. HO2              G  0   33.00677   200   3500   2  1  0  0  0  0
+  10. H2O              G  0   18.01534   200   3500   1  2  0  0  0  0
+  11. CO               G  0   28.01055   200   3500   1  0  1  0  0  0
+  12. O2               G  0   31.99880   200   3500   2  0  0  0  0  0
+  13. H2O2             G  0   34.01474   200   3500   2  2  0  0  0  0
+  14. CO2              G  0   44.00995   200   3500   2  0  1  0  0  0
+ -------------------------------------------------------------------------------
+
+
+
+                                                      (k = A T**b exp(-E/RT))
+      REACTIONS CONSIDERED                              A        b        E
+
+   1. H+O2=O+OH                                     2.64E+16   -0.7    17041.0
+   2. O+H2=H+OH                                     4.59E+04    2.7     6260.0
+   3. OH+H2=H+H2O                                   1.73E+08    1.5     3430.0
+   4. OH+OH=O+H2O                                   3.97E+04    2.4    -2110.0
+   5. H+H+M=H2+M                                    1.78E+18   -1.0        0.0
+      H2              Enhanced by    0.000E+00
+      H2O             Enhanced by    0.000E+00
+      CO2             Enhanced by    0.000E+00
+      AR              Enhanced by    6.300E-01
+      HE              Enhanced by    6.300E-01
+   6. H+H+H2=H2+H2                                  9.00E+16   -0.6        0.0
+   7. H+H+H2O=H2+H2O                                5.62E+19   -1.2        0.0
+   8. H+H+CO2=H2+CO2                                5.50E+20   -2.0        0.0
+   9. H+OH+M=H2O+M                                  4.40E+22   -2.0        0.0
+      H2              Enhanced by    2.000E+00
+      H2O             Enhanced by    6.300E+00
+      CO              Enhanced by    1.750E+00
+      CO2             Enhanced by    3.600E+00
+      AR              Enhanced by    3.800E-01
+      HE              Enhanced by    3.800E-01
+  10. O+H+M=OH+M                                    9.43E+18   -1.0        0.0
+      H2              Enhanced by    2.000E+00
+      H2O             Enhanced by    1.200E+01
+      CO              Enhanced by    1.750E+00
+      CO2             Enhanced by    3.600E+00
+      AR              Enhanced by    7.000E-01
+      HE              Enhanced by    7.000E-01
+  11. O+O+M=O2+M                                    1.20E+17   -1.0        0.0
+      H2              Enhanced by    2.400E+00
+      H2O             Enhanced by    1.540E+01
+      CO              Enhanced by    1.750E+00
+      CO2             Enhanced by    3.600E+00
+      AR              Enhanced by    8.300E-01
+      HE              Enhanced by    8.300E-01
+  12. H+O2(+M)=HO2(+M)                              5.12E+12    0.4        0.0
+      Low pressure limit:  0.63280E+20 -0.14000E+01  0.00000E+00
+      TROE centering:      0.50000E+00  0.10000E-29  0.10000E+31
+      O2              Enhanced by    8.500E-01
+      H2O             Enhanced by    1.189E+01
+      CO              Enhanced by    1.090E+00
+      CO2             Enhanced by    2.180E+00
+      AR              Enhanced by    4.000E-01
+      HE              Enhanced by    4.600E-01
+      H2              Enhanced by    7.500E-01
+  13. H2+O2=HO2+H                                   5.92E+05    2.4    53502.0
+  14. OH+OH(+M)=H2O2(+M)                            1.11E+14   -0.4        0.0
+      Low pressure limit:  0.20100E+18 -0.58400E+00 -0.22930E+04
+      TROE centering:      0.73460E+00  0.94000E+02  0.17560E+04  0.51820E+04
+      H2              Enhanced by    2.000E+00
+      H2O             Enhanced by    6.000E+00
+      CO              Enhanced by    1.750E+00
+      CO2             Enhanced by    3.600E+00
+      AR              Enhanced by    7.000E-01
+      HE              Enhanced by    7.000E-01
+  15. HO2+H=O+H2O                                   3.97E+12    0.0      671.0
+  16. HO2+H=OH+OH                                   7.48E+13    0.0      295.0
+  17. HO2+O=OH+O2                                   4.00E+13    0.0        0.0
+  18. HO2+OH=O2+H2O                                 2.38E+13    0.0     -500.0
+      Declared duplicate reaction...
+  19. HO2+OH=O2+H2O                                 1.00E+16    0.0    17330.0
+      Declared duplicate reaction...
+  20. HO2+HO2=O2+H2O2                               1.30E+11    0.0    -1630.0
+      Declared duplicate reaction...
+  21. HO2+HO2=O2+H2O2                               3.66E+14    0.0    12000.0
+      Declared duplicate reaction...
+  22. H2O2+H=HO2+H2                                 6.05E+06    2.0     5200.0
+  23. H2O2+H=OH+H2O                                 2.41E+13    0.0     3970.0
+  24. H2O2+O=OH+HO2                                 9.63E+06    2.0     3970.0
+  25. H2O2+OH=HO2+H2O                               2.00E+12    0.0      427.0
+      Declared duplicate reaction...
+  26. H2O2+OH=HO2+H2O                               2.67E+41   -7.0    37600.0
+      Declared duplicate reaction...
+  27. CO+O(+M)=CO2(+M)                              1.36E+10    0.0     2384.0
+      Low pressure limit:  0.11730E+25 -0.27900E+01  0.41910E+04
+      H2              Enhanced by    2.000E+00
+      H2O             Enhanced by    1.200E+01
+      CO              Enhanced by    1.750E+00
+      CO2             Enhanced by    3.600E+00
+      AR              Enhanced by    7.000E-01
+      HE              Enhanced by    7.000E-01
+  28. CO+OH=CO2+H                                   8.00E+11    0.1     7352.0
+      Declared duplicate reaction...
+  29. CO+OH=CO2+H                                   8.78E+10    0.0      -16.0
+      Declared duplicate reaction...
+  30. CO+O2=CO2+O                                   1.12E+12    0.0    47700.0
+  31. CO+HO2=CO2+OH                                 3.01E+13    0.0    23000.0
+  32. HCO+H=CO+H2                                   1.20E+14    0.0        0.0
+  33. HCO+O=CO+OH                                   3.00E+13    0.0        0.0
+  34. HCO+O=CO2+H                                   3.00E+13    0.0        0.0
+  35. HCO+OH=CO+H2O                                 3.02E+13    0.0        0.0
+  36. HCO+M=CO+H+M                                  1.87E+17   -1.0    17000.0
+      H2              Enhanced by    2.000E+00
+      H2O             Enhanced by    0.000E+00
+      CO              Enhanced by    1.750E+00
+      CO2             Enhanced by    3.600E+00
+  37. HCO+H2O=CO+H+H2O                              2.24E+18   -1.0    17000.0
+  38. HCO+O2=CO+HO2                                 1.20E+10    0.8     -727.0
+
+  NOTE:  A units mole-cm-sec-K, E units cal/mole
+
+
+
+ NO ERRORS FOUND ON INPUT: 
+ ASCII Vers. 1.0 CHEMKIN linkfile chem.asc written.
+
+ WORKING SPACE REQUIREMENTS ARE
+    INTEGER:     1241
+    REAL:         777
+    CHARACTER:     20
+ Total CPUtime (sec):        0.00E+00
