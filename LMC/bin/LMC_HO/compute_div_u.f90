@@ -11,7 +11,7 @@ contains
    subroutine get_temp_visc_terms(visc,scal,beta,dx)
       implicit none
       include 'spec.h'
-      double precision, intent(out) :: visc(-1:nx)
+      double precision, intent(out) :: visc( 0:nx-1)
       double precision, intent(in ) :: scal(-2:nx+1,nscal)
       double precision, intent(in ) :: beta(-2:nx+1,nscal)
       double precision, intent(in ) :: dx
@@ -28,7 +28,7 @@ contains
       include 'spec.h'
       double precision, intent(in   ) :: scal(-2:nx+1,nscal)
       double precision, intent(in   ) :: beta(-2:nx+1,nscal)
-      double precision, intent(inout) :: visc(-1:nx)
+      double precision, intent(inout) :: visc( 0:nx-1)
       double precision, intent(in   ) ::  dx
    
       integer i
@@ -38,14 +38,10 @@ contains
 
       dxsqinv = 1.d0/(dx*dx)
       do i=0,nx-1
-         if (coef_avg_harm.eq.1) then
-            beta_lo = 2.d0 / (1.d0/beta(i,Temp)+1.d0/beta(i-1,Temp))
-            beta_hi = 2.d0 / (1.d0/beta(i,Temp)+1.d0/beta(i+1,Temp))
-         else
-            beta_lo = 0.5*(beta(i,Temp) + beta(i-1,Temp))
-            beta_hi = 0.5*(beta(i,Temp) + beta(i+1,Temp))
-         endif
-         
+         ! todo: fourth order stencil here
+         beta_lo = 0.5*(beta(i,Temp) + beta(i-1,Temp))
+         beta_hi = 0.5*(beta(i,Temp) + beta(i+1,Temp))
+         ! todo: 
          flux_hi = beta_hi*(scal(i+1,Temp) - scal(i  ,Temp)) 
          flux_lo = beta_lo*(scal(i  ,Temp) - scal(i-1,Temp)) 
          visc(i) = visc(i) + (flux_hi - flux_lo) * dxsqinv
@@ -57,7 +53,7 @@ contains
       include 'spec.h'
       double precision, intent(in ) :: scal(-2:nx+1,nscal)
       double precision, intent(in ) :: beta(-2:nx+1,nscal)
-      double precision, intent(out) :: visc(-1:nx)
+      double precision, intent(out) :: visc( 0:nx-1)
       double precision, intent(in ) :: dx
    
       integer i,n,is,IWRK
@@ -98,14 +94,11 @@ contains
          sumRhoY_hi = 0.d0
          do n=1,Nspec
             is = FirstSpec + n - 1
-            if (coef_avg_harm.eq.1) then
-               beta_lo = 2.d0 / (1.d0/beta(i,is)+1.d0/beta(i-1,is))
-               beta_hi = 2.d0 / (1.d0/beta(i,is)+1.d0/beta(i+1,is))
-            else
-               beta_lo = 0.5d0*(beta(i,is) + beta(i-1,is))
-               beta_hi = 0.5d0*(beta(i,is) + beta(i+1,is))
-            endif
-
+            
+            ! todo: fourth order stencil here
+            beta_lo = 0.5d0*(beta(i,is) + beta(i-1,is))
+            beta_hi = 0.5d0*(beta(i,is) + beta(i+1,is))
+            ! todo: 
             gamma_lo(i,n) = beta_lo*(Y(n,i)-Y(n,i-1))
             gamma_hi(i,n) = beta_hi*(Y(n,i+1)-Y(n,i))
 
@@ -152,7 +145,7 @@ contains
       double precision, intent (in   ) :: dx
    
       ! local variables
-      double precision :: diff(-1:nx,nscal)
+      double precision :: diff(0:nx-1,nscal)
       double precision :: gamma_lo(0:nx-1,Nspec)
       double precision :: gamma_hi(0:nx-1,Nspec)
    
@@ -191,14 +184,12 @@ contains
          ! add the temperature contribution
          S(i) = diff(i,Temp)/(rho*cpmix*T)
          
-         ! remove this!!!
-         ! wdot = 0.d0
-         
          ! add each of the species contributions
          do n=1,Nspec
             S(i) = S(i) + (diff(i,FirstSpec+n-1) + wdot(n)*mwt(n))*invmwt(n)*mwmix/rho &
                         - HK(n)*wdot(n)*mwt(n)/(rho*cpmix*T)
          enddo
+         
        enddo
     end subroutine compute_div_u
     

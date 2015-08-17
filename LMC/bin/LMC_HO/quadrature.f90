@@ -15,9 +15,9 @@ contains
       double precision, intent(in ) :: dt
       
       if (m.eq.1) then
-         q = (5.0*f(1)/24.0 + f(2)/3.0 - f(3)/24.0)*dt
+         q = (5*f(1) + 8*f(2) - f(3))*dt/24.0
       else
-         q = (-f(1)/24.0 + f(2)/3.0 + 5*f(3)/24.0)*dt
+         q = (-f(1) + 8*f(2) + 5*f(3))*dt/24.0
       end if
       
    end subroutine compute_quadrature
@@ -25,11 +25,11 @@ contains
    subroutine compute_integrals(q, a, d, r, dt)
       double precision, intent(out) :: q(nnodes-1,0:nx-1,nscal)
       double precision, intent(in ) :: a(nnodes,  0:nx-1,nscal)
-      double precision, intent(in ) :: d(nnodes,  0:nx-1,  nscal)
+      double precision, intent(in ) :: d(nnodes,  0:nx-1,nscal)
       double precision, intent(in ) :: r(nnodes,  0:nx-1,Nspec)
       double precision, intent(in ) :: dt
       
-      double precision :: r_avg(nnodes, -1:nx, nscal)
+      double precision :: r_avg(nnodes, 0:nx-1, nscal)
       double precision :: f(nnodes,0:nx-1)
       integer :: n, m, i
       

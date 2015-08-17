@@ -238,6 +238,9 @@ contains
             
             time = time + dt
             
+            print *,'steps taken = ', nsteps_taken
+            print *,'steps       = ', nsteps
+            
             if (mod(nsteps_taken,plot_int).eq.0 .or. nsteps_taken.eq.nsteps) then 
                call write_plt(vel,scal_new,divu_new,dx,nsteps_taken,time)
             endif

@@ -46,10 +46,11 @@
       do n = 1,Nspec
          is = FirstSpec+n-1
          avg_term = dtm*(advection_kp1(:,is) - advection_k(:,is) &
-                       + diffusion_kp1(:,is) - diffusion_k(:,is)) + I_k(:,n)
+                       + diffusion_kp1(:,is) - diffusion_k(:,is)) + I_k(:,is)
          
          call extrapolate_avg_to_cc(cc_term(:,n), avg_term)
       end do
+      
       avg_term = dtm*(advection_kp1(:,RhoH) - advection_k(:,RhoH) &
                        + diffusion_kp1(:,RhoH) - diffusion_k(:,RhoH)) + I_k(:,RhoH)
       call extrapolate_avg_to_cc(cc_term(:,Nspec+1), avg_term)
@@ -61,7 +62,7 @@
          do n = 1,Nspec
             is = FirstSpec+n-1
             
-            rhs(n) = scal_m_cc(i, is) + cc_term(i, n) - wdot_k(i, n)
+            rhs(n) = scal_m_cc(i, is) + cc_term(i,n) - dtm*wdot_k(i, n)
             
             c_0(n) = rhs(n)
             c_1(n) = 0.d0
@@ -69,7 +70,7 @@
             rhoYold(n) = scal_m_cc(i, is)
          end do
          
-         rhs(Nspec+1) = scal_m_cc(i, is) + cc_term(i, Nspec+1)
+         rhs(Nspec+1) = scal_m_cc(i, RhoH) + cc_term(i,Nspec+1)
          c_0(0) = rhs(Nspec+1)
          c_1(0) = 0.d0
          
@@ -100,6 +101,7 @@
          enddo
          hmix = scal_mp1_cc(i,RhoH) / scal_mp1_cc(i,Density)
          
+         scal_mp1_cc(i,Temp) = scal_m_cc(i, Temp)
          ! get the new value for the temperature
          call FORT_TfromHYpt(scal_mp1_cc(i,Temp), hmix, Y, &
                              Nspec, errMax, NiterMax, res, Niter)

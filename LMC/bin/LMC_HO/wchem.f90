@@ -132,8 +132,9 @@ contains
      end do
 
      if (iter .ge. max_iter) then
-        print *,'uh oh! iter=',iter
-        print *,'rmax=',rmax
+        print *,'wchem: Newton solve failed to converge'
+        print *,'wchem: iter=',iter
+        print *,'wchem: rmax=',rmax
         stop
      endif
 

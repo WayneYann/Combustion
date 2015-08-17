@@ -17,8 +17,7 @@
       end do
       
       ! inflow
-      scal(-1,RhoRT) = scal(0,RhoRT)
-
+      !scal(-1,RhoRT) = scal(0,RhoRT)
       ! outflow
-      scal(nx,RhoRT) = scal(nx-1,RhoRT)
+      !scal(nx,RhoRT) = scal(nx-1,RhoRT)
    end

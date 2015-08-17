@@ -18,7 +18,7 @@
   do_initial_projection = 1
   num_divu_iters = 3
   num_init_iters = 2
-  misdc_iterMAX = 4
+  misdc_iterMAX = 100
   lim_rxns = 0
   V_in = 0.
   LeEQ1 = 0

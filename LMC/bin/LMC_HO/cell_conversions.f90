@@ -23,8 +23,7 @@ contains
       double precision, intent(in ) :: bdry
       
       integer :: i
-
-      ! note: we do not fill in the ghost cells here
+      
       do i=0,nx-1
          avg(i) = cc(i) + (cc(i-1) - 2.0*cc(i) + cc(i+1))/24.0
       end do
@@ -44,10 +43,11 @@ contains
       integer :: i
       
       ! one-sided stencils
-      avg(0) = (27.0*cc(0) - 9.0*cc(1) + 10.0*cc(2) - 5.0*cc(3) + cc(4))/24.0
-      !avg(nx-1) = (501*cc(nx-1) + 9*cc(nx-2) - 5*cc(nx-3) + cc(nx-4))/528.0
-      avg(nx-1) = (cc(nx-5) - 5.0*cc(nx-4) + 10.0*cc(nx-3) &
-                 - 9.0*cc(nx-2) + 27.0*cc(nx-2))/24.0
+      avg(0) = (27*cc(0) - 9*cc(1) + 10*cc(2) - 5*cc(3) + cc(4))/24.0
+      avg(nx-1) = (501*cc(nx-1) + 31*cc(nx-2) - 5*cc(nx-3) + cc(nx-4))/528.0
+      
+      !avg(nx-1) = (cc(nx-5) - 5.0*cc(nx-4) + 10.0*cc(nx-3) &
+      !           - 9.0*cc(nx-2) + 27.0*cc(nx-2))/24.0
       
       do i=1,nx-2
          avg(i) = cc(i) + (cc(i-1) - 2.0*cc(i) + cc(i+1))/24.0
@@ -61,9 +61,8 @@ contains
       
       integer :: i
       
-      ! todo: implement this extrapolation on the inflow condition
-      ! (when no boundary condition is known)
-      !cc(0) = 
+      cc(0) = (21*avg(0) + 9*avg(1) - 10*avg(2) + 5*avg(3) - avg(4))/24.0
+      ! use the outflow condition
       cc(nx-1) = (255*avg(nx-1) - 19*avg(nx-2) + 5*avg(nx-3) - avg(nx-4))/240.0
       
       do i=1,nx-2
@@ -128,9 +127,8 @@ contains
       call avg_to_cc(scal_cc(:,Density), scal_avg(:,Density), rho_bc(on_lo))
       call avg_to_cc(scal_cc(:,Temp), scal_avg(:,Temp), T_bc(on_lo))
       call avg_to_cc(scal_cc(:,RhoH), scal_avg(:,RhoH), rho_bc(on_lo)*h_bc(on_lo))
+      call extrapolate_avg_to_cc(scal_cc(:,RhoRT), scal_avg(:,RhoRT))
       
-      ! todo: actually do this part
-      !call extrapolate_avg_to_cc(scal_avg(:,RhoRT), scal_cc(:,RhoRT))
    end subroutine scal_avg_to_cc
    
    ! convert a cell-centered quantity to a face-value quantity
@@ -142,7 +140,8 @@ contains
       integer :: i
       
       do i=0,nx
-         face(i) = (-cc(i-2) + 9*cc(i-1) + 9*cc(i) - cc(i+1))/16.0
+         face(i) = 0.5d0*(cc(i) + cc(i-1))
+         !face(i) = (-cc(i-2) + 9*cc(i-1) + 9*cc(i) - cc(i+1))/16.0
       end do
    end subroutine cc_to_face
    

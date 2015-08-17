@@ -39,6 +39,7 @@
                            vel(i),&
                            scal(i,RhoRT),&
                            divu(i)
+
       enddo
 
       close(10)

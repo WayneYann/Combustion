@@ -13,8 +13,8 @@
          
          include 'spec.h'
          
-         double precision, intent(in   ) :: scal(-2:nx+1,nscal)
          double precision, intent(out  ) :: beta(-2:nx+1,nscal)
+         double precision, intent(in   ) :: scal(-2:nx+1,nscal)
          
          double precision Dt(Nspec), CPMS(Nspec), Y(Nspec)
          double precision Tt, Wavg, rho
@@ -55,7 +55,7 @@
 
             ! compute flux diffusion coefficients
             CALL EGSV1(Pcgs,Tt,Y,Wavg,EGRWRK,Dt)
-
+            
             do n=1,Nspec
                beta(i,FirstSpec+n-1) = rho * Wavg * invmwt(n) * Dt(n)
             end do

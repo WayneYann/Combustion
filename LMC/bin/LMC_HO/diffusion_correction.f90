@@ -40,6 +40,7 @@ contains
       dxsqinv = 1.d0/(dx*dx)
 
       do i=0,nx-1
+         ! todo: make this fourth order
          beta_lo = 0.5d0*(beta(i,RhoH) + beta(i-1,RhoH))
          beta_hi = 0.5d0*(beta(i,RhoH) + beta(i+1,RhoH))
 
@@ -56,9 +57,9 @@ contains
    subroutine get_spec_visc_terms(visc, scal, beta,gamma_lo,gamma_hi,dx)
       implicit none
       include 'spec.h'
+      double precision, intent(out) ::     visc( 0:nx-1,Nspec)
       double precision, intent(in ) ::     scal(-2:nx+1,nscal)
       double precision, intent(in ) ::     beta(-2:nx+1,nscal)
-      double precision, intent(out) ::     visc( 0:nx-1,Nspec)
       double precision, intent(out) :: gamma_lo( 0:nx-1,Nspec)
       double precision, intent(out) :: gamma_hi( 0:nx-1,Nspec)
       double precision, intent(in ) :: dx
@@ -86,9 +87,11 @@ contains
          do n=1,Nspec
             is = FirstSpec + n - 1
             
+            ! todo: fourth order avg to face of diffusion coefficient
             beta_lo = 0.5d0*(beta(i,is) + beta(i-1,is))
             beta_hi = 0.5d0*(beta(i,is) + beta(i+1,is))
             
+            ! todo: fourth order gradient of species
             gamma_hi(i,n) = beta_hi*(Y(i+1,n) - Y(i  ,n)) 
             gamma_lo(i,n) = beta_lo*(Y(i  ,n) - Y(i-1,n)) 
  
@@ -107,7 +110,7 @@ contains
 
          enddo
 
-            ! correct the fluxes so they add up to zero before computing visc
+         ! correct the fluxes so they add up to zero before computing visc
          do n=1,Nspec
             is = FirstSpec + n - 1
 
@@ -197,6 +200,7 @@ contains
       double precision :: abd(lda, 0:nx-1)
       double precision :: beta_face(0:nx)
       double precision :: phi(-2:nx+1)
+      double precision :: dxsq
       
       integer :: i, info, ipvt(nx)
       
@@ -205,9 +209,12 @@ contains
          rhs(i) = rhophi_m_avg(i) &
             + dtm*(advection_kp1(i) - advection_k(i) - diffusion_k(i)) + I_k(i)
       end do
+
       
       ! get the diffusion coefficients as face values rather than cell centers
       call cc_to_face(beta_face, beta)
+      
+      dxsq = dx*dx
       
       abd = 0
       ! construct the matrix we need to invert
@@ -215,18 +222,18 @@ contains
       ! abd(i,j) is the entry in the jth column of the matrix, on the ith diagonal
       ! (where 1 is the uppermost diagonal, and 1+ml+mu us the bottommost)
       do i=0,nx-1
-         rho_G = (5.0*rho_mp1_avg(i-2) - 34.0*rho_mp1_avg(i-1) &
-                + 34.0*rho_mp1_avg(i+1) - 5.0*rho_mp1_avg(i+2))/27648.0
+         rho_G = (5*rho_mp1_avg(i-2) - 34*rho_mp1_avg(i-1) &
+                + 34*rho_mp1_avg(i+1) - 5*rho_mp1_avg(i+2))/27648.0
          
          ! here we construct the banded matrix ("almost pentadiagonal..")
          ! these terms come from the product rule for cell averages
          ! we also add the term that comes from the diffusion operator
          ! computed using divergence theorem and the 4th order gradient stencil
-         if (i .ge. 2) abd(d+2,i-2) = 5*rho_G + dtm*beta_face(i)/(12.0*dx*dx)
-         if (i .ge. 1) abd(d+1,i-1) = -34*rho_G - dtm*(beta_face(i+1) + 15*beta_face(i))/(12.0*dx*dx)
-         abd(d,  i  ) = rho_mp1_avg(i) + dtm*(15*beta_face(i+1) + 15*beta_face(i))/(12.0*dx*dx)
-         if (i .le. nx-2) abd(d-1,i+1) = 34*rho_G - dtm*(15*beta_face(i+1) + beta_face(i))/(12.0*dx*dx)
-         if (i .le. nx-3) abd(d-2,i+2) = -5*rho_G + dtm*beta_face(i+1)/(12.0*dx*dx)
+         if (i .ge. 2) abd(d+2,i-2) = 5*rho_G + dtm*beta_face(i)/(12.0*dxsq)
+         if (i .ge. 1) abd(d+1,i-1) = -34*rho_G - dtm*(beta_face(i+1) + 15*beta_face(i))/(12.0*dxsq)
+         abd(d, i) = rho_mp1_avg(i) + dtm*(15*beta_face(i+1) + 15*beta_face(i))/(12.0*dxsq)
+         if (i .le. nx-2) abd(d-1,i+1) = 34*rho_G - dtm*(15*beta_face(i+1) + beta_face(i))/(12.0*dxsq)
+         if (i .le. nx-3) abd(d-2,i+2) = -5*rho_G + dtm*beta_face(i+1)/(12.0*dxsq)
       end do
       
       ! take care of the boundary condition/ghost cells
@@ -237,45 +244,45 @@ contains
       
       ! inflow:
       ! i = 0
-      rho_G = (5.0*rho_mp1_avg(-2) - 34.0*rho_mp1_avg(-1) &
-             + 34.0*rho_mp1_avg(1) - 5.0*rho_mp1_avg(2))/27648.0
+      rho_G = (5*rho_mp1_avg(-2) - 34*rho_mp1_avg(-1) &
+            + 34*rho_mp1_avg(1) - 5*rho_mp1_avg(2))/27648.0
       
-      rhs(0)     = rhs(0) + dtm*5*phi_bdry*(10*beta_face(0) + beta_face(1))/(12.0*dx*dx) + 45*rho_G
-      abd(d,  0) = abd(d,  0) + dtm*(650*beta_face(0) + 77*beta_face(1))/(144.0*dx*dx) + 31*rho_G/4.0
-      abd(d-1,1) = abd(d-1,1) - dtm*(310*beta_face(0) + 43*beta_face(1))/(144.0*dx*dx) + 71*rho_G/4.0
-      abd(d-2,2) = abd(d-2,2) + dtm*(110*beta_face(0) + 17*beta_face(1))/(144.0*dx*dx) - 49*rho_G/4.0
-      abd(d-3,3) = abd(d-3,3) - dtm*(18*beta_face(0) +  3*beta_face(1))/(144.0*dx*dx) + 11*rho_G/4.0
+      rhs(0)     = rhs(0) + phi_bdry*(dtm*5*(10*beta_face(0) + beta_face(1))/(12.0*dxsq) + 45*rho_G)
+      abd(d,  0) = abd(d,  0) + dtm*(650*beta_face(0) + 77*beta_face(1))/(144.0*dxsq) + 31*rho_G/4.0
+      abd(d-1,1) = abd(d-1,1) - dtm*(310*beta_face(0) + 43*beta_face(1))/(144.0*dxsq) + 71*rho_G/4.0
+      abd(d-2,2) = abd(d-2,2) + dtm*(110*beta_face(0) + 17*beta_face(1))/(144.0*dxsq) - 49*rho_G/4.0
+      abd(d-3,3) = abd(d-3,3) - dtm*(  6*beta_face(0) +    beta_face(1))/(48.0*dxsq) + 11*rho_G/4.0
       
       ! i = 1
-      rho_G = (5.0*rho_mp1_avg(-1) - 34.0*rho_mp1_avg(0) &
-             + 34.0*rho_mp1_avg(2) - 5.0*rho_mp1_avg(3))/27648.0
+      rho_G = (5*rho_mp1_avg(-1) - 34*rho_mp1_avg(0) &
+          + 34*rho_mp1_avg(2) - 5*rho_mp1_avg(3))/27648.0
       
-      rhs(1)     = rhs(1) - dtm*5*beta_face(1)*phi_bdry/(12.0*dx*dx) - 25*rho_G
-      abd(d+1,0) = abd(d+1,0) - dtm*beta_face(1)*77/(144.0*dx*dx) - 385*rho_G/12.0
-      abd(d,  1) = abd(d,  1) + dtm*beta_face(1)*43/(144.0*dx*dx) + 215*rho_G/12.0
-      abd(d-1,2) = abd(d-1,2) - dtm*beta_face(1)*17/(144.0*dx*dx) - 85*rho_G/12.0 
-      abd(d-2,3) = abd(d-2,3) + dtm*beta_face(1)/(48.0*dx*dx)  + 5*rho_G/4.0
+      rhs(1)     = rhs(1) - phi_bdry*(dtm*5*beta_face(1)/(12.0*dxsq) + 25*rho_G)
+      abd(d+1,0) = abd(d+1,0) - dtm*beta_face(1)*77/(144.0*dxsq) - 385*rho_G/12.0
+      abd(d,  1) = abd(d,  1) + dtm*beta_face(1)*43/(144.0*dxsq) + 215*rho_G/12.0
+      abd(d-1,2) = abd(d-1,2) - dtm*beta_face(1)*17/(144.0*dxsq) - 85*rho_G/12.0 
+      abd(d-2,3) = abd(d-2,3) + dtm*beta_face(1)/(48.0*dxsq)  + 5*rho_G/4.0
       
       ! for outflow, the ghost cells are filled to satisfy the Neumann condition, and 
       ! therefore we do not need to add anything to the right-hand side
       ! outflow:
       ! i = nx-2
-      rho_G = (5.0*rho_mp1_avg(nx-4) - 34.0*rho_mp1_avg(nx-3) &
-             + 34.0*rho_mp1_avg(nx-1) - 5.0*rho_mp1_avg(nx))/27648.0
+      rho_G = (5*rho_mp1_avg(nx-4) - 34*rho_mp1_avg(nx-3) &
+           + 34*rho_mp1_avg(nx-1) - 5*rho_mp1_avg(nx))/27648.0
       
-      abd(d+2,nx-4) = abd(d+2,nx-4) + dtm*beta_face(nx-1)/(120.0*dx*dx) - rho_G/2.0
-      abd(d+1,nx-3) = abd(d+1,nx-3) - dtm*beta_face(nx-1)/(24.0*dx*dx) + 5*rho_G/2.0
-      abd(d,  nx-2) = abd(d,  nx-2) + dtm*3*beta_face(nx-1)/(40.0*dx*dx) - 9*rho_G/2.0
-      abd(d-1,nx-1) = abd(d-1,nx-1) + dtm*beta_face(nx-1)/(24.0*dx*dx) - 5*rho_G/2.0
+      abd(d+2,nx-4) = abd(d+2,nx-4) + dtm*beta_face(nx-1)/(120.0*dxsq) - rho_G/2.0
+      abd(d+1,nx-3) = abd(d+1,nx-3) - dtm*beta_face(nx-1)/(24.0*dxsq) + 5*rho_G/2.0
+      abd(d,  nx-2) = abd(d,  nx-2) + dtm*3*beta_face(nx-1)/(40.0*dxsq) - 9*rho_G/2.0
+      abd(d-1,nx-1) = abd(d-1,nx-1) + dtm*beta_face(nx-1)/(24.0*dxsq) - 5*rho_G/2.0
       
       ! i = nx-1
-      rho_G = (5.0*rho_mp1_avg(nx-3) - 34.0*rho_mp1_avg(nx-2) &
-                + 34.0*rho_mp1_avg(nx) - 5.0*rho_mp1_avg(nx+1))/27648.0
+      rho_G = (5*rho_mp1_avg(nx-3) - 34*rho_mp1_avg(nx-2) &
+            + 34*rho_mp1_avg(nx) - 5*rho_mp1_avg(nx+1))/27648.0
       
-      abd(d+3,nx-4) = abd(d+3,nx-4) - dtm*beta_face(nx-1)/(120.0*dx*dx) - 41*rho_G/10.0
-      abd(d+2,nx-3) = abd(d+2,nx-3) + dtm*beta_face(nx-1)/(24.0*dx*dx) + 41*rho_G/2.0
-      abd(d+1,nx-2) = abd(d+1,nx-2) - dtm*(9*beta_face(nx-1) - 10*beta_face(nx))/(120.0*dx*dx) - 419*rho_G/10.0
-      abd(d,  nx-1) = abd(d,  nx-1) - dtm*(beta_face(nx-1) + 30*beta_face(nx))/(24.0*dx*dx) + 109*rho_G/2.0
+      abd(d+3,nx-4) = abd(d+3,nx-4) - dtm*beta_face(nx-1)/(120.0*dxsq) - 41*rho_G/10.0
+      abd(d+2,nx-3) = abd(d+2,nx-3) + dtm*beta_face(nx-1)/(24.0*dxsq) + 41*rho_G/2.0
+      abd(d+1,nx-2) = abd(d+1,nx-2) - dtm*(9*beta_face(nx-1) - 10*beta_face(nx))/(120.0*dxsq) - 419*rho_G/10.0
+      abd(d,  nx-1) = abd(d,  nx-1) - dtm*(beta_face(nx-1) + 30*beta_face(nx))/(24.0*dxsq) + 109*rho_G/2.0
       
       ! perform the banded linear solve for phi
       ! call linpack to do the factorization
