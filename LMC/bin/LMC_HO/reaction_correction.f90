@@ -52,7 +52,7 @@
       end do
       
       avg_term = dtm*(advection_kp1(:,RhoH) - advection_k(:,RhoH) &
-                       + diffusion_kp1(:,RhoH) - diffusion_k(:,RhoH)) + I_k(:,RhoH)
+                    + diffusion_kp1(:,RhoH) - diffusion_k(:,RhoH)) + I_k(:,RhoH)
       call extrapolate_avg_to_cc(cc_term(:,Nspec+1), avg_term)
       
       do i=0,nx-1

@@ -20,6 +20,8 @@ contains
 
       double precision, intent(in ) :: dx
       
+      ! todo: return only gamma on faces rather than the redundant gamma_lo and gamma_hi
+      
       call get_rhoh_visc_terms(diffusion(:,RhoH), scal_cc, beta, dx)
       call get_spec_visc_terms(diffusion(:,FirstSpec:), scal_cc, beta, gamma_lo, gamma_hi, dx)
    end subroutine compute_diffusion

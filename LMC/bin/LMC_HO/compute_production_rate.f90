@@ -24,4 +24,8 @@
             wdot(i,n) = wdot(i,n)*mwt(n)
          end do
       end do
+      
+      ! todo: remove this...
+      !wdot = 0
+      
    end subroutine compute_production_rate

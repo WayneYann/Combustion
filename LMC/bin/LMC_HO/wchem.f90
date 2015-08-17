@@ -87,15 +87,13 @@ contains
         !     compute C_p
         call CKCPBS(T, Y, iwrk, rwrk, cp)
         
-        cp_inv = 1/cp
+        cp_inv = 1.0/cp
         
-        wdot(Nspec+1) = 0.d0
+        wdot(Nspec+1) = 0
         do n=1,Nspec
            !     multiply by molecular weight to get the right units
            wdot(n) = wdot(n) * mwt(n)
-           !dYtdt(Nspec+1) = dYTdt(Nspec+1) - enthalpies(n)*dYTdt(n)
         end do
-        !dYTdt(Nspec+1) = dYTdt(Nspec+1)*rho_inv/cp
         r = -(rYh - rhs - dt*wdot)
 
         !     rmax = maxval(abs(r(1:Nspec)))

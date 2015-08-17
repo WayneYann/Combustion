@@ -14,6 +14,7 @@ module advance_module
    
    implicit none
    private
+   include 'spec.h'
    public :: advance
    
 contains
@@ -47,9 +48,35 @@ contains
 
    end subroutine temp_plot
    
+   subroutine get_temp(scal)
+      double precision, intent(inout) :: scal(-2:nx+1, nscal)
+      
+      double precision :: Y(NSpec)
+      double precision :: hmix
+      integer :: n, i
+      ! chemsolve stuff
+      integer NiterMax, Niter
+      parameter (NiterMax = 30)
+      double precision res(NiterMax), errMax
+      
+      errMax = hmix_Typ*1.e-20
+      
+      do i=0,nx-1
+         ! compute the temperature from h and Y
+         do n = 1,Nspec
+            Y(n) = scal(i,FirstSpec+n-1)/scal(i,Density)
+         enddo
+         hmix = scal(i,RhoH) / scal(i,Density)
+         
+         ! get the new value for the temperature
+         call FORT_TfromHYpt(scal(i,Temp), hmix, Y, &
+                             Nspec, errMax, NiterMax, res, Niter)
+      end do
+      call fill_scal_cc_ghost_cells(scal)
+   end subroutine get_temp
+   
    subroutine advance(scal_n_cc, scal_np1_cc, vel, dt, dx)
       implicit none
-      include 'spec.h'
       ! parameters
       ! two ghost cells
       double precision, intent(in   ) ::   scal_n_cc(-2:nx+1, nscal)
@@ -184,10 +211,8 @@ contains
             call compute_diffusion_coefficients(beta, scal_kp1_cc(m,:,:))
             ! compute the divergence constraint, S
             call compute_div_u(S_cc, scal_kp1_cc(m,:,:), beta, dx)
-            
             ! add delta chi to the constraint
             S_cc = S_cc + delta_chi_pred(m,:)! + delta_chi_corr(m,:)
-            
             ! convert from cell-centered S to cell-average
             call extrapolate_cc_to_avg(S_avg, S_cc)
             ! compute velocity by integrating the constraint
@@ -228,8 +253,6 @@ contains
             call compute_diffusion(diffusion_kp1(m+1,:,:), scal_kp1_cc(m+1,:,:), &
                                    beta, gamma_lo, gamma_hi, dx)
             
-            !call write_plt(vel, scal_AD_avg, S_cc, dx, 4*k + 2*m + 1, dt*m/2.0)
-            
             ! call the chemistry solver to solve the correction equation
             call reaction_correction(scal_kp1_cc(m+1,:,:),   scal_kp1_cc(m,:,:), &
                                      advection_kp1(m,:,:),   advection_k(m,:,:), &
@@ -238,6 +261,9 @@ contains
             
             !call temp_plot(diffusion_kp1(m+1,:,FirstSpec+7-1), scal_AD_avg(:,FirstSpec+7-1), &
             !   I_k(m,:,FirstSpec+7-1), beta(:,FirstSpec+7-1), dx, 2*k + m)
+            
+            scal_kp1_cc(m+1,:,Temp) = scal_k_cc(m+1,:,Temp)
+            call get_temp(scal_kp1_cc(m+1,:,:))
             
             call write_plt(vel, scal_kp1_cc(m+1,:,:), S_cc, dx, 2*k + m, dt*m/2.0)
             ! increment the delta chi correction
