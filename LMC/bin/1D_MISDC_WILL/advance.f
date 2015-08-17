@@ -25,6 +25,7 @@ ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
          
          q = (-f0/24.0 + f1/3.0 + 5*f2/24.0)*dt
       end function quadrature_2
+
       
       subroutine advance(vel_old,vel_new,scal_old,scal_new,
      $                   I_R,press_old,press_new,
@@ -545,7 +546,7 @@ c     this is needed for any dpdt-based correction scheme
 c     delta_chi = delta_chi + (peos-p0)/(dt*peos) + (1/peos) u dot grad peos
 c     increment delta_chi_1
                call add_dpdt(scal_1_curr(0,:,:),scal_1_curr(0,:,RhoRT),
-     $                       delta_chi_1(0,:),macvel_1(0,:),dx(0),dt1,
+     $                       delta_chi_2(0,:),macvel_1(0,:),dx(0),dt1,
      $                       lo(0),hi(0),bc(0,:))
 
                delta_chi_1 = delta_chi_1 + delta_chi_2

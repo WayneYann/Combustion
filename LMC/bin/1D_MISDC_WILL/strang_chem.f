@@ -95,17 +95,18 @@ c     Evolve chem over grid
          end do
          
          ! call VODE to solve the ODE, to get a guess for the BE Newton solve
-!            call chemsolve(guess, rhguess, YTold, scal_old(i,RhoH), FuncCount,
-!     &               dt, diag, do_diag, ifail, i)
-!            
-!            rho_new = 0.d0
-!            do n = 1, Nspec
-!               rho_new = rho_new + guess(n)
-!            enddo
-!            
-!            guess(Nspec+1) = rhguess
+            call chemsolve(guess, rhguess, YTold, scal_old(i,RhoH), FuncCount,
+     &               dt, diag, do_diag, ifail, i)
+            
+            !rho_new = 0.d0
+            !do n = 1, Nspec
+            !   rho_new = rho_new + guess(n)
+            !enddo
+            rho_new = scal_new(i,Density)
+            
+            guess(Nspec+1) = rhguess
          
-         guess = YTold
+         !guess = YTold
          
          ! call the nonlinear backward Euler solver
          call bechem(guess, rho_new, YTnext, dt)

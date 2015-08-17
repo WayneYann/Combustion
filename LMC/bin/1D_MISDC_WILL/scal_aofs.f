@@ -13,8 +13,6 @@
       
       real*8  sedge(0 :nfine,nscal)
       real*8  slope(-1:nfine)
-      real*8 dth
-      real*8 dthx
       real*8 eps
       real*8 slo,shi
       integer iconserv
@@ -25,12 +23,6 @@
       integer IWRK
 
       logical compute_comp(nscal)
-
-!     WILL: only do space-centered term instead of space-time centered      
-!      dth  = 0.5d0 * dt
-!      dthx = 0.5d0 * dt / dx
-      dth = 0.0d0
-      dthx = 0.0d0
 
       eps = 1.e-6
       
@@ -59,16 +51,8 @@
             call mkslopes(scal_old(:,n),slope,lo,hi,bc)
 
             do i=lo,hi+1
-               slo = scal_old(i-1,n)+(0.5d0 - dthx*macvel(i))*slope(i-1)
-               shi = scal_old(i  ,n)-(0.5d0 + dthx*macvel(i))*slope(i  )
-               
-               ! WILL: removed this since not doing time-centered
-               !if (iconserv .eq. 1) then
-               !   slo = slo! - dth * scal_old(i-1,n) * divu(i-1)
-               !   shi = shi! - dth * scal_old(i  ,n) * divu(i)
-               !endif
-               !slo = slo + dth*tforce(i-1,n)
-               !shi = shi + dth*tforce(i  ,n)
+               slo = scal_old(i-1,n)+(0.5d0)*slope(i-1)
+               shi = scal_old(i  ,n)-(0.5d0)*slope(i  )
                
                if ( macvel(i) .gt. eps) then
                   sedge(i,n) = slo
