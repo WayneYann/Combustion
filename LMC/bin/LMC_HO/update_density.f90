@@ -1,3 +1,4 @@
+      ! update cell-averaged density using the advection term
       subroutine update_density(scal_mp1_avg, scal_m_avg, advection_kp1, advection_k, I_k, dtm)
       
          use ghost_cells_module

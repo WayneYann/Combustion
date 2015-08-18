@@ -15,9 +15,4 @@
          
          CALL CKPY(scal(i,Density),scal(i,Temp),Y,IWRK,RWRK,scal(i,RhoRT))
       end do
-      
-      ! inflow
-      !scal(-1,RhoRT) = scal(0,RhoRT)
-      ! outflow
-      !scal(nx,RhoRT) = scal(nx-1,RhoRT)
    end

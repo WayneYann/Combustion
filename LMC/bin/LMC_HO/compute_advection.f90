@@ -1,13 +1,13 @@
-   subroutine get_diffdiff_terms(diffdiff, scal, beta, gamma_lo, gamma_hi, dx)
+   ! todo: fix this
+   subroutine get_diffdiff_terms(diffdiff, scal, beta, gamma_face, dx)
 
       implicit none
       include 'spec.h'
 
-      double precision, intent(out) :: diffdiff( 0:nx-1)
-      double precision, intent(in ) ::     scal(-2:nx+1,nscal)
-      double precision, intent(in ) ::     beta(-2:nx+1,nscal)
-      double precision, intent(in ) :: gamma_lo( 0:nx-1,Nspec)
-      double precision, intent(in ) :: gamma_hi( 0:nx-1,Nspec)
+      double precision, intent(out) ::   diffdiff( 0:nx-1)
+      double precision, intent(in ) ::       scal(-2:nx+1,nscal)
+      double precision, intent(in ) ::       beta(-2:nx+1,nscal)
+      double precision, intent(in ) :: gamma_face( 0:nx,  Nspec)
       double precision, intent(in ) ::       dx
 
       real*8 dxsqinv,RWRK
@@ -53,8 +53,8 @@
             flux_hi(n) = beta_hi*(Y(n,i+1) - Y(n  ,i))
 
 !     set face fluxes to h_m * (rho D_m - lambda/cp) grad Y_m
-            flux_lo(n) = (flux_lo(n) + gamma_lo(i,n))*(hm(n,i-1)+hm(n,i))/2.d0
-            flux_hi(n) = (flux_hi(n) + gamma_hi(i,n))*(hm(n,i+1)+hm(n,i))/2.d0
+            flux_lo(n) = (flux_lo(n) + gamma_face(i,n))*(hm(n,i-1)+hm(n,i))/2.d0
+            flux_hi(n) = (flux_hi(n) + gamma_face(i+1,n))*(hm(n,i+1)+hm(n,i))/2.d0
  
 !     differential diffusion is divergence of face fluxes
             diffdiff(i) = diffdiff(i) + (flux_hi(n) - flux_lo(n))*dxsqinv
@@ -90,46 +90,15 @@
       do n = 1,nscal
          if (compute_comp(n)) then
             call cc_to_face(scal_face(:,n), scal_cc(:,n))
-            !do i = 0,nx
-            !   scal_face(i, n) = (-scal_cc(i-2,n) + 9.0*scal_cc(i-1,  n) &
-            !                 + 9.0*scal_cc(i,  n) - scal_cc(i+1,n))/16.0
-            !end do
-            
-!            call mkslopes(scal_old(:,n),slope,lo,hi,bc)
-!            
-!            do i=lo,hi+1
-!               slo = scal_old(i-1,n)+(0.5d0)*slope(i-1)
-!               shi = scal_old(i  ,n)-(0.5d0)*slope(i  )
-!               
-!               if ( macvel(i) .gt. eps) then
-!                  sedge(i,n) = slo
-!               else if ( macvel(i) .lt. -eps) then
-!                  sedge(i,n) = shi
-!               else if ( abs(macvel(i)) .le. eps) then
-!                  sedge(i,n) = 0.5d0 * (slo + shi)
-!               endif
-!               
-!               ! inflow
-!               if (i .eq. lo) then
-!                  sedge(i,n) = scal_old(i-1,n)
-!               end if
-!               
-!               ! outflow
-!               if (i .eq. hi+1) then
-!                  sedge(i,n) = slo
-!               end if
-!               
-!            enddo
-            
          endif
       enddo
       
-      ! compute the advection term
+      ! compute the advection term according to the divergence theorem
       do n = 1,nscal
          if (compute_comp(n)) then
              do i=0,nx-1
                 advection(i,n) = - (vel(i+1)*scal_face(i+1,n) &
-                                  - vel(i  )*scal_face(i  ,n)) / dx
+                                  - vel(i  )*scal_face(i  ,n))/dx
              enddo
           endif
       enddo

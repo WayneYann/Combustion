@@ -1,9 +1,7 @@
 module wchem_module
 
   implicit none
-
   private
-  
   include 'spec.h'
 
   !     Jacobian matrix and factorization
@@ -82,8 +80,6 @@ contains
         
         !     compute wdot
         call CKWYR(rho_new, T, Y, iwrk, rwrk, wdot)
-        !     compute enthalpies
-        !call CKHMS(YT(Nspec+1), iwrk, rwrk, enthalpies)
         !     compute C_p
         call CKCPBS(T, Y, iwrk, rwrk, cp)
         
@@ -155,7 +151,7 @@ contains
        integer, parameter :: consP = 1
        double precision :: z(Nspec+1)
 
-       !     compute the molar concentrations
+       !    compute the molar concentrations
        call CKYTCR(rho_new, T, Y, iwrk, rwrk, C)
        !     use the concentrarions to compute the reaction Jacobian
        call DWDOT(Jac, C, T, consP)
@@ -166,14 +162,13 @@ contains
              Jac(i,j) = Jac(i,j) * mwt(i) * invmwt(j)
           end do
 
-          !     last row is derivative of temperatures
+          !     last row is derivative of enthalpy
           i=Nspec+1
-          !Jac(i,j) = Jac(i,j) * invmwt(j) ! * rho! * cp
           Jac(i, j) = 0.d0
        end do
        Jac(Nspec+1, Nspec+1) = 0.d0
        
-       !     last column is derivative wrt temperature
+       !     last column is derivative wrt enthalpy
        j = Nspec+1
        do i=1,Nspec
           Jac(i,j) = Jac(i,j) * mwt(i) * rho_inv * cp_inv

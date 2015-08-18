@@ -184,27 +184,9 @@ contains
          
          time = 0.d0
          at_nstep = 1
-
-! take vals from PMF and fills vel, Y, and Temp
-! computes rho and h, fills in rhoH and rhoY
-! sets I_R to zero
-
+         
          call initdata(vel,scal_old,dx,bc)
-         
          call write_plt(vel,scal_old,divu_old, dx,99999,time)
-         
-!     needed for seed to EOS after first strang_chem call
-         !scal_new(:,Temp) = scal_old(:,Temp)
-         
-
-         
-         
-         !call compute_diffusion_coefficients(beta_old, scal_old)
-         !call compute_div_u(divu_old, scal_old, beta_old, dx)
-         !call extrapolate_cc_to_avg(divu_avg, divu_old)
-         
-         !call compute_velocity(vel, divu_avg, dx)
-
       end if
          
       print *,' '      

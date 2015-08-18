@@ -1,5 +1,6 @@
 module div_u_module
 
+   use cell_conversions_module
    use diffusion_correction_module
    
    implicit none
@@ -7,6 +8,10 @@ module div_u_module
    private
    public :: compute_div_u
 contains
+   
+   ! compute the temperature viscous terms
+   ! div(lambda grad T) + sum_m (rho D_m grad Y_m . grad h_m)
+   ! from equation (7), DB99
    
    subroutine get_temp_visc_terms(visc,scal,beta,dx)
       implicit none
@@ -32,19 +37,14 @@ contains
       double precision, intent(in   ) ::  dx
    
       integer i
-      double precision :: beta_lo,beta_hi
-      double precision :: flux_lo,flux_hi
-      double precision :: dxsqinv
-
-      dxsqinv = 1.d0/(dx*dx)
+      double precision :: beta_face(0:nx)
+      double precision :: grad_T(0:nx)
+      
+      call cc_to_face(beta_face, beta(:,Temp))
+      call cc_to_grad(grad_T, scal(:,Temp), dx)
+      
       do i=0,nx-1
-         ! todo: fourth order stencil here
-         beta_lo = 0.5*(beta(i,Temp) + beta(i-1,Temp))
-         beta_hi = 0.5*(beta(i,Temp) + beta(i+1,Temp))
-         ! todo: 
-         flux_hi = beta_hi*(scal(i+1,Temp) - scal(i  ,Temp)) 
-         flux_lo = beta_lo*(scal(i  ,Temp) - scal(i-1,Temp)) 
-         visc(i) = visc(i) + (flux_hi - flux_lo) * dxsqinv
+         visc(i) = (beta_face(i+1)*grad_T(i+1) - beta_face(i)*grad_T(i))/dx
       end do
    end subroutine addDivLambdaGradT
 
@@ -146,8 +146,7 @@ contains
    
       ! local variables
       double precision :: diff(0:nx-1,nscal)
-      double precision :: gamma_lo(0:nx-1,Nspec)
-      double precision :: gamma_hi(0:nx-1,Nspec)
+      double precision :: gamma_face(0:nx,Nspec)
    
       double precision ::    Y(Nspec)
       double precision ::   HK(Nspec)
@@ -161,10 +160,11 @@ contains
       double precision :: rwrk
       integer :: iwrk
       integer :: i, n
-   
+      
+      ! compute the viscous terms
       call get_temp_visc_terms(diff(:,Temp), scal, beta, dx)
       call get_spec_visc_terms(diff(:,FirstSpec:), scal, beta, &
-                               gamma_lo,gamma_hi,dx)
+                               gamma_face,dx)
       
       do i=0,nx-1
          rho = scal(i,Density)

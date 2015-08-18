@@ -8,6 +8,7 @@ module ghost_cells_module
    public :: fill_scal_avg_ghost_cells
 contains
    
+   ! fill cell-averaged ghost cells (Dirichlet inflow, Neumann outflow)
    subroutine fill_avg_ghost_cells(avg, bdry)
       double precision, intent(inout) :: avg(-2:nx+1)
       double precision, intent(in   ) :: bdry
@@ -19,6 +20,7 @@ contains
       avg(nx+1) = (-15*avg(nx-1) + 29*avg(nx-2) - 15*avg(nx-3) + 3*avg(nx-4))/2.0
    end subroutine fill_avg_ghost_cells
    
+   ! fill cell-centered ghost cells (Dirichlet inflow, Neumann outflow)
    subroutine fill_cc_ghost_cells(cc, bdry)
       double precision, intent(inout) :: cc(-2:nx+1)
       double precision, intent(in   ) :: bdry
@@ -30,6 +32,7 @@ contains
       cc(nx+1) = (-135*cc(nx-1) + 265*cc(nx-2) - 135*cc(nx-3) + 27*cc(nx-4))/22.0
    end subroutine fill_cc_ghost_cells
    
+   ! fill the ghost cells for all the scalar quantities (cell-centered)
    subroutine fill_scal_cc_ghost_cells(scal_cc)
       double precision, intent(inout) :: scal_cc(-2:nx+1, nscal)
       integer :: n
@@ -43,6 +46,7 @@ contains
       end do
    end subroutine fill_scal_cc_ghost_cells
    
+   ! fill the ghost cells for all the scalar quantities (cell-averaged)
    subroutine fill_scal_avg_ghost_cells(scal_avg)
       double precision, intent(inout) :: scal_avg(-2:nx+1, nscal)
       integer :: n

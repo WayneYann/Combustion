@@ -9,6 +9,7 @@ module cell_conversions_module
    
    public :: cc_to_avg, extrapolate_cc_to_avg, avg_to_cc, scal_cc_to_avg
    public :: cc_to_face, mult_avgs, scal_avg_to_cc, extrapolate_avg_to_cc
+   public :: cc_to_grad
 
 contains
 
@@ -29,7 +30,6 @@ contains
       end do
       
       call fill_avg_ghost_cells(avg, bdry)
-      
    end subroutine cc_to_avg
    
    ! given a cell-centered quantity with no ghost cells, compute cell averages
@@ -165,5 +165,18 @@ contains
       
       call fill_avg_ghost_cells(prod, bdry)
    end subroutine mult_avgs
-
+   
+   ! compute the gradient given a cell-centered quantity
+   subroutine cc_to_grad(grad, cc, dx)
+      double precision, intent(out) :: grad( 0:nx)
+      double precision, intent(in ) ::   cc(-2:nx+1)
+      double precision, intent(in ) :: dx
+      
+      integer :: i
+      
+      do i=0,nx
+         grad(i) = (cc(i-2) - 27*cc(i-1) + 27*cc(i) - cc(i+1))/(24*dx)
+      end do
+   end subroutine cc_to_grad
+   
 end module cell_conversions_module
