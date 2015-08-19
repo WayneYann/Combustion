@@ -1,20 +1,20 @@
 program test_it
    double precision :: error1, error2
    
+   call get_error(32, error1)
+   call get_error(64, error2)
+   
+   print *,log(error2/error1)
+   print *,''
+   
+   call get_error(64, error1)
+   call get_error(128, error2)
+   
+   print *,log(error2/error1)
+   print *,''
+   
    call get_error(128, error1)
    call get_error(256, error2)
-   
-   print *,log(error2/error1)
-   print *,''
-   
-   call get_error(512, error1)
-   call get_error(1024, error2)
-   
-   print *,log(error2/error1)
-   print *,''
-   
-   call get_error(2048, error1)
-   call get_error(4096, error2)
    
    print *,log(error2/error1)
    print *,''
@@ -24,7 +24,7 @@ contains
       integer, intent(in )          :: nx
       double precision, intent(out) :: error
       
-      double precision :: rhs(-2:nx+1)
+      double precision :: rhs(0:nx-1)
       double precision :: rho(-2:nx+1)
       double precision :: phi(-2:nx+1)
       double precision :: dx
@@ -44,17 +44,16 @@ contains
          exact(i) = (sin(dx*(i+1))-sin(dx*i))/dx
          rho(i) = 0.d0
       end do
-      
-      call fill_avg_ghost_cells(rhs, 1.d0, nx)
+
       call fill_avg_ghost_cells(rho, 0.d0, nx)
       
       call implicit_AD_solve(phi, rho, rhs, dx, 1.d0, nx)
-      
+
       error = 0.d0
       
       do i=0,nx-1
-         error = max(error, abs(exact(i)-phi(i)))
-         !error = error + abs(exact(i) - phi(i))/dx
+         !error = max(error, abs(exact(i)-phi(i)))
+         error = error + abs(exact(i) - phi(i))*dx
          
          !print *,abs(exact(i) - phi(i))/dx
          !print *,dx*(i+0.5d0),exact(i),phi(i)
