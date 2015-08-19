@@ -50,12 +50,16 @@
             avg_term = dtm*(advection_kp1(:,is) - advection_k(:,is) &
                           + diffusion_kp1(:,is) - diffusion_k(:,is))
             call extrapolate_avg_to_cc(cc_term(:,n), avg_term)
+            ! todo: remove this
+            !cc_term(:,n) = avg_term
             cc_term(:,n) = cc_term(:,n) - dtm*wdot_k(:, n) + I_k(:,is)
          end do
          
          avg_term = dtm*(advection_kp1(:,RhoH) - advection_k(:,RhoH) &
                        + diffusion_kp1(:,RhoH) - diffusion_k(:,RhoH))
          call extrapolate_avg_to_cc(cc_term(:,Nspec+1), avg_term)
+         ! todo: remove this
+         !cc_term(:,Nspec+1) = avg_term
          cc_term(:,Nspec+1) = cc_term(:,Nspec+1) + I_k(:, RhoH)
          
          do i=0,nx-1

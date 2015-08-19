@@ -11,6 +11,7 @@ module advance_module
    use cell_conversions_module
    use quadrature_module
    use diffusion_correction_module
+   use compute_advection_module
    
    implicit none
    private
@@ -135,7 +136,7 @@ contains
       ! beta stores the diffusion coefficients
       ! two ghost cells
       double precision :: beta(-2:nx+1, nscal)
-      ! gammas are used to compute the differential diffusion
+      ! gamma stores rho D_j grad Y_j
       double precision :: gamma_face(0:nx, Nspec)
       
       ! k is the MISDC iteration
@@ -161,6 +162,8 @@ contains
       scal_k_cc(0,:,:) = scal_n_cc
       call fill_scal_cc_ghost_cells(scal_k_cc(0,:,:))
       
+      call fill_cc_ghost_cells(scal_k_cc(0,:,FirstSpec), Y_bc(1,0)*rho_bc(0))
+      
       ! compute the advection term
       delta_chi_pred(0,:) = 0.d0
       call increment_delta_chi(delta_chi_pred(0,:), scal_k_cc(0,:,:), dtm(0), dx)
@@ -177,8 +180,8 @@ contains
       
       ! compute the diffusion term
       call compute_diffusion(diffusion_k(0,:,:), scal_k_cc(0,:,:), beta, gamma_face, dx)
+      call add_diffdiff_terms(advection_k(0,:,RhoH), scal_k_cc(0,:,:), beta, gamma_face, dx)
       
-      !call get_diffdiff_terms(advection_k(0,:,RhoH), scal_k_cc(0,:,:), beta, gamma_face, dx)
       ! compute the reaction term
       call compute_production_rate(wdot_k(0,:,:), scal_k_cc(0,:,:))
       
@@ -212,7 +215,7 @@ contains
             ! compute the divergence constraint, S
             call compute_div_u(S_cc, scal_kp1_cc(m,:,:), beta, dx)
             ! add delta chi to the constraint
-            S_cc = S_cc + delta_chi_pred(m,:)! + delta_chi_corr(m,:)
+            S_cc = S_cc + delta_chi_pred(m,:) + delta_chi_corr(m,:)
             ! convert from cell-centered S to cell-average
             call extrapolate_cc_to_avg(S_avg, S_cc)
             ! compute velocity by integrating the constraint
@@ -223,8 +226,8 @@ contains
             call compute_advection(advection_kp1(m,:,:), scal_kp1_cc(m,:,:), vel, dx)
             call compute_diffusion(diffusion_kp1(m,:,:), scal_kp1_cc(m,:,:), &
                                    beta, gamma_face, dx)
-            
-            !call get_diffdiff_terms(advection_kp1(m,:,RhoH), scal_kp1_cc(m,:,:), beta, gamma_face, dx)
+               
+            call add_diffdiff_terms(advection_kp1(m,:,RhoH), scal_kp1_cc(m,:,:), beta, gamma_face, dx)
             
             ! update the density
             call update_density(scal_AD_avg, scal_m_avg, &
@@ -255,18 +258,19 @@ contains
                                    beta, gamma_face, dx)
             
             ! call the chemistry solver to solve the correction equation
-            call reaction_correction(scal_kp1_cc(m+1,:,:),   scal_kp1_cc(m,:,:), &
-                                     advection_kp1(m,:,:),   advection_k(m,:,:), &
-                                     diffusion_kp1(m+1,:,:), diffusion_k(m+1,:,:), &
-                                     wdot_k(m+1,:,:), I_k_cc(m,:,:), dtm(m))
+!            call reaction_correction(scal_kp1_cc(m+1,:,:),   scal_kp1_cc(m,:,:), &
+!                                     advection_kp1(m,:,:),   advection_k(m,:,:), &
+!                                     diffusion_kp1(m+1,:,:), diffusion_k(m+1,:,:), &
+!                                     wdot_k(m+1,:,:), I_k_cc(m,:,:), dtm(m))
             
-            !call temp_plot(diffusion_kp1(m+1,:,FirstSpec+7-1), scal_AD_avg(:,FirstSpec+7-1), &
-            !   I_k(m,:,FirstSpec+7-1), beta(:,FirstSpec+7-1), dx, 2*k + m)
+            !call temp_plot(diffusion_kp1(m+1,:,FirstSpec), scal_AD_avg(:,FirstSpec), &
+            !   I_k_cc(m,:,FirstSpec), diffusion_k(m+1,:,FirstSpec), dx, 2*k + m - 1)
             
+            ! todo: remove this
             scal_kp1_cc(m+1,:,Temp) = scal_k_cc(m+1,:,Temp)
             call get_temp(scal_kp1_cc(m+1,:,:))
             
-            call write_plt(vel, scal_kp1_cc(m+1,:,:), S_cc, dx, 2*k + m - 1, dt*m/2.0)
+            call write_plt(vel, scal_kp1_cc(m+1,:,:), S_cc, dx, 2*k + m - 1, dt*m/2.d0)
             ! increment the delta chi correction
             call increment_delta_chi(delta_chi_corr(m,:), scal_kp1_cc(m+1,:,:), dtm(m), dx)
          end do
@@ -280,13 +284,13 @@ contains
             call compute_diffusion_coefficients(beta, scal_kp1_cc(m,:,:))
             call compute_div_u(S_cc, scal_kp1_cc(m,:,:), beta, dx)
             
-            S_cc = S_cc + delta_chi_pred(m,:)! + delta_chi_corr(m,:)
+            S_cc = S_cc + delta_chi_pred(m,:) + delta_chi_corr(m,:)
             call extrapolate_cc_to_avg(S_avg, S_cc)
             call compute_velocity(vel, S_avg, dx)
             call compute_diffusion(diffusion_kp1(m,:,:), scal_kp1_cc(m,:,:), &
                                    beta, gamma_face, dx)
             call compute_advection(advection_kp1(m,:,:), scal_kp1_cc(m,:,:), vel, dx)
-            !call get_diffdiff_terms(advection_kp1(m,:,RhoH), scal_kp1_cc(m,:,:), beta, gamma_face, dx)
+            call add_diffdiff_terms(advection_kp1(m,:,RhoH), scal_kp1_cc(m,:,:), beta, gamma_face, dx)
             call compute_production_rate(wdot_kp1(m,:,:), scal_kp1_cc(m,:,:))
          end do
          

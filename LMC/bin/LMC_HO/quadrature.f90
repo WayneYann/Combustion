@@ -18,9 +18,9 @@ contains
       double precision, intent(in ) :: dt
       
       if (m.eq.1) then
-         q = (5*f(1) + 8*f(2) - f(3))*dt/24.0
+         q = (5*f(1) + 8*f(2) - f(3))*dt/24.d0
       else
-         q = (-f(1) + 8*f(2) + 5*f(3))*dt/24.0
+         q = (-f(1) + 8*f(2) + 5*f(3))*dt/24.d0
       end if
    end subroutine compute_quadrature
    

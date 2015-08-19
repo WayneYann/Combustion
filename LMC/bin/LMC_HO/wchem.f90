@@ -83,7 +83,7 @@ contains
         !     compute C_p
         call CKCPBS(T, Y, iwrk, rwrk, cp)
         
-        cp_inv = 1.0/cp
+        cp_inv = 1.d0/cp
         
         wdot(Nspec+1) = 0
         do n=1,Nspec

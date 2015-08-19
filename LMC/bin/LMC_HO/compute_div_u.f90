@@ -1,6 +1,7 @@
 module div_u_module
 
    use cell_conversions_module
+   use ghost_cells_module
    use diffusion_correction_module
    
    implicit none
@@ -12,28 +13,29 @@ contains
    ! compute the temperature viscous terms
    ! div(lambda grad T) + sum_m (rho D_m grad Y_m . grad h_m)
    ! from equation (7), DB99
-   
-   subroutine get_temp_visc_terms(visc,scal,beta,dx)
+   subroutine get_temp_visc_terms(visc,scal,beta,gamma_face,dx)
       implicit none
       include 'spec.h'
-      double precision, intent(out) :: visc( 0:nx-1)
-      double precision, intent(in ) :: scal(-2:nx+1,nscal)
-      double precision, intent(in ) :: beta(-2:nx+1,nscal)
-      double precision, intent(in ) :: dx
+      double precision, intent(out) ::       visc( 0:nx-1)
+      double precision, intent(in ) ::       scal(-2:nx+1,nscal)
+      double precision, intent(in ) ::       beta(-2:nx+1,nscal)
+      double precision, intent(in ) :: gamma_face( 0:nx,  Nspec)
+      double precision, intent(in ) ::         dx
 
       ! Compute Div(lambda.Grad(T)) + rho.D.Grad(Hi).Grad(Yi)
-      call gamma_dot_gradh(scal,beta,visc,dx)
+      call gamma_dot_gradh(visc,scal,beta,gamma_face,dx)
+      !call gamma_dot_gradh_old(visc,scal,beta,dx)
       ! Add Div( lambda Grad(T) )
-      call addDivLambdaGradT(scal,beta,visc,dx)
-      
+      call addDivLambdaGradT(visc,scal,beta,dx)
+      !call addDivLambdaGradT_old(visc,scal,beta,dx)
    end subroutine get_temp_visc_terms
 
-   subroutine addDivLambdaGradT(scal,beta,visc,dx)
+   subroutine addDivLambdaGradT(visc,scal,beta,dx)
       implicit none
       include 'spec.h'
+      double precision, intent(inout) :: visc( 0:nx-1)
       double precision, intent(in   ) :: scal(-2:nx+1,nscal)
       double precision, intent(in   ) :: beta(-2:nx+1,nscal)
-      double precision, intent(inout) :: visc( 0:nx-1)
       double precision, intent(in   ) ::  dx
    
       integer i
@@ -47,93 +49,90 @@ contains
          visc(i) = (beta_face(i+1)*grad_T(i+1) - beta_face(i)*grad_T(i))/dx
       end do
    end subroutine addDivLambdaGradT
-
-   subroutine gamma_dot_gradh(scal,beta,visc,dx)
+   
+   subroutine addDivLambdaGradT_old(scal,beta,visc,dx)
       implicit none
       include 'spec.h'
-      double precision, intent(in ) :: scal(-2:nx+1,nscal)
-      double precision, intent(in ) :: beta(-2:nx+1,nscal)
-      double precision, intent(out) :: visc( 0:nx-1)
-      double precision, intent(in ) :: dx
-   
-      integer i,n,is,IWRK
-      double precision :: beta_lo,beta_hi
-      double precision :: gamma_dot_gradh_lo,gamma_dot_gradh_hi
-      double precision :: dxsqinv,RWRK,rho,dv
-      double precision :: hm(Nspec,-1:nx)
-      double precision :: Y(Nspec,-1:nx)
+      real*8 scal(-2:nx+1,nscal)
+      real*8 beta(-1:nx  ,nscal)
+      real*8 visc(-1:nx)
+      real*8 dx
+      
+      integer i
+      real*8 beta_lo,beta_hi
+      real*8 flux_lo,flux_hi
+      real*8 dxsqinv
 
-      double precision :: gamma_lo(0:nx-1,Nspec)
-      double precision :: gamma_hi(0:nx-1,Nspec)
-
-      double precision :: sum_lo,sum_hi
-      double precision :: sumRhoY_lo,sumRhoY_hi
-      double precision :: RhoYe_lo,RhoYe_hi
-
-      !    Compute rhoD Grad(Yi).Grad(hi) terms
       dxsqinv = 1.d0/(dx*dx)
-
-      !  Get Hi, Yi at cell centers
-      do i=-1,nx
-         rho = 0.d0
-         do n=1,Nspec
-            rho = rho + scal(i,FirstSpec+n-1)
-         enddo
-         call CKHMS(scal(i,Temp),IWRK,RWRK,hm(1,i))
-         do n=1,Nspec
-            Y(n,i) = scal(i,FirstSpec+n-1)/rho
-         enddo
-      enddo
-
-      !  Compute differences
       do i=0,nx-1
-         dv = 0.d0
-         sum_lo = 0.d0
-         sum_hi = 0.d0
-         sumRhoY_lo = 0.d0
-         sumRhoY_hi = 0.d0
-         do n=1,Nspec
-            is = FirstSpec + n - 1
-            
-            ! todo: fourth order stencil here
-            beta_lo = 0.5d0*(beta(i,is) + beta(i-1,is))
-            beta_hi = 0.5d0*(beta(i,is) + beta(i+1,is))
-            ! todo: 
-            gamma_lo(i,n) = beta_lo*(Y(n,i)-Y(n,i-1))
-            gamma_hi(i,n) = beta_hi*(Y(n,i+1)-Y(n,i))
-
-            ! need to correct fluxes so they add to zero on each face
-            ! build up the sum of species fluxes on lo and hi faces
-            ! this will be "rho * V_c"
-            sum_lo = sum_lo + gamma_lo(i,n)
-            sum_hi = sum_hi + gamma_hi(i,n)
+         if (coef_avg_harm.eq.1) then
+            beta_lo = 2.d0 / (1.d0/beta(i,Temp)+1.d0/beta(i-1,Temp))
+            beta_hi = 2.d0 / (1.d0/beta(i,Temp)+1.d0/beta(i+1,Temp))
+         else
+            beta_lo = 0.5*(beta(i,Temp) + beta(i-1,Temp))
+            beta_hi = 0.5*(beta(i,Temp) + beta(i+1,Temp))
+         endif
          
-            ! build up the sum of rho*Y_m
-            ! this will be the density
-            sumRhoY_lo = sumRhoY_lo+0.5d0*(scal(i-1,is)+scal(i,is))
-            sumRhoY_hi = sumRhoY_hi+0.5d0*(scal(i,is)+scal(i+1,is))
-         end do
-
-         ! correct the fluxes so they add up to zero before computing visc
-         do n=1,Nspec
-            is = FirstSpec + n - 1
-
-            ! compute rho*Y_m on each face
-            RhoYe_lo = .5d0*(scal(i-1,is)+scal(i,is))
-            RhoYe_hi = .5d0*(scal(i,is)+scal(i+1,is))
-
-            ! set flux = flux - (rho*V_c)*(rho*Y_m)/rho
-            gamma_lo(i,n) = gamma_lo(i,n) - sum_lo*RhoYe_lo/sumRhoY_lo
-            gamma_hi(i,n) = gamma_hi(i,n) - sum_hi*RhoYe_hi/sumRhoY_hi
-            
-            gamma_dot_gradh_lo = gamma_lo(i,n)*(hm(n,i)-hm(n,i-1))
-            gamma_dot_gradh_hi = gamma_hi(i,n)*(hm(n,i+1)-hm(n,i))
-            dv = dv + (gamma_dot_gradh_hi + gamma_dot_gradh_lo)*0.5d0
-          enddo
-     
-         visc(i) = dv*dxsqinv
+         flux_hi = beta_hi*(scal(i+1,Temp) - scal(i  ,Temp)) 
+         flux_lo = beta_lo*(scal(i  ,Temp) - scal(i-1,Temp)) 
+         visc(i) = visc(i) + (flux_hi - flux_lo) * dxsqinv
       end do
    end
+   
+   subroutine gamma_dot_gradh(visc,scal,beta,gamma_face,dx)
+      implicit none
+      include 'spec.h'
+      double precision, intent(out) ::       visc( 0:nx-1)
+      double precision, intent(in ) ::       scal(-2:nx+1,nscal)
+      double precision, intent(in ) ::       beta(-2:nx+1,nscal)
+      double precision, intent(in ) :: gamma_face( 0:nx,  Nspec)
+      double precision, intent(in ) ::         dx
+      
+      double precision ::        h_cc(-2:nx+1,Nspec)
+      double precision ::       h_avg(-2:nx+1,Nspec)
+      double precision ::      h_face( 0:nx,  Nspec)
+      double precision ::   div_gamma(-2:nx+1,Nspec)
+      double precision :: h_div_gamma( 0:nx-1,Nspec)
+      
+      double precision :: h_bdry(Nspec)
+      
+      double precision :: rwrk
+      integer :: i, n
+      integer :: iwrk
+      
+      ! get the boundary condition for the enthalpies
+      ! using the Dirichlet condition for temperature
+      call ckhms(T_bc(on_lo), iwrk, rwrk, h_bdry)
+      
+      ! compute the enthalpies at every cell center
+      do i=-2,nx+1
+         call ckhms(scal(i,Temp),iwrk,rwrk,h_cc(i,:))
+      end do
+      
+      do n=1,Nspec
+         ! convert the enthalpies to face values
+         call cc_to_face(h_face(:,n), h_cc(:,n))
+         ! convert the enthalpies to cell-averaged values
+         call cc_to_avg(h_avg(:,n), h_cc(:,n), h_bdry(n))
+         
+         ! compute div(gamma) as a cell average
+         do i=0,nx-1
+            div_gamma(i,n) = (gamma_face(i+1,n) - gamma_face(i,n))/dx
+         end do
+         ! fill in the ghost cells for div(gamma) using extrapolation
+         call extrapolate_avg_ghost_cells(div_gamma(:,n))
+         call mult_avgs(h_div_gamma(:,n), h_avg(:,n), div_gamma(:,n))
+      end do
+      
+      visc = 0
+      do i=0,nx-1
+         do n=1,Nspec
+            visc(i) = visc(i) &
+               + (h_face(i+1,n)*gamma_face(i+1,n) - h_face(i,n)*gamma_face(i,n))/dx & 
+               - h_div_gamma(i,n)
+         end do
+      end do
+   end subroutine gamma_dot_gradh
 
    subroutine compute_div_u(S, scal, beta, dx)
       implicit none
@@ -162,9 +161,9 @@ contains
       integer :: i, n
       
       ! compute the viscous terms
-      call get_temp_visc_terms(diff(:,Temp), scal, beta, dx)
       call get_spec_visc_terms(diff(:,FirstSpec:), scal, beta, &
                                gamma_face,dx)
+      call get_temp_visc_terms(diff(:,Temp), scal, beta, gamma_face, dx)
       
       do i=0,nx-1
          rho = scal(i,Density)
@@ -188,9 +187,8 @@ contains
          do n=1,Nspec
             S(i) = S(i) + (diff(i,FirstSpec+n-1) + wdot(n)*mwt(n))*invmwt(n)*mwmix/rho &
                         - HK(n)*wdot(n)*mwt(n)/(rho*cpmix*T)
-         enddo
-         
-       enddo
+         end do
+       end do
     end subroutine compute_div_u
     
 end module div_u_module

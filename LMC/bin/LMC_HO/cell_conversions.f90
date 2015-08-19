@@ -8,8 +8,8 @@ module cell_conversions_module
    include 'spec.h'
    
    public :: cc_to_avg, extrapolate_cc_to_avg, avg_to_cc, scal_cc_to_avg
-   public :: cc_to_face, mult_avgs, scal_avg_to_cc, extrapolate_avg_to_cc
-   public :: cc_to_grad
+   public :: cc_to_face, mult_avgs_bdry, scal_avg_to_cc, extrapolate_avg_to_cc
+   public :: cc_to_grad, mult_avgs
 
 contains
 
@@ -26,7 +26,7 @@ contains
       integer :: i
       
       do i=0,nx-1
-         avg(i) = cc(i) + (cc(i-1) - 2.0*cc(i) + cc(i+1))/24.0
+         avg(i) = cc(i) + (cc(i-1) - 2.d0*cc(i) + cc(i+1))/24.d0
       end do
       
       call fill_avg_ghost_cells(avg, bdry)
@@ -43,14 +43,14 @@ contains
       integer :: i
       
       ! one-sided stencils
-      avg(0) = (27*cc(0) - 9*cc(1) + 10*cc(2) - 5*cc(3) + cc(4))/24.0
-      avg(nx-1) = (501*cc(nx-1) + 31*cc(nx-2) - 5*cc(nx-3) + cc(nx-4))/528.0
+      avg(0) = (27*cc(0) - 9*cc(1) + 10*cc(2) - 5*cc(3) + cc(4))/24.d0
+      avg(nx-1) = (501*cc(nx-1) + 31*cc(nx-2) - 5*cc(nx-3) + cc(nx-4))/528.d0
       
-      !avg(nx-1) = (cc(nx-5) - 5.0*cc(nx-4) + 10.0*cc(nx-3) &
-      !           - 9.0*cc(nx-2) + 27.0*cc(nx-2))/24.0
+      !avg(nx-1) = (cc(nx-5) - 5*cc(nx-4) + 10*cc(nx-3) &
+      !           - 9*cc(nx-2) + 27*cc(nx-2))/24.d0
       
       do i=1,nx-2
-         avg(i) = cc(i) + (cc(i-1) - 2.0*cc(i) + cc(i+1))/24.0
+         avg(i) = cc(i) + (cc(i-1) - 2*cc(i) + cc(i+1))/24.d0
       end do
    end subroutine extrapolate_cc_to_avg
    
@@ -61,12 +61,12 @@ contains
       
       integer :: i
       
-      cc(0) = (21*avg(0) + 9*avg(1) - 10*avg(2) + 5*avg(3) - avg(4))/24.0
+      cc(0) = (21*avg(0) + 9*avg(1) - 10*avg(2) + 5*avg(3) - avg(4))/24.d0
       ! use the outflow condition
-      cc(nx-1) = (255*avg(nx-1) - 19*avg(nx-2) + 5*avg(nx-3) - avg(nx-4))/240.0
+      cc(nx-1) = (255*avg(nx-1) - 19*avg(nx-2) + 5*avg(nx-3) - avg(nx-4))/240.d0
       
       do i=1,nx-2
-         cc(i) = avg(i) - (avg(i-1) - 2*avg(i) + avg(i+1))/24.0
+         cc(i) = avg(i) - (avg(i-1) - 2*avg(i) + avg(i+1))/24.d0
       end do
    end subroutine
    
@@ -81,7 +81,7 @@ contains
       integer :: i
       
       do i=0,nx-1
-         cc(i) = avg(i) - (avg(i-1) - 2.0*avg(i) + avg(i+1))/24.0
+         cc(i) = avg(i) - (avg(i-1) - 2*avg(i) + avg(i+1))/24.d0
       end do
       
       call fill_cc_ghost_cells(cc, bdry)
@@ -140,15 +140,15 @@ contains
       integer :: i
       
       do i=0,nx
-         face(i) = 0.5d0*(cc(i) + cc(i-1))
-         !face(i) = (-cc(i-2) + 9*cc(i-1) + 9*cc(i) - cc(i+1))/16.0
+         !face(i) = 0.5d0*(cc(i) + cc(i-1))
+         face(i) = (-cc(i-2) + 9*cc(i-1) + 9*cc(i) - cc(i+1))/16.d0
       end do
    end subroutine cc_to_face
    
    ! compute the cell-average of a product of two cell-averaged quantities
    ! according to the product rule, and fill the ghost cells according to 
    ! the supplied boundary condition
-   subroutine mult_avgs(prod, avg_1, avg_2, bdry)
+   subroutine mult_avgs_bdry(prod, avg_1, avg_2, bdry)
       implicit none
       double precision, intent(out) ::  prod(-2:nx+1)
       double precision, intent(in ) :: avg_1(-2:nx+1)
@@ -160,10 +160,28 @@ contains
       do i=0,nx-1
          prod(i) = avg_1(i)*avg_2(i) &
             + (5*avg_1(i-2) - 34*avg_1(i-1) + 34*avg_1(i+1) - 5*avg_1(i+2)) &
-             *(5*avg_2(i-2) - 34*avg_2(i-1) + 34*avg_2(i+1) - 5*avg_2(i+2))/27648.0
+             *(5*avg_2(i-2) - 34*avg_2(i-1) + 34*avg_2(i+1) - 5*avg_2(i+2))/27648.d0
       end do
       
       call fill_avg_ghost_cells(prod, bdry)
+   end subroutine mult_avgs_bdry
+   
+   ! compute the cell-average of a product of two cell-averaged quantities
+   ! according to the product rule, only in the valid region (no ghost cells!)
+   ! the supplied boundary condition
+   subroutine mult_avgs(prod, avg_1, avg_2)
+      implicit none
+      double precision, intent(out) ::  prod( 0:nx-1)
+      double precision, intent(in ) :: avg_1(-2:nx+1)
+      double precision, intent(in ) :: avg_2(-2:nx+1)
+      
+      integer :: i
+      
+      do i=0,nx-1
+         prod(i) = avg_1(i)*avg_2(i) &
+            + (5*avg_1(i-2) - 34*avg_1(i-1) + 34*avg_1(i+1) - 5*avg_1(i+2)) &
+             *(5*avg_2(i-2) - 34*avg_2(i-1) + 34*avg_2(i+1) - 5*avg_2(i+2))/27648.d0
+      end do
    end subroutine mult_avgs
    
    ! compute the gradient given a cell-centered quantity

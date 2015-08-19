@@ -78,11 +78,12 @@ contains
       ! this subroutine computes the term div(rho D_m grad Y_m)
       
       ! get cell-centered values for Y_n by dividing by rho
-      do i=-2,nx+1
-         do n=1,Nspec
+      do n=1,Nspec
+         do i=-2,nx+1
             Y(i,n) = scal(i,FirstSpec+n-1)/scal(i,Density)
-         enddo
-      enddo
+         end do
+         call fill_cc_ghost_cells(Y(:,n), Y_bc(n,on_lo))
+      end do
       
       do n=1,Nspec
          is = FirstSpec + n - 1
@@ -216,17 +217,17 @@ contains
       ! (where 1 is the uppermost diagonal, and 1+ml+mu us the bottommost)
       do i=0,nx-1
          rho_G = (5*rho_mp1_avg(i-2) - 34*rho_mp1_avg(i-1) &
-                + 34*rho_mp1_avg(i+1) - 5*rho_mp1_avg(i+2))/27648.0
+                + 34*rho_mp1_avg(i+1) - 5*rho_mp1_avg(i+2))/27648.d0
          
          ! here we construct the banded matrix ("almost pentadiagonal..")
          ! these terms come from the product rule for cell averages
          ! we also add the term that comes from the diffusion operator
          ! computed using divergence theorem and the 4th order gradient stencil
-         if (i .ge. 2) abd(d+2,i-2) = 5*rho_G + dtm*beta_face(i)/(12.0*dxsq)
-         if (i .ge. 1) abd(d+1,i-1) = -34*rho_G - dtm*(beta_face(i+1) + 15*beta_face(i))/(12.0*dxsq)
-         abd(d, i) = rho_mp1_avg(i) + dtm*(15*beta_face(i+1) + 15*beta_face(i))/(12.0*dxsq)
-         if (i .le. nx-2) abd(d-1,i+1) = 34*rho_G - dtm*(15*beta_face(i+1) + beta_face(i))/(12.0*dxsq)
-         if (i .le. nx-3) abd(d-2,i+2) = -5*rho_G + dtm*beta_face(i+1)/(12.0*dxsq)
+         if (i .ge. 2) abd(d+2,i-2) = 5*rho_G + dtm*beta_face(i)/(12*dxsq)
+         if (i .ge. 1) abd(d+1,i-1) = -34*rho_G - dtm*(beta_face(i+1) + 15*beta_face(i))/(12*dxsq)
+         abd(d, i) = rho_mp1_avg(i) + dtm*(15*beta_face(i+1) + 15*beta_face(i))/(12*dxsq)
+         if (i .le. nx-2) abd(d-1,i+1) = 34*rho_G - dtm*(15*beta_face(i+1) + beta_face(i))/(12*dxsq)
+         if (i .le. nx-3) abd(d-2,i+2) = -5*rho_G + dtm*beta_face(i+1)/(12*dxsq)
       end do
       
       ! take care of the boundary condition/ghost cells
@@ -241,44 +242,44 @@ contains
       ! inflow:
       ! i = 0
       rho_G = (5*rho_mp1_avg(-2) - 34*rho_mp1_avg(-1) &
-            + 34*rho_mp1_avg(1) - 5*rho_mp1_avg(2))/27648.0
+            + 34*rho_mp1_avg(1) - 5*rho_mp1_avg(2))/27648.d0
       
-      rhs(0)     = rhs(0) + phi_bdry*(dtm*5*(10*beta_face(0) + beta_face(1))/(12.0*dxsq) + 45*rho_G)
-      abd(d,  0) = abd(d,  0) + dtm*(650*beta_face(0) + 77*beta_face(1))/(144.0*dxsq) + 31*rho_G/4.0
-      abd(d-1,1) = abd(d-1,1) - dtm*(310*beta_face(0) + 43*beta_face(1))/(144.0*dxsq) + 71*rho_G/4.0
-      abd(d-2,2) = abd(d-2,2) + dtm*(110*beta_face(0) + 17*beta_face(1))/(144.0*dxsq) - 49*rho_G/4.0
-      abd(d-3,3) = abd(d-3,3) - dtm*(  6*beta_face(0) +    beta_face(1))/(48.0*dxsq) + 11*rho_G/4.0
+      rhs(0)     = rhs(0) + phi_bdry*(dtm*5*(10*beta_face(0) + beta_face(1))/(12.d0*dxsq) + 45*rho_G)
+      abd(d,  0) = abd(d,  0) + dtm*(650*beta_face(0) + 77*beta_face(1))/(144.d0*dxsq) + 31*rho_G/4.d0
+      abd(d-1,1) = abd(d-1,1) - dtm*(310*beta_face(0) + 43*beta_face(1))/(144.d0*dxsq) + 71*rho_G/4.d0
+      abd(d-2,2) = abd(d-2,2) + dtm*(110*beta_face(0) + 17*beta_face(1))/(144.d0*dxsq) - 49*rho_G/4.d0
+      abd(d-3,3) = abd(d-3,3) - dtm*(  6*beta_face(0) +    beta_face(1))/(48.d0*dxsq) + 11*rho_G/4.d0
       
       ! i = 1
       rho_G = (5*rho_mp1_avg(-1) - 34*rho_mp1_avg(0) &
-          + 34*rho_mp1_avg(2) - 5*rho_mp1_avg(3))/27648.0
+          + 34*rho_mp1_avg(2) - 5*rho_mp1_avg(3))/27648.d0
       
-      rhs(1)     = rhs(1) - phi_bdry*(dtm*5*beta_face(1)/(12.0*dxsq) + 25*rho_G)
-      abd(d+1,0) = abd(d+1,0) - dtm*beta_face(1)*77/(144.0*dxsq) - 385*rho_G/12.0
-      abd(d,  1) = abd(d,  1) + dtm*beta_face(1)*43/(144.0*dxsq) + 215*rho_G/12.0
-      abd(d-1,2) = abd(d-1,2) - dtm*beta_face(1)*17/(144.0*dxsq) - 85*rho_G/12.0 
-      abd(d-2,3) = abd(d-2,3) + dtm*beta_face(1)/(48.0*dxsq)  + 5*rho_G/4.0
+      rhs(1)     = rhs(1) - phi_bdry*(dtm*5*beta_face(1)/(12.d0*dxsq) + 25*rho_G)
+      abd(d+1,0) = abd(d+1,0) - dtm*beta_face(1)*77/(144.d0*dxsq) - 385*rho_G/12.d0
+      abd(d,  1) = abd(d,  1) + dtm*beta_face(1)*43/(144.d0*dxsq) + 215*rho_G/12.d0
+      abd(d-1,2) = abd(d-1,2) - dtm*beta_face(1)*17/(144.d0*dxsq) - 85*rho_G/12.d0 
+      abd(d-2,3) = abd(d-2,3) + dtm*beta_face(1)/(48.d0*dxsq)  + 5*rho_G/4.d0
       
       ! for outflow, the ghost cells are filled to satisfy the Neumann condition, and 
       ! therefore we do not need to add anything to the right-hand side
       ! outflow:
       ! i = nx-2
       rho_G = (5*rho_mp1_avg(nx-4) - 34*rho_mp1_avg(nx-3) &
-           + 34*rho_mp1_avg(nx-1) - 5*rho_mp1_avg(nx))/27648.0
+           + 34*rho_mp1_avg(nx-1) - 5*rho_mp1_avg(nx))/27648.d0
       
-      abd(d+2,nx-4) = abd(d+2,nx-4) + dtm*beta_face(nx-1)/(120.0*dxsq) - rho_G/2.0
-      abd(d+1,nx-3) = abd(d+1,nx-3) - dtm*beta_face(nx-1)/(24.0*dxsq) + 5*rho_G/2.0
-      abd(d,  nx-2) = abd(d,  nx-2) + dtm*3*beta_face(nx-1)/(40.0*dxsq) - 9*rho_G/2.0
-      abd(d-1,nx-1) = abd(d-1,nx-1) + dtm*beta_face(nx-1)/(24.0*dxsq) - 5*rho_G/2.0
+      abd(d+2,nx-4) = abd(d+2,nx-4) + dtm*beta_face(nx-1)/(120.d0*dxsq) - rho_G/2.d0
+      abd(d+1,nx-3) = abd(d+1,nx-3) - dtm*beta_face(nx-1)/(24.d0*dxsq) + 5*rho_G/2.d0
+      abd(d,  nx-2) = abd(d,  nx-2) + dtm*3*beta_face(nx-1)/(40.d0*dxsq) - 9*rho_G/2.d0
+      abd(d-1,nx-1) = abd(d-1,nx-1) + dtm*beta_face(nx-1)/(24.d0*dxsq) - 5*rho_G/2.d0
       
       ! i = nx-1
       rho_G = (5*rho_mp1_avg(nx-3) - 34*rho_mp1_avg(nx-2) &
-            + 34*rho_mp1_avg(nx) - 5*rho_mp1_avg(nx+1))/27648.0
+            + 34*rho_mp1_avg(nx) - 5*rho_mp1_avg(nx+1))/27648.d0
       
-      abd(d+3,nx-4) = abd(d+3,nx-4) - dtm*beta_face(nx-1)/(120.0*dxsq) - 41*rho_G/10.0
-      abd(d+2,nx-3) = abd(d+2,nx-3) + dtm*beta_face(nx-1)/(24.0*dxsq) + 41*rho_G/2.0
-      abd(d+1,nx-2) = abd(d+1,nx-2) - dtm*(9*beta_face(nx-1) - 10*beta_face(nx))/(120.0*dxsq) - 419*rho_G/10.0
-      abd(d,  nx-1) = abd(d,  nx-1) - dtm*(beta_face(nx-1) + 30*beta_face(nx))/(24.0*dxsq) + 109*rho_G/2.0
+      abd(d+3,nx-4) = abd(d+3,nx-4) - dtm*beta_face(nx-1)/(120.d0*dxsq) - 41*rho_G/10.d0
+      abd(d+2,nx-3) = abd(d+2,nx-3) + dtm*beta_face(nx-1)/(24.d0*dxsq) + 41*rho_G/2.d0
+      abd(d+1,nx-2) = abd(d+1,nx-2) - dtm*(9*beta_face(nx-1) - 10*beta_face(nx))/(120.d0*dxsq) - 419*rho_G/10.d0
+      abd(d,  nx-1) = abd(d,  nx-1) - dtm*(beta_face(nx-1) + 30*beta_face(nx))/(24.d0*dxsq) + 109*rho_G/2.d0
       
       ! perform the banded linear solve for phi
       ! call linpack to do the factorization
@@ -293,10 +294,8 @@ contains
       
       ! fill in the ghost cells
       call fill_avg_ghost_cells(phi, phi_bdry)
-      ! obtain average of product of phi and rho
-      call mult_avgs(rhophi_AD_avg, phi, rho_mp1_avg, rho_bc(on_lo)*phi_bdry)
-      ! fill in the ghost cells using the product boundary condition
-      call fill_avg_ghost_cells(rhophi_AD_avg, phi_bdry*rho_bc(on_lo))
+      ! obtain average of product of phi and rho (and fill in the ghost cells)
+      call mult_avgs_bdry(rhophi_AD_avg, phi, rho_mp1_avg, rho_bc(on_lo)*phi_bdry)
    end subroutine implicit_AD_solve
-   
+
 end module diffusion_correction_module

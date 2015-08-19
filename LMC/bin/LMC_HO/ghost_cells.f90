@@ -5,7 +5,7 @@ module ghost_cells_module
    include 'spec.h'
    
    public :: fill_avg_ghost_cells, fill_cc_ghost_cells, fill_scal_cc_ghost_cells
-   public :: fill_scal_avg_ghost_cells
+   public :: fill_scal_avg_ghost_cells, extrapolate_avg_ghost_cells
 contains
    
    ! fill cell-averaged ghost cells (Dirichlet inflow, Neumann outflow)
@@ -13,23 +13,42 @@ contains
       double precision, intent(inout) :: avg(-2:nx+1)
       double precision, intent(in   ) :: bdry
       
-      avg(-1) = (60*bdry - 77*avg(0) + 43*avg(1) - 17*avg(2) + 3*avg(3))/12.0
-      avg(-2) = (300*bdry - 505*avg(0) + 335*avg(1) - 145*avg(2) + 27*avg(3))/12.0
+      avg(-1) = (60*bdry - 77*avg(0) + 43*avg(1) - 17*avg(2) + 3*avg(3))/12.d0
+      avg(-2) = (300*bdry - 505*avg(0) + 335*avg(1) - 145*avg(2) + 27*avg(3))/12.d0
       
-      avg(nx) = (5*avg(nx-1) + 9*avg(nx-2) - 5*avg(nx-3) + avg(nx-4))/10.0
-      avg(nx+1) = (-15*avg(nx-1) + 29*avg(nx-2) - 15*avg(nx-3) + 3*avg(nx-4))/2.0
+      ! todo: test if this is more stable at bdry
+      !avg(-1) = bdry
+      !avg(-2) = bdry
+      
+      avg(nx) = (5*avg(nx-1) + 9*avg(nx-2) - 5*avg(nx-3) + avg(nx-4))/10.d0
+      avg(nx+1) = (-15*avg(nx-1) + 29*avg(nx-2) - 15*avg(nx-3) + 3*avg(nx-4))/2.d0
    end subroutine fill_avg_ghost_cells
+   
+   ! fill cell-averaged ghost cells (extrapolation at inflow, Neumann outflow)
+   subroutine extrapolate_avg_ghost_cells(avg)
+      double precision, intent(inout) :: avg(-2:nx+1)
+      
+      avg(-1) = 5*avg(0) - 10*avg(1) + 10*avg(2) - 5*avg(3) + avg(4)
+      avg(-2) = 15*avg(0) - 40*avg(1) + 45*avg(2) - 24*avg(3) + 5*avg(4)
+      
+      avg(nx) = (5*avg(nx-1) + 9*avg(nx-2) - 5*avg(nx-3) + avg(nx-4))/10.d0
+      avg(nx+1) = (-15*avg(nx-1) + 29*avg(nx-2) - 15*avg(nx-3) + 3*avg(nx-4))/2.d0
+   end subroutine extrapolate_avg_ghost_cells
    
    ! fill cell-centered ghost cells (Dirichlet inflow, Neumann outflow)
    subroutine fill_cc_ghost_cells(cc, bdry)
       double precision, intent(inout) :: cc(-2:nx+1)
       double precision, intent(in   ) :: bdry
       
-      cc(-1) = (128*bdry - 140*cc(0) + 70*cc(1) - 28*cc(2) + 5*cc(3))/35.0
-      cc(-2) = (128*bdry - 210*cc(0) + 140*cc(1) - 63*cc(2) + 12*cc(3))/7.0
+      cc(-1) = (128*bdry - 140*cc(0) + 70*cc(1) - 28*cc(2) + 5*cc(3))/35.d0
+      cc(-2) = (128*bdry - 210*cc(0) + 140*cc(1) - 63*cc(2) + 12*cc(3))/7.d0
       
-      cc(nx) = (17*cc(nx-1) + 9*cc(nx-2) - 5*cc(nx-3) + cc(nx-4))/22.0
-      cc(nx+1) = (-135*cc(nx-1) + 265*cc(nx-2) - 135*cc(nx-3) + 27*cc(nx-4))/22.0
+      ! todo: test if this is more stable at bdry
+      !cc(-1) = bdry
+      !cc(-2) = bdry
+      
+      cc(nx) = (17*cc(nx-1) + 9*cc(nx-2) - 5*cc(nx-3) + cc(nx-4))/22.d0
+      cc(nx+1) = (-135*cc(nx-1) + 265*cc(nx-2) - 135*cc(nx-3) + 27*cc(nx-4))/22.d0
    end subroutine fill_cc_ghost_cells
    
    ! fill the ghost cells for all the scalar quantities (cell-centered)

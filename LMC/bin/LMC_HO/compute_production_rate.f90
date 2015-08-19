@@ -25,4 +25,7 @@
          end do
       end do
       
+      
+      wdot = 0
+      
    end subroutine compute_production_rate

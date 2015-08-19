@@ -159,7 +159,7 @@ contains
       
 !     initialize dx
       dx = (probhi-problo)/DBLE(nx)
-
+      
 !     initialize dt
       if (fixed_dt .le. 0.d0) then
          print*,'Error: must specify fixed_dt'
