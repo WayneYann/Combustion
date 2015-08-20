@@ -24,6 +24,9 @@ contains
       call get_rhoh_visc_terms(diffusion(:,RhoH), scal_cc, beta, dx)
       ! compute the diffusion term for rho Y_j
       call get_spec_visc_terms(diffusion(:,FirstSpec:), scal_cc, beta, gamma_face, dx)
+      
+      ! temp: turn off diffusion:
+      ! diffusion = 0
    end subroutine compute_diffusion
    
    subroutine get_rhoh_visc_terms(visc, scal, beta, dx)
@@ -91,6 +94,7 @@ contains
          call cc_to_face(beta_face, beta(:, is))
          ! obtain rho Y_n at faces
          call cc_to_face(Y_face(:,n), Y(:,n))
+         Y_face(0,n) = Y_bc(n,on_lo)
          ! compute the gradient of Y_n at faces
          call cc_to_grad(grad_Y, Y(:,n), dx)
          ! compute the flux, gamma
@@ -287,13 +291,23 @@ contains
       ! call linpack to do the solve -- the solution is returned in rhs
       call dgbsl(abd, lda, nx, ml, mu, ipvt, rhs, 0)
       
-      ! take the solution obtained from linpack
       do i=0,nx-1
          phi(i) = rhs(i)
       end do
       
+      ! take the solution obtained from linpack
+!      do i=0,nx-1
+!         phi(i) = rhophi_m_avg(i) &
+!            + dtm*(advection_kp1(i) - advection_k(i) - diffusion_k(i)) + I_k(i)
+!      end do
+!      
+!      ! temporary!!!
+!      rhophi_AD_avg = phi
+!      call fill_avg_ghost_cells(rhophi_AD_avg, phi_bdry*rho_bc(on_lo))
+      
       ! fill in the ghost cells
       call fill_avg_ghost_cells(phi, phi_bdry)
+      
       ! obtain average of product of phi and rho (and fill in the ghost cells)
       call mult_avgs_bdry(rhophi_AD_avg, phi, rho_mp1_avg, rho_bc(on_lo)*phi_bdry)
    end subroutine implicit_AD_solve

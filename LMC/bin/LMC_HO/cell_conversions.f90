@@ -9,7 +9,7 @@ module cell_conversions_module
    
    public :: cc_to_avg, extrapolate_cc_to_avg, avg_to_cc, scal_cc_to_avg
    public :: cc_to_face, mult_avgs_bdry, scal_avg_to_cc, extrapolate_avg_to_cc
-   public :: cc_to_grad, mult_avgs
+   public :: cc_to_grad, mult_avgs, scal_cc_to_face
 
 contains
 
@@ -106,7 +106,7 @@ contains
       call cc_to_avg(scal_avg(:,Temp), scal_cc(:,Temp), T_bc(on_lo))
       call cc_to_avg(scal_avg(:,RhoH), scal_cc(:,RhoH), rho_bc(on_lo)*h_bc(on_lo))
       
-      call extrapolate_cc_to_avg(scal_avg(:,RhoRT), scal_cc(:,RhoRT))
+      call extrapolate_cc_to_avg(scal_avg(0:,RhoRT), scal_cc(0:,RhoRT))
    end subroutine scal_cc_to_avg
    
    ! convert the array of scalar quantities from cell-averaged to cell-centered
@@ -127,8 +127,8 @@ contains
       call avg_to_cc(scal_cc(:,Density), scal_avg(:,Density), rho_bc(on_lo))
       call avg_to_cc(scal_cc(:,Temp), scal_avg(:,Temp), T_bc(on_lo))
       call avg_to_cc(scal_cc(:,RhoH), scal_avg(:,RhoH), rho_bc(on_lo)*h_bc(on_lo))
-      call extrapolate_avg_to_cc(scal_cc(:,RhoRT), scal_avg(:,RhoRT))
       
+      call extrapolate_avg_to_cc(scal_cc(0:,RhoRT), scal_avg(0:,RhoRT))
    end subroutine scal_avg_to_cc
    
    ! convert a cell-centered quantity to a face-value quantity
@@ -140,10 +140,31 @@ contains
       integer :: i
       
       do i=0,nx
-         !face(i) = 0.5d0*(cc(i) + cc(i-1))
          face(i) = (-cc(i-2) + 9*cc(i-1) + 9*cc(i) - cc(i+1))/16.d0
       end do
    end subroutine cc_to_face
+   
+   subroutine scal_cc_to_face(scal_face, scal_cc)
+      implicit none
+      double precision, intent(out) :: scal_face( 0:nx,   nscal)
+      double precision, intent(in ) ::   scal_cc(-2:nx+1, nscal)
+      
+      integer :: n, is
+      
+      do n=1,Nspec
+         is = FirstSpec+n-1
+         call cc_to_face(scal_face(:,is), scal_cc(:,is))
+         scal_face(0,is) = rho_bc(on_lo)*Y_bc(n,on_lo)
+      end do
+      
+      call cc_to_face(scal_face(:,Density), scal_cc(:,Density))
+      scal_face(0,Density) = rho_bc(on_lo)
+      call cc_to_face(scal_face(:,Temp), scal_cc(:,Temp))
+      scal_face(0,Temp) = T_bc(on_lo)
+      call cc_to_face(scal_face(:,RhoH), scal_cc(:,RhoH))
+      scal_face(0,RhoH) = rho_bc(on_lo)*h_bc(on_lo)
+      call cc_to_face(scal_face(:,RhoRT), scal_cc(:,RhoRT))
+   end subroutine scal_cc_to_face
    
    ! compute the cell-average of a product of two cell-averaged quantities
    ! according to the product rule, and fill the ghost cells according to 

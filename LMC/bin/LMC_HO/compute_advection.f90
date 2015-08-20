@@ -70,11 +70,7 @@ contains
       
       ! we first compute face-values for the scalar quantities
       ! using the stencil, given cell-average values
-      do n = 1,nscal
-         if (compute_comp(n)) then
-            call cc_to_face(scal_face(:,n), scal_cc(:,n))
-         endif
-      enddo
+      call scal_cc_to_face(scal_face, scal_cc)
       
       ! compute the advection term according to the divergence theorem
       do n = 1,nscal
@@ -85,5 +81,6 @@ contains
              enddo
           endif
       enddo
+      
    end subroutine compute_advection
 end module compute_advection_module

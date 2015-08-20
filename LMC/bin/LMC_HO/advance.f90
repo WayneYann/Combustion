@@ -72,6 +72,11 @@ contains
          ! get the new value for the temperature
          call FORT_TfromHYpt(scal(i,Temp), hmix, Y, &
                              Nspec, errMax, NiterMax, res, Niter)
+         if (Niter.lt.0) then
+            print *,'vodeF_T_RhoY: H to T solve failed'
+            print *,'Niter=',Niter
+            stop
+         endif
       end do
       call fill_scal_cc_ghost_cells(scal)
    end subroutine get_temp
@@ -147,8 +152,8 @@ contains
       integer :: i
       
       ! time substeps (determined by Gauss-Lobatto rule)
-      dtm(0) = 0.5*dt
-      dtm(1) = 0.5*dt
+      dtm(0) = 0.5d0*dt
+      dtm(1) = 0.5d0*dt
       
       ! initialize everything to zero
       delta_chi_pred = 0
@@ -214,6 +219,7 @@ contains
             call compute_diffusion_coefficients(beta, scal_kp1_cc(m,:,:))
             ! compute the divergence constraint, S
             call compute_div_u(S_cc, scal_kp1_cc(m,:,:), beta, dx)
+            
             ! add delta chi to the constraint
             S_cc = S_cc + delta_chi_pred(m,:) + delta_chi_corr(m,:)
             ! convert from cell-centered S to cell-average
@@ -233,6 +239,8 @@ contains
             call update_density(scal_AD_avg, scal_m_avg, &
                                 advection_kp1(m,:,:), advection_k(m,:,:), &
                                 I_k_avg(m,:,:), dtm(m))
+            
+            call fill_avg_ghost_cells(scal_m_avg(:,Density), rho_bc(on_lo))
             
             ! compute the iteratively-lagged diffusion coefficients
             call compute_diffusion_coefficients(beta, scal_k_cc(m+1,:,:))
@@ -257,20 +265,23 @@ contains
             call compute_diffusion(diffusion_kp1(m+1,:,:), scal_kp1_cc(m+1,:,:), &
                                    beta, gamma_face, dx)
             
+            !call write_plt(vel, scal_kp1_cc(m+1,:,:), S_cc, dx, 2*k + m - 1, dt*m/2.d0)
+            
             ! call the chemistry solver to solve the correction equation
-!            call reaction_correction(scal_kp1_cc(m+1,:,:),   scal_kp1_cc(m,:,:), &
-!                                     advection_kp1(m,:,:),   advection_k(m,:,:), &
-!                                     diffusion_kp1(m+1,:,:), diffusion_k(m+1,:,:), &
-!                                     wdot_k(m+1,:,:), I_k_cc(m,:,:), dtm(m))
+            call reaction_correction(scal_kp1_cc(m+1,:,:),   scal_kp1_cc(m,:,:), &
+                                     advection_kp1(m,:,:),   advection_k(m,:,:), &
+                                     diffusion_kp1(m+1,:,:), diffusion_k(m+1,:,:), &
+                                     wdot_k(m+1,:,:), I_k_cc(m,:,:), dtm(m))
             
             !call temp_plot(diffusion_kp1(m+1,:,FirstSpec), scal_AD_avg(:,FirstSpec), &
             !   I_k_cc(m,:,FirstSpec), diffusion_k(m+1,:,FirstSpec), dx, 2*k + m - 1)
+            
+            !call write_plt(vel, scal_kp1_cc(m+1,:,:), S_cc, dx, 2*k + m - 1, dt*m/2.d0)
             
             ! todo: remove this
             scal_kp1_cc(m+1,:,Temp) = scal_k_cc(m+1,:,Temp)
             call get_temp(scal_kp1_cc(m+1,:,:))
             
-            call write_plt(vel, scal_kp1_cc(m+1,:,:), S_cc, dx, 2*k + m - 1, dt*m/2.d0)
             ! increment the delta chi correction
             call increment_delta_chi(delta_chi_corr(m,:), scal_kp1_cc(m+1,:,:), dtm(m), dx)
          end do

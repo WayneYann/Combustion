@@ -69,8 +69,8 @@ contains
             beta_lo = 2.d0 / (1.d0/beta(i,Temp)+1.d0/beta(i-1,Temp))
             beta_hi = 2.d0 / (1.d0/beta(i,Temp)+1.d0/beta(i+1,Temp))
          else
-            beta_lo = 0.5*(beta(i,Temp) + beta(i-1,Temp))
-            beta_hi = 0.5*(beta(i,Temp) + beta(i+1,Temp))
+            beta_lo = 0.5d0*(beta(i,Temp) + beta(i-1,Temp))
+            beta_hi = 0.5d0*(beta(i,Temp) + beta(i+1,Temp))
          endif
          
          flux_hi = beta_hi*(scal(i+1,Temp) - scal(i  ,Temp)) 
@@ -189,6 +189,7 @@ contains
                         - HK(n)*wdot(n)*mwt(n)/(rho*cpmix*T)
          end do
        end do
+       
     end subroutine compute_div_u
     
 end module div_u_module

@@ -1,9 +1,9 @@
 &fortin
-  nx = 256
-  nsteps = 80
-  plot_int = 1
+  nx = 128
+  nsteps = 40
+  plot_int = 40
   chk_int = 1000
-  fixed_dt = 0.25e-4
+  fixed_dt = 0.5e-4
   stop_time = 1.e4
   problo = 0.
   probhi = 1.2
@@ -16,11 +16,11 @@
   fancy_predictor = 0
   Patm = 1.0
   do_initial_projection = 1
-  num_divu_iters = 3
-  num_init_iters = 2
+  num_divu_iters = 0
+  num_init_iters = 0
   misdc_iterMAX = 4
   lim_rxns = 0
-  V_in = 0.
+  V_in = 5.
   LeEQ1 = 0
   tranfile = 'tran.asc.grimech30'
 /

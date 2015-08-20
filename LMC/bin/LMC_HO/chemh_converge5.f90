@@ -158,7 +158,7 @@ program chemh_converge4
   L2_32 = sqrt(L2_32/nx_2)
 
 1000 format(a,es12.4,es12.4,es12.4,es12.4)
-1001 format(a,es9.2,a,f4.2,a,es9.2,a,f4.2,a,es9.2,a)
+1001 format(a,es9.2,a,f6.3,a,es9.2,a,f6.3,a,es9.2,a)
 
   print*,"nsteps =",nsteps_0,nsteps_1,nsteps_2,nsteps_3
   print*,"nx     =",nx_0,nx_1,nx_2,nx_3

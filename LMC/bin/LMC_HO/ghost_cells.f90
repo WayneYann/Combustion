@@ -13,8 +13,8 @@ contains
       double precision, intent(inout) :: avg(-2:nx+1)
       double precision, intent(in   ) :: bdry
       
-      avg(-1) = (60*bdry - 77*avg(0) + 43*avg(1) - 17*avg(2) + 3*avg(3))/12.d0
-      avg(-2) = (300*bdry - 505*avg(0) + 335*avg(1) - 145*avg(2) + 27*avg(3))/12.d0
+      avg(-1) = (60*bdry - 77*avg(0) + 43*avg(1) - 17*avg(2) + 3*avg(3))/12
+      avg(-2) = (300*bdry - 505*avg(0) + 335*avg(1) - 145*avg(2) + 27*avg(3))/12
       
       ! todo: test if this is more stable at bdry
       !avg(-1) = bdry

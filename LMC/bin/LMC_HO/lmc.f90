@@ -4,6 +4,7 @@ module lmc_module
    use cell_conversions_module
    use ghost_cells_module
    use advance_module
+   use initial_conditions_module
    
    implicit none
    
@@ -29,6 +30,7 @@ contains
 !     cell-centered, 2 ghost cells
       real*8, allocatable ::  scal_new(:,:)
       real*8, allocatable ::  scal_old(:,:)
+      real*8, allocatable ::  scal_avg(:,:)
 
 !     face values, no ghost cells
       real*8, allocatable :: vel(:)
@@ -135,6 +137,7 @@ contains
 !     cell-centered, 2 ghost cells
       allocate(scal_new(-2:nx+1,nscal))
       allocate(scal_old(-2:nx+1,nscal))
+      allocate(scal_avg(-2:nx+1,nscal))
 
 !     face-values, no ghost cells
       allocate(vel(0:nx))
@@ -185,7 +188,10 @@ contains
          time = 0.d0
          at_nstep = 1
          
-         call initdata(vel,scal_old,dx,bc)
+         call load_initial_conditions(scal_avg, dx)
+         call scal_avg_to_cc(scal_old, scal_avg)
+         
+         !call initdata(vel,scal_old,dx,bc)
          call write_plt(vel,scal_old,divu_old, dx,99999,time)
       end if
          
