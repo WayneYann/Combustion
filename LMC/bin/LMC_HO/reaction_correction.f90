@@ -36,7 +36,7 @@
          parameter (NiterMax = 30)
          double precision res(NiterMax), errMax
          integer :: FuncCount, do_diag
-         double precision :: diag(Nreac)
+         double precision :: diag(Nreac), sum_rhoY
          
          ! turn off diagnostics
          do_diag = 0
@@ -94,6 +94,12 @@
             ! call the nonlinear backward Euler solver
             call bechem(guess, scal_mp1_cc(i, Density), rhs, dtm)
             
+            sum_rhoY = 0.d0
+            do n=1,Nspec
+               sum_rhoY = sum_rhoY + rhs(n)
+            end do
+            scal_mp1_cc(i,Density) = sum_rhoY
+
             ! set the result as the new value
             do n = 1,Nspec
                scal_mp1_cc(i,FirstSpec+n-1) = rhs(n)
