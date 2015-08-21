@@ -13,78 +13,49 @@ contains
    ! compute the temperature viscous terms
    ! div(lambda grad T) + sum_m (rho D_m grad Y_m . grad h_m)
    ! from equation (7), DB99
-   subroutine get_temp_visc_terms(visc,scal,beta,gamma_face,dx)
+   subroutine get_temp_visc_terms(visc_avg,scal_cc,beta_cc,gamma_face,dx)
       implicit none
       include 'spec.h'
-      double precision, intent(out) ::       visc( 0:nx-1)
-      double precision, intent(in ) ::       scal(-2:nx+1,nscal)
-      double precision, intent(in ) ::       beta(-2:nx+1,nscal)
+      double precision, intent(out) ::       visc_avg( 0:nx-1)
+      double precision, intent(in ) ::       scal_cc(-2:nx+1,nscal)
+      double precision, intent(in ) ::       beta_cc(-2:nx+1,nscal)
       double precision, intent(in ) :: gamma_face( 0:nx,  Nspec)
       double precision, intent(in ) ::         dx
 
       ! Compute Div(lambda.Grad(T)) + rho.D.Grad(Hi).Grad(Yi)
-      call gamma_dot_gradh(visc,scal,beta,gamma_face,dx)
-      !call gamma_dot_gradh_old(visc,scal,beta,dx)
+      call gamma_dot_gradh(visc_avg,scal_cc,beta_cc,gamma_face,dx)
+
       ! Add Div( lambda Grad(T) )
-      call addDivLambdaGradT(visc,scal,beta,dx)
-      !call addDivLambdaGradT_old(visc,scal,beta,dx)
+      call addDivLambdaGradT(visc_avg,scal_cc,beta_cc,dx)
+
    end subroutine get_temp_visc_terms
 
-   subroutine addDivLambdaGradT(visc,scal,beta,dx)
+   subroutine addDivLambdaGradT(visc_avg,scal_cc,beta_cc,dx)
       implicit none
       include 'spec.h'
-      double precision, intent(inout) :: visc( 0:nx-1)
-      double precision, intent(in   ) :: scal(-2:nx+1,nscal)
-      double precision, intent(in   ) :: beta(-2:nx+1,nscal)
+      double precision, intent(inout) :: visc_avg( 0:nx-1)
+      double precision, intent(in   ) :: scal_cc(-2:nx+1,nscal)
+      double precision, intent(in   ) :: beta_cc(-2:nx+1,nscal)
       double precision, intent(in   ) ::  dx
    
       integer i
       double precision :: beta_face(0:nx)
       double precision :: grad_T(0:nx)
       
-      call cc_to_face(beta_face, beta(:,Temp))
-      call cc_to_grad(grad_T, scal(:,Temp), dx)
+      call cc_to_face(beta_face, beta_cc(:,Temp))
+      call cc_to_grad(grad_T, scal_cc(:,Temp), dx)
       
       do i=0,nx-1
-         visc(i) = visc(i) + (beta_face(i+1)*grad_T(i+1) - beta_face(i)*grad_T(i))/dx
+         visc_avg(i) = visc_avg(i) + (beta_face(i+1)*grad_T(i+1) - beta_face(i)*grad_T(i))/dx
       end do
    end subroutine addDivLambdaGradT
    
-   subroutine addDivLambdaGradT_old(scal,beta,visc,dx)
+   subroutine gamma_dot_gradh(visc_avg,scal_cc,beta_cc,gamma_face,dx)
       implicit none
       include 'spec.h'
-      real*8 scal(-2:nx+1,nscal)
-      real*8 beta(-1:nx  ,nscal)
-      real*8 visc(-1:nx)
-      real*8 dx
-      
-      integer i
-      real*8 beta_lo,beta_hi
-      real*8 flux_lo,flux_hi
-      real*8 dxsqinv
-
-      dxsqinv = 1.d0/(dx*dx)
-      do i=0,nx-1
-         if (coef_avg_harm.eq.1) then
-            beta_lo = 2.d0 / (1.d0/beta(i,Temp)+1.d0/beta(i-1,Temp))
-            beta_hi = 2.d0 / (1.d0/beta(i,Temp)+1.d0/beta(i+1,Temp))
-         else
-            beta_lo = 0.5d0*(beta(i,Temp) + beta(i-1,Temp))
-            beta_hi = 0.5d0*(beta(i,Temp) + beta(i+1,Temp))
-         endif
-         
-         flux_hi = beta_hi*(scal(i+1,Temp) - scal(i  ,Temp)) 
-         flux_lo = beta_lo*(scal(i  ,Temp) - scal(i-1,Temp)) 
-         visc(i) = visc(i) + (flux_hi - flux_lo) * dxsqinv
-      end do
-   end
-   
-   subroutine gamma_dot_gradh(visc,scal,beta,gamma_face,dx)
-      implicit none
-      include 'spec.h'
-      double precision, intent(out) ::       visc( 0:nx-1)
-      double precision, intent(in ) ::       scal(-2:nx+1,nscal)
-      double precision, intent(in ) ::       beta(-2:nx+1,nscal)
+      double precision, intent(out) ::       visc_avg( 0:nx-1)
+      double precision, intent(in ) ::       scal_cc(-2:nx+1,nscal)
+      double precision, intent(in ) ::       beta_cc(-2:nx+1,nscal)
       double precision, intent(in ) :: gamma_face( 0:nx,  Nspec)
       double precision, intent(in ) ::         dx
       
@@ -106,7 +77,7 @@ contains
       
       ! compute the enthalpies at every cell center
       do i=-2,nx+1
-         call ckhms(scal(i,Temp),iwrk,rwrk,h_cc(i,:))
+         call ckhms(scal_cc(i,Temp),iwrk,rwrk,h_cc(i,:))
       end do
       
       do n=1,Nspec
@@ -124,27 +95,27 @@ contains
          call mult_avgs(h_div_gamma(:,n), h_avg(:,n), div_gamma(:,n))
       end do
       
-      visc = 0
       do i=0,nx-1
          do n=1,Nspec
-            visc(i) = visc(i) &
-               + (h_face(i+1,n)*gamma_face(i+1,n) - h_face(i,n)*gamma_face(i,n))/dx & 
+            visc_avg(i) = &
+                 (h_face(i+1,n)*gamma_face(i+1,n) - h_face(i,n)*gamma_face(i,n))/dx & 
                - h_div_gamma(i,n)
          end do
       end do
    end subroutine gamma_dot_gradh
 
-   subroutine compute_div_u(S, scal_cc, beta, dx)
+   subroutine compute_div_u(S_cc, scal_cc, beta_cc, dx)
       implicit none
       include 'spec.h'
       ! parameters
-      double precision, intent (out  ) :: S(0:nx-1)
+      double precision, intent (out  ) :: S_cc(0:nx-1)
       double precision, intent (in   ) :: scal_cc(-2:nx+1,nscal)
-      double precision, intent (in   ) :: beta(-2:nx+1,nscal)
+      double precision, intent (in   ) :: beta_cc(-2:nx+1,nscal)
       double precision, intent (in   ) :: dx
    
       ! local variables
-      double precision :: diff(0:nx-1,nscal)
+      double precision :: diff_avg(0:nx-1,nscal)
+      double precision :: diff_cc(0:nx-1,nscal)
       double precision :: gamma_face(0:nx,Nspec)
    
       double precision ::    Y(Nspec)
@@ -159,12 +130,18 @@ contains
       double precision :: rwrk
       integer :: iwrk
       integer :: i, n
+
+      diff_avg = 0.d0
       
       ! compute the viscous terms
-      call get_spec_visc_terms(diff(:,FirstSpec:), scal_cc, beta, &
+      call get_spec_visc_terms(diff_avg(:,FirstSpec:), scal_cc, beta_cc, &
                                gamma_face,dx)
-      call get_temp_visc_terms(diff(:,Temp), scal_cc, beta, gamma_face, dx)
+      call get_temp_visc_terms(diff_avg(:,Temp), scal_cc, beta_cc, gamma_face, dx)
       
+      do n=1,nscal
+         call extrapolate_avg_to_cc(diff_cc(:,n),diff_avg(:,n))
+      end do
+
       do i=0,nx-1
          rho = scal_cc(i,Density)
          do n = 1,Nspec
@@ -181,12 +158,12 @@ contains
 
          ! construct S (according to the formula from DB99 paper)
          ! add the temperature contribution
-         S(i) = diff(i,Temp)/(rho*cpmix*T)
+         S_cc(i) = diff_cc(i,Temp)/(rho*cpmix*T)
          
          ! add each of the species contributions
          do n=1,Nspec
-            S(i) = S(i) + (diff(i,FirstSpec+n-1) + wdot(n)*mwt(n))*invmwt(n)*mwmix/rho &
-                        - HK(n)*wdot(n)*mwt(n)/(rho*cpmix*T)
+            S_cc(i) = S_cc(i) + (diff_cc(i,FirstSpec+n-1) + wdot(n)*mwt(n))*invmwt(n)*mwmix/rho &
+                 - HK(n)*wdot(n)*mwt(n)/(rho*cpmix*T)
          end do
        end do
        
