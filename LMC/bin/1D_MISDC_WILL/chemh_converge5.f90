@@ -11,13 +11,13 @@ program chemh_converge4
   integer nx_0,nx_1,nx_2,nx_3
   real*8 time_0,time_1,time_2,time_3,sum
   
-  real*8 data0  (4096,26)
-  real*8 data1  (4096,26)
-  real*8 data2  (4096,26)
-  real*8 data3  (4096,26)
-  real*8 data1_0(4096,26)
-  real*8 data2_1(4096,26)
-  real*8 data3_2(4096,26)
+  real*8 data0  (0:4096,26)
+  real*8 data1  (0:4096,26)
+  real*8 data2  (0:4096,26)
+  real*8 data3  (0:4096,26)
+  real*8 data1_0(0:4096,26)
+  real*8 data2_1(0:4096,26)
+  real*8 data3_2(0:4096,26)
 
   real*8 L0_10(26)
   real*8 L1_10(26)

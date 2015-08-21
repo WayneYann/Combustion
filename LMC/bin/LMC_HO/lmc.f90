@@ -220,7 +220,7 @@ contains
             write(6,1001 )time,dt
             write(6,*)'STEP = ',nsteps_taken
          
-            call advance(scal_old, scal_new, vel, dt, dx)
+            call advance(scal_old, scal_new, vel, divu_new, dt, dx)
             
             scal_old = scal_new
             

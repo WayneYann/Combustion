@@ -11,13 +11,13 @@ program chemh_converge4
   integer nx_0,nx_1,nx_2,nx_3
   real*8 time_0,time_1,time_2,time_3,sum
   
-  real*8 data0  (4096,26)
-  real*8 data1  (4096,26)
-  real*8 data2  (4096,26)
-  real*8 data3  (4096,26)
-  real*8 data1_0(4096,26)
-  real*8 data2_1(4096,26)
-  real*8 data3_2(4096,26)
+  real*8 data0  (0:4096,26)
+  real*8 data1  (0:4096,26)
+  real*8 data2  (0:4096,26)
+  real*8 data3  (0:4096,26)
+  real*8 data1_0(0:4096,26)
+  real*8 data2_1(0:4096,26)
+  real*8 data3_2(0:4096,26)
 
   real*8 L0_10(26)
   real*8 L1_10(26)
@@ -158,7 +158,7 @@ program chemh_converge4
   L2_32 = sqrt(L2_32/nx_2)
 
 1000 format(a,es12.4,es12.4,es12.4,es12.4)
-1001 format(a,es9.2,a,f4.2,a,es9.2,a,f4.2,a,es9.2,a)
+1001 format(a,es9.2,a,f6.4,a,es9.2,a,f.2,a,es9.2,a)
 
   print*,"nsteps =",nsteps_0,nsteps_1,nsteps_2,nsteps_3
   print*,"nx     =",nx_0,nx_1,nx_2,nx_3

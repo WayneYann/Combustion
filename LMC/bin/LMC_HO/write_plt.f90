@@ -40,7 +40,8 @@
                            scal_avg(i,RhoH),&
                            vel(i),&
                            scal_avg(i,RhoRT),&
-                           divu(i)
+                           divu(i),&
+                           i*dx
 
       enddo
 

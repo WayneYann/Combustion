@@ -11,13 +11,13 @@ program chemh_converge4
   integer nx_0,nx_1,nx_2,nx_3
   real*8 time_0,time_1,time_2,time_3,sum
   
-  real*8 data0  (4096,16)
-  real*8 data1  (4096,16)
-  real*8 data2  (4096,16)
-  real*8 data3  (4096,16)
-  real*8 data1_0(4096,16)
-  real*8 data2_1(4096,16)
-  real*8 data3_2(4096,16)
+  real*8 data0  (0:4096,16)
+  real*8 data1  (0:4096,16)
+  real*8 data2  (0:4096,16)
+  real*8 data3  (0:4096,16)
+  real*8 data1_0(0:4096,16)
+  real*8 data2_1(0:4096,16)
+  real*8 data3_2(0:4096,16)
 
   real*8 L0_10(16)
   real*8 L1_10(16)
@@ -69,7 +69,7 @@ program chemh_converge4
   do i=0,nx_3-1
      read(30,*) data3(i,1:16)
   end do
-
+   
   !!!!!!!!!!!!!!!!!!!
   ! error for input0
   !!!!!!!!!!!!!!!!!!!
@@ -83,6 +83,12 @@ program chemh_converge4
         end do
         data1_0(i,j) = sum / 2.d0
      end do
+  end do
+  
+  do i=0,nx_1-1
+    do j=14,15
+       data1_0(i,j) = data1(i*2,j)
+    end do
   end do
   
   L0_10 = 0.d0
@@ -114,6 +120,12 @@ program chemh_converge4
      end do
   end do
   
+  do i=0,nx_2-1
+    do j=14,15
+      data2_1(i,j) = data2(i*2,j)
+    end do
+  end do
+  
   L0_21 = 0.d0
   L1_21 = 0.d0
   L2_21 = 0.d0
@@ -141,6 +153,12 @@ program chemh_converge4
         end do
         data3_2(i,j) = sum / 2.d0
      end do
+  end do
+  
+  do i=0,nx_3-1
+    do j=14,15
+      data3_2(i,j) = data3(i*2,j)
+    end do
   end do
   
   L0_32 = 0.d0
@@ -184,5 +202,7 @@ program chemh_converge4
        log(L1_21(13)/L1_32(13))/log(2.d0)," &",L1_32(13)," \\"
   write(*,1001) "$U$                     &",L1_10(14)," & ",log(L1_10(14)/L1_21(14))/log(2.d0)," &",L1_21(14)," & ", &
        log(L1_21(14)/L1_32(14))/log(2.d0)," &",L1_32(14)," \\"
+  write(*,1001) "$\nabla \cdot U$        &",L1_10(16)," & ",log(L1_10(16)/L1_21(16))/log(2.d0)," &",L1_21(16)," & ", &
+       log(L1_21(16)/L1_32(16))/log(2.d0)," &",L1_32(16)," \\"
 
 end program chemh_converge4

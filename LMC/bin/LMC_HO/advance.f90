@@ -81,7 +81,7 @@ contains
       call fill_scal_cc_ghost_cells(scal)
    end subroutine get_temp
    
-   subroutine advance(scal_n_cc, scal_np1_cc, vel, dt, dx)
+   subroutine advance(scal_n_cc, scal_np1_cc, vel, S_avg, dt, dx)
       implicit none
       ! parameters
       ! two ghost cells
@@ -89,6 +89,7 @@ contains
       double precision, intent(out  ) :: scal_np1_cc(-2:nx+1, nscal)
       ! face-value, no ghost cells
       double precision, intent(out  ) ::         vel( 0:nx)
+      double precision, intent(out  ) ::       S_avg( 0:nx-1)
       double precision, intent(in   ) :: dt, dx
       ! variable declarations
 
@@ -117,7 +118,7 @@ contains
       ! we also need to know the value of the contraint S
       ! (one ghost cell)
       double precision ::  S_cc(0:nx-1)
-      double precision :: S_avg(0:nx-1)
+      !double precision :: S_avg(0:nx-1)
 
       ! we need to store the advection terms for the next 
       ! and previous iterates at all temporal nodes
@@ -279,15 +280,15 @@ contains
             !call write_plt(vel, scal_kp1_cc(m+1,:,:), S_cc, dx, 2*k + m - 1, dt*m/2.d0)
             
             ! todo: remove this
-            scal_kp1_cc(m+1,:,Temp) = scal_k_cc(m+1,:,Temp)
-            call get_temp(scal_kp1_cc(m+1,:,:))
+            !scal_kp1_cc(m+1,:,Temp) = scal_k_cc(m+1,:,Temp)
+            !call get_temp(scal_kp1_cc(m+1,:,:))
             
             ! increment the delta chi correction
             call increment_delta_chi(delta_chi_corr(m,:), scal_kp1_cc(m+1,:,:), dtm(m), dx)
          end do
          
          m = nnodes-1
-         delta_chi_pred(m,:) = 0
+         !delta_chi_pred(m,:) = 0
          call increment_delta_chi(delta_chi_pred(m,:), scal_kp1_cc(m,:,:), dtm(0), dx)
          
          ! recompute all the A, D, R terms 
