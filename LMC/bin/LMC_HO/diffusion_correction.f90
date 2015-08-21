@@ -60,12 +60,12 @@ contains
       
    end subroutine get_rhoh_visc_terms
    
-   subroutine get_spec_visc_terms(visc, scal, beta,gamma_face,dx)
+   subroutine get_spec_visc_terms(visc_avg, scal_cc, beta_cc,gamma_face,dx)
       implicit none
       include 'spec.h'
-      double precision, intent(out) ::       visc( 0:nx-1,Nspec)
-      double precision, intent(in ) ::       scal(-2:nx+1,nscal)
-      double precision, intent(in ) ::       beta(-2:nx+1,nscal)
+      double precision, intent(out) ::       visc_avg( 0:nx-1,Nspec)
+      double precision, intent(in ) ::       scal_cc(-2:nx+1,nscal)
+      double precision, intent(in ) ::       beta_cc(-2:nx+1,nscal)
       double precision, intent(out) :: gamma_face( 0:nx,  Nspec)
       double precision, intent(in ) :: dx
       
@@ -76,14 +76,14 @@ contains
       double precision ::         Y(-2:nx+1,Nspec)
       
       double precision :: sum_g
-      double precision :: rho
+      double precision :: sum_y
       
       ! this subroutine computes the term div(rho D_m grad Y_m)
       
       ! get cell-centered values for Y_n by dividing by rho
       do n=1,Nspec
          do i=-2,nx+1
-            Y(i,n) = scal(i,FirstSpec+n-1)/scal(i,Density)
+            Y(i,n) = scal_cc(i,FirstSpec+n-1)/scal_cc(i,Density)
          end do
          call fill_cc_ghost_cells(Y(:,n), Y_bc(n,on_lo))
       end do
@@ -91,7 +91,7 @@ contains
       do n=1,Nspec
          is = FirstSpec + n - 1
          ! obtain the diffusion coefficient at faces
-         call cc_to_face(beta_face, beta(:, is))
+         call cc_to_face(beta_face, beta_cc(:, is))
          ! obtain rho Y_n at faces
          call cc_to_face(Y_face(:,n), Y(:,n))
          Y_face(0,n) = Y_bc(n,on_lo)
@@ -108,20 +108,20 @@ contains
       ! where rho is taken to be the sum of rho Y_j on faces
       do i=0,nx
          sum_g = 0
-         rho = 0
+         sum_y = 0
          do n=1,Nspec
             sum_g = sum_g + gamma_face(i,n)
-            rho = rho + Y_face(i,n)
+            sum_y = sum_y + Y_face(i,n)
          end do
          do n=1,Nspec
-            gamma_face(i,n) = gamma_face(i,n) - sum_g*Y_face(i,n)/rho
+            gamma_face(i,n) = gamma_face(i,n) - sum_g*Y_face(i,n)/sum_y
          end do
       end do
       
       ! compute the viscous term according to the divergence theorem
       do i=0,nx-1
          do n=1,Nspec
-            visc(i,n) = (gamma_face(i+1,n)-gamma_face(i,n))/dx
+            visc_avg(i,n) = (gamma_face(i+1,n)-gamma_face(i,n))/dx
          end do
       end do
    end subroutine get_spec_visc_terms
