@@ -134,12 +134,12 @@ contains
       end do
    end subroutine gamma_dot_gradh
 
-   subroutine compute_div_u(S, scal, beta, dx)
+   subroutine compute_div_u(S, scal_cc, beta, dx)
       implicit none
       include 'spec.h'
       ! parameters
       double precision, intent (out  ) :: S(0:nx-1)
-      double precision, intent (in   ) :: scal(-2:nx+1,nscal)
+      double precision, intent (in   ) :: scal_cc(-2:nx+1,nscal)
       double precision, intent (in   ) :: beta(-2:nx+1,nscal)
       double precision, intent (in   ) :: dx
    
@@ -161,16 +161,16 @@ contains
       integer :: i, n
       
       ! compute the viscous terms
-      call get_spec_visc_terms(diff(:,FirstSpec:), scal, beta, &
+      call get_spec_visc_terms(diff(:,FirstSpec:), scal_cc, beta, &
                                gamma_face,dx)
-      call get_temp_visc_terms(diff(:,Temp), scal, beta, gamma_face, dx)
+      call get_temp_visc_terms(diff(:,Temp), scal_cc, beta, gamma_face, dx)
       
       do i=0,nx-1
-         rho = scal(i,Density)
+         rho = scal_cc(i,Density)
          do n = 1,Nspec
-            Y(n) = scal(i,FirstSpec + n - 1) / rho
+            Y(n) = scal_cc(i,FirstSpec + n - 1) / rho
          enddo
-         T = scal(i,Temp)
+         T = scal_cc(i,Temp)
       
          ! compute the production rates, wdot
          call CKWYR(rho, T, Y, IWRK, RWRK, wdot)
