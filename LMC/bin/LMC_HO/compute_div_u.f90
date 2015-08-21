@@ -46,7 +46,7 @@ contains
       call cc_to_grad(grad_T, scal(:,Temp), dx)
       
       do i=0,nx-1
-         visc(i) = (beta_face(i+1)*grad_T(i+1) - beta_face(i)*grad_T(i))/dx
+         visc(i) = visc(i) + (beta_face(i+1)*grad_T(i+1) - beta_face(i)*grad_T(i))/dx
       end do
    end subroutine addDivLambdaGradT
    
