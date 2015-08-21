@@ -241,8 +241,6 @@ contains
                                 advection_kp1(m,:,:), advection_k(m,:,:), &
                                 I_k_avg(m,:,:), dtm(m))
             
-            call fill_avg_ghost_cells(scal_m_avg(:,Density), rho_bc(on_lo))
-            
             ! compute the iteratively-lagged diffusion coefficients
             call compute_diffusion_coefficients(beta, scal_k_cc(m+1,:,:))
             
