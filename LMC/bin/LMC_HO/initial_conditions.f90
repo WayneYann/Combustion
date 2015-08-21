@@ -43,7 +43,6 @@ contains
                scal_avg(i,FirstSpec+n-1) = scal_avg(i,FirstSpec+n-1) &
                   + data_ic(j,n+1)
             end do
-            scal_avg(i,FirstSpec+n-1) = scal_avg(i,FirstSpec+n-1)*scal_avg(i,Density)/dble(f)
          end do
          
          do j=i*f,(i+1)*f - 1
