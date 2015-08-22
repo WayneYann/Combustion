@@ -52,6 +52,8 @@ contains
      rhs = rYh
      rYH = Y0
      
+     rho_inv = 1.d0/rho
+     
      !     maximum number of iterations is max_iter
      do iter = 0, max_iter
         !     Newton's method: iteratively solve J(x_{n+1} - x_n) = -F(x_n)
@@ -61,11 +63,10 @@ contains
         do n = 1,Nspec
           rho_new = rho_new + rYh(n)
         end do
-        rho_inv = 1.d0/rho_new
-        
         do n = 1,Nspec
-           Y(n) = rYh(n)*rho_inv
+           Y(n) = rYh(n)/rho_new
         enddo
+        
         hmix = rYh(Nspec+1)*rho_inv
         
         T = T_INIT
@@ -79,7 +80,7 @@ contains
         end if
         
         !     compute wdot
-        call CKWYR(rho_new, T, Y, iwrk, rwrk, wdot)
+        call CKWYR(rho, T, Y, iwrk, rwrk, wdot)
         !     compute C_p
         call CKCPBS(T, Y, iwrk, rwrk, cp)
         
