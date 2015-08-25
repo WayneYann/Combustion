@@ -112,8 +112,7 @@ contains
 
       ! for each time substep, we have a delta chi prediction
       ! and correction term
-      double precision :: delta_chi_pred(0:nnodes-1, 0:nx-1)
-      double precision :: delta_chi_corr(0:nnodes-1, 0:nx-1)
+      double precision :: delta_chi(0:nnodes-1, 0:nx-1)
 
       ! we also need to know the value of the contraint S
       ! (one ghost cell)
@@ -157,8 +156,7 @@ contains
       dtm(1) = 0.5d0*dt
       
       ! initialize everything to zero
-      delta_chi_pred = 0
-      delta_chi_corr = 0
+      delta_chi = 0
       advection_k = 0
       diffusion_kp1 = 0
       diffusion_k = 0
@@ -171,13 +169,12 @@ contains
       call fill_cc_ghost_cells(scal_k_cc(0,:,FirstSpec), Y_bc(1,0)*rho_bc(0))
       
       ! compute the advection term
-      delta_chi_pred(0,:) = 0.d0
-      call increment_delta_chi(delta_chi_pred(0,:), scal_k_cc(0,:,:), dtm(0), dx)
+      call increment_delta_chi(delta_chi(0,:), scal_k_cc(0,:,:), dtm(0), dx)
       call compute_diffusion_coefficients(beta, scal_k_cc(0,:,:))
       
       ! need to compute div u to fourth order
       call compute_div_u(S_cc, scal_k_cc(0,:,:), beta, dx)
-      S_cc = S_cc + delta_chi_pred(0,:)
+      S_cc = S_cc + delta_chi(0,:)
       
       call extrapolate_cc_to_avg(S_avg, S_cc)
       call compute_velocity(vel, S_avg, dx)
@@ -213,16 +210,17 @@ contains
             call scal_cc_to_avg(scal_m_avg, scal_kp1_cc(m,:,:))
             
             ! compute delta chi prediction
-            delta_chi_pred(m,:) = 0.d0
-            call increment_delta_chi(delta_chi_pred(m,:), scal_kp1_cc(m,:,:), dtm(m), dx)
-            
+            if (m .ne. 0) then
+               call increment_delta_chi(delta_chi(m,:), scal_kp1_cc(m,:,:), dtm(m), dx)
+            end if
+
             ! compute the diffusion coefficients
             call compute_diffusion_coefficients(beta, scal_kp1_cc(m,:,:))
             ! compute the divergence constraint, S
             call compute_div_u(S_cc, scal_kp1_cc(m,:,:), beta, dx)
             
             ! add delta chi to the constraint
-            S_cc = S_cc + delta_chi_pred(m,:) + delta_chi_corr(m,:)
+            S_cc = S_cc + delta_chi(m,:)
             ! convert from cell-centered S to cell-average
             call extrapolate_cc_to_avg(S_avg, S_cc)
             ! compute velocity by integrating the constraint
@@ -240,6 +238,8 @@ contains
             call update_density(scal_AD_avg, scal_m_avg, &
                                 advection_kp1(m,:,:), advection_k(m,:,:), &
                                 I_k_avg(m,:,:), dtm(m))
+            
+            call fill_avg_ghost_cells(scal_m_avg(:,Density), rho_bc(on_lo))
             
             ! compute the iteratively-lagged diffusion coefficients
             call compute_diffusion_coefficients(beta, scal_k_cc(m+1,:,:))
@@ -281,20 +281,17 @@ contains
             !scal_kp1_cc(m+1,:,Temp) = scal_k_cc(m+1,:,Temp)
             !call get_temp(scal_kp1_cc(m+1,:,:))
             
-            ! increment the delta chi correction
-            call increment_delta_chi(delta_chi_corr(m,:), scal_kp1_cc(m+1,:,:), dtm(m), dx)
          end do
          
          m = nnodes-1
-         !delta_chi_pred(m,:) = 0
-         call increment_delta_chi(delta_chi_pred(m,:), scal_kp1_cc(m,:,:), dtm(0), dx)
+         call increment_delta_chi(delta_chi(m,:), scal_kp1_cc(m,:,:), dtm(0), dx)
          
          ! recompute all the A, D, R terms 
          do m=0,nnodes-1
             call compute_diffusion_coefficients(beta, scal_kp1_cc(m,:,:))
             call compute_div_u(S_cc, scal_kp1_cc(m,:,:), beta, dx)
             
-            S_cc = S_cc + delta_chi_pred(m,:) + delta_chi_corr(m,:)
+            S_cc = S_cc + delta_chi(m,:)
             call extrapolate_cc_to_avg(S_avg, S_cc)
             call compute_velocity(vel, S_avg, dx)
             call compute_diffusion(diffusion_kp1(m,:,:), scal_kp1_cc(m,:,:), &

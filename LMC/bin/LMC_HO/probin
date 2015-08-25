@@ -10,7 +10,7 @@
   chkfile = 'null'
   init_shrink = 0.1
   flame_offset = -2.4
-  dpdt_factor = 1.0
+  dpdt_factor = 2.0
   initial_S_type = 1
   recompute_S = 0
   fancy_predictor = 0
