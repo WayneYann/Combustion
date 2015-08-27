@@ -284,7 +284,7 @@ contains
          end do
          
          m = nnodes-1
-         call increment_delta_chi(delta_chi(m,:), scal_kp1_cc(m,:,:), dtm(0), dx)
+         call increment_delta_chi(delta_chi(m,:), scal_kp1_cc(m,:,:), dtm(m-1), dx)
          
          ! recompute all the A, D, R terms 
          do m=0,nnodes-1
