@@ -49,7 +49,7 @@
          write(10,1006) (i+.5d0)*dx,(Y(i,n),n=1,Nspec),&
                            scal_avg(i,Density),&
                            scal_avg(i,Temp),&
-                           h_avg(i),&
+                           scal_avg(i,RhoH),&
                            vel(i),&
                            scal_avg(i,RhoRT),&
                            divu(i),&

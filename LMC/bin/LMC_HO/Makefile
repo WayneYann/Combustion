@@ -26,7 +26,7 @@ ifeq ($(REACTION_MECHANISM),GRI30)
   mech_source += ../../../Chemistry/data/gri/grimech30.c
 endif
 ifeq ($(REACTION_MECHANISM),CHEMH)
-  mech_source += ../../../Chemistry/data/chem-H/chem-H.c
+  mech_source += ../../../Chemistry/data/chem-H-lotemp/chem-H.c
 endif
 ifeq ($(REACTION_MECHANISM),LUDME)
   mech_source += ../../../Chemistry/data/Lu/LuDME.c
