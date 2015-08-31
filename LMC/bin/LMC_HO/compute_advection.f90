@@ -6,18 +6,19 @@ module compute_advection_module
    include 'spec.h'
    public :: add_diffdiff_terms, compute_advection
 contains
-   subroutine add_diffdiff_terms(diffdiff, scal, beta, gamma_face, dx)
+   subroutine add_diffdiff_terms(diffdiff, scal_avg, beta, gamma_face, dx)
       implicit none
 
       double precision, intent(out) ::   diffdiff( 0:nx-1)
-      double precision, intent(in ) ::       scal(-2:nx+1,nscal)
+      double precision, intent(in ) ::   scal_avg(-2:nx+1,nscal)
       double precision, intent(in ) ::       beta(-2:nx+1,nscal)
       double precision, intent(in ) :: gamma_face( 0:nx,  Nspec)
       double precision, intent(in ) ::       dx
 
+      double precision ::      T_cc(-2:nx+1)
       double precision ::      h_cc(-2:nx+1, Nspec)
       double precision ::    h_face( 0:nx)
-      double precision ::         Y(-2:nx+1)
+      double precision ::     Y_avg(-2:nx+1)
       double precision ::    grad_Y( 0:nx)
       double precision :: beta_face( 0:nx)
       
@@ -27,18 +28,22 @@ contains
       
       call cc_to_face(beta_face, beta(:, RhoH))
       
+      call avg_to_cc(T_cc, scal_avg(:,Temp), T_bc(on_lo))
       do i=-2,nx+1
-         call ckhms(scal(i,Temp),iwrk,rwrk,h_cc(i,:))
+         call ckhms(T_cc(i),iwrk,rwrk,h_cc(i,:))
       end do
       
       do n=1,Nspec
          call cc_to_face(h_face, h_cc(:,n))
          
-         do i=-2,nx+1
-            Y(i) = scal(i, FirstSpec+n-1)/scal(i, Density)
-         end do
-         call fill_cc_ghost_cells(Y, Y_bc(n, on_lo))
-         call cc_to_grad(grad_Y, Y, dx)
+         !do i=-2,nx+1
+         !   Y(i) = scal(i, FirstSpec+n-1)/scal(i, Density)
+         !end do
+         !call fill_cc_ghost_cells(Y, Y_bc(n, on_lo))
+         
+         call divide_avgs(Y_avg, scal_avg(:, FirstSpec+n-1), scal_avg(:, Density), Y_bc(n,on_lo))
+         
+         call avg_to_grad(grad_Y, Y_avg, dx)
          
          do i=0,nx-1
             diffdiff(i) = diffdiff(i) &
@@ -48,10 +53,10 @@ contains
       end do
    end subroutine add_diffdiff_terms
    
-   subroutine compute_advection(advection, scal_cc, vel, dx)
+   subroutine compute_advection(advection, scal_avg, vel, dx)
       implicit none
       double precision, intent(out  ) :: advection( 0:nx-1,nscal)
-      double precision, intent(in   ) ::   scal_cc(-2:nx+1,nscal)
+      double precision, intent(in   ) ::  scal_avg(-2:nx+1,nscal)
       double precision, intent(in   ) ::       vel( 0:nx)
       double precision, intent(in   ) ::  dx
       
@@ -70,7 +75,7 @@ contains
       
       ! we first compute face-values for the scalar quantities
       ! using the stencil, given cell-average values
-      call scal_cc_to_face(scal_face, scal_cc)
+      call scal_avg_to_face(scal_face, scal_avg)
       
       ! compute the advection term according to the divergence theorem
       do n = 1,nscal

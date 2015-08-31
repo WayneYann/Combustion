@@ -9,7 +9,8 @@ module cell_conversions_module
    
    public :: cc_to_avg, extrapolate_cc_to_avg, avg_to_cc, scal_cc_to_avg
    public :: cc_to_face, mult_avgs_bdry, scal_avg_to_cc, extrapolate_avg_to_cc
-   public :: cc_to_grad, mult_avgs, scal_cc_to_face
+   public :: cc_to_grad, mult_avgs, scal_cc_to_face, avg_to_grad
+   public :: avg_to_face, scal_avg_to_face, divide_avgs
 
 contains
 
@@ -144,6 +145,19 @@ contains
       end do
    end subroutine cc_to_face
    
+   ! convert a cell average to a face-value quantity
+   subroutine avg_to_face(face, avg)
+      implicit none
+      double precision, intent(out) :: face(0:nx)
+      double precision, intent(in ) ::  avg(-2:nx+1)
+      
+      integer :: i
+      
+      do i=0,nx
+         face(i) = (-avg(i-2) + 7*avg(i-1) + 7*avg(i) - avg(i+1))/12.d0
+      end do
+   end subroutine avg_to_face
+   
    subroutine scal_cc_to_face(scal_face, scal_cc)
       implicit none
       double precision, intent(out) :: scal_face( 0:nx,   nscal)
@@ -165,6 +179,28 @@ contains
       scal_face(0,RhoH) = rho_bc(on_lo)*h_bc(on_lo)
       call cc_to_face(scal_face(:,RhoRT), scal_cc(:,RhoRT))
    end subroutine scal_cc_to_face
+   
+   subroutine scal_avg_to_face(scal_face, scal_avg)
+      implicit none
+      double precision, intent(out) :: scal_face( 0:nx,   nscal)
+      double precision, intent(in ) ::  scal_avg(-2:nx+1, nscal)
+      
+      integer :: n, is
+      
+      do n=1,Nspec
+         is = FirstSpec+n-1
+         call avg_to_face(scal_face(:,is), scal_avg(:,is))
+         scal_face(0,is) = rho_bc(on_lo)*Y_bc(n,on_lo)
+      end do
+      
+      call avg_to_face(scal_face(:,Density), scal_avg(:,Density))
+      scal_face(0,Density) = rho_bc(on_lo)
+      call avg_to_face(scal_face(:,Temp), scal_avg(:,Temp))
+      scal_face(0,Temp) = T_bc(on_lo)
+      call avg_to_face(scal_face(:,RhoH), scal_avg(:,RhoH))
+      scal_face(0,RhoH) = rho_bc(on_lo)*h_bc(on_lo)
+      call avg_to_face(scal_face(:,RhoRT), scal_avg(:,RhoRT))
+   end subroutine scal_avg_to_face
    
    ! compute the cell-average of a product of two cell-averaged quantities
    ! according to the product rule, and fill the ghost cells according to 
@@ -205,6 +241,29 @@ contains
       end do
    end subroutine mult_avgs
    
+   
+   subroutine divide_avgs(q, avg_1, avg_2, bdry)
+      implicit none
+      double precision, intent(out) ::     q(-2:nx+1)
+      double precision, intent(in ) :: avg_1(-2:nx+1)
+      double precision, intent(in ) :: avg_2(-2:nx+1)
+      double precision, intent(in ) ::  bdry
+      
+      double precision :: p_1, r_1
+      
+      integer :: i
+      
+      do i=0,nx-1
+         p_1 = 5*avg_1(i-2) - 34*avg_1(i-1) + 34*avg_1(i+1) - 5*avg_1(i+2)
+         r_1 = 5*avg_2(i-2) - 34*avg_2(i-1) + 34*avg_2(i+1) - 5*avg_2(i+2)
+         
+         q(i) = avg_1(i)/avg_2(i) &
+            + (avg_1(i)*r_1*r_1/(avg_2(i)**3) - p_1*r_1/(avg_2(i)**2))/27648.d0
+      end do
+      
+      call fill_avg_ghost_cells(q, bdry)
+   end subroutine divide_avgs
+   
    ! compute the gradient given a cell-centered quantity
    subroutine cc_to_grad(grad, cc, dx)
       double precision, intent(out) :: grad( 0:nx)
@@ -214,8 +273,21 @@ contains
       integer :: i
       
       do i=0,nx
-         grad(i) = (cc(i-2) - 27*cc(i-1) + 27*cc(i) - cc(i+1))/(24*dx)
+         grad(i) = (cc(i-2) - 27*cc(i-1) + 27*cc(i) - cc(i+1))/(24.d0*dx)
       end do
    end subroutine cc_to_grad
+   
+   ! compute the gradient given a cell-averaged quantity
+   subroutine avg_to_grad(grad, avg, dx)
+      double precision, intent(out) :: grad( 0:nx)
+      double precision, intent(in ) ::  avg(-2:nx+1)
+      double precision, intent(in ) ::   dx
+      
+      integer :: i
+      
+      do i=0,nx
+         grad(i) = (avg(i-2) - 15*avg(i-1) + 15*avg(i) - avg(i+1))/(12.d0*dx)
+      end do
+   end subroutine avg_to_grad
    
 end module cell_conversions_module

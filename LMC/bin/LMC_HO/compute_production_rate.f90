@@ -25,6 +25,5 @@
          end do
       end do
       
-      ! temp: turn off reaction
-      ! wdot = 0
+      !wdot = 0
    end subroutine compute_production_rate

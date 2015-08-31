@@ -8,13 +8,13 @@
       data iCH4 / -1 /
       end
 
-      subroutine compute_diffusion_coefficients(beta, scal)
+      subroutine compute_diffusion_coefficients(beta_cc, scal_cc)
          implicit none
          
          include 'spec.h'
          
-         double precision, intent(out  ) :: beta(-2:nx+1,nscal)
-         double precision, intent(in   ) :: scal(-2:nx+1,nscal)
+         double precision, intent(out  ) :: beta_cc(-2:nx+1,nscal)
+         double precision, intent(in   ) :: scal_cc(-2:nx+1,nscal)
          
          double precision Dt(Nspec), CPMS(Nspec), Y(Nspec)
          double precision Tt, Wavg, rho
@@ -29,13 +29,14 @@
          if (traninit.lt.0) call initchem()
          
          do i=-2,nx+1
-            Tt = MAX(scal(i,Temp),TMIN_TRANS) 
-            rho = 0.d0
+            Tt = MAX(scal_cc(i,Temp),TMIN_TRANS) 
+            !rho = 0.d0
+            !do n=1,Nspec
+            !   rho = rho + scal_cc(i,FirstSpec+n-1)
+            !enddo
+            rho = scal_cc(i,Density)
             do n=1,Nspec
-               rho = rho + scal(i,FirstSpec+n-1)
-            enddo
-            do n=1,Nspec
-               Y(n) = scal(i,FirstSpec+n-1) / rho
+               Y(n) = scal_cc(i,FirstSpec+n-1) / rho
             enddo
             
             !  given y[species]: mass fractions
@@ -57,7 +58,7 @@
             CALL EGSV1(Pcgs,Tt,Y,Wavg,EGRWRK,Dt)
             
             do n=1,Nspec
-               beta(i,FirstSpec+n-1) = rho * Wavg * invmwt(n) * Dt(n)
+               beta_cc(i,FirstSpec+n-1) = rho * Wavg * invmwt(n) * Dt(n)
             end do
 
             alpha = 1.0D0
@@ -66,10 +67,16 @@
             alpha = -1.0D0
             !  compute thermal conductivity with a different averating para
             CALL EGSL1(alpha, Tt, X, EGRWRK, l2)
-            beta(i,Temp) = .5d0 * (l1 + l2)
+            beta_cc(i,Temp) = .5d0 * (l1 + l2)
+            
+            ! todo: does this work???
+            !alpha = 0.d0
+            !CALL EGSL1(alpha, Tt, X, EGRWRK, beta_cc(i,Temp))
+            
             !  Returns the mean specific heat at CP
-            CALL CKCPBS(scal(i,Temp),Y,IWRK,RWRK,CPMIX)
-            beta(i,RhoH) = beta(i,Temp) / CPMIX
+            !CALL CKCPBS(scal_cc(i,Temp),Y,IWRK,RWRK,CPMIX)
+            call compute_cp(CPMIX, scal_cc(i,Temp), Y)
+            beta_cc(i,RhoH) = beta_cc(i,Temp) / CPMIX
          enddo
          
       end subroutine compute_diffusion_coefficients
@@ -698,7 +705,8 @@
      &     (.not.stalled) .and.&
      &     (.not.soln_bad))
 
-         CALL CKCPBS(T,Y,IWRK,RWRK,cp)
+         !CALL CKCPBS(T,Y,IWRK,RWRK,cp)
+         call compute_cp(cp, T, Y)
          dT = (Htarg - H)/cp
          old_T = T
          if ((Niter.le.NiterDAMP).and.(T+dT.ge.TMAX)) then
@@ -726,14 +734,16 @@
          if ((ihitlo.eq.1).and.(H.gt.Htarg)) then
             T = TMIN
             CALL CKHBMS(T,Y,IWRK,RWRK,HMIN)
-            CALL CKCPBS(T,Y,IWRK,RWRK,cpMIN)
+            !CALL CKCPBS(T,Y,IWRK,RWRK,cpMIN)
+            call compute_cp(cpMIN, T, Y)
             T=TMIN+(Htarg-HMIN)/cpMIN
             converged = .true.
          endif
          if ((ihithi.eq.1).and.(H.lt.Htarg)) then
             T = TMAX
             CALL CKHBMS(T,Y,IWRK,RWRK,HMAX)
-            CALL CKCPBS(T,Y,IWRK,RWRK,cpMAX)
+            !CALL CKCPBS(T,Y,IWRK,RWRK,cpMAX)
+            call compute_cp(cpMAX, T, Y)
             T=TMAX+(Htarg-HMAX)/cpMAX
             converged = .true.
          endif

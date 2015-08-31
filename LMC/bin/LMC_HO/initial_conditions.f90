@@ -69,8 +69,8 @@ contains
       deallocate(data_ic)
       close(10)
       
+      scal_avg(:,RhoRT) = 0
       call fill_scal_avg_ghost_cells(scal_avg)
-      
    end subroutine load_initial_conditions
    
 end module initial_conditions_module

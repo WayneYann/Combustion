@@ -104,7 +104,6 @@ contains
             call compute_quadrature(q(2,i,n), f(:,i), 2, dt)
          end do
       end do
-      
    end subroutine compute_integrals_cc
 
 end module quadrature_module

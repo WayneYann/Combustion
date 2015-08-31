@@ -156,6 +156,7 @@ contains
 !     only need to zero these so plotfile has sensible data
       divu_old = 0.d0
       divu_new = 0.d0
+      vel = 0
 
 !     must zero this or else RHS in mac project could be undefined
       delta_chi = 0.d0
@@ -189,7 +190,10 @@ contains
          at_nstep = 1
          
          call load_initial_conditions(scal_avg, dx)
-         call scal_avg_to_cc(scal_old, scal_avg)
+         !call scal_avg_to_cc(scal_old, scal_avg)
+         !call scal_cc_to_avg(scal_avg, scal_old)
+         scal_old = scal_avg
+         
          
          !call initdata(vel,scal_old,dx,bc)
          call write_plt(vel,scal_old,divu_old, dx,99999,time)
@@ -201,18 +205,12 @@ contains
 
 1001  format('Advancing: starting time = ', e15.9,' with dt = ',e15.9)
 
-!      endif
-!
-!      call write_plt(vel_new,scal_new,press_new,divu_new,I_R,
-!     $     dx,at_nstep,time,lo,hi,bc)
-!      call write_check(at_nstep,vel_new,scal_new,press_new,
-!     $     I_R,divu_new,dSdt,dx,time,dt,lo,hi)
-!
-
 !!!!!!!!!!!!!!!!!!!!!!!
 !!! Advance in time !!!
 !!!!!!!!!!!!!!!!!!!!!!!
-
+      
+      dodiff = .true.
+      
       do nsteps_taken = at_nstep, nsteps
          if (time.ge.stop_time) exit
             dt = min(dt,stop_time-time)

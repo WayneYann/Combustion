@@ -11,81 +11,76 @@ module diffusion_correction_module
 contains
    
    ! compute the diffusion terms for rho Y_j and rho h
-   subroutine compute_diffusion(diffusion, scal_cc, beta, gamma_face, dx)
+   subroutine compute_diffusion(diffusion, scal_avg, beta, gamma_face, dx)
       implicit none
       double precision, intent(out) ::  diffusion( 0:nx-1,nscal)
-      double precision, intent(in ) ::    scal_cc(-2:nx+1,nscal)
+      double precision, intent(in ) ::   scal_avg(-2:nx+1,nscal)
       double precision, intent(in ) ::       beta(-2:nx+1,nscal)
       double precision, intent(out) :: gamma_face( 0:nx,  Nspec)
 
       double precision, intent(in ) :: dx
       
       ! compute the diffusion term for rho h
-      call get_rhoh_visc_terms(diffusion(:,RhoH), scal_cc, beta, dx)
+      call get_rhoh_visc_terms(diffusion(:,RhoH), scal_avg, beta, dx)
       ! compute the diffusion term for rho Y_j
-      call get_spec_visc_terms(diffusion(:,FirstSpec:), scal_cc, beta, gamma_face, dx)
+      call get_spec_visc_terms(diffusion(:,FirstSpec:), scal_avg, beta, gamma_face, dx)
       
       ! temp: turn off diffusion:
-      ! diffusion = 0
+      if (.not. dodiff) diffusion = 0
    end subroutine compute_diffusion
    
-   subroutine get_rhoh_visc_terms(visc, scal, beta, dx)
+   subroutine get_rhoh_visc_terms(visc_avg, scal_avg, beta_cc, dx)
       implicit none
-      double precision, intent(out) :: visc( 0:nx-1)
-      double precision, intent(in ) :: scal(-2:nx+1,nscal)
-      double precision, intent(in ) :: beta(-2:nx+1,nscal)
+      double precision, intent(out) :: visc_avg( 0:nx-1)
+      double precision, intent(in ) :: scal_avg(-2:nx+1,nscal)
+      double precision, intent(in ) ::  beta_cc(-2:nx+1,nscal)
       
       double precision, intent(in ) :: dx
       
       integer :: i
       
-      double precision ::         h(-2:nx+1)
+      double precision ::     h_avg(-2:nx+1)
       double precision :: beta_face( 0:nx)
       double precision ::    grad_h( 0:nx)
       
-      ! compute h at cell centers by dividing by rho
-      do i=-2,nx+1
-         h(i) = scal(i,RhoH)/scal(i,Density)
-      end do
+      ! compute cell-averaged h by dividing by rho
+      call divide_avgs(h_avg, scal_avg(:,RhoH), scal_avg(:,Density), h_bc(on_lo))
       
       ! obtain the gradient at faces
-      call cc_to_grad(grad_h, h, dx)
+      call avg_to_grad(grad_h, h_avg, dx)
       ! obtain the diffusion coefficients at faces
-      call cc_to_face(beta_face, beta(:,RhoH))
+      call cc_to_face(beta_face, beta_cc(:,RhoH))
       
       ! compute the viscous term
       do i=0,nx-1
-         visc(i) = (beta_face(i+1)*grad_h(i+1) - beta_face(i)*grad_h(i))/dx
+         visc_avg(i) = (beta_face(i+1)*grad_h(i+1) - beta_face(i)*grad_h(i))/dx
       end do
       
    end subroutine get_rhoh_visc_terms
    
-   subroutine get_spec_visc_terms(visc_avg, scal_cc, beta_cc,gamma_face,dx)
+   subroutine get_spec_visc_terms(visc_avg, scal_avg, beta_cc, gamma_face, dx)
       implicit none
       include 'spec.h'
       double precision, intent(out) ::       visc_avg( 0:nx-1,Nspec)
-      double precision, intent(in ) ::       scal_cc(-2:nx+1,nscal)
+      double precision, intent(in ) ::       scal_avg(-2:nx+1,nscal)
       double precision, intent(in ) ::       beta_cc(-2:nx+1,nscal)
-      double precision, intent(out) :: gamma_face( 0:nx,  Nspec)
-      double precision, intent(in ) :: dx
+      double precision, intent(out) ::    gamma_face( 0:nx,  Nspec)
+      double precision, intent(in ) ::            dx
       
       integer i,n,is
       double precision :: beta_face( 0:nx)
       double precision ::    grad_Y( 0:nx)
       double precision ::    Y_face( 0:nx,  Nspec)
-      double precision ::         Y(-2:nx+1,Nspec)
+      double precision ::     Y_avg(-2:nx+1,Nspec)
       
       double precision :: sum_g
       double precision :: sum_y
       
       ! this subroutine computes the term div(rho D_m grad Y_m)
       
-      ! get cell-centered values for Y_n by dividing by rho
+      ! get cell-averaged values for Y_n by dividing by rho
       do n=1,Nspec
-         do i=-2,nx+1
-            Y(i,n) = scal_cc(i,FirstSpec+n-1)/scal_cc(i,Density)
-         end do
-         call fill_cc_ghost_cells(Y(:,n), Y_bc(n,on_lo))
+         call divide_avgs(Y_avg(:,n), scal_avg(:,FirstSpec+n-1), scal_avg(:,Density), Y_bc(n,on_lo))
       end do
       
       do n=1,Nspec
@@ -93,10 +88,10 @@ contains
          ! obtain the diffusion coefficient at faces
          call cc_to_face(beta_face, beta_cc(:, is))
          ! obtain rho Y_n at faces
-         call cc_to_face(Y_face(:,n), Y(:,n))
+         call avg_to_face(Y_face(:,n), Y_avg(:,n))
          Y_face(0,n) = Y_bc(n,on_lo)
          ! compute the gradient of Y_n at faces
-         call cc_to_grad(grad_Y, Y(:,n), dx)
+         call avg_to_grad(grad_Y, Y_avg(:,n), dx)
          ! compute the flux, gamma
          do i=0,nx
             gamma_face(i,n) = beta_face(i)*grad_Y(i)
@@ -106,17 +101,17 @@ contains
       ! correct the fluxes so they add up to zero before computing visc
       ! we correct according to a weighting of rho Y_n / rho
       ! where rho is taken to be the sum of rho Y_j on faces
-      do i=0,nx
-         sum_g = 0
-         sum_y = 0
-         do n=1,Nspec
-            sum_g = sum_g + gamma_face(i,n)
-            sum_y = sum_y + Y_face(i,n)
-         end do
-         do n=1,Nspec
-            gamma_face(i,n) = gamma_face(i,n) - sum_g*Y_face(i,n)/sum_y
-         end do
-      end do
+!      do i=0,nx
+!         sum_g = 0
+!         sum_y = 0
+!         do n=1,Nspec
+!            sum_g = sum_g + gamma_face(i,n)
+!            sum_y = sum_y + Y_face(i,n)
+!         end do
+!         do n=1,Nspec
+!            gamma_face(i,n) = gamma_face(i,n) - sum_g*Y_face(i,n)/sum_y
+!         end do
+!      end do
       
       ! compute the viscous term according to the divergence theorem
       do i=0,nx-1
@@ -209,6 +204,15 @@ contains
             + dtm*(advection_kp1(i) - advection_k(i) - diffusion_k(i)) + I_k(i)
       end do
       
+      ! temp: turn off diffusion
+      if (.not. dodiff) then
+         do i=0,nx-1
+            rhophi_AD_avg(i) = rhs(i)
+         end do
+         call fill_avg_ghost_cells(rhophi_AD_avg, phi_bdry*rho_bc(on_lo))
+         return
+      end if
+      
       ! get the diffusion coefficients as face values rather than cell centers
       call cc_to_face(beta_face, beta)
       
@@ -291,19 +295,10 @@ contains
       ! call linpack to do the solve -- the solution is returned in rhs
       call dgbsl(abd, lda, nx, ml, mu, ipvt, rhs, 0)
       
+      ! take the solution obtained from linpack
       do i=0,nx-1
          phi(i) = rhs(i)
       end do
-      
-      ! take the solution obtained from linpack
-!      do i=0,nx-1
-!         phi(i) = rhophi_m_avg(i) &
-!            + dtm*(advection_kp1(i) - advection_k(i) - diffusion_k(i)) + I_k(i)
-!      end do
-!      
-!      ! temporary!!!
-!      rhophi_AD_avg = phi
-!      call fill_avg_ghost_cells(rhophi_AD_avg, phi_bdry*rho_bc(on_lo))
       
       ! fill in the ghost cells
       call fill_avg_ghost_cells(phi, phi_bdry)
