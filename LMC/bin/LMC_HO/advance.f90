@@ -109,8 +109,7 @@ contains
 
       ! for each time substep, we have a delta chi prediction
       ! and correction term
-      double precision :: delta_chi_pred(0:nnodes-1, 0:nx-1)
-      double precision :: delta_chi_corr(0:nnodes-1, 0:nx-1)
+      double precision :: delta_chi(0:nnodes-1, 0:nx-1)
 
       ! we also need to know the value of the contraint S
       ! (no ghost cells)
@@ -153,8 +152,7 @@ contains
       dtm(1) = 0.5d0*dt
       
       ! initialize everything to zero
-      delta_chi_pred = 0
-      delta_chi_corr = 0
+      delta_chi = 0
       advection_k = 0
       diffusion_kp1 = 0
       diffusion_k = 0
@@ -172,8 +170,7 @@ contains
       !call cc_to_avg(scal_k_avg(0,:,Temp), scal_m_cc(:,Temp), T_bc(on_lo))
       
       ! compute the advection term
-      delta_chi_pred(0,:) = 0.d0
-      call increment_delta_chi(delta_chi_pred(0,:), scal_m_cc, dtm(0), dx)
+      call increment_delta_chi(delta_chi(0,:), scal_m_cc, dtm(0), dx)
       call compute_diffusion_coefficients(beta, scal_m_cc)
       
       ! compute the reaction term
@@ -181,7 +178,7 @@ contains
       
       ! need to compute div u to fourth order
       call compute_div_u(S_cc, scal_k_avg(0,:,:), scal_m_cc, beta, wdot_k(0,:,:), dx)
-      S_cc = S_cc + delta_chi_pred(0,:)
+      S_cc = S_cc + delta_chi(0,:)
       call extrapolate_cc_to_avg(S_avg, S_cc)
       
       !do i=0,nx-1
@@ -224,8 +221,9 @@ contains
             call scal_avg_to_cc(scal_m_cc, scal_kp1_avg(m,:,:))
             
             ! compute delta chi prediction
-            delta_chi_pred(m,:) = 0.d0
-            call increment_delta_chi(delta_chi_pred(m,:), scal_m_cc, dtm(m), dx)
+            if (m .ne. 0) then
+               call increment_delta_chi(delta_chi(m,:), scal_m_cc, dtm(m), dx)
+            end if
             
             ! compute the diffusion coefficients
             call compute_diffusion_coefficients(beta, scal_m_cc)
@@ -233,7 +231,7 @@ contains
             call compute_div_u(S_cc, scal_kp1_avg(m,:,:), scal_m_cc, beta, wdot_kp1(m,:,:), dx)
             
             ! add delta chi to the constraint
-            S_cc = S_cc + delta_chi_pred(m,:) + delta_chi_corr(m,:)
+            S_cc = S_cc + delta_chi(m,:)
             ! convert from cell-centered S to cell-average
             call extrapolate_cc_to_avg(S_avg, S_cc)
             
@@ -289,15 +287,11 @@ contains
             call scal_avg_to_cc(scal_m_cc, scal_kp1_avg(m+1,:,:))
             call get_temp(scal_m_cc)
             call cc_to_avg(scal_kp1_avg(m+1,:,Temp), scal_m_cc(:,Temp), T_bc(on_lo))
-            
-            ! increment the delta chi correction
-            call increment_delta_chi(delta_chi_corr(m,:), scal_m_cc, dtm(m), dx)
+
          end do
                   
          m = nnodes-1
-         !this should be commented out for now...
-         !delta_chi_pred(m,:) = 0
-         call increment_delta_chi(delta_chi_pred(m,:), scal_m_cc, dtm(0), dx)
+         call increment_delta_chi(delta_chi(m,:), scal_m_cc, dtm(m-1), dx)
          
          ! recompute all the A, D, R terms
          do m=0,nnodes-1
@@ -305,7 +299,7 @@ contains
             
             call compute_diffusion_coefficients(beta, scal_m_cc)
             call compute_div_u(S_cc, scal_kp1_avg(m,:,:), scal_m_cc, beta, wdot_kp1(m,:,:), dx)
-            S_cc = S_cc + delta_chi_pred(m,:) + delta_chi_corr(m,:)
+            S_cc = S_cc + delta_chi(m,:)
             call extrapolate_cc_to_avg(S_avg, S_cc)
             
             call compute_velocity(vel, S_avg, dx)
