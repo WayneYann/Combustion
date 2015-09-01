@@ -8,19 +8,9 @@
   problo = 0.
   probhi = 1.2
   chkfile = 'null'
-  init_shrink = 0.1
   flame_offset = -2.4
-  dpdt_factor = 0.0
-  initial_S_type = 1
-  recompute_S = 0
-  fancy_predictor = 0
+  dpdt_factor = 2.0
   Patm = 1.0
-  do_initial_projection = 1
-  num_divu_iters = 0
-  num_init_iters = 0
   misdc_iterMAX = 8
-  lim_rxns = 0
   V_in = 5.
-  LeEQ1 = 0
-  tranfile = 'tran.asc.grimech30'
 /
