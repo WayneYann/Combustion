@@ -6,7 +6,7 @@
   fixed_dt = 0.25e-5
   stop_time = 1.e4
   problo = 0.
-  probhi = 0.4
+  probhi = 0.6
   chkfile = 'null'
   init_shrink = 0.1
   flame_offset = -1.4
