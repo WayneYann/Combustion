@@ -23,7 +23,7 @@ cCOMP := gcc -g -O0 -std=c99 -fno-exceptions -Wall -Wno-sign-compare -DBL_FORT_U
 XTRALIBS :=  -lm -lgfortran
 
 ifeq ($(REACTION_MECHANISM),GRI30)
-  mech_source += ../../../Chemistry/data/gri/grimech30.c
+  mech_source += ../../../Chemistry/data/gri-lotemp/grimech30.c
 endif
 ifeq ($(REACTION_MECHANISM),CHEMH)
   mech_source += ../../../Chemistry/data/chem-H-lotemp/chem-H.c
