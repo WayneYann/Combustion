@@ -1,0 +1,16 @@
+&fortin
+  nx = 128
+  nsteps = 40
+  plot_int = 40
+  chk_int = 1000
+  fixed_dt = 0.5e-5
+  stop_time = 1.e4
+  problo = 0.
+  probhi = 0.4
+  chkfile = 'null'
+  flame_offset = -1.4
+  dpdt_factor = 2.0
+  Patm = 1.0
+  misdc_iterMAX = 8
+  V_in = 5.
+/

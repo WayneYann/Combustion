@@ -29,7 +29,7 @@ ifeq ($(REACTION_MECHANISM),CHEMH)
   mech_source += ../../../Chemistry/data/chem-H-lotemp/chem-H.c
 endif
 ifeq ($(REACTION_MECHANISM),LUDME)
-  mech_source += ../../../Chemistry/data/Lu/LuDME.c
+  mech_source += ../../../Chemistry/data/Lu-lotemp/LuDME.c
 endif
 
 chem_sources := ../../../Chemistry/src/vode.f \
