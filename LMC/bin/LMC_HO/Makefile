@@ -23,13 +23,13 @@ cCOMP := gcc -g -O0 -std=c99 -fno-exceptions -Wall -Wno-sign-compare -DBL_FORT_U
 XTRALIBS :=  -lm -lgfortran
 
 ifeq ($(REACTION_MECHANISM),GRI30)
-  mech_source += ../../../Chemistry/data/gri/grimech30.c
+  mech_source += ../../../Chemistry/data/gri-lotemp/grimech30.c
 endif
 ifeq ($(REACTION_MECHANISM),CHEMH)
   mech_source += ../../../Chemistry/data/chem-H-lotemp/chem-H.c
 endif
 ifeq ($(REACTION_MECHANISM),LUDME)
-  mech_source += ../../../Chemistry/data/Lu/LuDME.c
+  mech_source += ../../../Chemistry/data/Lu-lotemp/LuDME.c
 endif
 
 chem_sources := ../../../Chemistry/src/vode.f \
@@ -42,9 +42,9 @@ mech_object := $(mech_source:%.c=%.o)
 chem_objects := $(chem_sources:%.f=%.o)
 
 f_sources += ${chem_sources} ${pmf_source}
-f90_sources += write_plt.f90 prob.f90 \
+f90_sources += ghost_cells.f90 cell_conversions.f90 write_plt.f90 prob.f90 \
                initial_conditions.f90 compute_cp.f90 \
-               ghost_cells.f90 cell_conversions.f90 chemistry.f90 wchem.f90 \
+               chemistry.f90 wchem.f90 \
                quadrature.f90 diffusion_correction.f90 \
                compute_pthermo.f90  compute_div_u.f90 compute_velocity.f90 \
                increment_delta_chi.f90 compute_advection.f90 update_density.f90 \
