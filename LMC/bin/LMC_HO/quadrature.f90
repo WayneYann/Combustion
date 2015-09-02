@@ -16,11 +16,15 @@ contains
       double precision, intent(in ) :: f(nnodes)
       integer,          intent(in ) :: m
       double precision, intent(in ) :: dt
-      
-      if (m.eq.1) then
-         q = (5*f(1) + 8*f(2) - f(3))*dt/24.d0
-      else
-         q = (-f(1) + 8*f(2) + 5*f(3))*dt/24.d0
+
+      if (nnodes .eq. 2) then
+         q = 0.5d0*dt*(f(1)+f(2))
+      else if (nnodes .eq. 3) then
+         if (m.eq.1) then
+            q = (5*f(1) + 8*f(2) - f(3))*dt/24.d0
+         else
+            q = (-f(1) + 8*f(2) + 5*f(3))*dt/24.d0
+         end if
       end if
    end subroutine compute_quadrature
    
@@ -53,8 +57,9 @@ contains
             do m=1,nnodes
                f(m,i) = a(m,i,n) + d(m,i,n) + r_avg(m,i,n)
             end do
-            call compute_quadrature(q(1,i,n), f(:,i), 1, dt)
-            call compute_quadrature(q(2,i,n), f(:,i), 2, dt)
+            do m=1,nnodes-1
+               call compute_quadrature(q(m,i,n), f(:,i), m, dt)
+            end do
          end do
       end do
       
@@ -100,8 +105,9 @@ contains
             do m=1,nnodes
                f(m,i) = a_cc(m,i,n) + d_cc(m,i,n) + r_cc(m,i,n)
             end do
-            call compute_quadrature(q(1,i,n), f(:,i), 1, dt)
-            call compute_quadrature(q(2,i,n), f(:,i), 2, dt)
+            do m=1,nnodes-1
+               call compute_quadrature(q(m,i,n), f(:,i), m, dt)
+            end do
          end do
       end do
    end subroutine compute_integrals_cc

@@ -66,7 +66,7 @@ contains
                         misdc_iterMAX,&
                         do_initial_projection, num_divu_iters, &
                         num_init_iters,fixed_dt,&
-                        V_in, lim_rxns,&
+                        V_in, nnodes, lim_rxns,&
                         LeEQ1, tranfile, TMIN_TRANS, Pr, Sc,&
                         max_vode_subcycles,&
                         min_vode_timestep, divu_ceiling_flag,&
@@ -96,6 +96,7 @@ contains
       num_init_iters = 2
       fixed_dt = -1.d0
       V_in = 1.d20
+      nnodes = 3
       lim_rxns = 1
       LeEQ1 = 0
       tranfile = 'tran.asc.grimech30'
@@ -112,8 +113,6 @@ contains
       verbose_vode = 0
       nchemdiag = 10
       
-      nnodes = 3
-
       open(9,file='probin',form='formatted',status='old')
       read(9,fortin)
       close(unit=9)

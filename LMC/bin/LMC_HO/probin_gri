@@ -13,4 +13,5 @@
   Patm = 1.0
   misdc_iterMAX = 8
   V_in = 5.
+  nnodes = 3
 /

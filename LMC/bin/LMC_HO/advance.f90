@@ -148,8 +148,12 @@ contains
       integer :: i
       
       ! time substeps (determined by Gauss-Lobatto rule)
-      dtm(0) = 0.5d0*dt
-      dtm(1) = 0.5d0*dt
+      if (nnodes .eq. 2) then
+         dtm(0) = dt
+      else if (nnodes .eq. 3) then
+         dtm(0) = 0.5d0*dt
+         dtm(1) = 0.5d0*dt
+      end if
       
       ! initialize everything to zero
       delta_chi = 0
