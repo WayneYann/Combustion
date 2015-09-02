@@ -51,19 +51,9 @@ contains
       
       call extrapolate_cc_to_avg(beta_avg,beta_cc(0:,Temp))
       
-      !do i=0,nx-1
-      !   print *,(i)*dx,grad_T(i),'hack'
-      !end do
-      !stop
-      
       do i=0,nx-1
          visc_avg(i) = visc_avg(i) + (beta_face(i+1)*grad_T(i+1) - beta_face(i)*grad_T(i))/dx
       end do
-      
-      !do i=0,nx-1
-      !   print *,(i+0.5)*dx,visc_avg(i),'hack'
-      !end do
-      !stop
    end subroutine addDivLambdaGradT
    
    subroutine gamma_dot_gradh(visc_avg,scal_cc,beta_cc,gamma_face,dx)
@@ -146,17 +136,12 @@ contains
       integer :: iwrk
       integer :: i, n
       
-      double precision ::  cc(0:nx-1)
-      double precision :: avg(0:nx-1)
-      
       diff_avg = 0
       
       ! compute the viscous terms
       call get_spec_visc_terms(diff_avg(:,FirstSpec:), scal_avg, beta_cc, &
                                gamma_face,dx)
       call get_temp_visc_terms(diff_avg(:,Temp), scal_avg, scal_cc, beta_cc, gamma_face, dx)
-      
-      !call extrapolate_cc_to_avg(avg, beta_cc(0:,Temp))
       
       do n=1,Nspec
          call extrapolate_avg_to_cc(diff_cc(:,n),diff_avg(:,FirstSpec+n-1))
@@ -173,11 +158,8 @@ contains
          T = scal_cc(i,Temp)
          
          call CKMMWY(Y, iwrk, rwrk, mwmix)
-         !call CKCPBS(T, Y, iwrk, rwrk, cpmix)
          call compute_cp(cpmix, T, Y)
          call CKHMS(T, iwrk, rwrk, HK)
-         
-         cc(i) = HK(2)
          
          
          ! construct S (according to the formula from DB99 paper)
