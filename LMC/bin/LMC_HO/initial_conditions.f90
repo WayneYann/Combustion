@@ -16,25 +16,27 @@ contains
       double precision :: time_ic
       double precision, allocatable :: data_ic(:,:)
       
-      integer :: f, i, j, n
+      integer :: f, i, j, n, size
       
       open(10,file='ic.dat',form='formatted')
       read(10,*) nsteps_ic
       read(10,*) nx_ic
       read(10,*) time_ic
       
-      allocate(data_ic(0:nx_ic-1, 1:26))
+      size = (2*Nspec) + 8
+      
+      allocate(data_ic(0:nx_ic-1, 1:size))
       
       f = nx_ic/nx
       
       do i=0,nx_ic-1
-        read(10,*) data_ic(i,1:26)
+        read(10,*) data_ic(i,1:size)
       end do
       
       scal_avg = 0
       do i=0,nx-1
          do j=i*f,(i+1)*f - 1
-            scal_avg(i,Density) = scal_avg(i,Density) + data_ic(j,11)
+            scal_avg(i,Density) = scal_avg(i,Density) + data_ic(j,Nspec+2)
          end do
          scal_avg(i,Density) = scal_avg(i,Density)/dble(f)
          
@@ -47,12 +49,12 @@ contains
          end do
          
          do j=i*f,(i+1)*f - 1
-            scal_avg(i,RhoH) = scal_avg(i,RhoH) + data_ic(j,13)
+            scal_avg(i,RhoH) = scal_avg(i,RhoH) + data_ic(j,Nspec+4)
          end do
          scal_avg(i,RhoH) = scal_avg(i,RhoH)/dble(f)
          
          do j=i*f,(i+1)*f - 1
-            scal_avg(i,Temp) = scal_avg(i,Temp) + data_ic(j,12)
+            scal_avg(i,Temp) = scal_avg(i,Temp) + data_ic(j,Nspec+3)
          end do
          scal_avg(i,Temp) = scal_avg(i,Temp)/dble(f)
          
