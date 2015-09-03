@@ -1,12 +1,6 @@
 EXEname := lmc.exe
 
 #
-# Choose pmf file
-#
-#pmf_source := ../../../Chemistry/data/gri/PMFs/gri30_070.f
-pmf_source := ../../../Chemistry/data/chem-H/PMFs/chemHSoln_seed_0.00.f
-#pmf_source := ../../../Chemistry/data/Lu/PMFs/LuDME_0700.f
-#
 # Choose reaction mechanism
 # Use GRI30 for pmf_source := gri30_070.f
 # Use CHEMH for pmf_source := chemHSoln_seed_0.00.f
@@ -24,12 +18,15 @@ XTRALIBS :=  -lm -lgfortran
 
 ifeq ($(REACTION_MECHANISM),GRI30)
   mech_source += ../../../Chemistry/data/gri-lotemp/grimech30.c
+  pmf_source := ../../../Chemistry/data/gri/PMFs/gri30_070.f
 endif
 ifeq ($(REACTION_MECHANISM),CHEMH)
   mech_source += ../../../Chemistry/data/chem-H-lotemp/chem-H.c
+  pmf_source := ../../../Chemistry/data/chem-H/PMFs/chemHSoln_seed_0.00.f
 endif
 ifeq ($(REACTION_MECHANISM),LUDME)
   mech_source += ../../../Chemistry/data/Lu-lotemp/LuDME.c
+  pmf_source := ../../../Chemistry/data/Lu/PMFs/LuDME_0700.f
 endif
 
 chem_sources := ../../../Chemistry/src/vode.f \
