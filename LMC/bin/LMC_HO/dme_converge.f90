@@ -16,18 +16,18 @@ program dme_converge
   real*8 data2  (0:4096,56)
   real*8 data3  (0:4096,56)
   real*8 data1_0(0:4096,56)
-  real*8 data2_1(0:4096,56)
-  real*8 data3_2(0:4096,56)
+  real*8 data2_1(0:4096,46)
+  real*8 data3_2(0:4096,46)
 
-  real*8 L0_10(56)
-  real*8 L1_10(56)
-  real*8 L2_10(56)
-  real*8 L0_21(56)
-  real*8 L1_21(56)
-  real*8 L2_21(56)
-  real*8 L0_32(56)
-  real*8 L1_32(56)
-  real*8 L2_32(56)
+  real*8 L0_10(46)
+  real*8 L1_10(46)
+  real*8 L2_10(46)
+  real*8 L0_21(46)
+  real*8 L1_21(46)
+  real*8 L2_21(46)
+  real*8 L0_32(46)
+  real*8 L1_32(46)
+  real*8 L2_32(46)
 
   read(*,*) in0
   read(*,*) in1
@@ -40,7 +40,7 @@ program dme_converge
   read(99,*) time_0
 
   do i=0,nx_0-1
-     read(99,*) data0(i,1:56)
+     read(99,*) data0(i,1:46)
   end do
 
   open(10,file=in1,form='formatted')
@@ -49,7 +49,7 @@ program dme_converge
   read(10,*) time_1
 
   do i=0,nx_1-1
-     read(10,*) data1(i,1:56)
+     read(10,*) data1(i,1:46)
   end do
 
   open(20,file=in2,form='formatted')
@@ -58,7 +58,7 @@ program dme_converge
   read(20,*) time_2
 
   do i=0,nx_2-1
-     read(20,*) data2(i,1:56)
+     read(20,*) data2(i,1:46)
   end do
 
   open(30,file=in3,form='formatted')
@@ -67,7 +67,7 @@ program dme_converge
   read(30,*) time_3
 
   do i=0,nx_3-1
-     read(30,*) data3(i,1:56)
+     read(30,*) data3(i,1:46)
   end do
 
   !!!!!!!!!!!!!!!!!!!
@@ -76,7 +76,7 @@ program dme_converge
 
   !  coarsen fine data
   do i=0,nx_0-1
-     do j=1,56
+     do j=1,46
         sum = 0.d0
         do k=0,1
            sum = sum + data1(2*i+k,j)
@@ -90,7 +90,7 @@ program dme_converge
   L2_10 = 0.d0
 
   do i=0,nx_0-1
-     do j=1,56
+     do j=1,46
         L0_10(j) = max(L0_10(j), abs(data0(i,j)-data1_0(i,j)))
         L1_10(j) = L1_10(j) + abs(data0(i,j)-data1_0(i,j))
         L2_10(j) = L2_10(j) + (data0(i,j)-data1_0(i,j))**2
@@ -105,7 +105,7 @@ program dme_converge
 
   !  coarsen fine data
   do i=0,nx_1-1
-     do j=1,56
+     do j=1,46
         sum = 0.d0
         do k=0,1
            sum = sum + data2(2*i+k,j)
@@ -119,7 +119,7 @@ program dme_converge
   L2_21 = 0.d0
 
   do i=0,nx_1-1
-     do j=1,56
+     do j=1,46
         L0_21(j) = max(L0_21(j), abs(data1(i,j)-data2_1(i,j)))
         L1_21(j) = L1_21(j) + abs(data1(i,j)-data2_1(i,j))
         L2_21(j) = L2_21(j) + (data1(i,j)-data2_1(i,j))**2
@@ -134,7 +134,7 @@ program dme_converge
 
   !  coarsen fine data
   do i=0,nx_2-1
-     do j=1,56
+     do j=1,46
         sum = 0.d0
         do k=0,1
            sum = sum + data3(2*i+k,j)
@@ -148,7 +148,7 @@ program dme_converge
   L2_32 = 0.d0
 
   do i=0,nx_2-1
-     do j=1,56
+     do j=1,46
         L0_32(j) = max(L0_32(j), abs(data2(i,j)-data3_2(i,j)))
         L1_32(j) = L1_32(j) + abs(data2(i,j)-data3_2(i,j))
         L2_32(j) = L2_32(j) + (data2(i,j)-data3_2(i,j))**2
