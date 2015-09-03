@@ -287,7 +287,7 @@ contains
             
             call cc_to_avg(scal_kp1_avg(m+1,:,Temp), scal_m_cc(:,Temp), T_bc(on_lo))
             
-            call write_plt(vel,scal_kp1_avg(m+1,:,:),S_avg,dx,2*(k-1)+m+1,0)
+            ! call write_plt(vel,scal_kp1_avg(m+1,:,:),S_avg,dx,2*(k-1)+m+1,0)
             
          end do
                   
