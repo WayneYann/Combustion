@@ -81,12 +81,13 @@ contains
       call fill_scal_cc_ghost_cells(scal)
    end subroutine get_temp
    
-   subroutine advance(scal_n_avg, scal_np1_avg, vel, S_avg, dt, dx)
+   subroutine advance(scal_n_avg, scal_np1_avg, vel, S_avg, wdot, dt, dx)
       implicit none
       double precision, intent(in   ) ::   scal_n_avg(-2:nx+1, nscal)
       double precision, intent(out  ) :: scal_np1_avg(-2:nx+1, nscal)
       double precision, intent(out  ) ::          vel( 0:nx)
       double precision, intent(out  ) ::        S_avg( 0:nx-1)
+      double precision, intent(inout) ::         wdot( 0:nx-1, Nspec)
       double precision, intent(in   ) :: dt, dx
 
       ! we need dt for each timestep, denoted dtm
@@ -178,17 +179,14 @@ contains
       call compute_diffusion_coefficients(beta, scal_m_cc)
       
       ! compute the reaction term
-      call compute_production_rate(wdot_k(0,:,:), scal_m_cc)
+      !call compute_production_rate(wdot_k(0,:,:), scal_m_cc, dx)
+      wdot_k(0,:,:) = wdot
+      
       
       ! need to compute div u to fourth order
       call compute_div_u(S_cc, scal_k_avg(0,:,:), scal_m_cc, beta, wdot_k(0,:,:), dx)
       S_cc = S_cc + delta_chi(0,:)
       call extrapolate_cc_to_avg(S_avg, S_cc)
-      
-      !do i=0,nx-1
-      !   print *,(i+0.5)*dx,S_avg(i),'hack'
-      !end do
-      !stop
       
       call compute_velocity(vel, S_avg, dx)
       ! compute the advection term
@@ -198,11 +196,6 @@ contains
       call compute_diffusion(diffusion_k(0,:,:), scal_k_avg(0,:,:), beta, gamma_face, dx)
       call add_diffdiff_terms(advection_k(0,:,RhoH), scal_k_avg(0,:,:), beta, gamma_face, dx)
       
-      !do i=0,nx-1
-      !   print *,(i+0.5)*dx,diffusion_k(0,i,FirstSpec),'hack'
-      !end do
-      !stop
-      
       do m = 1,nnodes-1
          scal_k_avg(m,:,:)  =  scal_k_avg(m-1,:,:)
          advection_k(m,:,:) = advection_k(m-1,:,:)
@@ -211,7 +204,7 @@ contains
       end do
       
       call compute_integrals_avg(I_k_avg, advection_k, diffusion_k, wdot_k, dt)
-      call  compute_integrals_cc(I_k_cc,  advection_k, diffusion_k, wdot_k, dt)
+      call compute_integrals_cc(I_k_cc,  advection_k, diffusion_k, wdot_k, dt)
       
       scal_kp1_avg(0,:,:) = scal_k_avg(0,:,:)
       advection_kp1(0,:,:) = advection_k(0,:,:)
@@ -221,6 +214,7 @@ contains
       do k=1,misdc_iterMax
          do m=0,nnodes-2
             write(*,'(AI2AI2)') 'k = ',k,'   m = ',m
+            
             ! convert the cell-averaged scalars to cell centers
             call scal_avg_to_cc(scal_m_cc, scal_kp1_avg(m,:,:))
             
@@ -273,12 +267,12 @@ contains
             call scal_avg_to_cc(scal_m_cc, scal_kp1_avg(m+1,:,:))
             
             ! compute gamma, conservatively corrected diffusion term
-            call compute_diffusion(diffusion_kp1(m+1,:,:), scal_kp1_avg(m+1,:,:), &
-                                   beta, gamma_face, dx)
-            !do i=0,nx-1
-            !   diffusion_kp1(m+1,i,:) = (scal_kp1_avg(m+1,i,:) - scal_kp1_avg(m,i,:) - I_k_avg(m,i,:))/dtm(m) & 
-            !      - (advection_kp1(m,i,:) - advection_k(m,i,:) - diffusion_k(m+1,i,:))
-            !end do
+            !call compute_diffusion(diffusion_kp1(m+1,:,:), scal_kp1_avg(m+1,:,:), &
+            !                       beta, gamma_face, dx)
+            do i=0,nx-1
+               diffusion_kp1(m+1,i,:) = (scal_kp1_avg(m+1,i,:) - scal_kp1_avg(m,i,:) - I_k_avg(m,i,:))/dtm(m) & 
+                  - (advection_kp1(m,i,:) - advection_k(m,i,:) - diffusion_k(m+1,i,:))
+            end do
             
             ! call the chemistry solver to solve the correction equation
             call reaction_correction(scal_kp1_avg(m+1,:,:),  scal_kp1_avg(m,:,:), &
@@ -290,8 +284,11 @@ contains
             ! need to move this to reaction correction soon...
             call scal_avg_to_cc(scal_m_cc, scal_kp1_avg(m+1,:,:))
             call get_temp(scal_m_cc)
+            
             call cc_to_avg(scal_kp1_avg(m+1,:,Temp), scal_m_cc(:,Temp), T_bc(on_lo))
-
+            
+            call write_plt(vel,scal_kp1_avg(m+1,:,:),S_avg,dx,2*(k-1)+m+1,0)
+            
          end do
                   
          m = nnodes-1
@@ -317,7 +314,6 @@ contains
                                    beta, gamma_face, dx)
             
             call add_diffdiff_terms(advection_kp1(m,:,RhoH), scal_kp1_avg(m,:,:), beta, gamma_face, dx)
-            !call compute_production_rate(wdot_kp1(m,:,:), scal_m_cc)
          end do
          
          scal_k_avg  = scal_kp1_avg
@@ -330,6 +326,7 @@ contains
          call compute_integrals_cc(I_k_cc, advection_k, diffusion_k, wdot_k, dt)
       end do
       
+      wdot = wdot_kp1(nnodes-1,:,:)
       ! advance the solution
       scal_np1_avg = scal_kp1_avg(nnodes-1,:,:)
    end subroutine advance

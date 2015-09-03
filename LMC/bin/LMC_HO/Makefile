@@ -53,18 +53,19 @@ f90_sources += ghost_cells.f90 cell_conversions.f90 write_plt.f90 prob.f90 \
                advance.f90 lmc.f90 main.f90
 
 f_includes += spec.h
-#C_sources += main.cpp
+C_sources += 
 C_includedirs += -I../../../Chemistry/src
 
-C_objects := $(C_sources:%.cpp=%.o)
+C_objects := $(C_sources:%.c=%.o)
 f_objects := $(f_sources:%.f=%.o)
 f90_objects := $(f90_sources:%.f90=%.o)
 
 ${EXEname}: ${f_objects} ${f90_objects} ${mech_object} ${C_objects} ${f_includes}
 	${CCOMP} -o ${EXEname} ${f_objects} ${f90_objects} ${mech_object} ${C_objects} ${XTRALIBS}
 
-clean:
-	\rm -rf ${EXEname} ${f_objects} ${f90_objects} ${C_objects} Linkeg
+clean: 
+	\rm -rf ${EXEname} ${f_objects} ${f90_objects} ${C_objects} ${mech_object}
+# Linkeg
 
 %.o: %.cpp
 	${CCOMP} ${C_includedirs} -c $^ -o $*.o

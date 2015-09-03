@@ -73,8 +73,9 @@ contains
       double precision ::    Y_face( 0:nx,  Nspec)
       double precision ::     Y_avg(-2:nx+1,Nspec)
       
-      double precision :: sum_g
-      double precision :: sum_y
+      !these are used for the conservative correction
+      !double precision :: sum_g
+      !double precision :: sum_y
       
       ! this subroutine computes the term div(rho D_m grad Y_m)
       

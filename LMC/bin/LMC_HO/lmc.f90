@@ -31,6 +31,7 @@ contains
       real*8, allocatable ::  scal_new(:,:)
       real*8, allocatable ::  scal_old(:,:)
       real*8, allocatable ::  scal_avg(:,:)
+      real*8, allocatable ::   scal_cc(:,:)
 
 !     face values, no ghost cells
       real*8, allocatable :: vel(:)
@@ -40,7 +41,9 @@ contains
       real*8, allocatable :: divu_old(:)
       real*8, allocatable :: divu_new(:)
       real*8, allocatable :: divu_avg(:)
-
+      
+      real*8, allocatable :: wdot(:,:)
+      
       integer, allocatable :: bc(:)
 
       real*8, allocatable :: dx, dt
@@ -66,7 +69,7 @@ contains
                         misdc_iterMAX,&
                         do_initial_projection, num_divu_iters, &
                         num_init_iters,fixed_dt,&
-                        V_in, nnodes, lim_rxns,&
+                        V_in, lim_rxns,&
                         LeEQ1, tranfile, TMIN_TRANS, Pr, Sc,&
                         max_vode_subcycles,&
                         min_vode_timestep, divu_ceiling_flag,&
@@ -96,7 +99,6 @@ contains
       num_init_iters = 2
       fixed_dt = -1.d0
       V_in = 1.d20
-      nnodes = 3
       lim_rxns = 1
       LeEQ1 = 0
       tranfile = 'tran.asc.grimech30'
@@ -113,6 +115,8 @@ contains
       verbose_vode = 0
       nchemdiag = 10
       
+      nnodes = 3
+
       open(9,file='probin',form='formatted',status='old')
       read(9,fortin)
       close(unit=9)
@@ -137,6 +141,7 @@ contains
       allocate(scal_new(-2:nx+1,nscal))
       allocate(scal_old(-2:nx+1,nscal))
       allocate(scal_avg(-2:nx+1,nscal))
+      allocate(scal_cc(-2:nx+1,nscal))
 
 !     face-values, no ghost cells
       allocate(vel(0:nx))
@@ -146,6 +151,8 @@ contains
       allocate( divu_old(0:nx-1))
       allocate( divu_new(0:nx-1))
       allocate( divu_avg(0:nx-1))
+      
+      allocate( wdot(0:nx-1, Nspec))
       
       allocate(bc(2))
 
@@ -189,7 +196,10 @@ contains
          at_nstep = 1
          
          call load_initial_conditions(scal_avg, dx)
-         !call scal_avg_to_cc(scal_old, scal_avg)
+         call scal_avg_to_cc(scal_cc, scal_avg)
+         
+         call compute_production_rate(wdot, scal_cc, dx)
+         
          !call scal_cc_to_avg(scal_avg, scal_old)
          scal_old = scal_avg
          
@@ -217,7 +227,7 @@ contains
             write(6,1001 )time,dt
             write(6,*)'STEP = ',nsteps_taken
          
-            call advance(scal_old, scal_new, vel, divu_new, dt, dx)
+            call advance(scal_old, scal_new, vel, divu_new, wdot, dt, dx)
             
             scal_old = scal_new
             
