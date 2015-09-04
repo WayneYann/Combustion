@@ -195,15 +195,11 @@ contains
          at_nstep = 1
          
          call load_initial_conditions(scal_avg, dx)
-         call scal_avg_to_cc(scal_cc, scal_avg)
-         
-         call compute_production_rate(wdot, scal_cc, dx)
-         
-         !call scal_cc_to_avg(scal_avg, scal_old)
          scal_old = scal_avg
          
+         call scal_avg_to_cc(scal_cc, scal_avg)
+         call compute_production_rate(wdot, scal_cc, dx)
          
-         !call initdata(vel,scal_old,dx,bc)
          call write_plt(vel,scal_old,divu_old, dx,99999,time)
       end if
          
@@ -238,12 +234,6 @@ contains
             if (mod(nsteps_taken,plot_int).eq.0 .or. nsteps_taken.eq.nsteps) then 
                call write_plt(vel,scal_new,divu_new,dx,nsteps_taken,time)
             endif
-         
-!         if (MOD(nsteps_taken,chk_int).eq.0 .OR.
-!     &        nsteps_taken.eq.nsteps) then 
-!            call write_check(nsteps_taken,vel_new,scal_new,press_new,
-!     $                       I_R,divu_new,dSdt,dx,time,dt,lo,hi)
-!         endif
       enddo
 
       print *,' '      

@@ -20,57 +20,32 @@ module advance_module
    
 contains
    
-   subroutine temp_plot(v1,v2,v3,v4,dx,nsteps)
-      implicit none
-      include 'spec.h'
-
-      integer nsteps
-      double precision, dimension(0:nx-1) :: v1,v2,v3,v4
-      real*8    dx
+   subroutine get_temp(scal_avg)
+      double precision, intent(inout) :: scal_avg(-2:nx+1, nscal)
       
-      character pltfile*(8)
-      character char_of_int*(5)
-      
-      integer i
-      pltfile(1:3) = 'plt'
-      write(char_of_int,1005) nsteps
-      pltfile(4:8) = char_of_int
- 1005 format(i5.5)
- 1006 FORMAT(200(E23.15E3,1X))
-
-      open(10,file=pltfile,form='formatted')
-      print *,'...writing data to ',pltfile
-
-      do i=0,nx-1
-         write(10,1006) dx*i, v1(i),v2(i),v3(i),v4(i)
-      enddo
-
-      close(10)
-
-   end subroutine temp_plot
-   
-   subroutine get_temp(scal)
-      double precision, intent(inout) :: scal(-2:nx+1, nscal)
-      
+      double precision :: scal_cc(-2:nx+1, nscal)
       double precision :: Y(NSpec)
       double precision :: hmix
       integer :: n, i
-      ! chemsolve stuff
+      
+      ! T from H parameters
       integer NiterMax, Niter
       parameter (NiterMax = 30)
       double precision res(NiterMax), errMax
       
       errMax = hmix_Typ*1.e-20
       
+      call scal_avg_to_cc(scal_cc, scal_avg)
+      
       do i=0,nx-1
          ! compute the temperature from h and Y
          do n = 1,Nspec
-            Y(n) = scal(i,FirstSpec+n-1)/scal(i,Density)
+            Y(n) = scal_cc(i,FirstSpec+n-1)/scal_cc(i,Density)
          enddo
-         hmix = scal(i,RhoH) / scal(i,Density)
+         hmix = scal_cc(i,RhoH) / scal_cc(i,Density)
          
          ! get the new value for the temperature
-         call FORT_TfromHYpt(scal(i,Temp), hmix, Y, &
+         call FORT_TfromHYpt(scal_cc(i,Temp), hmix, Y, &
                              Nspec, errMax, NiterMax, res, Niter)
          if (Niter.lt.0) then
             print *,'vodeF_T_RhoY: H to T solve failed'
@@ -78,7 +53,9 @@ contains
             stop
          endif
       end do
-      call fill_scal_cc_ghost_cells(scal)
+      
+      call fill_cc_ghost_cells(scal_cc(:,Temp), T_bc(on_lo))
+      call cc_to_avg(scal_avg(:,Temp), scal_cc(:,Temp), T_bc(on_lo))
    end subroutine get_temp
    
    subroutine advance(scal_n_avg, scal_np1_avg, vel, S_avg, wdot, dt, dx)
@@ -170,16 +147,11 @@ contains
       call fill_scal_avg_ghost_cells(scal_k_avg(0,:,:))
       call scal_avg_to_cc(scal_m_cc, scal_k_avg(0,:,:))
       
-      ! temporary : get rid of this later
-      !call get_temp(scal_m_cc)
-      !call cc_to_avg(scal_k_avg(0,:,Temp), scal_m_cc(:,Temp), T_bc(on_lo))
-      
       ! compute the advection term
       call increment_delta_chi(delta_chi(0,:), scal_m_cc, dtm(0), dx)
       call compute_diffusion_coefficients(beta, scal_m_cc)
       
       ! compute the reaction term
-      !call compute_production_rate(wdot_k(0,:,:), scal_m_cc, dx)
       wdot_k(0,:,:) = wdot
       
       
@@ -281,12 +253,7 @@ contains
                                      diffusion_kp1(m+1,:,:), diffusion_k(m+1,:,:), &
                                      wdot_k(m+1,:,:),        wdot_kp1(m+1,:,:), &
                                      I_k_avg(m,:,:), I_k_cc(m,:,:), dtm(m))
-            
-            ! need to move this to reaction correction soon...
-            call scal_avg_to_cc(scal_m_cc, scal_kp1_avg(m+1,:,:))
-            call get_temp(scal_m_cc)
-            
-            call cc_to_avg(scal_kp1_avg(m+1,:,Temp), scal_m_cc(:,Temp), T_bc(on_lo))
+            call get_temp(scal_kp1_avg(m+1,:,:))
          end do
                   
          m = nnodes-1

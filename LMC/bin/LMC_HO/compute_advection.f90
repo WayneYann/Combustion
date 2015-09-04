@@ -35,14 +35,7 @@ contains
       
       do n=1,Nspec
          call cc_to_face(h_face, h_cc(:,n))
-         
-         !do i=-2,nx+1
-         !   Y(i) = scal(i, FirstSpec+n-1)/scal(i, Density)
-         !end do
-         !call fill_cc_ghost_cells(Y, Y_bc(n, on_lo))
-         
          call divide_avgs(Y_avg, scal_avg(:, FirstSpec+n-1), scal_avg(:, Density), Y_bc(n,on_lo))
-         
          call avg_to_grad(grad_Y, Y_avg, dx)
          
          do i=0,nx-1
