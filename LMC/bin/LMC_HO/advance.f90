@@ -276,6 +276,7 @@ contains
             
             ! call the chemistry solver to solve the correction equation
             call reaction_correction(scal_kp1_avg(m+1,:,:),  scal_kp1_avg(m,:,:), &
+                                     scal_k_avg(m+1,:,:),    k, &
                                      advection_kp1(m,:,:),   advection_k(m,:,:), &
                                      diffusion_kp1(m+1,:,:), diffusion_k(m+1,:,:), &
                                      wdot_k(m+1,:,:),        wdot_kp1(m+1,:,:), &
@@ -286,9 +287,6 @@ contains
             call get_temp(scal_m_cc)
             
             call cc_to_avg(scal_kp1_avg(m+1,:,Temp), scal_m_cc(:,Temp), T_bc(on_lo))
-            
-            ! call write_plt(vel,scal_kp1_avg(m+1,:,:),S_avg,dx,2*(k-1)+m+1,0)
-            
          end do
                   
          m = nnodes-1

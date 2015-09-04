@@ -1,4 +1,5 @@
-      subroutine reaction_correction(scal_mp1_avg, scal_m_avg, advection_kp1, &
+      subroutine reaction_correction(scal_mp1_avg, scal_m_avg, &
+                                     scal_k_avg, misdc_k, advection_kp1, &
                                      advection_k, diffusion_kp1, diffusion_k, &
                                      wdot_k, wdot_kp1, I_k_avg, I_k_cc, dtm)
          use wchem_module
@@ -8,6 +9,8 @@
          include 'spec.h'
          double precision, intent(inout) ::  scal_mp1_avg(-2:nx+1,nscal)
          double precision, intent(in   ) ::    scal_m_avg(-2:nx+1,nscal)
+         double precision, intent(in   ) ::    scal_k_avg(-2:nx+1,nscal)
+         integer,          intent(in   ) ::       misdc_k
          double precision, intent(in   ) :: advection_kp1( 0:nx-1,nscal)
          double precision, intent(in   ) ::   advection_k( 0:nx-1,nscal)
          double precision, intent(in   ) :: diffusion_kp1( 0:nx-1,nscal)
@@ -53,7 +56,6 @@
          
          ! turn off diagnostics
          do_diag = 0
-         !errMax = hmix_Typ*1.e-20
          
          ! we perform the reaction corrections at cell-centers
          ! but advection and diffusion are passed in as cell-averaged 
@@ -102,14 +104,20 @@
             rhoh_INIT = scal_m_avg(i, RhoH)
             T_INIT    = scal_m_avg(i, Temp)
             
-            ! call VODE to solve the ODE, to get a guess for the BE Newton solve
-            call chemsolve(guess, rhohguess, rhoYold, rhohold, FuncCount, &
-                           dtm, diag, do_diag, ifail, i)
+            if(misdc_k .eq. 1) then
+               ! call VODE to solve the ODE, to get a guess for the BE Newton solve
+               call chemsolve(guess, rhohguess, rhoYold, rhohold, FuncCount, &
+                              dtm, diag, do_diag, ifail, i)
             
-            ! use the result from VODE as the intial guess for the Newton solve
-            do n=1,Nspec
-               guess(n) = guess(n)/rho_cc(i)
-            end do
+               ! use the result from VODE as the intial guess for the Newton solve
+               do n=1,Nspec
+                  guess(n) = guess(n)/rho_cc(i)
+               end do
+            else
+               do n=1,Nspec
+                  guess(n) = scal_k_avg(i, FirstSpec+n-1)/scal_k_avg(i, Density)
+               end do
+            end if
             
             ! call the nonlinear backward Euler solver
             call bechem(Y, guess, rho_cc(i), h_cc(i), rhs, dtm)
@@ -117,33 +125,6 @@
             do n=1,Nspec
                wdot_kp1(i,n) = rho_cc(i)*(Y(n) - rhs(n))/dtm
             end do
-            
-            !rho_cc(i) = sum_rhoY
-            
-            
-            ! compute the temperature from h and Y
-!            do n = 1,Nspec
-!               Y(n) = rhs(n)/sum_rhoY
-!            enddo
-!            hmix = rhs(Nspec+1) / sum_rhoY
-!            
-!            T = scal_m_avg(i, Temp)
-!            ! get the new value for the temperature
-!            call FORT_TfromHYpt(T, hmix, Y, &
-!                                Nspec, errMax, NiterMax, res, Niter)
-!            if (Niter.lt.0) then
-!               print *,'strang_chem: H to T solve failed'
-!               print *,'Niter=',Niter
-!               stop
-!            endif
-!            
-!            ! compute the production rates
-!            call CKWYR(sum_rhoY, T, Y, iwrk, rwrk, wdot_kp1(i,:))
-!            
-!            ! multiply by molecular weight to get the right units
-!            do n=1,Nspec
-!               wdot_kp1(i,n) = wdot_kp1(i,n)*mwt(n)
-!            end do
          enddo
          
          do n=1,Nspec
@@ -161,11 +142,5 @@
             end do
          end do
          
-         !is = FirstSpec+7-1
-         !print *,sum(abs(wdot_kp1_avg(:,7) - wdot_k_avg(:,7))),sum(abs(diffusion_kp1(:,is) - diffusion_k(:,is)))
-         
-         !call cc_to_avg(scal_mp1_avg(:,Density), rho_cc, rho_bc(on_lo))
-         
-         ! fill the ghost cells using the boundary conditions
          call fill_scal_avg_ghost_cells(scal_mp1_avg)
       end subroutine reaction_correction

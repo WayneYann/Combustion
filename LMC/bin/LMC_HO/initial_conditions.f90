@@ -48,9 +48,9 @@ contains
             scal_avg(i,FirstSpec+n-1) = scal_avg(i,FirstSpec+n-1)/dble(f)
             
             ! todo: is this the right thing to do?
-            if (scal_avg(i,FirstSpec+n-1) .lt. 0) then
-               scal_avg(i,FirstSpec+n-1) = 0
-            end if
+            !if (scal_avg(i,FirstSpec+n-1) .lt. 0) then
+            !   scal_avg(i,FirstSpec+n-1) = 0
+            !end if
             
          end do
          

@@ -7,7 +7,7 @@
          double precision, intent(in   ) ::    dx
          
          integer :: i
-         double precision :: x
+         !double precision :: x
          
          ! set the velocity at the inflow condition
          vel(0) = u_bc(0)
