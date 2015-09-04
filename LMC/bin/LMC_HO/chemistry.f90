@@ -69,10 +69,6 @@
             CALL EGSL1(alpha, Tt, X, EGRWRK, l2)
             beta_cc(i,Temp) = .5d0 * (l1 + l2)
             
-            ! todo: does this work???
-            !alpha = 0.d0
-            !CALL EGSL1(alpha, Tt, X, EGRWRK, beta_cc(i,Temp))
-            
             !  Returns the mean specific heat at CP
             !CALL CKCPBS(scal_cc(i,Temp),Y,IWRK,RWRK,CPMIX)
             call compute_cp(CPMIX, scal_cc(i,Temp), Y)

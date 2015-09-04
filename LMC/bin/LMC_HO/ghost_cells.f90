@@ -16,10 +16,6 @@ contains
       avg(-1) = (60*bdry - 77*avg(0) + 43*avg(1) - 17*avg(2) + 3*avg(3))/12
       avg(-2) = (300*bdry - 505*avg(0) + 335*avg(1) - 145*avg(2) + 27*avg(3))/12
       
-      ! todo: test if this is more stable at bdry
-      !avg(-1) = bdry
-      !avg(-2) = bdry
-      
       avg(nx) = (5*avg(nx-1) + 9*avg(nx-2) - 5*avg(nx-3) + avg(nx-4))/10.d0
       avg(nx+1) = (-15*avg(nx-1) + 29*avg(nx-2) - 15*avg(nx-3) + 3*avg(nx-4))/2.d0
    end subroutine fill_avg_ghost_cells
@@ -42,10 +38,6 @@ contains
       
       cc(-1) = (128*bdry - 140*cc(0) + 70*cc(1) - 28*cc(2) + 5*cc(3))/35.d0
       cc(-2) = (128*bdry - 210*cc(0) + 140*cc(1) - 63*cc(2) + 12*cc(3))/7.d0
-      
-      ! todo: test if this is more stable at bdry
-      !cc(-1) = bdry
-      !cc(-2) = bdry
       
       cc(nx) = (17*cc(nx-1) + 9*cc(nx-2) - 5*cc(nx-3) + cc(nx-4))/22.d0
       cc(nx+1) = (-135*cc(nx-1) + 265*cc(nx-2) - 135*cc(nx-3) + 27*cc(nx-4))/22.d0

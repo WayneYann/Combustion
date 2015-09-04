@@ -9,8 +9,4 @@ subroutine compute_cp(cp, T, Y)
    integer :: iwrk
    
    call CKCPBS(T, Y, iwrk, rwrk, cp)
-   
-   ! temporary : todo : get rid of this
-   !cp = 1.25e7
-   
 end subroutine compute_cp
