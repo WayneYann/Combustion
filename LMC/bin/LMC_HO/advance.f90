@@ -124,6 +124,11 @@ contains
       integer :: m
       ! i is the gridpoint
       integer :: i
+
+      ! time the routine
+      double precision :: wallclock_time1, wallclock_time2
+      
+      call cpu_time(wallclock_time1)
       
       ! time substeps (determined by Gauss-Lobatto rule)
       if (nnodes .eq. 2) then
@@ -294,6 +299,11 @@ contains
       wdot = wdot_kp1(nnodes-1,:,:)
       ! advance the solution
       scal_np1_avg = scal_kp1_avg(nnodes-1,:,:)
+
+      call cpu_time(wallclock_time2)
+
+      print*,'Time to advance time step',wallclock_time2-wallclock_time1
+
    end subroutine advance
    
 end module advance_module
