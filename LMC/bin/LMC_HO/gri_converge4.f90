@@ -11,23 +11,23 @@ program gri_converge4
   integer nx_0,nx_1,nx_2,nx_3
   real*8 time_0,time_1,time_2,time_3,sum
   
-  real*8 data0  (4096,114)
-  real*8 data1  (4096,114)
-  real*8 data2  (4096,114)
-  real*8 data3  (4096,114)
-  real*8 data1_0(4096,114)
-  real*8 data2_1(4096,114)
-  real*8 data3_2(4096,114)
+  real*8 data0  (4096,61)
+  real*8 data1  (4096,61)
+  real*8 data2  (4096,61)
+  real*8 data3  (4096,61)
+  real*8 data1_0(4096,61)
+  real*8 data2_1(4096,61)
+  real*8 data3_2(4096,61)
 
-  real*8 L0_10(114)
-  real*8 L1_10(114)
-  real*8 L2_10(114)
-  real*8 L0_21(114)
-  real*8 L1_21(114)
-  real*8 L2_21(114)
-  real*8 L0_32(114)
-  real*8 L1_32(114)
-  real*8 L2_32(114)
+  real*8 L0_10(61)
+  real*8 L1_10(61)
+  real*8 L2_10(61)
+  real*8 L0_21(61)
+  real*8 L1_21(61)
+  real*8 L2_21(61)
+  real*8 L0_32(61)
+  real*8 L1_32(61)
+  real*8 L2_32(61)
 
   read(*,*) in0
   read(*,*) in1
@@ -40,7 +40,7 @@ program gri_converge4
   read(99,*) time_0
 
   do i=0,nx_0-1
-     read(99,*) data0(i,1:114)
+     read(99,*) data0(i,1:61)
   end do
 
   open(10,file=in1,form='formatted')
@@ -49,7 +49,7 @@ program gri_converge4
   read(10,*) time_1
 
   do i=0,nx_1-1
-     read(10,*) data1(i,1:114)
+     read(10,*) data1(i,1:61)
   end do
 
   open(20,file=in2,form='formatted')
@@ -58,7 +58,7 @@ program gri_converge4
   read(20,*) time_2
 
   do i=0,nx_2-1
-     read(20,*) data2(i,1:114)
+     read(20,*) data2(i,1:61)
   end do
 
   open(30,file=in3,form='formatted')
@@ -67,7 +67,7 @@ program gri_converge4
   read(30,*) time_3
 
   do i=0,nx_3-1
-     read(30,*) data3(i,1:114)
+     read(30,*) data3(i,1:61)
   end do
 
   !!!!!!!!!!!!!!!!!!!
@@ -76,7 +76,7 @@ program gri_converge4
 
   !  coarsen fine data
   do i=0,nx_0-1
-     do j=1,114
+     do j=1,61
         sum = 0.d0
         do k=0,1
            sum = sum + data1(2*i+k,j)
@@ -90,7 +90,7 @@ program gri_converge4
   L2_10 = 0.d0
 
   do i=0,nx_0-1
-     do j=1,114
+     do j=1,61
         L0_10(j) = max(L0_10(j), abs(data0(i,j)-data1_0(i,j)))
         L1_10(j) = L1_10(j) + abs(data0(i,j)-data1_0(i,j))
         L2_10(j) = L2_10(j) + (data0(i,j)-data1_0(i,j))**2
@@ -105,7 +105,7 @@ program gri_converge4
 
   !  coarsen fine data
   do i=0,nx_1-1
-     do j=1,114
+     do j=1,61
         sum = 0.d0
         do k=0,1
            sum = sum + data2(2*i+k,j)
@@ -119,7 +119,7 @@ program gri_converge4
   L2_21 = 0.d0
 
   do i=0,nx_1-1
-     do j=1,114
+     do j=1,61
         L0_21(j) = max(L0_21(j), abs(data1(i,j)-data2_1(i,j)))
         L1_21(j) = L1_21(j) + abs(data1(i,j)-data2_1(i,j))
         L2_21(j) = L2_21(j) + (data1(i,j)-data2_1(i,j))**2
@@ -134,7 +134,7 @@ program gri_converge4
 
   !  coarsen fine data
   do i=0,nx_2-1
-     do j=1,114
+     do j=1,61
         sum = 0.d0
         do k=0,1
            sum = sum + data3(2*i+k,j)
@@ -148,7 +148,7 @@ program gri_converge4
   L2_32 = 0.d0
 
   do i=0,nx_2-1
-     do j=1,114
+     do j=1,61
         L0_32(j) = max(L0_32(j), abs(data2(i,j)-data3_2(i,j)))
         L1_32(j) = L1_32(j) + abs(data2(i,j)-data3_2(i,j))
         L2_32(j) = L2_32(j) + (data2(i,j)-data3_2(i,j))**2
@@ -186,7 +186,7 @@ program gri_converge4
        log(L1_21(57)/L1_32(57))/log(2.d0)," &",L1_32(57)," \\"
   write(*,1001) "$U$                      &",L1_10(58)," & ",log(L1_10(58)/L1_21(58))/log(2.d0)," &",L1_21(58)," & ", &
        log(L1_21(58)/L1_32(58))/log(2.d0)," &",L1_32(58)," \\"
-  write(*,1001) "$\nabla \cdot U$        &",L1_10(60)," & ",log(L1_10(60)/L1_21(60))/log(2.d0)," &",L1_21(60)," & ", &
+  write(*,1001) "$\nabla \cdot U$         &",L1_10(60)," & ",log(L1_10(60)/L1_21(60))/log(2.d0)," &",L1_21(60)," & ", &
        log(L1_21(60)/L1_32(60))/log(2.d0)," &",L1_32(60)," \\"
 
 end program gri_converge4
