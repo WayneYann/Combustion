@@ -78,7 +78,7 @@ contains
       ! (two ghost cells)
       double precision ::    scal_k_avg(0:nnodes-1, -2:nx+1, nscal)
       double precision ::  scal_kp1_avg(0:nnodes-1, -2:nx+1, nscal)
-      double precision ::     scal_m_cc(-2:nx+1, nscal)
+      double precision ::   scal_kp1_cc(0:nnodes-1, -2:nx+1, nscal)
       double precision ::     scal_k_cc(-2:nx+1, nscal)
 
       ! we also need the provisional 'AD' solution
@@ -150,18 +150,17 @@ contains
       ! initialize the 0th iterate to the initial condition
       scal_k_avg(0,:,:) = scal_n_avg
       call fill_scal_avg_ghost_cells(scal_k_avg(0,:,:))
-      call scal_avg_to_cc(scal_m_cc, scal_k_avg(0,:,:))
+      call scal_avg_to_cc(scal_k_cc, scal_k_avg(0,:,:))
       
       ! compute the advection term
-      call increment_delta_chi(delta_chi(0,:), scal_m_cc, dtm(0), dx)
-      call compute_diffusion_coefficients(beta, scal_m_cc)
+      call increment_delta_chi(delta_chi(0,:), scal_k_cc, dtm(0), dx)
+      call compute_diffusion_coefficients(beta, scal_k_cc)
       
       ! compute the reaction term
       wdot_k(0,:,:) = wdot
       
-      
       ! need to compute div u to fourth order
-      call compute_div_u(S_cc, scal_k_avg(0,:,:), scal_m_cc, beta, wdot_k(0,:,:), dx)
+      call compute_div_u(S_cc, scal_k_avg(0,:,:), scal_k_cc, beta, wdot_k(0,:,:), dx)
       S_cc = S_cc + delta_chi(0,:)
       call extrapolate_cc_to_avg(S_avg, S_cc)
       
@@ -193,17 +192,17 @@ contains
             write(*,'(AI2AI2)') 'k = ',k,'   m = ',m
             
             ! convert the cell-averaged scalars to cell centers
-            call scal_avg_to_cc(scal_m_cc, scal_kp1_avg(m,:,:))
+            call scal_avg_to_cc(scal_kp1_cc(m,:,:), scal_kp1_avg(m,:,:))
             
             ! compute delta chi prediction
             if (m .ne. 0) then
-               call increment_delta_chi(delta_chi(m,:), scal_m_cc, dtm(m), dx)
+               call increment_delta_chi(delta_chi(m,:), scal_kp1_cc(m,:,:), dtm(m), dx)
             end if
             
             ! compute the diffusion coefficients
-            call compute_diffusion_coefficients(beta, scal_m_cc)
+            call compute_diffusion_coefficients(beta, scal_kp1_cc(m,:,:))
             ! compute the divergence constraint, S
-            call compute_div_u(S_cc, scal_kp1_avg(m,:,:), scal_m_cc, beta, wdot_kp1(m,:,:), dx)
+            call compute_div_u(S_cc, scal_kp1_avg(m,:,:), scal_kp1_cc(m,:,:), beta, wdot_kp1(m,:,:), dx)
             
             ! add delta chi to the constraint
             S_cc = S_cc + delta_chi(m,:)
@@ -258,18 +257,16 @@ contains
                                      wdot_k(m+1,:,:),        wdot_kp1(m+1,:,:), &
                                      I_k_avg(m,:,:), I_k_cc(m,:,:), dtm(m))
             call get_temp(scal_kp1_avg(m+1,:,:))
-            call scal_avg_to_cc(scal_m_cc, scal_kp1_avg(m+1,:,:))
+            call scal_avg_to_cc(scal_kp1_cc(m+1,:,:), scal_kp1_avg(m+1,:,:))
          end do
                   
          m = nnodes-1
-         call increment_delta_chi(delta_chi(m,:), scal_m_cc, dtm(m-1), dx)
+         call increment_delta_chi(delta_chi(m,:), scal_kp1_cc(m,:,:), dtm(m-1), dx)
          
          ! recompute all the A, D, R terms
          do m=0,nnodes-1
-            call scal_avg_to_cc(scal_m_cc, scal_kp1_avg(m,:,:))
-            
-            call compute_diffusion_coefficients(beta, scal_m_cc)
-            call compute_div_u(S_cc, scal_kp1_avg(m,:,:), scal_m_cc, beta, wdot_kp1(m,:,:), dx)
+            call compute_diffusion_coefficients(beta, scal_kp1_cc(m,:,:))
+            call compute_div_u(S_cc, scal_kp1_avg(m,:,:), scal_kp1_cc(m,:,:), beta, wdot_kp1(m,:,:), dx)
             S_cc = S_cc + delta_chi(m,:)
             call extrapolate_cc_to_avg(S_avg, S_cc)
             
