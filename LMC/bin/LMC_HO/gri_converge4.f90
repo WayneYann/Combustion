@@ -84,6 +84,11 @@ program gri_converge4
         data1_0(i,j) = sum / 2.d0
      end do
   end do
+
+  j=58
+  do i=0,nx_1-1
+     data1_0(i,j) = data1(i*2,j)
+  end do
   
   L0_10 = 0.d0
   L1_10 = 0.d0
@@ -113,6 +118,11 @@ program gri_converge4
         data2_1(i,j) = sum / 2.d0
      end do
   end do
+
+  j=58
+  do i=0,nx_2-1
+     data2_1(i,j) = data2(i*2,j)
+  end do
   
   L0_21 = 0.d0
   L1_21 = 0.d0
@@ -141,6 +151,11 @@ program gri_converge4
         end do
         data3_2(i,j) = sum / 2.d0
      end do
+  end do
+
+  j=58
+  do i=0,nx_3-1
+     data3_2(i,j) = data3(i*2,j)
   end do
   
   L0_32 = 0.d0
