@@ -251,7 +251,7 @@ contains
             
             ! call the chemistry solver to solve the correction equation
             call reaction_correction(scal_kp1_avg(m+1,:,:),  scal_kp1_avg(m,:,:), &
-                                     scal_k_avg(m+1,:,:),    k, &
+                                     scal_k_cc,              k, &
                                      advection_kp1(m,:,:),   advection_k(m,:,:), &
                                      diffusion_kp1(m+1,:,:), diffusion_k(m+1,:,:), &
                                      wdot_k(m+1,:,:),        wdot_kp1(m+1,:,:), &

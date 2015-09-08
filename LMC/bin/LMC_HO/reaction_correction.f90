@@ -1,5 +1,5 @@
       subroutine reaction_correction(scal_mp1_avg, scal_m_avg, &
-                                     scal_k_avg, misdc_k, advection_kp1, &
+                                     scal_k_cc, misdc_k, advection_kp1, &
                                      advection_k, diffusion_kp1, diffusion_k, &
                                      wdot_k, wdot_kp1, I_k_avg, I_k_cc, dtm)
          use wchem_module
@@ -9,7 +9,7 @@
          include 'spec.h'
          double precision, intent(inout) ::  scal_mp1_avg(-2:nx+1,nscal)
          double precision, intent(in   ) ::    scal_m_avg(-2:nx+1,nscal)
-         double precision, intent(in   ) ::    scal_k_avg(-2:nx+1,nscal)
+         double precision, intent(in   ) ::     scal_k_cc(-2:nx+1,nscal)
          integer,          intent(in   ) ::       misdc_k
          double precision, intent(in   ) :: advection_kp1( 0:nx-1,nscal)
          double precision, intent(in   ) ::   advection_k( 0:nx-1,nscal)
@@ -115,7 +115,7 @@
                end do
             else
                do n=1,Nspec
-                  guess(n) = scal_k_avg(i, FirstSpec+n-1)/scal_k_avg(i, Density)
+                  guess(n) = scal_k_cc(i, FirstSpec+n-1)/scal_k_cc(i, Density)
                end do
             end if
             
