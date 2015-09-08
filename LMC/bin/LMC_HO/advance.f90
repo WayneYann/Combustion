@@ -241,7 +241,6 @@ contains
             
             scal_kp1_avg(m+1,:,:) = scal_AD_avg
             scal_kp1_avg(m+1,:,Temp) = scal_k_avg(m+1,:,Temp)
-            call scal_avg_to_cc(scal_m_cc, scal_kp1_avg(m+1,:,:))
             
             ! compute gamma, conservatively corrected diffusion term
             !call compute_diffusion(diffusion_kp1(m+1,:,:), scal_kp1_avg(m+1,:,:), &
@@ -259,6 +258,7 @@ contains
                                      wdot_k(m+1,:,:),        wdot_kp1(m+1,:,:), &
                                      I_k_avg(m,:,:), I_k_cc(m,:,:), dtm(m))
             call get_temp(scal_kp1_avg(m+1,:,:))
+            call scal_avg_to_cc(scal_m_cc, scal_kp1_avg(m+1,:,:))
          end do
                   
          m = nnodes-1
