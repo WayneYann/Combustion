@@ -79,7 +79,7 @@ contains
       double precision ::    scal_k_avg(0:nnodes-1, -2:nx+1, nscal)
       double precision ::  scal_kp1_avg(0:nnodes-1, -2:nx+1, nscal)
       double precision ::   scal_kp1_cc(0:nnodes-1, -2:nx+1, nscal)
-      double precision ::     scal_k_cc(-2:nx+1, nscal)
+      double precision ::     scal_k_cc(0:nnodes-1, -2:nx+1, nscal)
 
       ! we also need the provisional 'AD' solution
       ! for the next iterate, at the next temporal node
@@ -150,17 +150,17 @@ contains
       ! initialize the 0th iterate to the initial condition
       scal_k_avg(0,:,:) = scal_n_avg
       call fill_scal_avg_ghost_cells(scal_k_avg(0,:,:))
-      call scal_avg_to_cc(scal_k_cc, scal_k_avg(0,:,:))
+      call scal_avg_to_cc(scal_k_cc(0,:,:), scal_k_avg(0,:,:))
       
       ! compute the advection term
-      call increment_delta_chi(delta_chi(0,:), scal_k_cc, dtm(0), dx)
-      call compute_diffusion_coefficients(beta, scal_k_cc)
+      call increment_delta_chi(delta_chi(0,:), scal_k_cc(0,:,:), dtm(0), dx)
+      call compute_diffusion_coefficients(beta, scal_k_cc(0,:,:))
       
       ! compute the reaction term
       wdot_k(0,:,:) = wdot
       
       ! need to compute div u to fourth order
-      call compute_div_u(S_cc, scal_k_avg(0,:,:), scal_k_cc, beta, wdot_k(0,:,:), dx)
+      call compute_div_u(S_cc, scal_k_avg(0,:,:), scal_k_cc(0,:,:), beta, wdot_k(0,:,:), dx)
       S_cc = S_cc + delta_chi(0,:)
       call extrapolate_cc_to_avg(S_avg, S_cc)
       
@@ -225,8 +225,8 @@ contains
                                 I_k_avg(m,:,:), dtm(m))
             
             ! compute the iteratively-lagged diffusion coefficients
-            call scal_avg_to_cc(scal_k_cc, scal_k_avg(m+1,:,:))
-            call compute_diffusion_coefficients(beta, scal_k_cc)
+            call scal_avg_to_cc(scal_k_cc(m+1,:,:), scal_k_avg(m+1,:,:))
+            call compute_diffusion_coefficients(beta, scal_k_cc(m+1,:,:))
             
             ! perform the diffusion correction for species
             call species_AD_correction(scal_AD_avg, scal_kp1_avg(m,:,:), beta, &
@@ -251,7 +251,7 @@ contains
             
             ! call the chemistry solver to solve the correction equation
             call reaction_correction(scal_kp1_avg(m+1,:,:),  scal_kp1_avg(m,:,:), &
-                                     scal_k_cc,              k, &
+                                     scal_k_cc(m+1,:,:),     k, &
                                      advection_kp1(m,:,:),   advection_k(m,:,:), &
                                      diffusion_kp1(m+1,:,:), diffusion_k(m+1,:,:), &
                                      wdot_k(m+1,:,:),        wdot_kp1(m+1,:,:), &
@@ -265,22 +265,21 @@ contains
          
          ! recompute all the A, D, R terms
          do m=0,nnodes-1
+            
             call compute_diffusion_coefficients(beta, scal_kp1_cc(m,:,:))
             call compute_div_u(S_cc, scal_kp1_avg(m,:,:), scal_kp1_cc(m,:,:), beta, wdot_kp1(m,:,:), dx)
             S_cc = S_cc + delta_chi(m,:)
             call extrapolate_cc_to_avg(S_avg, S_cc)
-            
             call compute_velocity(vel, S_avg, dx)
-            
             call compute_advection(advection_kp1(m,:,:), scal_kp1_avg(m,:,:), vel, dx)
             
             ! compute the iteratively-lagged diffusion coefficients
-            call scal_avg_to_cc(scal_k_cc, scal_k_avg(m,:,:))
-            call compute_diffusion_coefficients(beta, scal_k_cc)
+            call compute_diffusion_coefficients(beta, scal_k_cc(m,:,:))
             call compute_diffusion(diffusion_kp1(m,:,:), scal_kp1_avg(m,:,:), &
                                    beta, gamma_face, dx)
             
             call add_diffdiff_terms(advection_kp1(m,:,RhoH), scal_kp1_avg(m,:,:), beta, gamma_face, dx)
+
          end do
          
          scal_k_avg  = scal_kp1_avg
