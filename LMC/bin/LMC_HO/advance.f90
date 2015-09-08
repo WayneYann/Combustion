@@ -152,8 +152,10 @@ contains
       call fill_scal_avg_ghost_cells(scal_k_avg(0,:,:))
       call scal_avg_to_cc(scal_k_cc(0,:,:), scal_k_avg(0,:,:))
       
-      ! compute the advection term
+      ! compute delta_chi correction
       call increment_delta_chi(delta_chi(0,:), scal_k_cc(0,:,:), dtm(0), dx)
+
+      ! compute the diffusion_coefficients
       call compute_diffusion_coefficients(beta, scal_k_cc(0,:,:))
       
       ! compute the reaction term
@@ -173,16 +175,17 @@ contains
       call add_diffdiff_terms(advection_k(0,:,RhoH), scal_k_avg(0,:,:), beta, gamma_face, dx)
       
       do m = 1,nnodes-1
-         scal_k_avg(m,:,:)  =  scal_k_avg(m-1,:,:)
-         advection_k(m,:,:) = advection_k(m-1,:,:)
-         diffusion_k(m,:,:) = diffusion_k(m-1,:,:)
-         wdot_k(m,:,:)      =      wdot_k(m-1,:,:)
+         scal_k_avg(m,:,:)  =  scal_k_avg(0,:,:)
+         advection_k(m,:,:) = advection_k(0,:,:)
+         diffusion_k(m,:,:) = diffusion_k(0,:,:)
+         wdot_k(m,:,:)      =      wdot_k(0,:,:)
       end do
       
       call compute_integrals_avg(I_k_avg, advection_k, diffusion_k, wdot_k, dt)
       call compute_integrals_cc(I_k_cc,  advection_k, diffusion_k, wdot_k, dt)
       
       scal_kp1_avg(0,:,:) = scal_k_avg(0,:,:)
+      scal_kp1_cc(0,:,:) = scal_k_cc(0,:,:)
       advection_kp1(0,:,:) = advection_k(0,:,:)
       diffusion_kp1(0,:,:) = diffusion_k(0,:,:)
       wdot_kp1(0,:,:) = wdot_k(0,:,:)
@@ -191,33 +194,30 @@ contains
          do m=0,nnodes-2
             write(*,'(AI2AI2)') 'k = ',k,'   m = ',m
             
-            ! convert the cell-averaged scalars to cell centers
-            call scal_avg_to_cc(scal_kp1_cc(m,:,:), scal_kp1_avg(m,:,:))
-            
-            ! compute delta chi prediction
             if (m .ne. 0) then
+               ! compute delta chi correction
                call increment_delta_chi(delta_chi(m,:), scal_kp1_cc(m,:,:), dtm(m), dx)
+            
+               ! compute the diffusion coefficients
+               call compute_diffusion_coefficients(beta, scal_kp1_cc(m,:,:))
+               ! compute the divergence constraint, S
+               call compute_div_u(S_cc, scal_kp1_avg(m,:,:), scal_kp1_cc(m,:,:), beta, wdot_kp1(m,:,:), dx)
+            
+               ! add delta chi to the constraint
+               S_cc = S_cc + delta_chi(m,:)
+               ! convert from cell-centered S to cell-average
+               call extrapolate_cc_to_avg(S_avg, S_cc)
+            
+               ! compute velocity by integrating the constraint
+               ! the velocity is computed at faces
+               call compute_velocity(vel, S_avg, dx)
+            
+               ! compute the advection terms A^{m,(k+1)}
+               call compute_advection(advection_kp1(m,:,:), scal_kp1_avg(m,:,:), vel, dx)
+               call compute_diffusion(diffusion_kp1(m,:,:), scal_kp1_avg(m,:,:), &
+                                      beta, gamma_face, dx)
+               call add_diffdiff_terms(advection_kp1(m,:,RhoH), scal_kp1_avg(m,:,:), beta, gamma_face, dx)
             end if
-            
-            ! compute the diffusion coefficients
-            call compute_diffusion_coefficients(beta, scal_kp1_cc(m,:,:))
-            ! compute the divergence constraint, S
-            call compute_div_u(S_cc, scal_kp1_avg(m,:,:), scal_kp1_cc(m,:,:), beta, wdot_kp1(m,:,:), dx)
-            
-            ! add delta chi to the constraint
-            S_cc = S_cc + delta_chi(m,:)
-            ! convert from cell-centered S to cell-average
-            call extrapolate_cc_to_avg(S_avg, S_cc)
-            
-            ! compute velocity by integrating the constraint
-            ! the velocity is computed at faces
-            call compute_velocity(vel, S_avg, dx)
-            
-            ! compute the advection terms A^{m,(k+1)}
-            call compute_advection(advection_kp1(m,:,:), scal_kp1_avg(m,:,:), vel, dx)
-            call compute_diffusion(diffusion_kp1(m,:,:), scal_kp1_avg(m,:,:), &
-                                   beta, gamma_face, dx)
-            call add_diffdiff_terms(advection_kp1(m,:,RhoH), scal_kp1_avg(m,:,:), beta, gamma_face, dx)
             
             ! update the density
             call update_density(scal_AD_avg, scal_kp1_avg(m,:,:), &
