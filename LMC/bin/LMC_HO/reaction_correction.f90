@@ -104,20 +104,20 @@
             rhoh_INIT = scal_m_avg(i, RhoH)
             T_INIT    = scal_m_avg(i, Temp)
             
-            if(misdc_k .eq. 1) then
-               ! call VODE to solve the ODE, to get a guess for the BE Newton solve
-               call chemsolve(guess, rhohguess, rhoYold, rhohold, FuncCount, &
-                              dtm, diag, do_diag, ifail, i)
-            
-               ! use the result from VODE as the intial guess for the Newton solve
-               do n=1,Nspec
-                  guess(n) = guess(n)/rho_cc(i)
-               end do
-            else
+!            if(misdc_k .eq. 1) then
+!               ! call VODE to solve the ODE, to get a guess for the BE Newton solve
+!               call chemsolve(guess, rhohguess, rhoYold, rhohold, FuncCount, &
+!                              dtm, diag, do_diag, ifail, i)
+!            
+!               ! use the result from VODE as the intial guess for the Newton solve
+!               do n=1,Nspec
+!                  guess(n) = guess(n)/rho_cc(i)
+!               end do
+!            else
                do n=1,Nspec
                   guess(n) = scal_k_cc(i, FirstSpec+n-1)/scal_k_cc(i, Density)
                end do
-            end if
+!            end if
             
             ! call the nonlinear backward Euler solver
             call bechem(Y, guess, rho_cc(i), h_cc(i), rhs, dtm)
