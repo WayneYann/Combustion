@@ -74,7 +74,7 @@ contains
       double precision ::     Y_avg(-2:nx+1,Nspec)
       
       !these are used for the conservative correction
-      !double precision :: sum_g
+      double precision :: sum_g
       !double precision :: sum_y
       
       ! this subroutine computes the term div(rho D_m grad Y_m)
@@ -99,6 +99,17 @@ contains
          end do
       end do
       
+      ! set N2 fluxes so that all the rhoY fluxes sum to zero
+      do i=0,nx
+         sum_g = 0
+         do n=1,Nspec
+            if (n .ne. N2_comp) then
+               sum_g = sum_g + gamma_face(i,n)
+            end if
+         end do
+         gamma_face(i,N2_comp) = -sum_g
+      end do
+
       ! correct the fluxes so they add up to zero before computing visc
       ! we correct according to a weighting of rho Y_n / rho
       ! where rho is taken to be the sum of rho Y_j on faces

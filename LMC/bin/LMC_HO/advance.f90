@@ -143,7 +143,6 @@ contains
       advection_k = 0
       diffusion_kp1 = 0
       diffusion_k = 0
-      diffusion_kp1 = 0
       wdot_k = 0
       wdot_kp1 = 0
       
@@ -242,12 +241,8 @@ contains
             scal_kp1_avg(m+1,:,Temp) = scal_k_avg(m+1,:,Temp)
             
             ! compute gamma, conservatively corrected diffusion term
-            !call compute_diffusion(diffusion_kp1(m+1,:,:), scal_kp1_avg(m+1,:,:), &
-            !                       beta, gamma_face, dx)
-            do i=0,nx-1
-               diffusion_kp1(m+1,i,:) = (scal_kp1_avg(m+1,i,:) - scal_kp1_avg(m,i,:) - I_k_avg(m,i,:))/dtm(m) & 
-                  - (advection_kp1(m,i,:) - advection_k(m,i,:) - diffusion_k(m+1,i,:))
-            end do
+            call compute_diffusion(diffusion_kp1(m+1,:,:), scal_kp1_avg(m+1,:,:), &
+                                   beta, gamma_face, dx)
             
             ! call the chemistry solver to solve the correction equation
             call reaction_correction(scal_kp1_avg(m+1,:,:),  scal_kp1_avg(m,:,:), &

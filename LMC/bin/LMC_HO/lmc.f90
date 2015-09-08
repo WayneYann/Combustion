@@ -69,7 +69,7 @@ contains
                         misdc_iterMAX,&
                         do_initial_projection, num_divu_iters, &
                         num_init_iters,fixed_dt,&
-                        V_in, nnodes, lim_rxns,&
+                        V_in, nnodes, N2_comp, lim_rxns,&
                         LeEQ1, tranfile, TMIN_TRANS, Pr, Sc,&
                         max_vode_subcycles,&
                         min_vode_timestep, divu_ceiling_flag,&
@@ -100,6 +100,7 @@ contains
       fixed_dt = -1.d0
       V_in = 1.d20
       nnodes = 3
+      N2_comp = 0
       lim_rxns = 1
       LeEQ1 = 0
       tranfile = 'tran.asc.grimech30'
