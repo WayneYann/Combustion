@@ -54,9 +54,19 @@ cg.cg_solver=1
 
 #amr.refine_grid_layout = 0
 
-geometry.prob_lo    = -.0225 -.0225 0.0
-geometry.prob_hi    =  .0225  .0225 0.06
+#geometry.prob_lo    = -.0225 -.0225 0.0
+#geometry.prob_hi    =  .0225  .0225 0.06
+#geometry.prob_lo    = -.005625 -.005625 0.0
+#geometry.prob_hi    =  .005625  .005625 0.015
+geometry.prob_lo    = -.005625 -.005625 0.0
+geometry.prob_hi    =  .005625  .005625 0.015
+#geometry.prob_lo    = -.001 -.001 0.0
+#geometry.prob_hi    =  .001  .001 0.00266666666666666666
 amr.n_cell          = 192 192 256
+amr.n_cell          = 192 192 256
+amr.n_cell          = 192 192 256
+amr.n_cell          = 96 96 128
+amr.n_cell          = 48 48 64
 amr.blocking_factor = 8
 amr.blocking_factor = 16
 max_step            = 1000
@@ -118,7 +128,7 @@ ns.divu_ceiling = 1
 ns.divu_dt_factor = .4
 ns.min_rho_divu_ceiling = .01
 
-ns.fuelName        = CH3OCH3
+ns.fuelName        = NC12H26
 ns.oxidizerName    = O2
 ns.flameTracName   = H
 ns.unity_Le = 0
@@ -137,7 +147,7 @@ ns.dpdt_option = 0
 
 ns.lo_bc          = 5 5 1
 ns.hi_bc          = 5 5 2
-geometry.is_periodic = 1 0 0
+geometry.is_periodic = 0 0 0
 
 # >>>>>>>>>>>>>  BC FLAGS <<<<<<<<<<<<<<<<
 # 0 = Interior           3 = Symmetry
@@ -186,7 +196,7 @@ mac.do_outflow_bcs = 0
 fab.format = NATIVE
 
 ns.hack_nochem=1
-ns.hack_nospecdiff=1
+#ns.hack_nospecdiff=1
 #ns.init_iter=0
 #ns.do_init_proj=0
 #ShowMF_Sets = mac velVT dd estate

@@ -14,6 +14,8 @@
       integer zone, n, getZone, fuelZone, airZone, region, len
       integer b(SDIM)
       integer num_zones_defined
+      integer iO2,iH2,iNC12H26
+      character*(maxspnml) name
       data  b / 1, 1, 1 /
       
       Patm = pamb / FORT_P1ATMMKS()
@@ -72,17 +74,28 @@ c     Take fuel mixture from pmf file
 
       else if (probtype(1:len).eq.BL_PROB_JET_DIFFUSION) then
 
+              do n=1,Nspec
+
+                  call get_spec_name(name,n)
+                  if (name .eq. 'N2' ) iN2 = n
+                  if (name .eq. 'O2' ) iO2 = n
+                  if (name .eq. 'H2' ) iH2 = n
+                  if (name .eq. 'NC12H26' ) iNC12H26 = n
+
+              enddo
+
 c     A diffusion flame
          fuelZone = getZone(domnlo(1), 0.5*(domnlo(2)+domnhi(2)), domnlo(3))
          airZone  = getZone(domnhi(1), domnhi(2), domnhi(3))
          num_zones_defined = 2
+
 
 c     Fuel
          do n = 1,Nspec
             Xt(n) = 0.d0
          end do 
          Xt(iN2) = fuel_N2_vol_percent*1.d-2
-         Xt(fuelID) = 1.d0 - Xt(iN2)            
+         Xt(iNC12H26) = 1.d0 - Xt(iN2)            
 
          CALL CKXTY (Xt, IWRK, RWRK, Yt)
 
@@ -129,6 +142,7 @@ c     Set density and hmix consistent with data
      &                        h_bc(zone),   DIMARG(b), DIMARG(b),
      &                        T_bc(zone),   DIMARG(b), DIMARG(b),
      &                        Y_bc(0,zone), DIMARG(b), DIMARG(b))
+
       enddo
       bcinit = .true.
       end
@@ -144,7 +158,7 @@ c ::: -----------------------------------------------------------
       integer len
 
 #define BL_FUELPIPE 1
-c#define BL_COFLOW   2
+#define BL_COFLOW   2
 c#define BL_STICK    3
 c#define BL_WALL     4
 c#define BL_AMBIENT  5
@@ -935,6 +949,7 @@ c ::: -----------------------------------------------------------
       integer   tag(DIMV(tag))
       REAL_T    vort(DIMV(vort),nvar)
 
+      REAL_T x,y,z
       integer   i, j, k
 
 #include <probdata.H>
@@ -945,9 +960,27 @@ c ::: -----------------------------------------------------------
                do i = lo(1), hi(1)
                   tag(i,j,k) = merge(set,tag(i,j,k),
      &                         ABS(vort(i,j,k,1)).ge.vorterr*2.d0**level)
+                  
                enddo
             enddo
          enddo
+         if(refine_nozzle .eq. 1)then
+         do k = lo(3), hi(3)
+            z = (float(k)+.5)*dx(3)+domnlo(3)
+            do j = lo(2), hi(2)
+               y = (float(j)+.5)*dx(2)+domnlo(2)
+               do i = lo(1), hi(1)
+                  x = (float(i)+.5)*dx(1)+domnlo(1)
+                  if(x**2 + y**2 .le. 8.d0*blobr**2 .and. z.le.2.d0*blobr)then
+                     tag(i,j,k) = set
+                  endif
+                  if(abs(x).le.dx(1) .and. abs(y) .le. dx(2) .and. z.le. dx(3))then
+                     tag(i,j,k) = set
+                  endif
+               enddo
+            enddo
+         enddo
+         endif
       end if
 
       end
@@ -1683,7 +1716,7 @@ c ::: -----------------------------------------------------------
                   call bcfunction(BL_ZLO,x,y,z,time,u,v,w,rho,Yl,T,h,delta,.true.)
 #if defined(BL_DO_FLCT)
                   if (forceLo .and. strmwse_dir .eq. 3) then
-                     eta1 = 0.5d0*(1.d0 - TANH(2.d0*(ABS(y)-splitx)/xfrontw))
+                     eta1 = 0.5d0*(1.d0 - TANH(2.d0*(SQRT(x**2+y**2)-splitx)/xfrontw))
                      xvel(i,j,k) = u + eta1*uflct(i,j,1)*turb_scale
                   else
                      xvel(i,j,k) = u
@@ -1916,7 +1949,7 @@ c ::: -----------------------------------------------------------
                   call bcfunction(BL_ZLO,x,y,z,time,u,v,w,rho,Yl,T,h,delta,.true.)
 #if defined(BL_DO_FLCT)
                   if (forceLo .and. strmwse_dir .eq. 3) then
-                     eta1 = 0.5d0*(1.d0 - TANH(2.d0*(ABS(y)-splitx)/xfrontw))
+                     eta1 = 0.5d0*(1.d0 - TANH(2.d0*(SQRT(x**2+y**2)-splitx)/xfrontw))
                      yvel(i,j,k) = v + eta1*vflct(i,j,1)*turb_scale
                   else
                      yvel(i,j,k) = v
@@ -2147,7 +2180,7 @@ c ::: -----------------------------------------------------------
                   call bcfunction(BL_ZLO,x,y,z,time,u,v,w,rho,Yl,T,h,delta,.true.)
 #if defined(BL_DO_FLCT)
                   if (forceLo .and. strmwse_dir .eq. 3) then
-                     eta1 = 0.5d0*(1.d0 - TANH(2.d0*(ABS(y)-splitx)/xfrontw))
+                     eta1 = 0.5d0*(1.d0 - TANH(2.d0*(SQRT(x**2+y**2)-splitx)/xfrontw))
                      zvel(i,j,k) = w + eta1*wflct(i,j,1)*turb_scale
                   else
                      zvel(i,j,k) = w
