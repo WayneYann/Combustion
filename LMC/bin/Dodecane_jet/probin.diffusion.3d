@@ -8,19 +8,21 @@
 
   max_vort_lev = 4
   vorterr = 5.e4
+  refine_nozzle = 1
 
   flametracval = 1.e-8
   max_trac_lev = 4
 
   max_temp_lev = 3
   tempgrad = 80.
+  fuel_N2_vol_percent = 0.
 
   blobr = -1.
 
-  splitx  = .00015
-  xfrontw = .000015
-  blobr   = .00018
-  Tfrontw = .00001
+  splitx  = .000045
+  xfrontw = .000001
+  blobr   = .000045
+  Tfrontw = .000001
 
  /
  &heattransin

@@ -64,7 +64,7 @@ ifeq (${CHEMISTRY_MODEL},WANGDODECANE)
 endif
 ifeq (${CHEMISTRY_MODEL},DODECANE_LU)
   CHEM_MECHFILE = dodecane_lu.c
-  #VPATH_LOCATIONS += ${CHEMISTRY_DIR}/data/dodecane_lu/PMFs
+  VPATH_LOCATIONS += ${CHEMISTRY_DIR}/data/dodecane_lu/PMFs
   VPATH_LOCATIONS += ${CHEMISTRY_DIR}/data/dodecane_lu
 endif
 ifeq (${CHEMISTRY_MODEL},DODECANEZHAO)

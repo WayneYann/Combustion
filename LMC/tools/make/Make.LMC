@@ -114,6 +114,16 @@ ifeq ($(CHEMISTRY_MODEL), LUDME)
   vpath %.f   $(VPATH_LOCATIONS) $(COMBUSTION_DIR)/Chemistry/data/Lu/PMFs
   vpath %.c $(VPATH_LOCATIONS) $(COMBUSTION_DIR)/Chemistry/data/Lu
 endif
+ifeq ($(CHEMISTRY_MODEL), DODECANE_LU)
+  cEXE_sources += dodecane_lu.c
+  vpath %.f   $(VPATH_LOCATIONS) $(COMBUSTION_DIR)/Chemistry/data/dodecane_lu/PMFs
+  vpath %.c $(VPATH_LOCATIONS) $(COMBUSTION_DIR)/Chemistry/data/dodecane_lu
+endif
+ifeq ($(CHEMISTRY_MODEL), DODECANEZHAO)
+  cEXE_sources += dodecane_zhao_1.c
+  vpath %.f   $(VPATH_LOCATIONS) $(COMBUSTION_DIR)/Chemistry/data/dodecane_zhao_1/PMFs
+  vpath %.c $(VPATH_LOCATIONS) $(COMBUSTION_DIR)/Chemistry/data/dodecane_zhao_1
+endif
 ifeq ($(CHEMISTRY_MODEL), WANGDODECANE)
   cEXE_sources += dodecane_wang.c
   vpath %.f   $(VPATH_LOCATIONS) $(COMBUSTION_DIR)/Chemistry/data/dodecane_wang/PMFs

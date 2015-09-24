@@ -24,8 +24,8 @@ COMM_PROFILE    = FALSE
 
 # Enable SDC code - add .SDC to executable
 # and compile in the #ifdef LMC_SDC
-USE_LMC_SDC = FALSE
 USE_LMC_SDC = TRUE
+USE_LMC_SDC = FALSE
 
 # Enable flctin namelist
 USE_FLCTS       = TRUE
@@ -41,7 +41,7 @@ USE_FLCTS       = TRUE
 # Choose model (from list below), and pmf file
 CHEMISTRY_MODEL = DODECANE_LU
 #CHEMISTRY_MODEL = WANGDODECANE
-#fEXE_sources += LuDME_0700.f
+fEXE_sources += wang_dodecane_phi_1000.f
 
 Blocs   := .
 

@@ -63,7 +63,7 @@ c ::: -----------------------------------------------------------
      $                  turb_scale, V_in, V_co, H2_frac,T_switch,
      $                  standoff, pertmag, nchemdiag, splitx, xfrontw,
      &                  splity, yfrontw, blobx, bloby, blobz, blobr,
-     &                  blobT, Tfrontw, stTh, fuel_N2_vol_percent,V_jet
+     &                  blobT, Tfrontw, stTh, fuel_N2_vol_percent,V_jet,refine_nozzle
       namelist /heattransin/ pamb, dpdt_factor
 #if defined(BL_DO_FLCT)
       namelist /flctin/ tstart_turb, forceInflow, numInflPlanesStore, forceLo, forceHi,
