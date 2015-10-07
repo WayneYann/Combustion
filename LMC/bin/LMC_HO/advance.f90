@@ -154,17 +154,11 @@ contains
       ! initialize the reactions to the input
       wdot_k(0,:,:) = wdot
       
-      ! compute delta_chi correction
-      call increment_delta_chi(delta_chi(0,:), scal_k_cc(0,:,:), dtm(0), dx)
-
       ! compute the diffusion_coefficients
       call compute_diffusion_coefficients(beta, scal_k_cc(0,:,:))
       
       ! need to compute div u to fourth order
       call compute_div_u(S_cc, scal_k_avg(0,:,:), scal_k_cc(0,:,:), beta, wdot_k(0,:,:), dx)
-
-      ! add delta chi to the constraint
-      S_cc = S_cc + delta_chi(0,:)
 
       ! convert from cell-centered S to cell-average
       call extrapolate_cc_to_avg(S_avg, S_cc)
