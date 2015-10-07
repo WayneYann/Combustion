@@ -62,6 +62,16 @@ ifeq (${CHEMISTRY_MODEL},WANGDODECANE)
   VPATH_LOCATIONS += ${CHEMISTRY_DIR}/data/dodecane_wang/PMFs
   VPATH_LOCATIONS += ${CHEMISTRY_DIR}/data/dodecane_wang
 endif
+ifeq (${CHEMISTRY_MODEL},DODECANE_LU)
+  CHEM_MECHFILE = dodecane_lu.c
+  VPATH_LOCATIONS += ${CHEMISTRY_DIR}/data/dodecane_lu/PMFs
+  VPATH_LOCATIONS += ${CHEMISTRY_DIR}/data/dodecane_lu
+endif
+ifeq (${CHEMISTRY_MODEL},DODECANEZHAO)
+  CHEM_MECHFILE = dodecane_zhao_1.c
+  VPATH_LOCATIONS += ${CHEMISTRY_DIR}/data/dodecane_zhao_1/PMFs
+  VPATH_LOCATIONS += ${CHEMISTRY_DIR}/data/dodecane_zhao_1
+endif
 ifeq (${CHEMISTRY_MODEL}, BURKE)
   CHEM_MECHFILE = BurkeDryer.c
   VPATH_LOCATIONS += ${CHEMISTRY_DIR}/data/BurkeDryer
