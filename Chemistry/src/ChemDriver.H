@@ -43,6 +43,8 @@ public:
     Real DefaultValue() const;
     void ResetToDefault();
     int SpeciesID() const {return species_id;}
+    int RxnID() const {return reaction_id;}
+    std::string GetParamString() const;
   private:
     int reaction_id;
     REACTION_PARAMETER param_id;
@@ -110,6 +112,8 @@ public:
     Array<int> reactionsWithXonR (const std::string& rSpecName) const;
     Array<std::pair<std::string,int> > specCoeffsInReactions (int reacIdx) const;
     std::string reactionString (int reacIdx) const;
+    std::string reactionStringBuild (int reacIdx) const;
+    void printReactions() const;
     const Array<int>& reactionMap() const;
 
     int numberOfElementXinSpeciesY (const std::string& eltX,

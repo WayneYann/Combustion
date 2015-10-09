@@ -5,6 +5,7 @@
 #include "ChemDriver_F.H"
 #include <ParallelDescriptor.H>
 #include <ParmParse.H>
+#include <sstream>
 
 const Real HtoTerrMAX_DEF  = 1.e-8;
 const int  HtoTiterMAX_DEF = 20;
@@ -100,34 +101,50 @@ ChemDriver::Parameter::Parameter::ResetToDefault()
   *rp = *rdefp;
 }
 
+/*
+ * ChemDriver::Parameter::GetParamSrting
+ * Return string describing what the parameter type
+ * actually means
+ */
+std::string
+ChemDriver::Parameter::GetParamString() const
+{
+  if (param_id == FWD_A)          {return "FWD_A";}
+  else if (param_id == FWD_BETA)  {return "FWD_BETA";}
+  else if (param_id == FWD_EA)    {return "FWD_EA";}
+  else if (param_id == LOW_A)     {return "LOW_A";}
+  else if (param_id == LOW_BETA)  {return "LOW_BETA";}
+  else if (param_id == LOW_EA)    {return "LOW_EA";}
+  else if (param_id == REV_A)     {return "REV_A";}
+  else if (param_id == REV_BETA)  {return "REV_BETA";}
+  else if (param_id == REV_EA)    {return "REV_EA";}
+  else if (param_id == TROE_A)    {return "TROE_A";}
+  else if (param_id == TROE_TS)   {return "TROE_TS";}
+  else if (param_id == TROE_TSS)  {return "TROE_TSS";}
+  else if (param_id == TROE_TSSS) {return "TROE_TSSS";}
+  else if (param_id == SRI_A)     {return "SRI_A";}
+  else if (param_id == SRI_B)     {return "SRI_B";}
+  else if (param_id == SRI_C)     {return "SRI_C";}
+  else if (param_id == SRI_D)     {return "SRI_D";}
+  else if (param_id == SRI_E)     {return "SRI_E";}
+  else if (param_id == THIRD_BODY) {return "THIRD_BODY";}
+  else{
+      BoxLib::Abort("Unknown reaction parameter");
+  }
+
+}
 std::ostream&
 ChemDriver::Parameter::operator<<(std::ostream& os) const
 {
   // FIXME: Hard-coded list of parameters invites errors later...
+  // RG: Moved it to its own routine so I could use it elsewhere,
+  // inviting the same error
+  std::string param_str;
   os << "(r: " << reaction_id << " p: ";
-  if (param_id == FWD_A)          {os << "FWD_A";}
-  else if (param_id == FWD_BETA)  {os << "FWD_BETA";}
-  else if (param_id == FWD_EA)    {os << "FWD_EA";}
-  else if (param_id == LOW_A)     {os << "LOW_A";}
-  else if (param_id == LOW_BETA)  {os << "LOW_BETA";}
-  else if (param_id == LOW_EA)    {os << "LOW_EA";}
-  else if (param_id == REV_A)     {os << "REV_A";}
-  else if (param_id == REV_BETA)  {os << "REV_BETA";}
-  else if (param_id == REV_EA)    {os << "REV_EA";}
-  else if (param_id == TROE_A)    {os << "TROE_A";}
-  else if (param_id == TROE_TS)   {os << "TROE_TS";}
-  else if (param_id == TROE_TSS)  {os << "TROE_TSS";}
-  else if (param_id == TROE_TSSS) {os << "TROE_TSSS";}
-  else if (param_id == SRI_A)     {os << "SRI_A";}
-  else if (param_id == SRI_B)     {os << "SRI_B";}
-  else if (param_id == SRI_C)     {os << "SRI_C";}
-  else if (param_id == SRI_D)     {os << "SRI_D";}
-  else if (param_id == SRI_E)     {os << "SRI_E";}
-  else if (param_id == THIRD_BODY) {
-    os << "THIRD_BODY s: " << species_id;
-  }
-  else {
-    BoxLib::Abort("Unknown reaction parameter");
+  param_str = GetParamString();
+  os << param_str;
+  if( param_id == THIRD_BODY ){
+    os << " s: " << species_id;
   }
   os << " v: " << Value() << " DEF: " << DefaultValue() << ")";
   return os;
@@ -305,6 +322,10 @@ ChemDriver::numberOfElementXinSpeciesY(const std::string& eltX,
 Array<std::pair<std::string,int> >
 ChemDriver::specCoeffsInReactions(int reacIdx) const
 {
+    // TODO(rgrout) This may be less error prone if the reacIdx was the
+    // reaction index in the chemkin input file instead of the array offset
+    // I have applied the mapping in another function that uses this,
+    // so if the mapping is put in here fix reactionStringBuild also
     Array<int> KI(mMaxsp);
     Array<int> NU(mMaxsp);
     int Nids = 0;
@@ -327,6 +348,71 @@ ChemDriver::reactionString(int reacIdx) const
     delete [] coded;
     return line;
 }
+
+/*
+ * ChemDriver::reactionStringBuild
+ * Build a reaction rate string from participating species
+ * need this because FORT_CKSYMR isn't always implemented
+ */
+std::string
+ChemDriver::reactionStringBuild(int reacIdx) const
+{
+    std::stringstream sline;
+    Array<std::pair<std::string,int> > spcCoeffs; 
+
+    const Array<int> rxnmap = reactionMap();
+    int rxn_array_index = rxnmap[reacIdx];
+    spcCoeffs = specCoeffsInReactions(rxn_array_index);
+    Array<std::pair<std::string,int> > reactants, products; 
+
+    for (int j = 0; j < spcCoeffs.size(); ++j) {
+        if( spcCoeffs[j].second < 0 ) {
+            reactants.push_back(spcCoeffs[j]);
+        }
+        else {
+            products.push_back(spcCoeffs[j]);
+        }
+    }
+    for (int j = 0; j < reactants.size(); j++) {
+        if (reactants[j].second < -1) {
+            sline << -1*reactants[j].second << reactants[j].first;
+        }
+        else {
+            sline << reactants[j].first;
+        }
+        if (j < reactants.size()-1) {
+            sline << " + ";
+        }
+    }
+    sline << " = ";
+    for (int j = 0; j < products.size(); j++) {
+        if (products[j].second > 1) {
+            sline << products[j].second << products[j].first;
+        }
+        else {
+            sline << products[j].first;
+        }
+        if (j < products.size()-1) {
+            sline << " + ";
+        }
+    }
+    return sline.str();
+}
+
+
+/*
+ * ChemDriver::printReactions
+ * Dump out a table of reactions in this mechanism
+ */
+void
+ChemDriver::printReactions() const
+{
+    int nr = numReactions();
+    for (int j = 0; j < nr; ++j) {
+        std::cout << "(R" << j << ") " << reactionStringBuild(j) << std::endl;
+    }
+}
+
 
 Array<Real>
 ChemDriver::speciesMolecWt() const
