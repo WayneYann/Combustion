@@ -3489,19 +3489,19 @@ HeatTransfer::compute_differential_diffusion_fluxes (const Real& time,
     //
     // Create and fill (Rho,RhoY,RhoH,T) at coarser level
     //    
-    MultiFab* S_crse   = 0;
-    MultiFab* Phi_crse = 0; 
+    MultiFab S_crse;
+    MultiFab Phi_crse;
     if (level > 0) 
     {
         HeatTransfer* coarser = (HeatTransfer*) &(parent->getLevel(level-1));
 
-        Phi_crse = new MultiFab(coarser->grids, 1, 2);
-        S_crse   = new MultiFab(coarser->grids,S.nComp(),0);
+        Phi_crse.define(coarser->grids,        1, 2, Fab_allocate);
+        S_crse.define  (coarser->grids,S.nComp(), 0, Fab_allocate);
 
-        for (FillPatchIterator S_fpi(*coarser,*S_crse,0,time,State_Type,0,S.nComp());
+        for (FillPatchIterator S_fpi(*coarser,S_crse,0,time,State_Type,0,S.nComp());
              S_fpi.isValid(); ++S_fpi)
 	{
-            (*S_crse)[S_fpi].copy(S_fpi(),0,0,S.nComp());
+            S_crse[S_fpi].copy(S_fpi(),0,0,S.nComp());
 	}
     }
 
@@ -3522,16 +3522,16 @@ HeatTransfer::compute_differential_diffusion_fluxes (const Real& time,
 
         if (level > 0) 
         {
-            MultiFab::Copy(*Phi_crse,*S_crse,state_ind,0,1,0);
-            for (MFIter mfi(*S_crse); mfi.isValid(); ++mfi)
+            MultiFab::Copy(Phi_crse,S_crse,state_ind,0,1,0);
+            for (MFIter mfi(S_crse); mfi.isValid(); ++mfi)
             {
-		(*Phi_crse)[mfi].divide((*S_crse)[mfi],(*Phi_crse)[mfi].box(),Density,0,1);
+		Phi_crse[mfi].divide(S_crse[mfi],Phi_crse[mfi].box(),Density,0,1);
             }
-	    Phi_crse->FillBoundary();
-	    getLevel(level-1).geom.FillPeriodicBoundary(*Phi_crse);
+	    Phi_crse.FillBoundary();
+	    getLevel(level-1).geom.FillPeriodicBoundary(Phi_crse);
         }
 
-	diffusion->getBndryDataGivenS(visc_bndry,Phi,*Phi_crse,state_ind,0,1);
+	diffusion->getBndryDataGivenS(visc_bndry,Phi,Phi_crse,state_ind,0,1);
 
         const bool     do_applyBC           = true;
         const bool     bndry_already_filled = true;            
@@ -3548,11 +3548,6 @@ HeatTransfer::compute_differential_diffusion_fluxes (const Real& time,
 
     Phi.clear();
 
-    if (Phi_crse)
-        delete Phi_crse;
-
-    if (S_crse)
-        delete S_crse;
     //
     // Remove scaling left in fluxes from solve.
     //
@@ -4172,7 +4167,7 @@ HeatTransfer::predict_velocity (Real  dt,
 
     getGradP(Gp, prev_pres_time);
     
-    FArrayBox* null_fab = 0;
+    FArrayBox null_fab;
 
     showMF("mac",Gp,"pv_Gp",level);
     showMF("mac",*rho_ptime,"pv_rho_old",level);
@@ -4228,7 +4223,7 @@ HeatTransfer::predict_velocity (Real  dt,
                bndry[2] = getBCArray(State_Type,i,2,1);)
 
         godunov->Setup(grids[i], dx, dt, 1,
-                       D_DECL(*null_fab,*null_fab,*null_fab),
+                       D_DECL(null_fab,null_fab,null_fab),
                        D_DECL(bndry[0].dataPtr(),bndry[1].dataPtr(),bndry[2].dataPtr()),
                        D_DECL(U_fpi(),U_fpi(),U_fpi()), D_DECL(0,1,2),
                        tforces,0);
