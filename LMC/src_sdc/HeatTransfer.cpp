@@ -5054,12 +5054,8 @@ HeatTransfer::advance_chemistry (MultiFab&       mf_old,
         if (do_avg_down_chem)
         {
             MultiFab& fine_React = getLevel(level+1).get_old_data(RhoYdot_Type);
-            BoxArray cf_grids = fine_React.boxArray(); cf_grids.coarsen(fine_ratio);
-            MultiFab avg_fdist(cf_grids,nspecies,0);
-
-	    BoxLib::average_down(fine_React, avg_fdist, getLevel(level+1).geom, geom,
+	    BoxLib::average_down(fine_React, React_new, getLevel(level+1).geom, geom,
 				 0, nspecies, fine_ratio);
-            React_new.copy(avg_fdist);
         }
         //
         // Ensure consistent grow cells.
