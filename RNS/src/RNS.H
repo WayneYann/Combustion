@@ -271,7 +271,6 @@ public:
 
     void avgDown ();
     void avgDown (int state_indx);
-    void avgDown (MultiFab& S_crse, const MultiFab& S_fine);
 
     static class ChemDriver* chemSolve;
 

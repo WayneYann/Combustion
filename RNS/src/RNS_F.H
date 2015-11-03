@@ -179,13 +179,6 @@ BL_FORT_PROC_DECL(RNS_ESTDT_DIFF,rns_estdt_diff)
      const int lo[], const int hi[],
      const Real dx[], Real* dt);
 
-BL_FORT_PROC_DECL(RNS_AVGDOWN,rns_avgdown)
-    (BL_FORT_FAB_ARG(crse_fab), const int& nc,
-     const BL_FORT_FAB_ARG(crse_vol),
-     const BL_FORT_FAB_ARG(fine_fab),
-     const BL_FORT_FAB_ARG(fine_vol),
-     const int ovlo[], const int ovhi[], const int rat[]);
-
 BL_FORT_PROC_DECL(RNS_SUM_CONS, rns_sum_cons)
     (const BL_FORT_FAB_ARG(state),
      const BL_FORT_FAB_ARG(msk),

@@ -255,11 +255,15 @@ void RNS::restrict(MLSDCAmrEncap& F, MLSDCAmrEncap& G, Real t, MLSDCAmrLevel& _l
   RNS&      levelF = *this;
   RNS&      levelG = dynamic_cast<RNS&>(_levelG);
 
+  const Geometry& fgeom = levelF.geom;
+  const Geometry& cgeom = levelG.geom;
+
+  const IntVect& crse_ratio = levelG.fine_ratio;
+
   BL_ASSERT(G.type==SDC_SOLUTION || G.type==SDC_TAU);
 
   if (G.type == SDC_TAU) {
     MLSDCAmr&     amr        = *levelF.getMLSDCAmr();
-    IntVect       crse_ratio = amr.refRatio(levelG.Level());
     FluxRegister& flxF       = *F.fine_flux;
     FluxRegister& flxG       = *G.crse_flux;
 
@@ -273,7 +277,10 @@ void RNS::restrict(MLSDCAmrEncap& F, MLSDCAmrEncap& G, Real t, MLSDCAmrLevel& _l
     flx.Reflux(UG, levelG.Volume(), 1.0, 0, 0, UG.nComp(), levelG.Geom());
   }
 
-  levelG.avgDown(UG, UF);
+  BoxLib::average_down(UF, UG,
+		       fgeom, cgeom,
+		       0, UG.nComp(), crse_ratio);
+
   if (G.type == SDC_SOLUTION)
     levelG.fill_boundary(UG, t, RNS::use_FillBoundary);
 
