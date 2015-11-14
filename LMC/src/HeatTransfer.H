@@ -8,11 +8,11 @@
 #include <DDOp.H>
 
 #ifdef PARTICLES
-#include <Particles.H>
+#include <AmrParticles.H>
 //
 // The "BL_SPACEDIM" bytes in m_data[] are to hold temporary positions and velocities in AdvectWithUmac().
 //
-typedef ParticleContainer<2*BL_SPACEDIM> HTParticleContainer;
+typedef AmrParticleContainer<2*BL_SPACEDIM> HTParticleContainer;
 #endif
 
 #include <list>

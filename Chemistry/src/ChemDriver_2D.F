@@ -226,16 +226,16 @@ c     NOTE: scal converts result from assumed cgs to MKS (1 erg/s.cm^3 = .1 J/s.
                Zt(n) = Y(i,j,n)
             end do
             call CKHBMS(T(i,j),Zt,IWRK(ckbi),RWRK(ckbr),HMIX_CGS)
-
-            Zt(Nspec+1) = HMIX_CGS * 1.d-4
-
             call CKRHOY(RWRK(NP),T(i,j), Zt(1), IWRK(ckbi), RWRK(ckbr), RHO_CGS)
+
+            Zt(Nspec+1) = (HMIX_CGS * 1.d-4) * (RHO_CGS * 1.d3)
+
             do n=1,Nspec
                Zt(n) = Zt(n) * (RHO_CGS * 1.d3)
             end do
             c_0(1:Nspec+1) = 0.d0
             rhoY_INIT(1:Nspec) = Zt(1:Nspec)
-            rhoH_INIT = HMIX_CGS * 1.d-4
+            rhoH_INIT = (HMIX_CGS * 1.d-4) * (RHO_CGS * 1.d3)
             T_cell = T(i,j)
             call conpFY_sdc(ndummy,tdummy,Zt,Zdott,RWRK,IWRK)
 

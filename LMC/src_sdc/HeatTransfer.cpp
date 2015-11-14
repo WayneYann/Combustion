@@ -2128,9 +2128,8 @@ HeatTransfer::post_timestep (int crse_iteration)
             MultiFab& Ydot_crse = *(clev.auxDiag["REACTIONS"]);
             MultiFab& Ydot_fine = *(flev.auxDiag["REACTIONS"]);
 
-            NavierStokes::avgDown(clev.boxArray(),flev.boxArray(),
-                                  Ydot_crse,Ydot_fine,
-                                  i-1,i,0,Ndiag,parent->refRatio(i-1));
+	    BoxLib::average_down(Ydot_fine, Ydot_crse, flev.geom, clev.geom,
+				 0, Ndiag, parent->refRatio(i-1));
         }
     }
 }
@@ -2343,18 +2342,13 @@ HeatTransfer::post_init (Real stop_time)
                 for (int k = finest_level-1; k >= 0; k--)
                 {
                     HeatTransfer&   fine_lev = getLevel(k+1);
-                    const BoxArray& fgrids   = fine_lev.grids;
-                    
                     HeatTransfer&   crse_lev = getLevel(k);
-                    const BoxArray& cgrids   = crse_lev.grids;
-                    const IntVect&  fratio   = crse_lev.fine_ratio;
 
                     MultiFab& Divu_crse = crse_lev.get_new_data(Divu_Type);
                     MultiFab& Divu_fine = fine_lev.get_new_data(Divu_Type);
 
-                    crse_lev.NavierStokes::avgDown(cgrids,fgrids,
-                                                   Divu_crse,Divu_fine,
-                                                   k,k+1,0,1,fratio);
+		    BoxLib::average_down(Divu_fine, Divu_crse, fine_lev.geom, crse_lev.geom,
+					 0, 1, crse_lev.fine_ratio);
                 }
             }
             //
@@ -2370,16 +2364,13 @@ HeatTransfer::post_init (Real stop_time)
             //
             for (int k = finest_level-1; k >= 0; k--)
             {
-                const BoxArray& fgrids  = getLevel(k+1).grids;
-                const BoxArray& cgrids  = getLevel(k).grids;
-                MultiFab&       S_fine  = getLevel(k+1).get_new_data(State_Type);
-                MultiFab&       S_crse  = getLevel(k).get_new_data(State_Type);
-                IntVect&        fratio  = getLevel(k).fine_ratio;
-                
-                getLevel(k).NavierStokes::avgDown(cgrids,fgrids,
-                                                  S_crse,S_fine,
-                                                  k,k+1,Xvel,BL_SPACEDIM,
-                                                  fratio);
+	      HeatTransfer&   fine_lev = getLevel(k+1);
+	      HeatTransfer&   crse_lev = getLevel(k);
+	      MultiFab&       S_fine  = getLevel(k+1).get_new_data(State_Type);
+	      MultiFab&       S_crse  = getLevel(k).get_new_data(State_Type);
+
+	      BoxLib::average_down(S_fine, S_crse, fine_lev.geom, crse_lev.geom,
+				   Xvel, BL_SPACEDIM, getLevel(k).fine_ratio);
             }
         }
         //
@@ -2746,12 +2737,11 @@ HeatTransfer::avgDown ()
 
     const Real      strt_time = ParallelDescriptor::second();
     HeatTransfer&   fine_lev  = getLevel(level+1);
-    const BoxArray& fgrids    = fine_lev.grids;
     MultiFab&       S_crse    = get_new_data(State_Type);
     MultiFab&       S_fine    = fine_lev.get_new_data(State_Type);
 
-    NavierStokes::avgDown(grids,fgrids,S_crse,S_fine,
-                          level,level+1,0,S_crse.nComp(),fine_ratio);
+    BoxLib::average_down(S_fine, S_crse, fine_lev.geom, geom,
+			 0, S_crse.nComp(), fine_ratio);
     //
     // Fill rho_ctime at the current and finer levels with the correct data.
     //
@@ -2807,8 +2797,8 @@ HeatTransfer::avgDown ()
         MultiFab& Divu_crse = get_new_data(Divu_Type);
         MultiFab& Divu_fine = fine_lev.get_new_data(Divu_Type);
             
-        NavierStokes::avgDown(grids,fgrids,Divu_crse,Divu_fine,
-                              level,level+1,0,1,fine_ratio);
+	BoxLib::average_down(Divu_fine, Divu_crse, fine_lev.geom, geom,
+			     0, Divu_crse.nComp(), fine_ratio);
     }
 
     if (hack_noavgdivu)
@@ -2836,8 +2826,8 @@ HeatTransfer::avgDown ()
         MultiFab& Dsdt_crse = get_new_data(Dsdt_Type);
         MultiFab& Dsdt_fine = fine_lev.get_new_data(Dsdt_Type);
             
-        NavierStokes::avgDown(grids,fgrids,Dsdt_crse,Dsdt_fine,
-                              level,level+1,0,1,fine_ratio);
+	BoxLib::average_down(Dsdt_fine, Dsdt_crse, fine_lev.geom, geom,
+			     0, Dsdt_crse.nComp(), fine_ratio);
     }
 
     if (verbose > 1)
@@ -3499,19 +3489,19 @@ HeatTransfer::compute_differential_diffusion_fluxes (const Real& time,
     //
     // Create and fill (Rho,RhoY,RhoH,T) at coarser level
     //    
-    MultiFab* S_crse   = 0;
-    MultiFab* Phi_crse = 0; 
+    MultiFab S_crse;
+    MultiFab Phi_crse;
     if (level > 0) 
     {
         HeatTransfer* coarser = (HeatTransfer*) &(parent->getLevel(level-1));
 
-        Phi_crse = new MultiFab(coarser->grids, 1, 2);
-        S_crse   = new MultiFab(coarser->grids,S.nComp(),0);
+        Phi_crse.define(coarser->grids,        1, 2, Fab_allocate);
+        S_crse.define  (coarser->grids,S.nComp(), 0, Fab_allocate);
 
-        for (FillPatchIterator S_fpi(*coarser,*S_crse,0,time,State_Type,0,S.nComp());
+        for (FillPatchIterator S_fpi(*coarser,S_crse,0,time,State_Type,0,S.nComp());
              S_fpi.isValid(); ++S_fpi)
 	{
-            (*S_crse)[S_fpi].copy(S_fpi(),0,0,S.nComp());
+            S_crse[S_fpi].copy(S_fpi(),0,0,S.nComp());
 	}
     }
 
@@ -3532,16 +3522,16 @@ HeatTransfer::compute_differential_diffusion_fluxes (const Real& time,
 
         if (level > 0) 
         {
-            MultiFab::Copy(*Phi_crse,*S_crse,state_ind,0,1,0);
-            for (MFIter mfi(*S_crse); mfi.isValid(); ++mfi)
+            MultiFab::Copy(Phi_crse,S_crse,state_ind,0,1,0);
+            for (MFIter mfi(S_crse); mfi.isValid(); ++mfi)
             {
-		(*Phi_crse)[mfi].divide((*S_crse)[mfi],(*Phi_crse)[mfi].box(),Density,0,1);
+		Phi_crse[mfi].divide(S_crse[mfi],Phi_crse[mfi].box(),Density,0,1);
             }
-	    Phi_crse->FillBoundary();
-	    getLevel(level-1).geom.FillPeriodicBoundary(*Phi_crse);
+	    Phi_crse.FillBoundary();
+	    getLevel(level-1).geom.FillPeriodicBoundary(Phi_crse);
         }
 
-	diffusion->getBndryDataGivenS(visc_bndry,Phi,*Phi_crse,state_ind,0,1);
+	diffusion->getBndryDataGivenS(visc_bndry,Phi,Phi_crse,state_ind,0,1);
 
         const bool     do_applyBC           = true;
         const bool     bndry_already_filled = true;            
@@ -3558,11 +3548,6 @@ HeatTransfer::compute_differential_diffusion_fluxes (const Real& time,
 
     Phi.clear();
 
-    if (Phi_crse)
-        delete Phi_crse;
-
-    if (S_crse)
-        delete S_crse;
     //
     // Remove scaling left in fluxes from solve.
     //
@@ -4182,7 +4167,7 @@ HeatTransfer::predict_velocity (Real  dt,
 
     getGradP(Gp, prev_pres_time);
     
-    FArrayBox* null_fab = 0;
+    FArrayBox null_fab;
 
     showMF("mac",Gp,"pv_Gp",level);
     showMF("mac",*rho_ptime,"pv_rho_old",level);
@@ -4238,7 +4223,7 @@ HeatTransfer::predict_velocity (Real  dt,
                bndry[2] = getBCArray(State_Type,i,2,1);)
 
         godunov->Setup(grids[i], dx, dt, 1,
-                       D_DECL(*null_fab,*null_fab,*null_fab),
+                       D_DECL(null_fab,null_fab,null_fab),
                        D_DECL(bndry[0].dataPtr(),bndry[1].dataPtr(),bndry[2].dataPtr()),
                        D_DECL(U_fpi(),U_fpi(),U_fpi()), D_DECL(0,1,2),
                        tforces,0);
@@ -5064,11 +5049,8 @@ HeatTransfer::advance_chemistry (MultiFab&       mf_old,
         if (do_avg_down_chem)
         {
             MultiFab& fine_React = getLevel(level+1).get_old_data(RhoYdot_Type);
-            BoxArray cf_grids = fine_React.boxArray(); cf_grids.coarsen(fine_ratio);
-            MultiFab avg_fdist(cf_grids,nspecies,0);
-            NavierStokes::avgDown(cf_grids,fine_React.boxArray(),avg_fdist,fine_React,
-                                  level,level+1,0,nspecies,fine_ratio);
-            React_new.copy(avg_fdist);
+	    BoxLib::average_down(fine_React, React_new, getLevel(level+1).geom, geom,
+				 0, nspecies, fine_ratio);
         }
         //
         // Ensure consistent grow cells.
@@ -6001,18 +5983,14 @@ HeatTransfer::mac_sync ()
     for (int lev = finest_level-1; lev >= level; lev--)
     {
         HeatTransfer&   fine_lev = getLevel(lev+1);
-        const BoxArray& fgrids   = fine_lev.grids;
-            
         HeatTransfer&   crse_lev = getLevel(lev);
-        const BoxArray& cgrids   = crse_lev.grids;
-        const IntVect&  fratio   = crse_lev.fine_ratio;
-            
+
         MultiFab&       S_crse   = crse_lev.get_new_data(State_Type);
         MultiFab&       S_fine   = fine_lev.get_new_data(State_Type);
 
         const int pComp = (have_rhort ? RhoRT : Trac);
-        crse_lev.NavierStokes::avgDown(cgrids,fgrids,S_crse,S_fine,
-                                       lev,lev+1,pComp,1,fratio);
+	BoxLib::average_down(S_fine, S_crse, fine_lev.geom, crse_lev.geom,
+			     pComp, 1, crse_lev.fine_ratio);
     }
     showMF("sdcSync",S_new,"sdc_Snew_postInterpAvgSync",level,parent->levelSteps(level));
 
