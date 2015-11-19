@@ -882,7 +882,9 @@ HeatTransfer::HeatTransfer ()
     EdgeFlux               = 0;
     SpecDiffusionFluxn     = 0;
     SpecDiffusionFluxnp1   = 0;
+#ifdef USE_WBAR
     SpecDiffusionFluxWbar  = 0;
+#endif
 
     updateFluxReg = false;
 }
@@ -915,7 +917,9 @@ HeatTransfer::HeatTransfer (Amr&            papa,
     {
 	diffusion->allocFluxBoxesLevel(SpecDiffusionFluxn,   nGrow,nspecies+3);
 	diffusion->allocFluxBoxesLevel(SpecDiffusionFluxnp1, nGrow,nspecies+3);
+#ifdef USE_WBAR
 	diffusion->allocFluxBoxesLevel(SpecDiffusionFluxWbar,nGrow,nspecies);
+#endif
         sumSpecFluxDotGradHn.define(grids,1,0,Fab_allocate);
         sumSpecFluxDotGradHnp1.define(grids,1,0,Fab_allocate);
     }
@@ -934,8 +938,10 @@ HeatTransfer::HeatTransfer (Amr&            papa,
     if (level==0)
         stripBox = getStrip(geom);
 
+#ifdef USE_WBAR
     // this will hold the transport coefficients for Wbar
     diffWbar_cc = new MultiFab(grids,nspecies,1);
+#endif
 }
 
 HeatTransfer::~HeatTransfer ()
@@ -946,7 +952,9 @@ HeatTransfer::~HeatTransfer ()
     {
 	diffusion->removeFluxBoxesLevel(SpecDiffusionFluxn);
 	diffusion->removeFluxBoxesLevel(SpecDiffusionFluxnp1);
+#ifdef USE_WBAR
 	diffusion->removeFluxBoxesLevel(SpecDiffusionFluxWbar);
+#endif
         sumSpecFluxDotGradHn.clear();
         sumSpecFluxDotGradHnp1.clear();
     }
@@ -958,7 +966,9 @@ HeatTransfer::~HeatTransfer ()
         delete it->second;
     }
 
+#ifdef USE_WBAR
     delete diffWbar_cc;
+#endif
 }
 
 void
@@ -1183,10 +1193,13 @@ HeatTransfer::restart (Amr&          papa,
     {
 	BL_ASSERT(SpecDiffusionFluxn == 0);
 	BL_ASSERT(SpecDiffusionFluxnp1 == 0);
-	BL_ASSERT(SpecDiffusionFluxWbar == 0);
 	diffusion->allocFluxBoxesLevel(SpecDiffusionFluxn,   nGrow,nspecies+3);
 	diffusion->allocFluxBoxesLevel(SpecDiffusionFluxnp1, nGrow,nspecies+3);
+
+#ifdef USE_WBAR
+	BL_ASSERT(SpecDiffusionFluxWbar == 0);
 	diffusion->allocFluxBoxesLevel(SpecDiffusionFluxWbar,nGrow,nspecies);
+#endif
         sumSpecFluxDotGradHn.define(grids,1,0,Fab_allocate);
         sumSpecFluxDotGradHnp1.define(grids,1,0,Fab_allocate);
     }
@@ -1205,8 +1218,10 @@ HeatTransfer::restart (Amr&          papa,
     if (level==0)
         stripBox = getStrip(geom);
 
+#ifdef USE_WBAR
     // this will hold the transport coefficients for Wbar
     diffWbar_cc = new MultiFab(grids,nspecies,1);
+#endif
 
     bool running_sdc_from_strang_chk = false;
 
@@ -1786,7 +1801,9 @@ HeatTransfer::initData ()
         state[State_Type].setTimeLevel(cur_time,dt,dt);
 
         calcDiffusivity(cur_time);
+#ifdef USE_WBAR
 	calcDiffusivity_Wbar(cur_time);
+#endif
 
         calc_divu(cur_time,dtin,Divu_new);
 
@@ -2902,7 +2919,7 @@ HeatTransfer::differential_diffusion_update (MultiFab& Force,
 
   diffusion->removeFluxBoxesLevel(betanp1);
 
-#if USE_WBAR
+#ifdef USE_WBAR
   // add lagged grad Wbar fluxes (SpecDiffusionFluxWbar) to time-advanced 
   // species diffusion fluxes (SpecDiffusionFluxnp1)
   for (int d=0; d<BL_SPACEDIM; ++d)
@@ -3554,8 +3571,7 @@ HeatTransfer::compute_differential_diffusion_fluxes (const Real& time,
     for (int d=0; d < BL_SPACEDIM; ++d)
         flux[d]->mult(b/geom.CellSize()[d],0,nspecies+1);
 
-#if USE_WBAR
-
+#ifdef USE_WBAR
     compute_Wbar_fluxes(time,0);
 
     // add grad Wbar fluxes (SpecDiffusionFluxWbar) to 
@@ -3745,7 +3761,9 @@ HeatTransfer::flux_divergence (MultiFab&        fdiv,
 void
 HeatTransfer::compute_differential_diffusion_terms (MultiFab& D,
                                                     MultiFab& DD,
+#ifdef USE_WBAR
 						    MultiFab& DWbar,
+#endif
                                                     Real      time,
                                                     Real      dt)
 {
@@ -3767,7 +3785,9 @@ HeatTransfer::compute_differential_diffusion_terms (MultiFab& D,
     BL_ASSERT(whichTime == AmrOldTime || whichTime == AmrNewTime);    
     MultiFab& sumSpecFluxDotGradH = (whichTime == AmrOldTime) ? sumSpecFluxDotGradHn : sumSpecFluxDotGradHnp1;
     MultiFab* const * flux = (whichTime == AmrOldTime) ? SpecDiffusionFluxn : SpecDiffusionFluxnp1;
+#ifdef USE_WBAR
     MultiFab* const * fluxWbar = SpecDiffusionFluxWbar;
+#endif
     //
     // Compute/adjust species fluxes/heat flux/conduction, save in class data
     compute_differential_diffusion_fluxes(time,dt);
@@ -3789,8 +3809,10 @@ HeatTransfer::compute_differential_diffusion_terms (MultiFab& D,
     // compute div lambda grad T for temperature
     flux_divergence(D,nspecies+1,flux,nspecies+2,1,-1);
 
+#ifdef USE_WBAR
     // compute div beta_for_Wbar grad Wbar
     flux_divergence(DWbar,0,fluxWbar,0,nspecies,-1);
+#endif
 
     // add sum_m Gamma_m dot grad h_m to D for temperature
     MultiFab::Add(D,sumSpecFluxDotGradH,0,nspecies+1,1,0);
@@ -4099,7 +4121,9 @@ HeatTransfer::advance_setup (Real time,
 
     make_rho_curr_time();
 
+#ifdef USE_WBAR
     calcDiffusivity_Wbar(time);
+#endif
 
     if (plot_reactions && level == 0)
     {
@@ -4362,17 +4386,25 @@ HeatTransfer::advance (Real time,
 
     MultiFab Dn(grids,nspecies+2,nGrowAdvForcing);
     MultiFab DDn(grids,1,nGrowAdvForcing);
+#ifdef USE_WBAR
     MultiFab DWbar(grids,nspecies,nGrowAdvForcing);
+#endif
 
     // Compute Dn and DDn (based on state at tn)
     //  (Note that coeffs at tn and tnp1 were intialized in _setup)
     if (verbose && ParallelDescriptor::IOProcessor())
       std::cout << "Computing Dn, DDn, and DWbar \n";
 
+#ifdef USE_WBAR
     compute_differential_diffusion_terms(Dn,DDn,DWbar,prev_time,dt);
+#else
+    compute_differential_diffusion_terms(Dn,DDn,prev_time,dt);
+#endif
     showMF("sdc",Dn,"sdc_Dn",level,parent->levelSteps(level));
     showMF("sdc",DDn,"sdc_DDn",level,parent->levelSteps(level));
+#ifdef USE_WBAR
     showMF("sdc",DWbar,"sdc_DWbar",level,parent->levelSteps(level));
+#endif
 
     /*
       You could compute instantaneous I_R here but for now it's using either the
@@ -4409,13 +4441,19 @@ HeatTransfer::advance (Real time,
       {
 	// compute new-time transport coefficients
 	calcDiffusivity(cur_time);
+#ifdef USE_WBAR
 	calcDiffusivity_Wbar(cur_time);
+#endif
 
 	// compute Dnp1 and DDnp1
 	// iteratively lagged
 	if (verbose && ParallelDescriptor::IOProcessor())
             std::cout << "Computing Dnp1 and DDnp1 (SDC iteration " << sdc_iter << ")\n";
+#ifdef USE_WBAR
 	compute_differential_diffusion_terms(Dnp1,DDnp1,DWbar,cur_time,dt);
+#else
+	compute_differential_diffusion_terms(Dnp1,DDnp1,cur_time,dt);
+#endif
 
 	// compute new-time DivU with instantaneous reaction rates
 	calc_divu(cur_time, dt, get_new_data(Divu_Type));
@@ -4518,7 +4556,7 @@ HeatTransfer::advance (Real time,
 	f.plus(ddn  ,box,box,0,nspecies,1); // add DDn to RhoH, no contribution for RhoY
 	f.plus(ddnp1,box,box,0,nspecies,1); // add DDnp1 to RhoH, no contribution for RhoY
 	f.mult(0.5);
-#if USE_WBAR
+#ifdef USE_WBAR
 	const FArrayBox& dwbar = DWbar[mfi];
 	f.plus(dwbar,box,box,0,0,nspecies); // add DWbar to RhoY
 #endif
@@ -4641,7 +4679,9 @@ HeatTransfer::advance (Real time,
 #endif
 
     calcDiffusivity(cur_time);
+#ifdef USE_WBAR
     calcDiffusivity_Wbar(cur_time);
+#endif
 
     calcViscosity(cur_time,dt,iteration,ncycle);
     //
@@ -5489,8 +5529,7 @@ HeatTransfer::mac_sync ()
             //
    	    differential_spec_diffuse_sync(dt,false);
 
-#if USE_WBAR
-
+#ifdef USE_WBAR
 	    for (int dir=0; dir<BL_SPACEDIM; ++dir)
 	    {
 	      (*SpecDiffusionFluxWbar)[dir].setVal(0.);
@@ -5582,10 +5621,12 @@ HeatTransfer::mac_sync ()
 	      }
 
 	    // take divergence of beta grad delta Wbar and multiply divergence by dt/2
+#ifdef USE_WBAR
 	    MultiFab DWbar(grids,nspecies,nGrowAdvForcing);
 	    MultiFab* const * fluxWbar = SpecDiffusionFluxWbar;
 	    flux_divergence(DWbar,0,fluxWbar,0,nspecies,-1);
 	    DWbar.mult(dt/2.0);
+#endif
 
 	    // reset Ssync to be the same RHS as above, but with the (dt/2) div beta grad delta Wbar term
 	    // use the code above, but add on the grad delta Wbar term
@@ -5593,7 +5634,9 @@ HeatTransfer::mac_sync ()
 	    {
 	      const int  i   = mfi.index();
 	      const Box& grd = grids[i];
+#ifdef USE_WBAR
 	      const FArrayBox& DWbarFab = DWbar[mfi];
+#endif
 		
 	      int iconserved = -1;
 		
@@ -5611,7 +5654,9 @@ HeatTransfer::mac_sync ()
 		    delta_ssync.mult(s_sync,grd,Density-BL_SPACEDIM,0,1); // delta_ssync = q^{n+1,p} * (delta rho)^sync
 		    (*DeltaSsync)[mfi].copy(delta_ssync,grd,0,grd,iconserved,1); // DeltaSsync = q^{n+1,p} * (delta rho)^sync
 		    s_sync.minus(delta_ssync,grd,0,istate-BL_SPACEDIM,1); // Ssync = Ssync - q^{n+1,p} * (delta rho)^sync
+#ifdef USE_WBAR
 		    s_sync.plus(DWbarFab,grd,istate-first_spec,istate-BL_SPACEDIM,1); // add grad delta Wbar terms
+#endif
 		  }
 		}
 	      }
@@ -6006,6 +6051,7 @@ HeatTransfer::mac_sync ()
     }
 }
 
+#ifdef USE_WBAR
 void
 HeatTransfer::compute_Wbar_fluxes(Real time,
 				  Real inc)
@@ -6139,6 +6185,7 @@ HeatTransfer::compute_Wbar_fluxes(Real time,
     diffusion->removeFluxBoxesLevel(betaWbar);
 
 }
+#endif
 
 void
 HeatTransfer::differential_spec_diffuse_sync (Real dt,
@@ -6521,6 +6568,7 @@ HeatTransfer::calcDiffusivity (const Real time)
     showMFsub("1D",diff,stripBox,"1D_calcD_visc",level);
 }
 
+#ifdef USE_WBAR
 void
 HeatTransfer::calcDiffusivity_Wbar (const Real time)
 {
@@ -6553,6 +6601,7 @@ HeatTransfer::calcDiffusivity_Wbar (const Real time)
 		       RYfab.dataPtr(1),ARLIM(RYfab.loVect()),ARLIM(RYfab.hiVect()));
     }
 }
+#endif
 
 void
 HeatTransfer::getViscosity (MultiFab*  beta[BL_SPACEDIM],
@@ -6618,6 +6667,7 @@ HeatTransfer::getDiffusivity (MultiFab*  beta[BL_SPACEDIM],
         zeroBoundaryVisc(beta,time,state_comp,dst_comp,ncomp);
 }
 
+#ifdef USE_WBAR
 void
 HeatTransfer::getDiffusivity_Wbar (MultiFab*  beta[BL_SPACEDIM],
 				   const Real time)	   
@@ -6643,6 +6693,7 @@ HeatTransfer::getDiffusivity_Wbar (MultiFab*  beta[BL_SPACEDIM],
     if (zeroBndryVisc > 0)
       zeroBoundaryVisc(beta,time,BL_SPACEDIM+1,0,nspecies);
 }
+#endif
 
 void
 HeatTransfer::zeroBoundaryVisc (MultiFab*  beta[BL_SPACEDIM],
@@ -6726,7 +6777,9 @@ HeatTransfer::calc_divu (Real      time,
     int       vtCompY=0, vtCompT=0;
     MultiFab  mcViscTerms;
 
+#ifdef USE_WBAR
     MultiFab DWbar_temp(grids,nspecies,nGrowAdvForcing);
+#endif
 
     if (do_mcdd)
     {
@@ -6744,7 +6797,11 @@ HeatTransfer::calc_divu (Real      time,
 
 	// DD is computed and stored in divu, but we don't need it and overwrite
 	// divu in CALCDIVU.
+#ifdef USE_WBAR
         compute_differential_diffusion_terms(mcViscTerms,divu,DWbar_temp,time,dt);
+#else
+        compute_differential_diffusion_terms(mcViscTerms,divu,time,dt);
+#endif
 
 	do_reflux = do_reflux_hold;
     }
@@ -6777,7 +6834,7 @@ HeatTransfer::calc_divu (Real      time,
             BoxLib::Abort("bad divu_logic - shouldn't be here");
         }
     }
-    
+
     for (MFIter mfi(S); mfi.isValid(); ++mfi)
     {
         const Box& box = mfi.validbox();            

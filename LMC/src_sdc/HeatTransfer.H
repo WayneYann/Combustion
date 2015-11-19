@@ -308,14 +308,19 @@ protected:
     virtual void set_reasonable_grow_cells_for_R(Real time);
     virtual void differential_spec_diffuse_sync (Real dt,
 					         bool Wbar_corrector);
+
     virtual void compute_differential_diffusion_terms (MultiFab& D,
                                                        MultiFab& DD,
+#ifdef USE_WBAR
 						       MultiFab& DWbar,
+#endif
 						       Real      time,
 						       Real      dt);
 
+#ifdef USE_WBAR
     void compute_Wbar_fluxes(Real time,
                              Real inc);
+#endif
 
     enum YdotAction { HT_EstimateYdotNew, HT_ImproveYdotOld, HT_LeaveYdotAlone };
 
@@ -333,7 +338,9 @@ protected:
 
     virtual void calcDiffusivity (const Real time);
 
+#ifdef USE_WBAR
     void calcDiffusivity_Wbar (const Real time);
+#endif
 
     virtual void getViscosity (MultiFab* viscosity[BL_SPACEDIM],
                                const Real time);
@@ -344,8 +351,10 @@ protected:
                                  const int dst_comp,
                                  const int num_comp);
 
+#ifdef USE_WBAR
     void getDiffusivity_Wbar (MultiFab* diffusivity[BL_SPACEDIM],
 			      const Real time);
+#endif
 
     void zeroBoundaryVisc (MultiFab*  beta[BL_SPACEDIM],
                            const Real time,
@@ -455,11 +464,15 @@ protected:
     MultiFab**  EdgeFlux;
     MultiFab**  SpecDiffusionFluxn;
     MultiFab**  SpecDiffusionFluxnp1;
+#ifdef USE_WBAR
     MultiFab**  SpecDiffusionFluxWbar;
+#endif
     MultiFab    sumSpecFluxDotGradHn;
     MultiFab    sumSpecFluxDotGradHnp1;
 
+#ifdef USE_WBAR
     MultiFab *diffWbar_cc;
+#endif
 
     static bool                     plot_reactions;
     static bool                     plot_consumption;
