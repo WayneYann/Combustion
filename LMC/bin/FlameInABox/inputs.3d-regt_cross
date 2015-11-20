@@ -1,5 +1,3 @@
-proj.stencil = cross
-
 #----------------------------TOP LEVEL INPUTS----------------------
 max_step  =  10000
 max_step  =  5
@@ -176,3 +174,10 @@ mac.do_outflow_bcs = 0
 #   8BIT   (eight-bit run-length-encoded)
 #
 fab.format = NATIVE
+
+proj.stencil = cross
+
+#mac.use_fboxlib_mg = 1
+
+#diffuse.use_fboxlib_mg = 1
+
