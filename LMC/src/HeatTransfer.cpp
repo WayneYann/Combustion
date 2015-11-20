@@ -3760,7 +3760,7 @@ HeatTransfer::compute_mcdd_visc_terms(MultiFab&           vtermsYH,
     if (flux==0)
     {
         for (int dir=0; dir<BL_SPACEDIM; ++dir)
-            fluxLocal.set(dir,new MultiFab(BoxArray(grids).surroundingNodes(dir),nspecies+1,0));
+            fluxLocal.set(dir,new MultiFab(getEdgeBoxArray(dir),nspecies+1,0));
         tFlux = &fluxLocal;
     }
     else
@@ -4711,7 +4711,7 @@ HeatTransfer::mcdd_update(Real time,
 
     PArray<MultiFab> fluxn(BL_SPACEDIM,PArrayManage);
     for (int dir=0; dir<BL_SPACEDIM; ++dir)
-        fluxn.set(dir,new MultiFab(BoxArray(grids).surroundingNodes(dir),
+        fluxn.set(dir,new MultiFab(getEdgeBoxArray(dir),
                                    nspecies+1,0));
 
     // Load boundary data in operator for old time, compute L(told)
@@ -4784,7 +4784,7 @@ HeatTransfer::mcdd_update(Real time,
 
     PArray<MultiFab> fluxnp1(BL_SPACEDIM,PArrayManage);
     for (int dir=0; dir<BL_SPACEDIM; ++dir)
-        fluxnp1.set(dir,new MultiFab(BoxArray(grids).surroundingNodes(dir),
+        fluxnp1.set(dir,new MultiFab(getEdgeBoxArray(dir),
                                      nspecies+1,nGrow)); //stack H on Y's
 
     // Fill the boundary data for the solve (all the levels)
@@ -8410,7 +8410,7 @@ HeatTransfer::mcdd_diffuse_sync(Real dt)
     const int dCompH = nspecies;
     PArray<MultiFab> fluxpre(BL_SPACEDIM,PArrayManage);
     for (int dir=0; dir<BL_SPACEDIM; ++dir)
-        fluxpre.set(dir,new MultiFab(BoxArray(grids).surroundingNodes(dir),
+        fluxpre.set(dir,new MultiFab(getEdgeBoxArray(dir),
                                      nspecies+1,0));
     
     // Rhs = Ssync + dt*theta*L(phi_presync) + (rhoY)_presync
@@ -8442,7 +8442,7 @@ HeatTransfer::mcdd_diffuse_sync(Real dt)
 
     PArray<MultiFab> fluxpost(BL_SPACEDIM,PArrayManage);
     for (int dir=0; dir<BL_SPACEDIM; ++dir)
-        fluxpost.set(dir,new MultiFab(BoxArray(grids).surroundingNodes(dir),
+        fluxpost.set(dir,new MultiFab(getEdgeBoxArray(dir),
                                       nspecies+1,nGrow)); //stack H on Y's
     
     // Solve the system
