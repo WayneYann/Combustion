@@ -385,6 +385,16 @@ public:
 	m_func(data,ARLIM(lo),ARLIM(hi),dom_lo,dom_hi,dx,grd_lo,time,bc,&m_stateID);
     }
     //
+    // Fill boundary cells using "group" function.
+    //
+    virtual void operator () (Real* data, const int* lo, const int* hi,
+			      const int* dom_lo, const int* dom_hi,
+			      const Real* dx, const Real* grd_lo,
+			      const Real* time, const int* bc, int ng) const BL_OVERRIDE
+    {
+        BndryFunc::operator()(data, lo, hi, dom_lo, dom_hi, dx, grd_lo, time, bc, ng);
+    }
+    //
     // Access.
     //
     int getStateID () const              { return m_stateID;   }
