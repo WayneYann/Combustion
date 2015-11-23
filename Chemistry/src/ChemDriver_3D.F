@@ -497,12 +497,12 @@ c     NOTE: scal converts result from assumed cgs to MKS (1 erg/s.cm^3 = .1 J/s.
                CALL CKQC(T(i,j,k),Ct,IWRK(ckbi),RWRK(ckbr),Qt)
 #ifdef MIKE
                CALL CKCONT(id,Qt,IWRK(ckbi),RWRK(ckbr),Qkt)
-#else
-               call bl_abort('FORT_MOLPROD: CKCONT not available')
-#endif
                do n = 1,Nreac
                   Q(i,j,k,n) = Qkt(n)*million
                end do
+#else
+               call bl_abort('FORT_MOLPROD: CKCONT not available')
+#endif
             end do
          end do
       end do
