@@ -142,7 +142,6 @@ int  HeatTransfer::do_add_nonunityLe_corr_to_rhoh_adv_flux;
 int  HeatTransfer::do_check_divudt;
 int  HeatTransfer::hack_nochem;
 int  HeatTransfer::hack_nospecdiff;
-int  HeatTransfer::hack_nomcddsync;
 int  HeatTransfer::hack_noavgdivu;
 int  HeatTransfer::use_tranlib;
 Real HeatTransfer::trac_diff_coef;
@@ -151,20 +150,6 @@ bool HeatTransfer::plot_reactions;
 bool HeatTransfer::plot_consumption;
 bool HeatTransfer::plot_heat_release;
 static bool plot_rhoydot;
-int  HeatTransfer::do_mcdd;
-int  HeatTransfer::mcdd_NitersMAX;
-Real HeatTransfer::mcdd_relax_factor_T;
-Real HeatTransfer::mcdd_relax_factor_Y;
-int  HeatTransfer::mcdd_mgLevelsMAX;
-int  HeatTransfer::mcdd_nub;
-int  HeatTransfer::mcdd_numcycles;
-int  HeatTransfer::mcdd_verbose;
-Real HeatTransfer::mcdd_res_nu1_rtol;
-Real HeatTransfer::mcdd_res_nu2_rtol;
-Real HeatTransfer::mcdd_res_redux_tol;
-Real HeatTransfer::mcdd_res_abs_tol;
-Real HeatTransfer::mcdd_stalled_tol;
-Real HeatTransfer::mcdd_advance_temp;
 Real HeatTransfer::new_T_threshold;
 int  HeatTransfer::nGrowAdvForcing=1;
 bool HeatTransfer::avg_down_chem;
@@ -174,10 +159,7 @@ std::map<std::string,Real> HeatTransfer::typical_values_FileVals;
 std::string                                HeatTransfer::turbFile;
 ChemDriver*                                HeatTransfer::chemSolve;
 std::map<std::string, Array<std::string> > HeatTransfer::auxDiag_names;
-std::string                                HeatTransfer::mcdd_transport_model;
 
-Array<int>  HeatTransfer::mcdd_nu1;
-Array<int>  HeatTransfer::mcdd_nu2;
 Array<Real> HeatTransfer::typical_values;
 
 
@@ -300,7 +282,6 @@ HeatTransfer::Initialize ()
     HeatTransfer::do_check_divudt           = 1;
     HeatTransfer::hack_nochem               = 0;
     HeatTransfer::hack_nospecdiff           = 0;
-    HeatTransfer::hack_nomcddsync           = 1;
     HeatTransfer::hack_noavgdivu            = 0;
     HeatTransfer::use_tranlib               = 0;
     HeatTransfer::trac_diff_coef            = 0.0;
@@ -310,21 +291,6 @@ HeatTransfer::Initialize ()
     HeatTransfer::plot_consumption          = true;
     HeatTransfer::plot_heat_release         = true;
     plot_rhoydot                            = false;
-    HeatTransfer::do_mcdd                   = 0;
-    HeatTransfer::mcdd_transport_model      = "";
-    HeatTransfer::mcdd_NitersMAX            = 100;
-    HeatTransfer::mcdd_relax_factor_T       = 1.0;
-    HeatTransfer::mcdd_relax_factor_Y       = 1.0;
-    HeatTransfer::mcdd_mgLevelsMAX          = -1;
-    HeatTransfer::mcdd_nub                  = -1;
-    HeatTransfer::mcdd_numcycles            = 10;
-    HeatTransfer::mcdd_verbose              = 1;
-    HeatTransfer::mcdd_res_nu1_rtol         = 1.e-8;
-    HeatTransfer::mcdd_res_nu2_rtol         = 1.e-8;
-    HeatTransfer::mcdd_res_redux_tol        = 1.e-8;
-    HeatTransfer::mcdd_res_abs_tol          = 1.e-8;
-    HeatTransfer::mcdd_stalled_tol          = 1.e-8;
-    HeatTransfer::mcdd_advance_temp         = 1;
     HeatTransfer::new_T_threshold           = -1;  // On new AMR level, max change in lower bound for T, not used if <=0
     HeatTransfer::avg_down_chem             = false;
     HeatTransfer::reset_typical_vals_int    = -1;
@@ -415,7 +381,6 @@ HeatTransfer::Initialize ()
     pp.query("do_add_nonunityLe_corr_to_rhoh_adv_flux", do_add_nonunityLe_corr_to_rhoh_adv_flux);
     pp.query("hack_nochem",hack_nochem);
     pp.query("hack_nospecdiff",hack_nospecdiff);
-    pp.query("hack_nomcddsync",hack_nomcddsync);
     pp.query("hack_noavgdivu",hack_noavgdivu);
     pp.query("do_check_divudt",do_check_divudt);
     pp.query("avg_down_chem",avg_down_chem);
@@ -486,59 +451,6 @@ HeatTransfer::Initialize ()
             cout << '\n';
         }
 
-    }
-
-    pp.query("do_mcdd",do_mcdd);
-    if (do_mcdd) {
-        DDOp::set_chem_driver(getChemSolve());
-        pp.get("mcdd_transport_model",mcdd_transport_model);
-        if (mcdd_transport_model=="full") {
-            DDOp::set_transport_model(DDOp::DD_Model_Full);
-        }
-        else if (mcdd_transport_model=="mix") {
-            DDOp::set_transport_model(DDOp::DD_Model_MixAvg);
-        }
-        else
-        {
-            BoxLib::Abort("valid models: full, mix");
-        }
-        pp.query("mcdd_NitersMAX",mcdd_NitersMAX);
-        pp.query("mcdd_relax_factor_T",mcdd_relax_factor_T);
-        pp.query("mcdd_relax_factor_Y",mcdd_relax_factor_Y);
-        pp.query("mcdd_numcycles",mcdd_numcycles);
-        if (mcdd_numcycles<=0) mcdd_numcycles=1; // 0 is not valid, assume user wants one cycle
-        pp.query("mcdd_mgLevelsMAX",mcdd_mgLevelsMAX);
-        if (mcdd_mgLevelsMAX==0) mcdd_mgLevelsMAX=1; // 0 is not valid, assume user wants no additional levels
-        DDOp::set_mgLevelsMAX(mcdd_mgLevelsMAX);
-
-        int npre = pp.countval("mcdd_nu1");
-        if (npre>0) {
-            mcdd_nu1.resize(npre);
-            pp.getarr("mcdd_nu1",mcdd_nu1,0,npre);
-        }
-        int max_nvals = (mcdd_mgLevelsMAX<0  ?  100  :  mcdd_mgLevelsMAX);
-        mcdd_nu1.resize(max_nvals);
-        for (int i=npre; i<max_nvals; ++i) {
-            mcdd_nu1[i] = mcdd_nu1[npre-1];
-        }
-        int npost = pp.countval("mcdd_nu2");
-        if (npost>0) {
-            mcdd_nu2.resize(npost);
-            pp.getarr("mcdd_nu2",mcdd_nu2,0,npost);
-        }
-        mcdd_nu2.resize(max_nvals);
-        for (int i=npost; i<max_nvals; ++i) {
-            mcdd_nu2[i] = mcdd_nu2[npost-1];
-        }
-        pp.query("mcdd_nub",mcdd_nub);
-        pp.query("mcdd_res_nu1_rtol",mcdd_res_nu1_rtol);
-        pp.query("mcdd_res_nu2_rtol",mcdd_res_nu2_rtol);
-        pp.query("mcdd_res_redux_tol",mcdd_res_redux_tol);
-        pp.query("mcdd_res_abs_tol",mcdd_res_abs_tol);
-        pp.query("mcdd_stalled_tol",mcdd_stalled_tol);
-        pp.query("mcdd_advance_temp",mcdd_advance_temp);
-
-        pp.query("mcdd_verbose",mcdd_verbose);
     }
 
 #ifdef PARTICLES
@@ -852,8 +764,6 @@ HeatTransfer::variableCleanUp ()
     delete chemSolve;
     chemSolve = 0;
 
-    mcdd_nu1.clear();
-    mcdd_nu2.clear();
     ShowMF_Sets.clear();
     auxDiag_names.clear();
     typical_values.clear();
@@ -930,9 +840,6 @@ HeatTransfer::HeatTransfer (Amr&            papa,
         auxDiag[it->first] = new MultiFab(grids,it->second.size(),0);
         auxDiag[it->first]->setVal(0);
     }
-
-    if (do_mcdd)
-        MCDDOp.define(grids,Domain(),crse_ratio);
 
     // HACK for debugging
     if (level==0)
@@ -1211,9 +1118,6 @@ HeatTransfer::restart (Amr&          papa,
         auxDiag[it->first]->setVal(0);
     }
 
-    if (do_mcdd)
-        MCDDOp.define(grids,Domain(),crse_ratio);
-
     // HACK for debugging
     if (level==0)
         stripBox = getStrip(geom);
@@ -1344,20 +1248,6 @@ HeatTransfer::set_typical_values(bool restart)
             for (int i=0; i<nspecies; ++i)
             {
                 cout << "\tY_" << names[i] << ": " << typical_values[first_spec+i] << '\n';
-            }
-        }
-        //
-        // Verify good values for Density, Temp, RhoH, Y -- currently only needed for mcdd problems.
-        //
-        if (do_mcdd && ParallelDescriptor::IOProcessor())
-        {
-            for (int i=BL_SPACEDIM; i<nComp; ++i)
-            {
-                if (i!=Trac && i!=RhoRT && typical_values[i]<=0)
-                {
-                    cout << "component: " << i << " of " << nComp << '\n';
-                    BoxLib::Abort("Must have non-zero typical values");
-                }
             }
         }
     }
@@ -5488,8 +5378,7 @@ HeatTransfer::mac_sync ()
 	    
         if (!unity_Le 
             && nspecies>0 
-            && do_add_nonunityLe_corr_to_rhoh_adv_flux 
-            && !do_mcdd)
+            && do_add_nonunityLe_corr_to_rhoh_adv_flux) 
         {
             //
             // Diffuse the species syncs such that sum(SpecDiffSyncFluxes) = 0
@@ -5791,10 +5680,6 @@ HeatTransfer::mac_sync ()
 
             diffusion->removeFluxBoxesLevel(fluxNULN);
         }
-        else if (nspecies>0 && do_mcdd)
-        {
-	  BoxLib::Error("mcdd_diffuse_sync not implemented for sdc");
-        }
 
         MultiFab **flux;
         diffusion->allocFluxBoxesLevel(flux);
@@ -5821,8 +5706,7 @@ HeatTransfer::mac_sync ()
                 =  state_ind!=Density 
                 && state_ind!=Temp
                 && is_diffusive[state_ind]
-                && !(is_spec && !unity_Le)
-                && !(do_mcdd && (is_spec || state_ind==RhoH));
+                && !(is_spec && !unity_Le);
 		
             if (do_it && (is_spec || state_ind==RhoH))
                 rho_flag = 2;
@@ -6455,7 +6339,6 @@ void
 HeatTransfer::calcDiffusivity (const Real time)
 {
     BL_PROFILE("HT::calcDiffusivity()");
-    if (do_mcdd) return;
 
     const TimeLevel whichTime = which_time(State_Type, time);
 
@@ -6531,7 +6414,6 @@ HeatTransfer::calcDiffusivity_Wbar (const Real time)
     BL_PROFILE("HT::calcDiffusivity_Wbar()");
   // diffn_cc or diffnp1_cc contains cell-centered transport coefficients from Y's
   //
-    if (do_mcdd) return;
 
     const TimeLevel whichTime = which_time(State_Type, time);
 
@@ -6736,30 +6618,24 @@ HeatTransfer::calc_divu (Real      time,
     MultiFab DWbar_temp(grids,nspecies,nGrowAdvForcing);
 #endif
 
-    if (do_mcdd)
-    {
-      BoxLib::Error("calc_divu:compute_mcdd_visc_terms not implemented for SDC");
-    }
-    else
-    {
-        vtCompT = nspecies + 1;
-        vtCompY = 0;
-        mcViscTerms.define(grids,nspecies+2,nGrow,Fab_allocate);
+    vtCompT = nspecies + 1;
+    vtCompY = 0;
+    mcViscTerms.define(grids,nspecies+2,nGrow,Fab_allocate);
 
-	// we don't want to update flux registers due to fluxes in divu computation
-	bool do_reflux_hold = do_reflux;
-	do_reflux = false;
-
-	// DD is computed and stored in divu, but we don't need it and overwrite
-	// divu in CALCDIVU.
+    // we don't want to update flux registers due to fluxes in divu computation
+    bool do_reflux_hold = do_reflux;
+    do_reflux = false;
+    
+    // DD is computed and stored in divu, but we don't need it and overwrite
+    // divu in CALCDIVU.
 #ifdef USE_WBAR
-        compute_differential_diffusion_terms(mcViscTerms,divu,DWbar_temp,time,dt);
+    compute_differential_diffusion_terms(mcViscTerms,divu,DWbar_temp,time,dt);
 #else
-        compute_differential_diffusion_terms(mcViscTerms,divu,time,dt);
+    compute_differential_diffusion_terms(mcViscTerms,divu,time,dt);
 #endif
 
-	do_reflux = do_reflux_hold;
-    }
+    do_reflux = do_reflux_hold;
+
     //
     // if we are in the initial projection (time=0, dt=-1), set RhoYdot=0
     // if we are in a divu_iter (time=0, dt>0), use I_R

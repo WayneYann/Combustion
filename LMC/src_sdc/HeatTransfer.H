@@ -5,7 +5,6 @@
 #include <AuxBoundaryData.H>
 #include <NavierStokes.H>
 #include <ChemDriver.H>
-#include <DDOp.H>
 
 #ifdef PARTICLES
 #include <AmrParticles.H>
@@ -389,64 +388,9 @@ protected:
                                       const FPLoc&     bc_lo,
                                       const FPLoc&     bc_hi);
 
-  DistributionMapping getFuncCountDM (const BoxArray& bxba, int ngrow);
+    DistributionMapping getFuncCountDM (const BoxArray& bxba, int ngrow);
 
     enum Solver_Status {HT_InProgress, HT_Stalled, HT_Solved};
-    struct MCDD_MGParams {
-        MCDD_MGParams() {}
-        MCDD_MGParams(int nComp_)
-            {
-                nComp = nComp_;
-                maxRes.resize(nComp);
-                maxRes_initial.resize(nComp,0);
-                maxCor.resize(nComp);
-                status = HT_InProgress;
-            }
-        MCDD_MGParams(const MCDD_MGParams& rhs)
-            {
-                nComp = rhs.nComp;
-                maxRes.resize(nComp);
-                maxRes_initial.resize(nComp,0);
-                maxCor.resize(nComp);
-                for (int i=0; i<nComp; ++i) {
-                    maxRes[i] = rhs.maxRes[i];
-                    maxCor[i] = rhs.maxCor[i];
-                    maxRes_initial[i] = rhs.maxRes_initial[i];
-                }
-                maxRes_norm = rhs.maxRes_norm;
-                maxCor_norm = rhs.maxCor_norm;
-                res_nu1_rtol = rhs.res_nu1_rtol;
-                res_nu2_rtol = rhs.res_nu2_rtol;
-                res_redux_tol = rhs.res_redux_tol;
-                res_abs_tol = rhs.res_abs_tol;
-                stalled_tol = rhs.stalled_tol;
-                gamma = rhs.gamma;
-                num_coarser = rhs.num_coarser;
-                nu1 = rhs.nu1;
-                nu2 = rhs.nu2;
-                mg_level = rhs.mg_level;
-                status = rhs.status;
-                iter = rhs.iter;
-            }
-        Array<Real> maxRes;
-        Array<Real> maxRes_initial;
-        Array<Real> maxCor;
-        Real        maxRes_norm;
-        Real        maxCor_norm;
-        Real        res_nu1_rtol;
-        Real        res_nu2_rtol;
-        Real        res_redux_tol;
-        Real        res_abs_tol;
-        Real        stalled_tol;
-        int         iter;
-        int         nComp;
-        Solver_Status status;
-        int         num_coarser;
-        int         gamma;
-        int         nu1;
-        int         nu2;
-        int         mg_level;
-    };
 
     void set_htt_hmixTYP ();
 
@@ -479,8 +423,6 @@ protected:
     static bool                     plot_heat_release;
     std::map<std::string,MultiFab*> auxDiag;
     static std::map<std::string,Array<std::string> > auxDiag_names;
-
-    DDOp MCDDOp;
 
     static int         num_divu_iters;
     static int         init_once_done;
@@ -520,7 +462,6 @@ protected:
     static int         do_check_divudt;
     static int         hack_nochem;
     static int         hack_nospecdiff;
-    static int         hack_nomcddsync;
     static int         hack_noavgdivu;
     static Real        trac_diff_coef;
     static int         use_tranlib;
@@ -528,23 +469,6 @@ protected:
     static std::string turbFile;
     static std::string fuelName;
     static Array<std::string> consumptionName;
-    static int         do_mcdd;
-    static std::string mcdd_transport_model;
-    static int         mcdd_NitersMAX;
-    static Real        mcdd_relax_factor_T;
-    static Real        mcdd_relax_factor_Y;
-    static int         mcdd_mgLevelsMAX;
-    static Array<int>  mcdd_nu1;
-    static Array<int>  mcdd_nu2;
-    static int         mcdd_nub;
-    static int         mcdd_numcycles;
-    static Real        mcdd_res_nu1_rtol;
-    static Real        mcdd_res_nu2_rtol;
-    static Real        mcdd_res_redux_tol;
-    static Real        mcdd_res_abs_tol;
-    static Real        mcdd_stalled_tol;
-    static Real        mcdd_advance_temp;
-    static int         mcdd_verbose;
     static int         calcDiffusivity_count;
     static Real        new_T_threshold;
     static Array<Real> typical_values;
