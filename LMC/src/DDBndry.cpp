@@ -108,7 +108,7 @@ DDBndry::setBndryValues (::BndryRegister&  crse,
                          int             f_start,
                          int             bnd_start,
                          int             num_comp,
-                         IntVect&        ratio, 
+                         const IntVect&  ratio, 
                          const BCRec&    phys_bc,
                          int             max_order)
 {
