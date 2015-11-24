@@ -5,6 +5,7 @@
 #include <AuxBoundaryData.H>
 #include <NavierStokes.H>
 #include <ChemDriver.H>
+#include <BL_CXX11.H>
 
 #ifdef PARTICLES
 #include <AmrParticles.H>
@@ -48,70 +49,70 @@ public:
                   const BoxArray& bl,
                   Real            time);
 
-    virtual ~HeatTransfer ();
+    virtual ~HeatTransfer () BL_OVERRIDE;
 
     virtual void restart (Amr&          papa,
                           std::istream& is,
-                          bool          bReadSpecial = false);
+                          bool          bReadSpecial = false) BL_OVERRIDE;
 
 #if 1
     virtual Real predict_velocity (Real  dt,
-                                   Real& comp_cfl);
+                                   Real& comp_cfl) BL_OVERRIDE;
 #endif
     //
     // Timestep estimation functions follow.
     //
-    virtual Real estTimeStep ();
+    virtual Real estTimeStep () BL_OVERRIDE;
 
     void checkTimeStep (Real dt);
 
-    virtual void initData ();
+    virtual void initData () BL_OVERRIDE;
 
-    virtual void initDataOtherTypes ();
+    virtual void initDataOtherTypes () BL_OVERRIDE;
     //
     // Reset time levels for the initial iterations.
     //
     virtual void resetState (Real time,
                              Real dt_old,
-                             Real dt_new);
+                             Real dt_new) BL_OVERRIDE;
     //
     // Set time levels of state data.
     //
     virtual void setTimeLevel (Real time,
                                Real dt_old,
-                               Real dt_new);
+                               Real dt_new) BL_OVERRIDE;
     //
     // Init data on this level from another NavierStokes (during regrid).
     //
-    virtual void init (AmrLevel& old);
+    virtual void init (AmrLevel& old) BL_OVERRIDE;
     //
     // Init data on this level after regridding if old level
     // did not exist previously.
     //
-    virtual void init ();
+    virtual void init () BL_OVERRIDE;
     //
     // Setup for a level timestep.
     //
     virtual void advance_setup (Real time,
                                 Real dt,
                                 int  iteration,
-                                int  ncycle);
+                                int  ncycle) BL_OVERRIDE;
     //
     // Advance grids at this level in time.
     //
     virtual Real advance (Real time,
                           Real dt,
                           int  iteration,
-                          int  ncycle);
+                          int  ncycle) BL_OVERRIDE;
     //
     // Worker functions used by level advance function.
     //
-    virtual void create_mac_rhs (MultiFab& mac_rhs, int nGrow, Real time, Real dt);
+    virtual void create_mac_rhs (MultiFab& mac_rhs, int nGrow, Real time, Real dt) BL_OVERRIDE;
 
     virtual void getViscTerms (MultiFab& visc_terms,
                                int       src_comp, 
                                int       num_comp,
-                               Real      time);
+                               Real      time) BL_OVERRIDE;
 
     void getTempViscTerms (MultiFab& visc_terms,
                            int       src_comp, 
@@ -127,7 +128,7 @@ public:
                                        MultiFab*&  delta_rhs,
                                        MultiFab*&  alpha, 
                                        MultiFab**& betan,
-                                       MultiFab**& betanp1);
+                                       MultiFab**& betanp1) BL_OVERRIDE;
 
     void diffuse_rhoh_setup (Real       time,
                              Real       dt,
@@ -180,45 +181,45 @@ public:
 				       const MultiFab*        alpha, 
 				       const MultiFab* const* betanp1);
     
-    virtual void scalar_diffusion_update (Real dt,
-                                          int  first_scalar, 
-                                          int  last_scalar,
-                                          int  do_viscreflux);
+    void scalar_diffusion_update (Real dt,
+				  int  first_scalar, 
+				  int  last_scalar,
+				  int  do_viscreflux);
 
-    virtual void velocity_diffusion_update (Real dt);
+    virtual void velocity_diffusion_update (Real dt) BL_OVERRIDE;
 
     virtual void diffuse_velocity_setup (Real        dt,
                                          MultiFab*&  delta_rhs,
                                          MultiFab**& betan, 
-                                         MultiFab**& betanp1);
+                                         MultiFab**& betanp1) BL_OVERRIDE;
     //
     // Make rho at time n.
     //
-    virtual void make_rho_prev_time ();
+    virtual void make_rho_prev_time () BL_OVERRIDE;
     //
     // Make rho at time n+1.
     //
-    virtual void make_rho_curr_time ();
+    virtual void make_rho_curr_time () BL_OVERRIDE;
     //
     // Compute timesteps.
     //
-    virtual void post_timestep (int iteration);
+    virtual void post_timestep (int iteration) BL_OVERRIDE;
 
     //
     // Contains operations to be done only after a full coarse timestep.
     //
-    virtual void postCoarseTimeStep (Real cumtime);
+    virtual void postCoarseTimeStep (Real cumtime) BL_OVERRIDE;
 
     virtual void post_init_press (Real&        dt_init,
                                   Array<int>&  nc_save,
-                                  Array<Real>& dt_save);
+                                  Array<Real>& dt_save) BL_OVERRIDE;
 
     virtual void post_regrid (int lbase,
-                              int new_finest);
+                              int new_finest) BL_OVERRIDE;
 
-    virtual void post_restart ();
+    virtual void post_restart () BL_OVERRIDE;
 
-    virtual void post_init (Real stop_time);
+    virtual void post_init (Real stop_time) BL_OVERRIDE;
 
     void init_once ();
     //
@@ -239,14 +240,14 @@ public:
     //
     virtual MultiFab* derive (const std::string& name,
                               Real               time,
-                              int                ngrow);
+                              int                ngrow) BL_OVERRIDE;
     //
     // This version of derive() fills the dcomp'th component of mf with the derived quantity.
     //
     virtual void derive (const std::string& name,
                          Real               time,
                          MultiFab&          mf,
-                         int                dcomp);
+                         int                dcomp) BL_OVERRIDE;
     //
     // Define data descriptors.
     //
@@ -262,19 +263,19 @@ protected:
     //
     // Protected member functions.
     //
-    virtual void sum_integrated_quantities ();
+    virtual void sum_integrated_quantities () BL_OVERRIDE;
 
     HeatTransfer& getLevel (int lev)
     {
         return *(HeatTransfer*) &parent->getLevel(lev);
     }
 
-    virtual void mac_sync ();
+    virtual void mac_sync () BL_OVERRIDE;
     //
     // Crse/fine fixup functions.
     //
-    virtual void reflux ();
-    virtual void avgDown (); // Average down for all the state types.
+    virtual void reflux () BL_OVERRIDE;
+    virtual void avgDown () BL_OVERRIDE; // Average down for all the state types.
     //
     // Note: these two functions must be supplied in NS_setup.C
     //       If divu (dsdt) is not included in the state, then
@@ -283,19 +284,19 @@ protected:
     //
     virtual void calc_divu (Real      time,
                             Real      dt,
-                            MultiFab& divu);
+                            MultiFab& divu) BL_OVERRIDE;
 
     virtual void calc_dsdt (Real      time,
                             Real      dt,
-                            MultiFab& dsdt);
+                            MultiFab& dsdt) BL_OVERRIDE;
 
-    virtual void calc_dpdt (Real      time,
-                            Real      dt,
-                            MultiFab& dpdt,
-                            MultiFab* u_mac);
+    void calc_dpdt (Real      time,
+		    Real      dt,
+		    MultiFab& dpdt,
+		    MultiFab* u_mac);
 
-    virtual void compute_vel_visc (Real      time,
-                                   MultiFab* beta);
+    void compute_vel_visc (Real      time,
+			   MultiFab* beta);
 
     void setThermoPress(Real time);
 
@@ -304,7 +305,7 @@ protected:
                         int             pComp,
                         const MultiFab* T = 0);
 
-    virtual void temperature_stats (MultiFab& S);
+    void temperature_stats (MultiFab& S);
 
     void compute_rhohmix (Real       time,
                           MultiFab& rhohmix);
@@ -374,39 +375,39 @@ protected:
     //
     // advance functions
     //
-    virtual void compute_edge_states (Real dt,
-                                      std::vector<int>* state_comps_to_compute = 0);
-    virtual void differential_spec_diffuse_sync (Real dt);
-    virtual void compute_differential_diffusion_terms (MultiFab& visc_terms,
-						       int       sComp,
-						       Real      time);
+    void compute_edge_states (Real dt,
+			      std::vector<int>* state_comps_to_compute = 0);
+    void differential_spec_diffuse_sync (Real dt);
+    void compute_differential_diffusion_terms (MultiFab& visc_terms,
+					       int       sComp,
+					       Real      time);
     void adjust_spec_diffusion_fluxes (Real time);
 
     enum YdotAction { HT_EstimateYdotNew, HT_ImproveYdotOld, HT_LeaveYdotAlone };
 
-    virtual void strang_chem (MultiFab&  state,
-			      Real       dt,
-			      YdotAction Ydot_action,
-                              int        ngrow = 0);
+    void strang_chem (MultiFab&  state,
+		      Real       dt,
+		      YdotAction Ydot_action,
+		      int        ngrow = 0);
 
     virtual void calcViscosity (const Real time,
                                 const Real dt,
                                 const int  iteration,
-                                const int  ncycle);
+                                const int  ncycle) BL_OVERRIDE;
 
-    virtual void calcDiffusivity (const Real time);
+    virtual void calcDiffusivity (const Real time) BL_OVERRIDE;
 
     void calcDiffusivity (const Real time,
                           bool       doCalcVisc);
 
     virtual void getViscosity (MultiFab* viscosity[BL_SPACEDIM],
-                               const Real time);
+                               const Real time) BL_OVERRIDE;
 
     virtual void getDiffusivity (MultiFab* diffusivity[BL_SPACEDIM],
                                  const Real time,
                                  const int state_comp,
                                  const int dst_comp,
-                                 const int num_comp);
+                                 const int num_comp) BL_OVERRIDE;
 
     void zeroBoundaryVisc (MultiFab*  beta[BL_SPACEDIM],
                            const Real time,
@@ -428,19 +429,19 @@ protected:
                                                 int       src_comp,
                                                 int       dst_comp,
                                                 int       num_comp,
-                                                Real      time) const;
+                                                Real      time) const BL_OVERRIDE;
 
     void set_overdetermined_boundary_cells (Real time);
     //
     // Set the variables that are put in the plotfile....
     //
-    virtual void setPlotVariables ();
+    virtual void setPlotVariables () BL_OVERRIDE;
     //
     // Write plot file stuff to specified directory.
     //
     virtual void writePlotFile (const std::string& dir,
                                 std::ostream&      os,
-                                VisMF::How         how);
+                                VisMF::How         how) BL_OVERRIDE;
     //
     // Functions for interpolating from cell centers to cell edges
     //
@@ -474,7 +475,7 @@ protected:
     virtual void checkPoint (const std::string& dir,
                              std::ostream&      os,
                              VisMF::How         how = VisMF::OneFilePerCPU,
-                             bool               dump_old = true);
+                             bool               dump_old = true) BL_OVERRIDE;
 
 protected:
 
