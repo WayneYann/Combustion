@@ -9,6 +9,7 @@
 #include <ErrorList.H>
 #include <FluxRegister.H>
 #include <ChemDriver.H>
+#include <BL_CXX11.H>
 
 #ifdef USE_SDCLIB
 class SDCAmr;
@@ -47,34 +48,34 @@ public:
     //
     //The destructor.
     //
-    virtual ~RNS ();
+    virtual ~RNS () BL_OVERRIDE;
     //
     //Restart from a checkpoint file.
     //
     virtual void restart (Amr&     papa,
 			  istream& is,
-			  bool bReadSpecial = false);
+			  bool bReadSpecial = false) BL_OVERRIDE;
     //
     //Call AmrLevel::checkPoint
     //
     virtual void checkPoint(const std::string& dir,
 			    std::ostream&      os,
 			    VisMF::How         how,
-			    bool               dump_old);
+			    bool               dump_old) BL_OVERRIDE;
 
     /*A string written as the first item in writePlotFile() at
       level zero. It is so we can distinguish between different
       types of plot files. For RNS it has the form: RNS-Vnnn
     */
-    virtual std::string thePlotFileType () const;
+    virtual std::string thePlotFileType () const BL_OVERRIDE;
 
-    virtual void setPlotVariables ();
+    virtual void setPlotVariables () BL_OVERRIDE;
     //
     //Write a plotfile to specified directory.
     //
     virtual void writePlotFile (const std::string& dir,
 				ostream&       os,
-				VisMF::How     how);
+				VisMF::How     how) BL_OVERRIDE;
     //
     //Define data descriptors.
     //
@@ -90,7 +91,7 @@ public:
     //
     //Initialize grid data at problem start-up.
     //
-    virtual void initData ();
+    virtual void initData () BL_OVERRIDE;
 
     //
     //Get problem metrics.
@@ -104,22 +105,22 @@ public:
     //
     //Initialize data on this level from another RNS (during regrid).
     //
-    virtual void init (AmrLevel& old);
+    virtual void init (AmrLevel& old) BL_OVERRIDE;
     //
     //Initialize data on this level after regridding if old level did not previously exist
     //
-    virtual void init ();
+    virtual void init () BL_OVERRIDE;
     //
     //Proceed with next timestep?
     //
-    virtual int okToContinue ();
+    virtual int okToContinue () BL_OVERRIDE;
     //
     //Advance grids at this level in time.
     //
     virtual Real advance (Real time,
 			  Real dt,
 			  int  iteration,
-			  int  ncycle);
+			  int  ncycle) BL_OVERRIDE;
     //
     // do chemistry
     // When it's called, 2 ghost cells of U should have already been filled properly.
@@ -186,7 +187,7 @@ public:
 				   Array<int>&           n_cycle,
 				   const Array<IntVect>& ref_ratio,
 				   Array<Real>&          dt_level,
-				   Real                  stop_time);
+				   Real                  stop_time) BL_OVERRIDE;
     //
     //Compute new `dt'.
     //
@@ -197,28 +198,28 @@ public:
 			       Array<Real>&          dt_min,
 			       Array<Real>&          dt_level,
 			       Real                  stop_time,
-			       int                   post_regrid_flag);
+			       int                   post_regrid_flag) BL_OVERRIDE;
     //
     //Do work after timestep().
     //
-    virtual void post_timestep (int iteration);
+    virtual void post_timestep (int iteration) BL_OVERRIDE;
     //
     // Contains operations to be done only after a full coarse timestep.
     //
-    virtual void postCoarseTimeStep (Real cumtime);
+    virtual void postCoarseTimeStep (Real cumtime) BL_OVERRIDE;
     //
     //Do work after regrid().
     //
     virtual void post_regrid (int lbase,
-			      int new_finest);
+			      int new_finest) BL_OVERRIDE;
     //
     //Do work after a restart().
     //
-    virtual void post_restart ();
+    virtual void post_restart () BL_OVERRIDE;
     //
     //Do work after init().
     //
-    virtual void post_init (Real stop_time);
+    virtual void post_init (Real stop_time) BL_OVERRIDE;
     //
     //Error estimation for regridding.
     //
@@ -226,21 +227,22 @@ public:
 			   int          clearval,
 			   int          tagval,
 			   Real         time,
-			   int          n_error_buf = 0, int ngrow = 0);
+			   int          n_error_buf = 0,
+			   int ngrow = 0) BL_OVERRIDE;
 
     // Returns a MultiFab containing the derived data for this level.
     // The user is responsible for deleting this pointer when done
     // with it.  If ngrow>0 the MultiFab is built on the appropriately
     // grown BoxArray.
-    MultiFab* derive (const std::string& name,
-		      Real               time,
-		      int                ngrow);
+    virtual MultiFab* derive (const std::string& name,
+			      Real               time,
+			      int                ngrow) BL_OVERRIDE;
 
     // This version of derive() fills the dcomp'th component of mf with the derived quantity.
-    void derive (const std::string& name,
-		 Real               time,
-		 MultiFab&          mf,
-		 int                dcomp);
+    virtual void derive (const std::string& name,
+			 Real               time,
+			 MultiFab&          mf,
+			 int                dcomp) BL_OVERRIDE;
 
     static int numGrow();
 

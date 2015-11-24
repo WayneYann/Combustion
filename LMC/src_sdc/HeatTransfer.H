@@ -204,16 +204,16 @@ public:
     // with it.  If ngrow>0 the MultiFab is built on the appropriately
     // grown BoxArray.
     //
-    MultiFab* derive (const std::string& name,
-                      Real               time,
-                      int                ngrow);
+    virtual MultiFab* derive (const std::string& name,
+			      Real               time,
+			      int                ngrow) BL_OVERRIDE;
     //
     // This version of derive() fills the dcomp'th component of mf with the derived quantity.
     //
-    void derive (const std::string& name,
-                 Real               time,
-                 MultiFab&          mf,
-                 int                dcomp);
+    virtual void derive (const std::string& name,
+			 Real               time,
+			 MultiFab&          mf,
+			 int                dcomp) BL_OVERRIDE;
     //
     // Define data descriptors.
     //
