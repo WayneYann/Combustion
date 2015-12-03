@@ -249,10 +249,10 @@ static void modify_parameters(ChemDriver& cd)
     values[i] = p[i].DefaultValue();
   }
 
-  int nv = pp.countval("values");
+  int nv = pp.countval("parameter_values");
   if (nv!=0) {
     BL_ASSERT(nv == np);
-    pp.getarr("values",values,0,np);
+    pp.getarr("parameter_values",values,0,np);
     for (int i=0; i<np; ++i) {
       p[i].Value() = values[i];
       std::cout << "************** Modified chem parameter \"" << parameters[i] << "\": " << p[i] << std::endl;
