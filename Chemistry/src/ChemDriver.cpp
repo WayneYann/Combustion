@@ -223,6 +223,8 @@ static void modify_parameters(ChemDriver& cd)
     pp.getarr("parameters",parameters,0,np);
   }
 
+  PArray<ChemDriver::Parameter> p(np,PArrayManage);
+  Array<Real> values(np);
   for (int i=0; i<np; ++i) {
     std::string prefix = parameters[i];
     ParmParse ppp(std::string("chem."+prefix).c_str());
@@ -232,9 +234,6 @@ static void modify_parameters(ChemDriver& cd)
     }
 
     std::string type; ppp.get("type",type);
-
-    std::cout << "type: " << PTypeMap[type] << std::endl;
-    
     std::map<std::string,REACTION_PARAMETER>::const_iterator it = PTypeMap.find(type);
     if (it == PTypeMap.end()) {
       BoxLib::Abort("Unrecognized reaction parameter");
@@ -247,12 +246,18 @@ static void modify_parameters(ChemDriver& cd)
       BL_ASSERT(id >= 0);
     }
 
-    ChemDriver::Parameter p(reaction_id,it->second,id);
-    Real value = p.DefaultValue();
-    ppp.query("value",value);
-    p.Value() = value;
+    p.set(i,new ChemDriver::Parameter(reaction_id,it->second,id));
+    values[i] = p[i].DefaultValue();
+  }
 
-    std::cout << "************** Modified chem parameter \"" << prefix << "\": " << p << std::endl;
+  int nv = pp.countval("values");
+  if (nv!=0) {
+    BL_ASSERT(nv == np);
+    pp.getarr("values",values,0,np);
+    for (int i=0; i<np; ++i) {
+      p[i].Value() = values[i];
+      std::cout << "************** Modified chem parameter \"" << parameters[i] << "\": " << p[i] << std::endl;
+    }
   }
 }
 
