@@ -186,10 +186,9 @@ static void modify_parameters(ChemDriver& cd)
     chem.parameters = p1 p2 ...
     chem.p1.type = FWD_A
     chem.p1.reaction_id = 0
-    chem.p1.value = 6.e17
     chem.p2.type = FWD_EA
     chem.p2.reaction_id = 0
-    chem.p2.value = 6000
+    chem.values = 6.e17 6000
     ...
    */
 
