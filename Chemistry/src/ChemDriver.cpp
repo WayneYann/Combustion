@@ -181,6 +181,18 @@ ChemDriver::Transport ()
 
 static void modify_parameters(ChemDriver& cd)
 {
+  /*
+    To modify a chem parameter, p1 ... pn, add the following to the ParmParsed input, e.g.
+    chem.parameters = p1 p2 ...
+    chem.p1.type = FWD_A
+    chem.p1.reaction_id = 0
+    chem.p1.value = 6.e17
+    chem.p2.type = FWD_EA
+    chem.p2.reaction_id = 0
+    chem.p2.value = 6000
+    ...
+   */
+
   // FIXME: Redo this to avoid explicitly defining this map twice...
   std::map<std::string,REACTION_PARAMETER> PTypeMap;
   PTypeMap["FWD_A"]      = FWD_A;
