@@ -589,12 +589,7 @@ showMFsub(const std::string&   mySet,
 
         FArrayBox sub(box,mf.nComp());
 
-        MultiFab mfg(BoxArray(mf.boxArray()).grow(mf.nGrow()),mf.nComp(),0);
-        for (MFIter mfi(mf); mfi.isValid(); ++mfi)
-        {
-            mfg[mfi].copy(mf[mfi]);
-        }
-        mfg.copy(sub,0,0,mf.nComp());
+        mf.copy(sub,0,0,mf.nComp(),mf.nGrow());
 
         if (ShowMF_Check_Nans)
         {
@@ -4689,30 +4684,7 @@ HeatTransfer::getFuncCountDM (const BoxArray& bxba, int ngrow)
     MultiFab fctmpnew(bxba, 1, 0, rr);
     fctmpnew.setVal(1);
 
-    if (ngrow == 0)
-    {
-        //
-        // Working on valid region of state.
-        //
-        fctmpnew.copy(get_new_data(FuncCount_Type));  // Parallel copy.
-    }
-    else
-    {
-        //
-        // Can't directly use a parallel copy from FuncCount_Type to fctmpnew.
-        //
-        MultiFab& FC = get_new_data(FuncCount_Type);
-
-        BoxArray ba = FC.boxArray();
-        ba.grow(ngrow);
-        MultiFab grownFC(ba, 1, 0);
-        grownFC.setVal(1);
-
-        for (MFIter mfi(FC); mfi.isValid(); ++mfi)
-            grownFC[mfi].copy(FC[mfi]);
-
-        fctmpnew.copy(grownFC);  // Parallel copy.
-    }
+    fctmpnew.copy(get_new_data(FuncCount_Type),0,0,1,ngrow,0);
 
     int count = 0;
     Array<long> vwrk(bxba.size());
@@ -4931,24 +4903,8 @@ HeatTransfer::advance_chemistry (MultiFab&       mf_old,
         }
 
         MultiFab& FC = get_new_data(FuncCount_Type);
-        if (ngrow == 0)
-        {
-            FC.copy(fcnCntTemp); // Parallel copy.
-        }
-        else
-        {
-            BoxArray ba = FC.boxArray(); ba.grow(ngrow);
-            MultiFab grownFC(ba, 1, 0);
-            for (MFIter mfi(FC); mfi.isValid(); ++mfi)
-            {
-                grownFC[mfi].copy(FC[mfi]);
-            }
-            grownFC.copy(fcnCntTemp); // Parallel copy.        
-            for (MFIter mfi(grownFC); mfi.isValid(); ++mfi)
-            {
-                FC[mfi].copy(grownFC[mfi]);
-            }
-        }
+	FC.copy(fcnCntTemp,0,0,1,0,ngrow);
+
         fcnCntTemp.clear();
         //
         // Approximate covered crse chemistry (I_R) with averaged down fine I_R from previous time step.

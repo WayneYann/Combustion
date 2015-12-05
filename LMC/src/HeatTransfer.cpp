@@ -4501,24 +4501,11 @@ HeatTransfer::advance (Real time,
         const int ngrow = aux_boundary_data_old.nGrow();
 
         {
-            BoxArray ba = S_old.boxArray();
+            MultiFab tmpS_old(S_old.boxArray(), NUM_STATE, ngrow);
 
-            ba.grow(ngrow);
-            //
-            // This MF is guaranteed to cover tmpFABs & valid region of S_old.
-            //
-            // Note that S_old & tmpS_old have the same distribution.
-            //
-            MultiFab tmpS_old(ba,NUM_STATE,0);
+	    FillPatch(*this,tmpS_old,ngrow,prev_time,State_Type,0,NUM_STATE,0);
 
-            for (FillPatchIterator fpi(*this,S_old,ngrow,prev_time,State_Type,0,NUM_STATE);
-                 fpi.isValid();
-                 ++fpi)
-            {
-                tmpS_old[fpi].copy(fpi());
-            }
-
-            tmpFABs.copy(tmpS_old);
+            tmpFABs.copy(tmpS_old,0,0,NUM_STATE,ngrow,0);
         }
 
         strang_chem(S_old,  dt,HT_LeaveYdotAlone);
@@ -5013,30 +5000,7 @@ HeatTransfer::getFuncCountDM (const BoxArray& bxba, int ngrow)
     fctmpnew.define(bxba, 1, 0, rr, Fab_allocate);
     fctmpnew.setVal(1);
 
-    if (ngrow == 0)
-    {
-        //
-        // Working on valid region of state.
-        //
-        fctmpnew.copy(get_new_data(FuncCount_Type));  // Parallel copy.
-    }
-    else
-    {
-        //
-        // Can't directly use a parallel copy from FuncCount_Type to fctmpnew.
-        //
-        MultiFab& FC = get_new_data(FuncCount_Type);
-
-        BoxArray ba = FC.boxArray();
-        ba.grow(ngrow);
-        MultiFab grownFC(ba, 1, 0);
-        grownFC.setVal(1);
-                
-        for (MFIter mfi(FC); mfi.isValid(); ++mfi)
-            grownFC[mfi].copy(FC[mfi]);
-
-        fctmpnew.copy(grownFC);  // Parallel copy.
-    }
+    fctmpnew.copy(get_new_data(FuncCount_Type),0,0,1,ngrow,0);
 
     int count = 0;
     Array<long> vwrk(bxba.size());
@@ -5292,32 +5256,8 @@ HeatTransfer::strang_chem (MultiFab&  mf,
                 auxDiag["REACTIONS"]->copy(diagTemp); // Parallel copy
             }
 
-            if (ngrow == 0)
-            {
-                //
-                // Working on valid region of state.
-                //
-                get_new_data(FuncCount_Type).copy(fcnCntTemp); // Parallel copy.
-            }
-            else
-            {
-                //
-                // Can't directly use a parallel copy to update FuncCount_Type.
-                //
-                MultiFab& FC = get_new_data(FuncCount_Type);
-
-                BoxArray ba = FC.boxArray();
-                ba.grow(ngrow);
-                MultiFab grownFC(ba, 1, 0);
-                
-                for (MFIter mfi(FC); mfi.isValid(); ++mfi)
-                    grownFC[mfi].copy(FC[mfi]);
-
-                grownFC.copy(fcnCntTemp); // Parallel copy.
-
-                for (MFIter mfi(grownFC); mfi.isValid(); ++mfi)
-                    FC[mfi].copy(grownFC[mfi]);
-            }
+	    MultiFab& FC = get_new_data(FuncCount_Type);
+	    FC.copy(fcnCntTemp,0,0,1,0,ngrow);
         }
 
         if (ydot_tmp)
