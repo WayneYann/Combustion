@@ -5000,7 +5000,8 @@ HeatTransfer::getFuncCountDM (const BoxArray& bxba, int ngrow)
     fctmpnew.define(bxba, 1, 0, rr, Fab_allocate);
     fctmpnew.setVal(1);
 
-    fctmpnew.copy(get_new_data(FuncCount_Type),0,0,1,ngrow,0);
+    const MultiFab& FC = get_new_data(FuncCount_Type);
+    fctmpnew.copy(FC,0,0,1,std::min(ngrow,FC.nGrow()),0);
 
     int count = 0;
     Array<long> vwrk(bxba.size());
@@ -5257,7 +5258,7 @@ HeatTransfer::strang_chem (MultiFab&  mf,
             }
 
 	    MultiFab& FC = get_new_data(FuncCount_Type);
-	    FC.copy(fcnCntTemp,0,0,1,0,ngrow);
+	    FC.copy(fcnCntTemp,0,0,1,0,std::min(ngrow,FC.nGrow()));
         }
 
         if (ydot_tmp)

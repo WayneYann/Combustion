@@ -4684,7 +4684,8 @@ HeatTransfer::getFuncCountDM (const BoxArray& bxba, int ngrow)
     MultiFab fctmpnew(bxba, 1, 0, rr);
     fctmpnew.setVal(1);
 
-    fctmpnew.copy(get_new_data(FuncCount_Type),0,0,1,ngrow,0);
+    const MultiFab& FC = get_new_data(FuncCount_Type);
+    fctmpnew.copy(FC,0,0,1,std::min(ngrow,FC.nGrow()),0);
 
     int count = 0;
     Array<long> vwrk(bxba.size());
@@ -4903,7 +4904,7 @@ HeatTransfer::advance_chemistry (MultiFab&       mf_old,
         }
 
         MultiFab& FC = get_new_data(FuncCount_Type);
-	FC.copy(fcnCntTemp,0,0,1,0,ngrow);
+	FC.copy(fcnCntTemp,0,0,1,0,std::min(ngrow,FC.nGrow()));
 
         fcnCntTemp.clear();
         //
