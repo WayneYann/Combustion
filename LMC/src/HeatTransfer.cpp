@@ -4930,13 +4930,8 @@ HeatTransfer::set_overdetermined_boundary_cells (Real time)
     const int nGrow = (whichTime == AmrOldTime) ? Godunov::hypgrow() : LinOp_grow;
     //
     // Build a MultiFab parallel to State with appropriate # of ghost
-    // cells built into the FABs themselves to cover rhoh_data.
     //
-    BoxArray ba = grids;
-
-    ba.grow(nGrow);
-
-    MultiFab tmpS(ba,1,0);
+    MultiFab tmpS(grids,1,nGrow);
 
     const BoxArray& rhoh_BA = rhoh_data.equivBoxArray();
 
@@ -4982,7 +4977,7 @@ HeatTransfer::set_overdetermined_boundary_cells (Real time)
 
     const int RhoHcomp = (whichTime == AmrOldTime) ? RhoH-BL_SPACEDIM : 0;
 
-    rhoh_data.copyFrom(tmpS,0,RhoHcomp,1); // Parallel copy.
+    rhoh_data.copyFrom(tmpS,0,RhoHcomp,1,nGrow); // Parallel copy.
 }
 
 DistributionMapping
