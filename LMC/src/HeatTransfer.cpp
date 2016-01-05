@@ -2441,6 +2441,8 @@ HeatTransfer::avgDown ()
         }
 
         P_crse.copy(crse_P_fine);  // Parallel copy
+	const Geometry& cgeom = parent->Geom(level);
+	cgeom.PeriodicCopy(P_crse, crse_P_fine);
     }
     //
     // Next average down divu and dSdT at new time.
