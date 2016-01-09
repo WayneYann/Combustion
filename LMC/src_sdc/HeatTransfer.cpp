@@ -814,16 +814,33 @@ HeatTransfer::HeatTransfer (Amr&            papa,
     if (!have_dsdt)
         BoxLib::Abort("have_dsdt MUST be true");
 
+    define_data();
+}
+
+HeatTransfer::~HeatTransfer ()
+{
+    ;
+}
+
+void
+HeatTransfer::define_data ()
+{
     const int nGrow       = 0;
     const int nEdgeStates = desc_lst[State_Type].nComp();
-    diffusion->allocFluxBoxesLevel(EdgeState,nGrow,nEdgeStates);
-    diffusion->allocFluxBoxesLevel(EdgeFlux,nGrow,nEdgeStates);
+
+    EdgeState = (raii_fbs.push_back(new FluxBoxes(this, nGrow, nEdgeStates)))->get();
+    EdgeFlux  = (raii_fbs.push_back(new FluxBoxes(this, nGrow, nEdgeStates)))->get();
+    
     if (nspecies>0 && !unity_Le)
     {
-	diffusion->allocFluxBoxesLevel(SpecDiffusionFluxn,   nGrow,nspecies+3);
-	diffusion->allocFluxBoxesLevel(SpecDiffusionFluxnp1, nGrow,nspecies+3);
+	SpecDiffusionFluxn   = (raii_fbs.push_back(
+				    new FluxBoxes(this, nGrow, nspecies+3)))->get();
+	SpecDiffusionFluxnp1 = (raii_fbs.push_back(
+				    new FluxBoxes(this, nGrow, nspecies+3)))->get();
+
 #ifdef USE_WBAR
-	diffusion->allocFluxBoxesLevel(SpecDiffusionFluxWbar,nGrow,nspecies);
+	SpecDiffusionFluxWbar = (raii_fbs.push_back(
+				     new FluxBoxes(this, nGrow, nspecies)))->get();
 #endif
         sumSpecFluxDotGradHn.define(grids,1,0,Fab_allocate);
         sumSpecFluxDotGradHnp1.define(grids,1,0,Fab_allocate);
@@ -832,7 +849,7 @@ HeatTransfer::HeatTransfer (Amr&            papa,
     for (std::map<std::string,Array<std::string> >::iterator it = auxDiag_names.begin(), end = auxDiag_names.end();
          it != end; ++it)
     {
-        auxDiag[it->first] = new MultiFab(grids,it->second.size(),0);
+        auxDiag[it->first] = raii_mfs.push_back(new MultiFab(grids,it->second.size(),0));
         auxDiag[it->first]->setVal(0);
     }
 
@@ -842,34 +859,7 @@ HeatTransfer::HeatTransfer (Amr&            papa,
 
 #ifdef USE_WBAR
     // this will hold the transport coefficients for Wbar
-    diffWbar_cc = new MultiFab(grids,nspecies,1);
-#endif
-}
-
-HeatTransfer::~HeatTransfer ()
-{
-    diffusion->removeFluxBoxesLevel(EdgeState);
-    diffusion->removeFluxBoxesLevel(EdgeFlux);
-    if (nspecies>0 && !unity_Le)    
-    {
-	diffusion->removeFluxBoxesLevel(SpecDiffusionFluxn);
-	diffusion->removeFluxBoxesLevel(SpecDiffusionFluxnp1);
-#ifdef USE_WBAR
-	diffusion->removeFluxBoxesLevel(SpecDiffusionFluxWbar);
-#endif
-        sumSpecFluxDotGradHn.clear();
-        sumSpecFluxDotGradHnp1.clear();
-    }
-
-    for (std::map<std::string,MultiFab*>::iterator it = auxDiag.begin(), end = auxDiag.end();
-         it != end;
-         ++it)
-    {
-        delete it->second;
-    }
-
-#ifdef USE_WBAR
-    delete diffWbar_cc;
+    diffWbar_cc.define(grids,nspecies,1);
 #endif
 }
 
@@ -1084,43 +1074,7 @@ HeatTransfer::restart (Amr&          papa,
 
     NavierStokes::restart(papa,is,bReadSpecial);
 
-    BL_ASSERT(EdgeState == 0);
-    BL_ASSERT(EdgeFlux == 0);
-    const int nGrow       = 0;
-    const int nEdgeStates = desc_lst[State_Type].nComp();
-    diffusion->allocFluxBoxesLevel(EdgeState,nGrow,nEdgeStates);
-    diffusion->allocFluxBoxesLevel(EdgeFlux,nGrow,nEdgeStates);
-    
-    if (nspecies>0 && !unity_Le)
-    {
-	BL_ASSERT(SpecDiffusionFluxn == 0);
-	BL_ASSERT(SpecDiffusionFluxnp1 == 0);
-	diffusion->allocFluxBoxesLevel(SpecDiffusionFluxn,   nGrow,nspecies+3);
-	diffusion->allocFluxBoxesLevel(SpecDiffusionFluxnp1, nGrow,nspecies+3);
-
-#ifdef USE_WBAR
-	BL_ASSERT(SpecDiffusionFluxWbar == 0);
-	diffusion->allocFluxBoxesLevel(SpecDiffusionFluxWbar,nGrow,nspecies);
-#endif
-        sumSpecFluxDotGradHn.define(grids,1,0,Fab_allocate);
-        sumSpecFluxDotGradHnp1.define(grids,1,0,Fab_allocate);
-    }
-
-    for (std::map<std::string,Array<std::string> >::iterator it = auxDiag_names.begin(), end = auxDiag_names.end();
-         it != end; ++it)
-    {
-        auxDiag[it->first] = new MultiFab(grids,it->second.size(),0);
-        auxDiag[it->first]->setVal(0);
-    }
-
-    // HACK for debugging
-    if (level==0)
-        stripBox = getStrip(geom);
-
-#ifdef USE_WBAR
-    // this will hold the transport coefficients for Wbar
-    diffWbar_cc = new MultiFab(grids,nspecies,1);
-#endif
+    define_data();
 
     bool running_sdc_from_strang_chk = false;
 
@@ -2769,7 +2723,8 @@ HeatTransfer::differential_diffusion_update (MultiFab& Force,
   MultiFab* rho_half = 0;
   Diffusion::SolveMode solve_mode = Diffusion::ONEPASS;
   MultiFab **betanp1, **betan = 0; // Will not need betan since time-explicit pieces computed above
-  diffusion->allocFluxBoxesLevel(betanp1,nGrow,nspecies+2);
+  FluxBoxes fb_betap1(this, nGrow, nspecies+2);
+  betanp1 = fb_betap1.get();
   getDiffusivity(betanp1, curr_time, first_spec, 0, nspecies+1); // species (rhoD) and RhoH (lambda/cp)
   getDiffusivity(betanp1, curr_time, Temp, nspecies+1, 1); // temperature (lambda)
   //
@@ -2789,8 +2744,6 @@ HeatTransfer::differential_diffusion_update (MultiFab& Force,
 			      SpecDiffusionFluxn,SpecDiffusionFluxnp1,sigma,&Force,sigma,alpha,
 			      alphaComp,betan,betanp1,betaComp,solve_mode,add_old_time_divFlux);
   }
-
-  diffusion->removeFluxBoxesLevel(betanp1);
 
 #ifdef USE_WBAR
   // add lagged grad Wbar fluxes (SpecDiffusionFluxWbar) to time-advanced 
@@ -3019,29 +2972,6 @@ HeatTransfer::compute_enthalpy_fluxes (Real                   time,
 }
     
 void
-HeatTransfer::diffuse_cleanup (MultiFab*&  delta_rhs,
-                               MultiFab**& betan,
-                               MultiFab**& betanp1,
-                               MultiFab*&  alpha)
-{
-    delete delta_rhs;
-    delete alpha;
-    alpha = delta_rhs = 0;
-
-    diffusion->removeFluxBoxesLevel(betan);
-    diffusion->removeFluxBoxesLevel(betanp1);
-}
-
-void
-HeatTransfer::diffuse_cleanup (MultiFab*&  delta_rhs,
-                               MultiFab**& betan,
-                               MultiFab**& betanp1)
-{
-    MultiFab* alpha = 0;
-    diffuse_cleanup(delta_rhs, betan, betanp1, alpha);
-}
-
-void
 HeatTransfer::velocity_diffusion_update (Real dt)
 {
 
@@ -3064,16 +2994,15 @@ HeatTransfer::velocity_diffusion_update (Real dt)
            rho_flag = 3;
         }
 
-        MultiFab *delta_rhs = 0, **betan = 0, **betanp1 = 0;
+        MultiFab *delta_rhs = 0;
+	FluxBoxes fb_betan, fb_betanp1;
 
-        diffuse_velocity_setup(dt, delta_rhs, betan, betanp1);
+        diffuse_velocity_setup(dt, delta_rhs, fb_betan, fb_betanp1);
 
         int rhsComp  = 0;
         int betaComp = 0;
         diffusion->diffuse_velocity(dt,be_cn_theta,get_rho_half_time(),rho_flag,
-                                    delta_rhs,rhsComp,betan,betanp1,betaComp);
-
-        diffuse_cleanup(delta_rhs, betan, betanp1);
+                                    delta_rhs,rhsComp,fb_betan.get(),fb_betanp1.get(),betaComp);
 
         if (verbose > 1)
         {
@@ -3091,21 +3020,19 @@ HeatTransfer::velocity_diffusion_update (Real dt)
 void
 HeatTransfer::diffuse_velocity_setup (Real        dt,
                                       MultiFab*&  delta_rhs,
-                                      MultiFab**& betan,
-                                      MultiFab**& betanp1)
+                                      FluxBoxes&  fb_betan,
+                                      FluxBoxes&  fb_betanp1)
 {
     //
     // Do setup for implicit c-n solve for velocity.
     //
     BL_ASSERT(delta_rhs==0);
-    BL_ASSERT(betan==0);
-    BL_ASSERT(betanp1==0);
     const Real time = state[State_Type].prevTime();
     //
     // Assume always variable viscosity.
     //
-    diffusion->allocFluxBoxesLevel(betan);
-    diffusion->allocFluxBoxesLevel(betanp1);
+    MultiFab** betan = fb_betan.define(this,0,1);
+    MultiFab** betanp1 = fb_betanp1.define(this,0,1);
     
     getViscosity(betan, time);
     getViscosity(betanp1, time+dt);
@@ -3176,6 +3103,7 @@ HeatTransfer::getViscTerms (MultiFab& visc_terms,
     // intensive flux.
     //
     MultiFab** vel_visc  = 0;        // Potentially reused, raise scope
+    FluxBoxes fb;
     const int  nGrow     = visc_terms.nGrow();
     //
     // Get Div(tau) from the tensor operator, if velocity and have non-const viscosity
@@ -3186,7 +3114,7 @@ HeatTransfer::getViscTerms (MultiFab& visc_terms,
         if (src_comp != Xvel || num_comp < BL_SPACEDIM)
             BoxLib::Error("tensor v -> getViscTerms needs all v-components at once");
 
-        diffusion->allocFluxBoxesLevel(vel_visc);
+        vel_visc = fb.define(this, 0, 1);
         getViscosity(vel_visc, time);
 
         showMF("velVT",*viscn_cc,"velVT_viscn_cc",level);
@@ -3222,11 +3150,6 @@ HeatTransfer::getViscTerms (MultiFab& visc_terms,
         visc_terms.plus(divmusi,Xvel,BL_SPACEDIM,0);
         showMF("velVT",visc_terms,"velVT_visc_terms_3",level);
     }
-    //
-    // Clean up your mess ...
-    //
-    if (vel_visc)
-        diffusion->removeFluxBoxesLevel(vel_visc);
     //
     // Ensure consistent grow cells
     //
@@ -3334,11 +3257,11 @@ HeatTransfer::compute_differential_diffusion_fluxes (const Real& time,
     const Real a         = 0;
     const Real b         = 1;
     const int  rho_flag  = 2;
-    MultiFab** beta      = 0;
     MultiFab&  S         = get_data(State_Type,time);
 
     // allocate edge-beta for species, RhoH, and Temp
-    diffusion->allocFluxBoxesLevel(beta,0,nspecies+2);
+    FluxBoxes fb(this, 0, nspecies+2);
+    MultiFab** beta = fb.get();
 
     // average transport coefficients for species, RhoH, and Temp to edges
     getDiffusivity(beta, time, first_spec, 0, nspecies+1);
@@ -3511,7 +3434,6 @@ HeatTransfer::compute_differential_diffusion_fluxes (const Real& time,
     //
     compute_enthalpy_fluxes(time,beta);
 
-    diffusion->removeFluxBoxesLevel(beta);
     //
     // AJN FLUXREG
     // We have just computed "DD" given an input state.
@@ -5326,8 +5248,8 @@ HeatTransfer::mac_sync ()
 
     if (do_diffuse_sync)
     {
-        MultiFab** beta;
-        diffusion->allocFluxBoxesLevel(beta);
+	FluxBoxes fb_beta(this, 0, 1);
+        MultiFab** beta = fb_beta.get();
         if (is_diffusive[Xvel])
         {
             int rho_flag = (do_mom_diff == 0) ? 1 : 3;
@@ -5493,11 +5415,13 @@ HeatTransfer::mac_sync ()
             Real rhsscale;          //  -ditto-
             const int rho_flag = 2; // FIXME: Messy assumption
             MultiFab *alpha=0;      //  -ditto-
-            MultiFab **fluxSC, **fluxNULN, **rhoh_visc;
-            diffusion->allocFluxBoxesLevel(fluxSC,0,1);
-            diffusion->allocFluxBoxesLevel(fluxNULN,0,nspecies);
-            diffusion->allocFluxBoxesLevel(rhoh_visc,0,1);
-
+	    FluxBoxes fb_SC  (this, 0, 1);
+	    FluxBoxes fb_NULN(this, 0, nspecies);
+	    FluxBoxes fb_visc(this, 0, 1);
+            MultiFab **fluxSC    =   fb_SC.get();
+	    MultiFab **fluxNULN  = fb_NULN.get();
+	    MultiFab **rhoh_visc = fb_visc.get();
+	    
             const int nGrow    = 1; // Size to grow fil-patched fab for T below
             const int dataComp = 0; // coeffs loaded into 0-comp for all species
                   
@@ -5563,8 +5487,8 @@ HeatTransfer::mac_sync ()
 
             Soln.clear();
 
-            diffusion->removeFluxBoxesLevel(fluxSC);
-            diffusion->removeFluxBoxesLevel(rhoh_visc);
+	    fb_SC.clear();
+	    fb_visc.clear();
             //
             // Multiply fluxi by h_i (let FLXDIV routine below sum up the fluxes)
             //
@@ -5636,12 +5560,10 @@ HeatTransfer::mac_sync ()
                                     ARLIM(volume[Ssync_mfi].hiVect()),
                                     &nspecies, &mult);
             }
-
-            diffusion->removeFluxBoxesLevel(fluxNULN);
         }
 
-        MultiFab **flux;
-        diffusion->allocFluxBoxesLevel(flux);
+	FluxBoxes fb_flux(this, 0, 1);
+        MultiFab **flux = fb_flux.get();
 
         showMF("sdcSync",*Ssync,"sdc_Sync_preDiff",level,parent->levelSteps(level));
 
@@ -5687,8 +5609,6 @@ HeatTransfer::mac_sync ()
                 }
             }
         }
-        diffusion->removeFluxBoxesLevel(flux);
-        diffusion->removeFluxBoxesLevel(beta);
     }
     showMF("sdcSync",*Ssync,"sdc_Sync_postDiff",level,parent->levelSteps(level));
     //
@@ -5867,10 +5787,10 @@ HeatTransfer::compute_Wbar_fluxes(Real time,
 				  Real inc)
 {
     BL_PROFILE("HT::compute_Wbar_fluxes()");
-    MultiFab** betaWbar  = 0;
 
     // allocate edge-beta for Wbar
-    diffusion->allocFluxBoxesLevel(betaWbar,0,nspecies);
+    FluxBoxes fb_betaWbar(this, 0, nspecies);
+    MultiFab** betaWbar =fb_betaWbar.get();
 
     // average transport coefficients for Wbar to edges
     getDiffusivity_Wbar(betaWbar,time);
@@ -5985,9 +5905,6 @@ HeatTransfer::compute_Wbar_fluxes(Real time,
 	}
       }
     }
-    Wbar.clear();
-    diffusion->removeFluxBoxesLevel(betaWbar);
-
 }
 #endif
 
@@ -6020,8 +5937,8 @@ HeatTransfer::differential_spec_diffuse_sync (Real dt,
     // we can use a generic flux adjustment function
     //
     const Real cur_time = state[State_Type].curTime();
-    MultiFab **betanp1;
-    diffusion->allocFluxBoxesLevel(betanp1,0,nspecies);
+    FluxBoxes fb_betanp1(this, 0, nspecies);
+    MultiFab **betanp1 = fb_betanp1.get();
     getDiffusivity(betanp1, cur_time, first_spec, 0, nspecies); // species
 
     MultiFab Rhs(grids,nspecies,0);
@@ -6038,8 +5955,8 @@ HeatTransfer::differential_spec_diffuse_sync (Real dt,
     //
     const Array<int> rho_flag(nspecies,2);
     const MultiFab* alpha = 0;
-    MultiFab** fluxSC;
-    diffusion->allocFluxBoxesLevel(fluxSC,0,1);
+    FluxBoxes fb_fluxSC(this, 0, 1);
+    MultiFab** fluxSC = fb_fluxSC.get();
 
     const MultiFab* RhoHalftime = get_rho_half_time();
 
@@ -6068,8 +5985,8 @@ HeatTransfer::differential_spec_diffuse_sync (Real dt,
 	  MultiFab::Copy(*SpecDiffusionFluxnp1[d],*fluxSC[d],0,sigma,1,0);
 	}
     }
-    diffusion->removeFluxBoxesLevel(betanp1);
-    diffusion->removeFluxBoxesLevel(fluxSC);
+    fb_betanp1.clear();
+    fb_fluxSC.clear();
     //
     // Modify update/fluxes to preserve flux sum = 0
     // (Be sure to pass the "normal" looking Rhs to this generic function)
@@ -6381,7 +6298,7 @@ HeatTransfer::calcDiffusivity_Wbar (const Real time)
     MultiFab& diff       = (whichTime == AmrOldTime) ? (*diffn_cc) : (*diffnp1_cc);
     const int nGrow      = diff.nGrow();
 
-    BL_ASSERT(diffWbar_cc->nGrow() >= nGrow);
+    BL_ASSERT(diffWbar_cc.nGrow() >= nGrow);
 
     for (FillPatchIterator Rho_and_spec_fpi(*this,diff,nGrow,time,State_Type,Density,nspecies+1);
          Rho_and_spec_fpi.isValid();
@@ -6389,7 +6306,7 @@ HeatTransfer::calcDiffusivity_Wbar (const Real time)
     {
         const FArrayBox& RD = diff[Rho_and_spec_fpi];
         const FArrayBox& RYfab = Rho_and_spec_fpi();
-	FArrayBox& Dfab_Wbar = (*diffWbar_cc)[Rho_and_spec_fpi];
+	FArrayBox& Dfab_Wbar = diffWbar_cc[Rho_and_spec_fpi];
 	const Box& gbox = RYfab.box();
         
         FORT_BETA_WBAR(gbox.loVect(),gbox.hiVect(),
@@ -6470,9 +6387,9 @@ HeatTransfer::getDiffusivity_Wbar (MultiFab*  beta[BL_SPACEDIM],
 				   const Real time)	   
 {
     BL_PROFILE("HT::getDiffusivity_Wbar()");
-    MultiFab* diff = diffWbar_cc;
+    MultiFab& diff = diffWbar_cc;
 
-    for (MFIter diffMfi(*diff); diffMfi.isValid(); ++diffMfi)
+    for (MFIter diffMfi(diff); diffMfi.isValid(); ++diffMfi)
     {
         const int i = diffMfi.index();
 
@@ -6481,7 +6398,7 @@ HeatTransfer::getDiffusivity_Wbar (MultiFab*  beta[BL_SPACEDIM],
             FPLoc bc_lo = fpi_phys_loc(get_desc_lst()[State_Type].getBC(first_spec).lo(dir));
             FPLoc bc_hi = fpi_phys_loc(get_desc_lst()[State_Type].getBC(first_spec).hi(dir));
 
-            center_to_edge_fancy((*diff)[diffMfi],(*beta[dir])[diffMfi],
+            center_to_edge_fancy(diff[diffMfi],(*beta[dir])[diffMfi],
                                  BoxLib::grow(grids[i],BoxLib::BASISV(dir)), 0,
                                  0, nspecies, geom.Domain(), bc_lo, bc_hi);
         }

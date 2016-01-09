@@ -122,13 +122,13 @@ public:
                            int       src_comp, 
                            Real      time);
 
-    virtual void diffuse_scalar_setup (Real        dt,
-                                       int         sigma,
-                                       int*        rho_flag, 
-                                       MultiFab*&  delta_rhs,
-                                       MultiFab*&  alpha, 
-                                       MultiFab**& betan,
-                                       MultiFab**& betanp1) BL_OVERRIDE;
+    void diffuse_scalar_setup (Real       dt,
+			       int        sigma,
+			       int&       rho_flag, 
+			       MultiFab*& delta_rhs,
+			       MultiFab*& alpha, 
+			       FluxBoxes& fb_betan,
+			       FluxBoxes& fb_betanp1);
 
     void diffuse_rhoh_setup (Real       time,
                              Real       dt,
@@ -143,15 +143,6 @@ public:
                              Real       dt,
                              MultiFab*& delta_rhs,
                              MultiFab*& alpha);
-
-    void diffuse_cleanup (MultiFab*&  delta_rhs, 
-                          MultiFab**& betan,
-                          MultiFab**& betanp1,
-                          MultiFab*&  alpha);
-
-    void diffuse_cleanup (MultiFab*&  delta_rhs, 
-                          MultiFab**& betan,
-                          MultiFab**& betanp1);
 
     void momentum_advection (Real dt,
 			     bool do_adv_reflux);
@@ -186,12 +177,12 @@ public:
 				  int  last_scalar,
 				  int  do_viscreflux);
 
-    virtual void velocity_diffusion_update (Real dt) BL_OVERRIDE;
+    void velocity_diffusion_update (Real dt);
 
-    virtual void diffuse_velocity_setup (Real        dt,
-                                         MultiFab*&  delta_rhs,
-                                         MultiFab**& betan, 
-                                         MultiFab**& betanp1) BL_OVERRIDE;
+    void diffuse_velocity_setup (Real        dt,
+				 MultiFab*&  delta_rhs,
+				 FluxBoxes&  fb_betan, 
+				 FluxBoxes&  fb_betanp1);
     //
     // Make rho at time n.
     //
@@ -260,6 +251,9 @@ public:
     static void variableCleanUp ();
     
 protected:
+
+    void define_data ();
+
     //
     // Protected member functions.
     //

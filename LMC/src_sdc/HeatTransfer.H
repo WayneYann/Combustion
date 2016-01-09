@@ -113,15 +113,6 @@ public:
                                int       num_comp,
                                Real      time) BL_OVERRIDE;
 
-    void diffuse_cleanup (MultiFab*&  delta_rhs, 
-                          MultiFab**& betan,
-                          MultiFab**& betanp1,
-                          MultiFab*&  alpha);
-
-    void diffuse_cleanup (MultiFab*&  delta_rhs, 
-                          MultiFab**& betan,
-                          MultiFab**& betanp1);
-
     virtual void scalar_advection_update (Real dt,
                                           int  first_scalar,
                                           int  last_scalar) BL_OVERRIDE;
@@ -151,12 +142,12 @@ public:
     void compute_enthalpy_fluxes (Real                   time,
                                   const MultiFab* const* beta);
 
-    virtual void velocity_diffusion_update (Real dt) BL_OVERRIDE;
+    void velocity_diffusion_update (Real dt);
 
-    virtual void diffuse_velocity_setup (Real        dt,
-                                         MultiFab*&  delta_rhs,
-                                         MultiFab**& betan, 
-                                         MultiFab**& betanp1) BL_OVERRIDE;
+    void diffuse_velocity_setup (Real        dt,
+				 MultiFab*&  delta_rhs,
+				 FluxBoxes&  fb_betan, 
+				 FluxBoxes&  fb_betanp1);
 
 
     enum HowToFillGrow {HT_ZERO_GROW_CELLS, HT_EXTRAP_GROW_CELLS, HT_NUM_GROW_OPTIONS};
@@ -405,6 +396,8 @@ protected:
 
 protected:
 
+    void define_data ();
+
     MultiFab**  EdgeState;
     MultiFab**  EdgeFlux;
     MultiFab**  SpecDiffusionFluxn;
@@ -412,11 +405,12 @@ protected:
 #ifdef USE_WBAR
     MultiFab**  SpecDiffusionFluxWbar;
 #endif
+
     MultiFab    sumSpecFluxDotGradHn;
     MultiFab    sumSpecFluxDotGradHnp1;
 
 #ifdef USE_WBAR
-    MultiFab *diffWbar_cc;
+    MultiFab    diffWbar_cc;
 #endif
 
     static bool                     plot_reactions;
