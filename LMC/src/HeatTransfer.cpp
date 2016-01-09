@@ -753,14 +753,14 @@ HeatTransfer::define_data ()
     const int nGrow       = 0;
     const int nEdgeStates = desc_lst[State_Type].nComp();
 
-    EdgeState = (raii_fbs.push_back(new FluxBoxes(this, nGrow, nEdgeStates)))->get();
+    EdgeState = (raii_fbs.push_back(new FluxBoxes(this, nEdgeStates, nGrow)))->get();
     
     if (nspecies>0 && !unity_Le)
     {
 	SpecDiffusionFluxn   = (raii_fbs.push_back(
-				    new FluxBoxes(this, nGrow, nspecies)))->get();
+				    new FluxBoxes(this, nspecies, nGrow)))->get();
 	SpecDiffusionFluxnp1 = (raii_fbs.push_back(
-				    new FluxBoxes(this, nGrow, nspecies)))->get();
+				    new FluxBoxes(this, nspecies, nGrow)))->get();
 	spec_diffusion_flux_computed.resize(nspecies,HT_None);
     }
 
@@ -2489,8 +2489,8 @@ HeatTransfer::scalar_diffusion_update (Real dt,
     //
     // Build single component edge-centered array of MultiFabs for fluxes
     //
-    FluxBoxes fb_fluxSCn  (this, 0, 1);
-    FluxBoxes fb_fluxSCnp1(this, 0, 1);
+    FluxBoxes fb_fluxSCn  (this);
+    FluxBoxes fb_fluxSCnp1(this);
     MultiFab** fluxSCn   =   fb_fluxSCn.get();
     MultiFab** fluxSCnp1 = fb_fluxSCnp1.get();
     //
@@ -2585,8 +2585,8 @@ HeatTransfer::differential_spec_diffusion_update (Real dt,
     const int nGrow   = 0;
     const int nCompSC = 1;
     const int sCompSC = 0;
-    FluxBoxes fb_fluxSCn  (this, nGrow, nCompSC);
-    FluxBoxes fb_fluxSCnp1(this, nGrow, nCompSC);
+    FluxBoxes fb_fluxSCn  (this, nCompSC, nGrow);
+    FluxBoxes fb_fluxSCnp1(this, nCompSC, nGrow);
     fluxSCn   = fb_fluxSCn.get();
     fluxSCnp1 = fb_fluxSCnp1.get();
     //
@@ -2601,8 +2601,8 @@ HeatTransfer::differential_spec_diffusion_update (Real dt,
     const int nCompY = nspecies;
     MultiFab* alpha = 0; // Allocate lazily
     MultiFab delta_rhs(grids, nCompY, nGrow);
-    FluxBoxes fb_betan  (this, nGrow, nCompY);
-    FluxBoxes fb_betanp1(this, nGrow, nCompY);
+    FluxBoxes fb_betan  (this, nCompY, nGrow);
+    FluxBoxes fb_betanp1(this, nCompY, nGrow);
     MultiFab **betan   = fb_betan.get();
     MultiFab **betanp1 = fb_betanp1.get();
     Array<int> rho_flag(nCompY,0);
@@ -2990,8 +2990,8 @@ HeatTransfer::diffuse_scalar_setup (Real        dt,
         diffuse_spec_setup(sigma,prev_time,dt,delta_rhs); 
     }
 
-    MultiFab** betan   = fb_betan.define  (this, 0, 1);
-    MultiFab** betanp1 = fb_betanp1.define(this, 0, 1);
+    MultiFab** betan   = fb_betan.define  (this);
+    MultiFab** betanp1 = fb_betanp1.define(this);
 
     getDiffusivity(betan, prev_time, sigma, 0, 1);
     getDiffusivity(betanp1, prev_time+dt, sigma, 0, 1);
@@ -3231,8 +3231,8 @@ HeatTransfer::diffuse_velocity_setup (Real        dt,
     //
     // Assume always variable viscosity.
     //
-    MultiFab** betan = fb_betan.define(this,0,1);
-    MultiFab** betanp1 = fb_betanp1.define(this,0,1);
+    MultiFab** betan = fb_betan.define(this);
+    MultiFab** betanp1 = fb_betanp1.define(this);
 
     getViscosity(betan, time);
     getViscosity(betanp1, time+dt);
@@ -3316,7 +3316,7 @@ HeatTransfer::getViscTerms (MultiFab& visc_terms,
         if (src_comp != Xvel || num_comp < BL_SPACEDIM)
             BoxLib::Error("tensor v -> getViscTerms needs all v-components at once");
 
-	vel_visc = fb_vel_visc.define(this, 0, 1);
+	vel_visc = fb_vel_visc.define(this);
         getViscosity(vel_visc, time);
 
         showMF("velVT",*viscn_cc,"velVT_viscn_cc",level);
@@ -3374,7 +3374,7 @@ HeatTransfer::getViscTerms (MultiFab& visc_terms,
                     //
                     // Assume always variable viscosity / diffusivity.
                     //
-		    FluxBoxes fb_beta(this, 0, 1);
+		    FluxBoxes fb_beta(this);
 		    MultiFab** beta = fb_beta.get();
                     getDiffusivity(beta, time, icomp, 0, 1);
 
@@ -3562,8 +3562,8 @@ HeatTransfer::compute_differential_diffusion_terms (MultiFab& visc_terms,
         }
     }
 
-    FluxBoxes fb_flux(this, 0, 1);
-    FluxBoxes fb_beta(this, 0, nspecies);
+    FluxBoxes fb_flux(this, 1, 0);
+    FluxBoxes fb_beta(this, nspecies, 0);
     MultiFab **flux = fb_flux.get();
     MultiFab **beta = fb_beta.get();
 
@@ -3632,7 +3632,7 @@ HeatTransfer::getTempViscTerms (MultiFab& visc_terms,
     const int nGrow     = 0;
     const int rho_flag  = 1;
 
-    FluxBoxes fb_beta(this, 0, 1);
+    FluxBoxes fb_beta(this, 1, nGrow);
     MultiFab** beta = fb_beta.get();
     //
     // + div lambda grad T + Q
@@ -3699,7 +3699,7 @@ HeatTransfer::getRhoHViscTerms (MultiFab& visc_terms,
     BL_ASSERT(visc_terms.boxArray()==grids);
 
     const int nGrow = 0;
-    FluxBoxes fb_beta(this, nGrow, 1);
+    FluxBoxes fb_beta(this, 1, nGrow);
     MultiFab** beta = fb_beta.get();
     
     const int rhoh_rho_flag = 2;
@@ -5819,13 +5819,13 @@ HeatTransfer::scalar_advection (Real dt,
         const int rho_flag = 2; 
 
         MultiFab *alpha=0;      //  -ditto-
-	FluxBoxes fb_fluxSC(this, 0, 1); // tmp single-component lambda/cp grad h
+	FluxBoxes fb_fluxSC(this, 1, 0); // tmp single-component lambda/cp grad h
         MultiFab   **fluxSC = fb_fluxSC.get();
-	FluxBoxes fb_fluxi(this, 0, nspecies); // all the species fluxes, "D"
+	FluxBoxes fb_fluxi(this, nspecies, 0); // all the species fluxes, "D"
 	MultiFab   **fluxi = fb_fluxi.get(); 
-	FluxBoxes fb_rhoh_visc(this,0,1); // lambda/cp
+	FluxBoxes fb_rhoh_visc(this, 1, 0); // lambda/cp
 	MultiFab   **rhoh_visc = fb_rhoh_visc.get();
-	fluxNULN = fb_fluxNULN.define(this,0,1); // single-component "DD" or "NULN" fluxes
+	fluxNULN = fb_fluxNULN.define(this, 1, 0); // single-component "DD" or "NULN" fluxes
 
         const int nGrow    = 1; // Size to grow fil-patched fab for T below
         const int dataComp = 0; // coeffs loaded into 0-comp for all species
@@ -6207,7 +6207,7 @@ HeatTransfer::compute_rhoDgradYgradH (Real      time,
     // Get edge-centered rho.D
     // (copy spec visc from internal database directly (before inflow "zeroing"))
     //
-    FluxBoxes fb_beta(this, 0, nspecies);
+    FluxBoxes fb_beta(this, nspecies, 0);
     MultiFab** beta = fb_beta.get();
     getDiffusivity(beta, time, first_spec, 0, nspecies);
     //
@@ -6451,7 +6451,7 @@ HeatTransfer::mac_sync ()
 
         if (do_diffuse_sync)
         {
-	    FluxBoxes fb_beta(this, 0, 1);
+	    FluxBoxes fb_beta(this);
 	    MultiFab** beta = fb_beta.get();
             if (is_diffusive[Xvel])
             {
@@ -6476,11 +6476,11 @@ HeatTransfer::mac_sync ()
                 Real rhsscale;          //  -ditto-
                 const int rho_flag = 2; // FIXME: Messy assumption
                 MultiFab *alpha=0;      //  -ditto-
-		FluxBoxes fb_fluxSC(this,0,1);
+		FluxBoxes fb_fluxSC(this, 1, 0);
                 MultiFab **fluxSC = fb_fluxSC.get();
-		FluxBoxes fb_fluxNULN(this,0,nspecies);
+		FluxBoxes fb_fluxNULN(this, nspecies, 0);
 		MultiFab **fluxNULN = fb_fluxNULN.get();
-		FluxBoxes fb_rhoh_visc(this,0,1);
+		FluxBoxes fb_rhoh_visc(this, 1, 0);
 		MultiFab **rhoh_visc = fb_rhoh_visc.get();
 
                 const int nGrow    = 1; // Size to grow fil-patched fab for T below
@@ -6618,7 +6618,7 @@ HeatTransfer::mac_sync ()
                 }
             }
 
-	    FluxBoxes fb_flux(this,0,1);
+	    FluxBoxes fb_flux(this);
 	    MultiFab **flux = fb_flux.get();
 
             for (sigma = 0; sigma < numscal; sigma++)
@@ -6879,7 +6879,7 @@ HeatTransfer::differential_spec_diffuse_sync (Real dt)
     // we can use a generic flux adjustment function
     //
     const Real cur_time = state[State_Type].curTime();
-    FluxBoxes fb_betanp1(this,0,nspecies);
+    FluxBoxes fb_betanp1(this, nspecies, 0);
     MultiFab **betanp1 = fb_betanp1.get();
     getDiffusivity(betanp1, cur_time, first_spec, 0, nspecies); // rhoD
 
@@ -6895,7 +6895,7 @@ HeatTransfer::differential_spec_diffuse_sync (Real dt)
     //
     const Array<int> rho_flag(nspecies,2);
     const MultiFab* alpha = 0;
-    FluxBoxes fb_fluxSC(this,0,1);
+    FluxBoxes fb_fluxSC(this);
     MultiFab** fluxSC = fb_fluxSC.get();
 
     const MultiFab* RhoHalftime = get_rho_half_time();

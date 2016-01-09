@@ -828,19 +828,19 @@ HeatTransfer::define_data ()
     const int nGrow       = 0;
     const int nEdgeStates = desc_lst[State_Type].nComp();
 
-    EdgeState = (raii_fbs.push_back(new FluxBoxes(this, nGrow, nEdgeStates)))->get();
-    EdgeFlux  = (raii_fbs.push_back(new FluxBoxes(this, nGrow, nEdgeStates)))->get();
+    EdgeState = (raii_fbs.push_back(new FluxBoxes(this, nEdgeStates, nGrow)))->get();
+    EdgeFlux  = (raii_fbs.push_back(new FluxBoxes(this, nEdgeStates, nGrow)))->get();
     
     if (nspecies>0 && !unity_Le)
     {
 	SpecDiffusionFluxn   = (raii_fbs.push_back(
-				    new FluxBoxes(this, nGrow, nspecies+3)))->get();
+				    new FluxBoxes(this, nspecies+3, nGrow)))->get();
 	SpecDiffusionFluxnp1 = (raii_fbs.push_back(
-				    new FluxBoxes(this, nGrow, nspecies+3)))->get();
+				    new FluxBoxes(this, nspecies+3, nGrow)))->get();
 
 #ifdef USE_WBAR
 	SpecDiffusionFluxWbar = (raii_fbs.push_back(
-				     new FluxBoxes(this, nGrow, nspecies)))->get();
+				     new FluxBoxes(this, nspecies, nGrow)))->get();
 #endif
         sumSpecFluxDotGradHn.define(grids,1,0,Fab_allocate);
         sumSpecFluxDotGradHnp1.define(grids,1,0,Fab_allocate);
@@ -2723,7 +2723,7 @@ HeatTransfer::differential_diffusion_update (MultiFab& Force,
   MultiFab* rho_half = 0;
   Diffusion::SolveMode solve_mode = Diffusion::ONEPASS;
   MultiFab **betanp1, **betan = 0; // Will not need betan since time-explicit pieces computed above
-  FluxBoxes fb_betap1(this, nGrow, nspecies+2);
+  FluxBoxes fb_betap1(this, nspecies+2, nGrow);
   betanp1 = fb_betap1.get();
   getDiffusivity(betanp1, curr_time, first_spec, 0, nspecies+1); // species (rhoD) and RhoH (lambda/cp)
   getDiffusivity(betanp1, curr_time, Temp, nspecies+1, 1); // temperature (lambda)
@@ -3031,8 +3031,8 @@ HeatTransfer::diffuse_velocity_setup (Real        dt,
     //
     // Assume always variable viscosity.
     //
-    MultiFab** betan = fb_betan.define(this,0,1);
-    MultiFab** betanp1 = fb_betanp1.define(this,0,1);
+    MultiFab** betan = fb_betan.define(this);
+    MultiFab** betanp1 = fb_betanp1.define(this);
     
     getViscosity(betan, time);
     getViscosity(betanp1, time+dt);
@@ -3114,7 +3114,7 @@ HeatTransfer::getViscTerms (MultiFab& visc_terms,
         if (src_comp != Xvel || num_comp < BL_SPACEDIM)
             BoxLib::Error("tensor v -> getViscTerms needs all v-components at once");
 
-        vel_visc = fb.define(this, 0, 1);
+        vel_visc = fb.define(this);
         getViscosity(vel_visc, time);
 
         showMF("velVT",*viscn_cc,"velVT_viscn_cc",level);
@@ -3260,7 +3260,7 @@ HeatTransfer::compute_differential_diffusion_fluxes (const Real& time,
     MultiFab&  S         = get_data(State_Type,time);
 
     // allocate edge-beta for species, RhoH, and Temp
-    FluxBoxes fb(this, 0, nspecies+2);
+    FluxBoxes fb(this, nspecies+2, 0);
     MultiFab** beta = fb.get();
 
     // average transport coefficients for species, RhoH, and Temp to edges
@@ -5248,7 +5248,7 @@ HeatTransfer::mac_sync ()
 
     if (do_diffuse_sync)
     {
-	FluxBoxes fb_beta(this, 0, 1);
+	FluxBoxes fb_beta(this);
         MultiFab** beta = fb_beta.get();
         if (is_diffusive[Xvel])
         {
@@ -5415,9 +5415,9 @@ HeatTransfer::mac_sync ()
             Real rhsscale;          //  -ditto-
             const int rho_flag = 2; // FIXME: Messy assumption
             MultiFab *alpha=0;      //  -ditto-
-	    FluxBoxes fb_SC  (this, 0, 1);
-	    FluxBoxes fb_NULN(this, 0, nspecies);
-	    FluxBoxes fb_visc(this, 0, 1);
+	    FluxBoxes fb_SC  (this, 1, 0);
+	    FluxBoxes fb_NULN(this, nspecies, 0);
+	    FluxBoxes fb_visc(this, 1, 0);
             MultiFab **fluxSC    =   fb_SC.get();
 	    MultiFab **fluxNULN  = fb_NULN.get();
 	    MultiFab **rhoh_visc = fb_visc.get();
@@ -5562,7 +5562,7 @@ HeatTransfer::mac_sync ()
             }
         }
 
-	FluxBoxes fb_flux(this, 0, 1);
+	FluxBoxes fb_flux(this);
         MultiFab **flux = fb_flux.get();
 
         showMF("sdcSync",*Ssync,"sdc_Sync_preDiff",level,parent->levelSteps(level));
@@ -5789,7 +5789,7 @@ HeatTransfer::compute_Wbar_fluxes(Real time,
     BL_PROFILE("HT::compute_Wbar_fluxes()");
 
     // allocate edge-beta for Wbar
-    FluxBoxes fb_betaWbar(this, 0, nspecies);
+    FluxBoxes fb_betaWbar(this, nspecies, 0);
     MultiFab** betaWbar =fb_betaWbar.get();
 
     // average transport coefficients for Wbar to edges
@@ -5937,7 +5937,7 @@ HeatTransfer::differential_spec_diffuse_sync (Real dt,
     // we can use a generic flux adjustment function
     //
     const Real cur_time = state[State_Type].curTime();
-    FluxBoxes fb_betanp1(this, 0, nspecies);
+    FluxBoxes fb_betanp1(this, nspecies, 0);
     MultiFab **betanp1 = fb_betanp1.get();
     getDiffusivity(betanp1, cur_time, first_spec, 0, nspecies); // species
 
@@ -5955,7 +5955,7 @@ HeatTransfer::differential_spec_diffuse_sync (Real dt,
     //
     const Array<int> rho_flag(nspecies,2);
     const MultiFab* alpha = 0;
-    FluxBoxes fb_fluxSC(this, 0, 1);
+    FluxBoxes fb_fluxSC(this);
     MultiFab** fluxSC = fb_fluxSC.get();
 
     const MultiFab* RhoHalftime = get_rho_half_time();
