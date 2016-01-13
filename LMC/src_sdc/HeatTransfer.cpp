@@ -2177,7 +2177,7 @@ HeatTransfer::post_init (Real stop_time)
             for (int k = 0; k <= finest_level; k++)
             {
                 MultiFab&  Divu_new = getLevel(k).get_new_data(Divu_Type);
-                getLevel(k).calc_divu(cur_time,dt_save[k],Divu_new,true);
+                getLevel(k).calc_divu(cur_time,dt_save[k],Divu_new);
             }
             if (!hack_noavgdivu)
             {
@@ -6481,8 +6481,7 @@ HeatTransfer::compute_vel_visc (Real      time,
 void
 HeatTransfer::calc_divu (Real      time,
                          Real      dt,
-                         MultiFab& divu,
-			 bool      is_divu_iter)
+                         MultiFab& divu)
 {
     BL_PROFILE("HT::calc_divu()");
     const int nGrow = 0;

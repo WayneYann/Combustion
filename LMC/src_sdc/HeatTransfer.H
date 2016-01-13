@@ -239,10 +239,9 @@ protected:
     //       they can be no-op functions
     //       See example in the _tube_flow problem dependent directory
     //
-    void calc_divu (Real      time,
-		    Real      dt,
-		    MultiFab& divu,
-		    bool      is_divu_iter = false);
+    virtual void calc_divu (Real      time,
+                            Real      dt,
+                            MultiFab& divu) BL_OVERRIDE;
 
     virtual void calc_dsdt (Real      time,
                             Real      dt,
