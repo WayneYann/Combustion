@@ -3248,7 +3248,7 @@ HeatTransfer::compute_differential_diffusion_fluxes (const Real& time,
 
     if (hack_nospecdiff)
     {
-      BoxLib::Error("differential_diffusion_update: hack_nospecdiff not implemented");
+      BoxLib::Error("compute_differential_diffusion_fluxes: hack_nospecdiff not implemented");
     }
 
     const int  rho_flag  = 2;
@@ -3564,7 +3564,7 @@ HeatTransfer::compute_differential_diffusion_terms (MultiFab& D,
 
     if (hack_nospecdiff)
     {
-      BoxLib::Error("differential_diffusion_update: hack_nospecdiff not implemented");
+      BoxLib::Error("compute_differential_diffusion_terms: hack_nospecdiff not implemented");
     }
 
     const TimeLevel whichTime = which_time(State_Type,time);
