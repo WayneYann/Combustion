@@ -166,7 +166,7 @@ public:
 				       Real                   dt,
 				       Real                   time,
 				       const Array<int>&      rho_flag,
-				       const MultiFab*        rho_half,
+				       const MultiFab&        rho_half,
 				       int                    dataComp,
 				       const MultiFab*        delta_rhs, 
 				       const MultiFab*        alpha, 
