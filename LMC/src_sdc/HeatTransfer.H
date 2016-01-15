@@ -36,7 +36,7 @@ typedef AmrParticleContainer<2*BL_SPACEDIM> HTParticleContainer;
 
 class HeatTransfer
     :
-    public NavierStokes
+    public NavierStokesBase
 {
 
 public:
@@ -54,10 +54,7 @@ public:
                           std::istream& is,
                           bool          bReadSpecial = false) BL_OVERRIDE;
 
-#if 1
-    virtual Real predict_velocity (Real  dt,
-                                   Real& comp_cfl) BL_OVERRIDE;
-#endif
+    Real predict_velocity (Real dt, Real& comp_cfl);
     //
     // Timestep estimation functions follow.
     //
@@ -67,7 +64,7 @@ public:
 
     virtual void initData () BL_OVERRIDE;
 
-    virtual void initDataOtherTypes () BL_OVERRIDE;
+    void initDataOtherTypes ();
     //
     // Reset time levels for the initial iterations.
     //
@@ -149,7 +146,6 @@ public:
 				 FluxBoxes&  fb_betan, 
 				 FluxBoxes&  fb_betanp1);
 
-
     enum HowToFillGrow {HT_ZERO_GROW_CELLS, HT_EXTRAP_GROW_CELLS, HT_NUM_GROW_OPTIONS};
 
     void compute_instantaneous_reaction_rates (MultiFab&       R,
@@ -167,9 +163,9 @@ public:
     //
     virtual void postCoarseTimeStep (Real cumtime) BL_OVERRIDE;
 
-    virtual void post_init_press (Real&        dt_init,
-                                  Array<int>&  nc_save,
-                                  Array<Real>& dt_save) BL_OVERRIDE;
+     void post_init_press (Real&        dt_init,
+			   Array<int>&  nc_save,
+			   Array<Real>& dt_save);
 
     virtual void post_regrid (int lbase,
                               int new_finest) BL_OVERRIDE;
@@ -335,15 +331,15 @@ protected:
     virtual void getViscosity (MultiFab* viscosity[BL_SPACEDIM],
                                const Real time) BL_OVERRIDE;
 
-    virtual void getDiffusivity (MultiFab* diffusivity[BL_SPACEDIM],
-                                 const Real time,
-                                 const int state_comp,
-                                 const int dst_comp,
-                                 const int num_comp) BL_OVERRIDE;
+    void getDiffusivity (MultiFab* diffusivity[BL_SPACEDIM],
+			 const Real time,
+			 const int state_comp,
+			 const int dst_comp,
+			 const int num_comp);
 
 #ifdef USE_WBAR
     void getDiffusivity_Wbar (MultiFab* diffusivity[BL_SPACEDIM],
-			      const Real time) BL_OVERRIDE;
+			      const Real time);
 #endif
 
     void zeroBoundaryVisc (MultiFab*  beta[BL_SPACEDIM],

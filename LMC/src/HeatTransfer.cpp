@@ -221,7 +221,8 @@ HeatTransfer::Initialize ()
 {
     if (initialized) return;
 
-    NavierStokes::Initialize();
+    NavierStokesBase::Initialize();
+
     //
     // Set all default values here!!!
     //
@@ -673,7 +674,7 @@ HeatTransfer::center_to_edge_fancy (const FArrayBox& cfab,
 void
 HeatTransfer::variableCleanUp ()
 {
-    NavierStokes::variableCleanUp();
+    NavierStokesBase::variableCleanUp();
 
     delete chemSolve;
     chemSolve = 0;
@@ -715,7 +716,7 @@ HeatTransfer::HeatTransfer (Amr&            papa,
                             const BoxArray& bl,
                             Real            time)
     :
-    NavierStokes(papa,lev,level_geom,bl,time),
+    NavierStokesBase(papa,lev,level_geom,bl,time),
     //
     // Make room for all components except velocities in aux_boundary_data_old.
     //
@@ -972,7 +973,7 @@ HeatTransfer::restart (Amr&          papa,
                        bool          bReadSpecial)
 {
 
-    NavierStokes::restart(papa,is,bReadSpecial);
+    NavierStokesBase::restart(papa,is,bReadSpecial);
     //
     // Make room for all components except velocities in aux_boundary_data_old.
     //
@@ -1153,7 +1154,7 @@ HeatTransfer::reset_typical_values(const MultiFab& S)
 Real
 HeatTransfer::estTimeStep ()
 {
-    Real estdt = NavierStokes::estTimeStep();
+    Real estdt = NavierStokesBase::estTimeStep();
 
     if (fixed_dt > 0.0 || !divu_ceiling)
         //
@@ -1282,7 +1283,7 @@ HeatTransfer::setTimeLevel (Real time,
                             Real dt_old,
                             Real dt_new)
 {
-    NavierStokes::setTimeLevel(time, dt_old, dt_new);    
+    NavierStokesBase::setTimeLevel(time, dt_old, dt_new);    
 
     state[Ydot_Type].setTimeLevel(time,dt_old,dt_new);
 
@@ -1573,7 +1574,7 @@ HeatTransfer::initDataOtherTypes ()
 void
 HeatTransfer::init (AmrLevel& old)
 {
-    NavierStokes::init(old);
+    NavierStokesBase::init(old);
 
     HeatTransfer* oldht    = (HeatTransfer*) &old;
     const Real    cur_time = oldht->state[State_Type].curTime();
@@ -1604,11 +1605,10 @@ HeatTransfer::init (AmrLevel& old)
 //
 // Inits the data on a new level that did not exist before regridding.
 //
-
 void
 HeatTransfer::init ()
 {
-    NavierStokes::init();
+    NavierStokesBase::init();
  
     HeatTransfer& old      = getLevel(level-1);
     const Real    cur_time = old.state[State_Type].curTime();
@@ -1673,7 +1673,7 @@ HeatTransfer::init ()
 void
 HeatTransfer::post_timestep (int crse_iteration)
 {
-    NavierStokes::post_timestep(crse_iteration);
+    NavierStokesBase::post_timestep(crse_iteration);
     
 #ifdef PARTICLES
     //
@@ -1850,7 +1850,7 @@ void
 HeatTransfer::post_regrid (int lbase,
                            int new_finest)
 {
-    NavierStokes::post_regrid(lbase, new_finest);
+    NavierStokesBase::post_regrid(lbase, new_finest);
     //
     // FIXME: This may be necessary regardless, unless the interpolation
     //        to fine from coarse data preserves rho=sum(rho.Y)
@@ -1881,7 +1881,7 @@ HeatTransfer::checkPoint (const std::string& dir,
 {
     BL_PROFILE("HeatTransfer::checkPoint()");
 
-    NavierStokes::checkPoint(dir,os,how,dump_old);
+    NavierStokesBase::checkPoint(dir,os,how,dump_old);
 
     if (level == 0)
     {
@@ -2262,7 +2262,7 @@ HeatTransfer::post_init_press (Real&        dt_init,
     const int  nGrow           = 0;
     const Real cur_time        = state[State_Type].curTime();
     const int  finest_level    = parent->finestLevel();
-    NavierStokes::initial_iter = true;
+    NavierStokesBase::initial_iter = true;
     //
     // Make space to save a copy of the initial State_Type state data
     //
@@ -2332,13 +2332,13 @@ HeatTransfer::post_init_press (Real&        dt_init,
                            nState,
                            nGrow);
 
-        NavierStokes::initial_iter = false;
+        NavierStokesBase::initial_iter = false;
     }
 
     if (init_iter <= 0)
-        NavierStokes::initial_iter = false; // Just being compulsive -- rbp.
+        NavierStokesBase::initial_iter = false; // Just being compulsive -- rbp.
 
-    NavierStokes::initial_step = false;
+    NavierStokesBase::initial_step = false;
     //
     // Re-instate timestep.
     //
@@ -2364,7 +2364,7 @@ HeatTransfer::resetState (Real time,
                           Real dt_old,
                           Real dt_new)
 {
-    NavierStokes::resetState(time,dt_old,dt_new);
+    NavierStokesBase::resetState(time,dt_old,dt_new);
 
     state[Ydot_Type].reset();
     state[Ydot_Type].setTimeLevel(time,dt_old,dt_new);
@@ -2754,32 +2754,6 @@ HeatTransfer::differential_spec_diffusion_update (Real dt,
 }
 
 void
-HeatTransfer::make_rho_prev_time ()
-{
-    const Real prev_time = state[State_Type].prevTime();
-
-    for (FillPatchIterator fpi(*this,rho_ptime,1,prev_time,State_Type,Density,1);
-         fpi.isValid();
-         ++fpi)
-    {
-        rho_ptime[fpi].copy(fpi());
-    }
-}
-
-void
-HeatTransfer::make_rho_curr_time ()
-{
-    const Real curr_time = state[State_Type].curTime();
-
-    for (FillPatchIterator fpi(*this,rho_ctime,1,curr_time,State_Type,Density,1);
-         fpi.isValid();
-         ++fpi)
-    {
-        rho_ctime[fpi].copy(fpi());
-    }
-}
-
-void
 HeatTransfer::adjust_spec_diffusion_fluxes (Real time)
 {
     //
@@ -2963,7 +2937,7 @@ HeatTransfer::diffuse_scalar_setup (Real        dt,
     //
     const Real prev_time = state[State_Type].prevTime();
 
-    NavierStokes::diffuse_scalar_setup(sigma, rho_flag);
+    NavierStokesBase::diffuse_scalar_setup(sigma, rho_flag);
 
     alpha     = 0;
     delta_rhs = 0;
@@ -4133,7 +4107,7 @@ HeatTransfer::advance_setup (Real time,
                              int  iteration,
                              int  ncycle)
 {
-    NavierStokes::advance_setup(time, dt, iteration, ncycle);
+    NavierStokesBase::advance_setup(time, dt, iteration, ncycle);
     //
     // Make sure the new state has values so that c-n works
     // in the predictor (of the predictor)--rbp.
@@ -4729,7 +4703,7 @@ HeatTransfer::advance (Real time,
 
     calc_divu(time+dt, dt, get_new_data(Divu_Type));
 
-    if (!NavierStokes::initial_step && level != parent->finestLevel())
+    if (!NavierStokesBase::initial_step && level != parent->finestLevel())
     {
         //
         // Set new divu to old div + dt*dsdt_old where covered by fine.
@@ -4761,7 +4735,7 @@ HeatTransfer::advance (Real time,
         
     calc_dsdt(time, dt, get_new_data(Dsdt_Type));
 
-    if (NavierStokes::initial_step)
+    if (NavierStokesBase::initial_step)
         MultiFab::Copy(get_old_data(Dsdt_Type),get_new_data(Dsdt_Type),0,0,1,0);
     //
     // Add the advective and other terms to get velocity (or momentum) at t^{n+1}.
@@ -4815,7 +4789,7 @@ HeatTransfer::advance (Real time,
 void
 HeatTransfer::create_mac_rhs (MultiFab& mac_rhs, int nGrow, Real time, Real dt)
 {
-    NavierStokes::create_mac_rhs(mac_rhs,nGrow,time,dt);
+    NavierStokesBase::create_mac_rhs(mac_rhs,nGrow,time,dt);
 
     showMF("mac",mac_rhs,"mac_rhs0_",level);
 
@@ -5406,11 +5380,11 @@ HeatTransfer::compute_edge_states (Real              dt,
         //
         if (use_forces_in_trans || (do_mom_diff == 1))
         {
-            NavierStokes::getForce(tvelforces,i,nGrowF,Xvel,BL_SPACEDIM,
+            NavierStokesBase::getForce(tvelforces,i,nGrowF,Xvel,BL_SPACEDIM,
 #ifdef GENGETFORCE
-				   prev_time,
+				       prev_time,
 #endif		 
-				   Rho);
+				       Rho);
             godunov->Sum_tf_gp_visc(tvelforces,visc_terms[Xvel][S_fpi],Gp[S_fpi],Rho);
         }
         //
@@ -5476,11 +5450,11 @@ HeatTransfer::compute_edge_states (Real              dt,
             spec.resize(S_fpi().box(),nspecies);
             spec.copy(S_fpi(),first_spec,0,nspecies);
 
-            NavierStokes::getForce(tforces,i,nGrowF,first_spec,nspecies,
+            NavierStokesBase::getForce(tforces,i,nGrowF,first_spec,nspecies,
 #ifdef GENGETFORCE
-				   prev_time,
+				       prev_time,
 #endif		 
-				   Rho);
+				       Rho);
 
             for (int comp = 0 ; comp < nspecies ; comp++)
             {
@@ -5573,12 +5547,11 @@ HeatTransfer::compute_edge_states (Real              dt,
             FArrayBox& vt = visc_terms[state_ind][S_fpi];
             int vtComp = 0;
 
-            NavierStokes::getForce(tforces,i,nGrowF,state_ind,1,
+            NavierStokesBase::getForce(tforces,i,nGrowF,state_ind,1,
 #ifdef GENGETFORCE
-				   prev_time,
+				       prev_time,
 #endif		 
-
-				   Rho);
+				       Rho);
             Array<int> bc = getBCArray(State_Type,i,state_ind,1);
 
             AdvectionScheme adv_scheme = FPU;
@@ -5664,11 +5637,11 @@ HeatTransfer::compute_edge_states (Real              dt,
                 //
                 state.copy(S_fpi(),state_ind,0,1);
                 const int comp = 0;
-                NavierStokes::getForce(tforces,i,nGrowF,state_ind,1,
+                NavierStokesBase::getForce(tforces,i,nGrowF,state_ind,1,
 #ifdef GENGETFORCE
-				       prev_time,
+					   prev_time,
 #endif		 
-				       Rho);
+					   Rho);
                 godunov->Sum_tf_divu_visc(state, tforces, comp, 1,
                                           visc_terms[state_ind][S_fpi], 0,
                                           divu_fp[S_fpi], Rho,

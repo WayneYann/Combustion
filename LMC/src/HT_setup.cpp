@@ -301,12 +301,6 @@ set_species_bc (BCRec&       bc,
     }
 }
 
-void
-NavierStokes::variableSetUp ()
-{
-    BoxLib::Error("NavierStokes::variableSetUp(): should not be here");
-}
-
 typedef StateDescriptor::BndryFunc BndryFunc;
 
 extern "C"
