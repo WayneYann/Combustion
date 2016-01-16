@@ -162,50 +162,11 @@ std::map<std::string, Array<std::string> > HeatTransfer::auxDiag_names;
 
 Array<Real> HeatTransfer::typical_values;
 
-
-
 ///////////////////////////////
 // SDC Stuff
 
 // these can be set in the inputs file
 int HeatTransfer::sdc_iterMAX;
-
-#ifdef PARTICLES
-
-namespace
-{
-    //
-    // Name of subdirectory in chk???? holding checkpointed particles.
-    // 
-    const std::string the_ht_particle_file_name("Particles");
-    //
-    // There's really only one of these.
-    //
-    HTParticleContainer* HTPC = 0;
-
-    std::string      timestamp_dir;
-    std::vector<int> timestamp_indices;
-    std::string      particle_init_file;
-    std::string      particle_restart_file;
-    std::string      particle_output_file;
-    bool             restart_from_nonparticle_chkfile;
-    bool             do_curvature_sample;
-    int              pverbose;
-    //
-    // We want to call this routine on exit to clean up particles.
-    //
-    void RemoveParticles ()
-    {
-        delete HTPC;
-        HTPC = 0;
-    }
-}
-//
-// In case someone outside of HeatTransfer needs a handle on the particles.
-//
-HTParticleContainer* HeatTransfer::theHTPC () { return HTPC; }
-
-#endif /*PARTICLES*/
 
 static
 std::string
@@ -299,13 +260,6 @@ HeatTransfer::Initialize ()
     HeatTransfer::do_add_nonunityLe_corr_to_rhoh_adv_flux = 1;
 
     HeatTransfer::sdc_iterMAX               = 1;
-
-#ifdef PARTICLES
-    do_curvature_sample              = false;
-    timestamp_dir                    = "Timestamps";
-    restart_from_nonparticle_chkfile = false;
-    pverbose                         = 2;
-#endif /*PARTICLES*/
 
     ParmParse pp("ns");
 
@@ -454,55 +408,7 @@ HeatTransfer::Initialize ()
     }
 
 #ifdef PARTICLES
-    //
-    // Some particle stuff.
-    //
-    ParmParse ppp("particles");
-    //
-    // The directory in which to store timestamp files.
-    //
-    ppp.query("timestamp_dir", timestamp_dir);
-    //
-    // Only the I/O processor makes the directory if it doesn't already exist.
-    //
-    if (ParallelDescriptor::IOProcessor())
-        if (!BoxLib::UtilCreateDirectory(timestamp_dir, 0755))
-            BoxLib::CreateDirectoryFailed(timestamp_dir);
-    //
-    // Force other processors to wait till directory is built.
-    //
-    ParallelDescriptor::Barrier();
-
-    if (int nc = ppp.countval("timestamp_indices"))
-    {
-        timestamp_indices.resize(nc);
-
-        ppp.getarr("timestamp_indices", timestamp_indices, 0, nc);
-    }
-
-    ppp.query("pverbose",pverbose);
-    //
-    // Used in initData() on startup to read in a file of particles.
-    //
-    ppp.query("particle_init_file", particle_init_file);
-    //
-    // Used in post_restart() to read in a file of particles.
-    //
-    ppp.query("particle_restart_file", particle_restart_file);
-    //
-    // This must be true the first time you try to restart from a checkpoint
-    // that was written with USE_PARTICLES=FALSE; i.e. one that doesn't have
-    // the particle checkpoint stuff (even if there are no active particles).
-    // Otherwise the code will fail when trying to read the checkpointed particles.
-    //
-    ppp.query("restart_from_nonparticle_chkfile", restart_from_nonparticle_chkfile);
-    //
-    // Used in post_restart() to write out the file of particles.
-    //
-    ppp.query("particle_output_file", particle_output_file);
-
-    ParmParse ppht("ht");
-    ppht.query("do_curvature_sample", do_curvature_sample);
+    read_particle_params();
 #endif
 
     if (verbose && ParallelDescriptor::IOProcessor())
@@ -762,11 +668,6 @@ HeatTransfer::variableCleanUp ()
     ShowMF_Sets.clear();
     auxDiag_names.clear();
     typical_values.clear();
-
-#ifdef PARTICLES
-    delete HTPC;
-    HTPC = 0;
-#endif
 }
 
 HeatTransfer::HeatTransfer ()
@@ -1645,24 +1546,7 @@ HeatTransfer::initData ()
     old_intersect_new          = grids;
 
 #ifdef PARTICLES
-    if (level == 0)
-    {
-        if (HTPC == 0)
-        {
-            HTPC = new HTParticleContainer(parent);
-            //
-            // Make sure to call RemoveParticles() on exit.
-            //
-            BoxLib::ExecOnFinalize(RemoveParticles);
-        }
-
-        HTPC->SetVerbose(pverbose);
-
-        if (!particle_init_file.empty())
-        {
-            HTPC->InitFromAsciiFile(particle_init_file,0);
-        }
-    }
+    NavierStokesBase::initParticleData();
 #endif
 }
 
@@ -1875,82 +1759,6 @@ HeatTransfer::post_timestep (int crse_iteration)
 {
     NavierStokesBase::post_timestep(crse_iteration);
 
-#ifdef PARTICLES
-    //
-    // Don't redistribute/timestamp on the final subiteration except on the coarsest grid.
-    //
-    const int ncycle = parent->nCycle(level);
-
-    if (HTPC != 0 && (crse_iteration < ncycle || level == 0))
-    {
-        const Real curr_time = state[State_Type].curTime();
-            
-        HTPC->Redistribute(false, true, level, 2);
-
-        if (!timestamp_dir.empty())
-        {
-            //
-            // Get data for timestamping.
-            //
-            std::string basename = timestamp_dir;
-
-            if (basename[basename.length()-1] != '/') basename += '/';
-
-            basename += "Timestamp";
-
-            const int finest_level = parent->finestLevel();
-
-            for (int lev = level; lev <= finest_level; lev++)
-            {
-                if (HTPC->NumberOfParticlesAtLevel(lev) <= 0) continue;
-
-                AmrLevel&       amr   = parent->getLevel(lev);
-                const MultiFab& mf    = amr.get_new_data(State_Type);
-                const int       pComp = do_curvature_sample ?  (mf.nComp()+1) : mf.nComp();
-
-                MultiFab tmf(mf.boxArray(), pComp, 2);
-
-                ParallelDescriptor::Barrier(); 
-                
-                if (do_curvature_sample)
-                {
-                    MultiFab MC(mf.boxArray(), 1, 0);
-                    amr.derive("mean_progress_curvature", curr_time, MC, 0);
-                    const int cComp = pComp - 1;
-                    tmf.setBndry(0,cComp,1);
-                    MultiFab::Copy(tmf,MC,0,cComp,1,0);
-                    //
-                    // We want to guarantee that if do_curvature_sample is enabled
-                    // that "mean_progress_curvature" actually makes it into
-                    // the list of indices to be output.  This way folks don't have
-                    // to try and figure out the proper "timestamp_indices" to set.
-                    //
-                    static bool first = true;
-                    if (first)
-                    {
-                        first = false;
-                        bool found = false;
-                        for (int i = 0, N = timestamp_indices.size(); i < N; i++)
-                            if (timestamp_indices[i] == cComp)
-                                found = true;
-                        if (!found)
-                            timestamp_indices.push_back(cComp);
-                    }
-                }
-
-                for (FillPatchIterator fpi(amr,tmf,2,curr_time,State_Type,0,mf.nComp());
-                     fpi.isValid();
-                     ++fpi)
-                {
-                    tmf[fpi].copy(fpi(),0,0,mf.nComp());
-                }
-
-                HTPC->Timestamp(basename, tmf, lev, curr_time, timestamp_indices);
-            }
-        }
-    }
-#endif
-
     if (plot_reactions && level == 0)
     {
         const int Ndiag = auxDiag["REACTIONS"]->nComp();
@@ -1979,10 +1787,8 @@ HeatTransfer::post_timestep (int crse_iteration)
 void
 HeatTransfer::post_restart ()
 {
-    //
-    // We used to call NavierStokesBase::post_restart here, but it only did the
-    // make_rho's and particle stuff (which we don't want).
-    //
+    NavierStokesBase::post_restart();
+
     make_rho_prev_time();
     make_rho_curr_time();
 
@@ -2001,39 +1807,6 @@ HeatTransfer::post_restart ()
         int usetemp = 1;
         FORT_ACTIVECONTROL(&dummy,&dummy,&crse_dt,&MyProc,&step,&restart,&usetemp);
     }
-
-#ifdef PARTICLES
-    if (level == 0)
-    {
-        BL_ASSERT(HTPC == 0);
-
-        HTPC = new HTParticleContainer(parent);
-        //
-        // Make sure to call RemoveParticles() on exit.
-        //
-        BoxLib::ExecOnFinalize(RemoveParticles);
-
-        HTPC->SetVerbose(pverbose);
-        //
-        // We want to be able to add new particles on a restart.
-        // As well as the ability to write the particles out to an ascii file.
-        //
-        if (!restart_from_nonparticle_chkfile)
-        {
-            HTPC->Restart(parent->theRestartFile(), the_ht_particle_file_name);
-        }
-
-        if (!particle_restart_file.empty())
-        {
-            HTPC->InitFromAsciiFile(particle_restart_file,0);
-        }
-
-        if (!particle_output_file.empty())
-        {
-            HTPC->WriteAsciiFile(particle_output_file);
-        }
-    }
-#endif
 }
 
 void
@@ -2060,16 +1833,6 @@ HeatTransfer::post_regrid (int lbase,
         if (parent->levelSteps(0)>0 && level>lbase)
             set_rho_to_species_sum(get_new_data(State_Type),0,nGrow,0);
     }
-
-#ifdef PARTICLES
-    if (HTPC != 0)
-    {
-        HTPC->Redistribute();
-
-        if (parent->finestLevel() > 0)
-            HTPC->RemoveParticlesNotAtFinestLevel();
-    }
-#endif
 }
 
 void
@@ -2097,11 +1860,6 @@ HeatTransfer::checkPoint (const std::string& dir,
             }
             tvfab.writeOn(tvos);
         }
-
-#ifdef PARTICLES
-        if (HTPC != 0)
-            HTPC->Checkpoint(dir,the_ht_particle_file_name);
-#endif
     }
 }
 
@@ -4557,9 +4315,9 @@ HeatTransfer::advance (Real time,
     showMF("sdc",get_new_data(State_Type),"sdc_Snew_postProj",level,parent->levelSteps(level));
 
 #ifdef PARTICLES
-    if (HTPC != 0)
+    if (theNSPC() != 0)
     {
-        HTPC->AdvectWithUmac(u_mac, level, dt);
+        theNSPC()->AdvectWithUmac(u_mac, level, dt);
     }
 #endif
 
@@ -7353,75 +7111,3 @@ HeatTransfer::derive (const std::string& name,
 #endif
     }
 }
-
-#ifdef PARTICLES
-void
-HeatTransfer::ParticleDerive(const std::string& name,
-                             Real               time,
-                             MultiFab&          mf,
-                             int                dcomp)
-{
-    if (HTPC && name == "particle_count")
-    {
-        MultiFab temp_dat(grids,1,0);
-        temp_dat.setVal(0);
-        HTPC->Increment(temp_dat,level);
-        MultiFab::Copy(mf,temp_dat,0,dcomp,1,0);
-    }
-    else if (HTPC && name == "total_particle_count")
-    {
-        //
-        // We want the total particle count at this level or higher.
-        //
-        ParticleDerive("particle_count",time,mf,dcomp);
-
-        IntVect trr(D_DECL(1,1,1));
-
-        for (int lev = level+1; lev <= parent->finestLevel(); lev++)
-        {
-            BoxArray ba = parent->boxArray(lev);
-
-            MultiFab temp_dat(ba,1,0);
-
-            trr *= parent->refRatio(lev-1);
-
-            ba.coarsen(trr);
-
-            MultiFab ctemp_dat(ba,1,0);
-
-            temp_dat.setVal(0);
-            ctemp_dat.setVal(0);
-
-            HTPC->Increment(temp_dat,lev);
-
-            for (MFIter mfi(temp_dat); mfi.isValid(); ++mfi)
-            {
-                const FArrayBox& ffab =  temp_dat[mfi];
-                FArrayBox&       cfab = ctemp_dat[mfi];
-                const Box&       fbx  = ffab.box();
-
-                BL_ASSERT(cfab.box() == BoxLib::coarsen(fbx,trr));
-
-                for (IntVect p = fbx.smallEnd(); p <= fbx.bigEnd(); fbx.next(p))
-                {
-                    const Real val = ffab(p);
-                    if (val > 0)
-                        cfab(BoxLib::coarsen(p,trr)) += val;
-                }
-            }
-
-            temp_dat.clear();
-
-            MultiFab dat(grids,1,0);
-            dat.setVal(0);
-            dat.copy(ctemp_dat);
-
-            MultiFab::Add(mf,dat,0,dcomp,1,0);
-        }
-    }
-    else
-    {
-        AmrLevel::derive(name,time,mf,dcomp);
-    }
-}
-#endif

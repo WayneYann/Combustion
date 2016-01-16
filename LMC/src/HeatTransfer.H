@@ -6,14 +6,6 @@
 #include <NavierStokesBase.H>
 #include <ChemDriver.H>
 
-#ifdef PARTICLES
-#include <AmrParticles.H>
-//
-// The "BL_SPACEDIM" bytes in m_data[] are to hold temporary positions and velocities in AdvectWithUmac().
-//
-typedef AmrParticleContainer<2*BL_SPACEDIM> HTParticleContainer;
-#endif
-
 #include <list>
 #include <map>
 #include <utility>
@@ -206,11 +198,6 @@ public:
     //
     static ChemDriver& getChemSolve () { return *chemSolve; }
 
-#ifdef PARTICLES
-    static HTParticleContainer* theHTPC ();
-
-    void ParticleDerive (const std::string& name, Real time, MultiFab& mf, int dcomp);
-#endif
     //
     // Returns a MultiFab containing the derived data for this level.
     // The user is responsible for deleting this pointer when done
@@ -459,12 +446,19 @@ protected:
                              VisMF::How         how = VisMF::OneFilePerCPU,
                              bool               dump_old = true) BL_OVERRIDE;
 
-protected:
+#ifdef PARTICLES
+    virtual int timestamp_num_extras () BL_OVERRIDE;
+    virtual void timestamp_add_extras (int lev, Real time, MultiFab& mf) BL_OVERRIDE;
+#endif
 
     DistributionMapping getFuncCountDM (const BoxArray& bxba, int ngrow = 0);
-    //
-    // Protected data.
-    //
+
+private:
+
+#ifdef PARTICLES
+    static void read_particle_params ();
+#endif
+
     MultiFab**  EdgeState;
     MultiFab**  SpecDiffusionFluxn;
     MultiFab**  SpecDiffusionFluxnp1;
