@@ -47,10 +47,6 @@ public:
                           bool          bReadSpecial = false) BL_OVERRIDE;
 
     Real predict_velocity (Real dt, Real& comp_cfl);
-    //
-    // Timestep estimation functions follow.
-    //
-    virtual Real estTimeStep () BL_OVERRIDE;
 
     void checkTimeStep (Real dt);
 
@@ -227,17 +223,17 @@ public:
     
 protected:
 
+    //
+    // Timestep estimation functions follow.
+    //
+    virtual Real estTimeStep () BL_OVERRIDE;
+
     void define_data ();
 
     //
     // Protected member functions.
     //
     virtual void sum_integrated_quantities () BL_OVERRIDE;
-
-    HeatTransfer& getLevel (int lev)
-    {
-        return *(HeatTransfer*) &parent->getLevel(lev);
-    }
 
     virtual void mac_sync () BL_OVERRIDE;
     //
@@ -454,6 +450,11 @@ protected:
     DistributionMapping getFuncCountDM (const BoxArray& bxba, int ngrow = 0);
 
 private:
+
+    HeatTransfer& getLevel (int lev)
+    {
+        return *(HeatTransfer*) &parent->getLevel(lev);
+    }
 
 #ifdef PARTICLES
     static void read_particle_params ();
