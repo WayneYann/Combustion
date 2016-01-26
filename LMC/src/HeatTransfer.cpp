@@ -3409,36 +3409,6 @@ HeatTransfer::getTempViscTerms (MultiFab& visc_terms,
     }
 }
 
-void
-HeatTransfer::getRhoHViscTerms (MultiFab& visc_terms,
-                                int       src_comp, 
-                                Real      time)
-{
-    //
-    // Compute the enthalpy source term, including radiative and
-    // conductive fluxe divergences.  The remaining term, which
-    // is the divergence of the enthalpy flux carried by species
-    // diffusion (ie, div(h_i gamma_i), is computed as an advective
-    // forcing contribution (because it was more convenient to
-    // do it there at the time).  It is not added here, so if the
-    // algorithm changes to require the full RhoH forcing term
-    // (for example, if RhoH is extrapolated to cell edges), the
-    // one needs to be sure to add that missing term.
-    //
-    // NOTE: This routine does not fill grow cells
-    //
-    BL_ASSERT(visc_terms.boxArray()==grids);
-
-    const int nGrow = 0;
-    FluxBoxes fb_beta(this, 1, nGrow);
-    MultiFab** beta = fb_beta.get();
-    
-    const int rhoh_rho_flag = 2;
-    getDiffusivity(beta, time, RhoH, 0, 1);
-
-    diffusion->getViscTerms(visc_terms,src_comp,RhoH,time,rhoh_rho_flag,beta,0);
-    add_heat_sources(visc_terms,RhoH-src_comp,time,nGrow,1.0);
-}
 
 void
 HeatTransfer::add_heat_sources(MultiFab& sum,
@@ -7595,6 +7565,7 @@ HeatTransfer::RhoH_to_Temp (MultiFab& S,
     htt_hmixTYP = htt_hmixTYP_SAVE;
 }
 
+#if 0
 void
 HeatTransfer::compute_cp_and_hmix (const MultiFab& S,
                                    MultiFab&       cp, 
@@ -7670,6 +7641,7 @@ HeatTransfer::compute_cp_and_hmix (const MultiFab& S,
 	}
     }
 }
+#endif
 
 void
 HeatTransfer::compute_cp (Real      time,
