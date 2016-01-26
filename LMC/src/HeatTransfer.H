@@ -212,63 +212,6 @@ protected:
     //
     static void Initialize ();
     static void Finalize ();
-
-    void calcDiffusivity (const Real time,
-			  bool       doCalcVisc);
-
-    void getDiffusivity (MultiFab* diffusivity[BL_SPACEDIM],
-			 const Real time,
-			 const int state_comp,
-			 const int dst_comp,
-			 const int num_comp);
-    
-    void zeroBoundaryVisc (MultiFab*  beta[BL_SPACEDIM],
-                           const Real time,
-                           const int  state_comp,
-                           const int  dst_comp,
-                           const int  ncomp) const;
-
-    void compute_OT_radloss (Real      time,
-                             int       nGrow,
-                             MultiFab& radloss);
-
-    void reset_rho_in_rho_states (const MultiFab& rho,
-                                  Real            time,
-                                  const int       sComp,
-                                  const int       nComp);
-
-    void set_overdetermined_boundary_cells (Real time);
-    //
-    // Functions for interpolating from cell centers to cell edges
-    //
-    enum FPLoc { HT_Edge = 0, HT_Center };
-
-    static FPLoc fpi_phys_loc (int p_bc);
-
-    static void center_to_edge_fancy (const FArrayBox& cfab,
-                                      FArrayBox&       efab,
-                                      const Box&       ccBox,
-                                      int              sComp,
-                                      int              dComp,
-                                      int              nComp,
-                                      const Box&       domain,
-                                      const FPLoc&     bc_lo,
-                                      const FPLoc&     bc_hi);
-
-    void add_heat_sources(MultiFab& sum,
-                          int       dComp,
-                          Real      time,
-                          int       nGrow,
-                          Real      scale);
-
-    enum Solver_Status {HT_InProgress, HT_Stalled, HT_Solved};
-
-    void set_htt_hmixTYP ();
-
-    void set_typical_values(bool restart);
-    void reset_typical_values(const MultiFab& S);
-
-    DistributionMapping getFuncCountDM (const BoxArray& bxba, int ngrow = 0);
     
 #ifdef PARTICLES
     virtual int timestamp_num_extras () BL_OVERRIDE;
@@ -277,6 +220,14 @@ protected:
 #endif
 
 private:
+
+    // enum Solver_Status {HT_InProgress, HT_Stalled, HT_Solved};
+
+    void add_heat_sources(MultiFab& sum,
+                          int       dComp,
+                          Real      time,
+                          int       nGrow,
+                          Real      scale);
 
     void adjust_spec_diffusion_fluxes (Real time);
 
@@ -296,6 +247,9 @@ private:
 		    Real      dt,
 		    MultiFab& dpdt,
 		    MultiFab* u_mac);
+
+    void calcDiffusivity (const Real time,
+			  bool       doCalcVisc);
 
     void checkTimeStep (Real dt);
 
@@ -326,6 +280,10 @@ private:
                         MultiFab&       P,
                         int             pComp,
                         const MultiFab* T = 0);
+
+    void compute_OT_radloss (Real      time,
+                             int       nGrow,
+                             MultiFab& radloss);
 
     void compute_vel_visc (Real      time,
 			   MultiFab* beta);
@@ -363,6 +321,14 @@ private:
 				 FluxBoxes&  fb_betan, 
 				 FluxBoxes&  fb_betanp1);
 
+    void getDiffusivity (MultiFab* diffusivity[BL_SPACEDIM],
+			 const Real time,
+			 const int state_comp,
+			 const int dst_comp,
+			 const int num_comp);
+
+    DistributionMapping getFuncCountDM (const BoxArray& bxba, int ngrow = 0);
+
     HeatTransfer& getLevel (int lev)
     {
         return *(HeatTransfer*) &parent->getLevel(lev);
@@ -383,6 +349,15 @@ private:
 
     Real predict_velocity (Real dt, Real& comp_cfl);
 
+    void reset_rho_in_rho_states (const MultiFab& rho,
+                                  Real            time,
+                                  const int       sComp,
+                                  const int       nComp);
+
+    void rhoh_update (Real time,
+                      Real dt,
+                      int  corrector);
+
     void scalar_advection (Real dt,
 			   int  first_scalar,
 			   int  last_scalar,
@@ -402,6 +377,8 @@ private:
                         int       strtcomp,
                         int       minzero = 0);
 
+    void set_htt_hmixTYP ();
+
     void set_rho_to_species_sum (MultiFab& S,
                                  int       strtcomp, 
                                  int       nghost_in = 0,
@@ -414,10 +391,19 @@ private:
                                  int       nghost_in = 0,
                                  int       minzero = 0);
 
+    void set_overdetermined_boundary_cells (Real time);
+
     void setThermoPress(Real time);
 
-    enum YdotAction { HT_EstimateYdotNew, HT_ImproveYdotOld, HT_LeaveYdotAlone };
+    void set_typical_values(bool restart);
+    void reset_typical_values(const MultiFab& S);
 
+    void spec_update (Real time,
+                      Real dt,
+                      int  corrector);
+
+    enum YdotAction { HT_EstimateYdotNew, HT_ImproveYdotOld, HT_LeaveYdotAlone };
+    //
     void strang_chem (MultiFab&  state,
 		      Real       dt,
 		      YdotAction Ydot_action,
@@ -425,19 +411,34 @@ private:
 
     void temperature_stats (MultiFab& S);
 
-    void rhoh_update (Real time,
-                      Real dt,
+    void temp_update (Real dt,
                       int  corrector);
 
     void tracer_update (Real dt,
                         int  corrector);
 
-    void temp_update (Real dt,
-                      int  corrector);
+    void zeroBoundaryVisc (MultiFab*  beta[BL_SPACEDIM],
+                           const Real time,
+                           const int  state_comp,
+                           const int  dst_comp,
+                           const int  ncomp) const;
 
-    void spec_update (Real time,
-                      Real dt,
-                      int  corrector);
+    //
+    // Functions for interpolating from cell centers to cell edges
+    //
+    enum FPLoc { HT_Edge = 0, HT_Center };
+    //
+    static FPLoc fpi_phys_loc (int p_bc);
+    //
+    static void center_to_edge_fancy (const FArrayBox& cfab,
+                                      FArrayBox&       efab,
+                                      const Box&       ccBox,
+                                      int              sComp,
+                                      int              dComp,
+                                      int              nComp,
+                                      const Box&       domain,
+                                      const FPLoc&     bc_lo,
+                                      const FPLoc&     bc_hi);
 
     static void init_once ();
 
