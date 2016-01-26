@@ -92,8 +92,7 @@ public:
 
     virtual void post_init (Real stop_time) BL_OVERRIDE;
 
-    virtual void post_regrid (int lbase,
-                              int new_finest) BL_OVERRIDE;
+    virtual void post_regrid (int lbase, int new_finest) BL_OVERRIDE;
 
     virtual void post_restart () BL_OVERRIDE;
 
@@ -207,9 +206,11 @@ protected:
 
     virtual void velocity_diffusion_update (Real dt) BL_OVERRIDE;
 
-    //
-    // Protected static member functions.
-    //
+
+    ////////////////////////////////////////////////////////////////////////////
+    //    HeatTransfer protected static functions                             //
+    ////////////////////////////////////////////////////////////////////////////
+
     static void Initialize ();
     static void Finalize ();
     
@@ -457,9 +458,9 @@ private:
     //                                  int             calchmix,
     //                                  int             floor_spec);
 
-    //
-    // Private Data
-    //
+    ////////////////////////////////////////////////////////////////////////////
+    //    Private Data                                                        //
+    ////////////////////////////////////////////////////////////////////////////
 
     MultiFab**  EdgeState;
     MultiFab**  SpecDiffusionFluxn;
