@@ -543,6 +543,7 @@ showMF(const std::string&   mySet,
             cout << "   ******************************  Debug: writing " << junkname << '\n';
         }
 
+#if 0
         if (ShowMF_Check_Nans)
         {
             for (MFIter mfi(mf); mfi.isValid(); ++mfi)
@@ -550,6 +551,7 @@ showMF(const std::string&   mySet,
 	      //                BL_ASSERT(!mf[mfi].contains_nan(mfi.validbox(),0,mf.nComp()));
             }
         }
+#endif
         VisMF::Write(mf,junkname);
         FArrayBox::setFormat(saved_format);
     }
@@ -985,18 +987,23 @@ HeatTransfer::restart (Amr&          papa,
       MultiFab& rYdot_new = get_new_data(RhoYdot_Type);
       MultiFab& S_old = get_old_data(State_Type);
       MultiFab& S_new = get_new_data(State_Type);
-      for (MFIter mfi(rYdot_old); mfi.isValid(); ++mfi)
-	{
+
+
+#ifdef _OPENMP
+#pragma omp parallel
+#endif
+      for (MFIter mfi(rYdot_old,true); mfi.isValid(); ++mfi)
+      {
 	  FArrayBox& ry1 = rYdot_old[mfi];
 	  FArrayBox& ry2 = rYdot_new[mfi];
-	  FArrayBox& S1 = S_old[mfi];
-	  FArrayBox& S2 = S_new[mfi];
-	  for (int i=0; i<nspecies; i++)
-	    {
+	  const FArrayBox& S1 = S_old[mfi];
+	  const FArrayBox& S2 = S_new[mfi];
+	  for (int i=0; i<nspecies; ++i)
+	  {
 	      ry1.mult(S1,Density,i,1);
 	      ry2.mult(S2,Density,i,1);
-	    }
-	}
+	  }
+      }
     }
 
     // Deal with typical values
@@ -1498,8 +1505,12 @@ HeatTransfer::initData ()
         for (int i = 0; i < BL_SPACEDIM; i++)
         {
             amrData.FillVar(tmp, level, plotnames[idX+i], 0);
-            for (MFIter mfi(tmp); mfi.isValid(); ++mfi)
-                S_new[mfi].plus(tmp[mfi], tmp[mfi].box(), 0, Xvel+i, 1);
+#ifdef _OPENMP
+#pragma omp parallel
+#endif
+            for (MFIter mfi(tmp,true); mfi.isValid(); ++mfi) {
+                S_new[mfi].plus(tmp[mfi], mfi.tilebox(), 0, Xvel+i, 1);
+	    }
             amrData.FlushGrids(idX+i);
         }
 
@@ -1608,6 +1619,8 @@ HeatTransfer::compute_instantaneous_reaction_rates (MultiFab&       R,
     const int sCompT       = Temp;
     const int sCompRhoYdot = 0;
     
+    ChemDriver& chem_solve = getChemSolve();
+
     for (MFIter mfi(S); mfi.isValid(); ++mfi)
     {
         const FArrayBox& rhoY = S[mfi];
@@ -1616,7 +1629,7 @@ HeatTransfer::compute_instantaneous_reaction_rates (MultiFab&       R,
         const Box& box = mfi.validbox();
         FArrayBox& rhoYdot = R[mfi];
 
-        getChemSolve().reactionRateRhoY(rhoYdot,rhoY,rhoH,T,Patm,box,sCompRhoY,sCompRhoH,sCompT,sCompRhoYdot);
+        chem_solve.reactionRateRhoY(rhoYdot,rhoY,rhoH,T,Patm,box,sCompRhoY,sCompRhoH,sCompT,sCompRhoYdot);
     }
     
     if ((nGrow>0) && (how == HT_EXTRAP_GROW_CELLS))
