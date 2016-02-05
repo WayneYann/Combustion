@@ -374,7 +374,7 @@ c    quadratic 2
          print *,'time,dt,coft,V_new:',time,dt,coft,V_new
          print *,'changeMax_control: ', changeMax_control
 #if 1
-         print *,'vslope,sest,cfix,slocal:',vslope,sest,cfix,slocal
+C  vslope not defined yet         print *,'vslope,sest,cfix,slocal:',vslope,sest,cfix,slocal
 #else
          print *,'alpha,sest,cfix,slocal:',alpha,sest,cfix,slocal
 #endif

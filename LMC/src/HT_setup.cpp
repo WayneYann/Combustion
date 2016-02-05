@@ -41,6 +41,7 @@
 #include <SLABSTAT_HT_F.H>
 #include <Utility.H>
 #include <NS_error_F.H>
+#include <BL_CXX11.H>
 
 #define DEF_LIMITS(fab,fabdat,fablo,fabhi)   \
 const int* fablo = (fab).loVect();           \
@@ -300,12 +301,6 @@ set_species_bc (BCRec&       bc,
     }
 }
 
-void
-NavierStokes::variableSetUp ()
-{
-    BoxLib::Error("NavierStokes::variableSetUp(): should not be here");
-}
-
 typedef StateDescriptor::BndryFunc BndryFunc;
 
 extern "C"
@@ -361,9 +356,9 @@ public:
     //
     // Destructor.
     //
-    virtual ~ChemBndryFunc () {}
+    virtual ~ChemBndryFunc ()  BL_OVERRIDE {}
     
-    virtual StateDescriptor::BndryFunc* clone () const
+    virtual StateDescriptor::BndryFunc* clone () const BL_OVERRIDE
     {
         //
 	// Bitwise copy ok here, no copy ctr required.
@@ -378,22 +373,21 @@ public:
     virtual void operator () (Real* data, const int* lo, const int* hi,
 			      const int* dom_lo, const int* dom_hi,
 			      const Real* dx, const Real* grd_lo,
-			      const Real* time, const int* bc) const
+			      const Real* time, const int* bc) const BL_OVERRIDE
     {
 	BL_ASSERT(m_func != 0);
 	m_func(data,ARLIM(lo),ARLIM(hi),dom_lo,dom_hi,dx,grd_lo,time,bc,&m_stateID);
     }
-        //
-        // Fill boundary cells using "group" function.
-        //
+    //
+    // Fill boundary cells using "group" function.
+    //
     virtual void operator () (Real* data, const int* lo, const int* hi,
 			      const int* dom_lo, const int* dom_hi,
 			      const Real* dx, const Real* grd_lo,
-			      const Real* time, const int* bc, bool trait) const
+			      const Real* time, const int* bc, int ng) const BL_OVERRIDE
     {
-        BndryFunc::operator()(data, lo, hi, dom_lo, dom_hi, dx, grd_lo, time, bc, trait);
+        BndryFunc::operator()(data, lo, hi, dom_lo, dom_hi, dx, grd_lo, time, bc, ng);
     }
-  
     //
     // Access.
     //
@@ -983,14 +977,14 @@ class HTBld
     :
     public LevelBld
 {
-    virtual void variableSetUp ();
-    virtual void variableCleanUp ();
-    virtual AmrLevel *operator() ();
+    virtual void variableSetUp () BL_OVERRIDE;
+    virtual void variableCleanUp () BL_OVERRIDE;
+    virtual AmrLevel *operator() () BL_OVERRIDE;
     virtual AmrLevel *operator() (Amr&            papa,
                                   int             lev,
                                   const Geometry& level_geom,
                                   const BoxArray& ba,
-                                  Real            time);
+                                  Real            time) BL_OVERRIDE;
 };
 
 HTBld HTbld;

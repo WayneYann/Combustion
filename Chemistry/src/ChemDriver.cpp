@@ -101,11 +101,6 @@ ChemDriver::Parameter::Parameter::ResetToDefault()
   *rp = *rdefp;
 }
 
-/*
- * ChemDriver::Parameter::GetParamSrting
- * Return string describing what the parameter type
- * actually means
- */
 std::string
 ChemDriver::Parameter::GetParamString() const
 {
@@ -184,10 +179,92 @@ ChemDriver::Transport ()
   return transport;
 }
 
+static void modify_parameters(ChemDriver& cd)
+{
+  /*
+    To modify a chem parameter, p1 ... pn, add the following to the ParmParsed input, e.g.
+    chem.parameters = p1 p2 ...
+    chem.p1.type = FWD_A
+    chem.p1.reaction_id = 0
+    chem.p2.type = FWD_EA
+    chem.p2.reaction_id = 0
+    chem.values = 6.e17 6000
+    ...
+   */
+
+  // FIXME: Redo this to avoid explicitly defining this map twice...
+  std::map<std::string,REACTION_PARAMETER> PTypeMap;
+  PTypeMap["FWD_A"]      = FWD_A;
+  PTypeMap["FWD_BETAA"]  = FWD_BETA;
+  PTypeMap["FWD_EA"]     = FWD_EA;
+  PTypeMap["LOW_A"]      = LOW_A;
+  PTypeMap["LOW_BETAA"]  = LOW_BETA;
+  PTypeMap["LOW_EA"]     = LOW_EA;
+  PTypeMap["REV_A"]      = REV_A;
+  PTypeMap["REV_BETAA"]  = REV_BETA;
+  PTypeMap["REV_EA"]     = REV_EA;
+  PTypeMap["TROE_A"]     = TROE_A;
+  PTypeMap["TROE_A"]     = TROE_A;
+  PTypeMap["TROE_TS"]    = TROE_TS;
+  PTypeMap["TROE_TSS"]   = TROE_TSS;
+  PTypeMap["TROE_TSSS"]  = TROE_TSSS;
+  PTypeMap["SRI_A"]      = SRI_A;
+  PTypeMap["SRI_B"]      = SRI_B;
+  PTypeMap["SRI_C"]      = SRI_C;
+  PTypeMap["SRI_D"]      = SRI_D;
+  PTypeMap["SRI_E"]      = SRI_E;
+  PTypeMap["THIRD_BODY"] = THIRD_BODY;
+
+  ParmParse pp("chem");
+  Array<std::string> parameters;
+  int np = pp.countval("parameters");
+  if (np>0) {
+    pp.getarr("parameters",parameters,0,np);
+  }
+
+  PArray<ChemDriver::Parameter> p(np,PArrayManage);
+  Array<Real> values(np);
+  for (int i=0; i<np; ++i) {
+    std::string prefix = parameters[i];
+    ParmParse ppp(std::string("chem."+prefix).c_str());
+    int reaction_id; ppp.get("reaction_id",reaction_id);
+    if (reaction_id<0 || reaction_id > cd.numReactions()) {
+      BoxLib::Abort("Reaction ID invalid");
+    }
+
+    std::string type; ppp.get("type",type);
+    std::map<std::string,REACTION_PARAMETER>::const_iterator it = PTypeMap.find(type);
+    if (it == PTypeMap.end()) {
+      BoxLib::Abort("Unrecognized reaction parameter");
+    }
+
+    int id = -1;
+    if (type == "THIRD_BODY") {
+      std::string tb_name; ppp.get("tb_name",tb_name);
+      id = cd.index(tb_name);
+      BL_ASSERT(id >= 0);
+    }
+
+    p.set(i,new ChemDriver::Parameter(reaction_id,it->second,id));
+    values[i] = p[i].DefaultValue();
+  }
+
+  int nv = pp.countval("parameter_values");
+  if (nv!=0) {
+    BL_ASSERT(nv == np);
+    pp.getarr("parameter_values",values,0,np);
+    for (int i=0; i<np; ++i) {
+      p[i].Value() = values[i];
+      std::cout << "************** Modified chem parameter \"" << parameters[i] << "\": " << p[i] << std::endl;
+    }
+  }
+}
+
 void
 ChemDriver::initOnce ()
 {
     FORT_INITCHEM();
+    modify_parameters(*this);
     getSpeciesNames();
     getElementNames();
     FORT_GETCKDIMPARAMS(&mMaxreac, &mMaxspec, &mMaxelts,  &mMaxord,
