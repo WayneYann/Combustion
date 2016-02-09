@@ -3272,8 +3272,8 @@ HeatTransfer::scalar_advection_update (Real dt,
       FArrayBox& snew = S_new[mfi];
       
       snew.copy( (*aofs)[mfi],box,first_scalar,box,first_scalar,nc);
-      snew.mult(dt,first_scalar,nc);
-      snew.plus(S_old[mfi],first_scalar,first_scalar,nc);            
+      snew.mult(dt,box,first_scalar,nc);
+      snew.plus(S_old[mfi],box,first_scalar,first_scalar,nc);            
     }
 }
 
