@@ -6473,9 +6473,9 @@ HeatTransfer::RhoH_to_Temp (FArrayBox& S,
     // Convert rho to 1/rho, rho*h to h and rho*Y to Y for this operation.
     //
     S.invert(1,box,Density,1);    
-    S.mult(S,Density,RhoH,1);
+    S.mult(S,box,Density,RhoH,1);
     for (int spec = first_spec; spec <= last_spec; spec++)
-        S.mult(S,Density,spec,1);
+        S.mult(S,box,Density,spec,1);
 
     int iters = RhoH_to_Temp_DoIt(S,S,S,box,RhoH,first_spec,Temp,htt_hmixTYP,getChemSolve());
 
