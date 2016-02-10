@@ -1,5 +1,5 @@
-#FILE = typVals_DME.pp
-#ns.reset_typical_vals_int = 5
+#FILE = typVals_Dodecane.pp
+ns.reset_typical_vals_int = 5
 ht.vode_itol = 2
 #ht.vode_rtol = 1.e-6
 #ht.vode_atol = 1.e-6
@@ -35,7 +35,7 @@ geometry.coord_sys = 0  # 0 => cart, 1 => RZ
 mg.usecg = 1
 cg.v = 0
 cg.isExpert=1
-mg.v = 1
+mg.v = 0
 cg.maxiter = 1000
 mg.maxiter = 1000
 mg.nu_0 = 1
@@ -72,18 +72,17 @@ amr.blocking_factor = 16
 max_step            = 1000
 
 amr.plot_files_output = 1
-amr.plot_file       = plt
+amr.plot_file       = plt_hwk_f_
 amr.plot_int        = 5
 
 amr.checkpoint_files_output = 1
-amr.check_file      = chk
+amr.check_file      = chk_hwk_f_
 amr.check_int       = 5
-amr.check_int       = 10
 
 ns.cfl              = 0.7
 
 amr.v=1
-amr.max_level        = 2
+amr.max_level        = 3
 amr.ref_ratio       = 2 2 2 2 # refinement ratio
 amr.regrid_int      = 2       # how often to regrid
 amr.n_error_buf     = 4 4 4 4 # number of buffer cells in error est
@@ -92,7 +91,7 @@ amr.grid_eff        = 0.7     # what constitutes an efficient grid
 amr.grid_log        = grdlog  # name of grid logging file
 #amr.derive_plot_vars=ALL
 
-amr.probin_file = probin.diffusion.3d
+amr.probin_file = probin.hawkes.3d
 
 # ------------------  INPUTS TO PHYSICS CLASS -------------------
 ns.dt_cutoff       = 5.e-10   # level 0 timestep below which we halt
@@ -172,8 +171,8 @@ proj.proj_tol       = 1.0e-11  # tolerence for projections
 proj.sync_tol       = 1.0e-8  # tolerence for projections
 proj.rho_wgt_vel_proj = 0      # 0 => const den proj, 1 => rho weighted
 #proj.rho_wgt_vel_proj = 1      # 0 => const den proj, 1 => rho weighted
-proj.Pcode          = 0
 proj.Pcode          = 1
+proj.Pcode          = 0
 proj.filter_factor  = 0.0
 proj.do_outflow_bcs = 0
 proj.divu_minus_s_factor = .5

@@ -90,10 +90,12 @@ c     A diffusion flame
          num_zones_defined = 2
 
 
+         if(fuel_N2_vol_percent .ge. 0.d0)then
 c     Fuel
          do n = 1,Nspec
             Xt(n) = 0.d0
          end do 
+
          Xt(iN2) = fuel_N2_vol_percent*1.d-2
          Xt(iNC12H26) = 1.d0 - Xt(iN2)            
 
@@ -123,6 +125,45 @@ c     Air
          u_bc(airZone) = 0.d0
          v_bc(airZone) = 0.d0
          w_bc(airZone) = V_co
+
+         else
+c     Fuel
+         do n = 1,Nspec
+            Xt(n) = 0.d0
+         end do 
+
+         Xt(iNC12H26) = .1208d0
+         Xt(iO2) = .1319d0
+         Xt(iN2) = 1.d0 -  Xt(iNC12H26) -  Xt(iO2)
+
+         CALL CKXTY (Xt, IWRK, RWRK, Yt)
+
+         do n=1,Nspec
+            Y_bc(n-1,fuelZone) = Yt(n)
+         end do
+         T_bc(fuelZone) = T_in
+         u_bc(fuelZone) = 0.d0
+         v_bc(fuelZone) = 0.d0
+         w_bc(fuelZone) = V_in
+
+c     Air
+         do n=1,Nspec
+            Xt(n) = zero
+         enddo
+         Xt(oxidID) = 0.15d0
+         Xt(iN2)    = 1.d0 - Xt(oxidID)
+
+         CALL CKXTY (Xt, IWRK, RWRK, Yt)         
+         do n=1,Nspec
+            Y_bc(n-1,airZone) = Yt(n)
+         end do
+         
+         T_bc(airZone) = T_co
+         u_bc(airZone) = 0.d0
+         v_bc(airZone) = 0.d0
+         w_bc(airZone) = V_co
+
+         endif
 
       else
          
