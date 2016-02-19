@@ -211,6 +211,7 @@
 \newcommand{\castro}{{\sf Castro}}
 \newcommand{\maestro}{{\sf Maestro}}
 \newcommand{\boxlib}{{\sf BoxLib}}
+\newcommand{\combustion}{{\sf Combustion}}
 \newcommand{\yt}{{\sf yt}}
 \newcommand{\amrvis}{{\sf Amrvis}}
 \newcommand{\visit}{{\sf VisIt}}
@@ -276,22 +277,29 @@
 
 %\clearpage
 
+
+\mainmatter
+
 \chapter*{Preface}
 \chaptermark{Preface}
 \addcontentsline{toc}{chapter}{preface}
 
+\input Preface/LMCPreface
+
+%-----------------------------------------------------------------------------
+\part{Overview of the \lmc\ Algorithm}
+
+\chapter{Introduction}
 \input Introduction/LMCIntroduction
 
-\clearpage
+\chapter{Equation Set}
+\input Equations/LMCEquations
 
-\mainmatter
-
+%-----------------------------------------------------------------------------
+\part{Using \lmc}
 
 \chapter{Getting Started}
 \input GettingStarted/LMCGettingStarted
-
-\chapter{The low Mach number flow model}
-\input Equations/LMCEquations
 
 %\chapter{Inputs Files}
 %\input Inputs/LMCInputs.tex
