@@ -62,12 +62,23 @@ forward in time.
 
 \subsubsection{State Data}
 
-\lmc\ relies on the class structure defined by \boxlib\ to manage the
-data.
+The {\tt StateData} class structure defined by \boxlib\ is the data container
+used to store the field data associated with the state on a single AMR level
+during an \lmc\ run.  The entire state consists of a dynamic union, or hierarchy, of
+nested {\tt StateData} objects.  Periodic regrid operations modify the hierarchy,
+changing the shape of the data containers at the various levels according to
+user-specified criteria; new {\tt StateData} objects are created
+for the affected levels, and are filled with the ``best'' (finest) available 
+data at each location. Instructions for building and managing {\tt StateData} are
+encapsulated in the \boxlib\ class, {\tt StateDescriptor}; as discussed later,
+a {\tt StateDescriptor} will be created for each type of state field, and 
+will include information about data centering, required grow cells, and
+instructions for transferring data between AMR levels during various synchronization
+operations.
 
 In {\tt HeatTransfer.H}, the {\tt enum} {\tt StateType} defines the
-different descriptors for the state data that \lmc\ recognizes.
-The main descriptors are:
+different state descriptors for \lmc.  These are setup during the
+run by code in {\tt HT\_setup.cpp}, and include:
 \begin{itemize}
 \item {\tt State\_Type}: the cell-centered thermodynamic state variables.
 
@@ -77,12 +88,9 @@ The main descriptors are:
   
 \end{itemize}
 
-The state data is registered with \boxlib\ in {\tt HT\_setup.cpp}.
-We access the multifabs that carry the data of interest by interacting
-with this \boxlib\ data-structure.  Each state quantity always has both
-an old and new timestate and the BoxLib class knows how to interpolate
-in both space and time.  We interact with the data by getting pointers
-to multifabs.  For instance:
+Each {\tt StateData} object has two {\tt MultiFabs}, one each for 
+old and new times, and can provide an interpolated copy of the state at any time between the two.
+Alternatively, can also access the data containers directly, for instance:
 \begin{lstlisting}
 MultiFab& S_new = get_new_data(State_Type);
 \end{lstlisting}
@@ -90,10 +98,11 @@ gets a pointer to the multifab containing the hydrodynamics state data
 at the new time (here {\tt State\_Type} is the {\tt enum} defined in 
 {\tt HeatTransfer.H}).
 
-We iterate over the multifabs using an iterator {\tt MFIter}.  This
-iterator knows about the locality of the data---only the boxes on the
-processor will be looped over.  An example loop (for the
-initialization, from {\tt HT\_setup.cpp} would be):
+{\tt MultiFab} data is distributed in space at the granularity of 
+each {\tt Box} in its {\tt BoxArray}.  We iterate over {\it MultiFab}s using a special
+iterator, {\tt MFIter}, which knows about the locality of the data---only the boxes owned by the
+processor will be included in the loop on each processor.  An example loop (for the
+initialization, taken from code in {\tt HT\_setup.cpp}):
 \begin{lstlisting}
 for (MFIter mfi(S_new); mfi.isValid(); ++mfi)
   {

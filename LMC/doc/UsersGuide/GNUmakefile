@@ -9,6 +9,7 @@ pdf_source = $(eps_source:.eps=.pdf)
 section_sources = Introduction/LMCIntroduction.tex \
                   GettingStarted/LMCGettingStarted.tex \
 	          Inputs/LMCInputs.tex \
+	          Equations/LMCEquations.tex \
                   UnitsAndConstants/LMCUnits.tex \
                   AMR/AMR.tex \
                   Visualization/LMCVisualization.tex \
