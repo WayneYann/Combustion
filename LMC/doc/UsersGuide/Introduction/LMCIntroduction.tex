@@ -1,0 +1,46 @@
+Welcome to the \lmc\ User's Guide!
+
+In this User's Guide we describe how to download and run \lmc, a
+massively parallel code that solves the multicomponent hydrodynamic equations for
+chemically reacting flows in the low Mach number regime.  \lmc\ uses an Eulerian grid and
+incorporates adaptive mesh refinement (AMR).  Our approach to AMR uses
+a nested hierarchy of logically-rectangular grids with simultaneous
+refinement in both space and time, utilizing the \boxlib\ library. 
+
+The core algorithms in \lmc\ are described in a series of papers:
+\begin{itemize}
+\item {\it Numerical Simulation of Laminar Reacting Flows with Complex Chemistry}, M.~S.~Day and J.~B.~Bell,
+  Combust. Theory Modelling 4(4) pp.535-556, 2000.
+  \url{https://ccse.lbl.gov/Publications/day/db99/db99.pdf}
+
+\item {\it An Adaptive Projection Method for Unsteady, Low-Mach Number Combustion}, 
+  R.~B.~Pember, L.~H.~Howell, J.~B.~Bell, P.~Colella, W.~Y.~Crutchfield, W.~A.~Fiveland, and J.~P.~Jessee,
+  Comb. Sci. Tech., 140, pp. 123-168, 1998.
+
+\item {\it A Conservative Adaptive Projection Method for the Variable Density Incompressible Navier-Stokes Equations},
+  A.~S.~Almgren, J.~B.~Bell, P.~Colella, L.~H.~Howell, and M.~L.~Welcome, J.~Comp.~Phys., 142, pp. 1-46, 1998.
+  \url{https://ccse.lbl.gov/Publications/almgren/abchw96/paper.ps.gz}
+
+\end{itemize}         
+
+The development of \lmc\ and the \boxlib\ library is led by the Center for Computational
+Sciences and Engineering / Lawrence Berkeley National Laboratory (\url{ccse.lbl.gov})
+
+Past and present contributors to the \lmc\ code base include: % git shortlog -s -n
+\begin{quote}
+Ann Almgren\newline
+Andy Aspden\newline
+John Bell\newline
+Vince Beckner\newline
+Marc Day\newline
+Matthew Emmett\newline
+Candace Gilet\newline
+Ray Grout\newline
+Mike Lijewski\newline
+Andy Nonaka\newline
+Will Pazner\newline
+Chuck Rendleman\newline
+Weiqun Zhang\newline
+\end{quote}
+
+TODO: git repo, contacts, mailing list
