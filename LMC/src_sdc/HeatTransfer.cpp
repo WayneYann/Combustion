@@ -495,7 +495,7 @@ showMFsub(const std::string&   mySet,
 
         FArrayBox sub(box,mf.nComp());
 
-        mf.copy(sub,0,0,mf.nComp(),mf.nGrow());
+        mf.copyTo(sub,0,0,mf.nComp(),mf.nGrow());
 
         if (ShowMF_Check_Nans)
         {
