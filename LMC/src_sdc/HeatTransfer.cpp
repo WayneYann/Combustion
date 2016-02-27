@@ -1634,16 +1634,13 @@ HeatTransfer::compute_instantaneous_reaction_rates (MultiFab&       R,
     
     if ((nGrow>0) && (how == HT_EXTRAP_GROW_CELLS))
     {
-        const int N = R.IndexMap().size();
-        
 #ifdef BL_USE_OMP
-#pragma omp parallel for
+#pragma omp parallel
 #endif
-        for (int i = 0; i < N; i++)
+        for (MFIter mfi(R); mfi.isValid(); ++mfi)
         {
-            const int  k   = R.IndexMap()[i];
-            FArrayBox& r   = R[k];
-            const Box& box = R.box(k);
+            FArrayBox& r   = R[mfi];
+            const Box& box = mfi.validbox();
             FORT_VISCEXTRAP(r.dataPtr(),ARLIM(r.loVect()),ARLIM(r.hiVect()),
                             box.loVect(),box.hiVect(),&nspecies);
         }
@@ -2928,16 +2925,13 @@ HeatTransfer::getViscTerms (MultiFab& visc_terms,
     //
     if (nGrow > 0)
     {
-        const int N = visc_terms.IndexMap().size();
-
 #ifdef BL_USE_OMP
-#pragma omp parallel for
+#pragma omp parallel
 #endif
-        for (int i = 0; i < N; i++)
+        for (MFIter mfi(visc_terms); mfi.isValid(); ++mfi)
         {
-            const int  k   = visc_terms.IndexMap()[i];
-            FArrayBox& vt  = visc_terms[k];
-            const Box& box = visc_terms.box(k);
+            FArrayBox& vt  = visc_terms[mfi];
+            const Box& box = mfi.validbox();
             FORT_VISCEXTRAP(vt.dataPtr(),ARLIM(vt.loVect()),ARLIM(vt.hiVect()),
                             box.loVect(),box.hiVect(),&num_comp);
         }
