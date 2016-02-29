@@ -241,12 +241,21 @@ c ::: -----------------------------------------------------------
       data  b / 1, 1, 1 /
 
 #include <cdwrk.H>
+#include <conp.H>
 #include <htdata.H>
 #include <bc.H>
 #include <probdata.H>
 
       integer n, getZone, zone, len
       REAL_T eta, eta1, xmid, etamax, Patm, FORT_P1ATMMKS
+      REAL_T h_fu(0:maxspec-1), h_ox(0:maxspec-1), hmix
+
+      REAL_T,  parameter :: HtoTerrMAX = BL_REAL_E(7.8,-12)
+      integer, parameter :: HtoTiterMAX = 20
+      REAL_T res(0:HtoTiterMAX-1)
+      integer Niter
+      integer iO2,iNC12H26
+      character*(maxspnml) name
 
       if (.not. bcinit) then
          call bl_abort('Need to initialize boundary condition function')
@@ -288,13 +297,31 @@ c ::: -----------------------------------------------------------
       elseif (probtype(1:len).eq.BL_PROB_JET_DIFFUSION) then
 
          eta = 0.5d0*(1.d0 - TANH(2.d0*(sqrt(x**2+y**2)-blobr)/Tfrontw))
-c        do n = 0, Nspec-1
-c           Yl(n) = Y_bc(n,BL_FUELPIPE)*eta + (1.d0-eta)*Y_bc(n,BL_COFLOW)
-c        end do
          do n = 0, Nspec-1
             Yl(n) = Y_bc(n,BL_FUELPIPE)*eta + (1.d0-eta)*Y_bc(n,BL_COFLOW)
          end do
+#if 0
          T = T_bc(BL_FUELPIPE)*eta + (1.d0-eta)*T_bc(BL_COFLOW)
+#else
+         do n=1,Nspec
+            call get_spec_name(name,n)
+            if (name .eq. 'N2' ) iN2 = n
+            if (name .eq. 'O2' ) iO2 = n
+            if (name .eq. 'NC12H26' ) iNC12H26 = n
+         enddo
+
+         call CKHMS(T_bc(BL_FUELPIPE),IWRK(ckbi),RWRK(ckbr),h_fu)
+         call CKHMS(T_bc(BL_COFLOW),  IWRK(ckbi),RWRK(ckbr),h_ox)
+         h_fu = h_fu*1.d-4 ! cgs to MKS
+         h_ox = h_ox*1.d-4 ! cgs to MKS
+
+         hmix = Yl(iNC12H26-1)*h_fu(iNC12H26-1)
+     &        + Yl(iO2-1)     *h_ox(iO2-1)
+     &        + Yl(iN2-1)     *h_ox(iN2-1)
+
+         T = T_bc(BL_COFLOW) ! initial guess
+         call FORT_TfromHYpt(T,hmix,Yl,HtoTerrMAX,HtoTiterMAX,res,Niter)
+#endif
          
          if (getuv .eqv. .TRUE.) then
             eta1 = 0.5d0*(1.d0 - TANH(2.d0*(sqrt(x**2+y**2)-splitx)/xfrontw))
