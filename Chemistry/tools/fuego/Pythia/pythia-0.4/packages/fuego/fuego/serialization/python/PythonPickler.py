@@ -134,6 +134,7 @@ class PythonPickler(PythonMill):
         
         self._render_phity(mechanism)
         self._render_eytt(mechanism)
+        self._render_hytt(mechanism)
         
         self._rendermain()
         self._rep += ['']
@@ -177,7 +178,10 @@ class PythonPickler(PythonMill):
         self._write('x=ytx(y)')
         self._write('ene = 1.28e10')
         self._write('t=eytt(ene,y)')
-        self._write('print "Temperature is: %g (target ~ 1541.4 for GRImech)" % t')
+        self._write('print "Temperature from eytt is: %g (target ~ 1541.4 for GRImech)" % t')
+        self._write('h=hbms(t,y)')
+        self._write('t=hytt(h,y)')
+        self._write('print "Temperature from hytt is: %g" % t')
         self._write('c = ytcr(1.0,2.0,y)')
         self._write('print "mean mwt from x: %g" % mmwx(x)')
         self._write('print "mean mwt from y: %g" % mmwy(y)')
@@ -1702,6 +1706,60 @@ class PythonPickler(PythonMill):
         self._write('e1 = ubms(t1,y)')
         self._write('cv = cvbs(t1,y)')
         self._write('dt = (ein - e1) / cv')
+        self._write('if (dt > 100):  dt = 100 ')
+        self._write('elif (dt < -100):  dt = -100')
+        self._write('elif (abs(dt) < tol): break')
+        self._write('t1 += dt')
+        self._outdent()
+        
+        self._write('t = t1')
+        self._write('return t')
+        
+        self._outdent()
+        return
+
+ 
+    def _render_hytt(self, mechanism):
+
+        nSpecies = len(mechanism.species())
+        lowT,highT,dummy = self._analyzeThermodynamics(mechanism)
+        
+        self._write()
+        self._write()
+        docstring = 'T = hytt(h, y): get temperature given enthalpy in mass units and mass fracs'
+        self._write('def hytt(h, y):')
+        self._indent()
+        self._write('"""%s"""' % docstring)
+
+        self._write('maxiter = 50')
+        self._write('tol  = 0.001')
+        self._write('hin  = h')
+        self._write('tmin = %g' % lowT + self.line('max lower bound for thermo def'))
+        self._write('tmax = %g' % highT + self.line('min upper bound for thermo def'))
+        self._write('hmin = hbms(tmin, y)')
+        self._write('hmax = hbms(tmax, y)')
+        self._write('if (hin < hmin):')
+        self._indent()
+        self._write(self.line('Linear Extrapolation below tmin'))
+        self._write('cp = cpbs(tmin, y)')
+        self._write('t = tmin - (hmin-hin)/cp')
+        self._write('return t')
+        self._outdent()
+        
+        self._write('if (hin > hmax):')
+        self._indent()
+        self._write(self.line('Linear Extrapolation above tmax'))
+        self._write('cp = cpbs(tmax, y)')
+        self._write('t = tmax - (hmax-hin)/cp')
+        self._write('return t')
+        self._outdent()
+
+        self._write('t1 = tmin + (tmax-tmin)/(hmax-hmin)*(hin-hmin)')
+        self._write('for i in range(maxiter):')
+        self._indent()
+        self._write('h1 = hbms(t1,y)')
+        self._write('cp = cpbs(t1,y)')
+        self._write('dt = (hin - h1) / cp')
         self._write('if (dt > 100):  dt = 100 ')
         self._write('elif (dt < -100):  dt = -100')
         self._write('elif (abs(dt) < tol): break')
