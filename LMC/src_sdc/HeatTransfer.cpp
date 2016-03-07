@@ -1603,8 +1603,8 @@ HeatTransfer::compute_instantaneous_reaction_rates (MultiFab&       R,
 
     const Real strt_time = ParallelDescriptor::second();
 
-    Real p_amb, dpdt_factor;
-    FORT_GETPAMB(&p_amb, &dpdt_factor);
+    Real p_amb;
+    FORT_GETPAMB(&p_amb);
     const Real Patm = p_amb / P1atm_MKS;
 
     BL_ASSERT((nGrow==0)  ||  (how == HT_ZERO_GROW_CELLS) || (how == HT_EXTRAP_GROW_CELLS));
@@ -4491,8 +4491,8 @@ HeatTransfer::advance_chemistry (MultiFab&       mf_old,
             cf_grids = getLevel(level+1).boxArray(); cf_grids.coarsen(fine_ratio);
         }
 
-        Real p_amb, dpdt_factor;
-        FORT_GETPAMB(&p_amb, &dpdt_factor);
+        Real p_amb;
+        FORT_GETPAMB(&p_amb);
 
         const Real Patm      = p_amb / P1atm_MKS;
         MultiFab&  React_new = get_new_data(RhoYdot_Type);
@@ -6339,7 +6339,8 @@ HeatTransfer::calc_dpdt (Real      time,
   BL_PROFILE("HT::calc_dpdt()");
   Real p_amb, dpdt_factor;
 
-  FORT_GETPAMB(&p_amb, &dpdt_factor);
+  FORT_GETPAMB(&p_amb);
+  FORT_GETDPDT(&dpdt_factor);
 
   if (dt <= 0.0 || dpdt_factor <= 0)
   {

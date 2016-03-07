@@ -1,5 +1,5 @@
-      REAL_T pamb, dpdt_factor
-      common /htdata1/pamb, dpdt_factor
+      REAL_T pamb, pamb_new, dpdt_factor
+      common /htdata1/ pamb, pamb_new, dpdt_factor
       
       integer Density, Temp, RhoH, Trac, FirstSpec, LastSpec
       common /scalID/ Density, Temp, RhoH, Trac, FirstSpec, LastSpec

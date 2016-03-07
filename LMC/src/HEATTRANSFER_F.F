@@ -139,14 +139,57 @@ c     Note: typical values are defaulted to zero, and may be left that way
       
 c-----------------------------------------------------------------------
 
-      subroutine FORT_GETPAMB(pambout, dpdt_factorout)
+      subroutine FORT_GETPAMB(pambout)
       implicit none
-#include <cdwrk.H>
 #include <htdata.H>
-      REAL_T dpdt_factorout, pambout
+      REAL_T pambout
+
+      pambout = pamb
+      return
+      end
+
+c-----------------------------------------------------------------------
+
+      subroutine FORT_SETPAMB(pambin)
+      implicit none
+#include <htdata.H>
+      REAL_T pambin
+
+      pamb = pambin
+      return
+      end
+
+c-----------------------------------------------------------------------
+
+      subroutine FORT_GETPAMB_NEW(pambout)
+      implicit none
+#include <htdata.H>
+      REAL_T pambout
+
+      pambout = pamb_new
+      return
+      end
+
+c-----------------------------------------------------------------------
+
+      subroutine FORT_SETPAMB_NEW(pambin)
+      implicit none
+#include <htdata.H>
+      REAL_T pambin
+
+      pamb_new = pambin
+      return
+      end
+
+      
+c-----------------------------------------------------------------------
+
+      subroutine FORT_GETDPDT(dpdt_factorout)
+      implicit none
+#include <htdata.H>
+      REAL_T dpdt_factorout
 
       dpdt_factorout = dpdt_factor
-      pambout = pamb
       return
       end
 

@@ -2755,8 +2755,8 @@ HeatTransfer::compute_OT_radloss (Real      time,
 
     const Real* dx = geom.CellSize();
 
-    Real p_amb, dpdt_factor;
-    FORT_GETPAMB(&p_amb, &dpdt_factor);
+    Real p_amb;
+    FORT_GETPAMB(&p_amb);
 
     const Real Patm = p_amb / P1atm_MKS;
     const Real T_bg = 298.0;
@@ -4779,8 +4779,8 @@ HeatTransfer::strang_chem (MultiFab&  mf,
     }
     else
     {
-        Real p_amb, dpdt_factor;
-        FORT_GETPAMB(&p_amb, &dpdt_factor);
+        Real p_amb;
+        FORT_GETPAMB(&p_amb);
         const Real Patm = p_amb / P1atm_MKS;
 
         {
@@ -7225,7 +7225,8 @@ HeatTransfer::calc_dpdt (Real      time,
 {
     Real dt = crse_dt, p_amb, dpdt_factor;
     
-    FORT_GETPAMB(&p_amb, &dpdt_factor);
+    FORT_GETPAMB(&p_amb);
+    FORT_GETDPDT(&dpdt_factor);
     
     if (dt <= 0.0 || dpdt_factor <= 0)
     {
