@@ -207,8 +207,7 @@ c ::: -----------------------------------------------------------
       len = len_trim(probtype)
       
       if ( (probtype(1:len).eq.BL_PROB_PREMIXED_FIXED_INFLOW) .or.
-     &     (probtype(1:len).eq.BL_PROB_PREMIXED_CONTROLLED_INFLOW) .or.
-     &     (probtype(1:len).eq.BL_PROB_FUELBLOB) ) then
+     &     (probtype(1:len).eq.BL_PROB_PREMIXED_CONTROLLED_INFLOW) ) then
 
          if (RegionID .eq. BL_YLO) then
 
@@ -236,6 +235,8 @@ c ::: -----------------------------------------------------------
             write(6,*) 'No bcfunction instruction for RegionID = ', RegionID
             call bl_pd_abort(' ')
          endif
+
+      elseif (probtype(1:len).eq.BL_PROB_FUELBLOB) then
 
       elseif (probtype(1:len).eq.BL_PROB_DIFFUSION) then
 
