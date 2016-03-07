@@ -780,7 +780,8 @@ c     zhi
      &     DIMS(T), T,
      &     DIMS(Y), Y,
      &     DIMS(rhoD), rhoD,
-     &     ncompd, P1ATM_MKS, do_temp, do_VelVisc)
+     &     ncompd, P1ATM_MKS, do_temp, do_VelVisc,
+     &     Pamb_in)
       implicit none
 #include <cdwrk.H>
 #include <visc.H>
@@ -793,6 +794,7 @@ c     zhi
       REAL_T  T(DIMV(T))
       REAL_T  Y(DIMV(Y),*)
       REAL_T  rhoD(DIMV(rhoD),ncompd)
+      REAL_T  Pamb_in
       
       integer i, j, k, n, nc, ncs
       REAL_T P1ATM_MKS, Patm
@@ -827,7 +829,7 @@ c     any hacking to be done on viscosity, be sure to catch it there as well.
 
       if (.not.use_constant_rhoD) then
          if (.not. LeEQ1) then
-            Patm = pamb / P1ATM_MKS
+            Patm = Pamb_in / P1ATM_MKS
             call FORT_MIXAVG_RHODIFF_TEMP(lo, hi, rhoD, DIMS(rhoD),
      &           T, DIMS(T), Y, DIMS(Y), Patm, do_temp, do_VelVisc)
             if (thickFacTR.ne.1.d0) then

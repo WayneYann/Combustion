@@ -5991,6 +5991,10 @@ HeatTransfer::calcDiffusivity (const Real time)
     const int  offset          = BL_SPACEDIM + 1; // No diffusion coeff for vels or rho
     MultiFab&  diff            = (whichTime == AmrOldTime) ? (*diffn_cc) : (*diffnp1_cc);
     FArrayBox tmp, bcen;
+
+    Real p_amb;
+    FORT_GETPAMB(&p_amb);
+
     for (FillPatchIterator Rho_and_spec_fpi(*this,diff,nGrow,time,State_Type,Density,nspecies+1),
                                    Temp_fpi(*this,diff,nGrow,time,State_Type,Temp,1);
          Rho_and_spec_fpi.isValid() && Temp_fpi.isValid();
@@ -6010,7 +6014,7 @@ HeatTransfer::calcDiffusivity (const Real time)
                           ARLIM(Tfab.loVect()),ARLIM(Tfab.hiVect()),Tfab.dataPtr(),
                           ARLIM(RYfab.loVect()),ARLIM(RYfab.hiVect()),RYfab.dataPtr(1),
                           ARLIM(bcen.loVect()),ARLIM(bcen.hiVect()),bcen.dataPtr(),
-                          &nc_bcen, &P1atm_MKS, &dotemp, &vflag);
+                          &nc_bcen, &P1atm_MKS, &dotemp, &vflag, &p_amb);
         
         FArrayBox& Dfab = diff[Rho_and_spec_fpi];
 

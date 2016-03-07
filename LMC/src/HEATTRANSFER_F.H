@@ -289,7 +289,8 @@ extern "C" {
                            ARLIM_P(slo), ARLIM_P(shi), const Real* specdat,
                            ARLIM_P(blo), ARLIM_P(bhi), Real* betadat,
                            const int* nCompD, const Real* P1ATM_MKS,
-                           const int* do_temp, const int* do_VelVisc);
+                           const int* do_temp, const int* do_VelVisc, 
+			   const Real* Pamb_in);
 
     void FORT_FABMINMAX(const int* lo, const int* hi,
 			Real* fabdat, ARLIM_P(flo), ARLIM_P(fhi),

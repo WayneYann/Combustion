@@ -6848,6 +6848,9 @@ HeatTransfer::calcDiffusivity (const Real time,
 
     FArrayBox bcen, temp, rhospec, cpmix;
 
+    Real p_amb;
+    FORT_GETPAMB(&p_amb);
+
     for (FillPatchIterator Rho_and_spec_fpi(*this,S_new,nGrow,time,State_Type,Density,nspecies+1),
              Temp_fpi(*this,S_new,nGrow,time,State_Type,Temp,1);
          Rho_and_spec_fpi.isValid() && Temp_fpi.isValid();
@@ -6878,7 +6881,7 @@ HeatTransfer::calcDiffusivity (const Real time,
                           ARLIM(rhospec.loVect()),ARLIM(rhospec.hiVect()),
                           rhospec.dataPtr(1),
                           ARLIM(bcen.loVect()),ARLIM(bcen.hiVect()),bcen.dataPtr(),
-                          &nc_bcen, &P1atm_MKS, &dotemp, &vflag);
+                          &nc_bcen, &P1atm_MKS, &dotemp, &vflag, &p_amb);
 
         visc[Rho_and_spec_fpi].copy(bcen,0,first_spec-offset,nspecies);
         visc[Rho_and_spec_fpi].copy(bcen,nspecies,Temp-offset,1);
