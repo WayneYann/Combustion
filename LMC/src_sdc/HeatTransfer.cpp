@@ -4445,8 +4445,6 @@ HeatTransfer::advance (Real time,
       if (level > 0 && iteration == 1) p_avg.setVal(0);
     }
 
-    std::cout << "done with level project" << std::endl;
-
     showMF("sdc",get_new_data(State_Type),"sdc_Snew_postProj",level,parent->levelSteps(level));
 
 #ifdef PARTICLES
@@ -4468,6 +4466,13 @@ HeatTransfer::advance (Real time,
     temperature_stats(S_new);
 
     BL_PROFILE_REGION_STOP("R::HT::advance()[src_sdc]");
+
+    if (closed_chamber)
+    {
+	Real p_amb_new;
+	FORT_GETPAMB_NEW(&p_amb_new);
+	FORT_SETPAMB(&p_amb_new);
+    }
 
     return dt_test;
 }
