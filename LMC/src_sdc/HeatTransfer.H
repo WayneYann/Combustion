@@ -257,6 +257,7 @@ private:
 
     void compute_instantaneous_reaction_rates (MultiFab&       R,
 					       const MultiFab& S,
+					       Real            time,
 					       int             nGrow = 0,
 					       HowToFillGrow   how = HT_ZERO_GROW_CELLS);
 

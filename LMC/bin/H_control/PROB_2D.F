@@ -238,6 +238,9 @@ c ::: -----------------------------------------------------------
 
       elseif (probtype(1:len).eq.BL_PROB_FUELBLOB) then
 
+         u = zero
+         v = zero
+
       elseif (probtype(1:len).eq.BL_PROB_DIFFUSION) then
 
          if (RegionID .eq. BL_YLO) then

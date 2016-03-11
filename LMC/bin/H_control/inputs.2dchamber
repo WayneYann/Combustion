@@ -8,7 +8,7 @@ ns.do_fillPatchUMAC=1
 ns.zeroBndryVisc=1
 
 proj.proj_2 = 1
-ns.num_divu_iters = 2
+ns.num_divu_iters = 0
 
 ht.plot_consumption=0
 ht.plot_heat_release=0
@@ -45,11 +45,11 @@ geometry.prob_lo    = 0.0 0.0
 geometry.prob_hi    = 0.012 0.012
 amr.n_cell          = 128 128
 amr.blocking_factor = 8
-max_step            = 50
+max_step            = 10
 amr.check_file      = chk_2d_
 amr.plot_file       = plt_2d_
 amr.check_int       = 1000
-amr.plot_int        = 10
+amr.plot_int        = 1
 ns.cfl              = 0.5
 
 amr.max_grid_size   = 64
@@ -77,7 +77,7 @@ ns.temp_cond_coef  = 2.6091e-5
 ns.scal_diff_coefs = -0.01
 ns.variable_vel_visc  = 1
 ns.variable_scal_diff = 1
-ns.init_iter      = 2        # number of init iters to def pressure
+ns.init_iter      = 0        # number of init iters to def pressure
 ns.gravity        = -9.81    # body force  (gravity in MKS units)
 ns.gravity        = 0        # body force  (gravity in MKS units)
 ns.sum_interval   = 1        # timesteps between computing mass
@@ -106,7 +106,7 @@ ns.oxidizerName    = O2
 ns.flameTracName   = H
 ns.unity_Le = 0
 
-ns.sdc_iterMAX = 2
+ns.sdc_iterMAX = 8
 
 ns.dpdt_option = 0
 #macop.max_order = 3
@@ -118,8 +118,13 @@ ns.dpdt_option = 0
 #ns.constant_rhoD_val = 0.0714286
 # ----------------  PROBLEM DEPENDENT INPUTS
 
+ns.lo_bc          = 4 4
+ns.hi_bc          = 4 4
+
 ns.lo_bc          = 2 2
 ns.hi_bc          = 2 2
+
+
 geometry.is_periodic = 0 0
 
 # >>>>>>>>>>>>>  BC FLAGS <<<<<<<<<<<<<<<<
@@ -170,10 +175,10 @@ fab.format = NATIVE
 #ns.hack_nochem=1
 #ns.hack_nospecdiff=1
 #ns.init_iter=0
-#ns.do_init_proj=0
+ns.do_init_proj=0
 #ShowMF_Sets = mac velVT dd estate
 #ShowMF_Sets = dddt dd divu 1D mac
-#ShowMF_Sets = 1D
+#ShowMF_Sets = sdc
 #ShowMF_Dir = JUNK
 #ShowMF_Verbose = true
 #ShowMF_Fab_Format = ascii

@@ -83,6 +83,8 @@ const int  LinOp_grow  = 1;
 static Real              typical_RhoH_value_default = -1.e10;
 static const std::string typical_values_filename("typical_values.fab");
 
+const bool closed_chamber = false;
+
 namespace
 {
     bool initialized = false;
@@ -1591,6 +1593,7 @@ HeatTransfer::initDataOtherTypes ()
 void
 HeatTransfer::compute_instantaneous_reaction_rates (MultiFab&       R,
                                                     const MultiFab& S,
+						    Real            time,
                                                     int             nGrow,
                                                     HowToFillGrow   how)
 {
@@ -1603,8 +1606,17 @@ HeatTransfer::compute_instantaneous_reaction_rates (MultiFab&       R,
 
     const Real strt_time = ParallelDescriptor::second();
 
+    const TimeLevel whichTime = which_time(State_Type, time);
+
     Real p_amb;
     FORT_GETPAMB(&p_amb);
+
+    if (closed_chamber && whichTime == AmrNewTime)
+    {
+      // use new-time ambient pressure
+      FORT_GETPAMB_NEW(&p_amb);
+    }
+
     const Real Patm = p_amb / P1atm_MKS;
 
     BL_ASSERT((nGrow==0)  ||  (how == HT_ZERO_GROW_CELLS) || (how == HT_EXTRAP_GROW_CELLS));
@@ -3873,6 +3885,15 @@ HeatTransfer::advance (Real time,
 		       int  iteration,
 		       int  ncycle)
 {
+
+    if (closed_chamber)
+    {
+      // set new-time ambient pressure to be a copy of old-time ambient pressure
+      Real p_amb;
+      FORT_GETPAMB(&p_amb);
+      FORT_SETPAMB_NEW(&p_amb);
+    }
+
     BL_PROFILE_REGION_START("R::HT::advance()[src_sdc]");
     BL_PROFILE("HT::advance()[src_sdc]");
     is_predictor = true;
@@ -3971,14 +3992,19 @@ HeatTransfer::advance (Real time,
     // and divu in advance_setup
     MultiFab Dnp1(grids,nspecies+2,nGrowAdvForcing);
     MultiFab DDnp1(grids,1,nGrowAdvForcing);
-    MultiFab dpdt(grids,1,nGrowAdvForcing);
-    MultiFab delta_dpdt(grids,1,nGrowAdvForcing);
+    MultiFab delta_chi(grids,1,nGrowAdvForcing);
+    MultiFab delta_chi_increment(grids,1,nGrowAdvForcing);
     MultiFab mac_divu(grids,1,nGrowAdvForcing);
+
+    // used for closed chamber algorithm
+    MultiFab theta_old(grids,1,nGrowAdvForcing);
+    MultiFab theta_nph(grids,1,nGrowAdvForcing);
+    Real Sbar, thetabar;
 
     MultiFab::Copy(Dnp1,Dn,0,0,nspecies+2,nGrowAdvForcing);
     MultiFab::Copy(DDnp1,DDn,0,0,1,nGrowAdvForcing);
 
-    dpdt.setVal(0,nGrowAdvForcing);
+    delta_chi.setVal(0,nGrowAdvForcing);
 
     is_predictor = false;
 
@@ -4025,23 +4051,121 @@ HeatTransfer::advance (Real time,
       // compute new-time thermodynamic pressure
       setThermoPress(cur_time);
 
-      // compute delta_chi correction
-      delta_dpdt.setVal(0.0,nGrowAdvForcing);
-      calc_dpdt(cur_time,dt,delta_dpdt,u_mac);
-      showMF("sdc",delta_dpdt,"sdc_mac_dpdt",level,sdc_iter,parent->levelSteps(level));
+      // diagnostics purposes only - compute Peos - p0
+      if (closed_chamber)
+      {
+	Real p_amb_new;
+	FORT_GETPAMB_NEW(&p_amb_new);
 
-      // add to time-centered DivU
-      // JBBHACK
-//      if(sdc_iter == 1 ){
-        MultiFab::Add(dpdt,delta_dpdt,0,0,1,nGrowAdvForcing);
-        showMF("sdc",dpdt,"sdc_mac_rhs2",level,sdc_iter,parent->levelSteps(level));
-//      }
+	MultiFab Peos(grids,1,nGrowAdvForcing);
+	for (FillPatchIterator S_fpi(*this,Peos,nGrowAdvForcing,cur_time,State_Type,RhoRT,1);
+	     S_fpi.isValid();++S_fpi)
+	{
+	  Peos[S_fpi].copy(S_fpi());
+	}
+	for (MFIter mfi(Peos); mfi.isValid(); ++mfi)
+	{
+	  const Box& vbox = mfi.validbox();
+	  Peos[mfi].plus(-p_amb_new,vbox);
+	}
+      }
 
-      MultiFab::Add(mac_divu,dpdt,0,0,1,nGrowAdvForcing);
+      // compute delta_chi_increment
+      delta_chi_increment.setVal(0.0,nGrowAdvForcing);
+      calc_dpdt(cur_time,dt,delta_chi_increment,u_mac);
+
+      showMF("sdc",delta_chi_increment,"sdc_delta_chi_increment",level,sdc_iter,parent->levelSteps(level));
+
+      // add delta_chi_increment to delta_chi
+      MultiFab::Add(delta_chi,delta_chi_increment,0,0,1,nGrowAdvForcing);
+      showMF("sdc",delta_chi,"sdc_delta_chi",level,sdc_iter,parent->levelSteps(level));
+
+      // add delta_chi to time-centered mac_divu
+      MultiFab::Add(mac_divu,delta_chi,0,0,1,nGrowAdvForcing);
+
+      if (closed_chamber)
+      {	
+
+	Real p_amb, p_amb_new;
+	FORT_GETPAMB(&p_amb);
+	FORT_GETPAMB_NEW(&p_amb_new);
+
+	// compute old, new, and time-centered theta = 1 / (gamma P)
+	for (MFIter mfi(S_old); mfi.isValid(); ++mfi)
+	{
+	  const Box& box = mfi.validbox();            
+	  FArrayBox& thetafab = theta_old[mfi];
+	  const FArrayBox& rhoY = S_old[mfi];
+	  const FArrayBox& T = S_old[mfi];
+	  FORT_CALCGAMMAPINV(box.loVect(), box.hiVect(),
+			     thetafab.dataPtr(),       ARLIM(thetafab.loVect()), ARLIM(thetafab.hiVect()),
+			     rhoY.dataPtr(first_spec), ARLIM(rhoY.loVect()),     ARLIM(rhoY.hiVect()),
+			     T.dataPtr(Temp),          ARLIM(T.loVect()),        ARLIM(T.hiVect()),
+			     &p_amb);
+	}
+
+	for (MFIter mfi(S_new); mfi.isValid(); ++mfi)
+	{
+	  const Box& box = mfi.validbox();            
+	  FArrayBox& thetafab = theta_nph[mfi];
+	  const FArrayBox& rhoY = S_new[mfi];
+	  const FArrayBox& T = S_new[mfi];
+	  FORT_CALCGAMMAPINV(box.loVect(), box.hiVect(),
+			     thetafab.dataPtr(),       ARLIM(thetafab.loVect()), ARLIM(thetafab.hiVect()),
+			     rhoY.dataPtr(first_spec), ARLIM(rhoY.loVect()),     ARLIM(rhoY.hiVect()),
+			     T.dataPtr(Temp),          ARLIM(T.loVect()),        ARLIM(T.hiVect()),
+			     &p_amb_new);
+	}
+
+	for (MFIter mfi(theta_nph); mfi.isValid(); ++mfi)
+	{
+	  FArrayBox& th_nph = theta_nph[mfi];
+	  const FArrayBox& th_old = theta_old[mfi];
+	  const Box& box = mfi.validbox();
+	  th_nph.plus(th_old,box,box,0,0,1);
+	  th_nph.mult(0.5);
+	}
+
+	// compute number of cells
+	Real num_cells = grids.numPts();
+
+	// compute the average of mac_divu theta
+	Sbar = mac_divu.sum() / num_cells;
+	thetabar = theta_nph.sum() / num_cells;
+
+	// subtract mean from mac_divu and theta_nph
+	mac_divu.plus(-Sbar,0,1);
+	theta_nph.plus(-thetabar,0,1);
+
+	p_amb_new = p_amb + dt*(Sbar/thetabar);
+	FORT_SETPAMB_NEW(&p_amb_new);
+
+	// update mac rhs by adding delta_theta * (Sbar / thetabar)
+	for (MFIter mfi(mac_divu); mfi.isValid(); ++mfi)
+	{
+	  FArrayBox& m_du = mac_divu[mfi];
+	  FArrayBox& th_nph = theta_nph[mfi];
+	  const Box& box = mfi.validbox();
+	  th_nph.mult(Sbar/thetabar);
+	  m_du.minus(th_nph,box,box,0,0,1);
+	}
+
+	if (ParallelDescriptor::IOProcessor())
+	{
+	  std::cout << "p_amb, p_amb_new = " << p_amb << " " << p_amb_new << std::endl;
+	}
+
+      }
 
       // MAC-project... and overwrite U^{ADV,*}
       showMF("sdc",Forcing,"sdc_Forcing_for_mac",level,sdc_iter,parent->levelSteps(level));
       mac_project(time,dt,S_old,&mac_divu,1,nGrowAdvForcing,updateFluxReg);
+
+      if (closed_chamber)
+      {
+	// add Sbar back to mac_divu
+	mac_divu.plus(Sbar,0,1);
+      }
 
       //
       // Compute A (advection terms) with F = Dn + R
@@ -4151,7 +4275,7 @@ HeatTransfer::advance (Real time,
 	  f.plus(dhat,box,box,0,0,nspecies+1); // add Dhat to RhoY and RHoH
 	  f.plus(a,box,box,first_spec,0,nspecies+1); // add A to RhoY and RhoH
         }
-
+      
       Dhat.clear();
 
       if (verbose && ParallelDescriptor::IOProcessor())
@@ -4183,7 +4307,7 @@ HeatTransfer::advance (Real time,
     DDn.clear();
     Dnp1.clear();
     DDnp1.clear();
-    delta_dpdt.clear();
+    delta_chi_increment.clear();
 
     if (verbose && ParallelDescriptor::IOProcessor())
       std::cout << " SDC iterations complete \n";
@@ -4293,9 +4417,9 @@ HeatTransfer::advance (Real time,
     showMF("sdc",get_new_data(State_Type),"sdc_Snew_preProj",level,parent->levelSteps(level));
 
     // compute delta_chi correction
-    // place to take dpdt stuf fout of nodal project
-    //    calc_dpdt(cur_time,dt,dpdt,u_mac);
-    //    MultiFab::Add(get_new_data(Divu_Type),dpdt,0,0,1,0);
+    // place to take dpdt stuff out of nodal project
+    //    calc_dpdt(cur_time,dt,delta_chi_increment,u_mac);
+    //    MultiFab::Add(get_new_data(Divu_Type),delta_chi_increment,0,0,1,0);
 
     //
     // Increment rho average.
@@ -4320,6 +4444,8 @@ HeatTransfer::advance (Real time,
 
       if (level > 0 && iteration == 1) p_avg.setVal(0);
     }
+
+    std::cout << "done with level project" << std::endl;
 
     showMF("sdc",get_new_data(State_Type),"sdc_Snew_postProj",level,parent->levelSteps(level));
 
@@ -4493,6 +4619,14 @@ HeatTransfer::advance_chemistry (MultiFab&       mf_old,
 
         Real p_amb;
         FORT_GETPAMB(&p_amb);
+
+	if (closed_chamber)
+	{
+	  // time-center ambient pressure for reactions
+	  Real p_amb_new;
+	  FORT_GETPAMB_NEW(&p_amb_new);
+	  p_amb = 0.5*(p_amb + p_amb_new);
+	}
 
         const Real Patm      = p_amb / P1atm_MKS;
         MultiFab&  React_new = get_new_data(RhoYdot_Type);
@@ -5995,6 +6129,12 @@ HeatTransfer::calcDiffusivity (const Real time)
     Real p_amb;
     FORT_GETPAMB(&p_amb);
 
+    if (closed_chamber && whichTime == AmrNewTime)
+    {
+      // get new-time ambient pressure
+      FORT_GETPAMB_NEW(&p_amb);
+    }
+
     for (FillPatchIterator Rho_and_spec_fpi(*this,diff,nGrow,time,State_Type,Density,nspecies+1),
                                    Temp_fpi(*this,diff,nGrow,time,State_Type,Temp,1);
          Rho_and_spec_fpi.isValid() && Temp_fpi.isValid();
@@ -6304,7 +6444,7 @@ HeatTransfer::calc_divu (Real      time,
         {
             // init_iter or regular time step, use instantaneous omegadot
             RhoYdot.define(grids,nspecies,0,Fab_allocate);
-            compute_instantaneous_reaction_rates(RhoYdot,S,nGrow);
+            compute_instantaneous_reaction_rates(RhoYdot,S,time,nGrow);
         }
         else
         {
@@ -6345,6 +6485,12 @@ HeatTransfer::calc_dpdt (Real      time,
 
   FORT_GETPAMB(&p_amb);
   FORT_GETDPDT(&dpdt_factor);
+
+  if (closed_chamber)
+  {
+    // use new-time ambient pressure
+    FORT_GETPAMB_NEW(&p_amb);
+  }
 
   if (dt <= 0.0 || dpdt_factor <= 0)
   {

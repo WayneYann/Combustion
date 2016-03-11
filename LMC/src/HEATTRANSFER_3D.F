@@ -85,6 +85,50 @@
 !$omp end parallel do
       end
 
+      subroutine FORT_CALCGAMMAPINV(lo, hi,
+     &                              theta, DIMS(theta),
+     &                              rhoY, DIMS(rhoY),
+     &                              T, DIMS(T),
+     &                              Pamb_in)
+      implicit none
+#include <cdwrk.H>
+#include <visc.H>
+#include <htdata.H>
+      integer lo(SDIM),hi(SDIM)
+      integer DIMDEC(theta)
+      integer DIMDEC(rhoY)
+      integer DIMDEC(T)
+      REAL_T  theta(DIMV(theta))
+      REAL_T  rhoY(DIMV(rhoY),1:Nspec)
+      REAL_T  T(DIMV(T))
+      REAL_T  Pamb_in
+      
+      integer i, j, k, n
+      REAL_T Y(maxspec), cpmix, cvmix, rhoInv
+
+      do k=lo(3),hi(3)
+         do j=lo(2),hi(2)
+            do i=lo(1),hi(1)
+               rhoInv = 0.d0
+               do n=1,Nspec
+                  rhoInv = rhoInv + rhoY(i,j,k,n)
+               enddo
+               rhoInv = 1.d0 / rhoInv
+               do n=1,Nspec
+                  Y(n) = rhoInv*rhoY(i,j,k,n)
+               enddo
+               CALL CKCPBS(T(i,j,k),Y,IWRK(ckbi),RWRK(ckbr),cpmix)
+               cpmix = cpmix*1.d-4
+               CALL CKCVBS(T(i,j,k),Y,IWRK(ckbi),RWRK(ckbr),cvmix)
+               cvmix = cvmix*1.d-4
+               
+               theta(i,j,k) = cvmix / (cpmix*Pamb_in)
+               
+            enddo
+         enddo
+      enddo
+      end
+
       subroutine FORT_FLOORSPEC(lo, hi,
      &                          spec,  DIMS(spec))
       implicit none
