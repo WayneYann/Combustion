@@ -45,12 +45,12 @@ geometry.prob_lo    = 0.0 0.0
 geometry.prob_hi    = 0.012 0.012
 amr.n_cell          = 128 128
 amr.blocking_factor = 8
-max_step            = 10
+max_step            = 50
 amr.check_file      = chk_2d_
 amr.plot_file       = plt_2d_
 amr.check_int       = 1000
 amr.plot_int        = 1
-ns.cfl              = 0.5
+ns.cfl              = 0.25
 
 amr.max_grid_size   = 64
 
@@ -106,7 +106,7 @@ ns.oxidizerName    = O2
 ns.flameTracName   = H
 ns.unity_Le = 0
 
-ns.sdc_iterMAX = 8
+ns.sdc_iterMAX = 4
 
 ns.dpdt_option = 0
 #macop.max_order = 3
@@ -120,9 +120,6 @@ ns.dpdt_option = 0
 
 ns.lo_bc          = 4 4
 ns.hi_bc          = 4 4
-
-ns.lo_bc          = 2 2
-ns.hi_bc          = 2 2
 
 
 geometry.is_periodic = 0 0
