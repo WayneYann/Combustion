@@ -4000,6 +4000,7 @@ HeatTransfer::advance (Real time,
     MultiFab theta_old(grids,1,nGrowAdvForcing);
     MultiFab theta_nph(grids,1,nGrowAdvForcing);
     Real Sbar, thetabar;
+    Real Sbar_old, Sbar_new;
 
     MultiFab::Copy(Dnp1,Dn,0,0,nspecies+2,nGrowAdvForcing);
     MultiFab::Copy(DDnp1,DDn,0,0,1,nGrowAdvForcing);
@@ -4052,7 +4053,7 @@ HeatTransfer::advance (Real time,
       setThermoPress(cur_time);
 
       // diagnostics purposes only - compute Peos - p0
-      if (closed_chamber)
+      if (closed_chamber && level == 0)
       {
 	Real p_amb_new;
 	FORT_GETPAMB_NEW(&p_amb_new);
@@ -4083,7 +4084,7 @@ HeatTransfer::advance (Real time,
       // add delta_chi to time-centered mac_divu
       MultiFab::Add(mac_divu,delta_chi,0,0,1,nGrowAdvForcing);
 
-      if (closed_chamber)
+      if (closed_chamber && level == 0)
       {	
 
 	Real p_amb, p_amb_new;
@@ -4161,7 +4162,7 @@ HeatTransfer::advance (Real time,
       showMF("sdc",Forcing,"sdc_Forcing_for_mac",level,sdc_iter,parent->levelSteps(level));
       mac_project(time,dt,S_old,&mac_divu,1,nGrowAdvForcing,updateFluxReg);
 
-      if (closed_chamber)
+      if (closed_chamber && level == 0)
       {
 	// add Sbar back to mac_divu
 	mac_divu.plus(Sbar,0,1);
@@ -4435,12 +4436,40 @@ HeatTransfer::advance (Real time,
         }
     }
 
-    if (dt > 0) {
+    if (dt > 0)
+    {
+
+      if (closed_chamber && level == 0)
+      {
+	MultiFab& divu_old = get_old_data(Divu_Type);
+	MultiFab& divu_new = get_new_data(Divu_Type);
+
+	// compute number of cells
+	Real num_cells = grids.numPts();
+
+	// compute average of S at old and new times
+	Sbar_old = divu_old.sum() / num_cells;
+	Sbar_new = divu_new.sum() / num_cells;
+
+	// subtract mean from mac_divu and theta_nph
+	divu_old.plus(-Sbar_old,0,1);
+	divu_new.plus(-Sbar_new,0,1);
+      }
 
       //
       // Do a level project to update the pressure and velocity fields.
       //
       level_projector(dt,time,iteration);
+
+      if (closed_chamber && level == 0)
+      {
+	MultiFab& divu_old = get_old_data(Divu_Type);
+	MultiFab& divu_new = get_new_data(Divu_Type);
+
+	// restore Sbar
+	divu_old.plus(Sbar_old,0,1);
+	divu_new.plus(Sbar_new,0,1);
+      }
 
       if (level > 0 && iteration == 1) p_avg.setVal(0);
     }
@@ -4467,7 +4496,7 @@ HeatTransfer::advance (Real time,
 
     BL_PROFILE_REGION_STOP("R::HT::advance()[src_sdc]");
 
-    if (closed_chamber)
+    if (closed_chamber && level == 0 && !initial_step)
     {
 	Real p_amb_new;
 	FORT_GETPAMB_NEW(&p_amb_new);
@@ -4625,7 +4654,7 @@ HeatTransfer::advance_chemistry (MultiFab&       mf_old,
         Real p_amb;
         FORT_GETPAMB(&p_amb);
 
-	if (closed_chamber)
+	if (closed_chamber && level == 0)
 	{
 	  // time-center ambient pressure for reactions
 	  Real p_amb_new;
