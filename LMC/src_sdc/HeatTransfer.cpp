@@ -3886,7 +3886,7 @@ HeatTransfer::advance (Real time,
 		       int  ncycle)
 {
 
-    if (closed_chamber)
+    if (closed_chamber && level == 0)
     {
       // set new-time ambient pressure to be a copy of old-time ambient pressure
       Real p_amb;
@@ -3938,6 +3938,7 @@ HeatTransfer::advance (Real time,
 
     const Real prev_time = state[State_Type].prevTime();
     const Real cur_time  = state[State_Type].curTime();
+
 
     Real dt_test = 0.0, dummy = 0.0;    
 
@@ -4051,25 +4052,6 @@ HeatTransfer::advance (Real time,
       
       // compute new-time thermodynamic pressure
       setThermoPress(cur_time);
-
-      // diagnostics purposes only - compute Peos - p0
-      if (closed_chamber && level == 0)
-      {
-	Real p_amb_new;
-	FORT_GETPAMB_NEW(&p_amb_new);
-
-	MultiFab Peos(grids,1,nGrowAdvForcing);
-	for (FillPatchIterator S_fpi(*this,Peos,nGrowAdvForcing,cur_time,State_Type,RhoRT,1);
-	     S_fpi.isValid();++S_fpi)
-	{
-	  Peos[S_fpi].copy(S_fpi());
-	}
-	for (MFIter mfi(Peos); mfi.isValid(); ++mfi)
-	{
-	  const Box& vbox = mfi.validbox();
-	  Peos[mfi].plus(-p_amb_new,vbox);
-	}
-      }
 
       // compute delta_chi_increment
       delta_chi_increment.setVal(0.0,nGrowAdvForcing);
@@ -4654,12 +4636,27 @@ HeatTransfer::advance_chemistry (MultiFab&       mf_old,
         Real p_amb;
         FORT_GETPAMB(&p_amb);
 
-	if (closed_chamber && level == 0)
+	if (closed_chamber)
 	{
 	  // time-center ambient pressure for reactions
 	  Real p_amb_new;
 	  FORT_GETPAMB_NEW(&p_amb_new);
-	  p_amb = 0.5*(p_amb + p_amb_new);
+	  if (level == 0)
+	  {
+	    p_amb = 0.5*(p_amb + p_amb_new);
+	  }
+	  else
+	  {
+	    // we need level 0 prev and cur_time for closed chamber algorithm
+	    AmrLevel& amr_lev = parent->getLevel(0);
+	    StateData& state_data = amr_lev.get_state_data(0);
+	    const Real lev_0_prevtime = state_data.prevTime();
+	    const Real lev_0_curtime = state_data.curTime();
+	    const Real half_time = 0.5*(state[State_Type].prevTime()+state[State_Type].curTime());
+
+	    p_amb = (lev_0_curtime-half_time )/(lev_0_curtime-lev_0_prevtime) * p_amb +
+ 	            (half_time-lev_0_prevtime)/(lev_0_curtime-lev_0_prevtime) * p_amb_new;
+	  }
 	}
 
         const Real Patm      = p_amb / P1atm_MKS;
@@ -6163,10 +6160,39 @@ HeatTransfer::calcDiffusivity (const Real time)
     Real p_amb;
     FORT_GETPAMB(&p_amb);
 
-    if (closed_chamber && whichTime == AmrNewTime)
+    if (closed_chamber)
     {
-      // get new-time ambient pressure
-      FORT_GETPAMB_NEW(&p_amb);
+      if (level == 0)
+      {
+	if (whichTime == AmrNewTime)
+	{
+	  // get new-time ambient pressure
+	  FORT_GETPAMB_NEW(&p_amb);
+	}
+      }
+      else
+      {
+	// get new-level0-time ambient pressure
+	Real p_amb_new;
+	FORT_GETPAMB_NEW(&p_amb_new);
+
+	// we need level 0 prev and cur_time for closed chamber algorithm
+	AmrLevel& amr_lev = parent->getLevel(0);
+	StateData& state_data = amr_lev.get_state_data(0);
+	const Real lev_0_prevtime = state_data.prevTime();
+	const Real lev_0_curtime = state_data.curTime();
+	Real time;
+	if (whichTime == AmrOldTime)
+	{
+	  time = state[State_Type].prevTime();
+	}
+	else
+	{
+	  time = state[State_Type].curTime();
+	}
+	p_amb = (lev_0_curtime-time )/(lev_0_curtime-lev_0_prevtime) * p_amb +
+	        (time-lev_0_prevtime)/(lev_0_curtime-lev_0_prevtime) * p_amb_new;
+      }
     }
 
     for (FillPatchIterator Rho_and_spec_fpi(*this,diff,nGrow,time,State_Type,Density,nspecies+1),
@@ -6522,8 +6548,26 @@ HeatTransfer::calc_dpdt (Real      time,
 
   if (closed_chamber)
   {
-    // use new-time ambient pressure
-    FORT_GETPAMB_NEW(&p_amb);
+    if (level == 0)
+    {
+      // use new-time ambient pressure
+      FORT_GETPAMB_NEW(&p_amb);
+    }
+    else
+    {
+      // get new-level0-time ambient pressure
+      Real p_amb_new;
+      FORT_GETPAMB_NEW(&p_amb_new);
+
+      // we need level 0 prev and cur_time for closed chamber algorithm
+      AmrLevel& amr_lev = parent->getLevel(0);
+      StateData& state_data = amr_lev.get_state_data(0);
+      const Real lev_0_prevtime = state_data.prevTime();
+      const Real lev_0_curtime = state_data.curTime();
+
+      p_amb = (lev_0_curtime-time )/(lev_0_curtime-lev_0_prevtime) * p_amb +
+              (time-lev_0_prevtime)/(lev_0_curtime-lev_0_prevtime) * p_amb_new;
+    }
   }
 
   if (dt <= 0.0 || dpdt_factor <= 0)
