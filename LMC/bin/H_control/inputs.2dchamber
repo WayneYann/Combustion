@@ -8,7 +8,7 @@ ns.do_fillPatchUMAC=1
 ns.zeroBndryVisc=1
 
 proj.proj_2 = 1
-ns.num_divu_iters = 0
+ns.num_divu_iters = 2
 
 ht.plot_consumption=0
 ht.plot_heat_release=0
