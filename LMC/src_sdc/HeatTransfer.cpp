@@ -1915,15 +1915,20 @@ HeatTransfer::post_init (Real stop_time)
     FORT_GETCLOSEDCHAMBER(&closed_chamber);
     if (closed_chamber == 1)
     {
-      // pointer to S used for initial projection
-      MultiFab& divu = get_new_data(Divu_Type);
-
       // compute number of cells
       Real num_cells = grids.numPts();
 
       // compute Sbar and subtract from S
-      Sbar = divu.sum() / num_cells;
-      divu.plus(-Sbar,0,1);
+      for (int lev = 0; lev <= finest_level; lev++)
+      {
+	// pointer to S
+	MultiFab& divu_lev = getLevel(lev).get_new_data(Divu_Type);
+	if (lev == 0)
+	{
+	  Sbar = divu_lev.sum() / num_cells;
+	}
+	divu_lev.plus(-Sbar,0,1);
+      }
     }
 
     //
@@ -1936,8 +1941,11 @@ HeatTransfer::post_init (Real stop_time)
     if (closed_chamber == 1)
     {
       // restore S
-      MultiFab& divu = get_new_data(Divu_Type);
-      divu.plus(Sbar,0,1);
+      for (int lev = 0; lev <= finest_level; lev++)
+      {
+	MultiFab& divu_lev = getLevel(lev).get_new_data(Divu_Type);
+	divu_lev.plus(Sbar,0,1);
+      }
     }
 
     //
