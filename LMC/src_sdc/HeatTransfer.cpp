@@ -5188,7 +5188,9 @@ HeatTransfer::mac_sync ()
     // Compute the corrective pressure, mac_sync_phi, used to 
     // compute U^{ADV,corr} in mac_sync_compute
     //
+    BL_PROFILE_VAR("HT::mac_sync::ucorr", HTUCORR);
     mac_projector->mac_sync_solve(level,dt,Rh,fine_ratio);
+    BL_PROFILE_VAR_STOP(HTUCORR);
 
     if (!do_reflux) return;
 
@@ -5220,6 +5222,7 @@ HeatTransfer::mac_sync ()
     //
     // velocities
     //
+    BL_PROFILE_VAR("HT::mac_sync::Vsync", HTVSYNC);
     if (do_mom_diff == 0) 
     {
         mac_projector->mac_sync_compute(level,u_mac,Vsync,Ssync,Rh,
@@ -5244,6 +5247,7 @@ HeatTransfer::mac_sync ()
             }
         }
     }
+    BL_PROFILE_VAR_STOP(HTVSYNC);
 
     showMF("sdcSync",Ssync,"sdc_Ssync_no_Ucorr",level,parent->levelSteps(level));
     showMF("sdcSync",*EdgeState[0],"sdc_ESTATE_x_no_Ucorr",level,parent->levelSteps(level));
@@ -5251,6 +5255,7 @@ HeatTransfer::mac_sync ()
     //
     // Scalars.
     //
+    BL_PROFILE_VAR("HT::mac_sync::Ssync", HTSSYNC);
     for (int comp=BL_SPACEDIM; comp<NUM_STATE; ++comp)
     {
         if (sync_scheme[comp]==UseEdgeState)
@@ -5273,10 +5278,13 @@ HeatTransfer::mac_sync ()
                                             advectionType,modify_reflux_normal_vel,dt);
         }
     }
+    BL_PROFILE_VAR_STOP(HTSSYNC);
         
     showMF("sdcSync",Ssync,"sdc_Ssync_after_Ucorr",level,parent->levelSteps(level));
     showMF("sdcSync",*EdgeState[0],"sdc_ESTATE_x_no_Ucorr",level,parent->levelSteps(level));
     showMF("sdcSync",*EdgeState[1],"sdc_ESTATE_y_no_Ucorr",level,parent->levelSteps(level));
+
+    BL_PROFILE_VAR_START(HTSSYNC);
     Ssync.mult(dt,Ssync.nGrow());
 
     sync_setup(DeltaSsync);
@@ -5323,11 +5331,13 @@ HeatTransfer::mac_sync ()
     }
 
     make_rho_curr_time();
+    BL_PROFILE_VAR_STOP(HTSSYNC);
 
     const int numscal = NUM_STATE - BL_SPACEDIM;
     //
     // Set do_diffuse_sync to 0 for debugging reasons only.
     //
+    BL_PROFILE_VAR_START(HTVSYNC);
     if (do_mom_diff == 1)
     {
         for (MFIter Vsyncmfi(Vsync); Vsyncmfi.isValid(); ++Vsyncmfi)
@@ -5340,7 +5350,9 @@ HeatTransfer::mac_sync ()
                    Vsync[Vsyncmfi].divide(rho_ctime[Vsyncmfi],vbox,0,Zvel,1););
         }
     }
+    BL_PROFILE_VAR_STOP(HTVSYNC);
 
+    BL_PROFILE_VAR_START(HTSSYNC);
     if (do_diffuse_sync)
     {
 	FluxBoxes fb_beta(this);
@@ -5705,6 +5717,7 @@ HeatTransfer::mac_sync ()
             }
         }
     }
+    BL_PROFILE_VAR_STOP(HTSSYNC);
     showMF("sdcSync",Ssync,"sdc_Sync_postDiff",level,parent->levelSteps(level));
     //
     // For all conservative variables Q (other than density)
@@ -5712,6 +5725,7 @@ HeatTransfer::mac_sync ()
     // Before this loop, Ssync holds rho^{n+1} (delta phi)^sync
     // DeltaSsync holds (delta rho)^sync phi^p
     //
+    BL_PROFILE_VAR_START(HTSSYNC);
     for (MFIter mfi(Ssync); mfi.isValid(); ++mfi)
     {
         const int i = mfi.index();
@@ -5729,10 +5743,12 @@ HeatTransfer::mac_sync ()
         }
     }
     sync_cleanup(DeltaSsync);
+    BL_PROFILE_VAR_STOP(HTSSYNC);
     showMF("sdcSync",Ssync,"sdc_Sync_post_add_QdRho",level,parent->levelSteps(level));
     //
     // Increment the state (for all but rho, since that was done above)
     //
+    BL_PROFILE_VAR_START(HTSSYNC);
     for (MFIter mfi(S_new); mfi.isValid(); ++mfi)
     {
         const int i = mfi.index();
@@ -5750,10 +5766,13 @@ HeatTransfer::mac_sync ()
     //
     RhoH_to_Temp(S_new);
     setThermoPress(cur_time);
+    BL_PROFILE_VAR_STOP(HTSSYNC);
+
     showMF("sdcSync",S_new,"sdc_Snew_postSync",level,parent->levelSteps(level));
     //
     // Get boundary conditions.
     //
+    BL_PROFILE_VAR_START(HTSSYNC);
     Real mult = 1.0;
     Array<int*>         sync_bc(grids.size());
     Array< Array<int> > sync_bc_array(grids.size());
@@ -5862,6 +5881,7 @@ HeatTransfer::mac_sync ()
 	BoxLib::average_down(S_fine, S_crse, fine_lev.geom, crse_lev.geom,
 			     pComp, 1, crse_lev.fine_ratio);
     }
+    BL_PROFILE_VAR_STOP(HTSSYNC);
     showMF("sdcSync",S_new,"sdc_Snew_postInterpAvgSync",level,parent->levelSteps(level));
 
     if (verbose)
