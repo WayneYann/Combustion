@@ -4454,51 +4454,49 @@ HeatTransfer::advance (Real time,
     //    calc_dpdt(cur_time,dt,delta_chi_increment,u_mac);
     //    MultiFab::Add(get_new_data(Divu_Type),delta_chi_increment,0,0,1,0);
 
+    // subtract mean from divu
+    if (closed_chamber == 1 && level == 0)
+    {
+      MultiFab& divu_old = get_old_data(Divu_Type);
+      MultiFab& divu_new = get_new_data(Divu_Type);
+
+      // compute number of cells
+      Real num_cells = grids.numPts();
+
+      // compute average of S at old and new times
+      Sbar_old = divu_old.sum() / num_cells;
+      Sbar_new = divu_new.sum() / num_cells;
+
+      // subtract mean from divu
+      divu_old.plus(-Sbar_old,0,1);
+      divu_new.plus(-Sbar_new,0,1);
+    }
+
     //
     // Increment rho average.
     //
     if (!initial_step)
     {
-        if (level > 0)
-        {
-            Real alpha = 1.0/Real(ncycle);
-            if (iteration == ncycle)
-                alpha = 0.5/Real(ncycle);
-            incrRhoAvg(alpha);
-        }
-    }
-
-    if (dt > 0)
-    {
-
-      if (closed_chamber == 1 && level == 0)
+      if (level > 0)
       {
-	MultiFab& divu_old = get_old_data(Divu_Type);
-	MultiFab& divu_new = get_new_data(Divu_Type);
-
-	// compute number of cells
-	Real num_cells = grids.numPts();
-
-	// compute average of S at old and new times
-	Sbar_old = divu_old.sum() / num_cells;
-	Sbar_new = divu_new.sum() / num_cells;
-
-	// subtract mean from mac_divu and theta_nph
-	divu_old.plus(-Sbar_old,0,1);
-	divu_new.plus(-Sbar_new,0,1);
+	Real alpha = 1.0/Real(ncycle);
+	if (iteration == ncycle)
+	  alpha = 0.5/Real(ncycle);
+	incrRhoAvg(alpha);
       }
 
       //
       // Do a level project to update the pressure and velocity fields.
       //
+
       level_projector(dt,time,iteration);
 
+      // restore Sbar
       if (closed_chamber == 1 && level == 0)
       {
 	MultiFab& divu_old = get_old_data(Divu_Type);
 	MultiFab& divu_new = get_new_data(Divu_Type);
 
-	// restore Sbar
 	divu_old.plus(Sbar_old,0,1);
 	divu_new.plus(Sbar_new,0,1);
       }
