@@ -1898,6 +1898,7 @@ HeatTransfer::post_init (Real stop_time)
     const Real cur_time     = state[State_Type].curTime();
     const int  finest_level = parent->finestLevel();
     Real        dt_init     = 0.0;
+    Real Sbar;
 
     Array<Real> dt_save(finest_level+1);
     Array<int>  nc_save(finest_level+1);
@@ -1908,12 +1909,35 @@ HeatTransfer::post_init (Real stop_time)
     // Load typical values for each state component
     //
     set_typical_values(false);
+
+    // ensure system is solvable by creating deltaS = S - Sbar
+    if (closed_chamber)
+    {
+      // pointer to S used for initial projection
+      MultiFab& divu = get_new_data(Divu_Type);
+
+      // compute number of cells
+      Real num_cells = grids.numPts();
+
+      // compute Sbar and subtract from S
+      Sbar = divu.sum() / num_cells;
+      divu.plus(-Sbar,0,1);
+    }
+
     //
     // Ensure state is consistent, i.e. velocity field satisfies initial
     // estimate of constraint, coarse levels are fine level averages, pressure
     // is zero.
     //
     post_init_state();
+
+    if (closed_chamber)
+    {
+      // restore S
+      MultiFab& divu = get_new_data(Divu_Type);
+      divu.plus(Sbar,0,1);
+    }
+
     //
     // Estimate the initial timestepping.
     //
