@@ -3964,6 +3964,7 @@ HeatTransfer::advance (Real time,
 		       int  ncycle)
 {
 
+    BL_PROFILE_VAR("HT::advance::mac", HTMAC);
     int closed_chamber;
     FORT_GETCLOSEDCHAMBER(&closed_chamber);
     if (closed_chamber == 1 && level == 0)
@@ -3973,6 +3974,7 @@ HeatTransfer::advance (Real time,
       FORT_GETPAMB(&p_amb);
       FORT_SETPAMB_NEW(&p_amb);
     }
+    BL_PROFILE_VAR_STOP(HTMAC);
 
     BL_PROFILE_REGION_START("R::HT::advance()[src_sdc]");
     BL_PROFILE("HT::advance()[src_sdc]");
@@ -3997,7 +3999,9 @@ HeatTransfer::advance (Real time,
     // swaps old and new states for all state types
     // then copies each of the old state types into the new state types
     // computes old transport coefficients and copies them into new
+    BL_PROFILE_VAR("HT::advance::setup", HTSETUP);
     advance_setup(time,dt,iteration,ncycle);
+    BL_PROFILE_VAR_STOP(HTSETUP);
 
     if (level==0 && reset_typical_vals_int>0)
     {
@@ -4022,6 +4026,7 @@ HeatTransfer::advance (Real time,
 
     Real dt_test = 0.0, dummy = 0.0;    
 
+    BL_PROFILE_VAR("HT::advance::diffusion", HTDIFF);
     if (floor_species == 1)
     {
       for (MFIter mfi(S_old); mfi.isValid(); ++mfi)
@@ -4032,12 +4037,17 @@ HeatTransfer::advance (Real time,
 		       ARLIM(species.loVect()), ARLIM(species.hiVect()));
       }
     }
+    BL_PROFILE_VAR_STOP(HTDIFF);
 
     // Build a copy of old-time rho with grow cells for use in the diffusion solves
+    BL_PROFILE_VAR_START(HTDIFF);
     make_rho_prev_time();
+    BL_PROFILE_VAR_STOP(HTDIFF);
 
     // compute old-time thermodynamic pressure
+    BL_PROFILE_VAR_START(HTMAC);
     setThermoPress(prev_time);  
+    BL_PROFILE_VAR_STOP(HTMAC);
 
     MultiFab Dn(grids,nspecies+2,nGrowAdvForcing);
     MultiFab DDn(grids,1,nGrowAdvForcing);
@@ -4050,11 +4060,14 @@ HeatTransfer::advance (Real time,
     if (verbose && ParallelDescriptor::IOProcessor())
       std::cout << "Computing Dn, DDn, and DWbar \n";
 
+    BL_PROFILE_VAR_START(HTDIFF);
 #ifdef USE_WBAR
     compute_differential_diffusion_terms(Dn,DDn,DWbar,prev_time,dt);
 #else
     compute_differential_diffusion_terms(Dn,DDn,prev_time,dt);
 #endif
+    BL_PROFILE_VAR_STOP(HTDIFF);
+
     showMF("sdc",Dn,"sdc_Dn",level,parent->levelSteps(level));
     showMF("sdc",DDn,"sdc_DDn",level,parent->levelSteps(level));
 #ifdef USE_WBAR
@@ -4066,7 +4079,9 @@ HeatTransfer::advance (Real time,
       previous step or divu_iter's version of I_R.  Either way, we have to make 
       sure that the nGrowAdvForcing grow cells have something reasonable in them
     */
+    BL_PROFILE_VAR("HT::advance::reactions", HTREAC);
     set_reasonable_grow_cells_for_R(cur_time);
+    BL_PROFILE_VAR_STOP(HTREAC);
 
     // copy old state into new state for Dn and DDn.
     // Note: this was already done for scalars, transport coefficients,
@@ -4083,13 +4098,18 @@ HeatTransfer::advance (Real time,
     Real Sbar, thetabar;
     Real Sbar_old, Sbar_new;
 
+    BL_PROFILE_VAR_START(HTDIFF);
     MultiFab::Copy(Dnp1,Dn,0,0,nspecies+2,nGrowAdvForcing);
     MultiFab::Copy(DDnp1,DDn,0,0,1,nGrowAdvForcing);
+    BL_PROFILE_VAR_STOP(HTDIFF);
 
+    BL_PROFILE_VAR_START(HTMAC);
     delta_chi.setVal(0,nGrowAdvForcing);
+    BL_PROFILE_VAR_STOP(HTMAC);
 
     is_predictor = false;
 
+    BL_PROFILE_VAR_NS("HT::advance::velocity_adv", HTVEL);
     for (int sdc_iter=1; sdc_iter<=sdc_iterMAX; ++sdc_iter)
     {
 
@@ -4101,54 +4121,72 @@ HeatTransfer::advance (Real time,
       if (sdc_iter > 1)
       {
 	// compute new-time transport coefficients
+        BL_PROFILE_VAR_START(HTDIFF);
 	calcDiffusivity(cur_time);
 #ifdef USE_WBAR
 	calcDiffusivity_Wbar(cur_time);
 #endif
+        BL_PROFILE_VAR_STOP(HTDIFF);
 
 	// compute Dnp1 and DDnp1
 	// iteratively lagged
-	if (verbose && ParallelDescriptor::IOProcessor())
+	if (verbose && ParallelDescriptor::IOProcessor()) {
             std::cout << "Computing Dnp1 and DDnp1 (SDC iteration " << sdc_iter << ")\n";
+        }
+        BL_PROFILE_VAR_START(HTDIFF);
 #ifdef USE_WBAR
 	compute_differential_diffusion_terms(Dnp1,DDnp1,DWbar,cur_time,dt);
 #else
 	compute_differential_diffusion_terms(Dnp1,DDnp1,cur_time,dt);
 #endif
+        BL_PROFILE_VAR_STOP(HTDIFF);
 
 	// compute new-time DivU with instantaneous reaction rates
+        BL_PROFILE_VAR_START(HTMAC);
 	calc_divu(cur_time, dt, get_new_data(Divu_Type));
+        BL_PROFILE_VAR_STOP(HTMAC);
       }
 
       // compute U^{ADV,*}
       // you could avoid having to redo this computation by saving this state
+      BL_PROFILE_VAR_START(HTVEL);
       dt_test = predict_velocity(dt,dummy);  
+      BL_PROFILE_VAR_STOP(HTVEL);
 
       // create S^{n+1/2} by averaging old and new
+      BL_PROFILE_VAR_START(HTMAC);
       MultiFab Forcing(grids,nspecies+1,nGrowAdvForcing);
       Forcing.setBndry(1.e30);
       create_mac_rhs(mac_divu,nGrowAdvForcing,time+0.5*dt,dt);
+      BL_PROFILE_VAR_STOP(HTMAC);
       showMF("sdc",Forcing,"sdc_mac_rhs1",level,sdc_iter,parent->levelSteps(level));
       
       // compute new-time thermodynamic pressure
+      BL_PROFILE_VAR_START(HTMAC);
       setThermoPress(cur_time);
 
       // compute delta_chi_increment
       delta_chi_increment.setVal(0.0,nGrowAdvForcing);
       calc_dpdt(cur_time,dt,delta_chi_increment,u_mac);
+      BL_PROFILE_VAR_STOP(HTMAC);
 
       showMF("sdc",delta_chi_increment,"sdc_delta_chi_increment",level,sdc_iter,parent->levelSteps(level));
 
       // add delta_chi_increment to delta_chi
+      BL_PROFILE_VAR_START(HTMAC);
       MultiFab::Add(delta_chi,delta_chi_increment,0,0,1,nGrowAdvForcing);
+      BL_PROFILE_VAR_STOP(HTMAC);
       showMF("sdc",delta_chi,"sdc_delta_chi",level,sdc_iter,parent->levelSteps(level));
 
       // add delta_chi to time-centered mac_divu
+      BL_PROFILE_VAR_START(HTMAC);
       MultiFab::Add(mac_divu,delta_chi,0,0,1,nGrowAdvForcing);
+      BL_PROFILE_VAR_STOP(HTMAC);
 
       if (closed_chamber == 1 && level == 0)
       {	
 
+        BL_PROFILE_VAR_START(HTMAC);
 	Real p_amb, p_amb_new;
 	FORT_GETPAMB(&p_amb);
 	FORT_GETPAMB_NEW(&p_amb_new);
@@ -4212,6 +4250,7 @@ HeatTransfer::advance (Real time,
 	  th_nph.mult(Sbar/thetabar);
 	  m_du.minus(th_nph,box,box,0,0,1);
 	}
+        BL_PROFILE_VAR_STOP(HTMAC);
 
 	if (ParallelDescriptor::IOProcessor())
 	{
@@ -4222,6 +4261,7 @@ HeatTransfer::advance (Real time,
 
       // MAC-project... and overwrite U^{ADV,*}
       showMF("sdc",Forcing,"sdc_Forcing_for_mac",level,sdc_iter,parent->levelSteps(level));
+      BL_PROFILE_VAR_START(HTMAC);
       mac_project(time,dt,S_old,&mac_divu,1,nGrowAdvForcing,updateFluxReg);
 
       if (closed_chamber == 1 && level == 0)
@@ -4229,11 +4269,13 @@ HeatTransfer::advance (Real time,
 	// add Sbar back to mac_divu
 	mac_divu.plus(Sbar,0,1);
       }
+      BL_PROFILE_VAR_STOP(HTMAC);
 
       //
       // Compute A (advection terms) with F = Dn + R
       //
       showMF("sdc",get_new_data(RhoYdot_Type),"sdc_R_for_A_forcing",level,sdc_iter,parent->levelSteps(level));
+      BL_PROFILE_VAR("HT::advance::advection", HTADV);
       for (MFIter mfi(Forcing); mfi.isValid(); ++mfi)
       {
 	FArrayBox& f = Forcing[mfi];
@@ -4245,24 +4287,31 @@ HeatTransfer::advance (Real time,
 	f.plus(ddn,gbox,gbox,0,nspecies,1); // add DDn to RhoH forcing
 	f.plus(r,gbox,gbox,0,0,nspecies); // add R to RhoY, no contribution for RhoH
       }
+      BL_PROFILE_VAR_STOP(HTADV);
 
       showMF("sdc",Forcing,"sdc_Forcing_for_A",level,sdc_iter,parent->levelSteps(level));
+      BL_PROFILE_VAR_START(HTADV);
       Forcing.FillBoundary(0,nspecies+1);
       geom.FillPeriodicBoundary(Forcing,0,nspecies,true);
+      BL_PROFILE_VAR_STOP(HTADV);
 
       if (verbose && ParallelDescriptor::IOProcessor())
 	std::cout << "A (SDC iter " << sdc_iter << ")\n";
 
       // compute A
+      BL_PROFILE_VAR_START(HTADV);
       aofs->setVal(1.e30,aofs->nGrow());
       compute_scalar_advection_fluxes_and_divergence(Forcing,mac_divu,dt);
+      BL_PROFILE_VAR_STOP(HTADV);
       showMF("sdc",*aofs,"sdc_A_pred",level,sdc_iter,parent->levelSteps(level));
 
       // update rho, rho*Y, and rho*h
+      BL_PROFILE_VAR_START(HTADV);
       scalar_advection_update(dt, Density, RhoH);
 
       // update pointer to new-time density
       make_rho_curr_time();
+      BL_PROFILE_VAR_STOP(HTADV);
 
       // 
       // Compute Dhat, diffuse with F 
@@ -4270,8 +4319,9 @@ HeatTransfer::advance (Real time,
       //                 = A + R + 0.5(Dn - Dnp1) + Dhat + 0.5(DDn + DDnp1)
       // NOTE: Here we use 0.5*DDnp1 from the previous iteration
       // 
-      if (verbose && ParallelDescriptor::IOProcessor())
+      if (verbose && ParallelDescriptor::IOProcessor()) {
 	std::cout << "Dhat (SDC corrector " << sdc_iter << ")\n";
+      }
 
       showMF("sdc",*aofs,"sdc_A_before_Dhat",level,sdc_iter,parent->levelSteps(level));
       showMF("sdc",get_new_data(RhoYdot_Type),"sdc_R_before_Dhat",level,sdc_iter,parent->levelSteps(level));
@@ -4280,6 +4330,7 @@ HeatTransfer::advance (Real time,
       showMF("sdc",Dnp1,"sdc_Dnp1_before_Dhat",level,sdc_iter,parent->levelSteps(level));
       showMF("sdc",DDnp1,"sdc_DDnp1_before_Dhat",level,sdc_iter,parent->levelSteps(level));
 
+      BL_PROFILE_VAR_START(HTDIFF);
       for (MFIter mfi(Forcing); mfi.isValid(); ++mfi) 
       {
 	const Box& box = mfi.validbox();
@@ -4303,12 +4354,15 @@ HeatTransfer::advance (Real time,
 	f.plus(a,box,box,first_spec,0,nspecies+1); // add A into RhoY and RhoH
 	f.plus(r,box,box,0,0,nspecies); // no reactions for RhoH
       }
+      BL_PROFILE_VAR_STOP(HTDIFF);
 
       MultiFab Dhat(grids,nspecies+2,nGrowAdvForcing);
 
       // advection-diffusion solve
       showMF("sdc",Forcing,"sdc_Forcing_before_Dhat",level,sdc_iter,parent->levelSteps(level));
+      BL_PROFILE_VAR_START(HTDIFF);
       differential_diffusion_update(Forcing,0,Dhat,0,DDnp1);
+      BL_PROFILE_VAR_STOP(HTDIFF);
 
       showMF("sdc",Dn,"sdc_Dn_before_R",level,sdc_iter,parent->levelSteps(level));
       showMF("sdc",Dnp1,"sdc_Dnp1_before_R",level,sdc_iter,parent->levelSteps(level));
@@ -4320,6 +4374,7 @@ HeatTransfer::advance (Real time,
       // 
       // Compute R (F = A + 0.5(Dn - Dnp1 + DDn + DDnp1) + Dhat )
       // 
+      BL_PROFILE_VAR_START(HTREAC);
       for (MFIter mfi(Forcing); mfi.isValid(); ++mfi) 
         {
 	  const Box& box = mfi.validbox();
@@ -4338,17 +4393,22 @@ HeatTransfer::advance (Real time,
 	  f.plus(dhat,box,box,0,0,nspecies+1); // add Dhat to RhoY and RHoH
 	  f.plus(a,box,box,first_spec,0,nspecies+1); // add A to RhoY and RhoH
         }
+      BL_PROFILE_VAR_STOP(HTREAC);
       
       Dhat.clear();
 
-      if (verbose && ParallelDescriptor::IOProcessor())
+      if (verbose && ParallelDescriptor::IOProcessor()) {
 	std::cout << "R (SDC corrector " << sdc_iter << ")\n";
+      }
 
       showMF("sdc",S_old,"sdc_Sold_before_R",level,sdc_iter,parent->levelSteps(level));
       showMF("sdc",Forcing,"sdc_Forcing_before_R",level,sdc_iter,parent->levelSteps(level));
+      BL_PROFILE_VAR_START(HTREAC);
       advance_chemistry(S_old,S_new,dt,Forcing,0);
+      BL_PROFILE_VAR_STOP(HTREAC);
       showMF("sdc",S_new,"sdc_Snew_after_R",level,sdc_iter,parent->levelSteps(level));
 
+      BL_PROFILE_VAR_START(HTDIFF);
       if (floor_species == 1)
       {
 	for (MFIter mfi(S_new); mfi.isValid(); ++mfi)
@@ -4359,11 +4419,14 @@ HeatTransfer::advance (Real time,
 			 species.dataPtr(first_spec), ARLIM(species.loVect()),  ARLIM(species.hiVect()));
 	}
       }
+      BL_PROFILE_VAR_STOP(HTDIFF);
 
       if (verbose && ParallelDescriptor::IOProcessor())
 	std::cout << "DONE WITH R (SDC corrector " << sdc_iter << ")\n";
 
+      BL_PROFILE_VAR_START(HTMAC);
       setThermoPress(cur_time);
+      BL_PROFILE_VAR_STOP(HTMAC);
     }
 
     Dn.clear();
@@ -4418,22 +4481,29 @@ HeatTransfer::advance (Real time,
     }
 #endif
 
+    BL_PROFILE_VAR_START(HTDIFF);
     calcDiffusivity(cur_time);
 #ifdef USE_WBAR
     calcDiffusivity_Wbar(cur_time);
 #endif
 
     calcViscosity(cur_time,dt,iteration,ncycle);
+    BL_PROFILE_VAR_STOP(HTDIFF);
     //
     // Set the dependent value of RhoRT to be the thermodynamic pressure.  By keeping this in
     // the state, we can use the average down stuff to be sure that RhoRT_avg is avg(RhoRT),
     // not ave(Rho)avg(R)avg(T), which seems to give the p-relax stuff in the mac Rhs troubles.
     //
+    BL_PROFILE_VAR_START(HTMAC);
     setThermoPress(cur_time);
+    BL_PROFILE_VAR_STOP(HTMAC);
 
+    BL_PROFILE_VAR("HT::advance::project", HTPROJ);
     calc_divu(time+dt, dt, get_new_data(Divu_Type));
+    BL_PROFILE_VAR_STOP(HTPROJ);
     showMF("sdc",get_new_data(Divu_Type),"sdc_Divu",level,parent->levelSteps(level));
 
+    BL_PROFILE_VAR_START(HTPROJ);
     if (!NavierStokesBase::initial_step && level != parent->finestLevel())
     {
         //
@@ -4462,20 +4532,27 @@ HeatTransfer::advance (Real time,
             }
         }
     }
+    BL_PROFILE_VAR_STOP(HTPROJ);
     showMF("sdc",get_new_data(Divu_Type),"sdc_DivUnew",level,parent->levelSteps(level));
         
+    BL_PROFILE_VAR_START(HTPROJ);
     calc_dsdt(time, dt, get_new_data(Dsdt_Type));
+    BL_PROFILE_VAR_STOP(HTPROJ);
     showMF("sdc",get_new_data(Dsdt_Type),"sdc_Dsdtnew",level,parent->levelSteps(level));
 
+    BL_PROFILE_VAR_START(HTPROJ);
     if (NavierStokesBase::initial_step)
         MultiFab::Copy(get_old_data(Dsdt_Type),get_new_data(Dsdt_Type),0,0,1,0);
+    BL_PROFILE_VAR_STOP(HTPROJ);
     //
     // Add the advective and other terms to get velocity (or momentum) at t^{n+1}.
     //
+    BL_PROFILE_VAR_START(HTVEL);
     if (do_mom_diff == 0) {
       velocity_advection(dt);
     }
     velocity_update(dt);
+    BL_PROFILE_VAR_STOP(HTVEL);
 
     showMF("sdc",get_new_data(State_Type),"sdc_Snew_preProj",level,parent->levelSteps(level));
 
@@ -4485,6 +4562,7 @@ HeatTransfer::advance (Real time,
     //    MultiFab::Add(get_new_data(Divu_Type),delta_chi_increment,0,0,1,0);
 
     // subtract mean from divu
+    BL_PROFILE_VAR_START(HTPROJ);
     if (closed_chamber == 1 && level == 0)
     {
       MultiFab& divu_old = get_old_data(Divu_Type);
@@ -4533,6 +4611,7 @@ HeatTransfer::advance (Real time,
 
       if (level > 0 && iteration == 1) p_avg.setVal(0);
     }
+    BL_PROFILE_VAR_STOP(HTPROJ);
 
     showMF("sdc",get_new_data(State_Type),"sdc_Snew_postProj",level,parent->levelSteps(level));
 
@@ -4543,7 +4622,9 @@ HeatTransfer::advance (Real time,
     }
 #endif
 
+    BL_PROFILE_VAR("HT::advance::cleanup", HTCLEANUP);
     advance_cleanup(iteration,ncycle);
+    BL_PROFILE_VAR_STOP(HTCLEANUP);
     //
     // Update estimate for allowable time step.
     //
@@ -4554,14 +4635,16 @@ HeatTransfer::advance (Real time,
 
     temperature_stats(S_new);
 
-    BL_PROFILE_REGION_STOP("R::HT::advance()[src_sdc]");
-
+    BL_PROFILE_VAR_START(HTMAC);
     if (closed_chamber == 1 && level == 0 && !initial_step)
     {
 	Real p_amb_new;
 	FORT_GETPAMB_NEW(&p_amb_new);
 	FORT_SETPAMB(&p_amb_new);
     }
+    BL_PROFILE_VAR_STOP(HTMAC);
+
+    BL_PROFILE_REGION_STOP("R::HT::advance()[src_sdc]");
 
     return dt_test;
 }
