@@ -92,7 +92,7 @@ c ::: -----------------------------------------------------------
      $                  turb_scale, V_in, 
      $                  zstandoff, pertmag, nchemdiag,
      $                  blobx,bloby,blobz,blobr
-      namelist /heattransin/ pamb, dpdt_factor
+      namelist /heattransin/ pamb, pamb_new, dpdt_factor, closed_chamber
       namelist /flctin/ tstart_turb, forceInflow, numInflPlanesStore, forceLo, forceHi,
      &     strmwse_dir, nCompInflow, flct_file
       namelist /control/ tau_control, sest, cfix, changeMax_control, h_control, zbase_control
@@ -161,7 +161,9 @@ c
       max_trac_lev = 100
       traceSpecVal = 1.d-10
       pamb = 101325.d0
+      pamb_new = 101325.d0
       dpdt_factor = 0.3d0
+      closed_chamber = 0
 
 #if defined(BL_DO_FLCT)
 c     add_turb = .FALSE.

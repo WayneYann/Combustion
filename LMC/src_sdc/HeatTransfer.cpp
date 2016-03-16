@@ -83,8 +83,6 @@ const int  LinOp_grow  = 1;
 static Real              typical_RhoH_value_default = -1.e10;
 static const std::string typical_values_filename("typical_values.fab");
 
-const bool closed_chamber = false;
-
 namespace
 {
     bool initialized = false;
@@ -1611,7 +1609,9 @@ HeatTransfer::compute_instantaneous_reaction_rates (MultiFab&       R,
     Real p_amb;
     FORT_GETPAMB(&p_amb);
 
-    if (closed_chamber && whichTime == AmrNewTime)
+    int closed_chamber;
+    FORT_GETCLOSEDCHAMBER(&closed_chamber);
+    if (closed_chamber == 1 && whichTime == AmrNewTime)
     {
       // use new-time ambient pressure
       FORT_GETPAMB_NEW(&p_amb);
@@ -1911,7 +1911,9 @@ HeatTransfer::post_init (Real stop_time)
     set_typical_values(false);
 
     // ensure system is solvable by creating deltaS = S - Sbar
-    if (closed_chamber)
+    int closed_chamber;
+    FORT_GETCLOSEDCHAMBER(&closed_chamber);
+    if (closed_chamber == 1)
     {
       // pointer to S used for initial projection
       MultiFab& divu = get_new_data(Divu_Type);
@@ -1931,7 +1933,7 @@ HeatTransfer::post_init (Real stop_time)
     //
     post_init_state();
 
-    if (closed_chamber)
+    if (closed_chamber == 1)
     {
       // restore S
       MultiFab& divu = get_new_data(Divu_Type);
@@ -2005,7 +2007,7 @@ HeatTransfer::post_init (Real stop_time)
             int havedivu = 1;
 
 	    // ensure system is solvable by creating deltaS = S - Sbar
-	    if (closed_chamber)
+	    if (closed_chamber == 1)
 	    {
 	      // pointer to S used for initial projection
 	      MultiFab& divu = get_new_data(Divu_Type);
@@ -2020,7 +2022,7 @@ HeatTransfer::post_init (Real stop_time)
 	    
             projector->initialVelocityProject(0,divu_time,havedivu);
 
-	    if (closed_chamber)
+	    if (closed_chamber == 1)
 	    {
 	      // restore S
 	      MultiFab& divu = get_new_data(Divu_Type);
@@ -3932,7 +3934,9 @@ HeatTransfer::advance (Real time,
 		       int  ncycle)
 {
 
-    if (closed_chamber && level == 0)
+    int closed_chamber;
+    FORT_GETCLOSEDCHAMBER(&closed_chamber);
+    if (closed_chamber == 1 && level == 0)
     {
       // set new-time ambient pressure to be a copy of old-time ambient pressure
       Real p_amb;
@@ -4112,7 +4116,7 @@ HeatTransfer::advance (Real time,
       // add delta_chi to time-centered mac_divu
       MultiFab::Add(mac_divu,delta_chi,0,0,1,nGrowAdvForcing);
 
-      if (closed_chamber && level == 0)
+      if (closed_chamber == 1 && level == 0)
       {	
 
 	Real p_amb, p_amb_new;
@@ -4190,7 +4194,7 @@ HeatTransfer::advance (Real time,
       showMF("sdc",Forcing,"sdc_Forcing_for_mac",level,sdc_iter,parent->levelSteps(level));
       mac_project(time,dt,S_old,&mac_divu,1,nGrowAdvForcing,updateFluxReg);
 
-      if (closed_chamber && level == 0)
+      if (closed_chamber == 1 && level == 0)
       {
 	// add Sbar back to mac_divu
 	mac_divu.plus(Sbar,0,1);
@@ -4467,7 +4471,7 @@ HeatTransfer::advance (Real time,
     if (dt > 0)
     {
 
-      if (closed_chamber && level == 0)
+      if (closed_chamber == 1 && level == 0)
       {
 	MultiFab& divu_old = get_old_data(Divu_Type);
 	MultiFab& divu_new = get_new_data(Divu_Type);
@@ -4489,7 +4493,7 @@ HeatTransfer::advance (Real time,
       //
       level_projector(dt,time,iteration);
 
-      if (closed_chamber && level == 0)
+      if (closed_chamber == 1 && level == 0)
       {
 	MultiFab& divu_old = get_old_data(Divu_Type);
 	MultiFab& divu_new = get_new_data(Divu_Type);
@@ -4524,7 +4528,7 @@ HeatTransfer::advance (Real time,
 
     BL_PROFILE_REGION_STOP("R::HT::advance()[src_sdc]");
 
-    if (closed_chamber && level == 0 && !initial_step)
+    if (closed_chamber == 1 && level == 0 && !initial_step)
     {
 	Real p_amb_new;
 	FORT_GETPAMB_NEW(&p_amb_new);
@@ -4682,7 +4686,9 @@ HeatTransfer::advance_chemistry (MultiFab&       mf_old,
         Real p_amb;
         FORT_GETPAMB(&p_amb);
 
-	if (closed_chamber)
+	int closed_chamber;
+	FORT_GETCLOSEDCHAMBER(&closed_chamber);
+	if (closed_chamber == 1)
 	{
 	  // time-center ambient pressure for reactions
 	  Real p_amb_new;
@@ -6206,7 +6212,9 @@ HeatTransfer::calcDiffusivity (const Real time)
     Real p_amb;
     FORT_GETPAMB(&p_amb);
 
-    if (closed_chamber)
+    int closed_chamber;
+    FORT_GETCLOSEDCHAMBER(&closed_chamber);
+    if (closed_chamber == 1)
     {
       if (level == 0)
       {
@@ -6592,7 +6600,9 @@ HeatTransfer::calc_dpdt (Real      time,
   FORT_GETPAMB(&p_amb);
   FORT_GETDPDT(&dpdt_factor);
 
-  if (closed_chamber)
+  int closed_chamber;
+  FORT_GETCLOSEDCHAMBER(&closed_chamber);
+  if (closed_chamber == 1)
   {
     if (level == 0)
     {

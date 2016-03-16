@@ -184,6 +184,17 @@ c-----------------------------------------------------------------------
       
 c-----------------------------------------------------------------------
 
+      subroutine FORT_GETCLOSEDCHAMBER(closed_chamberout)
+      implicit none
+#include <htdata.H>
+      integer closed_chamberout
+
+      closed_chamberout = closed_chamber
+      return
+      end
+      
+c-----------------------------------------------------------------------
+
       subroutine FORT_GETDPDT(dpdt_factorout)
       implicit none
 #include <htdata.H>

@@ -102,7 +102,7 @@ c ::: -----------------------------------------------------------
      +   twall, v_blob_airfrac, v_blob_r, v_blob_T, v_cl_x, V_co,
      +   V_co_new, V_in, V_in_new, v_strength, v_width, v_xcen, v_ycen,
      +   vorterr, waves, xcen, xfrontw, y_offset, yfrontw, seed
-      namelist /heattransin/ pamb, dpdt_factor
+      namelist /heattransin/ pamb, pamb_new, dpdt_factor, closed_chamber
 #if defined(BL_DO_FLCT)
       namelist /flctin/ forceInflow, numInflPlanesStore, forceLo, forceHi,
      &     strmwse_dir, nCompInflow, flct_file
@@ -164,7 +164,9 @@ c
       v_cl_x = probhi(1)
       y_offset = zero
       pamb = 101325.d0
+      pamb_new = 101325.d0
       dpdt_factor = 0.3d0
+      closed_chamber = 0
       v_blob_r = zero
       v_blob_T = 2000.d0
       v_blob_airfrac = zero
