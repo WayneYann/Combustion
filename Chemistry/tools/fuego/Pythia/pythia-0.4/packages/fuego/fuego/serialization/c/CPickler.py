@@ -451,7 +451,6 @@ class CPickler(CMill):
             '',
             '#include <math.h>',
             '#include <stdio.h>',
-            '#define __USE_POSIX /* Required on some systems to expose strtok_r prototype */',
             '#include <string.h>',
             '#include <stdlib.h>'
             ]
@@ -1129,7 +1128,6 @@ class CPickler(CMill):
         self._write()
         self._write()
         self._write(self.line(' ckxnum... for parsing strings '))
-        self._write('extern char *strtok_r(char *, const char *, char **);')
         self._write('void CKXNUM'+sym+'(char * line, int * nexp, int * lout, int * nval, double * restrict rval, int * kerr, int lenline )')
         self._write('{')
         self._indent()

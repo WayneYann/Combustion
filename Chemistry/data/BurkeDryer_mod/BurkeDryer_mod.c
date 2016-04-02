@@ -1,7 +1,6 @@
 
 #include <math.h>
 #include <stdio.h>
-#define __USE_POSIX /* Required on some systems to expose strtok_r prototype */
 #include <string.h>
 #include <stdlib.h>
 
@@ -972,7 +971,6 @@ void CKINDX(int * iwrk, double * restrict rwrk, int * mm, int * kk, int * ii, in
 
 
 /* ckxnum... for parsing strings  */
-extern char *strtok_r(char *, const char *, char **);
 void CKXNUM(char * line, int * nexp, int * lout, int * nval, double * restrict rval, int * kerr, int lenline )
 {
     int n,i; /*Loop Counters */
