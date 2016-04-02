@@ -1,6 +1,7 @@
 
 #include <math.h>
 #include <stdio.h>
+#define __USE_POSIX /* Required on some systems to expose strtok_r prototype */
 #include <string.h>
 #include <stdlib.h>
 
@@ -971,6 +972,7 @@ void CKINDX(int * iwrk, double * restrict rwrk, int * mm, int * kk, int * ii, in
 
 
 /* ckxnum... for parsing strings  */
+extern char *strtok_r(char *, const char *, char **);
 void CKXNUM(char * line, int * nexp, int * lout, int * nval, double * restrict rval, int * kerr, int lenline )
 {
     int n,i; /*Loop Counters */
@@ -9197,7 +9199,7 @@ H2O2+H = H2O+OH                             	2.410E+13  0.00  3.970E+03
 H2O2+H = HO2+H2                             	4.820E+13  0.00  7.950E+03
 H2O2+O = OH+HO2                             	9.550E+06  2.00  3.970E+03
 
-! Hong et al., J. Phys. Chem. A  114 (2010) 5718–5727
+! Hong et al., J. Phys. Chem. A  114 (2010) 5718-5727
 H2O2+OH = HO2+H2O                           	1.740E+12  0.00  3.180E+02
    DUPLICATE
 H2O2+OH = HO2+H2O                           	7.590E+13  0.00  7.270E+03
