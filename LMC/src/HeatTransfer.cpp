@@ -2930,6 +2930,8 @@ HeatTransfer::velocity_diffusion_update (Real dt)
 
         diffusion->diffuse_velocity(dt,be_cn_theta,get_rho_half_time(),rho_flag,
                                     delta_rhs,fb_betan.get(),fb_betanp1.get());
+
+	delete delta_rhs;
     }
 
     if (verbose)
