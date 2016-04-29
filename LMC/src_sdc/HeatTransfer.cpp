@@ -2096,7 +2096,8 @@ HeatTransfer::post_init (Real stop_time)
 	    dt_save[k] = std::min(dt_save[k],dt_save2[k]);
 	    getLevel(k).setTimeLevel(cur_time,dt_init,dt_init);
         }
-    }
+    } // end divu_iters
+
     //
     // Initialize the pressure by iterating the initial timestep.
     //
@@ -2319,6 +2320,9 @@ HeatTransfer::post_init_press (Real&        dt_init,
     const Real cur_time        = state[State_Type].curTime();
     const int  finest_level    = parent->finestLevel();
     NavierStokesBase::initial_iter = true;
+    Real Sbar_old, Sbar_new;
+    int closed_chamber;
+    FORT_GETCLOSEDCHAMBER(&closed_chamber);
     //
     // Make space to save a copy of the initial State_Type state data
     //
@@ -2358,12 +2362,89 @@ HeatTransfer::post_init_press (Real&        dt_init,
             sig[k] = &(getLevel(k).get_rho_half_time());
         }
 
+	// ensure system is solvable by creating deltaS = S - Sbar
+	if (closed_chamber == 1)
+	{
+
+	  // compute number of cells
+	  Real num_cells = grids.numPts();
+
+	  // ensure divu_new is average down so computing deltaS = S - Sbar works for multilevel
+	  for (int k = finest_level-1; k >= 0; k--)
+	  {
+	    HeatTransfer&   fine_lev = getLevel(k+1);
+	    HeatTransfer&   crse_lev = getLevel(k);
+	    
+	    MultiFab& Divu_crse = crse_lev.get_new_data(Divu_Type);
+	    MultiFab& Divu_fine = fine_lev.get_new_data(Divu_Type);
+
+	    BoxLib::average_down(Divu_fine, Divu_crse, fine_lev.geom, crse_lev.geom,
+				 0, 1, crse_lev.fine_ratio);
+	  }
+
+	  // compute Sbar and subtract from S
+	  for (int lev = 0; lev <= finest_level; lev++)
+	  {
+	    // pointer to S
+	    MultiFab& divu_lev = getLevel(lev).get_new_data(Divu_Type);
+	    if (lev == 0)
+	    {
+	      Sbar_new = divu_lev.sum() / num_cells;
+	    }
+	    divu_lev.plus(-Sbar_new,0,1);
+	  }
+	  
+	  // ensure divu_old is average down so computing deltaS = S - Sbar works for multilevel
+	  for (int k = finest_level-1; k >= 0; k--)
+	  {
+	    HeatTransfer&   fine_lev = getLevel(k+1);
+	    HeatTransfer&   crse_lev = getLevel(k);
+		  
+	    MultiFab& Divu_crse = crse_lev.get_old_data(Divu_Type);
+	    MultiFab& Divu_fine = fine_lev.get_old_data(Divu_Type);
+
+	    BoxLib::average_down(Divu_fine, Divu_crse, fine_lev.geom, crse_lev.geom,
+				 0, 1, crse_lev.fine_ratio);
+	  }
+
+	  // compute Sbar and subtract from S
+	  for (int lev = 0; lev <= finest_level; lev++)
+	  {
+	    // pointer to S
+	    MultiFab& divu_lev = getLevel(lev).get_old_data(Divu_Type);
+	    if (lev == 0)
+	    {
+	      Sbar_old = divu_lev.sum() / num_cells;
+	    }
+	    divu_lev.plus(-Sbar_old,0,1);
+	  }
+	}
+
         if (projector)
-        {
+	  {
             int havedivu = 1;
-            projector->initialSyncProject(0,sig,parent->dtLevel(0),cur_time,
-                                          havedivu);
-        }
+	    projector->initialSyncProject(0,sig,parent->dtLevel(0),cur_time,
+					  havedivu);
+	  }
+	
+	if (closed_chamber == 1)
+	{
+	  // restore S_new
+	  for (int lev = 0; lev <= finest_level; lev++)
+	  {
+	    MultiFab& divu_lev = getLevel(lev).get_new_data(Divu_Type);
+	    divu_lev.plus(Sbar_new,0,1);
+	  }
+
+	  // restore S_old
+	  for (int lev = 0; lev <= finest_level; lev++)
+	  {
+	    MultiFab& divu_lev = getLevel(lev).get_old_data(Divu_Type);
+	    divu_lev.plus(Sbar_old,0,1);
+	  }
+
+	}
+
         delete [] sig;
 
         for (int k = finest_level-1; k>= 0; k--)
