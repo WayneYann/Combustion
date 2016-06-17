@@ -185,19 +185,30 @@ build_info.f90:
 	@echo " "
 	@echo "${bold}WRITING build_info.f90${normal}"
 ifdef MKVERBOSE
-	$(BOXLIB_HOME)/Tools/F_scripts/make_build_info2 \
-            "$(Fmdirs)" "$(COMP)" "$(FCOMP_VERSION)" \
-            "$(COMPILE.f90)" "$(COMPILE.f)" \
-            "$(COMPILE.c)" "$(LINK.f90)" \
-            "AUX=$(CHEMISTRY_MODEL)" \
-            "GIT=$(BOXLIB_HOME)" "GIT=$(SMC_TOP_DIR)" "GIT=$(SDCLIB_HOME)"
+	$(BOXLIB_HOME)/Tools/F_scripts/makebuildinfo.py \
+           --modules "$(Fmdirs)" \
+           --FCOMP "$(COMP)" \
+           --FCOMP_version "$(FCOMP_VERSION)" \
+           --f90_compile_line "$(COMPILE.f90)" \
+           --f_compile_line "$(COMPILE.f)" \
+           --C_compile_line "$(COMPILE.c)" \
+           --link_line "$(LINK.f90)" \
+           --boxlib_home "$(BOXLIB_HOME)" \
+           --source_home "$(SMC_TOP_DIR)" \
+           --extra_home "$(SDCLIB_HOME)"
 else
-	@$(BOXLIB_HOME)/Tools/F_scripts/make_build_info2 \
-            "$(Fmdirs)" "$(COMP)" "$(FCOMP_VERSION)" \
-            "$(COMPILE.f90)" "$(COMPILE.f)" \
-            "$(COMPILE.c)" "$(LINK.f90)" \
-            "AUX=$(CHEMISTRY_MODEL)" \
-            "GIT=$(BOXLIB_HOME)" "GIT=$(SMC_TOP_DIR)" "GIT=$(SDCLIB_HOME)"
+	@$(BOXLIB_HOME)/Tools/F_scripts/makebuildinfo.py \
+           --modules "$(Fmdirs)" \
+           --FCOMP "$(COMP)" \
+           --FCOMP_version "$(FCOMP_VERSION)" \
+           --f90_compile_line "$(COMPILE.f90)" \
+           --f_compile_line "$(COMPILE.f)" \
+           --C_compile_line "$(COMPILE.c)" \
+           --link_line "$(LINK.f90)" \
+           --boxlib_home "$(BOXLIB_HOME)" \
+           --source_home "$(SMC_TOP_DIR)" \
+           --extra_home "$(SDCLIB_HOME)" \
+           --network "$(CHEMISTRY_MODEL)"
 endif
 	@echo " "
 
