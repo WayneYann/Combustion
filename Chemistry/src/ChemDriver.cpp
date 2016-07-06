@@ -296,6 +296,10 @@ ChemDriver::initOnce ()
 
     reaction_map.resize(numReactions());
     FORT_GET_REACTION_MAP(reaction_map.dataPtr());
+    reaction_rev_map.resize(numReactions());
+    for (int i=0; i<reaction_map.size(); ++i) {
+      reaction_rev_map[reaction_map[i]] = i;
+    }
     number_of_species = numSpecies();
 }
 
@@ -1345,15 +1349,24 @@ ChemDriver::getOTradLoss_TDF(FArrayBox&       Qloss,
                    &Patm, &T_bg);
 }
 
-ChemDriver::Edge::Edge (const std::string& n1, const std::string& n2, const Array<std::pair<int,Real> > rwl)
-    : sp1(n1), sp2(n2), RWL(rwl) {}
+ChemDriver::Edge::Edge (const std::string& n1,
+			const std::string& n2,
+			const Array<std::pair<int,Real> > rwl,
+			const ChemDriver* CD)
+  : sp1(n1), sp2(n2), RWL(rwl), cd(CD) {}
 
-ChemDriver::Edge::Edge (const std::string& n1, const std::string& n2, int reac, Real weight )
-    : sp1(n1), sp2(n2) { RWL.push_back(std::pair<int,Real>(reac,weight)); }
+ChemDriver::Edge::Edge (const std::string& n1,
+			const std::string& n2,
+			int reac,
+			Real weight,
+			const ChemDriver* CD)
+  : sp1(n1), sp2(n2), cd(CD) { RWL.push_back(std::pair<int,Real>(reac,weight)); }
 
 int
 ChemDriver::Edge::equivSign (const Edge& rhs) const
 {   
+    BL_ASSERT(cd == rhs.CD());
+    BL_ASSERT(cd != 0);
     if ( (sp1 == rhs.sp1) && (sp2 == rhs.sp2) )
         return 1;
     
@@ -1365,8 +1378,10 @@ ChemDriver::Edge::equivSign (const Edge& rhs) const
 }
 
 void
-ChemDriver::Edge::combine (const Edge& rhs, const int   sgn)
+ChemDriver::Edge::combine (const Edge& rhs, const int sgn)
 {
+    BL_ASSERT(cd == rhs.CD());
+    BL_ASSERT(cd != 0);
     if (sgn!=0)
     {            
         int oldSize = RWL.size();
@@ -1417,10 +1432,13 @@ ChemDriver::Edge::operator<(const Edge& rhs) const
 
 std::ostream& operator<< (std::ostream& os, const ChemDriver::Edge& e)
 {
+  const ChemDriver* cd = e.CD();
+  BL_ASSERT(cd != 0);
+  const Array<int>& rvmap = cd->reactionReverseMap();
   os << e.sp1 << " " << e.sp2 << " ";
   for (int i=0; i<e.RWL.size(); ++i) {
     const std::pair<int,Real>& p=e.RWL[i];
-    os << p.first << ":" << p.second;
+    os << rvmap[p.first] << ":" << p.second;
     if (i<e.RWL.size()-1) os << " ";
   }
   return os;
@@ -1727,7 +1745,7 @@ ChemDriver::getEdges (const std::string& trElt, int PrintVerbose, int HackSplitt
                     const std::string& spcp = pit->first;
                     const int cop = pit->second;
                     int w = std::min(cor*groups[spcr][trElt],cop*groups[spcp][trElt]);
-                    edges.push_back(Edge(spcr,spcp,r,w));
+                    edges.push_back(Edge(spcr,spcp,r,w,this));
                 }
             }
             continue;
@@ -1808,23 +1826,23 @@ ChemDriver::getEdges (const std::string& trElt, int PrintVerbose, int HackSplitt
             
             if (pick == 0)
             {
-                edges.push_back(Edge(rs0,ps0,r,std::min(nR0,nP0)));
+	        edges.push_back(Edge(rs0,ps0,r,std::min(nR0,nP0),this));
                 if (nP0<nR0)
-                    edges.push_back(Edge(rs0,ps1,r,nR0-nP0));
+		    edges.push_back(Edge(rs0,ps1,r,nR0-nP0,this));
                 
-                edges.push_back(Edge(rs1,ps1,r,std::min(nR1,nP1)));
+                edges.push_back(Edge(rs1,ps1,r,std::min(nR1,nP1),this));
                 if (nR0<nP0)
-                    edges.push_back(Edge(rs1,ps0,r,nP0-nR0));
+		    edges.push_back(Edge(rs1,ps0,r,nP0-nR0,this));
             }
             else
             {
-                edges.push_back(Edge(rs0,ps1,r,std::min(nR0,nP1)));
+	        edges.push_back(Edge(rs0,ps1,r,std::min(nR0,nP1),this));
                 if (nP1<nR0)
-                    edges.push_back(Edge(rs0,ps0,r,nR0-nP1));
+		    edges.push_back(Edge(rs0,ps0,r,nR0-nP1,this));
                 
-                edges.push_back(Edge(rs1,ps0,r,std::min(nR1,nP0)));
+                edges.push_back(Edge(rs1,ps0,r,std::min(nR1,nP0),this));
                 if (nR0<nP1)
-                    edges.push_back(Edge(rs1,ps1,r,nP1-nR0));
+		    edges.push_back(Edge(rs1,ps1,r,nP1-nR0,this));
             }
             continue;
         }
