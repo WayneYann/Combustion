@@ -1733,6 +1733,10 @@ ChemDriver::getEdges (const std::string& trElt, int PrintVerbose, int HackSplitt
         if (LR==0 || LP==0)  // no tr-containing species in reac
             continue;
         
+	int rr = reaction_rev_map[r];
+	if (PrintVerbose>0) {
+	  cout << rr+1 << ": " << reactionStringBuild(rr) << endl;
+	}
         if ((LR == 1) || (LP == 1)) // exactly one tr-containing species either side
         {
             for (std::map<std::string,int>::const_iterator rit=reac.begin(); rit!=reac.end(); ++rit)
@@ -1745,6 +1749,9 @@ ChemDriver::getEdges (const std::string& trElt, int PrintVerbose, int HackSplitt
                     const std::string& spcp = pit->first;
                     const int cop = pit->second;
                     int w = std::min(cor*groups[spcr][trElt],cop*groups[spcp][trElt]);
+		    if (PrintVerbose>0) {
+		      cout << "    " << spcr << " => " << spcp << " w: " << w << endl;
+		    }
                     edges.push_back(Edge(spcr,spcp,r,w,this));
                 }
             }
@@ -1773,49 +1780,44 @@ ChemDriver::getEdges (const std::string& trElt, int PrintVerbose, int HackSplitt
             int pick = 0;
 
             // HACK
-            if ((HackSplitting==1) && (trElt=="H") && (r==61))
+            if ((HackSplitting==1) && (trElt=="H") && (rr==61)) // Intended for GRI30
             {
                 pick = 0;
-                if (PrintVerbose>0)
-                    cout << "decomposition of reaction " << r+1 << "...resorting to HACK!!" << endl;
+                if (PrintVerbose>0) {
+                    cout << "decomposition of reaction " << rr+1 << "...resorting to HACK!!" << endl;
+		}
             }
             else
             {
-                if ((HackSplitting==1) && (trElt=="H") && (r==310))
+                if (b0.sameSign() && b1.sameSign())
                 {
-                    pick = 0;
-                    if (PrintVerbose>0)
-                        cout << "decomposition of reaction " << r+1 << "...resorting to HACK!!" << endl;
+                    if (b1.size() < b0.size())
+                    {
+                        pick = 1;
+                        if (PrintVerbose>0) {
+			  cout << "decomposition of reaction " << rr+1 << " resorting to atom cnt" << endl;
+			}
+                    }
+                    if (b1.size() == b0.size())
+                    {
+                        if (b0.awt() > b1.awt())
+                        {
+                            pick = 1;
+                            if (PrintVerbose>0) {
+			      cout << "decomposition of reaction " << rr+1 << " ...resorting to tot awt" << endl;
+			    }
+                        }
+                        else if ( (PrintVerbose>0) && (b0.awt() < b1.awt()) )
+                        {
+                            cout << "decomposition of reaction " << rr+1 << " ...resorting to tot awt" << endl;
+                        }
+                    }
                 }
                 else
                 {
-                    if (b0.sameSign() && b1.sameSign())
-                    {
-                        if (b1.size() < b0.size())
-                        {
-                            pick = 1;
-                            if (PrintVerbose>0)
-                                cout << "decomposition of reaction " << r+1 << " resorting to atom cnt" << endl;
-                        }
-                        if (b1.size() == b0.size())
-                        {
-                            if (b0.awt() > b1.awt())
-                            {
-                                pick = 1;
-                                if (PrintVerbose>0)
-                                    cout << "decomposition of reaction " << r+1 << " ...resorting to tot awt" << endl;
-                            }
-                            else if ( (PrintVerbose>0) && (b0.awt() < b1.awt()) )
-                            {
-                                cout << "decomposition of reaction " << r+1 << " ...resorting to tot awt" << endl;
-                            }
-                        }
-                    }
-                    else
-                    {
-                        if (b1.sameSign())
-                            pick = 1;
-                    }
+		  if (b1.sameSign()) {
+		    pick = 1;
+		  }
                 }
             }
             
@@ -1826,28 +1828,58 @@ ChemDriver::getEdges (const std::string& trElt, int PrintVerbose, int HackSplitt
             
             if (pick == 0)
             {
-	        edges.push_back(Edge(rs0,ps0,r,std::min(nR0,nP0),this));
-                if (nP0<nR0)
-		    edges.push_back(Edge(rs0,ps1,r,nR0-nP0,this));
-                
-                edges.push_back(Edge(rs1,ps1,r,std::min(nR1,nP1),this));
-                if (nR0<nP0)
-		    edges.push_back(Edge(rs1,ps0,r,nP0-nR0,this));
+	      if (PrintVerbose>0) {
+		cout << "  choosing to move " << b0 << " rather than " << b1 << endl;
+	        cout << "    " << rs0 << " => " << ps0 << " w: " << std::min(nR0,nP0) << endl;
+	      }
+	      edges.push_back(Edge(rs0,ps0,r,std::min(nR0,nP0),this));
+	      if (nP0<nR0) {
+		if (PrintVerbose>0) {
+		  cout << "    " << rs0 << " => " << ps1 << " w: " << nR0-nP0 << endl;
+		}
+		edges.push_back(Edge(rs0,ps1,r,nR0-nP0,this));
+	      }
+              
+	      if (PrintVerbose>0) {
+	        cout << "    " << rs1 << " => " << ps1 << " w: " << std::min(nR1,nP1) << endl;
+	      }
+	      edges.push_back(Edge(rs1,ps1,r,std::min(nR1,nP1),this));
+	      if (nR0<nP0) {
+		if (PrintVerbose>0) {
+		  cout << "    " << rs1 << " => " << ps0 << " w: " << nP0-nR0 << endl;
+		}
+		edges.push_back(Edge(rs1,ps0,r,nP0-nR0,this));
+	      }
             }
             else
             {
-	        edges.push_back(Edge(rs0,ps1,r,std::min(nR0,nP1),this));
-                if (nP1<nR0)
-		    edges.push_back(Edge(rs0,ps0,r,nR0-nP1,this));
-                
-                edges.push_back(Edge(rs1,ps0,r,std::min(nR1,nP0),this));
-                if (nR0<nP1)
-		    edges.push_back(Edge(rs1,ps1,r,nP1-nR0,this));
+	      if (PrintVerbose>0) {
+		cout << "  choosing to move " << b1 << " rather than " << b0 << endl;
+	        cout << "    " << rs0 << " => " << ps1 << " w: " << std::min(nR0,nP1) << endl;
+	      }
+	      edges.push_back(Edge(rs0,ps1,r,std::min(nR0,nP1),this));
+	      if (nP1<nR0) {
+		if (PrintVerbose>0) {
+		  cout << "    " << rs0 << " => " << ps0 << " w: " << nR0-nP1 << endl;
+		}
+		edges.push_back(Edge(rs0,ps0,r,nR0-nP1,this));
+	      }
+
+	      if (PrintVerbose>0) {
+	        cout << "    " << rs1 << " => " << ps0 << " w: " << std::min(nR1,nP0) << endl;
+	      }
+	      edges.push_back(Edge(rs1,ps0,r,std::min(nR1,nP0),this));
+	      if (nR0<nP1) {
+		if (PrintVerbose>0) {
+		  cout << "    " << rs1 << " => " << ps1 << " w: " << nP1-nR0 << endl;
+		}
+		edges.push_back(Edge(rs1,ps1,r,nP1-nR0,this));
+	      }
             }
             continue;
         }
 
-        cout << "Cannot decompose rxn: " << r << " " << LR << " " << LP << endl;
+	cout << "Cannot decompose rxn: " << rr+1 << ": " << reactionStringBuild(rr) << endl;
     }
 
     // Uniquify/combine edges
