@@ -2,7 +2,7 @@
   probtype = 'premixed_fixed_inlet'
 
   V_in = -1
-  standoff = -.01
+  standoff = -.0135
   pertmag = 0.0004
   pertmag = 0
 

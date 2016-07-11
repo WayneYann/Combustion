@@ -1,7 +1,7 @@
 module pmf_module
   implicit none
   character(len=72) :: pmf_filename = ''
-  integer :: pmf_init = 0, pmf_M, pmf_N
+  integer :: pmf_init = 0, pmf_M, pmf_N, pmf_do_average = 0
   double precision, allocatable :: pmf_X(:)
   double precision, allocatable ::  pmf_Y(:,:)
   character (len=20), allocatable :: pmf_names(:)
@@ -105,10 +105,10 @@ contains
 
   subroutine interp_pmf(xlo,xhi,y_vector)
     double precision xlo,xhi,y_vector(*)
-    double precision sum    
+    double precision sum,xmid
     integer i,j,k,lo_loside,lo_hiside       
-    integer hi_loside,hi_hiside            
-    double precision ylo,yhi,x1,y1,x2,y2,dydx   
+    integer hi_loside,hi_hiside,loside,hiside
+    double precision ylo,yhi,x1,y1,x2,y2,dydx
 
     if (pmf_init .eq. 0) then
        if (trim(pmf_filename) .eq. '') then
@@ -118,98 +118,138 @@ contains
        call read_pmf(pmf_filename)
     endif
 
-    lo_loside = 0
-    lo_hiside = 0
-    hi_loside = 0
-    hi_hiside = 0
-    if (xlo .le. pmf_X(1)) then
-       lo_loside = 1
-       lo_hiside = 1
-    end if
-    if (xhi .le. pmf_X(1)) then
-       hi_loside = 1
-       hi_hiside = 1
-    end if
-    if (xlo .ge. pmf_X(pmf_N)) then
-       lo_loside = pmf_N
-       lo_hiside = pmf_N
-    end if
-    if (xhi .ge. pmf_X(pmf_N)) then
-       hi_loside = pmf_N
-       hi_hiside = pmf_N
-    end if
-    if (lo_loside.eq.0) then
-       do i = 1, pmf_N-1                           
-          if ( (xlo .ge. pmf_X(i)) .and.  &
-               (xlo .le. pmf_X(i+1)) ) then
-             lo_loside  = i
-             lo_hiside  = i+1
-          end if
-       end do
-    end if
-    if (hi_loside.eq.0) then            
-       do i = 1, pmf_N-1                           
-          if ( (xhi .ge. pmf_X(i)) .and. &
-               (xhi .le. pmf_X(i+1)) ) then
-             hi_loside = i
-             hi_hiside = i + 1
-          end if
-       end do
-    end if
-
-    do j = 1, pmf_M
-
-       x1 = pmf_X(lo_loside)
-       y1 = pmf_Y(lo_loside,j)
-
-       x2 = pmf_X(lo_hiside)
-       y2 = pmf_Y(lo_hiside,j)
-
-       if (lo_loside.eq.lo_hiside) then
-          dydx = 0.d0
-       else
-          dydx = (y2-y1)/(x2-x1)
+    if (pmf_do_average .eq.1) then
+       lo_loside = 0
+       lo_hiside = 0
+       hi_loside = 0
+       hi_hiside = 0
+       if (xlo .le. pmf_X(1)) then
+          lo_loside = 1
+          lo_hiside = 1
+       end if
+       if (xhi .le. pmf_X(1)) then
+          hi_loside = 1
+          hi_hiside = 1
+       end if
+       if (xlo .ge. pmf_X(pmf_N)) then
+          lo_loside = pmf_N
+          lo_hiside = pmf_N
+       end if
+       if (xhi .ge. pmf_X(pmf_N)) then
+          hi_loside = pmf_N
+          hi_hiside = pmf_N
+       end if
+       if (lo_loside.eq.0) then
+          do i = 1, pmf_N-1                           
+             if ( (xlo .ge. pmf_X(i)) .and.  &
+                  (xlo .le. pmf_X(i+1)) ) then
+                lo_loside  = i
+                lo_hiside  = i+1
+             end if
+          end do
+       end if
+       if (hi_loside.eq.0) then            
+          do i = 1, pmf_N-1                           
+             if ( (xhi .ge. pmf_X(i)) .and. &
+                  (xhi .le. pmf_X(i+1)) ) then
+                hi_loside = i
+                hi_hiside = i + 1
+             end if
+          end do
        end if
 
-       ylo = y1 + dydx*(xlo - x1)
+       do j = 1, pmf_M
 
-       if (lo_loside .eq. hi_loside) then
+          x1 = pmf_X(lo_loside)
+          y1 = pmf_Y(lo_loside,j)
 
-          yhi = y1 + dydx*(xhi - x1)
+          x2 = pmf_X(lo_hiside)
+          y2 = pmf_Y(lo_hiside,j)
 
-          y_vector(j) = 0.5d0*(ylo + yhi)
-
-       else
-
-          sum = (x2 - xlo) * 0.5d0 * (ylo + y2)
-
-          x1 = pmf_X(hi_loside)
-          y1 = pmf_Y(hi_loside,j)
-
-          x2 = pmf_X(hi_hiside)
-          y2 = pmf_Y(hi_hiside,j)
-
-          if (hi_loside.eq.hi_hiside) then
+          if (lo_loside.eq.lo_hiside) then
              dydx = 0.d0
           else
              dydx = (y2-y1)/(x2-x1)
           end if
 
-          yhi = y1 + dydx*(xhi - x1)
+          ylo = y1 + dydx*(xlo - x1)
 
-          sum = sum + (xhi - x1)*0.5d0*(yhi+y1)
+          if (lo_loside .eq. hi_loside) then
 
-          do k = lo_hiside,hi_loside-1
+             yhi = y1 + dydx*(xhi - x1)
 
-             sum = sum + (pmf_X(k+1)-pmf_X(k)) * 0.5d0 &
-                  * (pmf_Y(k,j) + pmf_Y(k+1,j))
+             y_vector(j) = 0.5d0*(ylo + yhi)
 
-          end do
+          else
 
-          y_vector(j) = sum / (xhi - xlo)
+             sum = (x2 - xlo) * 0.5d0 * (ylo + y2)
 
+             x1 = pmf_X(hi_loside)
+             y1 = pmf_Y(hi_loside,j)
+
+             x2 = pmf_X(hi_hiside)
+             y2 = pmf_Y(hi_hiside,j)
+
+             if (hi_loside.eq.hi_hiside) then
+                dydx = 0.d0
+             else
+                dydx = (y2-y1)/(x2-x1)
+             end if
+
+             yhi = y1 + dydx*(xhi - x1)
+
+             sum = sum + (xhi - x1)*0.5d0*(yhi+y1)
+
+             do k = lo_hiside,hi_loside-1
+
+                sum = sum + (pmf_X(k+1)-pmf_X(k)) * 0.5d0 &
+                     * (pmf_Y(k,j) + pmf_Y(k+1,j))
+
+             end do
+
+             y_vector(j) = sum / (xhi - xlo)
+
+          end if
+       end do
+    else
+       xmid = 0.5d0*(xlo + xhi)
+       loside = 0
+       hiside = 0
+       if (xmid .le. pmf_X(1)) then
+          loside = 1
+          hiside = 1
        end if
-    end do
+       if (xmid .ge. pmf_X(pmf_N)) then
+          loside = pmf_N
+          hiside = pmf_N
+       end if
+       if (loside.eq.0) then
+          do i = 1, pmf_N-1                           
+             if ( (xmid .ge. pmf_X(i)) .and.  &
+                  (xmid .le. pmf_X(i+1)) ) then
+                loside  = i
+                hiside  = i+1
+             end if
+          end do
+       end if
+
+       do j = 1, pmf_M
+
+          x1 = pmf_X(loside)
+          y1 = pmf_Y(loside,j)
+
+          x2 = pmf_X(hiside)
+          y2 = pmf_Y(hiside,j)
+
+          if (loside.eq.hiside) then
+             dydx = 0.d0
+          else
+             dydx = (y2-y1)/(x2-x1)
+          end if
+
+          y_vector(j) = y1 + dydx*(xlo - x1)
+       end do
+    endif
   end subroutine interp_pmf
 
 end module pmf_module
