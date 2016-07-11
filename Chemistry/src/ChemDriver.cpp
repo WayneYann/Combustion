@@ -1879,6 +1879,330 @@ ChemDriver::getEdges (const std::string& trElt, int PrintVerbose, int HackSplitt
             continue;
         }
 
+        if (LR==2 && LP==3)
+        {
+            std::map<std::string,int> reace; //to count the number of elements in given reactant species sp
+            
+            for (std::map<std::string,int>::const_iterator it = reac.begin(); it!=reac.end(); ++it)
+            {
+              const std::string& sp = it->first;
+            
+              for (int j=0; j<eltNames.size(); ++j)
+              {
+                const std::string elt = eltNames[j];
+                int m = numberOfElementXinSpeciesY(elt,sp);
+                reace[sp] += m;
+              }
+               // cout <<"CALCULATED VALUE=" << reace[sp] << endl;
+                        
+            }
+            std::map<std::string,int>::const_iterator re0 = reace.begin();
+            std::map<std::string,int>::const_iterator re1 = re0; re1++;
+
+            int rce0 = re0->second;
+            int rce1 = re1->second;
+
+            std::map<std::string,int>::const_iterator r0 = reac.begin();
+            std::map<std::string,int>::const_iterator r1 = r0; r1++;
+            std::map<std::string,int>::const_iterator p0 = prod.begin();
+            std::map<std::string,int>::const_iterator p1 = p0; p1++;
+            std::map<std::string,int>::const_iterator p2 = p1; p2++;
+
+            const std::string& rs0 = r0->first;
+            const std::string& rs1 = r1->first;
+            const std::string& ps0 = p0->first;
+            const std::string& ps1 = p1->first;
+            const std::string& ps2 = p2->first;
+            int rc0 = r0->second;
+            int rc1 = r1->second;
+            int pc0 = p0->second;
+            int pc1 = p1->second;
+            int pc2 = p2->second;
+
+            if(rce0<rce1)
+            {
+              Group b0(pc0 * groups[ps0] - rc0 * groups[rs0]);
+              //cout << b0.awt() << endl;
+              Group b1(pc1 * groups[ps1] - rc0 * groups[rs0]);
+              //cout << b1.awt() << endl;
+              Group b2(pc2 * groups[ps2] - rc0 * groups[rs0]);
+              //cout << b2.awt() << endl;
+              if(b0.awt()<b1.awt() && b0.awt()<b2.awt())
+              {
+                // link r0 to p0
+                    int w = std::min(rc0*groups[rs0][trElt],pc0*groups[ps0][trElt]);
+                    if (PrintVerbose>0) {
+                      cout << "    " << rs0 << " => " << ps0 << " w: " << w << endl;
+                    }
+                    edges.push_back(Edge(rs0,ps0,r,w,this));
+                   w = std::min(rc1*groups[rs1][trElt],pc1*groups[ps1][trElt]);
+                   edges.push_back(Edge(rs1,ps1,r,w,this));
+                   w = std::min(rc1*groups[rs1][trElt],pc2*groups[ps2][trElt]);
+                   edges.push_back(Edge(rs1,ps2,r,w,this));
+              }
+              else if(b1.awt()<b0.awt() && b1.awt()<b2.awt())
+              {
+                // link r0 to p1
+                    int w = std::min(rc0*groups[rs0][trElt],pc1*groups[ps1][trElt]);
+                    if (PrintVerbose>0) {
+                      cout << "    " << rs0 << " => " << ps1 << " w: " << w << endl;
+                    }
+                    edges.push_back(Edge(rs0,ps1,r,w,this));
+                   w = std::min(rc1*groups[rs1][trElt],pc0*groups[ps0][trElt]);
+                   edges.push_back(Edge(rs1,ps0,r,w,this));
+                   w = std::min(rc1*groups[rs1][trElt],pc2*groups[ps2][trElt]);
+                   edges.push_back(Edge(rs1,ps2,r,w,this));
+              }
+              else
+              {
+                // link r0 to p2
+                    int w = std::min(rc0*groups[rs0][trElt],pc2*groups[ps2][trElt]);
+                    if (PrintVerbose>0) {
+                      cout << "    " << rs0 << " => " << ps2 << " w: " << w << endl;
+                    }
+                    edges.push_back(Edge(rs0,ps2,r,w,this));
+                   w = std::min(rc1*groups[rs1][trElt],pc1*groups[ps1][trElt]);
+                   edges.push_back(Edge(rs1,ps1,r,w,this));
+                   w = std::min(rc1*groups[rs1][trElt],pc0*groups[ps0][trElt]);
+                   edges.push_back(Edge(rs1,ps0,r,w,this));
+              }
+            }
+           else
+            {
+              Group b0(pc0 * groups[ps0] - rc1 * groups[rs1]);
+              //cout << b0.awt() << endl;
+              Group b1(pc1 * groups[ps1] - rc1 * groups[rs1]);
+              //cout << b1.awt() << endl;
+              Group b2(pc2 * groups[ps2] - rc1 * groups[rs1]);
+              //cout << b2.awt() << endl;
+                
+              if(b0.awt()<b1.awt() && b0.awt()<b2.awt())
+              {
+                // link r1 to p0
+                    int w = std::min(rc1*groups[rs1][trElt],pc0*groups[ps0][trElt]);
+                    if (PrintVerbose>0) {
+                      cout << "    " << rs1 << " => " << ps0 << " w: " << w << endl;
+                    }
+                    edges.push_back(Edge(rs1,ps0,r,w,this));
+                   w = std::min(rc1*groups[rs0][trElt],pc1*groups[ps1][trElt]);
+                   edges.push_back(Edge(rs0,ps1,r,w,this));
+                   w = std::min(rc0*groups[rs0][trElt],pc2*groups[ps2][trElt]);
+                   edges.push_back(Edge(rs0,ps2,r,w,this));
+              }
+              else if(b1.awt()<b0.awt() && b1.awt()<b2.awt())
+              {
+                // link r1 to p1
+                    int w = std::min(rc1*groups[rs1][trElt],pc1*groups[ps1][trElt]);
+                    if (PrintVerbose>0) {
+                      cout << "    " << rs1 << " => " << ps1 << " w: " << w << endl;
+                    }
+                    edges.push_back(Edge(rs1,ps1,r,w,this));
+                   w = std::min(rc0*groups[rs0][trElt],pc0*groups[ps0][trElt]);
+                   edges.push_back(Edge(rs0,ps0,r,w,this));
+                   w = std::min(rc0*groups[rs0][trElt],pc2*groups[ps2][trElt]);
+                   edges.push_back(Edge(rs0,ps2,r,w,this));
+              }
+              else
+              {
+                // link r1 to p2
+                    int w = std::min(rc1*groups[rs1][trElt],pc2*groups[ps2][trElt]);
+                    if (PrintVerbose>0) {
+                      cout << "    " << rs1 << " => " << ps2 << " w: " << w << endl;
+                    }
+                    edges.push_back(Edge(rs1,ps2,r,w,this));
+                   w = std::min(rc0*groups[rs0][trElt],pc1*groups[ps1][trElt]);
+                   edges.push_back(Edge(rs0,ps1,r,w,this));
+                   w = std::min(rc0*groups[rs0][trElt],pc0*groups[ps0][trElt]);
+                   edges.push_back(Edge(rs0,ps0,r,w,this));
+              }
+           }
+
+           continue;
+         }
+         if (LR==2 && LP==4)
+        {
+            std::map<std::string,int> reace; //to count the number of elements in given reactant species sp
+            
+            for (std::map<std::string,int>::const_iterator it = reac.begin(); it!=reac.end(); ++it)
+            {
+              const std::string& sp = it->first;
+            
+              for (int j=0; j<eltNames.size(); ++j)
+              {
+                const std::string elt = eltNames[j];
+                int m = numberOfElementXinSpeciesY(elt,sp);
+                reace[sp] += m;
+              }
+               // cout <<"CALCULATED VALUE=" << reace[sp] << endl;
+                        
+            }
+            std::map<std::string,int>::const_iterator re0 = reace.begin();
+            std::map<std::string,int>::const_iterator re1 = re0; re1++;
+
+            int rce0 = re0->second;
+            int rce1 = re1->second;
+
+            std::map<std::string,int>::const_iterator r0 = reac.begin();
+            std::map<std::string,int>::const_iterator r1 = r0; r1++;
+            std::map<std::string,int>::const_iterator p0 = prod.begin();
+            std::map<std::string,int>::const_iterator p1 = p0; p1++;
+            std::map<std::string,int>::const_iterator p2 = p1; p2++;
+            std::map<std::string,int>::const_iterator p3 = p2; p3++;
+
+            const std::string& rs0 = r0->first;
+            const std::string& rs1 = r1->first;
+            const std::string& ps0 = p0->first;
+            const std::string& ps1 = p1->first;
+            const std::string& ps2 = p2->first;
+            const std::string& ps3 = p3->first;
+            int rc0 = r0->second;
+            int rc1 = r1->second;
+            int pc0 = p0->second;
+            int pc1 = p1->second;
+            int pc2 = p2->second;
+            int pc3 = p3->second;
+
+            if(rce0<rce1)
+            {
+              Group b0(pc0 * groups[ps0] - rc0 * groups[rs0]);
+              Group b1(pc1 * groups[ps1] - rc0 * groups[rs0]);
+              Group b2(pc2 * groups[ps2] - rc0 * groups[rs0]);
+              Group b3(pc3 * groups[ps3] - rc0 * groups[rs0]);             
+
+              if(b0.awt()<b1.awt() && b0.awt()<b2.awt() && b0.awt()<b3.awt())
+              {
+                // link r0 to p0
+                    int w = std::min(rc0*groups[rs0][trElt],pc0*groups[ps0][trElt]);
+                    if (PrintVerbose>0) {
+                      cout << "    " << rs0 << " => " << ps0 << " w: " << w << endl;
+                    }
+                    edges.push_back(Edge(rs0,ps0,r,w,this));
+                   w = std::min(rc1*groups[rs1][trElt],pc1*groups[ps1][trElt]);
+                   edges.push_back(Edge(rs1,ps1,r,w,this));
+                   w = std::min(rc1*groups[rs1][trElt],pc2*groups[ps2][trElt]);
+                   edges.push_back(Edge(rs1,ps2,r,w,this));
+                   w = std::min(rc1*groups[rs1][trElt],pc3*groups[ps3][trElt]);
+                   edges.push_back(Edge(rs1,ps3,r,w,this));
+              }
+              else if(b1.awt()<b0.awt() && b1.awt()<b2.awt() && b1.awt()<b3.awt())
+              {
+                // link r0 to p1
+                    int w = std::min(rc0*groups[rs0][trElt],pc1*groups[ps1][trElt]);
+                    if (PrintVerbose>0) {
+                      cout << "    " << rs0 << " => " << ps1 << " w: " << w << endl;
+                    }
+                    edges.push_back(Edge(rs0,ps1,r,w,this));
+                   w = std::min(rc1*groups[rs1][trElt],pc0*groups[ps0][trElt]);
+                   edges.push_back(Edge(rs1,ps0,r,w,this));
+                   w = std::min(rc1*groups[rs1][trElt],pc2*groups[ps2][trElt]);
+                   edges.push_back(Edge(rs1,ps2,r,w,this));
+                   w = std::min(rc1*groups[rs1][trElt],pc3*groups[ps3][trElt]);
+                   edges.push_back(Edge(rs1,ps3,r,w,this));
+              }
+              else if(b2.awt()<b0.awt() && b2.awt()<b1.awt() && b2.awt()<b3.awt())
+              {
+                // link r0 to p2
+                    int w = std::min(rc0*groups[rs0][trElt],pc2*groups[ps2][trElt]);
+                    if (PrintVerbose>0) {
+                      cout << "    " << rs0 << " => " << ps2 << " w: " << w << endl;
+                    }
+                    edges.push_back(Edge(rs0,ps2,r,w,this));
+                   w = std::min(rc1*groups[rs1][trElt],pc0*groups[ps0][trElt]);
+                   edges.push_back(Edge(rs1,ps0,r,w,this));
+                   w = std::min(rc1*groups[rs1][trElt],pc1*groups[ps1][trElt]);
+                   edges.push_back(Edge(rs1,ps1,r,w,this));
+                   w = std::min(rc1*groups[rs1][trElt],pc3*groups[ps3][trElt]);
+                   edges.push_back(Edge(rs1,ps3,r,w,this));
+              }
+              else
+              {
+                // link r0 to p3
+                    int w = std::min(rc0*groups[rs0][trElt],pc3*groups[ps3][trElt]);
+                    if (PrintVerbose>0) {
+                      cout << "    " << rs0 << " => " << ps3 << " w: " << w << endl;
+                    }
+                    edges.push_back(Edge(rs0,ps3,r,w,this));
+                   w = std::min(rc1*groups[rs1][trElt],pc1*groups[ps1][trElt]);
+                   edges.push_back(Edge(rs1,ps1,r,w,this));
+                   w = std::min(rc1*groups[rs1][trElt],pc0*groups[ps0][trElt]);
+                   edges.push_back(Edge(rs1,ps0,r,w,this));
+                   w = std::min(rc1*groups[rs1][trElt],pc2*groups[ps2][trElt]);
+                   edges.push_back(Edge(rs1,ps2,r,w,this));
+              }
+            }
+           else
+            {
+              Group b0(pc0 * groups[ps0] - rc1 * groups[rs1]);
+              Group b1(pc1 * groups[ps1] - rc1 * groups[rs1]);
+              Group b2(pc2 * groups[ps2] - rc1 * groups[rs1]);
+              Group b3(pc3 * groups[ps3] - rc1 * groups[rs1]);
+                
+              if(b0.awt()<b1.awt() && b0.awt()<b2.awt() && b0.awt()<b3.awt())
+              {
+                // link r1 to p0
+                    int w = std::min(rc1*groups[rs1][trElt],pc0*groups[ps0][trElt]);
+                    if (PrintVerbose>0) {
+                      cout << "    " << rs1 << " => " << ps0 << " w: " << w << endl;
+                    }
+                    edges.push_back(Edge(rs1,ps0,r,w,this));
+                   w = std::min(rc1*groups[rs0][trElt],pc1*groups[ps1][trElt]);
+                   edges.push_back(Edge(rs0,ps1,r,w,this));
+                   w = std::min(rc0*groups[rs0][trElt],pc2*groups[ps2][trElt]);
+                   edges.push_back(Edge(rs0,ps2,r,w,this));
+                   w = std::min(rc0*groups[rs0][trElt],pc3*groups[ps3][trElt]);
+                   edges.push_back(Edge(rs0,ps3,r,w,this));
+              }
+              else if(b1.awt()<b0.awt() && b1.awt()<b2.awt() && b1.awt()<b3.awt())
+              {
+                // link r1 to p1
+                    int w = std::min(rc1*groups[rs1][trElt],pc1*groups[ps1][trElt]);
+                    if (PrintVerbose>0) {
+                      cout << "    " << rs1 << " => " << ps1 << " w: " << w << endl;
+                    }
+                    edges.push_back(Edge(rs1,ps1,r,w,this));
+                   w = std::min(rc0*groups[rs0][trElt],pc0*groups[ps0][trElt]);
+                   edges.push_back(Edge(rs0,ps0,r,w,this));
+                   w = std::min(rc0*groups[rs0][trElt],pc2*groups[ps2][trElt]);
+                   edges.push_back(Edge(rs0,ps2,r,w,this));
+                   w = std::min(rc0*groups[rs0][trElt],pc3*groups[ps3][trElt]);
+                   edges.push_back(Edge(rs0,ps3,r,w,this));
+              }
+              else if(b2.awt()<b0.awt() && b2.awt()<b1.awt() && b2.awt()<b3.awt())
+              {
+                // link r1 to p2
+                    int w = std::min(rc1*groups[rs1][trElt],pc2*groups[ps2][trElt]);
+                    if (PrintVerbose>0) {
+                      cout << "    " << rs1 << " => " << ps2 << " w: " << w << endl;
+                    }
+                    edges.push_back(Edge(rs1,ps2,r,w,this));
+                   w = std::min(rc0*groups[rs0][trElt],pc1*groups[ps1][trElt]);
+                   edges.push_back(Edge(rs0,ps1,r,w,this));
+                   w = std::min(rc0*groups[rs0][trElt],pc0*groups[ps0][trElt]);
+                   edges.push_back(Edge(rs0,ps0,r,w,this));
+                   w = std::min(rc0*groups[rs0][trElt],pc3*groups[ps3][trElt]);
+                   edges.push_back(Edge(rs0,ps3,r,w,this));
+              }
+             else
+              {
+                // link r1 to p3
+                    int w = std::min(rc1*groups[rs1][trElt],pc3*groups[ps3][trElt]);
+                    if (PrintVerbose>0) {
+                      cout << "    " << rs1 << " => " << ps3 << " w: " << w << endl;
+                    }
+                    edges.push_back(Edge(rs1,ps3,r,w,this));
+                   w = std::min(rc0*groups[rs0][trElt],pc1*groups[ps1][trElt]);
+                   edges.push_back(Edge(rs0,ps1,r,w,this));
+                   w = std::min(rc0*groups[rs0][trElt],pc0*groups[ps0][trElt]);
+                   edges.push_back(Edge(rs0,ps0,r,w,this));
+                   w = std::min(rc0*groups[rs0][trElt],pc2*groups[ps2][trElt]);
+                   edges.push_back(Edge(rs0,ps2,r,w,this));
+              }
+           }
+
+           continue;
+         }
+       
+
 	cout << "Cannot decompose rxn: " << rr+1 << ": " << reactionStringBuild(rr) << endl;
     }
 
