@@ -18,6 +18,11 @@ ifeq (${CHEMISTRY_MODEL}, LIDRYMOD)
   VPATH_LOCATIONS += ${CHEMISTRY_DIR}/data/LiDryer/PMFs
   VPATH_LOCATIONS += ${CHEMISTRY_DIR}/data/LiDryer
 endif
+ifeq (${CHEMISTRY_MODEL}, GRI12)
+  CHEM_MECHFILE = grimech12.c
+  VPATH_LOCATIONS += ${CHEMISTRY_DIR}/data/gri/PMFs
+  VPATH_LOCATIONS += ${CHEMISTRY_DIR}/data/gri
+endif
 ifeq (${CHEMISTRY_MODEL}, GRI30)
   CHEM_MECHFILE = grimech30.c
   VPATH_LOCATIONS += ${CHEMISTRY_DIR}/data/gri/PMFs
@@ -60,4 +65,8 @@ endif
 ifeq (${CHEMISTRY_MODEL}, BURKEMOD)
   CHEM_MECHFILE = BurkeDryer_mod.c
   VPATH_LOCATIONS += ${CHEMISTRY_DIR}/data/BurkeDryer_mod
+endif
+ifeq (${CHEMISTRY_MODEL}, ALZETA)
+  CHEM_MECHFILE = alzeta.c
+  VPATH_LOCATIONS += ${CHEMISTRY_DIR}/data/Alzeta
 endif
