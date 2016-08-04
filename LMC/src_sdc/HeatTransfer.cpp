@@ -7332,13 +7332,17 @@ HeatTransfer::writePlotFile (const std::string& dir,
 	jobInfoFile << "BoxLib dir:    " << buildInfoGetBoxlibDir() << "\n";
 
 	jobInfoFile << "\n";
-	
-	jobInfoFile << "COMP:  " << buildInfoGetComp() << "\n";
-	jobInfoFile << "FCOMP: " << buildInfoGetFcomp() << "\n";
+
+	jobInfoFile << "COMP:          " << buildInfoGetComp() << "\n";
+	jobInfoFile << "COMP version:  " << buildInfoGetCompVersion() << "\n";
+	jobInfoFile << "FCOMP:         " << buildInfoGetFcomp() << "\n";
+	jobInfoFile << "FCOMP version: " << buildInfoGetFcompVersion() << "\n";
 
 	jobInfoFile << "\n";
 
-	jobInfoFile << "Chemistry Model: " << buildInfoGetAux(1) << "\n";
+	for (int n = 1; n <= buildInfoGetNumModules(); n++) {
+	    jobInfoFile << buildInfoGetModuleName(n) << ": " << buildInfoGetModuleVal(n) << "\n";
+	}
 
 	jobInfoFile << "\n";
 

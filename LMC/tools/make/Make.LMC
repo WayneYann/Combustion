@@ -194,12 +194,12 @@ CEXE_sources += buildInfo.cpp
 CEXE_headers += $(BOXLIB_HOME)/Tools/C_scripts/buildInfo.H
 INCLUDE_LOCATIONS +=  $(BOXLIB_HOME)/Tools/C_scripts
 
-buildInfo.cpp: $(BOXLIB_HOME)/Tools/C_scripts/make_build_info_cpp
+buildInfo.cpp:
 	$(BOXLIB_HOME)/Tools/C_scripts/makebuildinfo_C.py \
           --boxlib_home "$(BOXLIB_HOME)" \
-          --COMP "$(COMP)" \
-          --FCOMP "$(FCOMP)" \
-          --AUX "$(CHEMISTRY_MODEL)" \
+          --COMP "$(COMP)" --COMP_VERSION "$(COMP_VERSION)" \
+          --FCOMP "$(FCOMP)" --FCOMP_VERSION "$(FCOMP_VERSION)" \
+          --MODULES "Chemistry=$(CHEMISTRY_MODEL)" \
           --GIT "$(COMBUSTION_DIR) $(BOXLIB_HOME) $(IAMR_DIR)" 
 
 
@@ -212,3 +212,6 @@ vpath %.f   $(VPATH_LOCATIONS)
 vpath %.f90 $(VPATH_LOCATIONS)
 
 include $(BOXLIB_DIR)/Tools/C_mk/Make.rules
+
+clean::
+	$(SILENT) $(RM) buildInfo.cpp
