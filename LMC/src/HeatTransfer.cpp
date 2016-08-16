@@ -8291,13 +8291,11 @@ HeatTransfer::derive (const std::string& name,
         }
 
         int num_smooth_pre = 3;
-        bool do_corners = true;
         
         for (int i=0; i<num_smooth_pre; ++i)
         {
             // Fix up fine-fine and periodic
-            tmf.FillBoundary(0,1);
-            geom.FillPeriodicBoundary(tmf,0,1,do_corners);
+            tmf.FillBoundary(0,1,geom.periodicity());
                         
             for (MFIter mfi(tmf); mfi.isValid(); ++mfi)
             {
@@ -8316,8 +8314,7 @@ HeatTransfer::derive (const std::string& name,
             }
         }
 
-        tmf.FillBoundary(0,1);
-        geom.FillPeriodicBoundary(tmf,0,1,do_corners);
+        tmf.FillBoundary(0,1,geom.periodicity());
 
         const Real* dx = geom.CellSize();
         

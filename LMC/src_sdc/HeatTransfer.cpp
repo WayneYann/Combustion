@@ -3272,8 +3272,7 @@ HeatTransfer::compute_differential_diffusion_fluxes (const Real& time,
             {
 		Phi_crse[mfi].divide(S_crse[mfi],Phi_crse[mfi].box(),Density,0,1);
             }
-	    Phi_crse.FillBoundary();
-	    getLevel(level-1).geom.FillPeriodicBoundary(Phi_crse);
+	    Phi_crse.FillBoundary(getLevel(level-1).geom.periodicity());
         }
 
 	diffusion->getBndryDataGivenS(visc_bndry,Phi,Phi_crse,state_ind,0,1);
@@ -4372,8 +4371,7 @@ HeatTransfer::advance (Real time,
 
       showMF("sdc",Forcing,"sdc_Forcing_for_A",level,sdc_iter,parent->levelSteps(level));
       BL_PROFILE_VAR_START(HTADV);
-      Forcing.FillBoundary(0,nspecies+1);
-      geom.FillPeriodicBoundary(Forcing,0,nspecies,true);
+      Forcing.FillBoundary(0,nspecies+1,geom.periodicity());
       BL_PROFILE_VAR_STOP(HTADV);
 
       if (verbose && ParallelDescriptor::IOProcessor())
@@ -7566,13 +7564,11 @@ HeatTransfer::derive (const std::string& name,
         }
 
         int num_smooth_pre = 3;
-        bool do_corners = true;
         
         for (int i=0; i<num_smooth_pre; ++i)
         {
             // Fix up fine-fine and periodic
-            tmf.FillBoundary(0,1);
-            geom.FillPeriodicBoundary(tmf,0,1,do_corners);
+            tmf.FillBoundary(0,1,geom.periodicity());
                         
             for (MFIter mfi(tmf); mfi.isValid(); ++mfi)
             {
@@ -7591,8 +7587,7 @@ HeatTransfer::derive (const std::string& name,
             }
         }
 
-        tmf.FillBoundary(0,1);
-        geom.FillPeriodicBoundary(tmf,0,1,do_corners);
+        tmf.FillBoundary(0,1,geom.periodicity());
 
         const Real* dx = geom.CellSize();
         
