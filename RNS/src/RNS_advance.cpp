@@ -141,7 +141,7 @@ RNS::fill_boundary(MultiFab& U, Real time, int type_in, bool isCorrection, bool 
 
     case set_PhysBoundary:
 
-	geom.FillPeriodicBoundary(U);
+	U.EnforcePeriodicity(geom);
 
 	if (isCorrection) break;
 
@@ -240,8 +240,8 @@ RNS::fill_rk_boundary(MultiFab& U, Real time, Real dt, int stage, int iteration,
 	else {
 	    for (int i=0; i < ba_C.size(); i++) {
 		if (! crse_domain_box.contains(ba_C[i])) {
-	      touch = true;
-	      break;
+		    touch = true;
+		    break;
 		}
 	    }
 	}
