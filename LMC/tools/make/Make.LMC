@@ -139,6 +139,11 @@ ifeq ($(CHEMISTRY_MODEL), ALZETA)
   vpath %.f   $(VPATH_LOCATIONS) $(COMBUSTION_DIR)/Chemistry/data/Alzeta/PMFs
   vpath %.c $(VPATH_LOCATIONS) $(COMBUSTION_DIR)/Chemistry/data/Alzeta
 endif
+ifeq ($(CHEMISTRY_MODEL), BURKEMOD)
+  cEXE_sources += BurkeDryer_mod.c
+  vpath %.f   $(VPATH_LOCATIONS) $(COMBUSTION_DIR)/Chemistry/data/BurkeDryer_mod/PMFs
+  vpath %.c $(VPATH_LOCATIONS) $(COMBUSTION_DIR)/Chemistry/data/BurkeDryer_mod
+endif
 
 # Enable time-dependent turbulence forcing term
 ifeq ($(USE_TDEPFORCING), TRUE)

@@ -223,6 +223,8 @@ static void modify_parameters(ChemDriver& cd)
   }
 
   PArray<ChemDriver::Parameter> p(np,PArrayManage);
+  std::map<int,PArray<ChemDriver::Parameter> > dependent_parameters;
+
   Array<Real> values(np);
   for (int i=0; i<np; ++i) {
     std::string prefix = parameters[i];
@@ -247,6 +249,40 @@ static void modify_parameters(ChemDriver& cd)
 
     p.set(i,new ChemDriver::Parameter(reaction_id,it->second,id));
     values[i] = p[i].DefaultValue();
+
+    int ndp = ppp.countval("dependent_parameters");
+    if (ndp > 0) {
+      dependent_parameters[i].resize(ndp);
+      Array<std::string> dpnames; ppp.getarr("dependent_parameters",dpnames,0,ndp);
+      for (int j=0; j<ndp; ++j) {
+
+	std::string dplist = "chem." + prefix + ".dependent_parameters." + dpnames[j];
+
+	std::cout << "dplist: " << dplist << std::endl;
+
+	ParmParse pppd(dplist.c_str());
+
+	int dpreaction_id; pppd.get("reaction_id",dpreaction_id);
+	if (dpreaction_id<0 || dpreaction_id > cd.numReactions()) {
+	  BoxLib::Abort("Dependent reaction ID invalid");
+	}
+
+	std::string dptype; pppd.get("type",dptype);
+	std::map<std::string,REACTION_PARAMETER>::const_iterator it = PTypeMap.find(dptype);
+	if (it == PTypeMap.end()) {
+	  BoxLib::Abort("Unrecognized dependent reaction parameter");
+	}
+
+	int did = -1;
+	if (dptype == "THIRD_BODY") {
+	  std::string dtb_name; pppd.get("tb_name",dtb_name);
+	  did = cd.index(dtb_name);
+	  BL_ASSERT(id >= 0);
+	}
+
+	dependent_parameters[i].set(j, new ChemDriver::Parameter(dpreaction_id,it->second,did));
+      }
+    }
   }
 
   int nv = pp.countval("parameter_values");
@@ -255,7 +291,15 @@ static void modify_parameters(ChemDriver& cd)
     pp.getarr("parameter_values",values,0,np);
     for (int i=0; i<np; ++i) {
       p[i].Value() = values[i];
-      std::cout << "************** Modified chem parameter \"" << parameters[i] << "\": " << p[i] << std::endl;
+      if (ParallelDescriptor::IOProcessor()) {
+	std::cout << "************** Modified chem parameter \"" << parameters[i] << "\": " << p[i] << std::endl;
+      }
+      for (int j=0; j<dependent_parameters[i].size(); ++j) {
+	dependent_parameters[i][j].Value() = values[i];
+	if (ParallelDescriptor::IOProcessor()) {
+	  std::cout << "                     dependent parameter: " << dependent_parameters[i][j] << std::endl;
+	}
+      }
     }
   }
 }
@@ -264,9 +308,9 @@ void
 ChemDriver::initOnce ()
 {
     FORT_INITCHEM();
-    modify_parameters(*this);
     getSpeciesNames();
     getElementNames();
+    modify_parameters(*this);
     FORT_GETCKDIMPARAMS(&mMaxreac, &mMaxspec, &mMaxelts,  &mMaxord,
                         &mMaxthrdb, &mMaxtp,  &mMaxsp,    &mMaxspnml);
     getStoichCoeffs();
