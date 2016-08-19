@@ -257,9 +257,6 @@ static void modify_parameters(ChemDriver& cd)
       for (int j=0; j<ndp; ++j) {
 
 	std::string dplist = "chem." + prefix + ".dependent_parameters." + dpnames[j];
-
-	std::cout << "dplist: " << dplist << std::endl;
-
 	ParmParse pppd(dplist.c_str());
 
 	int dpreaction_id; pppd.get("reaction_id",dpreaction_id);
