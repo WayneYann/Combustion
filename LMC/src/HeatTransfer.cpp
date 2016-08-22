@@ -22,6 +22,7 @@ using std::endl;
 using std::cerr;
 
 #include <Geometry.H>
+#include <Extrapolater.H>
 #include <BoxDomain.H>
 #include <ParmParse.H>
 #include <ErrorList.H>
@@ -3144,25 +3145,8 @@ HeatTransfer::getViscTerms (MultiFab& visc_terms,
     //    
     if (nGrow > 0)
     {
-#ifdef BL_USE_OMP
-#pragma omp parallel
-#endif
-        for (MFIter mfi(visc_terms); mfi.isValid(); ++mfi)
-        {
-            FArrayBox& vt  = visc_terms[mfi];
-            const Box& box = mfi.validbox();
-            FORT_VISCEXTRAP(vt.dataPtr(),ARLIM(vt.loVect()),ARLIM(vt.hiVect()),
-                            box.loVect(),box.hiVect(),&num_comp);
-        }
-        visc_terms.FillBoundary(0,num_comp);
-        //
-        // Note: this is a special periodic fill in that we want to
-        // preserve the extrapolated grow values when periodic --
-        // usually we preserve only valid data.  The scheme relies on
-        // the fact that there is good data in the "non-periodic" grow cells.
-        // ("good" data produced via VISCEXTRAP above)
-        //
-        geom.FillPeriodicBoundary(visc_terms,0,num_comp,true);
+        visc_terms.FillBoundary(0,num_comp, geom.periodicity());
+	Extrapolater::FirstOrderExtrap(visc_terms, geom, 0, num_comp);
     }
 }
 

@@ -15,6 +15,7 @@
 #include <vector>
 
 #include <Geometry.H>
+#include <Extrapolater.H>
 #include <BoxDomain.H>
 #include <ParmParse.H>
 #include <ErrorList.H>
@@ -1646,25 +1647,9 @@ HeatTransfer::compute_instantaneous_reaction_rates (MultiFab&       R,
     
     if ((nGrow>0) && (how == HT_EXTRAP_GROW_CELLS))
     {
-#ifdef BL_USE_OMP
-#pragma omp parallel
-#endif
-        for (MFIter mfi(R); mfi.isValid(); ++mfi)
-        {
-            FArrayBox& r   = R[mfi];
-            const Box& box = mfi.validbox();
-            FORT_VISCEXTRAP(r.dataPtr(),ARLIM(r.loVect()),ARLIM(r.hiVect()),
-                            box.loVect(),box.hiVect(),&nspecies);
-        }
-        R.FillBoundary(0,nspecies);
-        //
-        // Note: this is a special periodic fill in that we want to
-        // preserve the extrapolated grow values when periodic --
-        // usually we preserve only valid data.  The scheme relies on
-        // the fact that there is good data in the "non-periodic" grow cells.
-        // ("good" data produced via VISCEXTRAP above)
-        //
-        geom.FillPeriodicBoundary(R,0,nspecies,true);
+        R.FillBoundary(0,nspecies, geom.periodicity());
+	BL_ASSERT(R.nGrow() == 1);
+	Extrapolater::FirstOrderExtrap(R, geom, 0, nspecies);
     }
 
     if (verbose > 1)
@@ -3096,25 +3081,9 @@ HeatTransfer::getViscTerms (MultiFab& visc_terms,
     //
     if (nGrow > 0)
     {
-#ifdef BL_USE_OMP
-#pragma omp parallel
-#endif
-        for (MFIter mfi(visc_terms); mfi.isValid(); ++mfi)
-        {
-            FArrayBox& vt  = visc_terms[mfi];
-            const Box& box = mfi.validbox();
-            FORT_VISCEXTRAP(vt.dataPtr(),ARLIM(vt.loVect()),ARLIM(vt.hiVect()),
-                            box.loVect(),box.hiVect(),&num_comp);
-        }
-        visc_terms.FillBoundary(0,num_comp);
-        //
-        // Note: this is a special periodic fill in that we want to
-        // preserve the extrapolated grow values when periodic --
-        // usually we preserve only valid data.  The scheme relies on
-        // the fact that there is good data in the "non-periodic" grow cells.
-        // ("good" data produced via VISCEXTRAP above)
-        //
-        geom.FillPeriodicBoundary(visc_terms,0,num_comp,true);
+        visc_terms.FillBoundary(0,num_comp, geom.periodicity());
+	BL_ASSERT(visc_terms.nGrow() == 1);
+	Extrapolater::FirstOrderExtrap(visc_terms, geom, 0, num_comp);
     }
 
     if (verbose > 1)
@@ -3541,26 +3510,18 @@ HeatTransfer::compute_differential_diffusion_terms (MultiFab& D,
     MultiFab::Add(D,sumSpecFluxDotGradH,0,nspecies+1,1,0);
 
     if (D.nGrow() > 0 && DD.nGrow() > 0)
-      {
-	BL_ASSERT(D.nGrow() == DD.nGrow());
-
+    {
 	const int nc = nspecies+2;
-	const int ncDD = 1;
-	for (MFIter mfi(D); mfi.isValid(); ++mfi)
-	  {
-	    FArrayBox& Dfab = D[mfi];
-	    FArrayBox& DDfab = DD[mfi];
-	    const Box& box = mfi.validbox();
-	    FORT_VISCEXTRAP(Dfab.dataPtr(),ARLIM(Dfab.loVect()),ARLIM(Dfab.hiVect()),
-			    box.loVect(),box.hiVect(),&nc);
-	    FORT_VISCEXTRAP(DDfab.dataPtr(),ARLIM(DDfab.loVect()),ARLIM(DDfab.hiVect()),
-			    box.loVect(),box.hiVect(),&ncDD);
-	  }
-	D.FillBoundary(0,nc);
-	geom.FillPeriodicBoundary(D,0,nc,true);
-	DD.FillBoundary(0,1);
-	geom.FillPeriodicBoundary(DD,0,1,true);
-      }
+
+	D.FillBoundary(0,nc, geom.periodicity());
+	DD.FillBoundary(0,1, geom.periodicity());
+
+	BL_ASSERT(D.nGrow() == 1);
+	BL_ASSERT(DD.nGrow() == 1);
+	
+	Extrapolater::FirstOrderExtrap(D, geom, 0, nc);
+	Extrapolater::FirstOrderExtrap(DD, geom, 0, 1);
+    }
 }
 
 void
@@ -4018,23 +3979,9 @@ HeatTransfer::set_reasonable_grow_cells_for_R (Real time)
     // Ensure reasonable grow cells for R.
     //
     MultiFab& React = get_data(RhoYdot_Type, time);
-    for (MFIter mfi(React); mfi.isValid(); ++mfi)
-    {
-        FArrayBox& R   = React[mfi];
-        const Box& box = mfi.validbox();
-        BL_ASSERT(nGrowAdvForcing==1); // Since this routine can fill only 1
-        FORT_VISCEXTRAP(R.dataPtr(),ARLIM(R.loVect()),ARLIM(R.hiVect()),
-                        box.loVect(),box.hiVect(),&nspecies);
-    }
-    React.FillBoundary(0,nspecies);
-    //
-    // Note: this is a special periodic fill in that we want to
-    // preserve the extrapolated grow values when periodic --
-    // usually we preserve only valid data.  The scheme relies on
-    // the fact that there is computable data in the "non-periodic"
-    // grow cells (produced via VISCEXTRAP above)
-    //
-    geom.FillPeriodicBoundary(React,0,nspecies,true);
+    React.FillBoundary(0,nspecies, geom.periodicity());
+    BL_ASSERT(React.nGrow() == 1);
+    Extrapolater::FirstOrderExtrap(React, geom, 0, nspecies);
 }
 
 Real
@@ -5019,22 +4966,9 @@ HeatTransfer::advance_chemistry (MultiFab&       mf_old,
         //
         if (ngrow > 0)
         {
-            for (MFIter mfi(React_new); mfi.isValid(); ++mfi)
-            {
-                FArrayBox& R   = React_new[mfi];
-                const Box& box = mfi.validbox();
-                FORT_VISCEXTRAP(R.dataPtr(),ARLIM(R.loVect()),ARLIM(R.hiVect()),
-                                box.loVect(),box.hiVect(),&nspecies);
-            }
-            React_new.FillBoundary(0,nspecies);
-            //
-            // Note: this is a special periodic fill in that we want to
-            // preserve the extrapolated grow values when periodic --
-            // usually we preserve only valid data.  The scheme relies on
-            // the fact that there is computable data in the "non-periodic"
-            // grow cells (produced via VISCEXTRAP above)
-            //
-            geom.FillPeriodicBoundary(React_new,0,nspecies,true);
+	    BL_ASSERT(React_new.nGrow() == 1);
+	    React_new.FillBoundary(0,nspecies, geom.periodicity());
+	    Extrapolater::FirstOrderExtrap(React_new, geom, 0, nspecies);
         }
     }
 
@@ -6866,15 +6800,9 @@ HeatTransfer::calc_dpdt (Real      time,
   Peos.clear();
 
   if (nGrow > 0) {
-    const int nc = 1;
-    for (MFIter mfi(dpdt); mfi.isValid(); ++mfi) {
-      FArrayBox& dpdtfab = dpdt[mfi];
-      const Box& vbox = mfi.validbox();
-      FORT_VISCEXTRAP(dpdtfab.dataPtr(),ARLIM(dpdtfab.loVect()),ARLIM(dpdtfab.hiVect()),
-                      vbox.loVect(),vbox.hiVect(),&nc);
-    }
-    dpdt.FillBoundary(0,1);
-    geom.FillPeriodicBoundary(dpdt,0,1,true);
+      dpdt.FillBoundary(0,1, geom.periodicity());
+      BL_ASSERT(dpdt.nGrow() == 1);
+      Extrapolater::FirstOrderExtrap(dpdt, geom, 0, 1);
   }
 }
 
