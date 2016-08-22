@@ -44,7 +44,6 @@ using std::cerr;
 
 #include <PROB_F.H>
 #include <NAVIERSTOKES_F.H>
-#include <VISCOPERATOR_F.H>
 #include <DERIVE_F.H>
 
 #ifdef _OPENMP
