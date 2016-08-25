@@ -2177,9 +2177,7 @@ HeatTransfer::avgDown ()
             injectDown(crse_P_fine_BA[i],crse_P_fine[mfi],P_fine[mfi],fine_ratio);
         }
 
-        P_crse.copy(crse_P_fine);  // Parallel copy
-	const Geometry& cgeom = parent->Geom(level);
-	cgeom.PeriodicCopy(P_crse, crse_P_fine);
+        P_crse.copy(crse_P_fine, parent->Geom(level).periodicity());  // Parallel copy
     }
     //
     // Next average down divu and dSdT at new time.
