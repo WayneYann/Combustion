@@ -141,7 +141,7 @@ RNS::fill_boundary(MultiFab& U, Real time, int type_in, bool isCorrection, bool 
 
     case set_PhysBoundary:
 
-	U.EnforcePeriodicity(geom);
+	U.EnforcePeriodicity(geom.periodicity());
 
 	if (isCorrection) break;
 
