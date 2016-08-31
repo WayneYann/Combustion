@@ -264,6 +264,7 @@ c     NOTE: scal converts result from assumed cgs to MKS (1 erg/s.cm^3 = .1 J/s.
       end
 
 #ifdef LMC_SDC
+c     used by LMC
       subroutine FORT_RRATERHOY(lo,hi,RhoY,DIMS(RhoY),RhoH,DIMS(RhoH),T,DIMS(T),
      &                          RhoYdot,DIMS(RhoYdot),Patm)
       implicit none
@@ -343,7 +344,8 @@ c     NOTE: scal converts result from assumed cgs to MKS (1 erg/s.cm^3 = .1 J/s.
          end do
       end do
       end
-      
+
+c     used by LMC
       subroutine FORT_MOLETOMASS(lo, hi, X, DIMS(X), Y, DIMS(Y))
       implicit none
 #include "cdwrk.H"
@@ -550,6 +552,7 @@ c     Get the matrix of elements versus species
       end do
       end
 
+c     use by LMC
       integer function FORT_CONPSOLV(lo, hi,
      &                         Ynew, DIMS(Ynew), Tnew, DIMS(Tnew),
      &                         Yold, DIMS(Yold), Told, DIMS(Told),
@@ -883,6 +886,7 @@ c     Get the matrix of elements versus species
       end
  
 #ifdef LMC_SDC
+c     used by LMC
       integer function FORT_CONPSOLV_SDC(lo, hi,
      &     rhoYnew,   DIMS(rhoYnew), 
      &     rhoHnew,   DIMS(rhoHnew),
@@ -1209,7 +1213,7 @@ c     Get the matrix of elements versus species
 #endif
 
 
-
+c     used by LMC
       subroutine FORT_BETA_WBAR(lo, hi, RD, DIMS(RD), RD_Wbar, DIMS(RD_Wbar), Y, DIMS(Y))
       implicit none
 
@@ -1289,6 +1293,7 @@ c     Get the matrix of elements versus species
 
       end
 
+c     used by LMC
       subroutine FORT_MIXAVG_RHODIFF_TEMP(lo, hi, RD, DIMS(RD), T,
      &     DIMS(T), Y, DIMS(Y), Patm, do_temp, do_VelVisc)
       implicit none
@@ -1423,6 +1428,7 @@ c     Get the matrix of elements versus species
 
       end
 
+c     used LMC SDC
       subroutine FORT_MIX_SHEAR_VISC(lo, hi, eta, DIMS(eta),
      &                               T, DIMS(T), Y, DIMS(Y))
       implicit none
@@ -1483,6 +1489,7 @@ c     Get the matrix of elements versus species
 
       end
 
+c     used by LMC
       subroutine FORT_RHOfromPTY(lo, hi, RHO, DIMS(RHO), T, DIMS(T),
      &                           Y, DIMS(Y), Patm)
       implicit none
@@ -1560,6 +1567,7 @@ c
       end do
       end
       
+c     used LMC SDC
       subroutine FORT_PfromRTY(lo, hi, P, DIMS(P), RHO, DIMS(RHO),
      &                         T, DIMS(T), Y, DIMS(Y))
       implicit none
@@ -1638,6 +1646,7 @@ c
       end do
       end
       
+c     used by LMC
       subroutine FORT_CPMIXfromTY(lo, hi, CPMIX, DIMS(CPMIX), T, DIMS(T),
      &                            Y, DIMS(Y))
       implicit none
@@ -1704,6 +1713,7 @@ c
       end do
       end
       
+c     used by LMC
       subroutine FORT_HMIXfromTY(lo, hi, HMIX, DIMS(HMIX), T, DIMS(T),
      &                           Y, DIMS(Y))
       implicit none
@@ -1741,6 +1751,7 @@ c
 
       end
       
+c     used by LMC
       subroutine FORT_MWMIXfromY(lo, hi, MWMIX, DIMS(MWMIX), Y, DIMS(Y))
       implicit none
 
@@ -1800,6 +1811,7 @@ c
       end do
       end
       
+c     used by LMC
       subroutine FORT_HfromT(lo, hi, H, DIMS(H), T, DIMS(T))
       implicit none
 #include "cdwrk.H"
@@ -1831,6 +1843,7 @@ c
 
       end
 
+c     used by LMC
       integer function FORT_TfromHY(lo, hi, T, DIMS(T),
      &                              HMIX, DIMS(HMIX), Y, DIMS(Y),
      &                              errMax, NiterMAX, res)
@@ -1917,6 +1930,7 @@ c         c3  -4.25732e-7          -5.87209e-10
 c         c4   2.02894e-10         -2.5334e-14 
 c      
       
+c     used by LMC
       subroutine FORT_OTrad_TDF(lo, hi, Qloss, DIMS(Qloss),
      &                          T, DIMS(T), X, DIMS(X), Patm, T_bg) 
       implicit none
