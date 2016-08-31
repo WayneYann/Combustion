@@ -1861,12 +1861,12 @@ c     used by LMC
       REAL_T Y(DIMV(Y),*)
       REAL_T errMAX
       REAL_T res(0:NiterMAX-1)
-      REAL_T Yt(maxspec)
+      REAL_T Yt(maxspec), lres(0:NiterMAX-1)
       integer i,j,k,n,Niter,MAXiters
 
       MAXiters = 0
 
-!$omp parallel do private(i,j,k,n,Yt,res,Niter) reduction(max:MAXiters)
+!$omp parallel do private(i,j,k,n,Yt,lres,Niter) reduction(max:MAXiters)
       do k=lo(3),hi(3)
          do j=lo(2),hi(2)
             do i=lo(1),hi(1)
@@ -1875,7 +1875,7 @@ c     used by LMC
                   Yt(n) = Y(i,j,k,n)
                end do
 
-               call FORT_TfromHYpt(T(i,j,k),HMIX(i,j,k),Yt,errMax,NiterMAX,res,Niter)
+               call FORT_TfromHYpt(T(i,j,k),HMIX(i,j,k),Yt,errMax,NiterMAX,lres,Niter)
 
                if (Niter .lt. 0) then
                   write(6,*) 'T from h,y solve in FORT_TfromHY failed',Niter
