@@ -932,10 +932,10 @@ c     used by LMC
       integer nsub, node, strang_fix, Niter, nfails
       character*(maxspnml) name
       REAL_T RTOL, ATOL(maxspec+2), ATOLEPS, TT1, TT2, RU, RUC, P1atm
-      REAL_T Y(maxspec), hmix_ck, Z(maxspec+2), ZP(maxspec+2), Yold(maxspec)
-      REAL_T dtloc, weight, TT1save, rho, rhoInv, h_INIT
-      REAL_T Ct(maxspec),Qt(maxreac), scale, sum
-      REAL_T rhoYtemp(maxspec),rhoYres(maxspec),HMIX_CGS
+      REAL_T Y(maxspec), Z(maxspec+2), ZP(maxspec+2), Yold(maxspec)
+      REAL_T dtloc, weight, TT1save, rho, rhoInv
+      REAL_T Ct(maxspec),Qt(maxreac), rsum
+      REAL_T rhoYtemp(maxspec)
       REAL_T,  parameter :: HtoTerrMAX = BL_REAL_E(7.8,-12)
       integer, parameter :: HtoTiterMAX = 20, IOPT = 1, ITASK = 1
       REAL_T res(0:HtoTiterMAX-1), rhooldInv
@@ -992,8 +992,8 @@ c     used by LMC
       !   c_0,c_1,rhoH_INIT,T_cell,rhoY_INIT,negative_Y_test
       !
 !$omp do private(i,j,k,strang_fix,TT1,ISTATE,Y,node,Ct,Qt,res)
-!$omp&private(rhoYtemp,Z,rho,sum,rhoInv,lout,name,weight,NIter)
-!$omp&private(TT1save,TT2,m,Yold,rhooldInv) 
+!$omp&private(rhoYtemp,Z,rho,rsum,rhoInv,lout,name,weight,NIter)
+!$omp&private(TT1save,TT2,m,rhooldInv) 
 #ifdef REGRESSIONTEST
 !$omp&schedule(static)
 #else
@@ -1064,13 +1064,13 @@ c     used by LMC
                         rho = rho+rhoYold(i,j,k,m)
                      end do
                      rhoInv = one / rho
-                     sum = zero
+                     rsum = zero
                      do m=1,Nspec
                         rhoYtemp(m) = MAX(rhoYold(i,j,k,m),zero)
-                        sum = sum + rhoYtemp(m) * rhoInv
+                        rsum = rsum + rhoYtemp(m) * rhoInv
                      enddo
                      if (iN2 .gt. 0) then
-                        rhoYtemp(iN2) = ( (rhoYtemp(iN2)*rhoInv + one - sum) * rho )
+                        rhoYtemp(iN2) = ( (rhoYtemp(iN2)*rhoInv + one - rsum) * rho )
                      endif
 
                      TT1                = zero
@@ -1121,24 +1121,24 @@ c     used by LMC
      &                          Z(m),ZP(m),ZP(m)*(dt-TT1)
                         end do
                         write(lout,996) 'T_cell:',Z(Nspec+2)
-                        sum = zero
+                        rsum = zero
                         do m=1,Nspec
-                           sum = sum + Z(m)
+                           rsum = rsum + Z(m)
                         enddo
                         do m=1,Nspec
-                           Y(m) = Z(m)/sum
+                           Y(m) = Z(m)/rsum
                         enddo
-                        sum = zero
+                        rsum = zero
                         do m=1,Nspec
-                           sum = sum + RhoYold(i,j,k,m)
+                           rsum = rsum + RhoYold(i,j,k,m)
                         enddo
                         do m=1,Nspec
-                           Yold(m) = RhoYold(i,j,k,m)/sum
+                           Yold(m) = RhoYold(i,j,k,m)/rsum
                         enddo
                         
                         write(lout,996)'Mass fracs: old, curr'
                         do m=1,Nspec
-                           Y(m) = Z(m)/sum
+                           Y(m) = Z(m)/rsum
                            call get_spec_name(name,m)
                            write(lout,996) name,Yold(m),Y(m)
                         enddo
