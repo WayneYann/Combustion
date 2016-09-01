@@ -264,6 +264,7 @@ c     NOTE: scal converts result from assumed cgs to MKS (1 erg/s.cm^3 = .1 J/s.
       end
 
 #ifdef LMC_SDC
+c     used by LMC
       subroutine FORT_RRATERHOY(lo,hi,RhoY,DIMS(RhoY),RhoH,DIMS(RhoH),T,DIMS(T),
      &                          RhoYdot,DIMS(RhoYdot),Patm)
       implicit none
@@ -343,7 +344,8 @@ c     NOTE: scal converts result from assumed cgs to MKS (1 erg/s.cm^3 = .1 J/s.
          end do
       end do
       end
-      
+
+c     used by LMC
       subroutine FORT_MOLETOMASS(lo, hi, X, DIMS(X), Y, DIMS(Y))
       implicit none
 #include "cdwrk.H"
@@ -550,6 +552,7 @@ c     Get the matrix of elements versus species
       end do
       end
 
+c     use by LMC
       integer function FORT_CONPSOLV(lo, hi,
      &                         Ynew, DIMS(Ynew), Tnew, DIMS(Tnew),
      &                         Yold, DIMS(Yold), Told, DIMS(Told),
@@ -883,6 +886,7 @@ c     Get the matrix of elements versus species
       end
  
 #ifdef LMC_SDC
+c     used by LMC
       integer function FORT_CONPSOLV_SDC(lo, hi,
      &     rhoYnew,   DIMS(rhoYnew), 
      &     rhoHnew,   DIMS(rhoHnew),
@@ -928,10 +932,10 @@ c     Get the matrix of elements versus species
       integer nsub, node, strang_fix, Niter, nfails
       character*(maxspnml) name
       REAL_T RTOL, ATOL(maxspec+2), ATOLEPS, TT1, TT2, RU, RUC, P1atm
-      REAL_T Y(maxspec), hmix_ck, Z(maxspec+2), ZP(maxspec+2), Yold(maxspec)
-      REAL_T dtloc, weight, TT1save, rho, rhoInv, h_INIT
-      REAL_T Ct(maxspec),Qt(maxreac), scale, sum
-      REAL_T rhoYtemp(maxspec),rhoYres(maxspec),HMIX_CGS
+      REAL_T Y(maxspec), Z(maxspec+2), ZP(maxspec+2), Yold(maxspec)
+      REAL_T dtloc, weight, TT1save, rho, rhoInv
+      REAL_T Ct(maxspec),Qt(maxreac), rsum
+      REAL_T rhoYtemp(maxspec)
       REAL_T,  parameter :: HtoTerrMAX = BL_REAL_E(7.8,-12)
       integer, parameter :: HtoTiterMAX = 20, IOPT = 1, ITASK = 1
       REAL_T res(0:HtoTiterMAX-1), rhooldInv
@@ -988,8 +992,8 @@ c     Get the matrix of elements versus species
       !   c_0,c_1,rhoH_INIT,T_cell,rhoY_INIT,negative_Y_test
       !
 !$omp do private(i,j,k,strang_fix,TT1,ISTATE,Y,node,Ct,Qt,res)
-!$omp&private(rhoYtemp,Z,rho,sum,rhoInv,lout,name,weight,NIter)
-!$omp&private(TT1save,TT2,m,Yold,rhooldInv) 
+!$omp&private(rhoYtemp,Z,rho,rsum,rhoInv,lout,name,weight,NIter)
+!$omp&private(TT1save,TT2,m,rhooldInv) 
 #ifdef REGRESSIONTEST
 !$omp&schedule(static)
 #else
@@ -1060,13 +1064,13 @@ c     Get the matrix of elements versus species
                         rho = rho+rhoYold(i,j,k,m)
                      end do
                      rhoInv = one / rho
-                     sum = zero
+                     rsum = zero
                      do m=1,Nspec
                         rhoYtemp(m) = MAX(rhoYold(i,j,k,m),zero)
-                        sum = sum + rhoYtemp(m) * rhoInv
+                        rsum = rsum + rhoYtemp(m) * rhoInv
                      enddo
                      if (iN2 .gt. 0) then
-                        rhoYtemp(iN2) = ( (rhoYtemp(iN2)*rhoInv + one - sum) * rho )
+                        rhoYtemp(iN2) = ( (rhoYtemp(iN2)*rhoInv + one - rsum) * rho )
                      endif
 
                      TT1                = zero
@@ -1117,24 +1121,24 @@ c     Get the matrix of elements versus species
      &                          Z(m),ZP(m),ZP(m)*(dt-TT1)
                         end do
                         write(lout,996) 'T_cell:',Z(Nspec+2)
-                        sum = zero
+                        rsum = zero
                         do m=1,Nspec
-                           sum = sum + Z(m)
+                           rsum = rsum + Z(m)
                         enddo
                         do m=1,Nspec
-                           Y(m) = Z(m)/sum
+                           Y(m) = Z(m)/rsum
                         enddo
-                        sum = zero
+                        rsum = zero
                         do m=1,Nspec
-                           sum = sum + RhoYold(i,j,k,m)
+                           rsum = rsum + RhoYold(i,j,k,m)
                         enddo
                         do m=1,Nspec
-                           Yold(m) = RhoYold(i,j,k,m)/sum
+                           Yold(m) = RhoYold(i,j,k,m)/rsum
                         enddo
                         
                         write(lout,996)'Mass fracs: old, curr'
                         do m=1,Nspec
-                           Y(m) = Z(m)/sum
+                           Y(m) = Z(m)/rsum
                            call get_spec_name(name,m)
                            write(lout,996) name,Yold(m),Y(m)
                         enddo
@@ -1209,7 +1213,7 @@ c     Get the matrix of elements versus species
 #endif
 
 
-
+c     used by LMC
       subroutine FORT_BETA_WBAR(lo, hi, RD, DIMS(RD), RD_Wbar, DIMS(RD_Wbar), Y, DIMS(Y))
       implicit none
 
@@ -1289,6 +1293,7 @@ c     Get the matrix of elements versus species
 
       end
 
+c     used by LMC
       subroutine FORT_MIXAVG_RHODIFF_TEMP(lo, hi, RD, DIMS(RD), T,
      &     DIMS(T), Y, DIMS(Y), Patm, do_temp, do_VelVisc)
       implicit none
@@ -1423,6 +1428,7 @@ c     Get the matrix of elements versus species
 
       end
 
+c     used LMC SDC
       subroutine FORT_MIX_SHEAR_VISC(lo, hi, eta, DIMS(eta),
      &                               T, DIMS(T), Y, DIMS(Y))
       implicit none
@@ -1483,6 +1489,7 @@ c     Get the matrix of elements versus species
 
       end
 
+c     used by LMC
       subroutine FORT_RHOfromPTY(lo, hi, RHO, DIMS(RHO), T, DIMS(T),
      &                           Y, DIMS(Y), Patm)
       implicit none
@@ -1560,6 +1567,7 @@ c
       end do
       end
       
+c     used LMC SDC
       subroutine FORT_PfromRTY(lo, hi, P, DIMS(P), RHO, DIMS(RHO),
      &                         T, DIMS(T), Y, DIMS(Y))
       implicit none
@@ -1638,6 +1646,7 @@ c
       end do
       end
       
+c     used by LMC
       subroutine FORT_CPMIXfromTY(lo, hi, CPMIX, DIMS(CPMIX), T, DIMS(T),
      &                            Y, DIMS(Y))
       implicit none
@@ -1704,6 +1713,7 @@ c
       end do
       end
       
+c     used by LMC
       subroutine FORT_HMIXfromTY(lo, hi, HMIX, DIMS(HMIX), T, DIMS(T),
      &                           Y, DIMS(Y))
       implicit none
@@ -1741,6 +1751,7 @@ c
 
       end
       
+c     used by LMC
       subroutine FORT_MWMIXfromY(lo, hi, MWMIX, DIMS(MWMIX), Y, DIMS(Y))
       implicit none
 
@@ -1800,6 +1811,7 @@ c
       end do
       end
       
+c     used by LMC
       subroutine FORT_HfromT(lo, hi, H, DIMS(H), T, DIMS(T))
       implicit none
 #include "cdwrk.H"
@@ -1831,6 +1843,7 @@ c
 
       end
 
+c     used by LMC
       integer function FORT_TfromHY(lo, hi, T, DIMS(T),
      &                              HMIX, DIMS(HMIX), Y, DIMS(Y),
      &                              errMax, NiterMAX, res)
@@ -1848,12 +1861,12 @@ c
       REAL_T Y(DIMV(Y),*)
       REAL_T errMAX
       REAL_T res(0:NiterMAX-1)
-      REAL_T Yt(maxspec)
+      REAL_T Yt(maxspec), lres(0:NiterMAX-1)
       integer i,j,k,n,Niter,MAXiters
 
       MAXiters = 0
 
-!$omp parallel do private(i,j,k,n,Yt,res,Niter) reduction(max:MAXiters)
+!$omp parallel do private(i,j,k,n,Yt,lres,Niter) reduction(max:MAXiters)
       do k=lo(3),hi(3)
          do j=lo(2),hi(2)
             do i=lo(1),hi(1)
@@ -1862,7 +1875,7 @@ c
                   Yt(n) = Y(i,j,k,n)
                end do
 
-               call FORT_TfromHYpt(T(i,j,k),HMIX(i,j,k),Yt,errMax,NiterMAX,res,Niter)
+               call FORT_TfromHYpt(T(i,j,k),HMIX(i,j,k),Yt,errMax,NiterMAX,lres,Niter)
 
                if (Niter .lt. 0) then
                   write(6,*) 'T from h,y solve in FORT_TfromHY failed',Niter
@@ -1917,6 +1930,7 @@ c         c3  -4.25732e-7          -5.87209e-10
 c         c4   2.02894e-10         -2.5334e-14 
 c      
       
+c     used by LMC
       subroutine FORT_OTrad_TDF(lo, hi, Qloss, DIMS(Qloss),
      &                          T, DIMS(T), X, DIMS(X), Patm, T_bg) 
       implicit none

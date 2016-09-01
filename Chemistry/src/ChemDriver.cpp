@@ -615,7 +615,7 @@ ChemDriver::normalizeMassFrac(FArrayBox&       Ynorm,
     const Box& mabx = Y.box();
     const Box& mobx = Ynorm.box();
     
-    Box ovlp = box & mabx & mobx;
+    const Box& ovlp = box & mabx & mobx;
     if (!ovlp.ok())
 	return;
 
@@ -686,7 +686,7 @@ ChemDriver::fwdRevReacRatesGivenXTP(FArrayBox&        FwdK,
     const Box& moabx = FwdK.box();
     const Box& mobbx = RevK.box();
     
-    Box ovlp = box & mabx & mbbx & moabx & mobbx;
+    const Box& ovlp = box & mabx & mbbx & moabx & mobbx;
     if( ! ovlp.ok() ) return;
     
     FORT_FRrateXTP(ovlp.loVect(), ovlp.hiVect(),
@@ -716,7 +716,7 @@ ChemDriver::heatRelease(FArrayBox&       Q,
     const Box& mbbx = T.box();
     const Box& mobx = Q.box();
     
-    Box ovlp = box & mabx & mbbx & mobx;
+    const Box& ovlp = box & mabx & mbbx & mobx;
     if( ! ovlp.ok() ) return;
     
     FORT_HTRLS(ovlp.loVect(), ovlp.hiVect(),
@@ -745,7 +745,7 @@ ChemDriver::reactionRateY(FArrayBox&       Ydot,
     const Box& mbbx = T.box();
     const Box& mobx = Ydot.box();
     
-    Box ovlp = box & mabx & mbbx & mobx;
+    const Box& ovlp = box & mabx & mbbx & mobx;
     if( ! ovlp.ok() ) return;
     
     FORT_RRATEY(ovlp.loVect(), ovlp.hiVect(),
@@ -779,7 +779,7 @@ ChemDriver::reactionRateRhoY(FArrayBox&       RhoYdot,
     const Box& mcbx = T.box();
     const Box& mobx = RhoYdot.box();
     
-    Box ovlp = box & mabx & mbbx & mcbx & mobx;
+    const Box& ovlp = box & mabx & mbbx & mcbx & mobx;
     if( ! ovlp.ok() ) return;
     
     FORT_RRATERHOY(ovlp.loVect(), ovlp.hiVect(),
@@ -804,7 +804,7 @@ ChemDriver::massFracToMoleFrac(FArrayBox&       X,
     const Box& mabx = Y.box();
     const Box& mobx = X.box();
     
-    Box ovlp = box & mabx & mobx;
+    const Box& ovlp = box & mabx & mobx;
     if (!ovlp.ok())
 	return;
     
@@ -826,7 +826,7 @@ ChemDriver::moleFracToMassFrac(FArrayBox&       Y,
     const Box& mobx = X.box();
     const Box& mabx = Y.box();
     
-    Box ovlp = box & mobx & mabx;
+    const Box& ovlp = box & mobx & mabx;
     if (!ovlp.ok())
 	return;
     
@@ -853,7 +853,7 @@ ChemDriver::massFracToMolarConc(FArrayBox&       C,
     const Box& mabx = Y.box();
     const Box& mbbx = T.box();
     
-    Box ovlp = box & mabx & mbbx & mobx;
+    const Box& ovlp = box & mabx & mbbx & mobx;
     if (!ovlp.ok())
 	return;
     
@@ -884,7 +884,7 @@ ChemDriver::massFracToMolarConc(FArrayBox&       C,
     const Box& mbbx = T.box();
     const Box& mrbx = Rho.box();
 
-    Box ovlp = box & mabx & mbbx & mobx & mrbx;
+    const Box& ovlp = box & mabx & mbbx & mobx & mrbx;
     if (!ovlp.ok())
 	return;
     
@@ -908,7 +908,7 @@ ChemDriver::molarConcToMoleFrac(FArrayBox&       X,
     const Box& mobx = X.box();
     const Box& mabx = C.box();
     
-    Box ovlp = box & mabx & mobx;
+    const Box& ovlp = box & mabx & mobx;
     if (!ovlp.ok())
 	return;
     

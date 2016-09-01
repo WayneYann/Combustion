@@ -437,7 +437,7 @@ HeatTransfer::variableSetUp ()
     Initialize();
     BCRec bc;
     //
-    // Set state variable Id's (Density, velocities and Temp set already).
+    // Set state variable Id's (Density and velocities set already).
     //
     int counter   = Density;
     int RhoH      = -1;
