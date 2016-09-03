@@ -53,32 +53,39 @@ HeatTransfer::compute_rhohmix (Real      time,
     const int sCompY = first_spec - sComp;
     const int sCompH = 0;
 
-    FArrayBox tmp;
+    FillPatchIterator fpi(*this,rhohmix,ngrow,time,State_Type,sComp,nComp);
+    MultiFab& statemf = fpi.get_mf();
 
-    for (FillPatchIterator fpi(*this,rhohmix,ngrow,time,State_Type,sComp,nComp);
-         fpi.isValid();
-         ++fpi)
+#ifdef _OPENMP
+#pragma omp parallel
+#endif
     {
-        //
-        // Convert rho*Y to Y for this operation
-        //
-	const int  iGrid    = fpi.index();
-	const Box& validBox = grids[iGrid];
-	FArrayBox& state    = fpi();
+	FArrayBox tmp;
 
-        tmp.resize(validBox,1);
-        tmp.copy(state,sCompR,0,1);
-        tmp.invert(1);
+	for (MFIter mfi(rhohmix, true); mfi.isValid(); ++mfi)
+	{
+	    const Box& bx = mfi.tilebox();
+	    FArrayBox& state  = statemf[mfi];
+	    FArrayBox& rhmfab = rhohmix[mfi];
 
-        for (int k = 0; k < nspecies; k++)
-            state.mult(tmp,0,sCompY+k,1);
-	
-	getChemSolve().getHmixGivenTY(rhohmix[fpi],state,state,validBox,
-				      sCompT,sCompY,sCompH);
-        //
-        // Convert hmix to rho*hmix
-        //
-        rhohmix[fpi].mult(state,validBox,sCompR,sCompH,1);
+	    //
+	    // Convert rho*Y to Y for this operation
+	    //
+	    tmp.resize(bx,1);
+	    tmp.copy(state,sCompR,0,1);
+	    tmp.invert(1.0);
+	    
+	    for (int k = 0; k < nspecies; k++) {
+		state.mult(tmp,0,sCompY+k,1);
+	    }
+	    
+	    getChemSolve().getHmixGivenTY(rhohmix[fpi],state,state,bx,
+					  sCompT,sCompY,sCompH);
+	    //
+	    // Convert hmix to rho*hmix
+	    //
+	    rhohmix[fpi].mult(state,bx,sCompR,sCompH,1);
+	}
     }
 
     if (verbose)
