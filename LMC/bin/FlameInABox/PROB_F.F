@@ -201,7 +201,8 @@ c     Initialize control variables
       h_control = -one
       pseudo_gravity = 0
       nchemdiag = 1
-
+      istemp = 0
+      navg_pnts = 10
 
       read(untin,fortin)
       
