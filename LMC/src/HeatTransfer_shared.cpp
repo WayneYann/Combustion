@@ -79,12 +79,12 @@ HeatTransfer::compute_rhohmix (Real      time,
 		state.mult(tmp,0,sCompY+k,1);
 	    }
 	    
-	    getChemSolve().getHmixGivenTY(rhohmix[fpi],state,state,bx,
+	    getChemSolve().getHmixGivenTY(rhohmix[mfi],state,state,bx,
 					  sCompT,sCompY,sCompH);
 	    //
 	    // Convert hmix to rho*hmix
 	    //
-	    rhohmix[fpi].mult(state,bx,sCompR,sCompH,1);
+	    rhohmix[mfi].mult(state,bx,sCompR,sCompH,1);
 	}
     }
 
