@@ -29,6 +29,9 @@ Bdirs += $(IAMR_DIR)/Source/InflowForce
 Bdirs   += $(BOXLIB_DIR)/Src/C_BaseLib
 Bdirs   += $(BOXLIB_DIR)/Src/C_AMRLib
 Bdirs   += $(BOXLIB_DIR)/Src/C_BoundaryLib
+ifeq ($(USE_PARTICLES), TRUE)
+  Bdirs += $(BOXLIB_DIR)/Src/C_ParticleLib
+endif
 Bdirs   += $(BOXLIB_DIR)/Src/LinearSolvers/C_CellMG
 Bdirs   += $(BOXLIB_DIR)/Src/LinearSolvers/C_TensorMG
 
