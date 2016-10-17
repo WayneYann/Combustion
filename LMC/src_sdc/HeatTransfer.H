@@ -25,6 +25,7 @@
 //       multigrid code.
 //
 
+
 class HeatTransfer
     :
     public NavierStokesBase
@@ -64,24 +65,24 @@ public:
     // grown BoxArray.
     //
     virtual MultiFab* derive (const std::string& name,
-			      Real               time,
-			      int                ngrow) BL_OVERRIDE;
+                              Real               time,
+                              int                ngrow) BL_OVERRIDE;
     //
     // This version of derive() fills the dcomp'th component of mf with the derived quantity.
     //
     virtual void derive (const std::string& name,
-			 Real               time,
-			 MultiFab&          mf,
-			 int                dcomp) BL_OVERRIDE;
-    //
-    // Init data on this level from another NavierStokes (during regrid).
-    //
-    virtual void init (AmrLevel& old) BL_OVERRIDE;
+                         Real               time,
+                         MultiFab&          mf,
+                         int                dcomp) BL_OVERRIDE;
     //
     // Init data on this level after regridding if old level
     // did not exist previously.
     //
     virtual void init () BL_OVERRIDE;
+    //
+    // Init data on this level from another NavierStokes (during regrid).
+    //
+    virtual void init (AmrLevel& old) BL_OVERRIDE;
 
     virtual void initData () BL_OVERRIDE;
     //
@@ -96,6 +97,10 @@ public:
     virtual void post_restart () BL_OVERRIDE;
 
     virtual void post_timestep (int iteration) BL_OVERRIDE;
+
+    virtual void restart (Amr&          papa,
+                          std::istream& is,
+                          bool          bReadSpecial = false) BL_OVERRIDE;
     //
     // Set the variables that are put in the plotfile....
     //
@@ -113,10 +118,6 @@ public:
                                 std::ostream&      os,
                                 VisMF::How         how) BL_OVERRIDE;
 
-    virtual void restart (Amr&          papa,
-                          std::istream& is,
-                          bool          bReadSpecial = false) BL_OVERRIDE;
-
     ////////////////////////////////////////////////////////////////////////////
     //    HeatTransfer public static functions                                //
     ////////////////////////////////////////////////////////////////////////////
@@ -132,7 +133,7 @@ public:
     // Cleanup data descriptors at end of run.
     //
     static void variableCleanUp ();
-
+    
 protected:
 
     ////////////////////////////////////////////////////////////////////////////
@@ -143,9 +144,9 @@ protected:
     // Setup for a level timestep.
     //
     virtual void advance_setup (Real time,
-                                Real dt,
-                                int  iteration,
-                                int  ncycle) BL_OVERRIDE;
+				Real dt,
+				int  iteration,
+				int  ncycle) BL_OVERRIDE;
 
     virtual void avgDown () BL_OVERRIDE; // Average down for all the state types.
     //
@@ -155,31 +156,31 @@ protected:
     //       See example in the _tube_flow problem dependent directory
     //
     virtual void calc_divu (Real      time,
-                            Real      dt,
-                            MultiFab& divu) BL_OVERRIDE;
+			    Real      dt,
+			    MultiFab& divu) BL_OVERRIDE;
 
     virtual void calc_dsdt (Real      time,
-                            Real      dt,
-                            MultiFab& dsdt) BL_OVERRIDE;
+			    Real      dt,
+			    MultiFab& dsdt) BL_OVERRIDE;
 
     virtual void calcViscosity (const Real time,
-                                const Real dt,
-                                const int  iteration,
-                                const int  ncycle) BL_OVERRIDE;
+				const Real dt,
+				const int  iteration,
+				const int  ncycle) BL_OVERRIDE;
 
     virtual void calcDiffusivity (const Real time) BL_OVERRIDE;
 
-    virtual void create_mac_rhs (MultiFab& rhs, int nGrow, Real time, Real dt) BL_OVERRIDE;
+    virtual void create_mac_rhs (MultiFab& mac_rhs, int nGrow, Real time, Real dt) BL_OVERRIDE;
 
     virtual Real estTimeStep () BL_OVERRIDE;
 
     virtual void getViscosity (MultiFab*  viscosity[BL_SPACEDIM],
-                               const Real time) BL_OVERRIDE;
+			       const Real time) BL_OVERRIDE;
 
     virtual void getViscTerms (MultiFab& visc_terms,
-                               int       src_comp, 
-                               int       num_comp,
-                               Real      time) BL_OVERRIDE;
+			       int       src_comp, 
+			       int       num_comp,
+			       Real      time) BL_OVERRIDE;
 
     virtual void mac_sync () BL_OVERRIDE;
     //
@@ -190,16 +191,17 @@ protected:
     // Reset time levels for the initial iterations.
     //
     virtual void resetState (Real time,
-                             Real dt_old,
-                             Real dt_new) BL_OVERRIDE;
+			     Real dt_old,
+			     Real dt_new) BL_OVERRIDE;
+
+    virtual void sum_integrated_quantities () BL_OVERRIDE;
 
     virtual void scalar_advection_update (Real dt,
                                           int  first_scalar,
                                           int  last_scalar) BL_OVERRIDE;
 
-    virtual void sum_integrated_quantities () BL_OVERRIDE;
-
     virtual void velocity_diffusion_update (Real dt) BL_OVERRIDE;
+
 
     ////////////////////////////////////////////////////////////////////////////
     //    HeatTransfer protected static functions                             //
@@ -207,7 +209,7 @@ protected:
 
     static void Initialize ();
     static void Finalize ();
-
+    
 #ifdef PARTICLES
     virtual int timestamp_num_extras () BL_OVERRIDE;
     virtual void timestamp_add_extras (int lev, Real time, MultiFab& mf) BL_OVERRIDE;
@@ -412,6 +414,9 @@ private:
     std::map<std::string,MultiFab*> auxDiag;
     static std::map<std::string,Array<std::string> > auxDiag_names;
 
+    //
+    // Protected static data.
+    //
     static int         num_divu_iters;
     static int         init_once_done;
     static int         RhoH;

@@ -4673,17 +4673,17 @@ HeatTransfer::advance (Real time,
 }
 
 void
-HeatTransfer::create_mac_rhs (MultiFab& rhs, int nGrow, Real time, Real dt)
+HeatTransfer::create_mac_rhs (MultiFab& mac_rhs, int nGrow, Real time, Real dt)
 {
-    BL_ASSERT(rhs.nGrow()>=nGrow);
-    BL_ASSERT(rhs.boxArray()==grids);
+    BL_ASSERT(mac_rhs.nGrow()>=nGrow);
+    BL_ASSERT(mac_rhs.boxArray()==grids);
 
     int sCompDivU = 0;
     int nCompDivU = 1;
-    for (FillPatchIterator Divu_fpi(*this,rhs,nGrow,time,Divu_Type,sCompDivU,nCompDivU);
+    for (FillPatchIterator Divu_fpi(*this,mac_rhs,nGrow,time,Divu_Type,sCompDivU,nCompDivU);
          Divu_fpi.isValid();
          ++Divu_fpi) {
-      rhs[Divu_fpi].copy(Divu_fpi(),0,sCompDivU,nCompDivU);
+      mac_rhs[Divu_fpi].copy(Divu_fpi(),0,sCompDivU,nCompDivU);
     }
 }
 
