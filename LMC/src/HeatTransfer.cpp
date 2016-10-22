@@ -1616,6 +1616,7 @@ HeatTransfer::postCoarseTimeStep (Real cumtime)
     // postCoarseTimeStep() is only called by level 0.
     //
     BL_ASSERT(level == 0);
+    AmrLevel::postCoarseTimeStep(cumtime);
 }
 
 void

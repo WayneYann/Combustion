@@ -779,6 +779,8 @@ RNS::post_restart ()
 void
 RNS::postCoarseTimeStep (Real cumtime)
 {
+    AmrLevel::postCoarseTimeStep(cumtime);
+
     if (chemstatus) sum_chemstatus();
 
     if (sum_int > 0) {
