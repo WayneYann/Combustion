@@ -8,12 +8,19 @@ fincludes=$(includes)
 
 # LMC
 ifeq ($(USE_LMC_SDC), TRUE)
+  DEFINES += -DLMC_SDC
+  USERSuffix += .SDC
   Bdirs += $(COMBUSTION_DIR)/LMC/src_sdc
 endif
 Bdirs += $(COMBUSTION_DIR)/LMC/src
 
 # Chemistry
 Bdirs += $(COMBUSTION_DIR)/Chemistry/src
+
+ifeq ($(USE_WBAR),TRUE)
+    USERSuffix += .WBAR
+    DEFINES += -DUSE_WBAR
+endif
 
 #
 # Tells IAMR not to include the following: NS_error.cpp NS_setup.cpp NSBld.cpp
