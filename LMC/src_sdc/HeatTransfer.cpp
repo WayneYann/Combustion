@@ -5478,12 +5478,10 @@ HeatTransfer::mac_sync ()
 	      }
 
 	    // take divergence of beta grad delta Wbar and multiply divergence by dt/2
-#ifdef USE_WBAR
 	    MultiFab DWbar(grids,nspecies,nGrowAdvForcing);
 	    MultiFab* const * fluxWbar = SpecDiffusionFluxWbar;
 	    flux_divergence(DWbar,0,fluxWbar,0,nspecies,-1);
 	    DWbar.mult(dt/2.0);
-#endif
 
 	    // reset Ssync to be the same RHS as above, but with the (dt/2) div beta grad delta Wbar term
 	    // use the code above, but add on the grad delta Wbar term
@@ -5491,9 +5489,7 @@ HeatTransfer::mac_sync ()
 	    {
 	      const int  i   = mfi.index();
 	      const Box& grd = grids[i];
-#ifdef USE_WBAR
 	      const FArrayBox& DWbarFab = DWbar[mfi];
-#endif
 		
 	      int iconserved = -1;
 		
