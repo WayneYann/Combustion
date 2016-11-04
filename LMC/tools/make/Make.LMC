@@ -4,8 +4,6 @@ EBASE = LMC
 BOXLIB_HOME = $(BOXLIB_DIR)
 include $(BOXLIB_DIR)/Tools/C_mk/Make.defs 
 
-fincludes=$(includes)
-
 # LMC
 ifeq ($(USE_LMC_SDC), TRUE)
   DEFINES += -DLMC_SDC
