@@ -32,6 +32,7 @@ Bdirs += $(IAMR_DIR)/Source/InflowForce
 
 # BoxLib 
 Bdirs   += $(BOXLIB_DIR)/Src/C_BaseLib
+Bdirs   += $(BOXLIB_DIR)/Src/C_AmrCoreLib
 Bdirs   += $(BOXLIB_DIR)/Src/C_AMRLib
 Bdirs   += $(BOXLIB_DIR)/Src/C_BoundaryLib
 ifeq ($(USE_PARTICLES), TRUE)

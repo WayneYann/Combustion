@@ -41,7 +41,6 @@
 #include <SLABSTAT_HT_F.H>
 #include <Utility.H>
 #include <NS_error_F.H>
-#include <BL_CXX11.H>
 
 #define DEF_LIMITS(fab,fabdat,fablo,fabhi)   \
 const int* fablo = (fab).loVect();           \
@@ -356,9 +355,9 @@ public:
     //
     // Destructor.
     //
-    virtual ~ChemBndryFunc ()  BL_OVERRIDE {}
+    virtual ~ChemBndryFunc ()  override {}
     
-    virtual StateDescriptor::BndryFunc* clone () const BL_OVERRIDE
+    virtual StateDescriptor::BndryFunc* clone () const override
     {
         //
 	// Bitwise copy ok here, no copy ctr required.
@@ -373,7 +372,7 @@ public:
     virtual void operator () (Real* data, const int* lo, const int* hi,
 			      const int* dom_lo, const int* dom_hi,
 			      const Real* dx, const Real* grd_lo,
-			      const Real* time, const int* bc) const BL_OVERRIDE
+			      const Real* time, const int* bc) const override
     {
 	BL_ASSERT(m_func != 0);
 	m_func(data,ARLIM(lo),ARLIM(hi),dom_lo,dom_hi,dx,grd_lo,time,bc,&m_stateID);
@@ -384,7 +383,7 @@ public:
     virtual void operator () (Real* data, const int* lo, const int* hi,
 			      const int* dom_lo, const int* dom_hi,
 			      const Real* dx, const Real* grd_lo,
-			      const Real* time, const int* bc, int ng) const BL_OVERRIDE
+			      const Real* time, const int* bc, int ng) const override
     {
         BndryFunc::operator()(data, lo, hi, dom_lo, dom_hi, dx, grd_lo, time, bc, ng);
     }
@@ -977,14 +976,14 @@ class HTBld
     :
     public LevelBld
 {
-    virtual void variableSetUp () BL_OVERRIDE;
-    virtual void variableCleanUp () BL_OVERRIDE;
-    virtual AmrLevel *operator() () BL_OVERRIDE;
+    virtual void variableSetUp () override;
+    virtual void variableCleanUp () override;
+    virtual AmrLevel *operator() () override;
     virtual AmrLevel *operator() (Amr&            papa,
                                   int             lev,
                                   const Geometry& level_geom,
                                   const BoxArray& ba,
-                                  Real            time) BL_OVERRIDE;
+                                  Real            time) override;
 };
 
 HTBld HTbld;

@@ -7,14 +7,14 @@ class RNSBld
     :
     public LevelBld
 {
-    virtual void variableSetUp ();
-    virtual void variableCleanUp ();
-    virtual AmrLevel *operator() ();
+    virtual void variableSetUp () override;
+    virtual void variableCleanUp () override;
+    virtual AmrLevel *operator() () override;
     virtual AmrLevel *operator() (Amr&            papa,
                                   int             lev,
                                   const Geometry& level_geom,
                                   const BoxArray& ba,
-                                  Real            time);
+                                  Real            time) override;
 };
 
 RNSBld RNS_bld;

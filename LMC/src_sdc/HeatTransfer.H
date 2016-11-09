@@ -52,12 +52,12 @@ public:
     virtual Real advance (Real time,
                           Real dt,
                           int  iteration,
-                          int  ncycle) BL_OVERRIDE;
+                          int  ncycle) override;
 
     virtual void checkPoint (const std::string& dir,
                              std::ostream&      os,
                              VisMF::How         how = VisMF::OneFilePerCPU,
-                             bool               dump_old = true) BL_OVERRIDE;
+                             bool               dump_old = true) override;
     //
     // Returns a MultiFab containing the derived data for this level.
     // The user is responsible for deleting this pointer when done
@@ -66,57 +66,57 @@ public:
     //
     virtual MultiFab* derive (const std::string& name,
                               Real               time,
-                              int                ngrow) BL_OVERRIDE;
+                              int                ngrow) override;
     //
     // This version of derive() fills the dcomp'th component of mf with the derived quantity.
     //
     virtual void derive (const std::string& name,
                          Real               time,
                          MultiFab&          mf,
-                         int                dcomp) BL_OVERRIDE;
+                         int                dcomp) override;
     //
     // Init data on this level after regridding if old level
     // did not exist previously.
     //
-    virtual void init () BL_OVERRIDE;
+    virtual void init () override;
     //
     // Init data on this level from another NavierStokes (during regrid).
     //
-    virtual void init (AmrLevel& old) BL_OVERRIDE;
+    virtual void init (AmrLevel& old) override;
 
-    virtual void initData () BL_OVERRIDE;
+    virtual void initData () override;
     //
     // Contains operations to be done only after a full coarse timestep.
     //
-    virtual void postCoarseTimeStep (Real cumtime) BL_OVERRIDE;
+    virtual void postCoarseTimeStep (Real cumtime) override;
 
-    virtual void post_init (Real stop_time) BL_OVERRIDE;
+    virtual void post_init (Real stop_time) override;
 
-    virtual void post_regrid (int lbase, int new_finest) BL_OVERRIDE;
+    virtual void post_regrid (int lbase, int new_finest) override;
 
-    virtual void post_restart () BL_OVERRIDE;
+    virtual void post_restart () override;
 
-    virtual void post_timestep (int iteration) BL_OVERRIDE;
+    virtual void post_timestep (int iteration) override;
 
     virtual void restart (Amr&          papa,
                           std::istream& is,
-                          bool          bReadSpecial = false) BL_OVERRIDE;
+                          bool          bReadSpecial = false) override;
     //
     // Set the variables that are put in the plotfile....
     //
-    virtual void setPlotVariables () BL_OVERRIDE;
+    virtual void setPlotVariables () override;
     //
     // Set time levels of state data.
     //
     virtual void setTimeLevel (Real time,
                                Real dt_old,
-                               Real dt_new) BL_OVERRIDE;
+                               Real dt_new) override;
     //
     // Write plot file stuff to specified directory.
     //
     virtual void writePlotFile (const std::string& dir,
                                 std::ostream&      os,
-                                VisMF::How         how) BL_OVERRIDE;
+                                VisMF::How         how) override;
 
     ////////////////////////////////////////////////////////////////////////////
     //    HeatTransfer public static functions                                //
@@ -146,9 +146,9 @@ protected:
     virtual void advance_setup (Real time,
 				Real dt,
 				int  iteration,
-				int  ncycle) BL_OVERRIDE;
+				int  ncycle) override;
 
-    virtual void avgDown () BL_OVERRIDE; // Average down for all the state types.
+    virtual void avgDown () override; // Average down for all the state types.
     //
     // Note: these two functions must be supplied in NS_setup.C
     //       If divu (dsdt) is not included in the state, then
@@ -157,50 +157,50 @@ protected:
     //
     virtual void calc_divu (Real      time,
 			    Real      dt,
-			    MultiFab& divu) BL_OVERRIDE;
+			    MultiFab& divu) override;
 
     virtual void calc_dsdt (Real      time,
 			    Real      dt,
-			    MultiFab& dsdt) BL_OVERRIDE;
+			    MultiFab& dsdt) override;
 
     virtual void calcViscosity (const Real time,
 				const Real dt,
 				const int  iteration,
-				const int  ncycle) BL_OVERRIDE;
+				const int  ncycle) override;
 
-    virtual void calcDiffusivity (const Real time) BL_OVERRIDE;
+    virtual void calcDiffusivity (const Real time) override;
 
-    virtual void create_mac_rhs (MultiFab& mac_rhs, int nGrow, Real time, Real dt) BL_OVERRIDE;
+    virtual void create_mac_rhs (MultiFab& mac_rhs, int nGrow, Real time, Real dt) override;
 
-    virtual Real estTimeStep () BL_OVERRIDE;
+    virtual Real estTimeStep () override;
 
     virtual void getViscosity (MultiFab*  viscosity[BL_SPACEDIM],
-			       const Real time) BL_OVERRIDE;
+			       const Real time) override;
 
     virtual void getViscTerms (MultiFab& visc_terms,
 			       int       src_comp, 
 			       int       num_comp,
-			       Real      time) BL_OVERRIDE;
+			       Real      time) override;
 
-    virtual void mac_sync () BL_OVERRIDE;
+    virtual void mac_sync () override;
     //
     // Crse/fine fixup functions.
     //
-    virtual void reflux () BL_OVERRIDE;
+    virtual void reflux () override;
     //
     // Reset time levels for the initial iterations.
     //
     virtual void resetState (Real time,
 			     Real dt_old,
-			     Real dt_new) BL_OVERRIDE;
+			     Real dt_new) override;
 
-    virtual void sum_integrated_quantities () BL_OVERRIDE;
+    virtual void sum_integrated_quantities () override;
 
     virtual void scalar_advection_update (Real dt,
                                           int  first_scalar,
-                                          int  last_scalar) BL_OVERRIDE;
+                                          int  last_scalar) override;
 
-    virtual void velocity_diffusion_update (Real dt) BL_OVERRIDE;
+    virtual void velocity_diffusion_update (Real dt) override;
 
 
     ////////////////////////////////////////////////////////////////////////////
@@ -211,8 +211,8 @@ protected:
     static void Finalize ();
     
 #ifdef PARTICLES
-    virtual int timestamp_num_extras () BL_OVERRIDE;
-    virtual void timestamp_add_extras (int lev, Real time, MultiFab& mf) BL_OVERRIDE;
+    virtual int timestamp_num_extras () override;
+    virtual void timestamp_add_extras (int lev, Real time, MultiFab& mf) override;
     static void read_particle_params ();
 #endif
 
@@ -231,7 +231,7 @@ private:
 			    bool            use_stiff_solver = true);
 
 #ifdef USE_WBAR
-    void calcDiffusivity_Wbar (const Real time) BL_OVERRIDE;
+    void calcDiffusivity_Wbar (const Real time) override;
 #endif
 
     void calc_dpdt (Real      time,
