@@ -223,6 +223,8 @@ static void modify_parameters(ChemDriver& cd)
   }
 
   PArray<ChemDriver::Parameter> p(np,PArrayManage);
+  std::map<int,PArray<ChemDriver::Parameter> > dependent_parameters;
+
   Array<Real> values(np);
   for (int i=0; i<np; ++i) {
     std::string prefix = parameters[i];
@@ -247,6 +249,37 @@ static void modify_parameters(ChemDriver& cd)
 
     p.set(i,new ChemDriver::Parameter(reaction_id,it->second,id));
     values[i] = p[i].DefaultValue();
+
+    int ndp = ppp.countval("dependent_parameters");
+    if (ndp > 0) {
+      dependent_parameters[i].resize(ndp);
+      Array<std::string> dpnames; ppp.getarr("dependent_parameters",dpnames,0,ndp);
+      for (int j=0; j<ndp; ++j) {
+
+	std::string dplist = "chem." + prefix + ".dependent_parameters." + dpnames[j];
+	ParmParse pppd(dplist.c_str());
+
+	int dpreaction_id; pppd.get("reaction_id",dpreaction_id);
+	if (dpreaction_id<0 || dpreaction_id > cd.numReactions()) {
+	  BoxLib::Abort("Dependent reaction ID invalid");
+	}
+
+	std::string dptype; pppd.get("type",dptype);
+	std::map<std::string,REACTION_PARAMETER>::const_iterator it = PTypeMap.find(dptype);
+	if (it == PTypeMap.end()) {
+	  BoxLib::Abort("Unrecognized dependent reaction parameter");
+	}
+
+	int did = -1;
+	if (dptype == "THIRD_BODY") {
+	  std::string dtb_name; pppd.get("tb_name",dtb_name);
+	  did = cd.index(dtb_name);
+	  BL_ASSERT(id >= 0);
+	}
+
+	dependent_parameters[i].set(j, new ChemDriver::Parameter(dpreaction_id,it->second,did));
+      }
+    }
   }
 
   int nv = pp.countval("parameter_values");
@@ -255,7 +288,15 @@ static void modify_parameters(ChemDriver& cd)
     pp.getarr("parameter_values",values,0,np);
     for (int i=0; i<np; ++i) {
       p[i].Value() = values[i];
-      std::cout << "************** Modified chem parameter \"" << parameters[i] << "\": " << p[i] << std::endl;
+      if (ParallelDescriptor::IOProcessor()) {
+	std::cout << "************** Modified chem parameter \"" << parameters[i] << "\": " << p[i] << std::endl;
+      }
+      for (int j=0; j<dependent_parameters[i].size(); ++j) {
+	dependent_parameters[i][j].Value() = values[i];
+	if (ParallelDescriptor::IOProcessor()) {
+	  std::cout << "                     dependent parameter: " << dependent_parameters[i][j] << std::endl;
+	}
+      }
     }
   }
 }
@@ -264,9 +305,9 @@ void
 ChemDriver::initOnce ()
 {
     FORT_INITCHEM();
-    modify_parameters(*this);
     getSpeciesNames();
     getElementNames();
+    modify_parameters(*this);
     FORT_GETCKDIMPARAMS(&mMaxreac, &mMaxspec, &mMaxelts,  &mMaxord,
                         &mMaxthrdb, &mMaxtp,  &mMaxsp,    &mMaxspnml);
     getStoichCoeffs();
@@ -296,6 +337,10 @@ ChemDriver::initOnce ()
 
     reaction_map.resize(numReactions());
     FORT_GET_REACTION_MAP(reaction_map.dataPtr());
+    reaction_rev_map.resize(numReactions());
+    for (int i=0; i<reaction_map.size(); ++i) {
+      reaction_rev_map[reaction_map[i]] = i;
+    }
     number_of_species = numSpecies();
 }
 
@@ -570,7 +615,7 @@ ChemDriver::normalizeMassFrac(FArrayBox&       Ynorm,
     const Box& mabx = Y.box();
     const Box& mobx = Ynorm.box();
     
-    Box ovlp = box & mabx & mobx;
+    const Box& ovlp = box & mabx & mobx;
     if (!ovlp.ok())
 	return;
 
@@ -641,7 +686,7 @@ ChemDriver::fwdRevReacRatesGivenXTP(FArrayBox&        FwdK,
     const Box& moabx = FwdK.box();
     const Box& mobbx = RevK.box();
     
-    Box ovlp = box & mabx & mbbx & moabx & mobbx;
+    const Box& ovlp = box & mabx & mbbx & moabx & mobbx;
     if( ! ovlp.ok() ) return;
     
     FORT_FRrateXTP(ovlp.loVect(), ovlp.hiVect(),
@@ -671,7 +716,7 @@ ChemDriver::heatRelease(FArrayBox&       Q,
     const Box& mbbx = T.box();
     const Box& mobx = Q.box();
     
-    Box ovlp = box & mabx & mbbx & mobx;
+    const Box& ovlp = box & mabx & mbbx & mobx;
     if( ! ovlp.ok() ) return;
     
     FORT_HTRLS(ovlp.loVect(), ovlp.hiVect(),
@@ -700,7 +745,7 @@ ChemDriver::reactionRateY(FArrayBox&       Ydot,
     const Box& mbbx = T.box();
     const Box& mobx = Ydot.box();
     
-    Box ovlp = box & mabx & mbbx & mobx;
+    const Box& ovlp = box & mabx & mbbx & mobx;
     if( ! ovlp.ok() ) return;
     
     FORT_RRATEY(ovlp.loVect(), ovlp.hiVect(),
@@ -734,7 +779,7 @@ ChemDriver::reactionRateRhoY(FArrayBox&       RhoYdot,
     const Box& mcbx = T.box();
     const Box& mobx = RhoYdot.box();
     
-    Box ovlp = box & mabx & mbbx & mcbx & mobx;
+    const Box& ovlp = box & mabx & mbbx & mcbx & mobx;
     if( ! ovlp.ok() ) return;
     
     FORT_RRATERHOY(ovlp.loVect(), ovlp.hiVect(),
@@ -759,7 +804,7 @@ ChemDriver::massFracToMoleFrac(FArrayBox&       X,
     const Box& mabx = Y.box();
     const Box& mobx = X.box();
     
-    Box ovlp = box & mabx & mobx;
+    const Box& ovlp = box & mabx & mobx;
     if (!ovlp.ok())
 	return;
     
@@ -781,7 +826,7 @@ ChemDriver::moleFracToMassFrac(FArrayBox&       Y,
     const Box& mobx = X.box();
     const Box& mabx = Y.box();
     
-    Box ovlp = box & mobx & mabx;
+    const Box& ovlp = box & mobx & mabx;
     if (!ovlp.ok())
 	return;
     
@@ -808,7 +853,7 @@ ChemDriver::massFracToMolarConc(FArrayBox&       C,
     const Box& mabx = Y.box();
     const Box& mbbx = T.box();
     
-    Box ovlp = box & mabx & mbbx & mobx;
+    const Box& ovlp = box & mabx & mbbx & mobx;
     if (!ovlp.ok())
 	return;
     
@@ -839,7 +884,7 @@ ChemDriver::massFracToMolarConc(FArrayBox&       C,
     const Box& mbbx = T.box();
     const Box& mrbx = Rho.box();
 
-    Box ovlp = box & mabx & mbbx & mobx & mrbx;
+    const Box& ovlp = box & mabx & mbbx & mobx & mrbx;
     if (!ovlp.ok())
 	return;
     
@@ -863,7 +908,7 @@ ChemDriver::molarConcToMoleFrac(FArrayBox&       X,
     const Box& mobx = X.box();
     const Box& mabx = C.box();
     
-    Box ovlp = box & mabx & mobx;
+    const Box& ovlp = box & mabx & mobx;
     if (!ovlp.ok())
 	return;
     
@@ -1345,15 +1390,24 @@ ChemDriver::getOTradLoss_TDF(FArrayBox&       Qloss,
                    &Patm, &T_bg);
 }
 
-ChemDriver::Edge::Edge (const std::string& n1, const std::string& n2, const Array<std::pair<int,Real> > rwl)
-    : sp1(n1), sp2(n2), RWL(rwl) {}
+ChemDriver::Edge::Edge (const std::string& n1,
+			const std::string& n2,
+			const Array<std::pair<int,Real> > rwl,
+			const ChemDriver* CD)
+  : sp1(n1), sp2(n2), RWL(rwl), cd(CD) {}
 
-ChemDriver::Edge::Edge (const std::string& n1, const std::string& n2, int reac, Real weight )
-    : sp1(n1), sp2(n2) { RWL.push_back(std::pair<int,Real>(reac,weight)); }
+ChemDriver::Edge::Edge (const std::string& n1,
+			const std::string& n2,
+			int reac,
+			Real weight,
+			const ChemDriver* CD)
+  : sp1(n1), sp2(n2), cd(CD) { RWL.push_back(std::pair<int,Real>(reac,weight)); }
 
 int
 ChemDriver::Edge::equivSign (const Edge& rhs) const
 {   
+    BL_ASSERT(cd == rhs.CD());
+    BL_ASSERT(cd != 0);
     if ( (sp1 == rhs.sp1) && (sp2 == rhs.sp2) )
         return 1;
     
@@ -1365,8 +1419,10 @@ ChemDriver::Edge::equivSign (const Edge& rhs) const
 }
 
 void
-ChemDriver::Edge::combine (const Edge& rhs, const int   sgn)
+ChemDriver::Edge::combine (const Edge& rhs, const int sgn)
 {
+    BL_ASSERT(cd == rhs.CD());
+    BL_ASSERT(cd != 0);
     if (sgn!=0)
     {            
         int oldSize = RWL.size();
@@ -1417,10 +1473,13 @@ ChemDriver::Edge::operator<(const Edge& rhs) const
 
 std::ostream& operator<< (std::ostream& os, const ChemDriver::Edge& e)
 {
+  const ChemDriver* cd = e.CD();
+  BL_ASSERT(cd != 0);
+  const Array<int>& rvmap = cd->reactionReverseMap();
   os << e.sp1 << " " << e.sp2 << " ";
   for (int i=0; i<e.RWL.size(); ++i) {
     const std::pair<int,Real>& p=e.RWL[i];
-    os << p.first << ":" << p.second;
+    os << rvmap[p.first] << ":" << p.second;
     if (i<e.RWL.size()-1) os << " ";
   }
   return os;
@@ -1715,6 +1774,10 @@ ChemDriver::getEdges (const std::string& trElt, int PrintVerbose, int HackSplitt
         if (LR==0 || LP==0)  // no tr-containing species in reac
             continue;
         
+	int rr = reaction_rev_map[r];
+	if (PrintVerbose>0) {
+	  cout << rr+1 << ": " << reactionStringBuild(rr) << endl;
+	}
         if ((LR == 1) || (LP == 1)) // exactly one tr-containing species either side
         {
             for (std::map<std::string,int>::const_iterator rit=reac.begin(); rit!=reac.end(); ++rit)
@@ -1727,7 +1790,10 @@ ChemDriver::getEdges (const std::string& trElt, int PrintVerbose, int HackSplitt
                     const std::string& spcp = pit->first;
                     const int cop = pit->second;
                     int w = std::min(cor*groups[spcr][trElt],cop*groups[spcp][trElt]);
-                    edges.push_back(Edge(spcr,spcp,r,w));
+		    if (PrintVerbose>0) {
+		      cout << "    " << spcr << " => " << spcp << " w: " << w << endl;
+		    }
+                    edges.push_back(Edge(spcr,spcp,r,w,this));
                 }
             }
             continue;
@@ -1755,49 +1821,44 @@ ChemDriver::getEdges (const std::string& trElt, int PrintVerbose, int HackSplitt
             int pick = 0;
 
             // HACK
-            if ((HackSplitting==1) && (trElt=="H") && (r==61))
+            if ((HackSplitting==1) && (trElt=="H") && (rr==61)) // Intended for GRI30
             {
                 pick = 0;
-                if (PrintVerbose>0)
-                    cout << "decomposition of reaction " << r+1 << "...resorting to HACK!!" << endl;
+                if (PrintVerbose>0) {
+                    cout << "decomposition of reaction " << rr+1 << "...resorting to HACK!!" << endl;
+		}
             }
             else
             {
-                if ((HackSplitting==1) && (trElt=="H") && (r==310))
+                if (b0.sameSign() && b1.sameSign())
                 {
-                    pick = 0;
-                    if (PrintVerbose>0)
-                        cout << "decomposition of reaction " << r+1 << "...resorting to HACK!!" << endl;
+                    if (b1.size() < b0.size())
+                    {
+                        pick = 1;
+                        if (PrintVerbose>0) {
+			  cout << "decomposition of reaction " << rr+1 << " resorting to atom cnt" << endl;
+			}
+                    }
+                    if (b1.size() == b0.size())
+                    {
+                        if (b0.awt() > b1.awt())
+                        {
+                            pick = 1;
+                            if (PrintVerbose>0) {
+			      cout << "decomposition of reaction " << rr+1 << " ...resorting to tot awt" << endl;
+			    }
+                        }
+                        else if ( (PrintVerbose>0) && (b0.awt() < b1.awt()) )
+                        {
+                            cout << "decomposition of reaction " << rr+1 << " ...resorting to tot awt" << endl;
+                        }
+                    }
                 }
                 else
                 {
-                    if (b0.sameSign() && b1.sameSign())
-                    {
-                        if (b1.size() < b0.size())
-                        {
-                            pick = 1;
-                            if (PrintVerbose>0)
-                                cout << "decomposition of reaction " << r+1 << " resorting to atom cnt" << endl;
-                        }
-                        if (b1.size() == b0.size())
-                        {
-                            if (b0.awt() > b1.awt())
-                            {
-                                pick = 1;
-                                if (PrintVerbose>0)
-                                    cout << "decomposition of reaction " << r+1 << " ...resorting to tot awt" << endl;
-                            }
-                            else if ( (PrintVerbose>0) && (b0.awt() < b1.awt()) )
-                            {
-                                cout << "decomposition of reaction " << r+1 << " ...resorting to tot awt" << endl;
-                            }
-                        }
-                    }
-                    else
-                    {
-                        if (b1.sameSign())
-                            pick = 1;
-                    }
+		  if (b1.sameSign()) {
+		    pick = 1;
+		  }
                 }
             }
             
@@ -1808,28 +1869,382 @@ ChemDriver::getEdges (const std::string& trElt, int PrintVerbose, int HackSplitt
             
             if (pick == 0)
             {
-                edges.push_back(Edge(rs0,ps0,r,std::min(nR0,nP0)));
-                if (nP0<nR0)
-                    edges.push_back(Edge(rs0,ps1,r,nR0-nP0));
-                
-                edges.push_back(Edge(rs1,ps1,r,std::min(nR1,nP1)));
-                if (nR0<nP0)
-                    edges.push_back(Edge(rs1,ps0,r,nP0-nR0));
+	      if (PrintVerbose>0) {
+		cout << "  choosing to move " << b0 << " rather than " << b1 << endl;
+	        cout << "    " << rs0 << " => " << ps0 << " w: " << std::min(nR0,nP0) << endl;
+	      }
+	      edges.push_back(Edge(rs0,ps0,r,std::min(nR0,nP0),this));
+	      if (nP0<nR0) {
+		if (PrintVerbose>0) {
+		  cout << "    " << rs0 << " => " << ps1 << " w: " << nR0-nP0 << endl;
+		}
+		edges.push_back(Edge(rs0,ps1,r,nR0-nP0,this));
+	      }
+              
+	      if (PrintVerbose>0) {
+	        cout << "    " << rs1 << " => " << ps1 << " w: " << std::min(nR1,nP1) << endl;
+	      }
+	      edges.push_back(Edge(rs1,ps1,r,std::min(nR1,nP1),this));
+	      if (nR0<nP0) {
+		if (PrintVerbose>0) {
+		  cout << "    " << rs1 << " => " << ps0 << " w: " << nP0-nR0 << endl;
+		}
+		edges.push_back(Edge(rs1,ps0,r,nP0-nR0,this));
+	      }
             }
             else
             {
-                edges.push_back(Edge(rs0,ps1,r,std::min(nR0,nP1)));
-                if (nP1<nR0)
-                    edges.push_back(Edge(rs0,ps0,r,nR0-nP1));
-                
-                edges.push_back(Edge(rs1,ps0,r,std::min(nR1,nP0)));
-                if (nR0<nP1)
-                    edges.push_back(Edge(rs1,ps1,r,nP1-nR0));
+	      if (PrintVerbose>0) {
+		cout << "  choosing to move " << b1 << " rather than " << b0 << endl;
+	        cout << "    " << rs0 << " => " << ps1 << " w: " << std::min(nR0,nP1) << endl;
+	      }
+	      edges.push_back(Edge(rs0,ps1,r,std::min(nR0,nP1),this));
+	      if (nP1<nR0) {
+		if (PrintVerbose>0) {
+		  cout << "    " << rs0 << " => " << ps0 << " w: " << nR0-nP1 << endl;
+		}
+		edges.push_back(Edge(rs0,ps0,r,nR0-nP1,this));
+	      }
+
+	      if (PrintVerbose>0) {
+	        cout << "    " << rs1 << " => " << ps0 << " w: " << std::min(nR1,nP0) << endl;
+	      }
+	      edges.push_back(Edge(rs1,ps0,r,std::min(nR1,nP0),this));
+	      if (nR0<nP1) {
+		if (PrintVerbose>0) {
+		  cout << "    " << rs1 << " => " << ps1 << " w: " << nP1-nR0 << endl;
+		}
+		edges.push_back(Edge(rs1,ps1,r,nP1-nR0,this));
+	      }
             }
             continue;
         }
 
-        cout << "Cannot decompose rxn: " << r << " " << LR << " " << LP << endl;
+        if (LR==2 && LP==3)
+        {
+            std::map<std::string,int> reace; //to count the number of elements in given reactant species sp
+            
+            for (std::map<std::string,int>::const_iterator it = reac.begin(); it!=reac.end(); ++it)
+            {
+              const std::string& sp = it->first;
+            
+              for (int j=0; j<eltNames.size(); ++j)
+              {
+                const std::string elt = eltNames[j];
+                int m = numberOfElementXinSpeciesY(elt,sp);
+                reace[sp] += m;
+              }
+               // cout <<"CALCULATED VALUE=" << reace[sp] << endl;
+                        
+            }
+            std::map<std::string,int>::const_iterator re0 = reace.begin();
+            std::map<std::string,int>::const_iterator re1 = re0; re1++;
+
+            int rce0 = re0->second;
+            int rce1 = re1->second;
+
+            std::map<std::string,int>::const_iterator r0 = reac.begin();
+            std::map<std::string,int>::const_iterator r1 = r0; r1++;
+            std::map<std::string,int>::const_iterator p0 = prod.begin();
+            std::map<std::string,int>::const_iterator p1 = p0; p1++;
+            std::map<std::string,int>::const_iterator p2 = p1; p2++;
+
+            const std::string& rs0 = r0->first;
+            const std::string& rs1 = r1->first;
+            const std::string& ps0 = p0->first;
+            const std::string& ps1 = p1->first;
+            const std::string& ps2 = p2->first;
+            int rc0 = r0->second;
+            int rc1 = r1->second;
+            int pc0 = p0->second;
+            int pc1 = p1->second;
+            int pc2 = p2->second;
+
+            if(rce0<rce1)
+            {
+              Group b0(pc0 * groups[ps0] - rc0 * groups[rs0]);
+              //cout << b0.awt() << endl;
+              Group b1(pc1 * groups[ps1] - rc0 * groups[rs0]);
+              //cout << b1.awt() << endl;
+              Group b2(pc2 * groups[ps2] - rc0 * groups[rs0]);
+              //cout << b2.awt() << endl;
+              if(b0.awt()<b1.awt() && b0.awt()<b2.awt())
+              {
+                // link r0 to p0
+                    int w = std::min(rc0*groups[rs0][trElt],pc0*groups[ps0][trElt]);
+                    if (PrintVerbose>0) {
+                      cout << "    " << rs0 << " => " << ps0 << " w: " << w << endl;
+                    }
+                    edges.push_back(Edge(rs0,ps0,r,w,this));
+                   w = std::min(rc1*groups[rs1][trElt],pc1*groups[ps1][trElt]);
+                   edges.push_back(Edge(rs1,ps1,r,w,this));
+                   w = std::min(rc1*groups[rs1][trElt],pc2*groups[ps2][trElt]);
+                   edges.push_back(Edge(rs1,ps2,r,w,this));
+              }
+              else if(b1.awt()<b0.awt() && b1.awt()<b2.awt())
+              {
+                // link r0 to p1
+                    int w = std::min(rc0*groups[rs0][trElt],pc1*groups[ps1][trElt]);
+                    if (PrintVerbose>0) {
+                      cout << "    " << rs0 << " => " << ps1 << " w: " << w << endl;
+                    }
+                    edges.push_back(Edge(rs0,ps1,r,w,this));
+                   w = std::min(rc1*groups[rs1][trElt],pc0*groups[ps0][trElt]);
+                   edges.push_back(Edge(rs1,ps0,r,w,this));
+                   w = std::min(rc1*groups[rs1][trElt],pc2*groups[ps2][trElt]);
+                   edges.push_back(Edge(rs1,ps2,r,w,this));
+              }
+              else
+              {
+                // link r0 to p2
+                    int w = std::min(rc0*groups[rs0][trElt],pc2*groups[ps2][trElt]);
+                    if (PrintVerbose>0) {
+                      cout << "    " << rs0 << " => " << ps2 << " w: " << w << endl;
+                    }
+                    edges.push_back(Edge(rs0,ps2,r,w,this));
+                   w = std::min(rc1*groups[rs1][trElt],pc1*groups[ps1][trElt]);
+                   edges.push_back(Edge(rs1,ps1,r,w,this));
+                   w = std::min(rc1*groups[rs1][trElt],pc0*groups[ps0][trElt]);
+                   edges.push_back(Edge(rs1,ps0,r,w,this));
+              }
+            }
+           else
+            {
+              Group b0(pc0 * groups[ps0] - rc1 * groups[rs1]);
+              //cout << b0.awt() << endl;
+              Group b1(pc1 * groups[ps1] - rc1 * groups[rs1]);
+              //cout << b1.awt() << endl;
+              Group b2(pc2 * groups[ps2] - rc1 * groups[rs1]);
+              //cout << b2.awt() << endl;
+                
+              if(b0.awt()<b1.awt() && b0.awt()<b2.awt())
+              {
+                // link r1 to p0
+                    int w = std::min(rc1*groups[rs1][trElt],pc0*groups[ps0][trElt]);
+                    if (PrintVerbose>0) {
+                      cout << "    " << rs1 << " => " << ps0 << " w: " << w << endl;
+                    }
+                    edges.push_back(Edge(rs1,ps0,r,w,this));
+                   w = std::min(rc1*groups[rs0][trElt],pc1*groups[ps1][trElt]);
+                   edges.push_back(Edge(rs0,ps1,r,w,this));
+                   w = std::min(rc0*groups[rs0][trElt],pc2*groups[ps2][trElt]);
+                   edges.push_back(Edge(rs0,ps2,r,w,this));
+              }
+              else if(b1.awt()<b0.awt() && b1.awt()<b2.awt())
+              {
+                // link r1 to p1
+                    int w = std::min(rc1*groups[rs1][trElt],pc1*groups[ps1][trElt]);
+                    if (PrintVerbose>0) {
+                      cout << "    " << rs1 << " => " << ps1 << " w: " << w << endl;
+                    }
+                    edges.push_back(Edge(rs1,ps1,r,w,this));
+                   w = std::min(rc0*groups[rs0][trElt],pc0*groups[ps0][trElt]);
+                   edges.push_back(Edge(rs0,ps0,r,w,this));
+                   w = std::min(rc0*groups[rs0][trElt],pc2*groups[ps2][trElt]);
+                   edges.push_back(Edge(rs0,ps2,r,w,this));
+              }
+              else
+              {
+                // link r1 to p2
+                    int w = std::min(rc1*groups[rs1][trElt],pc2*groups[ps2][trElt]);
+                    if (PrintVerbose>0) {
+                      cout << "    " << rs1 << " => " << ps2 << " w: " << w << endl;
+                    }
+                    edges.push_back(Edge(rs1,ps2,r,w,this));
+                   w = std::min(rc0*groups[rs0][trElt],pc1*groups[ps1][trElt]);
+                   edges.push_back(Edge(rs0,ps1,r,w,this));
+                   w = std::min(rc0*groups[rs0][trElt],pc0*groups[ps0][trElt]);
+                   edges.push_back(Edge(rs0,ps0,r,w,this));
+              }
+           }
+
+           continue;
+         }
+         if (LR==2 && LP==4)
+        {
+            std::map<std::string,int> reace; //to count the number of elements in given reactant species sp
+            
+            for (std::map<std::string,int>::const_iterator it = reac.begin(); it!=reac.end(); ++it)
+            {
+              const std::string& sp = it->first;
+            
+              for (int j=0; j<eltNames.size(); ++j)
+              {
+                const std::string elt = eltNames[j];
+                int m = numberOfElementXinSpeciesY(elt,sp);
+                reace[sp] += m;
+              }
+               // cout <<"CALCULATED VALUE=" << reace[sp] << endl;
+                        
+            }
+            std::map<std::string,int>::const_iterator re0 = reace.begin();
+            std::map<std::string,int>::const_iterator re1 = re0; re1++;
+
+            int rce0 = re0->second;
+            int rce1 = re1->second;
+
+            std::map<std::string,int>::const_iterator r0 = reac.begin();
+            std::map<std::string,int>::const_iterator r1 = r0; r1++;
+            std::map<std::string,int>::const_iterator p0 = prod.begin();
+            std::map<std::string,int>::const_iterator p1 = p0; p1++;
+            std::map<std::string,int>::const_iterator p2 = p1; p2++;
+            std::map<std::string,int>::const_iterator p3 = p2; p3++;
+
+            const std::string& rs0 = r0->first;
+            const std::string& rs1 = r1->first;
+            const std::string& ps0 = p0->first;
+            const std::string& ps1 = p1->first;
+            const std::string& ps2 = p2->first;
+            const std::string& ps3 = p3->first;
+            int rc0 = r0->second;
+            int rc1 = r1->second;
+            int pc0 = p0->second;
+            int pc1 = p1->second;
+            int pc2 = p2->second;
+            int pc3 = p3->second;
+
+            if(rce0<rce1)
+            {
+              Group b0(pc0 * groups[ps0] - rc0 * groups[rs0]);
+              Group b1(pc1 * groups[ps1] - rc0 * groups[rs0]);
+              Group b2(pc2 * groups[ps2] - rc0 * groups[rs0]);
+              Group b3(pc3 * groups[ps3] - rc0 * groups[rs0]);             
+
+              if(b0.awt()<b1.awt() && b0.awt()<b2.awt() && b0.awt()<b3.awt())
+              {
+                // link r0 to p0
+                    int w = std::min(rc0*groups[rs0][trElt],pc0*groups[ps0][trElt]);
+                    if (PrintVerbose>0) {
+                      cout << "    " << rs0 << " => " << ps0 << " w: " << w << endl;
+                    }
+                    edges.push_back(Edge(rs0,ps0,r,w,this));
+                   w = std::min(rc1*groups[rs1][trElt],pc1*groups[ps1][trElt]);
+                   edges.push_back(Edge(rs1,ps1,r,w,this));
+                   w = std::min(rc1*groups[rs1][trElt],pc2*groups[ps2][trElt]);
+                   edges.push_back(Edge(rs1,ps2,r,w,this));
+                   w = std::min(rc1*groups[rs1][trElt],pc3*groups[ps3][trElt]);
+                   edges.push_back(Edge(rs1,ps3,r,w,this));
+              }
+              else if(b1.awt()<b0.awt() && b1.awt()<b2.awt() && b1.awt()<b3.awt())
+              {
+                // link r0 to p1
+                    int w = std::min(rc0*groups[rs0][trElt],pc1*groups[ps1][trElt]);
+                    if (PrintVerbose>0) {
+                      cout << "    " << rs0 << " => " << ps1 << " w: " << w << endl;
+                    }
+                    edges.push_back(Edge(rs0,ps1,r,w,this));
+                   w = std::min(rc1*groups[rs1][trElt],pc0*groups[ps0][trElt]);
+                   edges.push_back(Edge(rs1,ps0,r,w,this));
+                   w = std::min(rc1*groups[rs1][trElt],pc2*groups[ps2][trElt]);
+                   edges.push_back(Edge(rs1,ps2,r,w,this));
+                   w = std::min(rc1*groups[rs1][trElt],pc3*groups[ps3][trElt]);
+                   edges.push_back(Edge(rs1,ps3,r,w,this));
+              }
+              else if(b2.awt()<b0.awt() && b2.awt()<b1.awt() && b2.awt()<b3.awt())
+              {
+                // link r0 to p2
+                    int w = std::min(rc0*groups[rs0][trElt],pc2*groups[ps2][trElt]);
+                    if (PrintVerbose>0) {
+                      cout << "    " << rs0 << " => " << ps2 << " w: " << w << endl;
+                    }
+                    edges.push_back(Edge(rs0,ps2,r,w,this));
+                   w = std::min(rc1*groups[rs1][trElt],pc0*groups[ps0][trElt]);
+                   edges.push_back(Edge(rs1,ps0,r,w,this));
+                   w = std::min(rc1*groups[rs1][trElt],pc1*groups[ps1][trElt]);
+                   edges.push_back(Edge(rs1,ps1,r,w,this));
+                   w = std::min(rc1*groups[rs1][trElt],pc3*groups[ps3][trElt]);
+                   edges.push_back(Edge(rs1,ps3,r,w,this));
+              }
+              else
+              {
+                // link r0 to p3
+                    int w = std::min(rc0*groups[rs0][trElt],pc3*groups[ps3][trElt]);
+                    if (PrintVerbose>0) {
+                      cout << "    " << rs0 << " => " << ps3 << " w: " << w << endl;
+                    }
+                    edges.push_back(Edge(rs0,ps3,r,w,this));
+                   w = std::min(rc1*groups[rs1][trElt],pc1*groups[ps1][trElt]);
+                   edges.push_back(Edge(rs1,ps1,r,w,this));
+                   w = std::min(rc1*groups[rs1][trElt],pc0*groups[ps0][trElt]);
+                   edges.push_back(Edge(rs1,ps0,r,w,this));
+                   w = std::min(rc1*groups[rs1][trElt],pc2*groups[ps2][trElt]);
+                   edges.push_back(Edge(rs1,ps2,r,w,this));
+              }
+            }
+           else
+            {
+              Group b0(pc0 * groups[ps0] - rc1 * groups[rs1]);
+              Group b1(pc1 * groups[ps1] - rc1 * groups[rs1]);
+              Group b2(pc2 * groups[ps2] - rc1 * groups[rs1]);
+              Group b3(pc3 * groups[ps3] - rc1 * groups[rs1]);
+                
+              if(b0.awt()<b1.awt() && b0.awt()<b2.awt() && b0.awt()<b3.awt())
+              {
+                // link r1 to p0
+                    int w = std::min(rc1*groups[rs1][trElt],pc0*groups[ps0][trElt]);
+                    if (PrintVerbose>0) {
+                      cout << "    " << rs1 << " => " << ps0 << " w: " << w << endl;
+                    }
+                    edges.push_back(Edge(rs1,ps0,r,w,this));
+                   w = std::min(rc1*groups[rs0][trElt],pc1*groups[ps1][trElt]);
+                   edges.push_back(Edge(rs0,ps1,r,w,this));
+                   w = std::min(rc0*groups[rs0][trElt],pc2*groups[ps2][trElt]);
+                   edges.push_back(Edge(rs0,ps2,r,w,this));
+                   w = std::min(rc0*groups[rs0][trElt],pc3*groups[ps3][trElt]);
+                   edges.push_back(Edge(rs0,ps3,r,w,this));
+              }
+              else if(b1.awt()<b0.awt() && b1.awt()<b2.awt() && b1.awt()<b3.awt())
+              {
+                // link r1 to p1
+                    int w = std::min(rc1*groups[rs1][trElt],pc1*groups[ps1][trElt]);
+                    if (PrintVerbose>0) {
+                      cout << "    " << rs1 << " => " << ps1 << " w: " << w << endl;
+                    }
+                    edges.push_back(Edge(rs1,ps1,r,w,this));
+                   w = std::min(rc0*groups[rs0][trElt],pc0*groups[ps0][trElt]);
+                   edges.push_back(Edge(rs0,ps0,r,w,this));
+                   w = std::min(rc0*groups[rs0][trElt],pc2*groups[ps2][trElt]);
+                   edges.push_back(Edge(rs0,ps2,r,w,this));
+                   w = std::min(rc0*groups[rs0][trElt],pc3*groups[ps3][trElt]);
+                   edges.push_back(Edge(rs0,ps3,r,w,this));
+              }
+              else if(b2.awt()<b0.awt() && b2.awt()<b1.awt() && b2.awt()<b3.awt())
+              {
+                // link r1 to p2
+                    int w = std::min(rc1*groups[rs1][trElt],pc2*groups[ps2][trElt]);
+                    if (PrintVerbose>0) {
+                      cout << "    " << rs1 << " => " << ps2 << " w: " << w << endl;
+                    }
+                    edges.push_back(Edge(rs1,ps2,r,w,this));
+                   w = std::min(rc0*groups[rs0][trElt],pc1*groups[ps1][trElt]);
+                   edges.push_back(Edge(rs0,ps1,r,w,this));
+                   w = std::min(rc0*groups[rs0][trElt],pc0*groups[ps0][trElt]);
+                   edges.push_back(Edge(rs0,ps0,r,w,this));
+                   w = std::min(rc0*groups[rs0][trElt],pc3*groups[ps3][trElt]);
+                   edges.push_back(Edge(rs0,ps3,r,w,this));
+              }
+             else
+              {
+                // link r1 to p3
+                    int w = std::min(rc1*groups[rs1][trElt],pc3*groups[ps3][trElt]);
+                    if (PrintVerbose>0) {
+                      cout << "    " << rs1 << " => " << ps3 << " w: " << w << endl;
+                    }
+                    edges.push_back(Edge(rs1,ps3,r,w,this));
+                   w = std::min(rc0*groups[rs0][trElt],pc1*groups[ps1][trElt]);
+                   edges.push_back(Edge(rs0,ps1,r,w,this));
+                   w = std::min(rc0*groups[rs0][trElt],pc0*groups[ps0][trElt]);
+                   edges.push_back(Edge(rs0,ps0,r,w,this));
+                   w = std::min(rc0*groups[rs0][trElt],pc2*groups[ps2][trElt]);
+                   edges.push_back(Edge(rs0,ps2,r,w,this));
+              }
+           }
+
+           continue;
+         }
+       
+
+	cout << "Cannot decompose rxn: " << rr+1 << ": " << reactionStringBuild(rr) << endl;
     }
 
     // Uniquify/combine edges

@@ -6,6 +6,11 @@
 #    define FORT_ACTIVECONTROL             activecontrol
 #    define FORT_SET_SCAL_NUMB             setscnum
 #    define FORT_GETPAMB                   getpamb
+#    define FORT_SETPAMB                   setpamb
+#    define FORT_GETPAMB_NEW               getpambnew
+#    define FORT_SETPAMB_NEW               setpambnew
+#    define FORT_GETCLOSEDCHAMBER          getclosedchamber
+#    define FORT_GETDPDT                   getdpdt
 #    define FORT_COMPUTE_RHODGRADHDOTGRADY computerhodgradhdotgrady
 #    define FORT_DIVUFILL                  divufill
 #    define FORT_DSDTFILL                  dsdtfill
@@ -25,6 +30,7 @@
 #    define FORT_INCRWEXTFLXDIV            incrwextflxdiv
 #    define FORT_FLUXDIV                   flxdiv
 #    define FORT_CALCDIVU                  calcdivu
+#    define FORT_CALCGAMMAPINV             calcgammapinv
 #    define FORT_FLOORSPEC                 floorspec
 #    define FORT_ENTH_DIFF_TERMS           enthdiff
 #    define FORT_SET_COMMON                setcommon
@@ -45,6 +51,11 @@
 #    define FORT_ACTIVECONTROL             ACTIVECONTROL
 #    define FORT_SET_SCAL_NUMB             SETSCNUM
 #    define FORT_GETPAMB                   GETPAMB
+#    define FORT_SETPAMB                   SETPAMB
+#    define FORT_GETPAMB_NEW               GETPAMBNEW
+#    define FORT_SETPAMB_NEW               SETPAMBNEW
+#    define FORT_GETCLOSEDCHAMBER          GETCLOSEDCHAMBER
+#    define FORT_GETDPDT                   GETDPDT
 #    define FORT_COMPUTE_RHODGRADHDOTGRADY COMPUTERHODGRADHDOTGRADY
 #    define FORT_DIVUFILL                  DIVUFILL
 #    define FORT_DSDTFILL                  DSDTFILL
@@ -64,6 +75,7 @@
 #    define FORT_INCRWEXTFLXDIV            INCRWEXTFLXDIV
 #    define FORT_FLUXDIV                   FLXDIV
 #    define FORT_CALCDIVU                  CALCDIVU
+#    define FORT_CALCGAMMAPINV             CALCGAMMAPINV
 #    define FORT_FLOORSPEC                 FLOORSPEC
 #    define FORT_ENTH_DIFF_TERMS           ENTHDIFF
 #    define FORT_SET_COMMON                SETCOMMON
@@ -83,6 +95,11 @@
 #    define FORT_ACTIVECONTROL             activecontrol
 #    define FORT_SET_SCAL_NUMB             setscnum
 #    define FORT_GETPAMB                   getpamb
+#    define FORT_SETPAMB                   setpamb
+#    define FORT_GETPAMB_NEW               getpambnew
+#    define FORT_SETPAMB_NEW               setpambnew
+#    define FORT_GETCLOSEDCHAMBER          getclosedchamber
+#    define FORT_GETDPDT                   getdpdt
 #    define FORT_COMPUTE_RHODGRADHDOTGRADY computerhodgradhdotgrady
 #    define FORT_DIVUFILL                  divufill
 #    define FORT_DSDTFILL                  dsdtfill
@@ -102,6 +119,7 @@
 #    define FORT_INCRWEXTFLXDIV            incrwextflxdiv
 #    define FORT_FLUXDIV                   flxdiv
 #    define FORT_CALCDIVU                  calcdivu
+#    define FORT_CALCGAMMAPINV             calcgammapinv
 #    define FORT_FLOORSPEC                 floorspec
 #    define FORT_ENTH_DIFF_TERMS           enthdiff
 #    define FORT_SET_COMMON                setcommon
@@ -121,6 +139,11 @@
 #    define FORT_ACTIVECONTROL             activecontrol_
 #    define FORT_SET_SCAL_NUMB             setscnum_
 #    define FORT_GETPAMB                   getpamb_
+#    define FORT_SETPAMB                   setpamb_
+#    define FORT_GETPAMB_NEW               getpambnew_
+#    define FORT_SETPAMB_NEW               setpambnew_
+#    define FORT_GETCLOSEDCHAMBER          getclosedchamber_
+#    define FORT_GETDPDT                   getdpdt_
 #    define FORT_COMPUTE_RHODGRADHDOTGRADY computerhodgradhdotgrady_
 #    define FORT_DIVUFILL                  divufill_
 #    define FORT_DSDTFILL                  dsdtfill_
@@ -140,6 +163,7 @@
 #    define FORT_INCRWEXTFLXDIV            incrwextflxdiv_
 #    define FORT_FLUXDIV                   flxdiv_
 #    define FORT_CALCDIVU                  calcdivu_
+#    define FORT_CALCGAMMAPINV             calcgammapinv_
 #    define FORT_FLOORSPEC                 floorspec_
 #    define FORT_ENTH_DIFF_TERMS           enthdiff_
 #    define FORT_SET_COMMON                setcommon_
@@ -176,7 +200,14 @@ extern "C" {
 			    const int* FirstSpec,
 			    const int* LastSpec);
     
-    void FORT_GETPAMB(Real* pamb, Real* dpdt_factor);
+    void FORT_GETPAMB(Real* pamb);
+    void FORT_SETPAMB(Real* pamb);
+    void FORT_GETPAMB_NEW(Real* pamb);
+    void FORT_SETPAMB_NEW(Real* pamb);
+
+    void FORT_GETCLOSEDCHAMBER(int* closed_chamber);
+
+    void FORT_GETDPDT(Real* dpdt_factor);
 
     void FORT_COMPUTE_RHODGRADHDOTGRADY(const Real* dx,
               const int* lo, const int* hi,
@@ -268,7 +299,8 @@ extern "C" {
                            ARLIM_P(slo), ARLIM_P(shi), const Real* specdat,
                            ARLIM_P(blo), ARLIM_P(bhi), Real* betadat,
                            const int* nCompD, const Real* P1ATM_MKS,
-                           const int* do_temp, const int* do_VelVisc);
+                           const int* do_temp, const int* do_VelVisc, 
+			   const Real* Pamb_in);
 
     void FORT_FABMINMAX(const int* lo, const int* hi,
 			Real* fabdat, ARLIM_P(flo), ARLIM_P(fhi),
@@ -328,6 +360,12 @@ extern "C" {
                        const Real* vtT,    ARLIM_P(vtTlo),   ARLIM_P(vtThi),
                        const Real* rhoY,   ARLIM_P(rYlo),    ARLIM_P(rYhi),
                        const Real* T,      ARLIM_P(Tlo),     ARLIM_P(Thi));
+
+    void FORT_CALCGAMMAPINV(const int* lo,  const int* hi,
+			    Real* theta,        ARLIM_P(thlo),    ARLIM_P(thhi),
+			    const Real* rhoY,   ARLIM_P(rYlo),    ARLIM_P(rYhi),
+			    const Real* T,      ARLIM_P(Tlo),     ARLIM_P(Thi),
+			    const Real* Pamb_in);
     
     void FORT_FLOORSPEC(const int* lo,  const int* hi,
 			const Real* spec,   ARLIM_P(speclo),    ARLIM_P(spechi));

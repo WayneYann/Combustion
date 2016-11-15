@@ -18,7 +18,7 @@ subroutine write_job_info(dirname, la, write_pf_time)
                                f90_compile_line, f_compile_line, &
                                C_compile_line, link_line, &
                                source_git_hash, boxlib_git_hash, &
-                               aux_info_1
+                               network_dir
   use omp_module
   use cputime_module, only: get_cputime
 
@@ -88,7 +88,7 @@ subroutine write_job_info(dirname, la, write_pf_time)
      write (99,1001) "build dir:     ", trim(build_dir)
      write (99,1001) "BoxLib dir:    ", trim(boxlib_dir)
      write (99,*) " "
-     write (99,1001) "Chemistry Model: ", trim(aux_info_1)
+     write (99,1001) "Chemistry Model: ", trim(network_dir)
      write (99,*) " "
      write (99,1001) "Combustion git hash: ", trim(source_git_hash)
      write (99,1001) "BoxLib     git hash: ", trim(boxlib_git_hash)

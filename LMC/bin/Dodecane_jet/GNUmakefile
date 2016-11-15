@@ -17,6 +17,7 @@ FCOMP           = gfortran
 USE_MPI         = FALSE
 USE_OMP         = FALSE
 USE_MPI         = TRUE
+USE_MPI         = FALSE
 VERBOSE         = FALSE
 VERBOSE         = TRUE
 PROFILE         = FALSE
@@ -24,8 +25,8 @@ COMM_PROFILE    = FALSE
 
 # Enable SDC code - add .SDC to executable
 # and compile in the #ifdef LMC_SDC
-USE_LMC_SDC = TRUE
 USE_LMC_SDC = FALSE
+USE_LMC_SDC = TRUE
 
 # Enable flctin namelist
 USE_FLCTS       = TRUE

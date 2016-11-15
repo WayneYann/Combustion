@@ -21,8 +21,9 @@
       Patm = pamb / FORT_P1ATMMKS()
       num_zones_defined = 0
       len = len_trim(probtype)
-      if ( (probtype(1:len).eq.BL_PROB_PREMIXED_FIXED_INFLOW) 
-     &     .or. (probtype(1:len).eq.BL_PROB_PREMIXED_CONTROLLED_INFLOW) ) then
+      if ( (probtype(1:len).eq.BL_PROB_PREMIXED_FIXED_INFLOW) .or.
+     &     (probtype(1:len).eq.BL_PROB_PREMIXED_CONTROLLED_INFLOW) .or.
+     &     (probtype(1:len).eq.BL_PROB_FUELBLOB) ) then
          
 c     Take fuel mixture from prob data
 
@@ -162,8 +163,9 @@ c ::: -----------------------------------------------------------
       getZone = BL_VOLUME
       len     = len_trim(probtype)
 
-      if ( (probtype(1:len).eq.BL_PROB_PREMIXED_FIXED_INFLOW) 
-     &     .or. (probtype(1:len).eq.BL_PROB_PREMIXED_CONTROLLED_INFLOW) ) then
+      if ( (probtype(1:len).eq.BL_PROB_PREMIXED_FIXED_INFLOW) .or.
+     &     (probtype(1:len).eq.BL_PROB_PREMIXED_CONTROLLED_INFLOW) .or.
+     &     (probtype(1:len).eq.BL_PROB_FUELBLOB) ) then
 
          getZone = BL_FUELPIPE
          
@@ -204,8 +206,8 @@ c ::: -----------------------------------------------------------
 
       len = len_trim(probtype)
       
-      if ( (probtype(1:len).eq.BL_PROB_PREMIXED_FIXED_INFLOW) 
-     &     .or. (probtype(1:len).eq.BL_PROB_PREMIXED_CONTROLLED_INFLOW)) then
+      if ( (probtype(1:len).eq.BL_PROB_PREMIXED_FIXED_INFLOW) .or.
+     &     (probtype(1:len).eq.BL_PROB_PREMIXED_CONTROLLED_INFLOW) ) then
 
          if (RegionID .eq. BL_YLO) then
 
@@ -224,6 +226,8 @@ c ::: -----------------------------------------------------------
                   v =  V_in + (time-tbase_control)*dV_control
                else if (probtype(1:len).eq.BL_PROB_PREMIXED_FIXED_INFLOW) then
                   v = v_bc(zone)
+               else if (probtype(1:len).eq.BL_PROB_FUELBLOB) then
+                  v = v_bc(zone)
                endif
             endif
 
@@ -231,6 +235,11 @@ c ::: -----------------------------------------------------------
             write(6,*) 'No bcfunction instruction for RegionID = ', RegionID
             call bl_pd_abort(' ')
          endif
+
+      elseif (probtype(1:len).eq.BL_PROB_FUELBLOB) then
+
+         u = zero
+         v = zero
 
       elseif (probtype(1:len).eq.BL_PROB_DIFFUSION) then
 
@@ -276,6 +285,7 @@ c ::: -----------------------------------------------------------
          write(6,*) '            ',BL_PROB_PREMIXED_FIXED_INFLOW
          write(6,*) '            ',BL_PROB_PREMIXED_CONTROLLED_INFLOW
          write(6,*) '            ',BL_PROB_DIFFUSION
+         write(6,*) '            ',BL_PROB_FUELBLOB
          call bl_pd_abort(' ')
       endif
       end
@@ -382,7 +392,7 @@ c ::: -----------------------------------------------------------
 
       integer i, j, n, airZone, fuelZone, getZone, zone, len
       REAL_T x, y, r, Yl(maxspec), Xl(maxspec), Patm
-      REAL_T pmf_vals(maxspec+3), y1, y2, dx
+      REAL_T pmf_vals(maxspec+3), y1, y2, dx, xmid, ymid
       REAL_T pert,Lx,FORT_P1ATMMKS,eta,u,v,rho,T,h
 
       if (iN2.lt.1 .or. iN2.gt.Nspec) then
@@ -391,8 +401,8 @@ c ::: -----------------------------------------------------------
 
       len = len_trim(probtype)
 
-      if ( (probtype(1:len).eq.BL_PROB_PREMIXED_FIXED_INFLOW) 
-     &     .or. (probtype(1:len).eq.BL_PROB_PREMIXED_CONTROLLED_INFLOW) ) then
+      if ( (probtype(1:len).eq.BL_PROB_PREMIXED_FIXED_INFLOW) .or.
+     &     (probtype(1:len).eq.BL_PROB_PREMIXED_CONTROLLED_INFLOW) ) then
 
          do j = lo(2), hi(2)
             y = (float(j)+.5d0)*delta(2)+domnlo(2)
@@ -498,6 +508,47 @@ c     Superimpose blob of hot air
 
             enddo
          enddo
+
+         
+      else if ((probtype(1:len).eq.BL_PROB_FUELBLOB)) then
+
+         xmid = 0.5d0*(domnlo(1)+domnhi(1))
+         ymid = 0.5d0*(domnlo(2)+domnhi(2))
+
+         do j = lo(2), hi(2)
+            y = (float(j)+.5d0)*delta(2)+domnlo(2)
+            do i = lo(1), hi(1)
+               x = (float(i)+.5d0)*delta(1)+domnlo(1)
+                  
+               r = 0.0075d0 - sqrt( (x-xmid)**2 + (y-ymid)**2 )
+
+               y1 = (r - standoff - 0.5d0*delta(2))*100.d0
+               y2 = (r - standoff + 0.5d0*delta(2))*100.d0
+               
+               call pmf(y1,y2,pmf_vals,nPMF)               
+               if (nPMF.ne.Nspec+3) then
+                  call bl_abort('INITDATA: n .ne. Nspec+3')
+               endif
+               
+               scal(i,j,Temp) = pmf_vals(1)
+               do n = 1,Nspec
+                  Xl(n) = pmf_vals(3+n)
+               end do 
+               
+               CALL CKXTY (Xl, IWRK, RWRK, Yl)
+               
+               do n = 1,Nspec
+                  scal(i,j,FirstSpec+n-1) = Yl(n)
+               end do
+
+               scal(i,j,Trac) = 0.d0
+
+               vel(i,j,1) = 0.d0
+               vel(i,j,2) = 0.d0
+
+            end do
+         end do
+
       endif
 
       Patm = pamb / FORT_P1ATMMKS()
@@ -585,8 +636,9 @@ c ::: -----------------------------------------------------------
 
       len = len_trim(probtype)
 
-      if ( (probtype(1:len).eq.BL_PROB_PREMIXED_FIXED_INFLOW)
-     &     .or. (probtype(1:len).eq.BL_PROB_PREMIXED_CONTROLLED_INFLOW) ) then
+      if ( (probtype(1:len).eq.BL_PROB_PREMIXED_FIXED_INFLOW) .or.
+     &     (probtype(1:len).eq.BL_PROB_PREMIXED_CONTROLLED_INFLOW) .or.
+     &     (probtype(1:len).eq.BL_PROB_FUELBLOB) ) then
          Tid  = Temp      - id + SDIM
          RHid = RhoH      - id + SDIM
          YSid = FirstSpec - id + SDIM
@@ -743,8 +795,9 @@ c ::: -----------------------------------------------------------
 
       len = len_trim(probtype)
 
-      if ( (probtype(1:len).eq.BL_PROB_PREMIXED_FIXED_INFLOW)
-     &     .or. (probtype(1:len).eq.BL_PROB_PREMIXED_CONTROLLED_INFLOW) ) then
+      if ( (probtype(1:len).eq.BL_PROB_PREMIXED_FIXED_INFLOW) .or.
+     &     (probtype(1:len).eq.BL_PROB_PREMIXED_CONTROLLED_INFLOW) .or.
+     &     (probtype(1:len).eq.BL_PROB_FUELBLOB) ) then
          call FORT_MVERROR(tag,DIMS(tag),set,clear,
      &                     adv,DIMS(adv),lo,hi,nvar,
      &                     domlo,domhi,delta,xlo,

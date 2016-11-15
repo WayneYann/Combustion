@@ -35,7 +35,7 @@ geometry.coord_sys = 0  # 0 => cart, 1 => RZ
 mg.usecg = 1
 cg.v = 0
 cg.isExpert=1
-mg.v = 0
+mg.v = 1
 cg.maxiter = 1000
 mg.maxiter = 1000
 mg.nu_0 = 1
@@ -52,7 +52,7 @@ ns.do_group_bndry_fills = 1
 
 cg.cg_solver=1
 
-#amr.refine_grid_layout = 0
+amr.refine_grid_layout = 1
 
 #geometry.prob_lo    = -.0225 -.0225 0.0
 #geometry.prob_hi    =  .0225  .0225 0.06
@@ -173,7 +173,7 @@ proj.sync_tol       = 1.0e-8  # tolerence for projections
 proj.rho_wgt_vel_proj = 0      # 0 => const den proj, 1 => rho weighted
 #proj.rho_wgt_vel_proj = 1      # 0 => const den proj, 1 => rho weighted
 proj.Pcode          = 0
-proj.Pcode          = 4
+proj.Pcode          = 1
 proj.filter_factor  = 0.0
 proj.do_outflow_bcs = 0
 proj.divu_minus_s_factor = .5
@@ -195,7 +195,7 @@ mac.do_outflow_bcs = 0
 #
 fab.format = NATIVE
 
-ns.hack_nochem=1
+#ns.hack_nochem=1
 #ns.hack_nospecdiff=1
 #ns.init_iter=0
 #ns.do_init_proj=0
@@ -208,7 +208,6 @@ ns.hack_nochem=1
 #ShowMF_Check_Nans = true
 #ShowMF_Check_Nans = false
 
-ns.hack_nochem=1
 #ns.hack_nospecdiff=0
 #ns.init_iter=0
 #ns.do_init_proj=1

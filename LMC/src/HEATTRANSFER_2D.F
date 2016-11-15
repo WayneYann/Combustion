@@ -81,6 +81,49 @@
       enddo
       end
 
+      subroutine FORT_CALCGAMMAPINV(lo, hi,
+     &                              theta, DIMS(theta),
+     &                              rhoY, DIMS(rhoY),
+     &                              T, DIMS(T),
+     &                              Pamb_in)
+      implicit none
+#include <cdwrk.H>
+#include <visc.H>
+#include <htdata.H>
+      integer lo(SDIM),hi(SDIM)
+      integer DIMDEC(theta)
+      integer DIMDEC(rhoY)
+      integer DIMDEC(T)
+      REAL_T  theta(DIMV(theta))
+      REAL_T  rhoY(DIMV(rhoY),1:Nspec)
+      REAL_T  T(DIMV(T))
+      REAL_T  Pamb_in
+      
+      integer i, j, n
+      REAL_T Y(maxspec), cpmix, cvmix, rhoInv
+
+      do j=lo(2),hi(2)
+         do i=lo(1),hi(1)
+            rhoInv = 0.d0
+            do n=1,Nspec
+               rhoInv = rhoInv + rhoY(i,j,n)
+            enddo
+            rhoInv = 1.d0 / rhoInv
+            do n=1,Nspec
+               Y(n) = rhoInv*rhoY(i,j,n)
+            enddo
+
+            CALL CKCPBS(T(i,j),Y,IWRK(ckbi),RWRK(ckbr),cpmix)
+            cpmix = cpmix*1.d-4
+            CALL CKCVBS(T(i,j),Y,IWRK(ckbi),RWRK(ckbr),cvmix)
+            cvmix = cvmix*1.d-4
+
+            theta(i,j) = cvmix / (cpmix*Pamb_in)
+            
+         enddo
+      enddo
+      end
+
       subroutine FORT_FLOORSPEC(lo, hi,
      &                          spec,  DIMS(spec))
       implicit none
@@ -582,7 +625,8 @@ c -------------------- begin here ----------------------------
      &     DIMS(T), T,
      &     DIMS(Y), Y,
      &     DIMS(rhoD), rhoD,
-     &     ncompd, P1ATM_MKS, do_temp, do_VelVisc)
+     &     ncompd, P1ATM_MKS, do_temp, do_VelVisc,
+     &     Pamb_in)
       implicit none
 #include <cdwrk.H>
 #include <visc.H>
@@ -595,6 +639,7 @@ c -------------------- begin here ----------------------------
       REAL_T  T(DIMV(T))
       REAL_T  Y(DIMV(Y),*)
       REAL_T  rhoD(DIMV(rhoD),ncompd)
+      REAL_T  Pamb_in
       
       integer i, j, n, nc, ncs
       REAL_T P1ATM_MKS, Patm
@@ -629,7 +674,7 @@ c     any hacking to be done on viscosity, be sure to catch it there as well.
 
       if (.not.use_constant_rhoD) then
          if (.not. LeEQ1) then
-            Patm = pamb / P1ATM_MKS
+            Patm = Pamb_in / P1ATM_MKS
             call FORT_MIXAVG_RHODIFF_TEMP(lo, hi, rhoD, DIMS(rhoD),
      &           T, DIMS(T), Y, DIMS(Y), Patm, do_temp, do_VelVisc)
             if (thickFacTR.ne.1.d0) then

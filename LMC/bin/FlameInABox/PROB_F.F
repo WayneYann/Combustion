@@ -64,7 +64,7 @@ c ::: -----------------------------------------------------------
      $                  standoff, pertmag, nchemdiag, splitx, xfrontw,
      &                  splity, yfrontw, blobx, bloby, blobz, blobr,
      &                  blobT, Tfrontw, stTh, fuel_N2_vol_percent
-      namelist /heattransin/ pamb, dpdt_factor
+      namelist /heattransin/ pamb, pamb_new, dpdt_factor, closed_chamber
 #if defined(BL_DO_FLCT)
       integer nCompFile
       namelist /flctin/ tstart_turb, forceInflow, numInflPlanesStore, forceLo, forceHi,
@@ -150,7 +150,9 @@ c     Set defaults
       max_trac_lev = 100
       traceSpecVal = 1.d-10
       pamb = FORT_P1ATMMKS()
+      pamb_new = FORT_P1ATMMKS()
       dpdt_factor = 0.3d0
+      closed_chamber = 0
 
       splitx = 0.5d0 * (domnhi(1) + domnlo(1))
       xfrontw = 0.05d0 * (domnhi(1) - domnlo(1))
@@ -199,7 +201,8 @@ c     Initialize control variables
       h_control = -one
       pseudo_gravity = 0
       nchemdiag = 1
-
+      istemp = 0
+      navg_pnts = 10
 
       read(untin,fortin)
       

@@ -29,6 +29,9 @@ Bdirs += $(IAMR_DIR)/Source/InflowForce
 Bdirs   += $(BOXLIB_DIR)/Src/C_BaseLib
 Bdirs   += $(BOXLIB_DIR)/Src/C_AMRLib
 Bdirs   += $(BOXLIB_DIR)/Src/C_BoundaryLib
+ifeq ($(USE_PARTICLES), TRUE)
+  Bdirs += $(BOXLIB_DIR)/Src/C_ParticleLib
+endif
 Bdirs   += $(BOXLIB_DIR)/Src/LinearSolvers/C_CellMG
 Bdirs   += $(BOXLIB_DIR)/Src/LinearSolvers/C_TensorMG
 
@@ -79,6 +82,11 @@ ifeq ($(USE_NEWMECH), TRUE)
   DEFINES += -DBL_NOLINEVALUES -DBL_USE_NEWMECH -DBL_PARALLEL_IO
 endif
 
+ifeq ($(CHEMISTRY_MODEL), ALZETA)
+  cEXE_sources += alzeta.c
+  vpath %.f   $(VPATH_LOCATIONS) $(COMBUSTION_DIR)/Chemistry/data/Alzeta/PMFs
+  vpath %.c $(VPATH_LOCATIONS) $(COMBUSTION_DIR)/Chemistry/data/Alzeta
+endif
 ifeq ($(CHEMISTRY_MODEL), GLARSKEL)
   cEXE_sources += glarSkel.c
   vpath %.f   $(VPATH_LOCATIONS) $(COMBUSTION_DIR)/Chemistry/data/glar/PMFs
@@ -160,8 +168,6 @@ ifeq (${CHEMISTRY_MODEL}, BURKEMOD_D)
   vpath %.f   $(VPATH_LOCATIONS) $(COMBUSTION_DIR)/Chemistry/data/H2_mechD/PMFs
 endif
 
-
-
 # Enable time-dependent turbulence forcing term
 ifeq ($(USE_TDEPFORCING), TRUE)
   ifeq ($(DIM), 3)
@@ -216,12 +222,12 @@ CEXE_sources += buildInfo.cpp
 CEXE_headers += $(BOXLIB_HOME)/Tools/C_scripts/buildInfo.H
 INCLUDE_LOCATIONS +=  $(BOXLIB_HOME)/Tools/C_scripts
 
-buildInfo.cpp: $(BOXLIB_HOME)/Tools/C_scripts/make_build_info_cpp
+buildInfo.cpp:
 	$(BOXLIB_HOME)/Tools/C_scripts/makebuildinfo_C.py \
           --boxlib_home "$(BOXLIB_HOME)" \
-          --COMP "$(COMP)" \
-          --FCOMP "$(FCOMP)" \
-          --AUX "$(CHEMISTRY_MODEL)" \
+          --COMP "$(COMP)" --COMP_VERSION "$(COMP_VERSION)" \
+          --FCOMP "$(FCOMP)" --FCOMP_VERSION "$(FCOMP_VERSION)" \
+          --MODULES "Chemistry=$(CHEMISTRY_MODEL)" \
           --GIT "$(COMBUSTION_DIR) $(BOXLIB_HOME) $(IAMR_DIR)" 
 
 
@@ -234,3 +240,6 @@ vpath %.f   $(VPATH_LOCATIONS)
 vpath %.f90 $(VPATH_LOCATIONS)
 
 include $(BOXLIB_DIR)/Tools/C_mk/Make.rules
+
+clean::
+	$(SILENT) $(RM) buildInfo.cpp

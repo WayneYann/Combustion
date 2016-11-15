@@ -115,6 +115,7 @@ public:
     std::string reactionStringBuild (int reacIdx) const;
     void printReactions() const;
     const Array<int>& reactionMap() const;
+    const Array<int>& reactionReverseMap() const;
 
     int numberOfElementXinSpeciesY (const std::string& eltX,
                                     const std::string& spcY) const;
@@ -394,9 +395,16 @@ public:
 
         Edge () {}
 
-        Edge (const std::string& n1, const std::string& n2, const Array<std::pair<int,Real> > rwl);
+        Edge (const std::string& n1,
+	      const std::string& n2,
+	      const Array<std::pair<int,Real> > rwl,
+	      const ChemDriver* CD);
         
-        Edge (const std::string& n1, const std::string& n2, int reac, Real weight );
+        Edge (const std::string& n1,
+	      const std::string& n2,
+	      int reac,
+	      Real weight,
+	      const ChemDriver* CD);
         
         int equivSign (const Edge& rhs) const;
 
@@ -416,9 +424,12 @@ public:
 
         const Array<std::pair<int,Real> > RateWeightList() const {return RWL;}
 
+        const ChemDriver* CD() const {return cd;}
+
     private:
         std::string sp1, sp2;
         Array<std::pair<int,Real> > RWL; // RateWeightList, each pair is (reac,coeff)
+        const ChemDriver* cd;
     };
 
     // 
@@ -481,7 +492,7 @@ private:
     Array<Real>        mTmpData;
     int mMaxreac, mMaxspec, mMaxelts, mMaxord, mMaxthrdb, mMaxtp, mMaxsp, mMaxspnml;
     Array<int>         mNu;
-    Array<int> reaction_map;
+    Array<int> reaction_map, reaction_rev_map;
 };
 
 std::ostream& operator<< (std::ostream&  os, const ChemDriver::Parameter& param);
@@ -577,6 +588,13 @@ const Array<int>&
 ChemDriver::reactionMap() const
 {
   return reaction_map;
+}
+
+inline
+const Array<int>&
+ChemDriver::reactionReverseMap() const
+{
+  return reaction_rev_map;
 }
 
 #endif /*_ChemDriver_H_*/

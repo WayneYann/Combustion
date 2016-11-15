@@ -87,6 +87,7 @@
 #define VCKWYR VCKWYR
 #define VCKYTX VCKYTX
 #define GET_T_GIVEN_EY GET_T_GIVEN_EY
+#define GET_T_GIVEN_HY GET_T_GIVEN_HY
 #define GET_REACTION_MAP GET_REACTION_MAP
 #elif defined(BL_FORT_USE_LOWERCASE)
 #define CKINDX ckindx
@@ -171,6 +172,7 @@
 #define VCKWYR vckwyr
 #define VCKYTX vckytx
 #define GET_T_GIVEN_EY get_t_given_ey
+#define GET_T_GIVEN_HY get_t_given_hy
 #define GET_REACTION_MAP get_reaction_map
 #elif defined(BL_FORT_USE_UNDERSCORE)
 #define CKINDX ckindx_
@@ -255,6 +257,7 @@
 #define VCKWYR vckwyr_
 #define VCKYTX vckytx_
 #define GET_T_GIVEN_EY get_t_given_ey_
+#define GET_T_GIVEN_HY get_t_given_hy_
 #define GET_REACTION_MAP get_reaction_map_
 #endif
 
@@ -356,6 +359,7 @@ void DWDOT(double * restrict J, double * restrict sc, double * restrict T, int *
 void aJacobian(double * restrict J, double * restrict sc, double T, int consP);
 void dcvpRdT(double * restrict species, double * restrict tc);
 void GET_T_GIVEN_EY(double * restrict e, double * restrict y, int * iwrk, double * restrict rwrk, double * restrict t, int *ierr);
+void GET_T_GIVEN_HY(double * restrict h, double * restrict y, int * iwrk, double * restrict rwrk, double * restrict t, int *ierr);
 void GET_REACTION_MAP(int * restrict rmap);
 /*vector version */
 void vproductionRate(int npt, double * restrict wdot, double * restrict c, double * restrict T);
@@ -4499,38 +4503,6 @@ void CKINDX(int * iwrk, double * restrict rwrk, int * mm, int * kk, int * ii, in
     *kk = 53;
     *ii = 325;
     *nfit = -1; /*Why do you need this anyway ?  */
-}
-
-
-/* strtok_r: re-entrant (threadsafe) version of strtok, helper function for tokenizing strings  */
-char *strtok_r(char *s, const char *delim, char **save_ptr)
-{
-    char *token;
-
-    if (s == NULL)
-        s = *save_ptr;
-
-    /* Scan leading delimiters.  */
-    s += strspn (s, delim);
-    if (*s == '\0')
-    {
-        *save_ptr = s;
-        return NULL;
-    }
-
-    /* Find the end of the token.  */
-    token = s;
-    s = strpbrk (token, delim);
-    if (s == NULL)
-        /* This token finishes the string.  */
-        *save_ptr = __rawmemchr (token, '\0');
-    else
-    {
-        /* Terminate the token and make *SAVE_PTR point past it.  */
-        *s = '\0';
-        *save_ptr = s + 1;
-    }
-    return token;
 }
 
 
@@ -53151,6 +53123,55 @@ void GET_T_GIVEN_EY(double * restrict e, double * restrict y, int * iwrk, double
         CKUBMS(&t1,y,iwrk,rwrk,&e1);
         CKCVBS(&t1,y,iwrk,rwrk,&cv);
         dt = (ein - e1) / cv;
+        if (dt > 100.) { dt = 100.; }
+        else if (dt < -100.) { dt = -100.; }
+        else if (fabs(dt) < tol) break;
+        else if (t1+dt == t1) break;
+        t1 += dt;
+    }
+    *t = t1;
+    *ierr = 0;
+    return;
+}
+/* get temperature given enthalpy in mass units and mass fracs */
+void GET_T_GIVEN_HY(double * restrict h, double * restrict y, int * iwrk, double * restrict rwrk, double * restrict t, int * ierr)
+{
+#ifdef CONVERGENCE
+    const int maxiter = 5000;
+    const double tol  = 1.e-12;
+#else
+    const int maxiter = 200;
+    const double tol  = 1.e-6;
+#endif
+    double hin  = *h;
+    double tmin = 250;/*max lower bound for thermo def */
+    double tmax = 4000;/*min upper bound for thermo def */
+    double h1,hmin,hmax,cp,t1,dt;
+    int i;/* loop counter */
+    CKHBMS(&tmin, y, iwrk, rwrk, &hmin);
+    CKHBMS(&tmax, y, iwrk, rwrk, &hmax);
+    if (hin < hmin) {
+        /*Linear Extrapolation below tmin */
+        CKCPBS(&tmin, y, iwrk, rwrk, &cp);
+        *t = tmin - (hmin-hin)/cp;
+        *ierr = 1;
+        return;
+    }
+    if (hin > hmax) {
+        /*Linear Extrapolation above tmax */
+        CKCPBS(&tmax, y, iwrk, rwrk, &cp);
+        *t = tmax - (hmax-hin)/cp;
+        *ierr = 1;
+        return;
+    }
+    t1 = *t;
+    if (t1 < tmin || t1 > tmax) {
+        t1 = tmin + (tmax-tmin)/(hmax-hmin)*(hin-hmin);
+    }
+    for (i = 0; i < maxiter; ++i) {
+        CKHBMS(&t1,y,iwrk,rwrk,&h1);
+        CKCPBS(&t1,y,iwrk,rwrk,&cp);
+        dt = (hin - h1) / cp;
         if (dt > 100.) { dt = 100.; }
         else if (dt < -100.) { dt = -100.; }
         else if (fabs(dt) < tol) break;

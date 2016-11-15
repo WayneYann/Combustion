@@ -436,6 +436,7 @@ class CPickler(CMill):
         self._molecularWeight(mechanism)
         self._atomicWeight(mechanism)
         self._T_given_ey(mechanism)
+        self._T_given_hy(mechanism)
         return
 
 
@@ -542,6 +543,7 @@ class CPickler(CMill):
             '#define VCKWYR VCKWYR',
             '#define VCKYTX VCKYTX',
             '#define GET_T_GIVEN_EY GET_T_GIVEN_EY',
+            '#define GET_T_GIVEN_HY GET_T_GIVEN_HY',
             '#define GET_REACTION_MAP GET_REACTION_MAP',
             '#elif defined(BL_FORT_USE_LOWERCASE)',
             '#define CKINDX ckindx',
@@ -626,6 +628,7 @@ class CPickler(CMill):
             '#define VCKWYR vckwyr',
             '#define VCKYTX vckytx',
             '#define GET_T_GIVEN_EY get_t_given_ey',
+            '#define GET_T_GIVEN_HY get_t_given_hy',
             '#define GET_REACTION_MAP get_reaction_map',
             '#elif defined(BL_FORT_USE_UNDERSCORE)',
             '#define CKINDX ckindx_',
@@ -710,6 +713,7 @@ class CPickler(CMill):
             '#define VCKWYR vckwyr_',
             '#define VCKYTX vckytx_',
             '#define GET_T_GIVEN_EY get_t_given_ey_',
+            '#define GET_T_GIVEN_HY get_t_given_hy_',
             '#define GET_REACTION_MAP get_reaction_map_',
             '#endif','',
             self.line('function declarations'),
@@ -821,6 +825,7 @@ class CPickler(CMill):
             'void aJacobian(double * restrict J, double * restrict sc, double T, int consP);',
             'void dcvpRdT(double * restrict species, double * restrict tc);',
             'void GET_T_GIVEN_EY(double * restrict e, double * restrict y, int * iwrk, double * restrict rwrk, double * restrict t, int *ierr);',
+            'void GET_T_GIVEN_HY(double * restrict h, double * restrict y, int * iwrk, double * restrict rwrk, double * restrict t, int *ierr);',
             'void GET_REACTION_MAP(int * restrict rmap);',
             self.line('vector version'),
             'void vproductionRate(int npt, double * restrict wdot, double * restrict c, double * restrict T);',
@@ -1077,48 +1082,48 @@ class CPickler(CMill):
 
     def _ckxnum(self, mechanism):
         self._write()
-        self._write()
-        self._write(self.line(' strtok_r: re-entrant (threadsafe) version of strtok, helper function for tokenizing strings '))
-        self._write('char *strtok_r(char *s, const char *delim, char **save_ptr)')
-        self._write('{')
-        self._indent()
-        self._write('char *token;')
-        self._write()
-        self._write('if (s == NULL)')
-        self._indent()
-        self._write('s = *save_ptr;')
-        self._outdent()
-        self._write()
-        self._write('/* Scan leading delimiters.  */')
-        self._write('s += strspn (s, delim);')
-        self._write('if (*s == \'\\0\')')
-        self._write('{')
-        self._indent()
-        self._write('*save_ptr = s;')
-        self._write('return NULL;')
-        self._outdent()
-        self._write('}')
-        self._write()
-        self._write('/* Find the end of the token.  */')
-        self._write('token = s;')
-        self._write('s = strpbrk (token, delim);')
-        self._write('if (s == NULL)')
-        self._indent()
-        self._write('/* This token finishes the string.  */')
-        self._write('*save_ptr = __rawmemchr (token, \'\\0\');')
-        self._outdent()
-        self._write('else')
-        self._write('{')
-        self._indent()
-        self._write('/* Terminate the token and make *SAVE_PTR point past it.  */')
-        self._write('*s = \'\\0\';')
-        self._write('*save_ptr = s + 1;')
-        self._outdent()
-        self._write('}')
-        self._write('return token;')
-        self._outdent()
-        self._write('}')
-        self._write()
+        # self._write()
+        # self._write(self.line(' strtok_r: re-entrant (threadsafe) version of strtok, helper function for tokenizing strings '))
+        # self._write('char *strtok_r(char *s, const char *delim, char **save_ptr)')
+        # self._write('{')
+        # self._indent()
+        # self._write('char *token;')
+        # self._write()
+        # self._write('if (s == NULL)')
+        # self._indent()
+        # self._write('s = *save_ptr;')
+        # self._outdent()
+        # self._write()
+        # self._write('/* Scan leading delimiters.  */')
+        # self._write('s += strspn (s, delim);')
+        # self._write('if (*s == \'\\0\')')
+        # self._write('{')
+        # self._indent()
+        # self._write('*save_ptr = s;')
+        # self._write('return NULL;')
+        # self._outdent()
+        # self._write('}')
+        # self._write()
+        # self._write('/* Find the end of the token.  */')
+        # self._write('token = s;')
+        # self._write('s = strpbrk (token, delim);')
+        # self._write('if (s == NULL)')
+        # self._indent()
+        # self._write('/* This token finishes the string.  */')
+        # self._write('*save_ptr = __rawmemchr (token, \'\\0\');')
+        # self._outdent()
+        # self._write('else')
+        # self._write('{')
+        # self._indent()
+        # self._write('/* Terminate the token and make *SAVE_PTR point past it.  */')
+        # self._write('*s = \'\\0\';')
+        # self._write('*save_ptr = s + 1;')
+        # self._outdent()
+        # self._write('}')
+        # self._write('return token;')
+        # self._outdent()
+        # self._write('}')
+        # self._write()
 
         self._write()
         self._write()
@@ -4248,6 +4253,69 @@ class CPickler(CMill):
         return
 
  
+    def _ck_hytt(self, mechanism):
+
+        nSpecies = len(mechanism.species())
+        lowT,highT,dummy = self._analyzeThermodynamics(mechanism)
+        
+        self._write()
+        self._write()
+        self._write(self.line(
+            'get temperature given enthalpy in mass units and mass fracs'))
+        self._write('int fehytt'+fsym+'(double * restrict h, double * restrict y, int * iwrk, double * restrict rwrk, double * restrict t)')
+        self._write('{')
+        self._indent()
+
+        self._write('const int maxiter = 50;')
+        self._write('const double tol  = 0.001;')
+        self._write('double hin  = *h;')
+        self._write('double tmin = %g; // max lower bound for thermo def' % lowT)
+        self._write('double tmax = %g; // min upper bound for thermo def' % highT)
+        self._write('double h1,hmin,hmax,cp,t1,dt;')
+        self._write('int i; // loop counter')
+        self._write('CKHBMS'+sym+'(&tmin, y, iwrk, rwrk, &hmin);')
+        self._write('CKHBMS'+sym+'(&tmax, y, iwrk, rwrk, &hmax);')
+        self._write('if (hin < hmin) {')
+        self._indent()
+        self._write(self.line('Linear Extrapolation below tmin'))
+        self._write('CKCPBS'+sym+'(&tmin, y, iwrk, rwrk, &cp);')
+        self._write('*t = tmin - (hmin-hin)/cp;')
+        self._write('return 1;')
+        self._outdent()
+        self._write('}')
+        
+        self._write('if (hin > hmax) {')
+        self._indent()
+        self._write(self.line('Linear Extrapolation above tmax'))
+        self._write('CKCPBS'+sym+'(&tmax, y, iwrk, rwrk, &cp);')
+        self._write('*t = tmax - (hmax-hin)/cp;')
+        self._write('return 1;')
+        self._outdent()
+        self._write('}')
+
+        self._write('t1 = tmin + (tmax-tmin)/(hmax-hmin)*(hin-hmin);')
+        self._write('for (i = 0; i < maxiter; ++i) {')
+        self._indent()
+        self._write('CKHBMS'+sym+'(&t1,y,iwrk,rwrk,&h1);')
+        self._write('CKCPBS'+sym+'(&t1,y,iwrk,rwrk,&cp);')
+        self._write('dt = (hin - h1) / cp;')
+        self._write('if (dt > 100) { dt = 100; }')
+        self._write('else if (dt < -100) { dt = -100; }')
+        self._write('else if (fabs(dt) < tol) break;')
+        self._write('t1 += dt;')
+        self._outdent()
+        self._write('}')
+        
+        self._write('*t = t1;')
+        self._write('return 0;')
+        
+        self._outdent()
+
+        self._write('}')
+
+        return
+
+ 
     def _ck_phity(self, mechanism):
         self._write()
         self._write()
@@ -6173,6 +6241,7 @@ class CPickler(CMill):
             self._write("k_r = prefactor_units[%d] * rev_A[%d] * exp(rev_beta[%d] * tc[i] - activation_units[%d] * rev_Ea[%d] * invT[i]);"
                         % (reaction.id-1,reaction.id-1,reaction.id-1,reaction.id-1,reaction.id-1))
 
+            thirdBody = reaction.thirdBody
             if thirdBody:
                 self._write("k_r *= alpha;")
 
@@ -7085,7 +7154,7 @@ class CPickler(CMill):
         self._write(self.line('Linear Extrapolation above tmax'))
         self._write('CKCVBS(&tmax, y, iwrk, rwrk, &cv);')
         self._write('*t = tmax - (emax-ein)/cv;')
-	self._write('*ierr = 1;')
+        self._write('*ierr = 1;')
         self._write('return;')
         self._outdent()
         self._write('}')
@@ -7100,6 +7169,71 @@ class CPickler(CMill):
         self._write('CKUBMS(&t1,y,iwrk,rwrk,&e1);')
         self._write('CKCVBS(&t1,y,iwrk,rwrk,&cv);')
         self._write('dt = (ein - e1) / cv;')
+        self._write('if (dt > 100.) { dt = 100.; }')
+        self._write('else if (dt < -100.) { dt = -100.; }')
+        self._write('else if (fabs(dt) < tol) break;')
+        self._write('else if (t1+dt == t1) break;')
+        self._write('t1 += dt;')
+        self._outdent()
+        self._write('}')
+        self._write('*t = t1;')
+        self._write('*ierr = 0;')
+        self._write('return;')
+        self._outdent()
+        self._write('}')
+
+    def _T_given_hy(self, mechanism):
+        self._write(self.line(' get temperature given enthalpy in mass units and mass fracs'))
+        self._write('void GET_T_GIVEN_HY(double * restrict h, double * restrict y, int * iwrk, double * restrict rwrk, double * restrict t, int * ierr)')
+        self._write('{')
+        self._write('#ifdef CONVERGENCE')
+        self._indent()
+        self._write('const int maxiter = 5000;')
+        self._write('const double tol  = 1.e-12;')
+        self._outdent()
+        self._write('#else')
+        self._indent()
+        self._write('const int maxiter = 200;')
+        self._write('const double tol  = 1.e-6;')
+        self._outdent()
+        self._write('#endif')
+        self._indent()
+        self._write('double hin  = *h;')
+        self._write('double tmin = 250;'+self.line('max lower bound for thermo def'))
+        self._write('double tmax = 4000;'+self.line('min upper bound for thermo def'))
+        self._write('double h1,hmin,hmax,cp,t1,dt;')
+        self._write('int i;'+self.line(' loop counter'))
+        self._write('CKHBMS(&tmin, y, iwrk, rwrk, &hmin);')
+        self._write('CKHBMS(&tmax, y, iwrk, rwrk, &hmax);')
+        self._write('if (hin < hmin) {')
+        self._indent()
+        self._write(self.line('Linear Extrapolation below tmin'))
+        self._write('CKCPBS(&tmin, y, iwrk, rwrk, &cp);')
+        self._write('*t = tmin - (hmin-hin)/cp;')
+        self._write('*ierr = 1;')
+        self._write('return;')
+        self._outdent()
+        self._write('}')
+        self._write('if (hin > hmax) {')
+        self._indent()
+        self._write(self.line('Linear Extrapolation above tmax'))
+        self._write('CKCPBS(&tmax, y, iwrk, rwrk, &cp);')
+        self._write('*t = tmax - (hmax-hin)/cp;')
+        self._write('*ierr = 1;')
+        self._write('return;')
+        self._outdent()
+        self._write('}')
+        self._write('t1 = *t;')
+        self._write('if (t1 < tmin || t1 > tmax) {')
+        self._indent()
+        self._write('t1 = tmin + (tmax-tmin)/(hmax-hmin)*(hin-hmin);')
+        self._outdent()
+        self._write('}')
+        self._write('for (i = 0; i < maxiter; ++i) {')
+        self._indent()
+        self._write('CKHBMS(&t1,y,iwrk,rwrk,&h1);')
+        self._write('CKCPBS(&t1,y,iwrk,rwrk,&cp);')
+        self._write('dt = (hin - h1) / cp;')
         self._write('if (dt > 100.) { dt = 100.; }')
         self._write('else if (dt < -100.) { dt = -100.; }')
         self._write('else if (fabs(dt) < tol) break;')

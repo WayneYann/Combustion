@@ -1,4 +1,4 @@
-CEXE_sources += HT_setup.cpp HeatTransfer.cpp
+CEXE_sources += HT_setup.cpp HeatTransfer.cpp HeatTransfer_shared.cpp
 CEXE_headers += HeatTransfer.H ArrayViewEXT.H BoxLib_Data_Dump.H
 FEXE_headers += HEATTRANSFER_F.H htdata.H visc.H SLABSTAT_HT_F.H
 FEXE_sources += HEATTRANSFER_F.F HEATTRANSFER_$(DIM)D.F \

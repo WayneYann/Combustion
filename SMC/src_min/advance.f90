@@ -732,11 +732,8 @@ contains
     call destroy(bpt_diffterm_1)                !! ^^^^^^^^^^^^^^^^^^^^^^^ timer
 
     if (overlap_comm_comp) then
-       qx_fb_data%tag = 1001
        call multifab_fill_boundary_nowait(qx, qx_fb_data, idim=1)
-       qy_fb_data%tag = 1002
        call multifab_fill_boundary_nowait(qy, qy_fb_data, idim=2)
-       qz_fb_data%tag = 1003
        call multifab_fill_boundary_nowait(qz, qz_fb_data, idim=3)
 
        call multifab_fill_boundary_test(qx, qx_fb_data, idim=1)

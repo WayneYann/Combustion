@@ -90,10 +90,12 @@ c     A diffusion flame
          num_zones_defined = 2
 
 
+         if(fuel_N2_vol_percent .ge. 0.d0)then
 c     Fuel
          do n = 1,Nspec
             Xt(n) = 0.d0
          end do 
+
          Xt(iN2) = fuel_N2_vol_percent*1.d-2
          Xt(iNC12H26) = 1.d0 - Xt(iN2)            
 
@@ -123,6 +125,52 @@ c     Air
          u_bc(airZone) = 0.d0
          v_bc(airZone) = 0.d0
          w_bc(airZone) = V_co
+
+         else
+c     Fuel
+         do n = 1,Nspec
+            Xt(n) = 0.d0
+            Yt(n) = 0.d0
+         end do 
+
+c        Xt(iNC12H26) = .1208d0
+c        Xt(iO2) = .1319d0
+c        Xt(iN2) = 1.d0 -  Xt(iNC12H26) -  Xt(iO2)
+
+c        CALL CKXTY (Xt, IWRK, RWRK, Yt)
+
+         Yt(iNC12H26) = .45d0
+         Yt(iO2) = .092268d0
+         Yt(iN2) = 1.d0 -  Yt(iNC12H26) -  Yt(iO2)
+
+         CALL CKYTX (Yt, IWRK, RWRK, Xt)
+
+         do n=1,Nspec
+            Y_bc(n-1,fuelZone) = Yt(n)
+         end do
+         T_bc(fuelZone) = T_in
+         u_bc(fuelZone) = 0.d0
+         v_bc(fuelZone) = 0.d0
+         w_bc(fuelZone) = V_in
+
+c     Air
+         do n=1,Nspec
+            Xt(n) = zero
+         enddo
+         Xt(oxidID) = 0.15d0
+         Xt(iN2)    = 1.d0 - Xt(oxidID)
+
+         CALL CKXTY (Xt, IWRK, RWRK, Yt)         
+         do n=1,Nspec
+            Y_bc(n-1,airZone) = Yt(n)
+         end do
+         
+         T_bc(airZone) = T_co
+         u_bc(airZone) = 0.d0
+         v_bc(airZone) = 0.d0
+         w_bc(airZone) = V_co
+
+         endif
 
       else
          
@@ -200,12 +248,23 @@ c ::: -----------------------------------------------------------
       data  b / 1, 1, 1 /
 
 #include <cdwrk.H>
+#include <conp.H>
 #include <htdata.H>
 #include <bc.H>
 #include <probdata.H>
 
       integer n, getZone, zone, len
       REAL_T eta, eta1, xmid, etamax, Patm, FORT_P1ATMMKS
+      REAL_T h_fu(0:maxspec-1), h_ox(0:maxspec-1), hmix
+         
+      REAL_T Wf, Wa, Wm, mf, Yf
+
+      REAL_T,  parameter :: HtoTerrMAX = BL_REAL_E(7.8,-12)
+      integer, parameter :: HtoTiterMAX = 20
+      REAL_T res(0:HtoTiterMAX-1)
+      integer Niter
+      integer iO2,iNC12H26
+      character*(maxspnml) name
 
       if (.not. bcinit) then
          call bl_abort('Need to initialize boundary condition function')
@@ -247,13 +306,43 @@ c ::: -----------------------------------------------------------
       elseif (probtype(1:len).eq.BL_PROB_JET_DIFFUSION) then
 
          eta = 0.5d0*(1.d0 - TANH(2.d0*(sqrt(x**2+y**2)-blobr)/Tfrontw))
-c        do n = 0, Nspec-1
-c           Yl(n) = Y_bc(n,BL_FUELPIPE)*eta + (1.d0-eta)*Y_bc(n,BL_COFLOW)
-c        end do
          do n = 0, Nspec-1
             Yl(n) = Y_bc(n,BL_FUELPIPE)*eta + (1.d0-eta)*Y_bc(n,BL_COFLOW)
          end do
+#if 0
          T = T_bc(BL_FUELPIPE)*eta + (1.d0-eta)*T_bc(BL_COFLOW)
+#else
+         do n=1,Nspec
+            call get_spec_name(name,n)
+            if (name .eq. 'N2' ) iN2 = n
+            if (name .eq. 'O2' ) iO2 = n
+            if (name .eq. 'NC12H26' ) iNC12H26 = n
+         enddo
+
+c        call CKHMS(T_bc(BL_FUELPIPE),IWRK(ckbi),RWRK(ckbr),h_fu)
+         call CKHMS(T_bc(BL_COFLOW),  IWRK(ckbi),RWRK(ckbr),h_ox)
+c        h_fu = h_fu*1.d-4 ! cgs to MKS
+
+
+c   fuel enthalpy inncluding heat of vaporization
+
+         h_fu( iNC12H26-1) = 10000.d0*((T_bc(BL_FUELPIPE)-298.d0)*0.375d0-352.1d0)/1.703348
+
+         h_ox = h_ox*1.d-4 ! cgs to MKS
+
+c        write(6,*)" temps", T_bc(BL_FUELPIPE),T_bc(BL_COFLOW)
+c        write(6,*)" Yl ", Yl(0:Nspec-1)
+c        write(6,*)" h_fu",h_fu
+
+         hmix = Yl(iNC12H26-1)*h_fu(iNC12H26-1)
+     &        + Yl(iO2-1)     *h_ox(iO2-1)
+     &        + Yl(iN2-1)     *h_ox(iN2-1)
+
+         T = T_bc(BL_COFLOW) ! initial guess
+         call FORT_TfromHYpt(T,hmix,Yl,HtoTerrMAX,HtoTiterMAX,res,Niter)
+c           write(6,*)" temp in jet ",x,y, T
+c           stop
+#endif
          
          if (getuv .eqv. .TRUE.) then
             eta1 = 0.5d0*(1.d0 - TANH(2.d0*(sqrt(x**2+y**2)-splitx)/xfrontw))

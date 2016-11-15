@@ -14,7 +14,7 @@ C
      +   MDIM = 20,
      +   MAXORD = 10,
      +   MAXSP = 12,
-     +   MAXTB = 10,
+     +   MAXTB = 20,
      +   MAXTP = 3)
 C
       integer LCWORK, LIWORK, LLWORK, LRWORK
