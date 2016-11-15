@@ -134,6 +134,33 @@ ifeq ($(CHEMISTRY_MODEL), ZHAODODECANE)
   vpath %.f   $(VPATH_LOCATIONS) $(COMBUSTION_DIR)/Chemistry/data/dodecane_zhao_1/PMFs
   vpath %.c $(VPATH_LOCATIONS) $(COMBUSTION_DIR)/Chemistry/data/dodecane_zhao_1
 endif
+ifeq (${CHEMISTRY_MODEL}, BURKE)
+  cEXE_sources += BurkeDryer.c
+  vpath %.c $(VPATH_LOCATIONS) $(COMBUSTION_DIR)/Chemistry/data/BurkeDryer
+  vpath %.f   $(VPATH_LOCATIONS) $(COMBUSTION_DIR)/Chemistry/data/BurkeDryer/PMFs
+endif
+ifeq (${CHEMISTRY_MODEL}, BURKEMOD)
+  cEXE_sources += BurkeDryer_mod.c
+  vpath %.c $(VPATH_LOCATIONS) $(COMBUSTION_DIR)/Chemistry/data/BurkeDryer_mod
+  vpath %.f   $(VPATH_LOCATIONS) $(COMBUSTION_DIR)/Chemistry/data/BurkeDryer_mod/PMFs
+endif
+ifeq (${CHEMISTRY_MODEL}, BURKEMOD_B)
+  cEXE_sources += BurkeDryer_modB.c
+  vpath %.c $(VPATH_LOCATIONS) $(COMBUSTION_DIR)/Chemistry/data/H2_mechB 
+  vpath %.f   $(VPATH_LOCATIONS) $(COMBUSTION_DIR)/Chemistry/data/H2_mechB/PMFs
+endif
+ifeq (${CHEMISTRY_MODEL}, BURKEMOD_C)
+  cEXE_sources += BurkeDryer_modC.c
+  vpath %.c $(VPATH_LOCATIONS) $(COMBUSTION_DIR)/Chemistry/data/H2_mechC 
+  vpath %.f   $(VPATH_LOCATIONS) $(COMBUSTION_DIR)/Chemistry/data/H2_mechC/PMFs
+endif 
+ifeq (${CHEMISTRY_MODEL}, BURKEMOD_D)
+  cEXE_sources += BurkeDryer_modD.c
+  vpath %.c $(VPATH_LOCATIONS) $(COMBUSTION_DIR)/Chemistry/data/H2_mechD
+  vpath %.f   $(VPATH_LOCATIONS) $(COMBUSTION_DIR)/Chemistry/data/H2_mechD/PMFs
+endif
+
+
 
 # Enable time-dependent turbulence forcing term
 ifeq ($(USE_TDEPFORCING), TRUE)

@@ -80,6 +80,18 @@ ifeq (${CHEMISTRY_MODEL}, BURKEMOD)
   CHEM_MECHFILE = BurkeDryer_mod.c
   VPATH_LOCATIONS += ${CHEMISTRY_DIR}/data/BurkeDryer_mod
 endif
+ifeq (${CHEMISTRY_MODEL}, BURKEMOD_B)
+  CHEM_MECHFILE = BurkeDryer_modB.c
+  VPATH_LOCATIONS += ${CHEMISTRY_DIR}/data/H2_mechB
+endif
+ifeq (${CHEMISTRY_MODEL}, BURKEMOD_C)
+  CHEM_MECHFILE = BurkeDryer_modC.c
+  VPATH_LOCATIONS += ${CHEMISTRY_DIR}/data/H2_mechC
+endif
+ifeq (${CHEMISTRY_MODEL}, BURKEMOD_D)
+  CHEM_MECHFILE = BurkeDryer_modD.c
+  VPATH_LOCATIONS += ${CHEMISTRY_DIR}/data/H2_mechD
+endif
 
 cEXE_sources += $(CHEM_MECHFILE)
 
