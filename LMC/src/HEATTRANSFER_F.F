@@ -371,8 +371,9 @@ c    quadratic 2
       if (myproc.eq.0) then
          print *
          print *,'****************** control:', scale_control
-         print *,'time,dt,coft,V_new:',time,dt,coft,V_new
+         print *,'time,dt,coft,cfix,V_new:',time,dt,coft,cfix,V_new
          print *,'changeMax_control: ', changeMax_control
+         print *,'V_in,dVmax,dVmin ', V_in,dVmax,dVmin
 #if 1
 C  vslope not defined yet         print *,'vslope,sest,cfix,slocal:',vslope,sest,cfix,slocal
 #else

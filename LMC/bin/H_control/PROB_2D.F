@@ -788,7 +788,7 @@ c ::: -----------------------------------------------------------
       integer   tag(DIMV(tag))
       REAL_T    temperature(DIMV(temp),nvar)
 
-c      REAL_T    ax, ay, aerr
+      REAL_T    ax, ay, aerr
       integer   i, j, ng
 
 #include <probdata.H>
@@ -806,15 +806,13 @@ c
       if (level .lt. max_temp_lev) then
          do j = lo(2), hi(2)
             do i = lo(1), hi(1)
-c              ax = abs(temperature(i+1,j,1) - temperature(i,j,1))
-c              ay = abs(temperature(i,j+1,1) - temperature(i,j,1))
-c              az = abs(temperature(i,j+1,1) - temperature(i,j,1))
-c              ax = MAX(ax,abs(temperature(i,j,1) - temperature(i-1,j,1)))
-c              ay = MAX(ay,abs(temperature(i,j,1) - temperature(i,j-1,1)))
-c              az = MAX(az,abs(temperature(i,j,1) - temperature(i,j-1,1)))
-c              aerr = max(ax,ay,az)
-c              tag(i,j) = cvmgt(set,tag(i,j),aerr.ge.tempgrad)
-               tag(i,j) = cvmgt(set,tag(i,j),temperature(i,j,1).lt.temperr)
+               ax = abs(temperature(i+1,j,1) - temperature(i,j,1))
+               ay = abs(temperature(i,j+1,1) - temperature(i,j,1))
+               ax = MAX(ax,abs(temperature(i,j,1) - temperature(i-1,j,1)))
+               ay = MAX(ay,abs(temperature(i,j,1) - temperature(i,j-1,1)))
+               aerr = max(ax,ay)
+               tag(i,j) = cvmgt(set,tag(i,j),aerr.ge.tempgrad)
+c              tag(i,j) = cvmgt(set,tag(i,j),temperature(i,j,1).lt.temperr)
             enddo
          enddo
       endif
