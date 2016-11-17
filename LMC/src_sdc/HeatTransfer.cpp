@@ -6882,7 +6882,7 @@ int RhoH_to_Temp_DoIt(FArrayBox&       Tfab,
     const Real eps = cd.getHtoTerrMAX();
     Real errMAX = eps*htt_hmixTYP;
 
-    int iters = cd.getTGivenHY(Tfab,Yfab,Hfab,box,sCompH,sCompY,dCompT,errMAX);
+    int iters = cd.getTGivenHY(Tfab,Hfab,Yfab,box,sCompH,sCompY,dCompT,errMAX);
 
     if (iters < 0)
         BoxLib::Error("HeatTransfer::RhoH_to_Temp(fab): error in H->T");
