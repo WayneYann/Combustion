@@ -764,8 +764,9 @@ c ::: -----------------------------------------------------------
       REAL_T eta, xi, xblend, mdotb, mdotL, mdotR, r1sq, r2sq, ylo, yhi
       REAL_T pmf_vals(maxspec+3), sum, Y_pmf(maxspec), rblob, theta
       REAL_T Y_air(maxspec), X_air(maxspec), ypert, Lx
-      REAL_T  r,rfront,Xl(maxspec),Yl(maxspec)
-      integer iAr, iO2
+      REAL_T  r,rfront,Xl(maxspec),Yl(maxspec), Xp(maxspec), Xm(maxspec)
+      REAL_T  a
+      integer iAr, iO2, iH2, iH2O
       integer lo_chem(SDIM),hi_chem(SDIM)
       data lo_chem /1,1/
       data hi_chem /1,1/
@@ -780,6 +781,7 @@ c ::: -----------------------------------------------------------
 
       iAr = -1
       iO2 = -1
+      iH2 = -1
       if (iN2.lt.1 .or. iN2.gt.Nspec) then
          call bl_pd_abort()
       endif
@@ -787,6 +789,8 @@ c ::: -----------------------------------------------------------
          call get_spec_name(name,n)
          if (name .eq. 'AR' ) iAr = n
          if (name .eq. 'O2' ) iO2 = n
+         if (name .eq. 'H2' ) iH2 = n
+         if (name .eq. 'H2O' ) iH2O = n
       end do
          do j = lo(2), hi(2)
             do i = lo(1), hi(1)
@@ -811,13 +815,12 @@ c ::: -----------------------------------------------------------
                rfront = sin(3.d0*theta) + 0.583d0*sin(5.d0*theta - 1.077)
      &               + .634d0*sin(10.d0*theta - 2.0546d0)
      &               + .364d0*sin(15.d0*theta - 0.0546d0)
- 
-               rfront = (blobr + pertmag* rfront * blobr - r + y_offset) *100.d0
-c              if(i.eq.160 .and. j.eq.160)then
-    
-c              write(6,*)"i,j,rfront",i,j,rfront
 
-c             endif
+ 
+
+           if(probtype .eq. 1) then
+
+               rfront = (blobr + pertmag* rfront * blobr - r + y_offset) *100.d0
  
                call pmf(rfront,rfront,pmf_vals,n)
  
@@ -829,6 +832,45 @@ c             endif
                do n = 1,Nspec
                   Xl(n) = pmf_vals(3+n)
                end do
+
+            else
+
+               rfront = (blobr + pertmag* rfront * blobr - r ) / (.4*blobr) 
+
+               scal(i,j,Temp) = T_in + (T_stick - T_in ) *
+     &                 0.5d0*(1.d0+tanh(rfront))
+
+            do n=1,Nspec
+               Xl(n) = zero
+               Xp(n) = zero
+            enddo
+
+            Xl(iO2) = one/(one + phi_in/half  + 0.79d0/0.21d0)
+            Xl(iH2) = phi_in * Xl(iO2) / half
+            Xl(iN2) = (0.79d0/0.21d0) * Xl(iO2)
+
+            Xp(iO2) = Xl(iO2)-Xl(iH2)/2.d0
+            Xp(iH2O) = Xl(iH2)
+            Xp(iN2) = Xl(iN2)
+  
+            a = Xp(iO2) + Xp(iH2O) + Xp(iN2)
+            
+            Xp(iO2) = Xp(iO2)/ a
+            Xp(iH2O) = Xp(iH2O)/ a
+            Xp(iN2) = Xp(iN2)/ a
+
+            a = zero
+            do n=1,Nspec
+               Xl(n) = Xl(n) + (Xp(n) - Xl(n))* 0.5d0*(1.d0+tanh(rfront))
+               a = a + Xl(n)
+            enddo
+
+            if(abs(a-1.d0).gt.1.d-12)then
+                write(6,*)i,j,Xp,Xl
+                stop
+            endif
+
+            endif
  
                call FORT_MOLETOMASS(lo_chem,hi_chem,
      &              Xl, ARLIM(lo_chem), ARLIM(hi_chem),
@@ -1174,11 +1216,11 @@ c
       if (level .lt. max_temp_lev) then
          do j = lo(2), hi(2)
             do i = lo(1), hi(1)
-c              ax = abs(temperature(i+1,j,1) - temperature(i-1,j,1))
-c              ay = abs(temperature(i,j+1,1) - temperature(i,j-1,1))
-c              aerr = max(ax,ay)
-c              tag(i,j) = merge(set,tag(i,j),aerr.ge.tempgrad)
-               tag(i,j) = merge(set,tag(i,j),temperature(i,j,1).le.tempgrad)
+               ax = abs(temperature(i+1,j,1) - temperature(i-1,j,1))
+               ay = abs(temperature(i,j+1,1) - temperature(i,j-1,1))
+               aerr = max(ax,ay)
+               tag(i,j) = merge(set,tag(i,j),aerr.ge.tempgrad)
+c              tag(i,j) = merge(set,tag(i,j),temperature(i,j,1).le.tempgrad)
             enddo
          enddo
       endif
