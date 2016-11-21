@@ -292,7 +292,8 @@ private:
                                         MultiFab& DD);
 
     void differential_spec_diffuse_sync (Real dt,
-					 bool Wbar_corrector);
+					 bool Wbar_corrector,
+					 bool last_mac_sync_iter);
 
     void diffuse_velocity_setup (Real        dt,
 				 MultiFab*&  delta_rhs,
@@ -469,6 +470,7 @@ private:
     static int         reset_typical_vals_int;
     static std::map<std::string,Real> typical_values_FileVals;
     static int         sdc_iterMAX;
+    static int         num_mac_sync_iter;
     
     static int nGrowAdvForcing;
     bool       updateFluxReg;
