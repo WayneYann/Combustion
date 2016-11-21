@@ -35,11 +35,11 @@ USE_TDEPFORCING = FALSE
 #CHEMISTRY_MODEL = DRM19
 #fEXE_sources += drm19Soln_seed_0.125.f
 
-#CHEMISTRY_MODEL = CHEMH
-#fEXE_sources += chemHSoln_seed_0.00.f
+CHEMISTRY_MODEL = CHEMH
+fEXE_sources += chemHSoln_seed_0.00.f
 
-CHEMISTRY_MODEL = BURKEMOD_D
-fEXE_sources += pmf_BurkeMOD_040_10atm.f
+#CHEMISTRY_MODEL = BURKEMOD_D
+#fEXE_sources += pmf_BurkeMOD_040_10atm.f
 
 Blocs   := .
 
