@@ -6898,25 +6898,30 @@ HeatTransfer::RhoH_to_Temp (FArrayBox& S,
 {
     BL_ASSERT(S.box().contains(box));
 
-    //
-    // Convert rho to 1/rho, rho*h to h and rho*Y to Y for this operation.
-    //
-    S.invert(1,box,Density,1);    
-    S.mult(S,box,Density,RhoH,1);
-    for (int spec = first_spec; spec <= last_spec; spec++)
-        S.mult(S,box,Density,spec,1);
+    // temporary storage for 1/rho, H, and Y
+    FArrayBox rhoInv, H, Y;
+    rhoInv.resize(box,1);
+    H.resize(box,1);
+    Y.resize(box,nspecies);
 
-    int iters = RhoH_to_Temp_DoIt(S,S,S,box,RhoH,first_spec,Temp,htt_hmixTYP,getChemSolve());
+    // copy in rho, rhoH, and rhoY
+    rhoInv.copy(S,box,Density,   box,0,1);
+    H.copy     (S,box,RhoH,      box,0,1);
+    Y.copy     (S,box,first_spec,box,0,nspecies);
+
+    // invert rho, then multiply 1/rho by rhoH and rhoY to get H and Y
+    rhoInv.invert(1,box,0,1);
+    H.mult(rhoInv,box,0,0,1);
+    for (int i=0; i<nspecies; i++)
+    {
+      Y.mult(rhoInv,box,0,i,1);
+    }    
+
+    // we index into Temperature component in S.  H and Y begin with the 0th component
+    int iters = RhoH_to_Temp_DoIt(S,H,Y,box,0,0,Temp,htt_hmixTYP,getChemSolve());
 
     if (dominmax)
-        FabMinMax(S, box, htt_tempmin, htt_tempmax, Temp, 1);
-    //
-    // Convert back to rho, rho*h and rho*Y
-    //
-    S.invert(1,box,Density,1);    
-    S.mult(S,box,Density,RhoH,1);
-    for (int spec = first_spec; spec <= last_spec; spec++)
-        S.mult(S,box,Density,spec,1);
+        FabMinMax(S, box, htt_tempmin, htt_tempmax, Temp, 1);    
 
     return iters;
 }
