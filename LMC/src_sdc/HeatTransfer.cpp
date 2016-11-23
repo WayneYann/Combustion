@@ -5211,14 +5211,19 @@ HeatTransfer::mac_sync ()
     delta_chi_sync.setVal(0);
 
     PArray<MultiFab> S_new_sav(finest_level+1,PArrayManage);
-    PArray<MultiFab> Ssync_sav(finest_level+1,PArrayManage);
-    PArray<MultiFab> Vsync_sav(finest_level+1,PArrayManage);
+
     for (int lev=level; lev<=finest_level; lev++)
     {
       const MultiFab& S_new_lev = getLevel(lev).get_new_data(State_Type);
       S_new_sav.set(lev,new MultiFab(S_new_lev.boxArray(),NUM_STATE,1,S_new_lev.DistributionMap()));
       MultiFab::Copy(S_new_sav[lev],S_new_lev,0,0,NUM_STATE,1);
+    }
 
+    PArray<MultiFab> Ssync_sav(finest_level,PArrayManage);
+    PArray<MultiFab> Vsync_sav(finest_level,PArrayManage);
+
+    for (int lev=level; lev<=finest_level-1; lev++)
+    {
       const MultiFab& Ssync_lev = getLevel(lev).Ssync;
       Ssync_sav.set(lev,new MultiFab(Ssync_lev.boxArray(),numscal,1,Ssync_lev.DistributionMap()));
       MultiFab::Copy(Ssync_sav[lev],Ssync_lev,0,0,numscal,1);
@@ -5249,7 +5254,10 @@ HeatTransfer::mac_sync ()
       {
 	MultiFab& S_new_lev = getLevel(lev).get_new_data(State_Type);
 	MultiFab::Copy(S_new_lev,S_new_sav[lev],0,0,NUM_STATE,1);
+      }
 
+      for (int lev=level; lev<=finest_level-1; lev++)
+      {
 	MultiFab& Ssync_lev = getLevel(lev).Ssync;
 	MultiFab::Copy(Ssync_lev,Ssync_sav[lev],0,0,numscal,1);
 
