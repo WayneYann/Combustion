@@ -6,9 +6,6 @@
 #    define FORT_ACTIVECONTROL             activecontrol
 #    define FORT_SET_SCAL_NUMB             setscnum
 #    define FORT_GETPAMB                   getpamb
-#    define FORT_SETPAMB                   setpamb
-#    define FORT_GETPAMB_NEW               getpambnew
-#    define FORT_SETPAMB_NEW               setpambnew
 #    define FORT_GETCLOSEDCHAMBER          getclosedchamber
 #    define FORT_GETDPDT                   getdpdt
 #    define FORT_COMPUTE_RHODGRADHDOTGRADY computerhodgradhdotgrady
@@ -51,9 +48,6 @@
 #    define FORT_ACTIVECONTROL             ACTIVECONTROL
 #    define FORT_SET_SCAL_NUMB             SETSCNUM
 #    define FORT_GETPAMB                   GETPAMB
-#    define FORT_SETPAMB                   SETPAMB
-#    define FORT_GETPAMB_NEW               GETPAMBNEW
-#    define FORT_SETPAMB_NEW               SETPAMBNEW
 #    define FORT_GETCLOSEDCHAMBER          GETCLOSEDCHAMBER
 #    define FORT_GETDPDT                   GETDPDT
 #    define FORT_COMPUTE_RHODGRADHDOTGRADY COMPUTERHODGRADHDOTGRADY
@@ -95,9 +89,6 @@
 #    define FORT_ACTIVECONTROL             activecontrol
 #    define FORT_SET_SCAL_NUMB             setscnum
 #    define FORT_GETPAMB                   getpamb
-#    define FORT_SETPAMB                   setpamb
-#    define FORT_GETPAMB_NEW               getpambnew
-#    define FORT_SETPAMB_NEW               setpambnew
 #    define FORT_GETCLOSEDCHAMBER          getclosedchamber
 #    define FORT_GETDPDT                   getdpdt
 #    define FORT_COMPUTE_RHODGRADHDOTGRADY computerhodgradhdotgrady
@@ -139,9 +130,6 @@
 #    define FORT_ACTIVECONTROL             activecontrol_
 #    define FORT_SET_SCAL_NUMB             setscnum_
 #    define FORT_GETPAMB                   getpamb_
-#    define FORT_SETPAMB                   setpamb_
-#    define FORT_GETPAMB_NEW               getpambnew_
-#    define FORT_SETPAMB_NEW               setpambnew_
 #    define FORT_GETCLOSEDCHAMBER          getclosedchamber_
 #    define FORT_GETDPDT                   getdpdt_
 #    define FORT_COMPUTE_RHODGRADHDOTGRADY computerhodgradhdotgrady_
@@ -201,9 +189,6 @@ extern "C" {
 			    const int* LastSpec);
     
     void FORT_GETPAMB(Real* pamb);
-    void FORT_SETPAMB(Real* pamb);
-    void FORT_GETPAMB_NEW(Real* pamb);
-    void FORT_SETPAMB_NEW(Real* pamb);
 
     void FORT_GETCLOSEDCHAMBER(int* closed_chamber);
 

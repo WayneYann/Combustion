@@ -157,7 +157,7 @@ c ::: -----------------------------------------------------------
      &                  tV_in_l,tV_in_r,V_in_new,tV_co_l,tV_co_r,V_co_new,
      &                  T_stick, T_in,phi_in, thickFacTR, thickFacCH,nchemdiag,
      &                  pertmag
-      namelist /heattransin/ pamb, pamb_new, dpdt_factor, closed_chamber
+      namelist /heattransin/ pamb, dpdt_factor, closed_chamber
 #if defined(BL_DO_FLCT)
       namelist /flctin/ forceInflow, numInflPlanesStore, forceLo, forceHi,
      &     strmwse_dir, nCompInflow, flct_file
@@ -219,7 +219,6 @@ c
       v_cl_x = probhi(1)
       y_offset = zero
       pamb = 101325.d0
-      pamb_new = 101325.d0
       dpdt_factor = 0.3d0
       closed_chamber = 0
       v_blob_r = zero

@@ -106,7 +106,7 @@ c ::: -----------------------------------------------------------
      &                  thickFacTR, thickFacCH,
      &                  wire_x, wire_y, wire_z, wire_w, wire_h, wire_T, wire_r,
      &                  Tpipe, Tstick, stL, stLw, zInletEval, pertmag
-      namelist /heattransin/ pamb, pamb_new, dpdt_factor, closed_chamber
+      namelist /heattransin/ pamb, dpdt_factor, closed_chamber
 c
 c      Build `probin' filename -- the name of file containing fortin namelist.
 c
@@ -157,7 +157,6 @@ c
       refine_stick_z = zero
       max_stick_lev = 100
       pamb = 101325.d0
-      pamb_new = 101325.d0
       dpdt_factor = 0.3d0
       closed_chamber = 0
       direction = "z"

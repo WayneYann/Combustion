@@ -150,40 +150,6 @@ c-----------------------------------------------------------------------
 
 c-----------------------------------------------------------------------
 
-      subroutine FORT_SETPAMB(pambin)
-      implicit none
-#include <htdata.H>
-      REAL_T pambin
-
-      pamb = pambin
-      return
-      end
-
-c-----------------------------------------------------------------------
-
-      subroutine FORT_GETPAMB_NEW(pambout)
-      implicit none
-#include <htdata.H>
-      REAL_T pambout
-
-      pambout = pamb_new
-      return
-      end
-
-c-----------------------------------------------------------------------
-
-      subroutine FORT_SETPAMB_NEW(pambin)
-      implicit none
-#include <htdata.H>
-      REAL_T pambin
-
-      pamb_new = pambin
-      return
-      end
-
-      
-c-----------------------------------------------------------------------
-
       subroutine FORT_GETCLOSEDCHAMBER(closed_chamberout)
       implicit none
 #include <htdata.H>

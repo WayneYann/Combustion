@@ -415,6 +415,12 @@ private:
     std::map<std::string,MultiFab*> auxDiag;
     static std::map<std::string,Array<std::string> > auxDiag_names;
 
+    bool updateFluxReg;
+    bool is_predictor;
+
+    Real p_amb_old;
+    Real p_amb_new;
+
     //
     // Protected static data.
     //
@@ -473,8 +479,6 @@ private:
     static int         num_mac_sync_iter;
     
     static int nGrowAdvForcing;
-    bool       updateFluxReg;
-    bool       is_predictor;
 };
 
 #endif /*_HeatTransfer_H_*/
