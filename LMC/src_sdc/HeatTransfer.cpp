@@ -689,6 +689,10 @@ HeatTransfer::HeatTransfer ()
     if (!have_dsdt)
         BoxLib::Abort("have_dsdt MUST be true");
 
+    FORT_GETPAMB(&p_amb_old);
+    FORT_GETPAMB(&p_amb_new);
+    updateFluxReg = false;
+
     EdgeState              = 0;
     EdgeFlux               = 0;
     SpecDiffusionFluxn     = 0;
@@ -717,7 +721,6 @@ HeatTransfer::HeatTransfer (Amr&            papa,
 
     if (!have_dsdt)
         BoxLib::Abort("have_dsdt MUST be true");
-
 
     FORT_GETPAMB(&p_amb_old);
     FORT_GETPAMB(&p_amb_new);
@@ -4006,7 +4009,7 @@ HeatTransfer::advance (Real time,
     BL_PROFILE_VAR("HT::advance::mac", HTMAC);
     int closed_chamber;
     FORT_GETCLOSEDCHAMBER(&closed_chamber);
-    if (closed_chamber == 1 && level == 0)
+    if (closed_chamber == 1)
     {
       // set new-time ambient pressure to be a copy of old-time ambient pressure
       p_amb_new = p_amb_old;
@@ -4271,6 +4274,13 @@ HeatTransfer::advance (Real time,
 	// subtract mean from mac_divu and theta_nph
 	mac_divu.plus(-Sbar,0,1);
 	theta_nph.plus(-thetabar,0,1);
+
+
+	if (ParallelDescriptor::IOProcessor())
+	{
+	  std::cout << "dt, Sbar, thetabar" << dt << " " << Sbar << " " << thetabar << std::endl;
+	}
+
 
 	p_amb_new = p_amb_old + dt*(Sbar/thetabar);
 
@@ -4668,7 +4678,7 @@ HeatTransfer::advance (Real time,
     temperature_stats(S_new);
 
     BL_PROFILE_VAR_START(HTMAC);
-    if (closed_chamber == 1 && level == 0 && !initial_step)
+    if (closed_chamber == 1 && !initial_step)
     {
       p_amb_old = p_amb_new;
     }
@@ -4831,22 +4841,7 @@ HeatTransfer::advance_chemistry (MultiFab&       mf_old,
 	if (closed_chamber == 1)
 	{
 	  // time-center ambient pressure for reactions
-	  if (level == 0)
-	  {
-	    p_amb = 0.5*(p_amb_old + p_amb_new);
-	  }
-	  else
-	  {
-	    // we need level 0 prev and cur_time for closed chamber algorithm
-	    AmrLevel& amr_lev = parent->getLevel(0);
-	    StateData& state_data = amr_lev.get_state_data(0);
-	    const Real lev_0_prevtime = state_data.prevTime();
-	    const Real lev_0_curtime = state_data.curTime();
-	    const Real half_time = 0.5*(state[State_Type].prevTime()+state[State_Type].curTime());
-
-	    p_amb = (lev_0_curtime-half_time )/(lev_0_curtime-lev_0_prevtime) * p_amb_old +
- 	            (half_time-lev_0_prevtime)/(lev_0_curtime-lev_0_prevtime) * p_amb_new;
-	  }
+	  p_amb = 0.5*(p_amb_old + p_amb_new);
 	}
 
         const Real Patm      = p_amb / P1atm_MKS;
@@ -6441,32 +6436,10 @@ HeatTransfer::calcDiffusivity (const Real time)
     FORT_GETCLOSEDCHAMBER(&closed_chamber);
     if (closed_chamber == 1)
     {
-      if (level == 0)
+      if (whichTime == AmrNewTime)
       {
-	if (whichTime == AmrNewTime)
-	{
-	  // get new-time ambient pressure
-	  p_amb = p_amb_new;
-	}
-      }
-      else
-      {
-	// we need level 0 prev and cur_time for closed chamber algorithm
-	AmrLevel& amr_lev = parent->getLevel(0);
-	StateData& state_data = amr_lev.get_state_data(0);
-	const Real lev_0_prevtime = state_data.prevTime();
-	const Real lev_0_curtime = state_data.curTime();
-	Real time;
-	if (whichTime == AmrOldTime)
-	{
-	  time = state[State_Type].prevTime();
-	}
-	else
-	{
-	  time = state[State_Type].curTime();
-	}
-	p_amb = (lev_0_curtime-time )/(lev_0_curtime-lev_0_prevtime) * p_amb_old +
-	        (time-lev_0_prevtime)/(lev_0_curtime-lev_0_prevtime) * p_amb_new;
+	// get new-time ambient pressure
+	p_amb = p_amb_new;
       }
     }
 
@@ -6816,34 +6789,20 @@ HeatTransfer::calc_dpdt (Real      time,
                          MultiFab* u_mac)
 {
   BL_PROFILE("HT::calc_dpdt()");
-  Real p_amb, dpdt_factor;
 
-  p_amb = p_amb_old;
-
+  Real dpdt_factor;
   FORT_GETDPDT(&dpdt_factor);
+
+  Real p_amb = p_amb_old;
 
   int closed_chamber;
   FORT_GETCLOSEDCHAMBER(&closed_chamber);
   if (closed_chamber == 1)
   {
-    if (level == 0)
-    {
-      // use new-time ambient pressure
-      p_amb = p_amb_new;
-    }
-    else
-    {
-      // we need level 0 prev and cur_time for closed chamber algorithm
-      AmrLevel& amr_lev = parent->getLevel(0);
-      StateData& state_data = amr_lev.get_state_data(0);
-      const Real lev_0_prevtime = state_data.prevTime();
-      const Real lev_0_curtime = state_data.curTime();
-
-      p_amb = (lev_0_curtime-time )/(lev_0_curtime-lev_0_prevtime) * p_amb_old +
-              (time-lev_0_prevtime)/(lev_0_curtime-lev_0_prevtime) * p_amb_new;
-    }
+    // use new-time ambient pressure
+    p_amb = p_amb_new;
   }
-
+  
   if (dt <= 0.0 || dpdt_factor <= 0)
   {
     dpdt.setVal(0);
