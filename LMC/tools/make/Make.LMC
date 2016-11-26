@@ -30,35 +30,29 @@ Bdirs += $(IAMR_DIR)/Source
 Bdirs += $(IAMR_DIR)/Source/Src_$(DIM)d
 Bdirs += $(IAMR_DIR)/Source/InflowForce
 
-# BoxLib 
-Bdirs   += $(BOXLIB_DIR)/Src/C_BaseLib
-Bdirs   += $(BOXLIB_DIR)/Src/C_AmrCoreLib
-Bdirs   += $(BOXLIB_DIR)/Src/C_AMRLib
-Bdirs   += $(BOXLIB_DIR)/Src/C_BoundaryLib
-ifeq ($(USE_PARTICLES), TRUE)
-  Bdirs += $(BOXLIB_DIR)/Src/C_ParticleLib
-endif
-Bdirs   += $(BOXLIB_DIR)/Src/LinearSolvers/C_CellMG
-Bdirs   += $(BOXLIB_DIR)/Src/LinearSolvers/C_TensorMG
-
 Bpack	+= $(foreach dir, $(Bdirs), $(dir)/Make.package)
 Blocs	+= $(foreach dir, $(Bdirs), $(dir))
+
+# BoxLib 
+Pdirs   += $(BOXLIB_DIR)/Src/C_BaseLib
+Pdirs   += $(BOXLIB_DIR)/Src/C_AmrCoreLib
+Pdirs   += $(BOXLIB_DIR)/Src/C_AMRLib
+Pdirs   += $(BOXLIB_DIR)/Src/C_BoundaryLib
+ifeq ($(USE_PARTICLES), TRUE)
+  Pdirs += $(BOXLIB_DIR)/Src/C_ParticleLib
+endif
+Pdirs   += $(BOXLIB_DIR)/Src/LinearSolvers/C_CellMG
+Pdirs   += $(BOXLIB_DIR)/Src/LinearSolvers/C_TensorMG
+Pdirs   += $(BOXLIB_DIR)/Src/LinearSolvers/C_to_F_MG
+
+include $(BOXLIB_DIR)/Src/LinearSolvers/F_MG/FParallelMG.mak
+include $(BOXLIB_HOME)/Src/F_BaseLib/FParallelMG.mak
+
+Bpack	+= $(foreach dir, $(Pdirs), $(dir)/Make.package)
 
 include $(Bpack) 
 INCLUDE_LOCATIONS += $(Blocs)
 VPATH_LOCATIONS   += $(Blocs)
-
-include $(BOXLIB_DIR)/Src/LinearSolvers/C_to_F_MG/Make.package
-INCLUDE_LOCATIONS += $(BOXLIB_DIR)/Src/LinearSolvers/C_to_F_MG
-VPATH_LOCATIONS   += $(BOXLIB_DIR)/Src/LinearSolvers/C_to_F_MG
- 
-include $(BOXLIB_DIR)/Src/LinearSolvers/F_MG/FParallelMG.mak
-INCLUDE_LOCATIONS += $(BOXLIB_DIR)/Src/LinearSolvers/F_MG
-VPATH_LOCATIONS   += $(BOXLIB_DIR)/Src/LinearSolvers/F_MG
-
-include $(BOXLIB_HOME)/Src/F_BaseLib/FParallelMG.mak
-INCLUDE_LOCATIONS += $(BOXLIB_DIR)/Src/F_BaseLib
-VPATH_LOCATIONS   += $(BOXLIB_DIR)/Src/F_BaseLib
 
 # Hack in some LMC stuff
 
@@ -184,9 +178,6 @@ endif
 
 DEFINES += -DCG_USE_OLD_CONVERGENCE_CRITERIA
 
-VPATH_LOCATIONS   += . $(Blocs) $(AMRVIS_DIR)
-INCLUDE_LOCATIONS += . $(Blocs) $(AMRVIS_DIR)
-
 ifeq ($(USE_BGL),TRUE)
   MACHINE=BGL
   CXX=mpicxx.ibm
@@ -236,14 +227,6 @@ buildInfo.cpp:
           --MODULES "Chemistry=$(CHEMISTRY_MODEL)" \
           --GIT "$(COMBUSTION_DIR) $(BOXLIB_HOME) $(IAMR_DIR)" 
 
-
-vpath %.c   $(VPATH_LOCATIONS)
-vpath %.cpp $(VPATH_LOCATIONS)
-vpath %.h   $(VPATH_LOCATIONS)
-vpath %.H   $(VPATH_LOCATIONS)
-vpath %.F   $(VPATH_LOCATIONS)
-vpath %.f   $(VPATH_LOCATIONS)
-vpath %.f90 $(VPATH_LOCATIONS)
 
 include $(BOXLIB_DIR)/Tools/C_mk/Make.rules
 
