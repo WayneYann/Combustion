@@ -893,12 +893,14 @@ RNS::errorEst (TagBoxArray& tags,
 	    int*        tptr    = itags.dataPtr();
 	    const int*  tlo     = tags[mfi].box().loVect();
 	    const int*  thi     = tags[mfi].box().hiVect();
-	    const int*  lo      = mfi.validbox().loVect();
-	    const int*  hi      = mfi.validbox().hiVect();
+	    const Box&  vbx     = mfi.validbox();
+	    const int*  lo      = vbx.loVect();
+	    const int*  hi      = vbx.hiVect();
 	    const Real* xlo     = gridloc.lo();
 	    Real*       dat     = (*mf)[mfi].dataPtr();
-	    const int*  dlo     = (*mf)[mfi].box().loVect();
-	    const int*  dhi     = (*mf)[mfi].box().hiVect();
+	    const Box&  dbx     = (*mf)[mfi].box();
+	    const int*  dlo     = dbx.loVect();
+	    const int*  dhi     = dbx.hiVect();
 	    const int   ncomp   = (*mf)[mfi].nComp();
 
 	    err_list[j].errFunc()(tptr, ARLIM(tlo), ARLIM(thi), &tagval,

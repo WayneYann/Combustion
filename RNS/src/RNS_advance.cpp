@@ -355,9 +355,11 @@ RNS::fill_rk_boundary(MultiFab& U, Real time, Real dt, int stage, int iteration,
 
 	for (int ibox=0; ibox<ba.size(); ibox++)
 	{
+	    const Box& bx = ba[ibox];
+
 	    if (RK_order == 3) {
 		BL_FORT_PROC_CALL(RNS_FILL_RK3_BNDRY, rns_fill_rk3_bndry)
-		    (ba[ibox].loVect(), ba[ibox].hiVect(),
+		    (bx.loVect(), bx.hiVect(),
 		     BL_TO_FORTRAN(U[mfi]),
 		     BL_TO_FORTRAN(U0[level][mfi]),
 		     BL_TO_FORTRAN(k1[level][mfi]),
@@ -367,7 +369,7 @@ RNS::fill_rk_boundary(MultiFab& U, Real time, Real dt, int stage, int iteration,
 	    }
 	    else {
 		BL_FORT_PROC_CALL(RNS_FILL_RK4_BNDRY, rns_fill_rk4_bndry)
-		    (ba[ibox].loVect(), ba[ibox].hiVect(),
+		    (bx.loVect(), bx.hiVect(),
 		     BL_TO_FORTRAN(U[mfi]),
 		     BL_TO_FORTRAN(U0[level][mfi]),
 		     BL_TO_FORTRAN(k1[level][mfi]),

@@ -1223,8 +1223,9 @@ HeatTransfer::estTimeStep ()
         const int        i   = U_fpi.index();
         FArrayBox&       U   = U_fpi();
         const FArrayBox& Rho = rho_ctime[U_fpi];
-        const int*       lo  = grids[i].loVect();
-        const int*       hi  = grids[i].hiVect();
+	const Box&     grdbx = grids[i];
+        const int*       lo  = grdbx.loVect();
+        const int*       hi  = grdbx.hiVect();
 
         DEF_CLIMITS((*divu)[U_fpi],sdat,slo,shi);
         DEF_CLIMITS(Rho,rhodat,rholo,rhohi);
@@ -1303,8 +1304,9 @@ HeatTransfer::checkTimeStep (Real dt)
         const int        i   = U_fpi.index();
         FArrayBox&       U   = U_fpi();
         const FArrayBox& Rho = rho_ctime[U_fpi];
-        const int*       lo  = grids[i].loVect();
-        const int*       hi  = grids[i].hiVect();
+	const Box&    grdbx  = grids[i];
+        const int*       lo  = grdbx.loVect();
+        const int*       hi  = grdbx.hiVect();
 
         DEF_LIMITS((*divu)[U_fpi],sdat,slo,shi);
         DEF_CLIMITS(Rho,rhodat,rholo,rhohi);
@@ -1432,8 +1434,9 @@ HeatTransfer::initData ()
 
         const int  i       = snewmfi.index();
         RealBox    gridloc = RealBox(grids[i],geom.CellSize(),geom.ProbLo());
-        const int* lo      = snewmfi.validbox().loVect();
-        const int* hi      = snewmfi.validbox().hiVect();
+	const Box& vbx     = snewmfi.validbox();
+        const int* lo      = vbx.loVect();
+        const int* hi      = vbx.hiVect();
         const int* s_lo    = S_new[snewmfi].loVect();
         const int* s_hi    = S_new[snewmfi].hiVect();
         const int* p_lo    = P_new[snewmfi].loVect();
