@@ -418,8 +418,11 @@ private:
     bool updateFluxReg;
     bool is_predictor;
 
-    Real p_amb_old;
-    Real p_amb_new;
+    // these refer to the old and new-time ambient pressure for level 0
+    static Real p_amb_old;
+    static Real p_amb_new;
+
+    static int closed_chamber;
 
     //
     // Protected static data.

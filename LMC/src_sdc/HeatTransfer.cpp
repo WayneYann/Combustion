@@ -105,6 +105,9 @@ namespace
     int                   chem_box_chop_threshold;
 }
 
+Real HeatTransfer::p_amb_old;
+Real HeatTransfer::p_amb_new;
+int  HeatTransfer::closed_chamber;
 int  HeatTransfer::num_divu_iters;
 int  HeatTransfer::init_once_done;
 int  HeatTransfer::do_OT_radiation;
@@ -207,6 +210,9 @@ HeatTransfer::Initialize ()
     crse_dt                 = -1;
     chem_box_chop_threshold = -1;
 
+    HeatTransfer::p_amb_old                 = -1.0;
+    HeatTransfer::p_amb_new                 = -1.0;
+    HeatTransfer::closed_chamber            = 0;
     HeatTransfer::num_divu_iters            = 1;
     HeatTransfer::init_once_done            = 0;
     HeatTransfer::do_OT_radiation           = 0;
@@ -689,8 +695,20 @@ HeatTransfer::HeatTransfer ()
     if (!have_dsdt)
         BoxLib::Abort("have_dsdt MUST be true");
 
-    FORT_GETPAMB(&p_amb_old);
-    FORT_GETPAMB(&p_amb_new);
+    // set p_amb_old and new if they haven't been set yet
+    // only the coarse level advance and the level 0-1 mac_sync 
+    // can modify these later
+    if (p_amb_old == -1.0)
+    {
+      FORT_GETPAMB(&p_amb_old);
+    }
+    if (p_amb_new == -1.0)
+    {
+      FORT_GETPAMB(&p_amb_new);
+    }
+
+    FORT_GETCLOSEDCHAMBER(&closed_chamber);
+
     updateFluxReg = false;
 
     EdgeState              = 0;
@@ -722,8 +740,20 @@ HeatTransfer::HeatTransfer (Amr&            papa,
     if (!have_dsdt)
         BoxLib::Abort("have_dsdt MUST be true");
 
-    FORT_GETPAMB(&p_amb_old);
-    FORT_GETPAMB(&p_amb_new);
+    // set p_amb_old and new if they haven't been set yet
+    // only the coarse level advance and the level 0-1 mac_sync 
+    // can modify these later
+    if (p_amb_old == -1.0)
+    {
+      FORT_GETPAMB(&p_amb_old);
+    }
+    if (p_amb_new == -1.0)
+    {
+      FORT_GETPAMB(&p_amb_new);
+    }
+
+    FORT_GETCLOSEDCHAMBER(&closed_chamber);
+
     updateFluxReg = false;
 
     define_data();
@@ -1620,8 +1650,6 @@ HeatTransfer::compute_instantaneous_reaction_rates (MultiFab&       R,
 
     Real Patm;
 
-    int closed_chamber;
-    FORT_GETCLOSEDCHAMBER(&closed_chamber);
     if (closed_chamber == 1 && whichTime == AmrNewTime)
     {
       // use new-time ambient pressure
@@ -1911,8 +1939,6 @@ HeatTransfer::post_init (Real stop_time)
     set_typical_values(false);
 
     // ensure system is solvable by creating deltaS = S - Sbar
-    int closed_chamber;
-    FORT_GETCLOSEDCHAMBER(&closed_chamber);
     if (closed_chamber == 1)
     {
 
@@ -2321,8 +2347,6 @@ HeatTransfer::post_init_press (Real&        dt_init,
     const int  finest_level    = parent->finestLevel();
     NavierStokesBase::initial_iter = true;
     Real Sbar_old, Sbar_new;
-    int closed_chamber;
-    FORT_GETCLOSEDCHAMBER(&closed_chamber);
     //
     // Make space to save a copy of the initial State_Type state data
     //
@@ -4004,14 +4028,7 @@ HeatTransfer::advance (Real time,
 		       int  ncycle)
 {
 
-    if (time == 0)
-    {
-      FORT_GETPAMB(&p_amb_old);
-    }
-
     BL_PROFILE_VAR("HT::advance::mac", HTMAC);
-    int closed_chamber;
-    FORT_GETCLOSEDCHAMBER(&closed_chamber);
     if (closed_chamber == 1)
     {
       // set new-time ambient pressure to be a copy of old-time ambient pressure
@@ -4839,8 +4856,6 @@ HeatTransfer::advance_chemistry (MultiFab&       mf_old,
 
         Real p_amb = p_amb_old;
 
-	int closed_chamber;
-	FORT_GETCLOSEDCHAMBER(&closed_chamber);
 	if (closed_chamber == 1)
 	{
 	  // time-center ambient pressure for reactions
@@ -6435,8 +6450,6 @@ HeatTransfer::calcDiffusivity (const Real time)
 
     Real p_amb = p_amb_old;
 
-    int closed_chamber;
-    FORT_GETCLOSEDCHAMBER(&closed_chamber);
     if (closed_chamber == 1)
     {
       if (whichTime == AmrNewTime)
@@ -6798,8 +6811,6 @@ HeatTransfer::calc_dpdt (Real      time,
 
   Real p_amb = p_amb_old;
 
-  int closed_chamber;
-  FORT_GETCLOSEDCHAMBER(&closed_chamber);
   if (closed_chamber == 1)
   {
     // use new-time ambient pressure
