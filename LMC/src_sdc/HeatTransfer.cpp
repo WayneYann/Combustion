@@ -1799,8 +1799,6 @@ HeatTransfer::init ()
     showMF("sdc",get_new_data(State_Type),"sdc_new_state_floored",level);
 
     FillCoarsePatch(get_new_data(FuncCount_Type),0,cur_time,FuncCount_Type,0,1);
-
-    p_amb_old = coarser.p_amb_old;
 }
 
 void
@@ -4029,7 +4027,7 @@ HeatTransfer::advance (Real time,
 {
 
     BL_PROFILE_VAR("HT::advance::mac", HTMAC);
-    if (closed_chamber == 1)
+    if (closed_chamber == 1 && level == 0)
     {
       // set new-time ambient pressure to be a copy of old-time ambient pressure
       p_amb_new = p_amb_old;
@@ -4295,13 +4293,6 @@ HeatTransfer::advance (Real time,
 	mac_divu.plus(-Sbar,0,1);
 	theta_nph.plus(-thetabar,0,1);
 
-
-	if (ParallelDescriptor::IOProcessor())
-	{
-	  std::cout << "dt, Sbar, thetabar" << dt << " " << Sbar << " " << thetabar << std::endl;
-	}
-
-
 	p_amb_new = p_amb_old + dt*(Sbar/thetabar);
 
 	// update mac rhs by adding delta_theta * (Sbar / thetabar)
@@ -4317,7 +4308,8 @@ HeatTransfer::advance (Real time,
 
 	if (ParallelDescriptor::IOProcessor())
 	{
-	  std::cout << "p_amb_old, p_amb_new = " << p_amb_old << " " << p_amb_new << std::endl;
+	  std::cout << "level 0: p_amb_old, p_amb_new = " 
+		    << p_amb_old << " " << p_amb_new << std::endl;
 	}
 
       }
@@ -4698,7 +4690,8 @@ HeatTransfer::advance (Real time,
     temperature_stats(S_new);
 
     BL_PROFILE_VAR_START(HTMAC);
-    if (closed_chamber == 1 && !initial_step)
+
+    if (closed_chamber == 1 && level == 0 && !initial_step)
     {
       p_amb_old = p_amb_new;
     }
@@ -4854,12 +4847,24 @@ HeatTransfer::advance_chemistry (MultiFab&       mf_old,
             cf_grids = getLevel(level+1).boxArray(); cf_grids.coarsen(fine_ratio);
         }
 
-        Real p_amb = p_amb_old;
-
+        Real p_amb;
 	if (closed_chamber == 1)
 	{
+	  // we need level 0 prev and cur_time for closed chamber algorithm
+	  AmrLevel& amr_lev = parent->getLevel(0);
+	  StateData& state_data = amr_lev.get_state_data(0);
+	  const Real lev_0_prevtime = state_data.prevTime();
+	  const Real lev_0_curtime = state_data.curTime();
+	  const Real halftime = 0.5*(state[State_Type].prevTime()+state[State_Type].curTime());
+
 	  // time-center ambient pressure for reactions
-	  p_amb = 0.5*(p_amb_old + p_amb_new);
+	  p_amb = (lev_0_curtime-halftime )/(lev_0_curtime-lev_0_prevtime) * p_amb_old +
+                  (halftime-lev_0_prevtime)/(lev_0_curtime-lev_0_prevtime) * p_amb_new;
+	}
+	else
+	{
+	  // for open chambers, ambient pressure is constant in time
+	  p_amb = p_amb_old;
 	}
 
         const Real Patm      = p_amb / P1atm_MKS;
@@ -6448,15 +6453,33 @@ HeatTransfer::calcDiffusivity (const Real time)
     MultiFab&  diff            = (whichTime == AmrOldTime) ? (*diffn_cc) : (*diffnp1_cc);
     FArrayBox tmp, bcen;
 
-    Real p_amb = p_amb_old;
-
+    Real p_amb;
     if (closed_chamber == 1)
     {
+      // we need level 0 prev and cur_time for closed chamber algorithm
+      AmrLevel& amr_lev = parent->getLevel(0);
+      StateData& state_data = amr_lev.get_state_data(0);
+      const Real lev_0_prevtime = state_data.prevTime();
+      const Real lev_0_curtime = state_data.curTime();
+      const Real prevtime = state[State_Type].prevTime();
+      const Real curtime = state[State_Type].curTime();
       if (whichTime == AmrNewTime)
       {
-	// get new-time ambient pressure
-	p_amb = p_amb_new;
+    	  // get new-time ambient pressure
+	  p_amb = (lev_0_curtime-curtime )/(lev_0_curtime-lev_0_prevtime) * p_amb_old +
+                  (curtime-lev_0_prevtime)/(lev_0_curtime-lev_0_prevtime) * p_amb_new;
       }
+      else
+      {
+    	  // get old-time ambient pressure
+	  p_amb = (lev_0_curtime-prevtime )/(lev_0_curtime-lev_0_prevtime) * p_amb_old +
+                  (prevtime-lev_0_prevtime)/(lev_0_curtime-lev_0_prevtime) * p_amb_new;
+      }
+    }
+    else
+    {
+      // for open chambers, ambient pressure is constant in time
+      p_amb = p_amb_old;
     }
 
     for (FillPatchIterator Rho_and_spec_fpi(*this,diff,nGrow,time,State_Type,Density,nspecies+1),
