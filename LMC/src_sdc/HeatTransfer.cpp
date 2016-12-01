@@ -6832,12 +6832,23 @@ HeatTransfer::calc_dpdt (Real      time,
   Real dpdt_factor;
   FORT_GETDPDT(&dpdt_factor);
 
-  Real p_amb = p_amb_old;
-
+  Real p_amb;
   if (closed_chamber == 1)
   {
+    // we need level 0 prev and cur_time for closed chamber algorithm
+    AmrLevel& amr_lev = parent->getLevel(0);
+    StateData& state_data = amr_lev.get_state_data(0);
+    const Real lev_0_prevtime = state_data.prevTime();
+    const Real lev_0_curtime = state_data.curTime();
+    const Real curtime = state[State_Type].curTime();
+
     // use new-time ambient pressure
-    p_amb = p_amb_new;
+    p_amb = (lev_0_curtime-curtime )/(lev_0_curtime-lev_0_prevtime) * p_amb_old +
+            (curtime-lev_0_prevtime)/(lev_0_curtime-lev_0_prevtime) * p_amb_new;
+  }
+  else
+  {
+    p_amb = p_amb_old;
   }
   
   if (dt <= 0.0 || dpdt_factor <= 0)
