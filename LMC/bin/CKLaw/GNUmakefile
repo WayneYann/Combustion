@@ -15,9 +15,10 @@ FCOMP             = gfortran
 USE_MPI           = TRUE
 USE_OMP           = FALSE
 VERBOSE           = FALSE
+USE_LMC_SDC       = TRUE
 
 # Enable flctin namelist
-USE_FLCTS         = TRUE
+USE_FLCTS         = FALSE
 
 USE_PARTICLES     = FALSE
 
@@ -27,8 +28,8 @@ USE_VELOCITY      = FALSE
 # Enable time-dependent forcing term
 USE_TDEPFORCING = FALSE
 
-CHEMISTRY_MODEL=LIDRYER
-fEXE_sources += LiDryer_060_05ATM.f
+CHEMISTRY_MODEL= BURKEMOD
+fEXE_sources += pmf_BurkeMOD_040_10atm.f
 
 Blocs   := .
 

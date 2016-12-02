@@ -1,11 +1,11 @@
 ht.plot_auxDiags = 1
 
-max_step  = 1000
+max_step  = 500
 stop_time =  50.00
 
 geometry.coord_sys = 0  # 0 => cart, 1 => RZ
-geometry.prob_lo   = -.03 -.03 -.03 # m
-geometry.prob_hi   =  .03  .03  .03
+geometry.prob_lo   = -.02 -.02 -.03 # m
+geometry.prob_hi   =  .02  .02  .03
 
 ns.tranfile        = ../tran.asc.LiDryer
 ns.fuelName        = H2
@@ -15,11 +15,13 @@ ns.consumptionName = H2
 ns.plot_consumption = 1
 ns.plot_heat_release = 1
 
+ns.sdc_iterMAX = 2
 godunov.ppm_type = 0
 
 ns.do_active_control = false
 
-amr.n_cell = 768 768 768
+amr.n_cell = 768 768
+amr.n_cell = 512 512
 
 proj.proj_2 = 1
 ns.do_init_vort_proj = 0
@@ -44,13 +46,13 @@ proj.v = 0
 amr.max_level       = 2
 amr.ref_ratio       = 2 2 2 2   # refinement ratio
 amr.regrid_int      = 2       # how often to regrid
-amr.n_error_buf     = 2 2 2 2 # number of buffer cells in error est
+amr.n_error_buf     = 4 4 2 2 # number of buffer cells in error est
 amr.grid_eff        = 0.7     # what constitutes an efficient grid
 amr.blocking_factor = 16      # block factor in grid generation
 amr.check_file      = chk
-amr.check_int       = 10      # number of timesteps between checkpoints
+amr.check_int       = 5      # number of timesteps between checkpoints
 amr.plot_file       = plt
-amr.plot_int        = 10
+amr.plot_int        = 5
 amr.grid_log        = grdlog  # name of grid logging file
 amr.max_grid_size   = 64
 ht.plot_rhoY=1
@@ -64,7 +66,7 @@ amr.probin_file = probin.2d # This will default to file "probin" if not set
 ns.dt_cutoff       = 5.e-10   # level 0 timestep below which we halt
 ns.visc_tol        = 1.0e-14  # tolerence for viscous solves
 ns.visc_abs_tol    = 1.0e-14  # tolerence for viscous solves
-ns.cfl            = 0.8      # cfl number for hyperbolic system
+ns.cfl            = 0.25      # cfl number for hyperbolic system
 ns.init_shrink    = 0.1       # scale down initial timestep
 ns.change_max     = 1.1       # scale back initial timestep
 ns.vel_visc_coef   = 1.983e-5

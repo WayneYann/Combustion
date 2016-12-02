@@ -86,7 +86,7 @@ using namespace std;
 /*
  * Spatial interpolation between MultiFabs.
  */
-void RNS::interpolate(MLSDCAmrEncap& F, MLSDCAmrEncap& G, Real t, bool isCorrection, bool isFEval, MLSDCAmrLevel& _levelG)
+void RNS::Interpolate(MLSDCAmrEncap& F, MLSDCAmrEncap& G, Real t, bool isCorrection, bool isFEval, MLSDCAmrLevel& _levelG)
 {
   BL_PROFILE("MLSDC_AMR_INTERPOLATE()");
 
@@ -246,7 +246,7 @@ void RNS::interpolate(MLSDCAmrEncap& F, MLSDCAmrEncap& G, Real t, bool isCorrect
  * Spatial restriction between solutions and integrals of function
  * evals.
  */
-void RNS::restrict(MLSDCAmrEncap& F, MLSDCAmrEncap& G, Real t, MLSDCAmrLevel& _levelG)
+void RNS::Restrict(MLSDCAmrEncap& F, MLSDCAmrEncap& G, Real t, MLSDCAmrLevel& _levelG)
 {
   BL_PROFILE("MLSDC_AMR_RESTRICT()");
 

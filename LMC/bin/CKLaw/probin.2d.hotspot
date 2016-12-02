@@ -1,30 +1,39 @@
  &fortin
   blobr = .002
   blobr = .001
+  blobr = .0001
   blobx = 0.
   bloby = 0.
   y_offset = .03011
   y_offset = -.03011
   y_offset = .006
   probtype = 1
-  flametracval = .00001
+  probtype = 2
+  flametracval = .0001
   max_vort_lev = 3
+  max_temp_lev = 3
+  tempgrad = 50.
   vorterr = .2
   vorterr = 1.e3
   vorterr = 100
-  flametracval = 1.e-8
+  flametracval = 1.e-7
   V_in = .1527
   phi_in = 0.4
+  phi_in = 0.35
+  phi_in = 0.3
+  T_in = 300
+  T_stick  = 1450
   nchemdiag = 1
   pertmag = .001
   pertmag = .00
   pertmag = .02
+  pertmag = .1
   turb_scale = 1.0	  
  /
  &heattransin
   pamb = 506625.0
-  pamb = 1013250.0
   pamb = 2026500.0
+  pamb = 1013250.0
   dpdt_factor = 1.0
  /
  &flctin

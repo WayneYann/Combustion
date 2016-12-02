@@ -4,16 +4,21 @@ EBASE = LMC
 BOXLIB_HOME = $(BOXLIB_DIR)
 include $(BOXLIB_DIR)/Tools/C_mk/Make.defs 
 
-fincludes=$(includes)
-
 # LMC
 ifeq ($(USE_LMC_SDC), TRUE)
+  DEFINES += -DLMC_SDC
+  USERSuffix += .SDC
   Bdirs += $(COMBUSTION_DIR)/LMC/src_sdc
 endif
 Bdirs += $(COMBUSTION_DIR)/LMC/src
 
 # Chemistry
 Bdirs += $(COMBUSTION_DIR)/Chemistry/src
+
+ifeq ($(USE_WBAR),TRUE)
+    USERSuffix += .WBAR
+    DEFINES += -DUSE_WBAR
+endif
 
 #
 # Tells IAMR not to include the following: NS_error.cpp NS_setup.cpp NSBld.cpp
@@ -25,34 +30,29 @@ Bdirs += $(IAMR_DIR)/Source
 Bdirs += $(IAMR_DIR)/Source/Src_$(DIM)d
 Bdirs += $(IAMR_DIR)/Source/InflowForce
 
-# BoxLib 
-Bdirs   += $(BOXLIB_DIR)/Src/C_BaseLib
-Bdirs   += $(BOXLIB_DIR)/Src/C_AMRLib
-Bdirs   += $(BOXLIB_DIR)/Src/C_BoundaryLib
-ifeq ($(USE_PARTICLES), TRUE)
-  Bdirs += $(BOXLIB_DIR)/Src/C_ParticleLib
-endif
-Bdirs   += $(BOXLIB_DIR)/Src/LinearSolvers/C_CellMG
-Bdirs   += $(BOXLIB_DIR)/Src/LinearSolvers/C_TensorMG
-
 Bpack	+= $(foreach dir, $(Bdirs), $(dir)/Make.package)
 Blocs	+= $(foreach dir, $(Bdirs), $(dir))
+
+# BoxLib 
+Pdirs   += $(BOXLIB_DIR)/Src/C_BaseLib
+Pdirs   += $(BOXLIB_DIR)/Src/C_AmrCoreLib
+Pdirs   += $(BOXLIB_DIR)/Src/C_AMRLib
+Pdirs   += $(BOXLIB_DIR)/Src/C_BoundaryLib
+ifeq ($(USE_PARTICLES), TRUE)
+  Pdirs += $(BOXLIB_DIR)/Src/C_ParticleLib
+endif
+Pdirs   += $(BOXLIB_DIR)/Src/LinearSolvers/C_CellMG
+Pdirs   += $(BOXLIB_DIR)/Src/LinearSolvers/C_TensorMG
+Pdirs   += $(BOXLIB_DIR)/Src/LinearSolvers/C_to_F_MG
+
+include $(BOXLIB_DIR)/Src/LinearSolvers/F_MG/FParallelMG.mak
+include $(BOXLIB_HOME)/Src/F_BaseLib/FParallelMG.mak
+
+Bpack	+= $(foreach dir, $(Pdirs), $(dir)/Make.package)
 
 include $(Bpack) 
 INCLUDE_LOCATIONS += $(Blocs)
 VPATH_LOCATIONS   += $(Blocs)
-
-include $(BOXLIB_DIR)/Src/LinearSolvers/C_to_F_MG/Make.package
-INCLUDE_LOCATIONS += $(BOXLIB_DIR)/Src/LinearSolvers/C_to_F_MG
-VPATH_LOCATIONS   += $(BOXLIB_DIR)/Src/LinearSolvers/C_to_F_MG
- 
-include $(BOXLIB_DIR)/Src/LinearSolvers/F_MG/FParallelMG.mak
-INCLUDE_LOCATIONS += $(BOXLIB_DIR)/Src/LinearSolvers/F_MG
-VPATH_LOCATIONS   += $(BOXLIB_DIR)/Src/LinearSolvers/F_MG
-
-include $(BOXLIB_HOME)/Src/F_BaseLib/FParallelMG.mak
-INCLUDE_LOCATIONS += $(BOXLIB_DIR)/Src/F_BaseLib
-VPATH_LOCATIONS   += $(BOXLIB_DIR)/Src/F_BaseLib
 
 # Hack in some LMC stuff
 
@@ -82,6 +82,11 @@ ifeq ($(USE_NEWMECH), TRUE)
   DEFINES += -DBL_NOLINEVALUES -DBL_USE_NEWMECH -DBL_PARALLEL_IO
 endif
 
+ifeq ($(CHEMISTRY_MODEL), ALZETA)
+  cEXE_sources += alzeta.c
+  vpath %.f   $(VPATH_LOCATIONS) $(COMBUSTION_DIR)/Chemistry/data/Alzeta/PMFs
+  vpath %.c $(VPATH_LOCATIONS) $(COMBUSTION_DIR)/Chemistry/data/Alzeta
+endif
 ifeq ($(CHEMISTRY_MODEL), GLARSKEL)
   cEXE_sources += glarSkel.c
   vpath %.f   $(VPATH_LOCATIONS) $(COMBUSTION_DIR)/Chemistry/data/glar/PMFs
@@ -137,15 +142,30 @@ ifeq ($(CHEMISTRY_MODEL), ZHAODODECANE)
   vpath %.f   $(VPATH_LOCATIONS) $(COMBUSTION_DIR)/Chemistry/data/dodecane_zhao_1/PMFs
   vpath %.c $(VPATH_LOCATIONS) $(COMBUSTION_DIR)/Chemistry/data/dodecane_zhao_1
 endif
-ifeq ($(CHEMISTRY_MODEL), ALZETA)
-  cEXE_sources += alzeta.c
-  vpath %.f   $(VPATH_LOCATIONS) $(COMBUSTION_DIR)/Chemistry/data/Alzeta/PMFs
-  vpath %.c $(VPATH_LOCATIONS) $(COMBUSTION_DIR)/Chemistry/data/Alzeta
+ifeq (${CHEMISTRY_MODEL}, BURKE)
+  cEXE_sources += BurkeDryer.c
+  vpath %.c $(VPATH_LOCATIONS) $(COMBUSTION_DIR)/Chemistry/data/BurkeDryer
+  vpath %.f   $(VPATH_LOCATIONS) $(COMBUSTION_DIR)/Chemistry/data/BurkeDryer/PMFs
 endif
-ifeq ($(CHEMISTRY_MODEL), BURKEMOD)
+ifeq (${CHEMISTRY_MODEL}, BURKEMOD)
   cEXE_sources += BurkeDryer_mod.c
-  vpath %.f   $(VPATH_LOCATIONS) $(COMBUSTION_DIR)/Chemistry/data/BurkeDryer_mod/PMFs
   vpath %.c $(VPATH_LOCATIONS) $(COMBUSTION_DIR)/Chemistry/data/BurkeDryer_mod
+  vpath %.f   $(VPATH_LOCATIONS) $(COMBUSTION_DIR)/Chemistry/data/BurkeDryer_mod/PMFs
+endif
+ifeq (${CHEMISTRY_MODEL}, BURKEMOD_B)
+  cEXE_sources += BurkeDryer_modB.c
+  vpath %.c $(VPATH_LOCATIONS) $(COMBUSTION_DIR)/Chemistry/data/H2_mechB 
+  vpath %.f   $(VPATH_LOCATIONS) $(COMBUSTION_DIR)/Chemistry/data/H2_mechB/PMFs
+endif
+ifeq (${CHEMISTRY_MODEL}, BURKEMOD_C)
+  cEXE_sources += BurkeDryer_modC.c
+  vpath %.c $(VPATH_LOCATIONS) $(COMBUSTION_DIR)/Chemistry/data/H2_mechC 
+  vpath %.f   $(VPATH_LOCATIONS) $(COMBUSTION_DIR)/Chemistry/data/H2_mechC/PMFs
+endif 
+ifeq (${CHEMISTRY_MODEL}, BURKEMOD_D)
+  cEXE_sources += BurkeDryer_modD.c
+  vpath %.c $(VPATH_LOCATIONS) $(COMBUSTION_DIR)/Chemistry/data/H2_mechD
+  vpath %.f   $(VPATH_LOCATIONS) $(COMBUSTION_DIR)/Chemistry/data/H2_mechD/PMFs
 endif
 
 # Enable time-dependent turbulence forcing term
@@ -157,9 +177,6 @@ ifeq ($(USE_TDEPFORCING), TRUE)
 endif
 
 DEFINES += -DCG_USE_OLD_CONVERGENCE_CRITERIA
-
-VPATH_LOCATIONS   += . $(Blocs) $(AMRVIS_DIR)
-INCLUDE_LOCATIONS += . $(Blocs) $(AMRVIS_DIR)
 
 ifeq ($(USE_BGL),TRUE)
   MACHINE=BGL
@@ -210,14 +227,6 @@ buildInfo.cpp:
           --MODULES "Chemistry=$(CHEMISTRY_MODEL)" \
           --GIT "$(COMBUSTION_DIR) $(BOXLIB_HOME) $(IAMR_DIR)" 
 
-
-vpath %.c   $(VPATH_LOCATIONS)
-vpath %.cpp $(VPATH_LOCATIONS)
-vpath %.h   $(VPATH_LOCATIONS)
-vpath %.H   $(VPATH_LOCATIONS)
-vpath %.F   $(VPATH_LOCATIONS)
-vpath %.f   $(VPATH_LOCATIONS)
-vpath %.f90 $(VPATH_LOCATIONS)
 
 include $(BOXLIB_DIR)/Tools/C_mk/Make.rules
 
