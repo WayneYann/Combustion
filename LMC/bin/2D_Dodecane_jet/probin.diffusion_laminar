@@ -1,0 +1,57 @@
+ &fortin
+  probtype = 'dme_diffusion'
+
+  V_jet = 25.0
+
+  T_in = 470.
+  V_in = 0.0
+
+  T_co = 900.
+
+  V_co = 2.5
+  V_co = 0.d0
+  V_co = 3.5
+  V_co = 0.5
+  phi_in = 0.7
+
+  max_vort_lev = 4
+  vorterr = 5.e4
+
+  flametracval = 1.e-8
+  max_trac_lev = 4
+
+  max_temp_lev = 2
+  tempgrad = 10.
+
+
+  blobr = -1.
+
+  splitx  = .00015
+  blobr   = .00018
+  Tfrontw = .0003
+  xfrontw = .0003
+
+  blobT = 1500.
+  blobx = 0.00025
+  bloby = .00145
+
+ /
+ &heattransin
+  pamb = 101325.
+  pamb = 6079500.
+  dpdt_factor = 0.3
+  dpdt_factor = 1.0
+ /
+  &control
+  tau_control = 5.e-5
+  sest = 1.5
+  h_control = .0015
+  changeMax_control = .2
+  changeMax_control = .05
+  controlVelMax = 5.0
+  navg_pnts = 40
+  istemp = 1
+  corr = 1.d0
+  pseudo_gravity = 1
+ /
+
